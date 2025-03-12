@@ -8,7 +8,7 @@ from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ... import registry
-from ...constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipCardinality, RelationshipDirection
+from ...constants import RelationshipCardinality, RelationshipDirection
 from ...initialization import initialization
 from ...query import Query, QueryType
 
@@ -51,33 +51,33 @@ class DedupCardinalityOneRelsQuery(Query):
         # We need to check for node kind otherwise we would not be able to differentiate the `many` side
         # of a one-to-many BIDIR relationship.
         query = """
-        MATCH (rel_node: Relationship)-[edge:IS_RELATED]->(n: Node)<-[edge_2:IS_RELATED]-(rel_node_2: Relationship {name: rel_node.name})
-        WHERE rel_node.name in $rel_one_identifiers_inbound[n.kind]
-            AND edge.branch = edge_2.branch
-            and edge.status = "active"
-            and edge_2.status = "active"
-            and edge.to is NULL
-            and edge_2.to is null
-            and edge_2.from >= edge.from  // delete the oldest one
-        DETACH DELETE rel_node
 
-        WITH count(*) as dummy
+        CALL {
+            MATCH (rel_node: Relationship)-[edge:IS_RELATED]->(n: Node)<-[edge_2:IS_RELATED]-(rel_node_2: Relationship {name: rel_node.name})
+            WHERE rel_node.name in $rel_one_identifiers_inbound[n.kind]
+                AND edge.branch = edge_2.branch
+                and edge.status = "active"
+                and edge_2.status = "active"
+                and edge.to is NULL
+                and edge_2.to is null
+                and edge_2.from >= edge.from  // delete the oldest one
+            DETACH DELETE rel_node
+        }
 
-        MATCH (rel_node_3: Relationship)<-[edge_3:IS_RELATED]-(n: Node)-[edge_4:IS_RELATED]->(rel_node_4: Relationship {name: rel_node_3.name})
-        WHERE rel_node_3.name in $rel_one_identifiers_outbound[n.kind]
-            AND edge_3.branch = edge_4.branch
-            and edge_3.status = "active"
-            and edge_4.status = "active"
-            and edge_3.to is NULL
-            and edge_4.to is null
-            and edge_4.from >= edge_3.from  // delete the oldest one
-        DETACH DELETE rel_node_3
+        CALL {
+            MATCH (rel_node_3: Relationship)<-[edge_3:IS_RELATED]-(n: Node)-[edge_4:IS_RELATED]->(rel_node_4: Relationship {name: rel_node_3.name})
+            WHERE rel_node_3.name in $rel_one_identifiers_outbound[n.kind]
+                AND edge_3.branch = edge_4.branch
+                and edge_3.status = "active"
+                and edge_4.status = "active"
+                and edge_3.to is NULL
+                and edge_4.to is null
+                and edge_4.from >= edge_3.from  // delete the oldest one
+            DETACH DELETE rel_node_3
+        }
         """
 
         params = {
-            "global_branch": GLOBAL_BRANCH_NAME,
-            "branch_aware": BranchSupportType.AWARE.value,
-            "branch_agnostic": BranchSupportType.AGNOSTIC.value,
             "rel_one_identifiers_inbound": rel_one_identifiers_inbound,
             "rel_one_identifiers_outbound": rel_one_identifiers_outbound,
         }
