@@ -6,7 +6,6 @@ from invoke.context import Context
 from invoke.tasks import task
 
 from .container_ops import (
-    collect_support_data,
     destroy_environment,
     display_container_status,
     migrate_database,
@@ -131,9 +130,3 @@ def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None
 def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load infrastructure demo data."""
     load_infrastructure_data(context=context, database=database, namespace=NAMESPACE)
-
-
-@task(optional=["database"])
-def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
-    """Collect all logs and create a support archive."""
-    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)
