@@ -3295,19 +3295,27 @@ async def test_hierarchical_groups_descendants(
 
     member_names = [hierarchical_groups_data[member_id].name.value for member_id in members_ids]
 
+    # members returned in order of group names
     assert member_names == [
+        # grp1
         "tag-0",
         "tag-1",
+        # grp11
         "tag-2",
         "tag-3",
-        "tag-4",
-        "tag-5",
+        # grp111
         "tag-6",
         "tag-7",
+        # grp112
         "tag-8",
         "tag-9",
+        # grp12
+        "tag-4",
+        "tag-5",
+        # grp 121
         "tag-10",
         "tag-11",
+        # grp 122
         "tag-12",
         "tag-13",
     ]
