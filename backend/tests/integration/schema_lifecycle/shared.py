@@ -90,6 +90,19 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         return schema_car_base
 
     @pytest.fixture(scope="class")
+    def schema_car_06_interiors(self, schema_car_05_no_profile) -> dict[str, Any]:
+        schema_car_05_no_profile["relationships"].append(
+            {
+                "name": "interiors",
+                "kind": "Attribute",
+                "optional": True,
+                "peer": "TestingInterior",
+                "cardinality": "many",
+            },
+        )
+        return schema_car_05_no_profile
+
+    @pytest.fixture(scope="class")
     def schema_manufacturer_base(self) -> dict[str, Any]:
         return {
             "name": "Manufacturer",
@@ -149,6 +162,19 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         return schema_tag_base
 
     @pytest.fixture(scope="class")
+    def schema_interior_base(self) -> dict[str, Any]:
+        return {
+            "name": "Interior",
+            "namespace": "Testing",
+            "include_in_menu": True,
+            "label": "Testing Interior",
+            "attributes": [{"name": "material", "kind": "Text", "optional": False}],
+            "relationships": [
+                {"name": "cars", "kind": "Generic", "optional": True, "peer": "TestingCar", "cardinality": "many"},
+            ],
+        }
+
+    @pytest.fixture(scope="class")
     def schema_step01(
         self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_tag_base
     ) -> dict[str, Any]:
@@ -205,5 +231,23 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                 schema_car_05_no_profile,
                 schema_manufacturer_02_car_maker,
                 # TestingTag is removed in previous step
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step06(
+        self,
+        schema_car_06_interiors,
+        schema_person_03_no_height,
+        schema_manufacturer_02_car_maker,
+        schema_interior_base,
+    ) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [
+                schema_person_03_no_height,
+                schema_car_06_interiors,
+                schema_manufacturer_02_car_maker,
+                schema_interior_base,
             ],
         }

@@ -1,0 +1,1 @@
+Fix a bug in one of the cypher queries to get related nodes that could cause a crash when trying to retrieve a schema from the database if that schema was merged in from a branch
