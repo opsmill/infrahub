@@ -23,3 +23,7 @@ export const deleteBranch = async (page: Page, branchName: string) => {
   await page.getByRole("button", { name: "Delete" }).click();
   await page.getByTestId("modal-delete-confirm").click();
 };
+
+export const generateRandomBranchName = (prefix: string) => {
+  return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
+};
