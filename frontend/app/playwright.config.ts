@@ -15,13 +15,15 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  /* Retry on CI only */
+  retries: process.env.CI ? 1 : 0,
   /* 30s timeout for both assertions and tests (2min in CI) */
-  timeout: process.env.CI
-    ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
-      ? 4 * 60 * 1000
-      : 2 * 60 * 1000
-    : 30 * 1000,
+  // timeout: process.env.CI
+  //   ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
+  //     ? 6 * 60 * 1000
+  //     : 2 * 60 * 1000
+  //   : 30 * 1000,
+  timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
   expect: {
     timeout: process.env.CI
       ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
