@@ -199,6 +199,7 @@ class CoreWebhook(CoreNode):
     name: String
     event_type: Enum
     branch_scope: Dropdown
+    node_kind: StringOptional
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional

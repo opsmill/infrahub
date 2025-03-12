@@ -90,8 +90,10 @@ class GroupMutatedEvent(InfrahubEvent):
 class GroupMemberAddedEvent(GroupMutatedEvent):
     action: MutationAction = MutationAction.CREATED
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_added"
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class GroupMemberRemovedEvent(GroupMutatedEvent):
     action: MutationAction = MutationAction.DELETED
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_removed"
+    infrahub_node_kind_event: ClassVar[bool] = True

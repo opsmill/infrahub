@@ -78,16 +78,19 @@ class NodeMutatedEvent(InfrahubEvent):
 class NodeCreatedEvent(NodeMutatedEvent):
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.created"
     action: MutationAction = MutationAction.CREATED
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class NodeUpdatedEvent(NodeMutatedEvent):
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.updated"
     action: MutationAction = MutationAction.UPDATED
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class NodeDeletedEvent(NodeMutatedEvent):
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.deleted"
     action: MutationAction = MutationAction.DELETED
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 def get_node_event(action: MutationAction) -> type[NodeDeletedEvent] | type[NodeUpdatedEvent] | type[NodeCreatedEvent]:
