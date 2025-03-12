@@ -206,6 +206,20 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
     )
     assert not dog1_update.node_changelog.parent
 
+    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=default_branch)
+    secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1_update.node_changelog)
+    assert len(secondary_changelogs) == 2
+
+    person1_secondary = [changelog for changelog in secondary_changelogs if changelog.node_id == person1.id][0]
+    person2_secondary = [changelog for changelog in secondary_changelogs if changelog.node_id == person2.id][0]
+
+    assert isinstance(person1_secondary.relationships["animals"], RelationshipCardinalityManyChangelog)
+    assert len(person1_secondary.relationships["animals"].peers) == 1
+    assert person1_secondary.relationships["animals"].peers[0].peer_status == DiffAction.REMOVED
+    assert isinstance(person2_secondary.relationships["animals"], RelationshipCardinalityManyChangelog)
+    assert len(person2_secondary.relationships["animals"].peers) == 1
+    assert person2_secondary.relationships["animals"].peers[0].peer_status == DiffAction.ADDED
+
 
 async def test_node_changelog_update_with_cardinality_many_relationship(
     db: InfrahubDatabase, default_branch, animal_person_schema, standard_group_schema
@@ -301,6 +315,15 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     animals = person1_update.node_changelog.relationships["animals"].peers
     assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
     assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
+
+    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=default_branch)
+    secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=person1_update.node_changelog)
+
+    assert len(secondary_changelogs) == 2
+    for changelog in secondary_changelogs:
+        assert isinstance(changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
+        assert changelog.relationships["owner"].peer_kind_previous == "TestPerson"
+        assert changelog.relationships["owner"].peer_status == DiffAction.REMOVED
 
 
 async def test_node_changelog_parent(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:
