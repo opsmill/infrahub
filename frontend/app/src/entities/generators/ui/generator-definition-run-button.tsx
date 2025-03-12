@@ -16,6 +16,7 @@ import { useState } from "react";
 import { Text } from "react-aria-components";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
@@ -26,6 +27,7 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showTargetForm, setShowTargetForm] = useState(false);
   const { isPending, mutate } = useRunGeneratorMutation();
+  const { isAuthenticated } = useAuth();
 
   const handlePopoverOpenChange = (open: boolean) => {
     setIsPopoverOpen(open);
@@ -65,7 +67,7 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
   return (
     <Popover open={isPopoverOpen} onOpenChange={handlePopoverOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="active" isLoading={isPending} disabled={isPending}>
+        <Button variant="active" isLoading={isPending} disabled={isPending || !isAuthenticated}>
           {!isPending && <PlayIcon className="size-4 mr-2" />}
           Run
         </Button>
