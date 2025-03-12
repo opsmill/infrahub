@@ -161,4 +161,32 @@ describe("List Field Component", () => {
     // THEN
     expect(formValue).toEqual({ field1: { source: { type: "user" }, value: ["test item"] } });
   });
+
+  test("returns null when list is cleared", async () => {
+    // GIVEN
+    let formValue;
+    const defaultValue: FormAttributeValue = { 
+      source: { type: "user" }, 
+      value: ["item 1", "item 2"] 
+    };
+    const component = render(
+      <TestForm onSubmit={(formData) => (formValue = formData)}>
+        <ListField
+          name="field1"
+          label="Test List" 
+          defaultValue={defaultValue}
+        />
+      </TestForm>
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Remove item 1" }).click();
+    await component.getByRole("button", { name: "Remove item 2" }).click();
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    expect(formValue).toEqual({ 
+      field1: { source: { type: "user" }, value: null }
+    });
+  });
 });
