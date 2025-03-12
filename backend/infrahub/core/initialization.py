@@ -141,40 +141,7 @@ async def initialization(db: InfrahubDatabase) -> None:
     #  ... Unless the schema has been initialized already
     # ---------------------------------------------------
     if not registry.schema_has_been_initialized():
-        registry.schema = SchemaManager()
-        schema = SchemaRoot(**internal_schema)
-        registry.schema.register_schema(schema=schema)
-
-        # Import the default branch
-        default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
-        hash_in_db = default_branch.active_schema_hash.main
-        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
-
-        if default_branch.update_schema_hash():
-            log.warning(
-                "New schema detected after pulling the schema from the db",
-                hash_current=hash_in_db,
-                hash_new=default_branch.active_schema_hash.main,
-                branch=default_branch.name,
-            )
-            await default_branch.save(db=db)
-
-        for branch in list(registry.branch.values()):
-            if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
-                continue
-
-            hash_in_db = branch.active_schema_hash.main
-            log.info("Importing schema", branch=branch.name)
-            await registry.schema.load_schema(db=db, branch=branch)
-
-            if branch.update_schema_hash():
-                log.warning(
-                    f"New schema detected after pulling the schema from the db :"
-                    f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
-                    branch=branch.name,
-                )
-                await branch.save(db=db)
+        await _register_schemas(db)
 
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -192,6 +159,40 @@ async def initialization(db: InfrahubDatabase) -> None:
     ip_namespace = await get_default_ipnamespace(db=db)
     if ip_namespace:
         registry.default_ipnamespace = ip_namespace.id
+
+
+async def _register_schemas(db: InfrahubDatabase) -> None:
+    registry.schema = SchemaManager()
+    schema = SchemaRoot(**internal_schema)
+    registry.schema.register_schema(schema=schema)
+    # Import the default branch
+    default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
+    hash_in_db = default_branch.active_schema_hash.main
+    schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+    if default_branch.update_schema_hash():
+        log.warning(
+            "New schema detected after pulling the schema from the db",
+            hash_current=hash_in_db,
+            hash_new=default_branch.active_schema_hash.main,
+            branch=default_branch.name,
+        )
+        await default_branch.save(db=db)
+    for branch in list(registry.branch.values()):
+        if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
+            continue
+
+        hash_in_db = branch.active_schema_hash.main
+        log.info("Importing schema", branch=branch.name)
+        await registry.schema.load_schema(db=db, branch=branch)
+
+        if branch.update_schema_hash():
+            log.warning(
+                f"New schema detected after pulling the schema from the db :"
+                f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
+                branch=branch.name,
+            )
+            await branch.save(db=db)
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:
