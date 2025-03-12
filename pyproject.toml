@@ -511,7 +511,6 @@ allow-dunder-method-names = [
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-    "UP007",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/cli/db.py" = [
@@ -526,6 +525,12 @@ allow-dunder-method-names = [
     "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
+"backend/infrahub/core/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
 
 "backend/infrahub/core/models.py" = [
     ##################################################################################################

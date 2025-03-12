@@ -1,14 +1,13 @@
-import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
-import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
-import { Badge } from "@/shared/components/ui/badge";
-import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
-import { Generate } from "./generate";
+import { ArtifactStatus } from "@/entities/artifacts/types";
+import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
+import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
+import { ArtifactGenerateButton } from "./artifact-generate-button";
 
 type ArtifactHeaderProps = {
   id: string;
+  name: string;
+  status: ArtifactStatus;
   hfid?: string;
-  name?: string;
-  status?: string;
   checksum?: string;
   storageId?: string;
   definitionId: string;
@@ -24,40 +23,18 @@ const ArtifactHeader = ({
   definitionId,
 }: ArtifactHeaderProps) => {
   return (
-    <div className="flex flex-grow justify-between">
-      <div className="flex items-center gap-3">
-        <h1 className="font-bold text-xl">{name}</h1>
+    <div className="flex items-center gap-2">
+      <h1 className="font-bold text-xl">{name}</h1>
 
-        <ObjectDetailsButton id={id} hfid={hfid}>
-          {checksum && (
-            <DropdownMenuItem className="p-0">
-              <CopyToClipboard
-                size={"default"}
-                className="flex-grow justify-start gap-2 p-2"
-                text={checksum}
-              >
-                Copy Checksum
-              </CopyToClipboard>
-            </DropdownMenuItem>
-          )}
+      <ArtifactStatusBadge status={status} />
 
-          {storageId && (
-            <DropdownMenuItem className="p-0">
-              <CopyToClipboard
-                size={"default"}
-                className="flex-grow justify-start gap-2 p-2"
-                text={storageId}
-              >
-                Copy Storage ID
-              </CopyToClipboard>
-            </DropdownMenuItem>
-          )}
-        </ObjectDetailsButton>
+      <div className="flex items-center gap-1 ml-auto">
+        {definitionId && (
+          <ArtifactGenerateButton label="Re-generate" artifactId={id} definitionId={definitionId} />
+        )}
 
-        <Badge>{status}</Badge>
+        <ArtifactDetailsMenu id={id} hfid={hfid} checksum={checksum} storageId={storageId} />
       </div>
-
-      {definitionId && <Generate label="Re-generate" artifactid={id} definitionid={definitionId} />}
     </div>
   );
 };

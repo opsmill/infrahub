@@ -4,25 +4,22 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { queryClient } from "@/shared/api/rest/client";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
-
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
 type tGenerateProps = {
   label?: string;
-  artifactid?: string;
-  definitionid?: string;
+  artifactId?: string;
+  definitionId: string;
 };
 
-export const Generate = (props: tGenerateProps) => {
-  const { label, artifactid, definitionid } = props;
+export const ArtifactGenerateButton = (props: tGenerateProps) => {
+  const { label, artifactId, definitionId } = props;
 
-  const { objectid } = useParams();
   const auth = useAuth();
 
   const [branch] = useQueryParam(QSP.BRANCH, StringParam);
@@ -35,7 +32,7 @@ export const Generate = (props: tGenerateProps) => {
     try {
       setIsLoading(true);
 
-      const url = CONFIG.ARTIFACTS_GENERATE_URL(definitionid || objectid);
+      const url = CONFIG.ARTIFACTS_GENERATE_URL(definitionId);
 
       const options: string[][] = [
         ["branch", branch ?? ""],
@@ -49,7 +46,7 @@ export const Generate = (props: tGenerateProps) => {
         headers: {
           authorization: `Bearer ${auth.accessToken}`,
         },
-        ...(artifactid ? { body: JSON.stringify({ nodes: [artifactid] }) } : {}),
+        ...(artifactId ? { body: JSON.stringify({ nodes: [artifactId] }) } : {}),
       });
 
       if (res?.errors?.length) {
@@ -58,7 +55,7 @@ export const Generate = (props: tGenerateProps) => {
 
       await queryClient.invalidateQueries({ queryKey: ["is-task-running"] });
 
-      if (artifactid) {
+      if (artifactId) {
         toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
       } else {
         toast(<Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
@@ -77,11 +74,8 @@ export const Generate = (props: tGenerateProps) => {
 
   return (
     <Button variant={"active"} disabled={!isAuthenticated || isLoading} onClick={handleGenerate}>
+      <RefreshCwIcon className={classNames("mr-2 size-4", isLoading && "animate-spin")} />
       {label ?? "Generate"}
-      <ArrowPathIcon
-        className={classNames("ml-2 h-4 w-4", isLoading ? "animate-spin" : "")}
-        aria-hidden="true"
-      />
     </Button>
   );
 };

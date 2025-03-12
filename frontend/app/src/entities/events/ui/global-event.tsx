@@ -68,6 +68,7 @@ export const Event = (props: EventType) => {
             <Icon
               icon={"mdi:subtasks"}
               className="absolute right-2 rounded-full text-custom-blue-500 bg-custom-blue-500/10 p-1.5"
+              data-testid="activity-has-children-icon"
             />
           </Tooltip>
         )}

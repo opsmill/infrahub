@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable, Union
+from typing import TYPE_CHECKING, Any, Iterable
 
 import graphene
 
@@ -75,9 +75,7 @@ class DeleteInput(graphene.InputObjectType):
     hfid = graphene.List(of_type=graphene.String, required=False)
 
 
-GraphQLTypes = Union[
-    type[InfrahubMutation], type[BaseAttributeType], type[graphene.Interface], type[graphene.ObjectType]
-]
+GraphQLTypes = type[InfrahubMutation] | type[BaseAttributeType] | type[graphene.Interface] | type[graphene.ObjectType]
 
 
 class OrderInput(graphene.InputObjectType):

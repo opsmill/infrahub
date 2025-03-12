@@ -267,6 +267,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         assert merge_event["InfrahubEvent"]["count"] == 1
         merge_event_id = merge_event["InfrahubEvent"]["edges"][0]["node"]["id"]
+        assert len(merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
+        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"][0]["id"] == proposed_change.id
 
         secondary_events = await client.execute_graphql(query=QUERY_EVENT, variables={"parent__ids": merge_event_id})
 

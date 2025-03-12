@@ -107,7 +107,7 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
+                path: `/objects/${ARTIFACT_OBJECT}/:artifactId`,
                 handle: {
                   breadcrumb: () => {
                     return {
@@ -120,12 +120,12 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/entities/artifacts/ui/artifact-details"),
+                    lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
                     handle: {
                       breadcrumb: (match: UIMatch) => {
                         return {
                           type: "select",
-                          value: match.params.objectid,
+                          value: match.params.artifactId,
                           kind: ARTIFACT_OBJECT,
                         };
                       },
