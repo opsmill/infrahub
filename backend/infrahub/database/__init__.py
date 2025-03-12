@@ -34,7 +34,7 @@ from infrahub.utils import InfrahubStringEnum
 
 from .constants import DatabaseType, Neo4jRuntime
 from .memgraph import DatabaseManagerMemgraph
-from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
+from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
@@ -331,6 +331,14 @@ class InfrahubDatabase:
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
+        connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
+        CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
+
+        if config.SETTINGS.database.max_concurrent_queries:
+            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:  # noqa: ASYNC110
+                await asyncio.sleep(config.SETTINGS.database.max_concurrent_queries_delay)
+                connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
+
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
             if name:
