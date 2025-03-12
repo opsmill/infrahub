@@ -1,9 +1,12 @@
+import { QSP } from "@/config/qsp";
 import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
@@ -11,13 +14,15 @@ import { classNames } from "@/shared/utils/common";
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";
+import { Link } from "react-router";
+import { toast } from "react-toastify";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
   groupId: string;
 }
 
-export function RunGeneratorAction({ generatorId, groupId }: RunGeneratorActionProps) {
+export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGeneratorActionProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showTargetForm, setShowTargetForm] = useState(false);
   const { isPending, mutate } = useRunGeneratorMutation();
@@ -27,8 +32,33 @@ export function RunGeneratorAction({ generatorId, groupId }: RunGeneratorActionP
     setShowTargetForm(false);
   };
 
-  const handleRunForAll = (targetNodeIds?: string[]) => {
-    mutate({ generatorId, targetNodeIds });
+  const handleRunGenerator = (targetNodeIds?: string[]) => {
+    mutate(
+      { generatorId, targetNodeIds },
+      {
+        onSuccess: ({ taskId }) => {
+          const url = constructPath(window.location.pathname, [
+            { name: QSP.TAB, value: "tasks" },
+            { name: QSP.TASK_ID, value: taskId },
+          ]);
+
+          toast(
+            <Alert
+              type={ALERT_TYPES.SUCCESS}
+              message={
+                <>
+                  Generator started successfully.
+                  <br />
+                  <Link to={url} className="underline flex items-center gap-1">
+                    View task details
+                  </Link>
+                </>
+              }
+            />
+          );
+        },
+      }
+    );
     setIsPopoverOpen(false);
   };
 
@@ -37,7 +67,7 @@ export function RunGeneratorAction({ generatorId, groupId }: RunGeneratorActionP
       <PopoverTrigger asChild>
         <Button variant="active" isLoading={isPending} disabled={isPending}>
           {!isPending && <PlayIcon className="size-4 mr-2" />}
-          Generate
+          Run
         </Button>
       </PopoverTrigger>
 
@@ -46,12 +76,12 @@ export function RunGeneratorAction({ generatorId, groupId }: RunGeneratorActionP
           <GeneratorTargetSelectionForm
             generatorId={generatorId}
             groupId={groupId}
-            onSubmit={handleRunForAll}
+            onSubmit={handleRunGenerator}
             onCancel={() => setShowTargetForm(false)}
           />
         ) : (
           <Menu aria-label="Run generator options">
-            <MenuItem onAction={() => handleRunForAll()} className="flex-col gap-0 items-start">
+            <MenuItem onAction={() => handleRunGenerator()} className="flex-col gap-0 items-start">
               <Text slot="label" className="font-semibold">
                 All targets
               </Text>

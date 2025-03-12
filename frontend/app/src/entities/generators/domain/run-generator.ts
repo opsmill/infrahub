@@ -5,8 +5,10 @@ import {
 
 export type RunGeneratorParams = RunGeneratorFromApiParams;
 
-export type RunGenerator = (params: RunGeneratorParams) => Promise<void>;
+export type RunGenerator = (params: RunGeneratorParams) => Promise<{ taskId: string }>;
 
 export const runGenerator: RunGenerator = async (params) => {
-  await runGeneratorFromApi(params);
+  const { data } = await runGeneratorFromApi(params);
+
+  return { taskId: data.CoreGeneratorDefinitionRun.task.id };
 };

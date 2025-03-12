@@ -5,8 +5,8 @@ import {
   GENERATOR_DEFINITION_KIND,
   GENERATOR_INSTANCE_KIND,
 } from "@/entities/generators/constants";
-import { RunGeneratorAction } from "@/entities/generators/ui/run-generator-action";
-import { RunGeneratorButton } from "@/entities/generators/ui/run-generator-button";
+import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator-definition-run-button";
+import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
@@ -43,19 +43,17 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
         )}
 
         {isOfKind(GENERATOR_DEFINITION_KIND, schema) && (
-          <RunGeneratorAction
+          <GeneratorDefinitionRunButton
             generatorId={objectDetailsData.id}
             groupId={objectDetailsData.targets.node.id}
           />
         )}
 
         {isOfKind(GENERATOR_INSTANCE_KIND, schema) && (
-          <RunGeneratorButton
+          <GeneratorRunButton
             generatorId={objectDetailsData.definition.node.id}
             targetNodeIds={[objectDetailsData.object.node.id]}
-          >
-            Re-generate
-          </RunGeneratorButton>
+          />
         )}
 
         <ButtonWithTooltip

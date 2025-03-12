@@ -8,7 +8,9 @@ const generatorRunMutation = gql`
       wait_until_completion: $waitUntilCompletion
       data: {id: $generatorId, nodes: $targetNodeIds}
     ) {
-      ok
+      task {
+        id
+      }
     }
   }
 `;
@@ -23,7 +25,7 @@ export const runGeneratorFromApi = async ({
   branchName,
   generatorId,
   targetNodeIds,
-  waitUntilCompletion = true,
+  waitUntilCompletion = false,
 }: RunGeneratorFromApiParams) => {
   return graphqlClient.mutate({
     mutation: generatorRunMutation,

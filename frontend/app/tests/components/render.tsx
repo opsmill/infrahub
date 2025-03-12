@@ -24,14 +24,6 @@ export const render = (component: React.ReactElement, options = {}) =>
       return (
         <Provider store={store}>
           <QueryClientProvider client={queryClient}>
-            <ToastContainer
-              hideProgressBar={true}
-              transition={Slide}
-              autoClose={5000}
-              closeOnClick={false}
-              newestOnTop
-              position="bottom-right"
-            />
             <BrowserRouter>
               <QueryParamProvider
                 adapter={ReactRouter7Adapter}
@@ -40,6 +32,14 @@ export const render = (component: React.ReactElement, options = {}) =>
                   objectToSearchString: queryString.stringify,
                 }}
               >
+                <ToastContainer
+                  hideProgressBar={true}
+                  transition={Slide}
+                  autoClose={5000}
+                  closeOnClick={false}
+                  newestOnTop
+                  position="bottom-right"
+                />
                 <BranchContext value={{ currentBranch, setCurrentBranch }}>
                   {children}
                 </BranchContext>

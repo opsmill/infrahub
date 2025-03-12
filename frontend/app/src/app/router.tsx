@@ -9,6 +9,7 @@ import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-r
 import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
 import queryString from "query-string";
 import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
+import { Slide, ToastContainer } from "react-toastify";
 import { QueryParamProvider } from "use-query-params";
 
 export const router = createBrowserRouter([
@@ -23,6 +24,14 @@ export const router = createBrowserRouter([
           objectToSearchString: queryString.stringify,
         }}
       >
+        <ToastContainer
+          hideProgressBar={true}
+          transition={Slide}
+          autoClose={5000}
+          closeOnClick={false}
+          newestOnTop
+          position="bottom-right"
+        />
         <Outlet />
       </QueryParamProvider>
     ),

@@ -6,15 +6,10 @@ export const useRunGeneratorMutation = () => {
   const { currentBranch } = useCurrentBranch();
 
   return useMutation({
-    mutationFn: async ({
-      generatorId,
-      targetNodeIds,
-    }: Omit<RunGeneratorParams, "branchName" | "waitUntilCompletion">) => {
-      await runGenerator({
+    mutationFn: (params: Omit<RunGeneratorParams, "branchName">) => {
+      return runGenerator({
         branchName: currentBranch.name,
-        waitUntilCompletion: true,
-        generatorId,
-        targetNodeIds,
+        ...params,
       });
     },
   });
