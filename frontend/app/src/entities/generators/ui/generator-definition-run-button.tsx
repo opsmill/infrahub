@@ -1,4 +1,5 @@
 import { QSP } from "@/config/qsp";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
@@ -16,7 +17,6 @@ import { useState } from "react";
 import { Text } from "react-aria-components";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
