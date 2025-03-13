@@ -1184,7 +1184,7 @@ class SchemaBranch:
                         self.set(name=node.kind, schema=node)
                         break
 
-            if node.human_friendly_id and not node.uniqueness_constraints:
+            if node.human_friendly_id:
                 uniqueness_constraints: list[str] = []
                 for item in node.human_friendly_id:
                     schema_attribute_path = node.parse_schema_path(path=item, schema=self)
@@ -1193,7 +1193,14 @@ class SchemaBranch:
                     elif schema_attribute_path.is_type_relationship:
                         uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
 
-                node.uniqueness_constraints = [uniqueness_constraints]
+                node = self.get(name=name, duplicate=True)
+                # Make sure there is no duplicate regarding generics values.
+                if node.uniqueness_constraints:
+                    if uniqueness_constraints not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(uniqueness_constraints)
+                else:
+                    node.uniqueness_constraints = [uniqueness_constraints]
+
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:
