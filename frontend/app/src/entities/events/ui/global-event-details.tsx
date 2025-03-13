@@ -6,7 +6,7 @@ import { useEventDetails } from "../api/get-event-details.query";
 import { EventDetails } from "./event-card";
 import { NodeEvents } from "./node-details-events";
 
-const EventDetailsView = () => {
+export const GlobalEventDetails = () => {
   const { activityId } = useParams();
 
   const { isLoading, data, error, refetch } = useEventDetails({ id: activityId });
@@ -36,5 +36,3 @@ const EventDetailsView = () => {
     </Content.Card>
   );
 };
-
-export default EventDetailsView;
