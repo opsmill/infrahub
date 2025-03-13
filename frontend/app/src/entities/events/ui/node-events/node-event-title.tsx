@@ -1,3 +1,4 @@
+import { QSP } from "@/config/qsp";
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
@@ -5,7 +6,6 @@ import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.a
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { useAtomValue } from "jotai";
-import { QSP } from "@/config/qsp";
 
 export const NodeEventTitle = ({
   event,

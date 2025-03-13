@@ -4,6 +4,7 @@ import { ACCOUNT_OBJECT } from "@/config/constants";
 import { EventType } from "@/entities/events/types";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
 
+import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { PropertyRow } from "@/entities/schema/ui/styled";
@@ -17,7 +18,6 @@ import { GroupEventTitle } from "./group-events/group-event-title";
 import { EventAttributes } from "./node-events/event-attributes";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
-import { QSP } from "@/config/qsp";
 
 export const EventDetails = ({
   id,
