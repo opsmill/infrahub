@@ -2910,7 +2910,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind):
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
-    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique])
+    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
     assert sorted(
         [
             r.name
