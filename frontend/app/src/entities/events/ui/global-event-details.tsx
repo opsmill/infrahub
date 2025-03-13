@@ -1,6 +1,5 @@
 import { EventType } from "@/entities/events/types";
-import Content from "@/shared/components/layout/content";
-import { CardWithBorder } from "@/shared/components/ui/card";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { EventDetails } from "./event-card";
 import { NodeEvents } from "./node-details-events";
 
@@ -10,20 +9,18 @@ export interface GlobalEventDetailsProps {
 
 export const GlobalEventDetails = ({ eventNode }: GlobalEventDetailsProps) => {
   return (
-    <Content.CardContent className="p-2">
-      <div className="flex items-start gap-2">
-        <CardWithBorder className="p-0 border-0 flex-1">
-          <CardWithBorder.Title>Details</CardWithBorder.Title>
-          <EventDetails {...eventNode} />
-        </CardWithBorder>
+    <div className="p-2 flex items-start gap-2">
+      <Card className="p-0 flex-1">
+        <CardWithBorder.Title>Details</CardWithBorder.Title>
+        <EventDetails {...eventNode} />
+      </Card>
 
-        {eventNode?.has_children && (
-          <CardWithBorder className="p-0 border-0 flex-1">
-            <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
-            <NodeEvents parentId={eventNode.id} />
-          </CardWithBorder>
-        )}
-      </div>
-    </Content.CardContent>
+      {eventNode.has_children && (
+        <Card className="p-0 flex-1">
+          <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
+          <NodeEvents parentId={eventNode.id} />
+        </Card>
+      )}
+    </div>
   );
 };

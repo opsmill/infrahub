@@ -5,6 +5,7 @@ import { EventType } from "@/entities/events/types";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
@@ -15,8 +16,8 @@ import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
 import { EventAttributes } from "./node-events/event-attributes";
 import { NodeEventTitle } from "./node-events/node-event-title";
-import { getLink } from "./node-events/utils";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
+import { QSP } from "@/config/qsp";
 
 export const EventDetails = ({
   id,
@@ -47,7 +48,11 @@ export const EventDetails = ({
         <PropertyRow
           title="Account"
           value={
-            <Link to={getLink({ kind: ACCOUNT_OBJECT, id: account_id, branch })}>
+            <Link
+              to={getObjectDetailsUrl2(ACCOUNT_OBJECT, account_id, [
+                { name: QSP.BRANCH, value: branch },
+              ])}
+            >
               <NodeLabel id={account_id} />
             </Link>
           }
@@ -57,7 +62,11 @@ export const EventDetails = ({
         <PropertyRow
           title="Primary Node"
           value={
-            <Link to={getLink({ kind: primary_node.kind, id: primary_node.id, branch })}>
+            <Link
+              to={getObjectDetailsUrl2(primary_node.kind, primary_node.id, [
+                { name: QSP.BRANCH, value: branch },
+              ])}
+            >
               <NodeLabel id={primary_node.id} />
             </Link>
           }
@@ -70,8 +79,13 @@ export const EventDetails = ({
             <div className="flex flex-col items-end gap-1">
               {related_nodes.map((node) => {
                 return (
-                  <Link key={node.id} to={getLink({ kind: node.kind, id: node.id, branch })}>
-                    <NodeLabel id={node?.id} />
+                  <Link
+                    key={node.id}
+                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                      { name: QSP.BRANCH, value: branch },
+                    ])}
+                  >
+                    <NodeLabel id={node.id} />
                   </Link>
                 );
               })}
@@ -86,8 +100,13 @@ export const EventDetails = ({
             <div className="flex flex-col items-end gap-1">
               {ancestors.map((node) => {
                 return (
-                  <Link key={node.id} to={getLink({ kind: node.kind, id: node.id, branch })}>
-                    <NodeLabel id={node?.id} />
+                  <Link
+                    key={node.id}
+                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                      { name: QSP.BRANCH, value: branch },
+                    ])}
+                  >
+                    <NodeLabel id={node.id} />
                   </Link>
                 );
               })}
@@ -102,8 +121,13 @@ export const EventDetails = ({
             <div className="flex flex-col items-end gap-1">
               {members.map((node) => {
                 return (
-                  <Link key={node.id} to={getLink({ kind: node.kind, id: node.id, branch })}>
-                    <NodeLabel id={node?.id} />
+                  <Link
+                    key={node.id}
+                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                      { name: QSP.BRANCH, value: branch },
+                    ])}
+                  >
+                    <NodeLabel id={node.id} />
                   </Link>
                 );
               })}
