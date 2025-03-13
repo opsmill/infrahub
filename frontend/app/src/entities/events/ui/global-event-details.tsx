@@ -1,38 +1,29 @@
-import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { CardWithBorder } from "@/shared/components/ui/card";
-import { useParams } from "react-router";
-import { useEventDetails } from "../api/get-event-details.query";
 import { EventDetails } from "./event-card";
 import { NodeEvents } from "./node-details-events";
+import { EventType } from "@/entities/events/types";
 
-export const GlobalEventDetails = () => {
-  const { activityId } = useParams();
+export interface GlobalEventDetailsProps {
+  eventNode: EventType;
+}
 
-  const { isLoading, data, error, refetch } = useEventDetails({ id: activityId });
-
+export const GlobalEventDetails = ({ eventNode }: GlobalEventDetailsProps) => {
   return (
-    <Content.Card>
-      <Content.CardTitle title={data?.event} isReloadLoading={isLoading} reload={() => refetch()} />
-      <Content.CardContent className="p-2">
-        {error && <ErrorScreen message="An error occured while retrieving the activity details." />}
+    <Content.CardContent className="p-2">
+      <div className="flex items-start gap-2">
+        <CardWithBorder className="p-0 border-0 flex-1">
+          <CardWithBorder.Title>Details</CardWithBorder.Title>
+          <EventDetails {...eventNode} />
+        </CardWithBorder>
 
-        {!error && (
-          <div className="flex items-start gap-2">
-            <CardWithBorder className="p-0 border-0 flex-1">
-              <CardWithBorder.Title>Details</CardWithBorder.Title>
-              <EventDetails {...data} />
-            </CardWithBorder>
-
-            {data?.has_children && (
-              <CardWithBorder className="p-0 border-0 flex-1">
-                <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
-                <NodeEvents parentId={activityId} />
-              </CardWithBorder>
-            )}
-          </div>
+        {eventNode?.has_children && (
+          <CardWithBorder className="p-0 border-0 flex-1">
+            <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
+            <NodeEvents parentId={eventNode.id} />
+          </CardWithBorder>
         )}
-      </Content.CardContent>
-    </Content.Card>
+      </div>
+    </Content.CardContent>
   );
 };
