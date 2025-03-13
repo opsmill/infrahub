@@ -9,7 +9,7 @@ export function Component() {
   const { activityId } = useParams() as { activityId: string };
   const { isPending, isRefetching, data, error, refetch } = useEventDetails({ id: activityId });
 
-  if (!isPending) {
+  if (isPending) {
     return (
       <Content.Card className="grow">
         <LoadingIndicator className="h-full" />
