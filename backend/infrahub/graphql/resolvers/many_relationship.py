@@ -137,6 +137,7 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
+        requires_relationship_metadata = False
         if requires_relationship_metadata:
             node_graph = await self._get_entities_simple(
                 db=context.db,
