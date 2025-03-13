@@ -73,10 +73,10 @@ export const SearchActions = () => {
   return (
     <SearchAnywhereGroup heading="Go to">
       {firstThreeMatches.map((result) => {
-        return "namespace" in result ? (
-          <ActionOnSchema key={result.id} model={result} />
-        ) : (
+        return "section" in result ? (
           <ActionOnMenu key={result.identifier} menuItem={result} />
+        ) : (
+          <ActionOnSchema key={result.id} model={result} />
         );
       })}
     </SearchAnywhereGroup>
