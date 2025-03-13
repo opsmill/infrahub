@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.computed_attribute.tasks import process_jinja2, process_transform, query_transform_targets
+from infrahub.computed_attribute.tasks import (
+    gather_trigger_computed_attribute_python,
+    process_jinja2,
+    process_transform,
+    query_transform_targets,
+)
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -80,6 +85,34 @@ class TestComputedAttribute(TestInfrahubApp):
         await client_repository.save()
 
         return {"c1": c1, "c2": c2, "c3": c3, "t1": t1, "t2": t2}
+
+    async def test_gather_trigger_computed_attribute_python_main(
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+    ) -> None:
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(client=client)
+        assert len(triggers_python) == 1
+        assert triggers_python[0].generate_name() == "computed_attr_python::main::TestingTShirt_pitch"
+        assert len(triggers_python_query) == 1
+        assert triggers_python_query[0].generate_name() == "computed_attr_python_query::main::TestingTShirt_pitch"
+
+    async def test_gather_trigger_computed_attribute_python_branch(
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+    ) -> None:
+        await client.branch.create(branch_name="branch2")
+
+        repo = await client.get(kind="CoreRepository", name__value="computed-attributes-functional", branch="branch2")
+        repo.commit.value = "decc6d49679404b201c54bbe7b0c788e268e25b7"
+        await repo.save()
+
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(client=client)
+        assert len(triggers_python) == 2
+        assert len(triggers_python_query) == 2
 
     async def test_description_after_color_change_jinja2(
         self,

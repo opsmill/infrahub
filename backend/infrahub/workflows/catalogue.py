@@ -234,8 +234,8 @@ GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
     function="update_graphql_query_group",
 )
 
-PROCESS_COMPUTED_MACRO = WorkflowDefinition(
-    name="process_computed_attribute_jinja2",
+COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
+    name="computed_attribute_process_jinja2",
     type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="process_jinja2",
@@ -256,11 +256,11 @@ TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     function="trigger_update_python_computed_attributes",
 )
 
-COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
-    name="computed-attribute-setup",
+COMPUTED_ATTRIBUTE_SETUP_JINJA2 = WorkflowDefinition(
+    name="computed-attribute-setup-jinja2",
     type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
-    function="computed_attribute_setup",
+    function="computed_attribute_setup_jinja2",
 )
 
 COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
@@ -270,11 +270,11 @@ COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
     function="computed_attribute_setup_python",
 )
 
-COMPUTED_ATTRIBUTE_REMOVE_PYTHON = WorkflowDefinition(
-    name="computed-attribute-remove-python",
+COMPUTED_ATTRIBUTE_REMOVE = WorkflowDefinition(
+    name="computed-attribute-remove",
     type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
-    function="computed_attribute_remove_python",
+    function="computed_attribute_remove",
 )
 
 UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
@@ -421,6 +421,13 @@ GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
     function="run_check_merge_conflicts",
 )
 
+TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
+    name="trigger-configure-all",
+    type=WorkflowType.CORE,
+    module="infrahub.trigger.tasks",
+    function="trigger_configure_all",
+)
+
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -433,8 +440,9 @@ workflows = [
     BRANCH_MERGE_MUTATION,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
-    COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
-    COMPUTED_ATTRIBUTE_SETUP,
+    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_REMOVE,
+    COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
@@ -455,7 +463,6 @@ workflows = [
     GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
-    PROCESS_COMPUTED_MACRO,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
@@ -473,6 +480,7 @@ workflows = [
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+    TRIGGER_CONFIGURE_ALL,
     TRIGGER_GENERATOR_DEFINITION_RUN,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
