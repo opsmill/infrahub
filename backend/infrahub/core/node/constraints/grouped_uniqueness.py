@@ -131,9 +131,10 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         uniqueness_constraint_fields = []
         for sapv in schema_attribute_path_values:
             if sapv.relationship_schema:
-                uniqueness_constraint_fields.append(sapv.relationship_schema.name)
+                uniqueness_constraint_fields.append(sapv.relationship_schema.name + " and value: " + str(sapv.value))
             elif sapv.attribute_schema:
-                uniqueness_constraint_fields.append(sapv.attribute_schema.name)
+                uniqueness_constraint_fields.append(sapv.attribute_schema.name + " and value: " + str(sapv.value))
+
         uniqueness_constraint_string = "-".join(uniqueness_constraint_fields)
         error_msg = f"Violates uniqueness constraint '{uniqueness_constraint_string}'"
         errors = [ValidationError({field_name: error_msg}) for field_name in uniqueness_constraint_fields]
