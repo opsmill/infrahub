@@ -16,6 +16,8 @@ from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
+
     from ..initialization import GraphqlContext
 
 
@@ -81,7 +83,7 @@ class ManyRelationshipResolver:
         """
         # Extract the InfraHub schema by inspecting the GQL Schema
 
-        node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
+        node_schema: MainSchemaTypes = info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
 
         context: GraphqlContext = info.context
 
@@ -94,33 +96,31 @@ class ManyRelationshipResolver:
             mapped_name = RELATIONS_PROPERTY_MAP[key]
             node_fields[mapped_name] = value
 
-        metadata_field_names = {prop_name for prop_name in RELATIONS_PROPERTY_MAP if prop_name != "__typename"}
-        requires_relationship_metadata = bool(set(property_fields.keys()) & metadata_field_names)
-
         filters = {
             f"{info.field_name}__{key}": value
             for key, value in kwargs.items()
             if "__" in key and value or key in ["id", "ids"]
         }
 
+        response: dict[str, Any] = {"edges": [], "count": None}
+
         # Extract the schema of the node on the other end of the relationship from the GQL Schema
         node_rel = node_schema.get_relationship(info.field_name)
         source_kind = node_schema.kind
-        if node_schema.hierarchy:
-            source_kind = node_schema.hierarchy
-
-        response: dict[str, Any] = {"edges": [], "count": None}
-
         ids = [parent["id"]]
-        if include_descendants:
-            descendant_ids = await self.get_descendant_ids(
-                db=context.db,
-                branch=context.branch,
-                at=context.at,
-                parent_id=ids[0],
-                node_schema=node_schema,
-            )
-            ids.extend(descendant_ids)
+        if isinstance(node_schema, NodeSchema):
+            if node_schema.hierarchy:
+                source_kind = node_schema.hierarchy
+
+            if include_descendants:
+                descendant_ids = await self.get_descendant_ids(
+                    db=context.db,
+                    branch=context.branch,
+                    at=context.at,
+                    parent_id=ids[0],
+                    node_schema=node_schema,
+                )
+                ids.extend(descendant_ids)
 
         if "count" in fields:
             peer_count = await self.get_peer_count(
@@ -137,35 +137,19 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
-        requires_relationship_metadata = False
-        if requires_relationship_metadata:
-            node_graph = await self._get_entities_simple(
-                db=context.db,
-                branch=context.branch,
-                ids=ids,
-                at=context.at,
-                related_node_ids=context.related_node_ids,
-                source_kind=source_kind,
-                rel_schema=node_rel,
-                filters=filters,
-                node_fields=node_fields,
-                offset=offset,
-                limit=limit,
-            )
-        else:
-            node_graph = await self._get_entities_with_data_loader(
-                db=context.db,
-                branch=context.branch,
-                ids=ids,
-                at=context.at,
-                related_node_ids=context.related_node_ids,
-                source_kind=source_kind,
-                rel_schema=node_rel,
-                filters=filters,
-                node_fields=node_fields,
-                offset=offset,
-                limit=limit,
-            )
+        node_graph = await self._get_entities_with_data_loader(
+            db=context.db,
+            branch=context.branch,
+            ids=ids,
+            at=context.at,
+            related_node_ids=context.related_node_ids,
+            source_kind=source_kind,
+            rel_schema=node_rel,
+            filters=filters,
+            node_fields=node_fields,
+            offset=offset,
+            limit=limit,
+        )
 
         if not node_graph:
             return response
@@ -182,39 +166,6 @@ class ManyRelationshipResolver:
 
         response["edges"] = entries
         return response
-
-    async def _get_entities_simple(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        ids: list[str],
-        at: Timestamp | None,
-        related_node_ids: set[str] | None,
-        source_kind: str,
-        rel_schema: RelationshipSchema,
-        filters: dict[str, Any],
-        node_fields: dict[str, Any],
-        offset: int | None = None,
-        limit: int | None = None,
-    ) -> list[dict[str, Any]] | None:
-        async with db.start_session() as dbs:
-            objs = await NodeManager.query_peers(
-                db=dbs,
-                ids=ids,
-                source_kind=source_kind,
-                schema=rel_schema,
-                filters=filters,
-                fields=node_fields,
-                offset=offset,
-                limit=limit,
-                at=at,
-                branch=branch,
-                branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
-                fetch_peers=True,
-            )
-            if not objs:
-                return None
-            return [await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids) for obj in objs]
 
     async def _get_entities_with_data_loader(
         self,
@@ -264,6 +215,8 @@ class ManyRelationshipResolver:
             all_peer_rels.extend(node_peer_rels)
         if not all_peer_rels:
             return None
-        return [
-            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids) for obj in all_peer_rels
-        ]
+        async with db.start_session() as dbs:
+            return [
+                await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)
+                for obj in all_peer_rels
+            ]

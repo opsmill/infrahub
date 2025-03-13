@@ -2437,6 +2437,106 @@ async def test_query_relationship_node_property(
     assert results["bolt"]["owner"]["properties"]["source"]["id"] == first_account.id
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
 
+    # test many relationship query with mixed properties on peer
+    query = """
+    query {
+        people_with_cars_and_owners: TestPerson {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                owner {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        people_with_cars_and_sources: TestPerson {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                source {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+
+    owner_results = {
+        item["node"]["name"]["value"]: item["node"] for item in result.data["people_with_cars_and_owners"]["edges"]
+    }
+    assert sorted(list(owner_results.keys())) == ["Jane", "John"]
+    assert len(owner_results["John"]["cars"]["edges"]) == 1
+    assert len(owner_results["Jane"]["cars"]["edges"]) == 1
+
+    assert owner_results["John"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert owner_results["John"]["cars"]["edges"][0]["properties"]["owner"]
+    assert owner_results["John"]["cars"]["edges"][0]["properties"]["owner"]["id"] == first_account.id
+    assert "source" not in owner_results["John"]["cars"]["edges"][0]["properties"]
+
+    assert owner_results["Jane"]["cars"]["edges"][0]["node"]["name"]["value"] == "bolt"
+    assert owner_results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
+    assert "source" not in owner_results["Jane"]["cars"]["edges"][0]["properties"]
+
+    source_results = {
+        item["node"]["name"]["value"]: item["node"] for item in result.data["people_with_cars_and_sources"]["edges"]
+    }
+    assert sorted(list(source_results.keys())) == ["Jane", "John"]
+    assert len(source_results["John"]["cars"]["edges"]) == 1
+    assert len(source_results["Jane"]["cars"]["edges"]) == 1
+
+    assert source_results["John"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert "owner" not in source_results["John"]["cars"]["edges"][0]["properties"]
+    assert source_results["John"]["cars"]["edges"][0]["properties"]["source"] is None
+
+    assert source_results["Jane"]["cars"]["edges"][0]["node"]["name"]["value"] == "bolt"
+    assert "owner" not in source_results["Jane"]["cars"]["edges"][0]["properties"]
+    assert source_results["Jane"]["cars"]["edges"][0]["properties"]["source"]
+    assert source_results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
+
+    assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
+
 
 async def test_query_attribute_flag_property(
     db: InfrahubDatabase,
