@@ -72,67 +72,91 @@ When using webhooks over HTTPS, you can configure your system to validate certif
 Here are some example payloads of some events that may be sent.
 <!-- vale off -->
 <Tabs>
-  <TabItem value="infrahub.node.created" label="infrahub.node.created" default>
+  <TabItem value="infrahub.branch.created" label="infrahub.branch.created" default>
 ```json
 {
   "data": {
-    "node_id": "182a9701-8a7f-1220-39ae-c5162d928280",
-    "node_kind": "OrganizationProvider",
-    "attributes": {
-      "name": {
-        "kind": "Text",
-        "name": "name",
-        "value": "Google Fibre",
-        "properties": {
-          "is_visible": {
-            "name": "is_visible",
-            "value": true,
-            "value_type": "Boolean",
-            "value_previous": null,
-            "value_update_status": "added"
-          },
-          "is_protected": {
-            "name": "is_protected",
-            "value": false,
-            "value_type": "Boolean",
-            "value_previous": null,
-            "value_update_status": "added"
-          }
-        },
-        "value_previous": null,
-        "value_update_status": "added"
-      },
-      "description": {
-        "kind": "Text",
-        "name": "description",
-        "value": "Google Fibre",
-        "properties": {
-          "is_visible": {
-            "name": "is_visible",
-            "value": true,
-            "value_type": "Boolean",
-            "value_previous": null,
-            "value_update_status": "added"
-          },
-          "is_protected": {
-            "name": "is_protected",
-            "value": false,
-            "value_type": "Boolean",
-            "value_previous": null,
-            "value_update_status": "added"
-          }
-        },
-        "value_previous": null,
-        "value_update_status": "added"
-      }
-    },
-    "display_label": "Google Fibre",
-    "relationships": {}
+    "branch_id": "182c6a84-4af4-736b-35a6-c514e640ca8b",
+    "branch_name": "test",
+    "sync_with_git": false
   },
-  "id": "4fd61f4d-8eea-41a9-bd0f-cc886a33891f",
-  "branch": "main",
-  "account_id": "182a95e0-bafa-d2a4-39a9-c5150829bd4d",
-  "occured_at": "2025-03-07 17:57:19.354783+00:00",
+  "id": "2ece726f-8574-488c-92f7-ee9a56485b46",
+  "branch": null,
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:44:32.321142+00:00",
+  "event": "infrahub.branch.created"
+}
+```
+  </TabItem>
+  <TabItem value="infrahub.node.created" label="infrahub.node.created">
+```json
+{
+  "data": {
+    "kind": "OrganizationProvider",
+    "action": "created",
+    "fields": [
+      "name"
+    ],
+    "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
+    "changelog": {
+      "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
+      "node_kind": "OrganizationProvider",
+      "attributes": {
+        "name": {
+          "kind": "Text",
+          "name": "name",
+          "value": "Google Fibre",
+          "properties": {
+            "is_visible": {
+              "name": "is_visible",
+              "value": true,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            },
+            "is_protected": {
+              "name": "is_protected",
+              "value": false,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            }
+          },
+          "value_previous": null,
+          "value_update_status": "added"
+        },
+        "description": {
+          "kind": "Text",
+          "name": "description",
+          "value": "Google Fibre",
+          "properties": {
+            "is_visible": {
+              "name": "is_visible",
+              "value": true,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            },
+            "is_protected": {
+              "name": "is_protected",
+              "value": false,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            }
+          },
+          "value_previous": null,
+          "value_update_status": "added"
+        }
+      },
+      "display_label": "Google Fibre",
+      "relationships": {}
+    }
+  },
+  "id": "bf569ddc-2a30-4491-82f1-0689f6cdb5e1",
+  "branch": "new-provider",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:31:14.566032+00:00",
   "event": "infrahub.node.created"
 }
 ```
@@ -142,33 +166,42 @@ Here are some example payloads of some events that may be sent.
 ```json
 {
   "data": {
-    "node_id": "182a9602-a0ce-bb91-39a9-c514ed13d9e4",
-    "node_kind": "InfraInterfaceL3",
-    "attributes": {
-      "role": {
-        "kind": "Dropdown",
-        "name": "role",
-        "value": "peering",
-        "properties": {},
-        "value_previous": "peer",
-        "value_update_status": "updated"
+    "kind": "InfraInterfaceL3",
+    "action": "updated",
+    "fields": [
+      "description",
+      "role"
+    ],
+    "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
+    "changelog": {
+      "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
+      "node_kind": "InfraInterfaceL3",
+      "attributes": {
+        "role": {
+          "kind": "Dropdown",
+          "name": "role",
+          "value": "peering",
+          "properties": {},
+          "value_previous": "peer",
+          "value_update_status": "updated"
+        },
+        "description": {
+          "kind": "Text",
+          "name": "description",
+          "value": "Connected to IX",
+          "properties": {},
+          "value_previous": "Connected to atl1-edge2::Ethernet1",
+          "value_update_status": "updated"
+        }
       },
-      "description": {
-        "kind": "Text",
-        "name": "description",
-        "value": "Connected to atl1-edge2::Ethernet2",
-        "properties": {},
-        "value_previous": "Connected to atl1-edge2::Ethernet1",
-        "value_update_status": "updated"
-      }
-    },
-    "display_label": "Ethernet1",
-    "relationships": {}
+      "display_label": "Ethernet1",
+      "relationships": {}
+    }
   },
-  "id": "7f31954e-a34f-4f7c-815c-e15188c906c7",
-  "branch": "main",
-  "account_id": "182a95e0-bafa-d2a4-39a9-c5150829bd4d",
-  "occured_at": "2025-03-07 17:57:49.111950+00:00",
+  "id": "67acc7ea-93b1-4175-a69b-801c869aea07",
+  "branch": "alter-interface",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:36:25.688038+00:00",
   "event": "infrahub.node.updated"
 }
 ```
