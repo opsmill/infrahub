@@ -1,4 +1,4 @@
-import { useEventDetails } from "@/entities/events/api/get-event-details.query";
+import { useGetEventDetails } from "@/entities/events/domain/get-event-details.query";
 import { GlobalEventDetails } from "@/entities/events/ui/global-event-details";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
@@ -7,7 +7,7 @@ import { useParams } from "react-router";
 
 export function Component() {
   const { activityId } = useParams() as { activityId: string };
-  const { isPending, isRefetching, data, error, refetch } = useEventDetails({ id: activityId });
+  const { isPending, isRefetching, data, error, refetch } = useGetEventDetails({ id: activityId });
 
   if (isPending) {
     return (
@@ -20,7 +20,7 @@ export function Component() {
   if (error) {
     return (
       <Content.Card>
-        <ErrorScreen message="An error occured while retrieving the activity details." />
+        <ErrorScreen message={error.message} />
       </Content.Card>
     );
   }

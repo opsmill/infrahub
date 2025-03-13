@@ -1,11 +1,5 @@
-import { EventType } from "@/entities/events/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
-import { INFRAHUB_EVENT } from "../constants";
-
-export type EventDetailsFilters = {
-  id: string;
-};
 
 const EVENT_DETAILS_QUERY = gql`
   query GET_ACTIVITY_DETAILS($ids: [String!]) {
@@ -45,27 +39,15 @@ const EVENT_DETAILS_QUERY = gql`
   }
 `;
 
-export async function getEventDetailsFromApi({
-  branchName,
-  atDate,
-  id,
-  ...filters
-}: EventDetailsFilters & { branchName?: string; atDate?: Date | null }) {
-  const { data } = await graphqlClient.query({
+export type GetEventDetailsFromApiParams = {
+  id: string;
+};
+
+export async function getEventDetailsFromApi({ id }: GetEventDetailsFromApiParams) {
+  return graphqlClient.query({
     query: EVENT_DETAILS_QUERY,
     variables: {
       ids: [id],
-      ...filters,
-    },
-    context: {
-      branch: branchName,
-      date: atDate,
     },
   });
-
-  const activities: EventType[] = data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
-    return edge.node;
-  });
-
-  return activities[0];
 }
