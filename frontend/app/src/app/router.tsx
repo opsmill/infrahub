@@ -104,13 +104,13 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/activities"),
                   },
                   {
-                    path: ":activityid",
+                    path: ":activityId",
                     lazy: () => import("@/pages/activities/details"),
                     handle: {
                       breadcrumb: (match: UIMatch) => {
                         return {
                           type: "id",
-                          value: match.params.activityid,
+                          value: match.params.activityId,
                           link: "/activities",
                         };
                       },

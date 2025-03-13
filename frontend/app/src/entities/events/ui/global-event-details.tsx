@@ -7,9 +7,9 @@ import { EventDetails } from "./event-card";
 import { NodeEvents } from "./node-details-events";
 
 const EventDetailsView = () => {
-  const { activityid } = useParams();
+  const { activityId } = useParams();
 
-  const { isLoading, data, error, refetch } = useEventDetails({ id: activityid });
+  const { isLoading, data, error, refetch } = useEventDetails({ id: activityId });
 
   return (
     <Content.Card>
@@ -27,7 +27,7 @@ const EventDetailsView = () => {
             {data?.has_children && (
               <CardWithBorder className="p-0 border-0 flex-1">
                 <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
-                <NodeEvents parentId={activityid} />
+                <NodeEvents parentId={activityId} />
               </CardWithBorder>
             )}
           </div>
