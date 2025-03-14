@@ -17,7 +17,7 @@ test.describe("object-template", () => {
         }
       });
     });
-  })
+  });
 
   test("create-object-instance-using-template", async ({ page }) => {
     await test.step("view-existing-template", async () => {
@@ -47,7 +47,10 @@ test.describe("object-template", () => {
       await expect(page.getByText("Front Interfaces6")).toBeVisible();
       await page.getByText("Front Interfaces6").click();
       await expect(page.getByText("patch-panel-01, C1.P01")).toBeVisible();
-      await saveScreenshotForDocs(page, "/guides/object-template/object_components_created_using_template");
+      await saveScreenshotForDocs(
+        page,
+        "/guides/object-template/object_components_created_using_template"
+      );
     });
   });
 });
