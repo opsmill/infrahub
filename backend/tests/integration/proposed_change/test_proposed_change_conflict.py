@@ -9,11 +9,12 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from infrahub_sdk.context import ContextAccount, RequestContext
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
-from infrahub.core.initialization import create_branch
+from infrahub.core.initialization import create_account, create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
@@ -203,11 +204,14 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
+        proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")
         proposed_change_create = await client.create(
             kind=CoreProposedChange,
             data={"source_branch": happy_data_branch, "destination_branch": "main", "name": "happy-test"},
         )
-        await proposed_change_create.save()
+        await proposed_change_create.save(
+            request_context=RequestContext(account=ContextAccount(id=proposed_change_user.id))
+        )
 
         # -------------------------------------------------
         # Ensure that all validators have been executed and aren't reporting errors
@@ -263,6 +267,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         assert merge_event["InfrahubEvent"]["count"] == 1
         merge_event_id = merge_event["InfrahubEvent"]["edges"][0]["node"]["id"]
+        assert len(merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
+        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"][0]["id"] == proposed_change.id
 
         secondary_events = await client.execute_graphql(query=QUERY_EVENT, variables={"parent__ids": merge_event_id})
 
@@ -292,6 +298,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert artifact_events["InfrahubEvent"]["count"] > 0
         latest_artifact_event = artifact_events["InfrahubEvent"]["edges"][0]["node"]
         assert sorted(latest_artifact_event.keys()) == [
+            "account_id",
             "artifact_definition_id",
             "branch",
             "checksum",
@@ -348,6 +355,14 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             "CoreUserValidator",
         ]
 
+        pr_account_events = await client.execute_graphql(
+            query=QUERY_EVENT,
+            variables={"account__ids": [proposed_change_user.id]},
+        )
+        pr_account_events_types = {event["node"]["event"] for event in pr_account_events["InfrahubEvent"]["edges"]}
+        assert "infrahub.validator.passed" in pr_account_events_types
+        assert "infrahub.artifact.updated" in pr_account_events_types
+
     async def test_merge_failure(
         self,
         db: InfrahubDatabase,
@@ -389,6 +404,7 @@ query(
     $branch: [String!],
     $parent__ids: [String!],
     $event_type: [String!]
+    $account__ids: [String!],
     $related_node__ids: [String!],
     $event_type_filter: EventTypeFilter
 ) {
@@ -397,6 +413,7 @@ query(
     parent__ids: $parent__ids
     event_type: $event_type
     event_type_filter: $event_type_filter
+    account__ids: $account__ids
     related_node__ids: $related_node__ids
   ) {
     count
@@ -409,6 +426,7 @@ query(
         parent_id
         level
         occurred_at
+        account_id
         primary_node {
           id
           kind
@@ -424,6 +442,14 @@ query(
           storage_id_previous
           checksum_previous
           checksum
+        }
+       ... on NodeMutatedEvent {
+          id
+          attributes {
+            name
+            value
+            value_previous
+          }
         }
       }
     }

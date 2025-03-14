@@ -64,6 +64,7 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'guides/installation',
+        'guides/installation-enterprise',
         'guides/create-schema',
         'guides/import-schema',
         'guides/menu',

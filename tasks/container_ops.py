@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -214,22 +216,26 @@ def collect_container_logs(
     database: str,
     namespace: Namespace,
     service: str | None = None,
+    project_name: str = None,
+    log_lines: int = None,
 ) -> Result | None:
     """Collect all logs from specified containers."""
-    if service and service not in AVAILABLE_SERVICES:
-        services_str = "\n- ".join([""] + AVAILABLE_SERVICES)
-        raise ValueError(f"Unknown service '{service}'. Available services:{services_str}")
+    if not project_name:
+        projects = discover_infrahub_projects(context)
+        display_infrahub_projects(projects)
+        project = select_infrahub_project(projects)
 
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
+        if not project:
+            print("No InfraHub projects found or selected. Exiting.")
+            return None
 
-        logs_cmd = f"{base_cmd} logs --tail=20000"
-        if service:
-            logs_cmd += f" {service}"
+        project_name = project["name"]
 
-        return execute_command(context=context, command=logs_cmd, hide=True)
+    logs_cmd = f"docker compose -p {project_name} logs --tail={log_lines}"
+    if service:
+        logs_cmd += f" {service}"
+
+    return execute_command(context=context, command=logs_cmd, hide=True)
 
 
 def display_container_status(
@@ -238,6 +244,7 @@ def display_container_status(
     namespace: Namespace,
     watch: bool = False,
     interval: int = 2,
+    project_name: str = None,
 ) -> None:
     """Display detailed status and metrics of all services."""
     from rich.console import Console
@@ -246,6 +253,16 @@ def display_container_status(
     import time
 
     console = Console()
+    if not project_name:
+        projects = discover_infrahub_projects(context)
+        display_infrahub_projects(projects)
+        project = select_infrahub_project(projects)
+
+        if not project:
+            console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
+            return
+
+        project_name = project["name"]
 
     try:
         while True:
@@ -278,54 +295,42 @@ def display_container_status(
             system_table.add_row("Memory", f"{memory_used} / {memory_total} ({memory_percent}%)")
             console.print(system_table)
 
-            with context.cd(ESCAPED_REPO_PATH):
-                compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-                compose_cmd = get_compose_cmd(namespace=namespace)
-                base_cmd = (
-                    f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-                )
+            stats_cmd = f"docker compose -p {project_name} stats --no-stream"
+            stats_result = execute_command(context=context, command=stats_cmd, hide=True)
 
-                stats_result = execute_command(context=context, command=f"{base_cmd} stats --no-stream", hide=True)
-
-                if stats_result and stats_result.stdout:
-                    container_table = Table(title="Container Metrics", style="blue")
-                    container_table.add_column("Name", style="bold cyan")
-                    container_table.add_column("CPU %", justify="right")
-                    container_table.add_column("Memory Usage", justify="right")
-                    container_table.add_column("Memory %", justify="right")
-                    container_table.add_column("Network I/O", justify="right")
-                    container_table.add_column("Block I/O", justify="right")
-                    container_table.add_column("PIDs", justify="right")
-
-                    lines = stats_result.stdout.strip().split("\n")[1:]
-                    for line in lines:
-                        stats = parse_docker_stats_line(line)
-                        if not stats:
-                            continue
-
-                        name, cpu, mem_usage, mem_percent, net_io, block_io, pids = stats
-
-                        try:
-                            cpu_value = float(cpu.rstrip("%"))
-                            mem_value = float(mem_percent.rstrip("%"))
-                        except ValueError:
-                            cpu_value = 0.0
-                            mem_value = 0.0
-
-                        cpu_style = "red" if cpu_value > 50 else "yellow" if cpu_value > 20 else "green"
-                        mem_style = "red" if mem_value > 80 else "yellow" if mem_value > 50 else "green"
-
-                        container_table.add_row(
-                            name,
-                            f"[{cpu_style}]{cpu}[/{cpu_style}]",
-                            mem_usage,
-                            f"[{mem_style}]{mem_percent}[/{mem_style}]",
-                            net_io,
-                            block_io,
-                            pids,
-                        )
-
-                    console.print(container_table)
+            if stats_result and stats_result.stdout:
+                container_table = Table(title="Container Metrics", style="blue")
+                container_table.add_column("Name", style="bold cyan")
+                container_table.add_column("CPU %", justify="right")
+                container_table.add_column("Memory Usage", justify="right")
+                container_table.add_column("Memory %", justify="right")
+                container_table.add_column("Network I/O", justify="right")
+                container_table.add_column("Block I/O", justify="right")
+                container_table.add_column("PIDs", justify="right")
+                lines = stats_result.stdout.strip().split("\n")[1:]
+                for line in lines:
+                    stats = parse_docker_stats_line(line)
+                    if not stats:
+                        continue
+                    name, cpu, mem_usage, mem_percent, net_io, block_io, pids = stats
+                    try:
+                        cpu_value = float(cpu.rstrip("%"))
+                        mem_value = float(mem_percent.rstrip("%"))
+                    except ValueError:
+                        cpu_value = 0.0
+                        mem_value = 0.0
+                    cpu_style = "red" if cpu_value > 50 else "yellow" if cpu_value > 20 else "green"
+                    mem_style = "red" if mem_value > 80 else "yellow" if mem_value > 50 else "green"
+                    container_table.add_row(
+                        name,
+                        f"[{cpu_style}]{cpu}[/{cpu_style}]",
+                        mem_usage,
+                        f"[{mem_style}]{mem_percent}[/{mem_style}]",
+                        net_io,
+                        block_io,
+                        pids,
+                    )
+                console.print(container_table)
 
             if not watch:
                 break
@@ -341,32 +346,40 @@ def collect_database_logs(
     namespace: Namespace,
     logs_dir: str,
     include_queries: bool = False,
+    project_name: str = None,
 ) -> None:
     """Collect logs from database container using docker cp."""
     from rich.console import Console
 
     console = Console()
+
+    if not project_name:
+        projects = discover_infrahub_projects(context)
+        display_infrahub_projects(projects)
+        project = select_infrahub_project(projects)
+
+        if not project:
+            console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
+            return
+
+        project_name = project["name"]
+
     db_logs_dir = Path(logs_dir) / "database"
     db_logs_dir.mkdir(parents=True, exist_ok=True)
 
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-
-        if include_queries:
-            console.print("[bold yellow]Collecting all database logs[/bold yellow]")
+    if include_queries:
+        console.print("[bold yellow]Collecting all database logs[/bold yellow]")
+        execute_command(
+            context=context,
+            command=f"docker compose -p {project_name} cp database:/var/lib/neo4j/logs/. {db_logs_dir}/",
+        )
+    else:
+        for log_file in ["neo4j.log", "debug.log"]:
+            console.print(f"[bold yellow]Collecting database log:[/bold yellow] {log_file}")
             execute_command(
                 context=context,
-                command=f"{base_cmd} cp database:/var/lib/neo4j/logs/. {db_logs_dir}/",
+                command=f"docker compose -p {project_name} cp database:/var/lib/neo4j/logs/{log_file} {db_logs_dir}/",
             )
-        else:
-            for log_file in ["neo4j.log", "debug.log"]:
-                console.print(f"[bold yellow]Collecting database log:[/bold yellow] {log_file}")
-                execute_command(
-                    context=context,
-                    command=f"{base_cmd} cp database:/var/lib/neo4j/logs/{log_file} {db_logs_dir}/",
-                )
 
 
 def collect_message_queue_status(
@@ -374,35 +387,43 @@ def collect_message_queue_status(
     database: str,
     namespace: Namespace,
     logs_dir: str,
+    project_name: str = None,
 ) -> None:
     """Collect message queues status and metrics."""
     from rich.console import Console
 
     console = Console()
+    if not project_name:
+        projects = discover_infrahub_projects(context)
+        display_infrahub_projects(projects)
+        project = select_infrahub_project(projects)
+
+        if not project:
+            console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
+            return
+
+        project_name = project["name"]
+
     mq_logs_dir = Path(logs_dir) / "message-queue"
     mq_logs_dir.mkdir(parents=True, exist_ok=True)
 
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-
-        console.print("[bold yellow]Collecting message queues status[/bold yellow]")
-        commands = [
-            ("queues", "rabbitmqctl list_queues name messages consumers state memory"),
-            ("exchanges", "rabbitmqctl list_exchanges name type"),
-            ("bindings", "rabbitmqctl list_bindings"),
-            ("connections", "rabbitmqctl list_connections"),
-            ("channels", "rabbitmqctl list_channels"),
-            ("overview", "rabbitmqctl status"),
-            ("env", "rabbitmqctl environment"),
-        ]
-
-        for name, cmd in commands:
-            result = execute_command(context=context, command=f"{base_cmd} exec message-queue {cmd}", hide=True)
-            if result and result.stdout:
-                log_file_path = Path(mq_logs_dir) / f"{name}.log"
-                log_file_path.write_text(result.stdout, encoding="utf-8")
+    console.print("[bold yellow]Collecting message queues status[/bold yellow]")
+    commands = [
+        ("queues", "rabbitmqctl list_queues name messages consumers state memory"),
+        ("exchanges", "rabbitmqctl list_exchanges name type"),
+        ("bindings", "rabbitmqctl list_bindings"),
+        ("connections", "rabbitmqctl list_connections"),
+        ("channels", "rabbitmqctl list_channels"),
+        ("overview", "rabbitmqctl status"),
+        ("env", "rabbitmqctl environment"),
+    ]
+    for name, cmd in commands:
+        result = execute_command(
+            context=context, command=f"docker compose -p {project_name} exec message-queue {cmd}", hide=True
+        )
+        if result and result.stdout:
+            log_file_path = Path(mq_logs_dir) / f"{name}.log"
+            log_file_path.write_text(result.stdout, encoding="utf-8")
 
 
 def collect_cache_status(
@@ -410,36 +431,44 @@ def collect_cache_status(
     database: str,
     namespace: Namespace,
     logs_dir: str,
+    project_name: str = None,
 ) -> None:
     """Collect cache status and metrics."""
     from rich.console import Console
 
     console = Console()
+    if not project_name:
+        projects = discover_infrahub_projects(context)
+        display_infrahub_projects(projects)
+        project = select_infrahub_project(projects)
+
+        if not project:
+            console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
+            return
+
+        project_name = project["name"]
+
     cache_logs_dir = Path(logs_dir) / "cache"
     cache_logs_dir.mkdir(parents=True, exist_ok=True)
 
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-
-        commands = [
-            ("info", "redis-cli info all"),
-            ("clients", "redis-cli client list"),
-            ("stats", "redis-cli info stats"),
-            ("memory", "redis-cli info memory"),
-            ("cpu", "redis-cli info cpu"),
-            ("config", "redis-cli config get *"),
-            ("slowlog", "redis-cli slowlog get 100"),
-            ("keys_stats", "redis-cli --raw dbsize"),
-        ]
-
-        console.print("[bold yellow]Collecting cache status[/bold yellow]")
-        for name, cmd in commands:
-            result = execute_command(context=context, command=f"{base_cmd} exec cache {cmd}", hide=True)
-            if result and result.stdout:
-                log_file_path = Path(cache_logs_dir) / f"{name}.log"
-                log_file_path.write_text(result.stdout, encoding="utf-8")
+    commands = [
+        ("info", "redis-cli info all"),
+        ("clients", "redis-cli client list"),
+        ("stats", "redis-cli info stats"),
+        ("memory", "redis-cli info memory"),
+        ("cpu", "redis-cli info cpu"),
+        ("config", "redis-cli config get *"),
+        ("slowlog", "redis-cli slowlog get 100"),
+        ("keys_stats", "redis-cli --raw dbsize"),
+    ]
+    console.print("[bold yellow]Collecting cache status[/bold yellow]")
+    for name, cmd in commands:
+        result = execute_command(
+            context=context, command=f"docker compose -p {project_name} exec cache {cmd}", hide=True
+        )
+        if result and result.stdout:
+            log_file_path = Path(cache_logs_dir) / f"{name}.log"
+            log_file_path.write_text(result.stdout, encoding="utf-8")
 
 
 def collect_task_worker_status(
@@ -447,44 +476,47 @@ def collect_task_worker_status(
     database: str,
     namespace: Namespace,
     logs_dir: str,
+    project_name: str = None,
 ) -> None:
     """Collect task workers status and metrics."""
     from rich.console import Console
 
     console = Console()
+    if not project_name:
+        projects = discover_infrahub_projects(context)
+        display_infrahub_projects(projects)
+        project = select_infrahub_project(projects)
+
+        if not project:
+            console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
+            return
+
+        project_name = project["name"]
+
     worker_logs_dir = Path(logs_dir) / "task-worker"
     worker_logs_dir.mkdir(parents=True, exist_ok=True)
 
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-
-        result = execute_command(context=context, command=f"{base_cmd} ps -a task-worker", hide=True)
-
-        if result and result.stdout:
-            containers = [line.split()[0] for line in result.stdout.split("\n")[1:] if line.strip()]
-
-            commands = [
-                ("version", "prefect version"),
-                ("work_pools", "prefect work-pool ls"),
-                ("work_queues", "prefect work-queue ls"),
-                ("task_runs", "prefect task-run ls"),
-                ("flow_runs", "prefect flow-run ls"),
-                ("concurrency_limits", "prefect concurrency-limit ls"),
-                ("blocks", "prefect block ls"),
-            ]
-
-            console.print(f"[bold yellow]Collecting task workers status for {len(containers)} containers[/bold yellow]")
-            for container in containers:
-                worker_dir = Path(worker_logs_dir) / container
-                worker_dir.mkdir(parents=True, exist_ok=True)
-
-                for name, cmd in commands:
-                    result = execute_command(context=context, command=f"docker exec {container} {cmd}", hide=True)
-                    if result and result.stdout:
-                        log_file_path = Path(worker_dir) / f"{name}.log"
-                        log_file_path.write_text(result.stdout, encoding="utf-8")
+    result = execute_command(context=context, command=f"docker compose -p {project_name} ps -a task-worker", hide=True)
+    if result and result.stdout:
+        containers = [line.split()[0] for line in result.stdout.split("\n")[1:] if line.strip()]
+        commands = [
+            ("version", "prefect version"),
+            ("work_pools", "prefect work-pool ls"),
+            ("work_queues", "prefect work-queue ls"),
+            ("task_runs", "prefect task-run ls"),
+            ("flow_runs", "prefect flow-run ls"),
+            ("concurrency_limits", "prefect concurrency-limit ls"),
+            ("blocks", "prefect block ls"),
+        ]
+        console.print(f"[bold yellow]Collecting task workers status for {len(containers)} containers[/bold yellow]")
+        for container in containers:
+            worker_dir = Path(worker_logs_dir) / container
+            worker_dir.mkdir(parents=True, exist_ok=True)
+            for name, cmd in commands:
+                result = execute_command(context=context, command=f"docker exec {container} {cmd}", hide=True)
+                if result and result.stdout:
+                    log_file_path = Path(worker_dir) / f"{name}.log"
+                    log_file_path.write_text(result.stdout, encoding="utf-8")
 
 
 def collect_support_data(
@@ -492,22 +524,42 @@ def collect_support_data(
     database: str,
     namespace: Namespace,
     include_queries: bool = False,
+    log_lines: int = None,
 ) -> None:
     """Collect all logs from each service and create a support archive."""
     from rich.console import Console
 
     console = Console()
+    projects = discover_infrahub_projects(context)
+    display_infrahub_projects(projects)
+    project = select_infrahub_project(projects)
+
+    if not project:
+        console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
+        return
+
+    project_name = project["name"]
+    available_services = project["services"]
+
+    log_lines = 100000 if log_lines is None else log_lines
+    console.print(f"[bold yellow]Collecting up to {log_lines} lines of logs per container[/bold yellow]")
+
     timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     logs_dir = Path(f"support_logs_{timestamp}")
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    for service in AVAILABLE_SERVICES:
+    project_info_file = logs_dir / "project_info.json"
+    project_info_file.write_text(json.dumps(project, indent=2), encoding="utf-8")
+
+    for service in available_services:
         console.print(f"[bold yellow]Collecting logs for service:[/bold yellow] {service}")
         result = collect_container_logs(
             context=context,
             database=database,
             namespace=namespace,
             service=service,
+            project_name=project_name,
+            log_lines=log_lines,
         )
         if result and result.stdout:
             log_file_path = Path(logs_dir) / f"{service}_{timestamp}.log"
@@ -516,50 +568,137 @@ def collect_support_data(
             console.print(f"[red]No logs found for service {service}.[/red]")
 
     collect_database_logs(
-        context=context, database=database, namespace=namespace, logs_dir=logs_dir, include_queries=include_queries
+        context=context,
+        database=database,
+        namespace=namespace,
+        logs_dir=str(logs_dir),
+        include_queries=include_queries,
+        project_name=project_name,
     )
-    collect_message_queue_status(context=context, database=database, namespace=namespace, logs_dir=logs_dir)
-    collect_cache_status(context=context, database=database, namespace=namespace, logs_dir=logs_dir)
-    collect_task_worker_status(context=context, database=database, namespace=namespace, logs_dir=logs_dir)
+    collect_message_queue_status(
+        context=context, database=database, namespace=namespace, logs_dir=str(logs_dir), project_name=project_name
+    )
+    collect_cache_status(
+        context=context, database=database, namespace=namespace, logs_dir=str(logs_dir), project_name=project_name
+    )
+    collect_task_worker_status(
+        context=context, database=database, namespace=namespace, logs_dir=str(logs_dir), project_name=project_name
+    )
 
     console.print("[bold yellow]Collecting system metrics[/bold yellow]")
     sys_metrics = collect_system_metrics()
-    metrics_file = Path(logs_dir) / f"system_metrics_{timestamp}.json"
+    metrics_file = logs_dir / f"system_metrics_{timestamp}.json"
     metrics_file.write_text(json.dumps(sys_metrics, indent=2), encoding="utf-8")
-
     console.print("[bold yellow]Collecting container metrics[/bold yellow]")
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
 
-        stats_result = execute_command(context=context, command=f"{base_cmd} stats --no-stream --no-trunc", hide=True)
+    stats_cmd = f"docker compose -p {project_name} stats --no-stream --no-trunc --format json"
+    stats_result = execute_command(context=context, command=stats_cmd, hide=True)
+    if stats_result and stats_result.stdout:
+        container_metrics_file = Path(logs_dir) / f"container_metrics_{timestamp}.json"
+        container_metrics_file.write_text(stats_result.stdout, encoding="utf-8")
 
-        if stats_result and stats_result.stdout:
-            containers_metrics = []
-            lines = stats_result.stdout.strip().split("\n")[1:]
-            for line in lines:
-                stats = parse_docker_stats_line(line)
-                if stats:
-                    name, cpu, mem_usage, mem_percent, net_io, block_io, pids = stats
-                    containers_metrics.append(
-                        {
-                            "name": name,
-                            "cpu_usage": cpu,
-                            "memory_usage": mem_usage,
-                            "memory_percent": mem_percent,
-                            "network_io": net_io,
-                            "block_io": block_io,
-                            "pids": pids,
-                        }
-                    )
-
-            container_metrics_file = Path(logs_dir) / f"container_metrics_{timestamp}.json"
-            container_metrics_file.write_text(json.dumps(containers_metrics, indent=2), encoding="utf-8")
-
-    archive_name = f"support_logs_{timestamp}.tar.gz"
-    shutil.make_archive(base_name=f"support_logs_{timestamp}", format="gztar", root_dir=".", base_dir=logs_dir)
+    export_dir = Path("exports")
+    export_dir.mkdir(parents=True, exist_ok=True)
+    archive_base = export_dir / f"support_logs_{timestamp}"
+    shutil.make_archive(base_name=str(archive_base), format="gztar", root_dir=".", base_dir=str(logs_dir))
     shutil.rmtree(logs_dir)
-
+    archive_name = f"{archive_base}.tar.gz"
     console.print(f"[green]Archive successfully created: {archive_name}[/green]")
     console.print("You can now provide this file for support analysis.")
+
+
+def discover_infrahub_projects(context: Context) -> Dict[str, Dict]:
+    """Discover all available InfraHub docker-compose projects."""
+    compose_result = execute_command(context=context, command="docker compose ls", hide=True)
+    essential_services = [
+        "cache",
+        "database",
+        "server",
+        "infrahub-server",
+        "task-manager",
+        "task-manager-db",
+        "task-worker",
+    ]
+    infrahub_projects = {}
+
+    if compose_result and compose_result.stdout:
+        lines = compose_result.stdout.strip().split("\n")
+        if len(lines) > 1:
+            for line in lines[1:]:
+                parts = line.split()
+                if len(parts) >= 1:
+                    project_name = parts[0]
+                    services_result = execute_command(
+                        context=context, command=f"docker compose -p {project_name} ps --services", hide=True
+                    )
+
+                    if services_result and services_result.stdout:
+                        all_services = [s.strip() for s in services_result.stdout.strip().split("\n") if s.strip()]
+                        services = [s for s in all_services if s in essential_services]
+                        if "server" in services or "infrahub-server" in services:
+                            infrahub_projects[project_name] = {
+                                "services": services,
+                                "server_name": "infrahub-server" if "infrahub-server" in services else "server",
+                            }
+
+    return infrahub_projects
+
+
+def display_infrahub_projects(projects: Dict[str, Dict]) -> None:
+    """Display discovered InfraHub projects in a simple line format."""
+    if not projects:
+        print("No projects with InfraHub services found.")
+        return
+
+    print("\nInfraHub Projects:")
+    for project_name, project_info in projects.items():
+        services = project_info["services"]
+        server_type = project_info["server_name"]
+
+        components = []
+        components.append(f"Project: {project_name}")
+        if server_type:
+            components.append(f"Server: {server_type}")
+        if "database" in services:
+            components.append("Database: ✓")
+        if "cache" in services:
+            components.append("Cache: ✓")
+        if "task-manager" in services:
+            components.append("TaskMgr: ✓")
+        if "task-manager-db" in services:
+            components.append("TaskDB: ✓")
+        if "task-worker" in services:
+            components.append("Worker: ✓")
+        print(" | ".join(components))
+
+
+def select_infrahub_project(projects: Dict[str, Dict]) -> Optional[Dict]:
+    """Let user select a project if multiple are found."""
+
+    if not projects:
+        print("No InfraHub projects found. Exiting.")
+        return None
+
+    requested_project = os.environ.get("INFRAHUB_BUILD_NAME")
+    if requested_project and requested_project in projects:
+        project_info = projects[requested_project]
+        print(f"Using specified project from environment: {requested_project} (with {project_info['server_name']})")
+        return {"name": requested_project, **project_info}
+
+    if len(projects) == 1:
+        project_name = list(projects.keys())[0]
+        project_info = projects[project_name]
+        print(f"Found single InfraHub project: {project_name} (using {project_info['server_name']})")
+        return {"name": project_name, **project_info}
+
+    print("\nMultiple InfraHub projects found:")
+    for i, (project_name, project_info) in enumerate(projects.items(), 1):
+        server_name = project_info["server_name"]
+        print(f"{i}. {project_name} (using {server_name})")
+
+    print("\nPlease specify which project to use with the --project parameter:")
+    for project_name in projects.keys():
+        print(f"  --project {project_name}")
+
+    print("\nExiting. Please run the command again with a specific project.")
+    return None

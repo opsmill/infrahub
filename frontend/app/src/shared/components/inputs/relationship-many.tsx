@@ -57,7 +57,7 @@ export function RelationshipManyInput({
                     e.stopPropagation();
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                  className="text-gray-500 hover:text-gray-800 size-4"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >

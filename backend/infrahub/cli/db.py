@@ -4,7 +4,7 @@ import importlib
 import logging
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
@@ -23,7 +23,6 @@ from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import (
     create_anonymous_role,
-    create_default_menu,
     create_default_roles,
     create_super_administrator_role,
     create_super_administrators_group,
@@ -44,6 +43,9 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.log import get_logger
+from infrahub.menu.menu import default_menu
+from infrahub.menu.models import MenuDict
+from infrahub.menu.utils import create_default_menu, get_existing_menu, update_menu
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -333,7 +335,7 @@ async def constraint(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    manager: Optional[ConstraintManagerBase] = None
+    manager: ConstraintManagerBase | None = None
     if dbdriver.db_type == DatabaseType.NEO4J:
         manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
     elif dbdriver.db_type == DatabaseType.MEMGRAPH:
@@ -415,13 +417,14 @@ async def create_defaults(db: InfrahubDatabase) -> None:
     if not existing_permissions:
         await setup_permissions(db=db)
 
-    existing_menu_items = await NodeManager.query(
-        schema=InfrahubKind.MENUITEM,
-        db=db,
-        limit=1,
-    )
-    if not existing_menu_items:
+    menu_nodes = await get_existing_menu(db=db)
+    menu_items = await MenuDict.from_db(db=db, nodes=list(menu_nodes.values()))
+    default_menu_dict = MenuDict.from_definition_list(default_menu)
+
+    if not menu_nodes:
         await create_default_menu(db=db)
+    else:
+        await update_menu(db=db, existing_menu=menu_items, new_menu=default_menu_dict, menu_nodes=menu_nodes)
 
 
 async def setup_permissions(db: InfrahubDatabase) -> None:

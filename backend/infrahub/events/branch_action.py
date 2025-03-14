@@ -2,6 +2,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 from infrahub.message_bus.messages.refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
@@ -75,6 +76,9 @@ class BranchMergedEvent(InfrahubEvent):
 
     branch_name: str = Field(..., description="The name of the branch")
     branch_id: str = Field(..., description="The ID of the branch")
+    proposed_change_id: str | None = Field(
+        default=None, description="The ID of the proposed change that merged this branch if applicable"
+    )
 
     def get_resource(self) -> dict[str, str]:
         return {
@@ -82,6 +86,19 @@ class BranchMergedEvent(InfrahubEvent):
             "infrahub.branch.id": self.branch_id,
             "infrahub.branch.name": self.branch_name,
         }
+
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        if self.proposed_change_id:
+            related.append(
+                {
+                    "prefect.resource.id": self.proposed_change_id,
+                    "prefect.resource.role": "infrahub.related.node",
+                    "infrahub.node.kind": InfrahubKind.PROPOSEDCHANGE,
+                }
+            )
+
+        return related
 
 
 class BranchRebasedEvent(InfrahubEvent):

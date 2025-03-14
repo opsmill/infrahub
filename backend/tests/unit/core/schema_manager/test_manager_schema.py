@@ -2910,7 +2910,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind):
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
-    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique])
+    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
     assert sorted(
         [
             r.name
@@ -2957,6 +2957,11 @@ async def test_manage_object_templates_with_component_relationships():
 
     # Make sure interfaces relationship is converted to interface templates
     assert test_object_template_device.get_relationship("interfaces").peer == f"Template{TestKind.INTERFACE}"
+    # Make sure identifier matches as they are set to be the same
+    assert (
+        test_object_template_device.get_relationship("interfaces").identifier.removeprefix("template_")
+        == schema_branch.get_node(name=TestKind.DEVICE, duplicate=False).get_relationship("interfaces").identifier
+    )
 
     # Verify attributes mapping of components
     test_interface_template = schema_branch.get(name=f"Template{TestKind.PHYSICAL_INTERFACE}", duplicate=False)

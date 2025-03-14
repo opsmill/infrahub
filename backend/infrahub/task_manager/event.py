@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.schemas.events import Event as PrefectEventModel
+from prefect.exceptions import PrefectHTTPStatusError
 from pydantic import BaseModel, Field, TypeAdapter
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -220,14 +221,17 @@ class PrefectEvent:
 
         # Retry due to https://github.com/PrefectHQ/prefect/issues/16299
         for _ in range(1, 5):
-            response = await client._client.post("/infrahub/events/filter", json=body)
-            if response.status_code == 200:
+            prefect_error: PrefectHTTPStatusError | None = None
+            try:
+                response = await client._client.post("/infrahub/events/filter", json=body)
                 break
-            await asyncio.sleep(0.1)
+            except PrefectHTTPStatusError as exc:
+                prefect_error = exc
+                await asyncio.sleep(0.1)
 
-        if response.status_code != 200:
+        if prefect_error:
             raise ServiceUnavailableError(
-                message=f"Unable to query prefect due to invalid response from the server (status_code={response.status_code})"
+                message=f"Unable to query prefect due to invalid response from the server (status_code={prefect_error.response.status_code})"
             )
         data: dict[str, Any] = response.json()
 

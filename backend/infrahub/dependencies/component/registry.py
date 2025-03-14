@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Optional, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from ..interface import DependencyBuilderContext
 from .exceptions import UntrackedDependencyError
@@ -17,7 +17,7 @@ T = TypeVar("T")
 
 
 class ComponentDependencyRegistry:
-    the_instance: Optional[ComponentDependencyRegistry] = None
+    the_instance: ComponentDependencyRegistry | None = None
 
     def __init__(self) -> None:
         self._available_components: dict[type, type[DependencyBuilder]] = {}

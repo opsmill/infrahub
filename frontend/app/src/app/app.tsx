@@ -5,7 +5,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "jotai";
 import { ErrorBoundary } from "react-error-boundary";
 import { RouterProvider } from "react-router";
-import { Slide, ToastContainer } from "react-toastify";
 
 import { TanStackQueryDevtools } from "@/app/devtools";
 import { router } from "@/app/router";
@@ -29,14 +28,6 @@ export function App() {
           <QueryClientProvider client={queryClient}>
             <ApolloProvider client={graphqlClient}>
               <ConfigProvider>
-                <ToastContainer
-                  hideProgressBar={true}
-                  transition={Slide}
-                  autoClose={5000}
-                  closeOnClick={false}
-                  newestOnTop
-                  position="bottom-right"
-                />
                 <RouterProvider router={router} />
               </ConfigProvider>
             </ApolloProvider>

@@ -86,5 +86,7 @@ jobs:
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         working-directory: helm
         run: |
+          git config --global user.name "opsmill-bot"
+          git config --global user.email "github-bot@opsmill.com"
           git commit -a -m 'chore: bump appVersion'
           git push

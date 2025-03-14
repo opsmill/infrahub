@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable, Union
+from typing import TYPE_CHECKING, Any, Iterable
 
 import graphene
 
@@ -38,6 +38,7 @@ from .mutations.repository import InfrahubRepositoryMutation
 from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
+from .mutations.webhook import InfrahubWebhookMutation
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -75,9 +76,7 @@ class DeleteInput(graphene.InputObjectType):
     hfid = graphene.List(of_type=graphene.String, required=False)
 
 
-GraphQLTypes = Union[
-    type[InfrahubMutation], type[BaseAttributeType], type[graphene.Interface], type[graphene.ObjectType]
-]
+GraphQLTypes = type[InfrahubMutation] | type[BaseAttributeType] | type[graphene.Interface] | type[graphene.ObjectType]
 
 
 class OrderInput(graphene.InputObjectType):
@@ -513,6 +512,8 @@ class GraphQLSchemaManager:
                 InfrahubKind.NAMESPACE: InfrahubIPNamespaceMutation,
                 InfrahubKind.NUMBERPOOL: InfrahubNumberPoolMutation,
                 InfrahubKind.MENUITEM: InfrahubCoreMenuMutation,
+                InfrahubKind.STANDARDWEBHOOK: InfrahubWebhookMutation,
+                InfrahubKind.CUSTOMWEBHOOK: InfrahubWebhookMutation,
             }
 
             if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
@@ -643,7 +644,9 @@ class GraphQLSchemaManager:
         self.set_type(name=type_name, graphql_type=relationship_property)
 
     def generate_graphql_mutations(
-        self, schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation]
+        self,
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
+        base_class: type[InfrahubMutation],
     ) -> GraphqlMutations:
         graphql_mutation_create_input = self.generate_graphql_mutation_create_input(schema)
         graphql_mutation_update_input = self.generate_graphql_mutation_update_input(schema)

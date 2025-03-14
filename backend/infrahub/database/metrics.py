@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 METRIC_PREFIX = "infrahub_db"
 
@@ -15,4 +15,10 @@ TRANSACTION_RETRIES = Counter(
     f"{METRIC_PREFIX}_transaction_retries",
     "Number of transaction that have been retried due to transcient error",
     labelnames=["name"],
+)
+
+CONNECTION_POOL_USAGE = Gauge(
+    f"{METRIC_PREFIX}_last_connection_pool_usage",
+    "Number of last known active connections in the pool",
+    labelnames=["address"],
 )

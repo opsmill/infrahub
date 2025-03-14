@@ -39,6 +39,6 @@ async def define_artifact(
                         "content_type": model.content_type,
                     },
                 )
-                await artifact.save()
+                await artifact.save(request_context=model.context.to_request_context())
                 created = True
     return artifact, created

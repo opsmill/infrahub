@@ -17,6 +17,12 @@ async def apply_external_context(graphql_context: GraphqlContext, context_input:
     if not context_input or not context_input.account:
         return
 
+    if graphql_context.active_account_session.account_id == context_input.account.id:
+        # If the account_id from the request context is the same as the current account
+        # there's no point moving forward with other checks to override the current
+        # context we can just continue with what is already there.
+        return
+
     permission = define_global_permission_from_branch(
         permission=GlobalPermissions.OVERRIDE_CONTEXT, branch_name=graphql_context.branch.name
     )

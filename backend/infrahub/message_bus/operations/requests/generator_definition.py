@@ -87,6 +87,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             log.info(f"Trigger execution of {message.generator_definition.definition_name} for {member.display_label}")
             events.append(
                 messages.CheckGeneratorRun(
+                    context=message.context,
                     generator_definition=message.generator_definition,
                     generator_instance=generator_instance,
                     commit=repository.source_commit,

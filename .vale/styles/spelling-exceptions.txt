@@ -96,7 +96,9 @@ order_weight
 openconfig
 opentelemetry
 order_by
+pg_dump
 Postgress
+Postgresql
 Prefetch
 profile_name
 pseudocode

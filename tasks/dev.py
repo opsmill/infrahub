@@ -7,7 +7,6 @@ from invoke.tasks import task
 
 from .container_ops import (
     build_images,
-    collect_support_data,
     destroy_environment,
     display_container_status,
     migrate_database,
@@ -197,9 +196,3 @@ def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Apply the latest database migrations."""
     migrate_database(context=context, database=database, namespace=NAMESPACE)
     update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
-
-
-@task(optional=["database"])
-def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
-    """Collect all logs and create a support archive."""
-    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)

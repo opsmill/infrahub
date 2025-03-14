@@ -24,7 +24,7 @@ from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta
 from infrahub.events.node_action import NodeDeletedEvent, NodeUpdatedEvent, get_node_event
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
@@ -65,6 +65,12 @@ class DeleteResult:
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
     schema: NodeSchema | None = None
+
+    @property
+    def active_schema(self) -> NodeSchema:
+        if self.schema:
+            return self.schema
+        raise InitializationError("This class is not initialized with a schema")
 
 
 class InfrahubMutationMixin:

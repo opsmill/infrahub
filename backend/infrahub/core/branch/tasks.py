@@ -190,7 +190,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
-async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def merge_branch(
+    branch: str, context: InfrahubContext, service: InfrahubServices, proposed_change_id: str | None = None
+) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
 
@@ -202,6 +204,7 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         merge_event = BranchMergedEvent(
             branch_name=obj.name,
             branch_id=str(obj.get_uuid()),
+            proposed_change_id=proposed_change_id,
             meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
 
