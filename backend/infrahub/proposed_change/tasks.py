@@ -54,7 +54,6 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.validators.tasks import start_validator
 from infrahub.workflows.catalogue import (
-    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
@@ -163,7 +162,8 @@ async def merge_proposed_change(
         await _proposed_change_transition_state(
             proposed_change=proposed_change, state=ProposedChangeState.MERGED, service=service
         )
-        await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON, context=context)
+        # TODO: Need to check if this is needed
+        # await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON, context=context)
         return Completed(message="proposed change merged successfully")
 
 

@@ -277,8 +277,8 @@ COMPUTED_ATTRIBUTE_REMOVE = WorkflowDefinition(
     function="computed_attribute_remove",
 )
 
-UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
-    name="process_computed_attribute_transform",
+COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
+    name="computed_attribute_process_transform",
     type=WorkflowType.USER,
     module="infrahub.computed_attribute.tasks",
     function="process_transform",
@@ -441,6 +441,7 @@ workflows = [
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_REMOVE,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
@@ -484,7 +485,6 @@ workflows = [
     TRIGGER_GENERATOR_DEFINITION_RUN,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-    UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
     WEBHOOK_CONFIGURE_ALL,
     WEBHOOK_CONFIGURE_ONE,
     WEBHOOK_DELETE_AUTOMATION,

@@ -20,8 +20,8 @@ from infrahub.trigger.models import (
 )
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
-    UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
 
 if TYPE_CHECKING:
@@ -201,7 +201,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
             trigger=event_trigger,
             actions=[
                 ExecuteWorkflow(
-                    workflow=UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+                    workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                     parameters={
                         "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                         "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
