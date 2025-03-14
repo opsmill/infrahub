@@ -928,7 +928,7 @@ async def test_schema_branch_validate_kinds_peer():
     with pytest.raises(ValueError) as exc:
         schema.validate_kinds()
 
-    assert str(exc.value) == "TestCriticality: Relationship 'first' is referencing an invalid peer 'TestNotPresent'"
+    assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
 
 
 async def test_schema_branch_validate_kinds_inherit():

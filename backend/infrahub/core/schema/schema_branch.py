@@ -966,9 +966,9 @@ class SchemaBranch:
             for rel in node.relationships:
                 if rel.peer in [InfrahubKind.GENERICGROUP]:
                     continue
-                if not self.has(rel.peer):
+                if not self.has(rel.peer) or self.get(rel.peer, duplicate=False).state == HashableModelState.ABSENT:
                     raise ValueError(
-                        f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
+                        f"{node.kind}: Relationship {rel.name!r} is referring an invalid peer {rel.peer!r}"
                     ) from None
 
     def validate_computed_attributes(self) -> None:
