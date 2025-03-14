@@ -25,7 +25,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
     enabled: !!schemaHash,
     staleTime: Infinity,
   });
-  const [currentSchemaHash, setcurrentSchemaHash] = useState(schemaHash); // Current schema hash for tracking changes
+  const [lastLoadedSchemaHash, setLastLoadedSchemaHash] = useState(""); // Current schema hash for tracking changes
 
   const setGenericSchemas = useSetAtom(genericSchemasAtom);
   const setNodeSchemas = useSetAtom(nodeSchemasAtom);
@@ -80,7 +80,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
       const schemaKindLabelTuples = R.zip(schemaKinds, schemaLabels);
       const schemaKindLabelMap = R.fromPairs(schemaKindLabelTuples);
 
-      setcurrentSchemaHash(hash);
+      setLastLoadedSchemaHash(hash);
       setGenericSchemas(genericSchemas);
       setNodeSchemas(nodeSchemas);
       setNamespaces(namespaces);
@@ -102,7 +102,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
     return <ErrorScreen message={error.message} />;
   }
 
-  if (currentSchemaHash !== schemaHash) {
+  if (lastLoadedSchemaHash !== schemaHash) {
     return <InfrahubLoading>Loading schemas...</InfrahubLoading>;
   }
 
