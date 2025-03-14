@@ -6,13 +6,11 @@ from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.exceptions import NodeNotFoundError
 
 from ..models import OrderModel
 from ..parser import extract_selection
 from ..permissions import get_permissions
-from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -217,109 +215,11 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
 
 async def many_relationship_resolver(
-    parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs: Any
+    parent: dict, info: GraphQLResolveInfo, include_descendants: bool | None = False, **kwargs: Any
 ) -> dict[str, Any]:
-    """Resolver for relationships of cardinality=many for Edged responses
-
-    This resolver is used for paginated responses and as such we redefined the requested
-    fields by only reusing information below the 'node' key.
-    """
-    # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
-
     context: GraphqlContext = info.context
-
-    # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
-    edges = fields.get("edges", {})
-    node_fields = edges.get("node", {})
-    property_fields = edges.get("properties", {})
-    for key, value in property_fields.items():
-        mapped_name = RELATIONS_PROPERTY_MAP[key]
-        node_fields[mapped_name] = value
-
-    # Extract the schema of the node on the other end of the relationship from the GQL Schema
-    node_rel = node_schema.get_relationship(info.field_name)
-
-    # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    offset = kwargs.pop("offset", None)
-    limit = kwargs.pop("limit", None)
-
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
-    }
-
-    response: dict[str, Any] = {"edges": [], "count": None}
-
-    source_kind = node_schema.kind
-
-    async with context.db.start_session() as db:
-        ids = [parent["id"]]
-        if include_descendants:
-            query = await NodeGetHierarchyQuery.init(
-                db=db,
-                direction=RelationshipHierarchyDirection.DESCENDANTS,
-                node_id=parent["id"],
-                node_schema=node_schema,
-                at=context.at,
-                branch=context.branch,
-            )
-            if node_schema.hierarchy:
-                source_kind = node_schema.hierarchy
-            await query.execute(db=db)
-            descendants_ids = list(query.get_peer_ids())
-            ids.extend(descendants_ids)
-
-        if "count" in fields:
-            response["count"] = await NodeManager.count_peers(
-                db=db,
-                ids=ids,
-                source_kind=source_kind,
-                schema=node_rel,
-                filters=filters,
-                at=context.at,
-                branch=context.branch,
-                branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
-            )
-
-        if not node_fields:
-            return response
-
-        objs = await NodeManager.query_peers(
-            db=db,
-            ids=ids,
-            source_kind=source_kind,
-            schema=node_rel,
-            filters=filters,
-            fields=node_fields,
-            offset=offset,
-            limit=limit,
-            at=context.at,
-            branch=context.branch,
-            branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
-            fetch_peers=True,
-        )
-
-        if not objs:
-            return response
-        node_graph = [
-            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids) for obj in objs
-        ]
-
-        entries = []
-        for node in node_graph:
-            entry = {"node": {}, "properties": {}}
-            for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
-                value = node.pop(key, None)
-                if value:
-                    entry["properties"][mapped] = value
-            entry["node"] = node
-            entries.append(entry)
-        response["edges"] = entries
-
-        return response
+    resolver = context.many_relationship_resolver
+    return await resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
 
 
 async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
