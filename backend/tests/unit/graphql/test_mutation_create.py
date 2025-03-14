@@ -8,6 +8,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
@@ -208,6 +209,45 @@ async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branc
     assert result.errors
     assert len(result.errors) == 1
     assert "Violates uniqueness constraint" in result.errors[0].message
+
+
+async def test_attr_optional_uniqueness_constraint_create(
+    db: InfrahubDatabase, default_branch: Branch, optional_attr_uniqueness_constraint_schema: NodeSchema
+) -> None:
+    query = """
+    mutation {
+        TestAttrOptionalUniquenessSchemaCreate(
+            data: {
+                description: { value: "the name is null" }
+            }
+        ){
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors
 
 
 async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
