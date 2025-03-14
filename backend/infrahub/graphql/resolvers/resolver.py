@@ -234,8 +234,8 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 async def many_relationship_resolver(
     parent: dict, info: GraphQLResolveInfo, include_descendants: bool | None = False, **kwargs: Any
 ) -> dict[str, Any]:
-    context: GraphqlContext = info.context
-    resolver = context.many_relationship_resolver
+    graphql_context: GraphqlContext = info.context
+    resolver = graphql_context.many_relationship_resolver
     return await resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
 
 
