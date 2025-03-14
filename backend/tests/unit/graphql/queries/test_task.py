@@ -1,5 +1,4 @@
 from typing import Any
-from uuid import uuid4
 
 import pytest
 from graphql import ExecutionResult
@@ -100,22 +99,6 @@ async def tag_red(db: InfrahubDatabase, default_branch: Branch) -> Node:
     await blue.new(db=db, name="Red", description="The REd tag")
     await blue.save(db=db)
     return blue
-
-
-@pytest.fixture
-async def account_bob(db: InfrahubDatabase, default_branch: Branch) -> Node:
-    bob = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=default_branch)
-    await bob.new(db=db, name="bob", password=str(uuid4()))
-    await bob.save(db=db)
-    return bob
-
-
-@pytest.fixture
-async def account_bill(db: InfrahubDatabase, default_branch: Branch) -> Node:
-    bill = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=default_branch)
-    await bill.new(db=db, name="bill", password=str(uuid4()))
-    await bill.save(db=db)
-    return bill
 
 
 @pytest.fixture

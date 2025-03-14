@@ -665,18 +665,21 @@ class NodeListGetRelationshipsQuery(Query):
         MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_in) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "inbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_out) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "outbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "bidirectional" as direction
         """ % {"filters": rels_filter}
 

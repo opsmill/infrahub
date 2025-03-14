@@ -97,6 +97,7 @@ class TestDefaultBranchPermission:
             branch=MagicMock(),
             types=MagicMock(),
             single_relationship_resolver=MagicMock(),
+            many_relationship_resolver=MagicMock(),
             account_session=session,
             permissions=permission_manager,
         )
@@ -136,6 +137,7 @@ class TestDefaultBranchPermission:
             branch=MagicMock(),
             types=MagicMock(),
             single_relationship_resolver=MagicMock(),
+            many_relationship_resolver=MagicMock(),
             account_session=session,
             permissions=permission_manager,
         )
