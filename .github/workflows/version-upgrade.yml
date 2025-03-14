@@ -93,6 +93,9 @@ jobs:
       - name: Upgrade Infrahub and apply the latest database migrations
         run: invoke dev.upgrade
 
+      - name: Run database migration
+        run: invoke dev.migrate
+
       - name: Start Demo
         run: invoke dev.start
 
