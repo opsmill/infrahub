@@ -2127,17 +2127,17 @@ async def hierarchical_location_schema(
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
 ) -> dict[str, Node]:
-    return await _build_hierarchical_location_data(db=db)
+    return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
 ) -> dict[str, Node]:
-    return await _build_hierarchical_location_data(db=db)
+    return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
-async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, Node]:
+async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
     REGIONS = (
         ("north-america",),
         ("europe",),
@@ -2157,13 +2157,13 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, N
     nodes = {}
 
     for region in REGIONS:
-        obj = await Node.init(db=db, schema="LocationRegion")
+        obj = await Node.init(db=db, branch=branch, schema="LocationRegion")
         await obj.new(db=db, name=region[0])
         await obj.save(db=db)
         nodes[obj.name.value] = obj
 
     for site in SITES:
-        obj = await Node.init(db=db, schema="LocationSite")
+        obj = await Node.init(db=db, branch=branch, schema="LocationSite")
         await obj.new(db=db, name=site[0], parent=site[1])
         await obj.save(db=db)
         nodes[obj.name.value] = obj
@@ -2171,7 +2171,7 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, N
         for idx in range(1, NBR_RACKS_PER_SITE + 1):
             rack_name = f"{site[0]}-r{idx}"
             statuses = ["online", "offline"]
-            obj = await Node.init(db=db, schema="LocationRack")
+            obj = await Node.init(db=db, branch=branch, schema="LocationRack")
             await obj.new(db=db, name=rack_name, parent=site[0], status=statuses[idx - 1])
             await obj.save(db=db)
             nodes[obj.name.value] = obj
