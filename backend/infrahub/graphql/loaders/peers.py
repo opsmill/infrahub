@@ -22,8 +22,6 @@ class QueryPeerParams:
     fields: dict | None = None
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
-    limit: int | None = None
-    offset: int | None = None
 
     def __hash__(self) -> int:
         frozen_fields: frozenset | None = None
@@ -41,8 +39,6 @@ class QueryPeerParams:
                 self.schema.name,
                 str(self.source_kind),
                 str(self.branch_agnostic),
-                str(self.limit),
-                str(self.offset),
             ]
         )
         return hash(hash_str)
@@ -63,8 +59,6 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 schema=self.query_params.schema,
                 filters=self.query_params.filters,
                 fields=self.query_params.fields,
-                offset=self.query_params.offset,
-                limit=self.query_params.limit,
                 at=self.query_params.at,
                 branch=self.query_params.branch,
                 branch_agnostic=self.query_params.branch_agnostic,

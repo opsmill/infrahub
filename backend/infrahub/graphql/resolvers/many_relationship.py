@@ -137,19 +137,32 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
-        node_graph = await self._get_entities_with_data_loader(
-            db=context.db,
-            branch=context.branch,
-            ids=ids,
-            at=context.at,
-            related_node_ids=context.related_node_ids,
-            source_kind=source_kind,
-            rel_schema=node_rel,
-            filters=filters,
-            node_fields=node_fields,
-            offset=offset,
-            limit=limit,
-        )
+        if offset or limit:
+            node_graph = await self._get_entities_simple(
+                db=context.db,
+                branch=context.branch,
+                ids=ids,
+                at=context.at,
+                related_node_ids=context.related_node_ids,
+                source_kind=source_kind,
+                rel_schema=node_rel,
+                filters=filters,
+                node_fields=node_fields,
+                offset=offset,
+                limit=limit,
+            )
+        else:
+            node_graph = await self._get_entities_with_data_loader(
+                db=context.db,
+                branch=context.branch,
+                ids=ids,
+                at=context.at,
+                related_node_ids=context.related_node_ids,
+                source_kind=source_kind,
+                rel_schema=node_rel,
+                filters=filters,
+                node_fields=node_fields,
+            )
 
         if not node_graph:
             return response
@@ -167,7 +180,7 @@ class ManyRelationshipResolver:
         response["edges"] = entries
         return response
 
-    async def _get_entities_with_data_loader(
+    async def _get_entities_simple(
         self,
         db: InfrahubDatabase,
         branch: Branch,
@@ -180,6 +193,37 @@ class ManyRelationshipResolver:
         node_fields: dict[str, Any],
         offset: int | None = None,
         limit: int | None = None,
+    ) -> list[dict[str, Any]] | None:
+        async with db.start_session() as dbs:
+            objs = await NodeManager.query_peers(
+                db=dbs,
+                ids=ids,
+                source_kind=source_kind,
+                schema=rel_schema,
+                filters=filters,
+                fields=node_fields,
+                offset=offset,
+                limit=limit,
+                at=at,
+                branch=branch,
+                branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
+                fetch_peers=True,
+            )
+            if not objs:
+                return None
+            return [await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids) for obj in objs]
+
+    async def _get_entities_with_data_loader(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        ids: list[str],
+        at: Timestamp | None,
+        related_node_ids: set[str] | None,
+        source_kind: str,
+        rel_schema: RelationshipSchema,
+        filters: dict[str, Any],
+        node_fields: dict[str, Any],
     ) -> list[dict[str, Any]] | None:
         if node_fields and "display_label" in node_fields:
             schema_branch = db.schema.get_schema_branch(name=branch.name)
@@ -201,8 +245,6 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
-            limit=limit,
-            offset=offset,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]

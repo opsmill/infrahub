@@ -2119,8 +2119,18 @@ async def location_rack_protocol(location_generic_protocol):
 
 @pytest.fixture
 async def hierarchical_location_schema(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
-) -> None: ...
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_schema_simple_unregistered: SchemaRoot,
+    register_core_models_schema,
+) -> None:
+    for node in hierarchical_location_schema_simple_unregistered.nodes:
+        if "LineageSource" not in node.inherit_from:
+            node.inherit_from.append("LineageSource")
+        if "LineageOwner" not in node.inherit_from:
+            node.inherit_from.append("LineageOwner")
+    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+    return hierarchical_location_schema_simple_unregistered
 
 
 @pytest.fixture
