@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .shared import (
@@ -12,6 +13,9 @@ from .shared import (
     get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH
+
+DEMO_PATCHES_LOCAL_PATH = "models/base/patches"
+DEMO_PATCHES_CONTAINER_PATH = "/infra_schema_patches"
 
 if TYPE_CHECKING:
     from invoke.context import Context
@@ -48,3 +52,20 @@ def load_infrastructure_menu(
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run {SERVICE_WORKER_NAME} infrahubctl menu load {menu_target}"
         execute_command(context=context, command=command)
+
+
+def load_infrastructure_schema_patches(
+    context: Context,
+    database: str,
+    namespace: Namespace,
+) -> None:
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
+        compose_cmd = get_compose_cmd(namespace=namespace)
+        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
+
+        command_schema = (
+            f"{base_cmd} run -v {Path(DEMO_PATCHES_LOCAL_PATH).resolve()}:{DEMO_PATCHES_CONTAINER_PATH} "
+            f"{SERVICE_WORKER_NAME} infrahubctl schema load {DEMO_PATCHES_CONTAINER_PATH}"
+        )
+        execute_command(context=context, command=command_schema)
