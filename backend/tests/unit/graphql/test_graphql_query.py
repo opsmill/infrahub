@@ -3432,9 +3432,13 @@ async def test_hierarchical_location_include_descendants(
 
 
 async def test_properties_on_different_query_paths(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing: dict[str, Node]
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data_thing: dict[str, Node],
+    account_bob: Node,
+    account_bill: Node,
 ):
-    paris_owner = hierarchical_location_data_thing["singapore"]
+    paris_owner = account_bob
     paris_rack_ids = [node.id for name, node in hierarchical_location_data_thing.items() if name.startswith("paris-r")]
     paris_racks = await NodeManager.get_many(db=db, ids=paris_rack_ids)
     for rack in paris_racks.values():
@@ -3444,7 +3448,7 @@ async def test_properties_on_different_query_paths(
         )
         await rack.save(db=db)
 
-    london_source = hierarchical_location_data_thing["seattle"]
+    london_source = account_bill
     london_rack_ids = [
         node.id for name, node in hierarchical_location_data_thing.items() if name.startswith("london-r")
     ]

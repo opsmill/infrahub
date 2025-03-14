@@ -1,0 +1,1 @@
+Improve performance of GraphQL cardinality-many relationship resolver by batching database calls together
