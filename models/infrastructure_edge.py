@@ -1503,7 +1503,6 @@ async def generate_site(
             interface_identifier = f"{intf.name.value.lower()}.{device_name}"
 
             # Determine the IP address (if any) for this interface.
-            subnet = None
             address = None
             peer_address = None  # For roles that require a peer IP
 
@@ -1545,7 +1544,7 @@ async def generate_site(
                     },
                 )
                 log.info(f"DEBUG: will create address f{address=}")
-                address_batch.add(task=ip.save, node=ip)
+                address_batch.add(task=ip.save, node=ip, allow_upsert=True)
 
             # Create Circuit and BGP session for upstream and peering
             if intf_role in ["upstream", "peering"]:
@@ -1568,7 +1567,7 @@ async def generate_site(
                         address=peer_address,
                     )
                     log.info(f"DEBUG: will create address f{peer_address=}")
-                    address_batch.add(task=peer_ip.save, node=peer_ip)
+                    address_batch.add(task=peer_ip.save, node=peer_ip, allow_upsert=True)
                     session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
                     bgp_session = await client.create(
                         branch=branch,
