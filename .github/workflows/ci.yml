@@ -255,8 +255,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true' &&
-      false
+      needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
@@ -309,8 +308,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true' &&
-      false
+      needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
@@ -356,8 +354,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true' &&
-      false
+      needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
@@ -403,8 +400,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true' &&
-      false
+      needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners
@@ -533,8 +529,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.frontend == 'true' &&
-      false
+      needs.files-changed.outputs.frontend == 'true'
     needs: ["files-changed", "yaml-lint", "javascript-lint"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 30

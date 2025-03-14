@@ -1543,7 +1543,6 @@ async def generate_site(
                         "source": account_pop.id,
                     },
                 )
-                log.info(f"DEBUG: will create address f{address=}")
                 address_batch.add(task=ip.save, node=ip, allow_upsert=True)
 
             # Create Circuit and BGP session for upstream and peering
@@ -1566,7 +1565,6 @@ async def generate_site(
                         kind=IpamIPAddress,
                         address=peer_address,
                     )
-                    log.info(f"DEBUG: will create address f{peer_address=}")
                     address_batch.add(task=peer_ip.save, node=peer_ip, allow_upsert=True)
                     session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
                     bgp_session = await client.create(
@@ -1848,7 +1846,6 @@ async def branch_scenario_add_upstream(
         kind=IpamIPAddress,
         address=peer_address,
     )
-    log.info(f"DEBUG: branch scenario will create address f{peer_address=}")
     await peer_ip.save()
 
     ip = await client.create(
@@ -1857,7 +1854,6 @@ async def branch_scenario_add_upstream(
         interface={"id": intf.id},
         address={"value": address},
     )
-    log.info(f"DEBUG: branch scenario will create address f{address=}")
     await ip.save()
 
     circuit_id_unique = str(uuid.UUID(int=abs(hash(f"{device_name}-upstream-{address}"))))[24:]
@@ -1969,7 +1965,6 @@ async def branch_scenario_replace_ip_addresses(
     )
     await peer_ip.save()
     log.info(f" - Replaced {device1_name}-{peer_intfs_dev1[0].name.value} IP to {peer_ip.address.value}")
-    log.info(f"DEBUG: branch scenario replace created address f{peer_ip.address.value=}")
 
     ip = await client.create(
         branch=new_branch_name,
@@ -1979,7 +1974,6 @@ async def branch_scenario_replace_ip_addresses(
     )
     await ip.save()
     log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {ip.address.value}")
-    log.info(f"DEBUG: branch scenario replace created address f{ip.address.value=}")
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
@@ -2663,7 +2657,6 @@ async def run(
         obj = await client.create(
             branch=branch, kind=IpamIPAddress, address={"value": ipv6_addr, "source": account_pop.id}
         )
-        log.info(f"DEBUG: creating address f{ipv6_addr=}")
         batch.add(task=obj.save, node=obj)
 
     async for _, response in batch.execute():

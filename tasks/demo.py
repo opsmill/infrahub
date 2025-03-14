@@ -21,6 +21,7 @@ from .infra_ops import (
     load_infrastructure_menu,
     load_infrastructure_schema,
     load_infrastructure_schema_patches,
+    run_infrastructure_patch_scripts,
 )
 from .shared import (
     BUILD_NAME,
@@ -129,6 +130,12 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> No
 def load_infra_schema_patches(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load demo schema patches"""
     load_infrastructure_schema_patches(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def run_infra_patch_scripts(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Run demo patches scripts"""
+    run_infrastructure_patch_scripts(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
