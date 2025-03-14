@@ -3000,3 +3000,22 @@ async def test_manage_object_templates_with_component_relationships():
         template_attr = test_interface_template.get_attribute(name=attr.name)
         # Optional value in component template should match original's
         assert attr.optional == template_attr.optional
+
+    # Verify when a node is marked as absent
+    ABSENT_VIRTUAL_INTERFACE = copy.deepcopy(DEVICE_SCHEMA)
+    ABSENT_VIRTUAL_INTERFACE.get(name=TestKind.VIRTUAL_INTERFACE).state = HashableModelState.ABSENT
+
+    schema_branch = SchemaBranch(cache={}, name="absent-node")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=ABSENT_VIRTUAL_INTERFACE))
+    schema_branch.process_inheritance()
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+    }
