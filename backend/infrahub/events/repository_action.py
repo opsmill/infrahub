@@ -20,4 +20,5 @@ class CommitUpdatedEvent(InfrahubEvent):
             "prefect.resource.id": f"infrahub.repository.{self.repository_id}",
             "infrahub.repository.name": self.repository_name,
             "infrahub.repository.id": self.repository_id,
+            "infrahub.branch.name": self.meta.context.branch.name,
         }

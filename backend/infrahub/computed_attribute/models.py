@@ -234,7 +234,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         event_trigger = EventTrigger()
         event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
         event_trigger.match = {
-            "infrahub.node.kind": [computed_attribute.computed_attribute.kind],
+            "infrahub.node.kind": computed_attribute.query_models,
         }
 
         if branches_out_of_scope:
