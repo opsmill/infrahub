@@ -13,7 +13,7 @@ export function DropdownCell({ dropdown }: { dropdown: Dropdown }) {
           : undefined
       }
     >
-      {dropdown.value}
+      {dropdown.label ?? dropdown.value}
     </span>
   );
 }
