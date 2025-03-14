@@ -270,13 +270,6 @@ COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
     function="computed_attribute_setup_python",
 )
 
-COMPUTED_ATTRIBUTE_REMOVE = WorkflowDefinition(
-    name="computed-attribute-remove",
-    type=WorkflowType.CORE,
-    module="infrahub.computed_attribute.tasks",
-    function="computed_attribute_remove",
-)
-
 COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     name="computed_attribute_process_transform",
     type=WorkflowType.USER,
@@ -442,7 +435,6 @@ workflows = [
     BRANCH_VALIDATE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
-    COMPUTED_ATTRIBUTE_REMOVE,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     DIFF_REFRESH,

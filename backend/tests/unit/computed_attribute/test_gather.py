@@ -1,4 +1,4 @@
-from infrahub.computed_attribute.tasks import gather_trigger_computed_attribute_jinja2
+from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_jinja2
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch

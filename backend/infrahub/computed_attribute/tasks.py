@@ -13,10 +13,10 @@ from prefect.logging import get_run_logger
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
+from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.support.macro import MacroDefinition
-from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 from infrahub.workflows.catalogue import (
@@ -309,7 +309,7 @@ async def trigger_update_jinja2_computed_attributes(
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-    service: InfrahubServices, context: InfrahubContext, branch_name: str | None = None
+    service: InfrahubServices, context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
     log = get_run_logger()
 
@@ -320,19 +320,16 @@ async def computed_attribute_setup_jinja2(
     triggers = await gather_trigger_computed_attribute_jinja2()
 
     for trigger in triggers:
-        if branch_name and trigger.branch != branch_name:
-            continue
-
-        await service.workflow.submit_workflow(
-            workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
-            context=context,
-            parameters={
-                "branch_name": trigger.branch,
-                "computed_attribute_name": trigger.computed_attribute.attribute.name,
-                "computed_attribute_kind": trigger.computed_attribute.kind,
-                "context": context,
-            },
-        )
+        if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
+            await service.workflow.submit_workflow(
+                workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                context=context,
+                parameters={
+                    "branch_name": trigger.branch,
+                    "computed_attribute_name": trigger.computed_attribute.attribute.name,
+                    "computed_attribute_kind": trigger.computed_attribute.kind,
+                },
+            )
 
     # Configure all ComputedAttrJinja2Trigger in Prefect
     async with get_client(sync_client=False) as prefect_client:
@@ -353,8 +350,8 @@ async def computed_attribute_setup_python(
     service: InfrahubServices,
     context: InfrahubContext,
     branch_name: str | None = None,
+    event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
-    trigger_updates: bool = True,
 ) -> None:
     log = get_run_logger()
 
@@ -366,11 +363,8 @@ async def computed_attribute_setup_python(
 
     triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(client=service.client)
 
-    if trigger_updates and branch_name:
-        for trigger in triggers_python:
-            if trigger.branch != branch_name:
-                continue
-
+    for trigger in triggers_python:
+        if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
             log.info(
                 f"Triggering update for {trigger.computed_attribute.computed_attribute.attribute.name} on {branch_name}"
             )
@@ -381,7 +375,6 @@ async def computed_attribute_setup_python(
                     "branch_name": branch_name,
                     "computed_attribute_name": trigger.computed_attribute.computed_attribute.attribute.name,
                     "computed_attribute_kind": trigger.computed_attribute.computed_attribute.kind,
-                    "context": context,
                 },
             )
 
@@ -399,35 +392,6 @@ async def computed_attribute_setup_python(
             trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
         )  # type: ignore[misc]
         log.info(f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed")
-
-
-@flow(
-    name="computed-attribute-remove",
-    flow_run_name="Remove Python based computed attributes",
-)
-async def computed_attribute_remove(
-    branch_name: str,
-    context: InfrahubContext,  # noqa: ARG001
-) -> None:
-    log = get_run_logger()
-    await add_tags(branches=[branch_name])
-
-    async with get_client(sync_client=False) as client:
-        automations = await client.read_automations()
-
-        prefixes = [
-            f"{TriggerType.COMPUTED_ATTR_JINJA2.value}{NAME_SEPARATOR}{branch_name}{NAME_SEPARATOR}",
-            f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{branch_name}{NAME_SEPARATOR}",
-            f"{TriggerType.COMPUTED_ATTR_PYTHON_QUERY.value}{NAME_SEPARATOR}{branch_name}{NAME_SEPARATOR}",
-        ]
-
-        automations_to_delete = [
-            automation for automation in automations if any(automation.name.startswith(prefix) for prefix in prefixes)
-        ]
-
-        for automation in automations_to_delete:
-            await client.delete_automation(automation_id=automation.id)
-            log.info(f"Deleted automation {automation.name} ({automation.id})")
 
 
 @flow(

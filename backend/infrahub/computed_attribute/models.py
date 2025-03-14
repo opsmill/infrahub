@@ -161,7 +161,6 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             name=computed_attribute.key_name,
             branch=branch,
             computed_attribute=computed_attribute,
-            description=f"Process value of the computed attribute for {computed_attribute.key_name} [{branch}] and branches with the same schema",
             trigger=event_trigger,
             actions=[workflow],
         )
@@ -197,7 +196,6 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
             name=computed_attribute.computed_attribute.key_name,
             branch=branch,
             computed_attribute=computed_attribute,
-            description=f"Process value of the computed attribute for {computed_attribute.computed_attribute.key_name} [{branch}]",
             trigger=event_trigger,
             actions=[
                 ExecuteWorkflow(
@@ -247,7 +245,6 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         definition = cls(
             name=computed_attribute.computed_attribute.key_name,
             branch=branch,
-            description=f"Process value of the computed attribute for {computed_attribute.computed_attribute.key_name} [{branch}]",
             trigger=event_trigger,
             actions=[
                 ExecuteWorkflow(
