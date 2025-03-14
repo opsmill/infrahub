@@ -12,6 +12,3 @@ export const genericSchemasAtom = atom<GenericSchema[]>([]);
 export const profileSchemasAtom = atom<ProfileSchema[]>([]);
 export const templateSchemasAtom = atom<TemplateSchema[]>([]);
 export const namespacesAtom = atom<Namespace[]>([]);
-
-// Current schema hash for tracking changes
-export const currentSchemaHashAtom = atom<string | null>(null);

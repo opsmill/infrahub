@@ -4,6 +4,7 @@ import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
 import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
@@ -41,14 +42,16 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <BranchesProvider>
-              <Outlet />
+              <SchemaProvider>
+                <Outlet />
+              </SchemaProvider>
             </BranchesProvider>
           </RequireAuth>
         ),
         children: [
           {
             path: "/",
-            lazy: () => import("@/shared/components/layout/layout"),
+            lazy: () => import("@/shared/components/layout/app-layout"),
             children: [
               {
                 index: true,
