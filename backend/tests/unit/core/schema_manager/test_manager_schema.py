@@ -928,7 +928,7 @@ async def test_schema_branch_validate_kinds_peer():
     with pytest.raises(ValueError) as exc:
         schema.validate_kinds()
 
-    assert str(exc.value) == "TestCriticality: Relationship 'first' is referencing an invalid peer 'TestNotPresent'"
+    assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
 
 
 async def test_schema_branch_validate_kinds_inherit():
@@ -2849,6 +2849,36 @@ async def test_schema_branch_add_object_template_schema():
     assert node_template
     core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
     assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
+
+
+async def test_schema_branch_remove_object_template_schema():
+    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    node_template = schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    assert node_template
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
+
+    # Disable template
+    SIMPLE_DEVICE.generate_template = False
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    with pytest.raises(SchemaNotFoundError, match=r"Unable to find the schema"):
+        schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert not core_template_schema.used_by
 
 
 async def test_schema_branch_diff_core_object_template():

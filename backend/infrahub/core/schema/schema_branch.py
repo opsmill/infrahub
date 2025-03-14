@@ -13,6 +13,7 @@ from typing_extensions import Self
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -965,9 +966,9 @@ class SchemaBranch:
             for rel in node.relationships:
                 if rel.peer in [InfrahubKind.GENERICGROUP]:
                     continue
-                if not self.has(rel.peer):
+                if not self.has(rel.peer) or self.get(rel.peer, duplicate=False).state == HashableModelState.ABSENT:
                     raise ValueError(
-                        f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
+                        f"{node.kind}: Relationship {rel.name!r} is referring an invalid peer {rel.peer!r}"
                     ) from None
 
     def validate_computed_attributes(self) -> None:
@@ -1794,7 +1795,7 @@ class SchemaBranch:
                 continue
 
             template_rel_settings: dict[str, Any] = {
-                "name": "object_template",
+                "name": OBJECT_TEMPLATE_RELATIONSHIP_NAME,
                 "identifier": "node__objecttemplate",
                 "peer": self._get_object_template_kind(node.kind),
                 "kind": RelationshipKind.TEMPLATE,
@@ -1804,14 +1805,14 @@ class SchemaBranch:
             }
 
             # Add relationship between node and template
-            if "object_template" not in node.relationship_names:
+            if OBJECT_TEMPLATE_RELATIONSHIP_NAME not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
                 node_schema.relationships.append(RelationshipSchema(**template_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
-                rel_template = node.get_relationship(name="object_template")
+                rel_template = node.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME)
                 for name, value in template_rel_settings.items():
                     if getattr(rel_template, name) != value:
                         has_changes = True
@@ -1820,7 +1821,7 @@ class SchemaBranch:
                     continue
 
                 node_schema = self.get(name=node_name, duplicate=True)
-                rel_template = node_schema.get_relationship(name="object_template")
+                rel_template = node_schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME)
                 for name, value in template_rel_settings.items():
                     if getattr(rel_template, name) != value:
                         setattr(rel_template, name, value)
@@ -1990,6 +1991,7 @@ class SchemaBranch:
                 or node.state == HashableModelState.ABSENT
             ):
                 try:
+                    node.relationships = [r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME]
                     self.delete(name=self._get_object_template_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
                     ...
