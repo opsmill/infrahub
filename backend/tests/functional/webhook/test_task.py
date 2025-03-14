@@ -4,12 +4,13 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 import httpx
 import pytest
+from infrahub_sdk.protocols import CoreStandardWebhook
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.actions import RunDeployment
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.webhook.models import EventContext
+from infrahub.webhook.models import EventContext, WebhookTriggerDefinition
 from infrahub.webhook.tasks import (
     configure_webhook_all,
     configure_webhook_one,
@@ -149,6 +150,22 @@ class TestWebhookTasks(TestInfrahubApp):
             validate_certificates=False,
             event_type="infrahub.node.created",
             branch_scope="other_branches",
+        )
+        await webhook.save(db=db)
+        return webhook
+
+    @pytest.fixture(scope="class")
+    async def webhook4(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+        webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+        await webhook.new(
+            db=db,
+            name="Webhook4",
+            url="https://url.mock",
+            shared_key="1234567890",
+            validate_certificates=False,
+            node_kind="BuiltinTag",
+            event_type="infrahub.node.created",
+            branch_scope="all_branches",
         )
         await webhook.save(db=db)
         return webhook
@@ -330,3 +347,14 @@ class TestWebhookTasks(TestInfrahubApp):
             "ID": "ce3b7013-4abb-4945-89de-1f56da4ff636",
             "OCCURED_AT": "2025-02-28T08:37:09.969Z",
         }
+
+    async def test_trigger_definition_node_kind_match(
+        self,
+        db: InfrahubDatabase,
+        service,
+        webhook4: Node,
+        client: InfrahubClient,
+    ) -> None:
+        webhook = await client.get(kind=CoreStandardWebhook, id=webhook4.id)
+        trigger_definition = WebhookTriggerDefinition.from_object(obj=webhook)
+        assert trigger_definition.trigger.match == {"infrahub.node.kind": "BuiltinTag"}

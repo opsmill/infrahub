@@ -50,6 +50,13 @@ core_webhook = {
             "order_weight": 2000,
             "allow_override": AllowOverrideType.NONE,
         },
+        {
+            "name": "node_kind",
+            "kind": "Text",
+            "optional": True,
+            "description": "Only send node mutation events for nodes of this kind",
+            "order_weight": 2250,
+        },
         {"name": "description", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "url", "kind": "URL", "order_weight": 3000},
         {
