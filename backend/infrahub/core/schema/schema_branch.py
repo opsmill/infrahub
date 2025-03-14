@@ -1950,7 +1950,7 @@ class SchemaBranch:
         self, node_schema: NodeSchema | GenericSchema, identified: set[NodeSchema | GenericSchema]
     ) -> set[NodeSchema]:
         """Identify all templates required to turn a given node into a template."""
-        if node_schema in identified:
+        if node_schema in identified or node_schema.state == HashableModelState.ABSENT:
             return identified
 
         identified.add(node_schema)
