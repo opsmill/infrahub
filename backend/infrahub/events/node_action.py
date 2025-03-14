@@ -25,6 +25,7 @@ class NodeMutatedEvent(InfrahubEvent):
                 {
                     "prefect.resource.id": f"infrahub.node.{self.node_id}",
                     "prefect.resource.role": "infrahub.node.field_update",
+                    "infrahub.field.name": attribute.name,
                     "infrahub.attribute.name": attribute.name,
                     "infrahub.attribute.value": "NULL" if attribute.value is None else str(attribute.value),
                     "infrahub.attribute.kind": attribute.kind,
@@ -35,6 +36,16 @@ class NodeMutatedEvent(InfrahubEvent):
                     "infrahub.attribute.action": attribute.value_update_status.value,  # type: ignore[attr-defined]
                 }
             )
+
+        for relationship_name in self.changelog.relationships.keys():
+            related.append(
+                {
+                    "prefect.resource.id": f"infrahub.node.{self.node_id}",
+                    "prefect.resource.role": "infrahub.node.field_update",
+                    "infrahub.field.name": relationship_name,
+                }
+            )
+
         if self.changelog.parent:
             related.append(
                 {

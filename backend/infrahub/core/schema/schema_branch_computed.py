@@ -42,6 +42,17 @@ class ComputedAttributeTarget(BaseModel):
         return hash((self.kind, self.attribute, tuple(self.filter_keys)))
 
 
+class ComputedAttributeTriggerNode(BaseModel):
+    kind: str
+    attributes: list[str] = Field(default_factory=list)
+    relationships: list[str] = Field(default_factory=list)
+    targets_self: bool = Field(default=False)
+
+    @property
+    def fields(self) -> list[str]:
+        return self.attributes + self.relationships
+
+
 class RegisteredNodeComputedAttribute(BaseModel):
     local_fields: dict[str, list[ComputedAttributeTarget]] = Field(
         default_factory=dict,
@@ -172,3 +183,29 @@ class ComputedAttributes:
                     mapping[local_field].add(node)
 
         return {key: list(value) for key, value in mapping.items()}
+
+    def get_jinja2_trigger_nodes(self) -> dict[ComputedAttributeTarget, list[ComputedAttributeTriggerNode]]:
+        working_map: dict[ComputedAttributeTarget, dict[str, ComputedAttributeTriggerNode]] = {}
+        for node_kind, registered_computed_attribute in self._computed_jinja2_attribute_map.items():
+            for local_field, computed_attribute_targets in registered_computed_attribute.local_fields.items():
+                for computed_attribute_target in computed_attribute_targets:
+                    if computed_attribute_target not in working_map:
+                        working_map[computed_attribute_target] = {}
+                    if node_kind not in working_map[computed_attribute_target]:
+                        working_map[computed_attribute_target][node_kind] = ComputedAttributeTriggerNode(kind=node_kind)
+                    working_map[computed_attribute_target][node_kind].attributes.append(local_field)
+                    if computed_attribute_target.kind == node_kind:
+                        working_map[computed_attribute_target][node_kind].targets_self = True
+            for relationship, computed_attribute_targets in registered_computed_attribute.relationships.items():
+                for computed_attribute_target in computed_attribute_targets:
+                    if computed_attribute_target not in working_map:
+                        working_map[computed_attribute_target] = {}
+                    if node_kind not in working_map[computed_attribute_target]:
+                        working_map[computed_attribute_target][node_kind] = ComputedAttributeTriggerNode(kind=node_kind)
+                    working_map[computed_attribute_target][node_kind].relationships.append(relationship)
+                    if computed_attribute_target.kind == node_kind:
+                        working_map[computed_attribute_target][node_kind].targets_self = True
+
+        return {
+            computed_attribute_target: list(nodes.values()) for computed_attribute_target, nodes in working_map.items()
+        }

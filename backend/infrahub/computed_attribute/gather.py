@@ -96,18 +96,19 @@ async def gather_trigger_computed_attribute_jinja2() -> list[ComputedAttrJinja2T
 
     for branch_scope, branches_out_of_scope in branches_to_process:
         schema_branch = registry.schema.get_schema_branch(name=branch_scope)
-        mapping = schema_branch.computed_attributes.get_jinja2_target_map()
+        mapping = schema_branch.computed_attributes.get_jinja2_trigger_nodes()
 
         log.info(f"Generating {len(mapping)} Jinja2 trigger for {branch_scope} (except {branches_out_of_scope})")
 
-        for computed_attribute, source_node_types in mapping.items():
-            trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-                branch=branch_scope,
-                computed_attribute=computed_attribute,
-                source_node_types=source_node_types,
-                branches_out_of_scope=branches_out_of_scope,
-            )
-            triggers.append(trigger)
+        for computed_attribute, trigger_nodes in mapping.items():
+            for trigger_node in trigger_nodes:
+                trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
+                    branch=branch_scope,
+                    computed_attribute=computed_attribute,
+                    trigger_node=trigger_node,
+                    branches_out_of_scope=branches_out_of_scope,
+                )
+                triggers.append(trigger)
 
     return triggers
 
