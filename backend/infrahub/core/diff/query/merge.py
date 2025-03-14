@@ -36,6 +36,7 @@ class DiffMergeQuery(Query):
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
         }
+        # ruff: noqa: E501
         query = """
 UNWIND $node_diff_dicts AS node_diff_map
 CALL {
