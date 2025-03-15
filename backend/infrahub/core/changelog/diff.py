@@ -8,6 +8,7 @@ from infrahub_sdk.utils import str_to_bool
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.exceptions import SchemaNotFoundError
 
 from .models import (
     AttributeChangelog,
@@ -71,7 +72,11 @@ class DiffChangelogCollector:
 
     def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
         node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)
-        schema = self._db.schema.get(node_changelog.node_kind, branch=self._branch, duplicate=False)
+        try:
+            schema = self._db.schema.get(node_changelog.node_kind, branch=self._branch, duplicate=False)
+        except SchemaNotFoundError:
+            # if the schema has been deleted on self._branch
+            schema = None
         for attribute in node.attributes:
             self._process_node_attribute(node=node_changelog, attribute=attribute, schema=schema)
 
@@ -81,15 +86,18 @@ class DiffChangelogCollector:
         return node_changelog
 
     def _process_node_attribute(
-        self, node: NodeChangelog, attribute: EnrichedDiffAttribute, schema: MainSchemaTypes
+        self, node: NodeChangelog, attribute: EnrichedDiffAttribute, schema: MainSchemaTypes | None
     ) -> None:
-        try:
-            schema_attribute = schema.get_attribute(name=attribute.name)
-            attribute_kind = schema_attribute.kind
-        except ValueError:
-            # This would currently happen if there has been a schema migration as part of the merge
-            # then we don't have access to the attribute kind
+        if schema is None:
             attribute_kind = "n/a"
+        else:
+            try:
+                schema_attribute = schema.get_attribute(name=attribute.name)
+                attribute_kind = schema_attribute.kind
+            except ValueError:
+                # This would currently happen if there has been a schema migration as part of the merge
+                # then we don't have access to the attribute kind
+                attribute_kind = "n/a"
 
         changelog_attribute = AttributeChangelog(
             name=self.migration.get_attribute_name(node=node, attribute=attribute), kind=attribute_kind
