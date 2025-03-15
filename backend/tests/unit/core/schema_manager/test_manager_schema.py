@@ -3019,3 +3019,37 @@ async def test_manage_object_templates_with_component_relationships():
         TestKind.PHYSICAL_INTERFACE,
         TestKind.SFP,
     }
+
+
+async def test_identify_object_templates_with_generics():
+    USELESS_DEVICE_SCHEMA = copy.deepcopy(DEVICE_SCHEMA)
+    USELESS_DEVICE_SCHEMA.nodes.append(
+        NodeSchema(
+            name="UselessDevice",
+            namespace="Testing",
+            inherit_from=[TestKind.INTERFACE_HOLDER],
+            include_in_menu=True,
+            label="Useless Device",
+            default_filter="name__value",
+            generate_template=True,
+            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+        )
+    )
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=USELESS_DEVICE_SCHEMA))
+    schema_branch.process_inheritance()
+
+    # As we requested template for TestingDevice, which is an implementation of generic TestingInterfaceHolder we must make sure not to propagate
+    # templating to TestingUselessDevice
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+        TestKind.VIRTUAL_INTERFACE,
+    }

@@ -1956,10 +1956,11 @@ class SchemaBranch:
         identified.add(node_schema)
 
         for relationship in node_schema.relationships:
-            if relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE] or relationship.kind not in [
-                RelationshipKind.COMPONENT,
-                RelationshipKind.PARENT,
-            ]:
+            if (
+                relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE]
+                or (relationship.kind == RelationshipKind.PARENT and node_schema.generate_template)
+                or relationship.kind not in [RelationshipKind.PARENT, RelationshipKind.COMPONENT]
+            ):
                 continue
 
             peer_schema = self.get(name=relationship.peer, duplicate=False)
@@ -1968,10 +1969,13 @@ class SchemaBranch:
             # In a context of a generic, we won't be able to create objects out of it, so any kind of nodes implementing the generic is a valid
             # option, we therefore need to have a template for each of those nodes
             if isinstance(peer_schema, GenericSchema) and peer_schema.used_by:
-                for used_by in peer_schema.used_by:
-                    identified |= self.identify_required_object_templates(
-                        node_schema=self.get(name=used_by, duplicate=False), identified=identified
-                    )
+                if relationship.kind != RelationshipKind.PARENT or not any(
+                    u in [i.kind for i in identified] for u in peer_schema.used_by
+                ):
+                    for used_by in peer_schema.used_by:
+                        identified |= self.identify_required_object_templates(
+                            node_schema=self.get(name=used_by, duplicate=False), identified=identified
+                        )
 
             identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
 
