@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipHierarchyDirection
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -21,6 +21,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.unit.conftest import _build_hierarchical_location_data
 from tests.unit.core.test_utils import verify_all_linked_edges_deleted
 
 
@@ -893,3 +894,56 @@ class TestDiffAndMerge:
         else:
             assert updated_person.height.value == main_value
         await verify_no_duplicate_paths(db=db)
+
+    async def test_hierarchy_preserver(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        hierarchical_location_schema_simple: SchemaRoot,
+    ) -> None:
+        branch_name = "branch_hierarch"
+        branch = await create_branch(db=db, branch_name=branch_name)
+        hierarchy_data = await _build_hierarchical_location_data(db=db, branch=branch)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        at = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, branch=branch)
+        await diff_merger.merge_graph(at=at)
+
+        region_schema = registry.schema.get(name="LocationRegion", duplicate=False)
+        region = hierarchy_data["europe"]
+        region_descendants = [
+            hierarchy_data["paris"],
+            hierarchy_data["paris-r1"],
+            hierarchy_data["paris-r2"],
+            hierarchy_data["london"],
+            hierarchy_data["london-r1"],
+            hierarchy_data["london-r2"],
+        ]
+        site_schema = registry.schema.get(name="LocationSite", duplicate=False)
+        site = hierarchy_data["paris-r2"]
+        site_ancestors = [
+            hierarchy_data["paris"],
+            hierarchy_data["europe"],
+        ]
+
+        retrieved_descendants_map = await NodeManager.query_hierarchy(
+            db=db,
+            branch=default_branch,
+            id=region.id,
+            node_schema=region_schema,
+            direction=RelationshipHierarchyDirection.DESCENDANTS,
+            filters={},
+        )
+        assert set(retrieved_descendants_map.keys()) == {d.id for d in region_descendants}
+        retrieved_ancestors_map = await NodeManager.query_hierarchy(
+            db=db,
+            branch=default_branch,
+            id=site.id,
+            node_schema=site_schema,
+            direction=RelationshipHierarchyDirection.ANCESTORS,
+            filters={},
+        )
+        assert set(retrieved_ancestors_map.keys()) == {d.id for d in site_ancestors}
