@@ -65,7 +65,11 @@ class TestInfrahubDocker:
 
         request.addfinalizer(cleanup)
 
-        infrahub_compose.start()
+        try:
+            infrahub_compose.start()
+        except Exception as exc:
+            stdout, stderr = infrahub_compose.get_logs()
+            raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
 
         return infrahub_compose.get_services_port()
 
