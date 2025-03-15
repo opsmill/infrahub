@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import typer
 from deepdiff import DeepDiff
 from infrahub_sdk.async_typer import AsyncTyper
-from prefect.testing.utilities import prefect_test_harness
+from prefect.client.orchestration import get_client
 from rich import print as rprint
 
 from infrahub import config
@@ -26,6 +26,12 @@ from infrahub.menu.utils import create_default_menu, get_existing_menu, update_m
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.initialization import (
+    setup_blocks,
+    setup_deployments,
+    setup_task_manager,
+    setup_worker_pools,
+)
 
 from .db import initialize_internal_schema, migrate_database, update_core_schema
 
@@ -59,24 +65,40 @@ async def upgrade_cmd(
     )
     await initialize_registry(db=dbdriver)
 
-    with prefect_test_harness():
-        # -------------------------------------------
-        # Add pre-upgrade  validation
-        # -------------------------------------------
+    # NOTE add step to validate if the database and the task manager are reachable
 
-        # -------------------------------------------
-        # Upgrade Infrahub Database and Schema
-        # -------------------------------------------
-        await migrate_database(db=dbdriver, initialize=False, check=check)
+    # -------------------------------------------
+    # Add pre-upgrade  validation
+    # -------------------------------------------
 
-        await initialize_internal_schema()
-        await update_core_schema(db=dbdriver, service=service, initialize=False)
+    # -------------------------------------------
+    # Upgrade Infrahub Database and Schema
+    # -------------------------------------------
+    await migrate_database(db=dbdriver, initialize=False, check=check)
 
-        # -------------------------------------------
-        # Upgrade Internal Objects, generated and managed by Infrahub
-        # -------------------------------------------
-        await upgrade_menu(db=dbdriver)
-        await upgrade_permissions(db=dbdriver)
+    await initialize_internal_schema()
+    await update_core_schema(db=dbdriver, service=service, initialize=False)
+
+    # -------------------------------------------
+    # Upgrade Internal Objects, generated and managed by Infrahub
+    # -------------------------------------------
+    await upgrade_menu(db=dbdriver)
+    await upgrade_permissions(db=dbdriver)
+
+    # -------------------------------------------
+    # Upgrade External system : Task Manager
+    # -------------------------------------------
+    await setup_task_manager()
+
+    async with get_client(sync_client=False) as client:
+        await setup_blocks()
+        await setup_worker_pools(client=client)
+        await setup_deployments(client=client)
+        # await setup_triggers(
+        #     client=client,
+        #     triggers=builtin_triggers,
+        #     trigger_type=TriggerType.BUILTIN,
+        # )
 
     await dbdriver.close()
 

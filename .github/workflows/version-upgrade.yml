@@ -90,8 +90,8 @@ jobs:
       - name: Build Demo
         run: invoke dev.build
 
-      - name: Run database migration
-        run: invoke dev.migrate
+      - name: Upgrade Infrahub and apply the latest database migrations
+        run: invoke dev.upgrade
 
       - name: Start Demo
         run: invoke dev.start
