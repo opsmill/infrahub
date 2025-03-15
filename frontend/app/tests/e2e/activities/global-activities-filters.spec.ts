@@ -65,6 +65,6 @@ test.describe("Global Activities - List view and filter usage", () => {
     await page.getByRole("button", { name: "Account" }).click();
     await page.getByRole("option", { name: "Chloe O'Brian" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByText("No activity found.")).toBeVisible();
+    await expect(page.getByText("No activities found")).toBeVisible();
   });
 });
