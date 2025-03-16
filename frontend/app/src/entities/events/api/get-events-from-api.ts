@@ -1,6 +1,6 @@
 import { Get_ActivitiesQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
 export type GlobalEventsFilters = {
@@ -16,8 +16,6 @@ export type GlobalEventsFilters = {
   offset?: number;
   limit?: number;
 };
-
-export type GetEventsParams = ContextParams & PaginationParams & { filters: GlobalEventsFilters };
 
 export const OBJECTS_PER_PAGE = 40;
 
@@ -123,19 +121,17 @@ const EVENTS_QUERY = gql`
   }
 `;
 
+export type GetEventsFromApiParams = PaginationParams & { filters: GlobalEventsFilters };
+
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
-  atDate,
   filters,
-}: GetEventsParams) {
+}: GetEventsFromApiParams) {
   return graphqlClient.query<Get_ActivitiesQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,
       ...filters,
-    },
-    context: {
-      date: atDate,
     },
   });
 }

@@ -6,7 +6,7 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { Link } from "@/shared/components/ui/link";
 import { Spinner } from "@/shared/components/ui/spinner";
 import React from "react";
-import { useEvents } from "../api/get-events.query";
+import { useGetEvents } from "../domain/get-events.query";
 import { EventCard } from "./event-card";
 
 const MAX_EVENTS = 5;
@@ -16,7 +16,7 @@ export const NodeEvents = ({
   objectId,
   objectKind,
 }: { parentId?: string; objectId?: string; objectKind?: string }) => {
-  const { isPending, data, error } = useEvents({
+  const { isPending, data, error } = useGetEvents({
     filters: {
       parentIds: parentId ? [parentId] : undefined,
       relatedNodeIds: objectId ? [objectId] : undefined,

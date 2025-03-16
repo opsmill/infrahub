@@ -1,4 +1,4 @@
-import { useEvents } from "@/entities/events/api/get-events.query";
+import { useGetEvents } from "@/entities/events/domain/get-events.query";
 import { GlobalEventsFilters } from "@/entities/events/ui/filters/global-events-filters";
 import { Event } from "@/entities/events/ui/global-event";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
@@ -39,7 +39,7 @@ export function Component() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useEvents({
+  } = useGetEvents({
     filters: {
       ...queryFilters,
       level: 0,
@@ -77,12 +77,13 @@ export function Component() {
         <EmptyActivitiesView hasFilters={filters.length > 0} />
       ) : (
         <>
-          <div className="grid grid-cols-8 gap-2 text-xs text-gray-500 font-semibold px-2">
+          <div className="grid grid-cols-8 gap-2 px-4 py-2 text-xs text-gray-500 font-semibold">
             <span>Date</span>
             <span className="col-span-5">Event</span>
             <span>Branch</span>
             <span>Action</span>
           </div>
+
           <InfiniteScroll hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
             <div className="flex flex-col flex-grow gap-2 p-2">
               {data.pages.map((page) =>
@@ -104,7 +105,7 @@ export function Component() {
 
 function FiltersSection({ hasFilters }: { hasFilters: boolean }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 px-2 py-4">
       <GlobalEventsFilters />
       {hasFilters && <FilterResetButton />}
     </div>
