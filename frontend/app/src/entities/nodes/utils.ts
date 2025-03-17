@@ -34,7 +34,10 @@ export const getObjectDetailsUrl2 = (
   }
 
   const { schema, isGeneric } = getSchema(objectKind);
-  if (!schema) return "#";
+  if (!schema) {
+    const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
+    return constructPath(path, overrideParams);
+  }
 
   if (!isGeneric) {
     const inheritFrom = schema.inherit_from;
