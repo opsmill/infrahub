@@ -7,7 +7,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.menu.constants import FULL_DEFAULT_MENU, MenuSection
 from infrahub.menu.generator import generate_menu
 from infrahub.menu.models import MenuItemDefinition
-from infrahub.menu.utils import create_menu_children
+from infrahub.menu.repository import MenuRepository
 
 
 def generate_menu_fixtures(prefix: str = "Menu", depth: int = 1, nbr_item: int = 10) -> list[MenuItemDefinition]:
@@ -37,6 +37,7 @@ async def test_generate_menu_placement(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
+    menu_repository: MenuRepository,
     helper,
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -48,12 +49,7 @@ async def test_generate_menu_placement(
     await create_default_menu(db=db)
 
     new_menu_items = generate_menu_fixtures(nbr_item=2)
-
-    for item in new_menu_items:
-        obj = await item.to_node(db=db)
-        await obj.save(db=db)
-        if item.children:
-            await create_menu_children(db=db, parent=obj, children=item.children)
+    await menu_repository.create_menu(menu=new_menu_items)
 
     menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
@@ -66,6 +62,7 @@ async def test_generate_menu_placement(
 
 async def test_generate_menu_top_level(
     db: InfrahubDatabase,
+    menu_repository: MenuRepository,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     helper,
@@ -73,12 +70,7 @@ async def test_generate_menu_top_level(
     await create_default_menu(db=db)
 
     new_menu_items = generate_menu_fixtures(nbr_item=2)
-
-    for item in new_menu_items:
-        obj = await item.to_node(db=db)
-        await obj.save(db=db)
-        if item.children:
-            await create_menu_children(db=db, parent=obj, children=item.children)
+    await menu_repository.create_menu(menu=new_menu_items)
 
     menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
@@ -91,6 +83,7 @@ async def test_generate_menu_top_level(
 
 async def test_generate_menu_default(
     db: InfrahubDatabase,
+    menu_repository: MenuRepository,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     helper,
@@ -103,12 +96,7 @@ async def test_generate_menu_default(
     await create_default_menu(db=db)
 
     new_menu_items = generate_menu_fixtures(nbr_item=2)
-
-    for item in new_menu_items:
-        obj = await item.to_node(db=db)
-        await obj.save(db=db)
-        if item.children:
-            await create_menu_children(db=db, parent=obj, children=item.children)
+    await menu_repository.create_menu(menu=new_menu_items)
 
     menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)

@@ -77,35 +77,6 @@ class MenuDict:
     def get_all_identifiers(self) -> set[str]:
         return {identifier for item in self.data.values() for identifier in item.get_all_identifiers()}
 
-    @classmethod
-    async def from_db(cls, db: InfrahubDatabase, nodes: list[CoreMenuItem]) -> Self:
-        menu = cls()
-        menu_by_ids = {menu_node.get_id(): MenuItemDict.from_node(menu_node) for menu_node in nodes}
-
-        async def add_children(menu_item: MenuItemDict, menu_node: CoreMenuItem) -> MenuItemDict:
-            children = await menu_node.children.get_peers(db=db, peer_type=CoreMenuItem)
-            for child_id, child_node in children.items():
-                child_menu_item = menu_by_ids[child_id]
-                child = await add_children(child_menu_item, child_node)
-                menu_item.children[str(child.identifier)] = child
-            return menu_item
-
-        for menu_node in nodes:
-            menu_item = menu_by_ids[menu_node.get_id()]
-            parent = await menu_node.parent.get_peer(db=db, peer_type=CoreMenuItem)
-            if parent:
-                continue
-
-            children = await menu_node.children.get_peers(db=db, peer_type=CoreMenuItem)
-            for child_id, child_node in children.items():
-                child_menu_item = menu_by_ids[child_id]
-                child = await add_children(child_menu_item, child_node)
-                menu_item.children[str(child.identifier)] = child
-
-            menu.data[str(menu_item.identifier)] = menu_item
-
-        return menu
-
 
 @dataclass
 class Menu:
@@ -113,7 +84,7 @@ class Menu:
 
 
 class MenuItem(BaseModel):
-    _id: str | None = None
+    id: str | None = None
     namespace: str = Field(..., description="Namespace of the menu item")
     name: str = Field(..., description="Name of the menu item")
     description: str = Field(default="", description="Description of the menu item")
@@ -142,7 +113,7 @@ class MenuItem(BaseModel):
     @classmethod
     def from_node(cls, obj: CoreMenuItem) -> Self:
         return cls(
-            _id=obj.get_id(),
+            id=obj.get_id(),
             name=obj.name.value,
             namespace=obj.namespace.value,
             protected=obj.protected.value,
@@ -246,7 +217,6 @@ class MenuItemList(MenuItem):
 
 
 class MenuItemDefinition(BaseModel):
-    _id: str | None = None
     namespace: str
     name: str
     label: str
@@ -281,7 +251,6 @@ class MenuItemDefinition(BaseModel):
     @classmethod
     async def from_node(cls, node: CoreMenuItem) -> Self:
         return cls(
-            _id=node.get_id(),
             namespace=node.namespace.value,
             name=node.name.value,
             label=node.label.value or "",
