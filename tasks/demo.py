@@ -20,7 +20,6 @@ from .infra_ops import (
     load_infrastructure_data,
     load_infrastructure_menu,
     load_infrastructure_schema,
-    load_infrastructure_schema_patches,
     run_infrastructure_patch_scripts,
 )
 from .shared import (
@@ -124,12 +123,6 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> No
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
     load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
     restart_services(context=context, database=database, namespace=NAMESPACE)
-
-
-@task(optional=["database"])
-def load_infra_schema_patches(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Load demo schema patches"""
-    load_infrastructure_schema_patches(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])

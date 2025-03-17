@@ -14,11 +14,8 @@ from .shared import (
 )
 from .utils import ESCAPED_REPO_PATH
 
-SCHEMA_PATCHES_LOCAL_PATH = "models/patches/schema/"
-SCHEMA_PATCHES_CONTAINER_PATH = "/patches/schema"
-
-SCRIPTS_PATCHES_LOCAL_PATH = "models/patches/data/"
-SCRIPTS_PATCHES_CONTAINER_PATH = "/patches/scripts"
+SCRIPTS_PATCHES_LOCAL_PATH = "models/patches/"
+SCRIPTS_PATCHES_CONTAINER_PATH = "/patches/"
 
 if TYPE_CHECKING:
     from invoke.context import Context
@@ -57,23 +54,6 @@ def load_infrastructure_menu(
         execute_command(context=context, command=command)
 
 
-def load_infrastructure_schema_patches(
-    context: Context,
-    database: str,
-    namespace: Namespace,
-) -> None:
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
-        compose_cmd = get_compose_cmd(namespace=namespace)
-        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
-
-        command_schema = (
-            f"{base_cmd} run -v {Path(SCHEMA_PATCHES_LOCAL_PATH).resolve()}:{SCHEMA_PATCHES_CONTAINER_PATH} "
-            f"{SERVICE_WORKER_NAME} infrahubctl schema load {SCHEMA_PATCHES_CONTAINER_PATH}"
-        )
-        execute_command(context=context, command=command_schema)
-
-
 def run_infrastructure_patch_scripts(
     context: Context,
     database: str,
@@ -84,11 +64,12 @@ def run_infrastructure_patch_scripts(
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
 
-        # TODO iterate over scripts within folder if/when we need multiple patch scripts
+        # Ideally iterate over scripts within folder if/when we need multiple patch scripts
+        script_folder_name = "fix_unique_ip_address"
         script_name = "dedup_ip_addresses.py"
 
         command_schema = (
             f"{base_cmd} run -v {Path(SCRIPTS_PATCHES_LOCAL_PATH).resolve()}:{SCRIPTS_PATCHES_CONTAINER_PATH} "
-            f"{SERVICE_WORKER_NAME} python {Path(SCRIPTS_PATCHES_CONTAINER_PATH) / script_name}"
+            f"{SERVICE_WORKER_NAME} python {Path(SCRIPTS_PATCHES_CONTAINER_PATH) / script_folder_name / script_name}"
         )
         execute_command(context=context, command=command_schema)

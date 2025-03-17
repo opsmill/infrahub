@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
-from itertools import chain
+from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
