@@ -47,6 +47,17 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Activated `ruff` C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
 - Added a basic integration test for the HTTP service adapter. ([#5553](https://github.com/opsmill/infrahub/issues/5553))
 
+## [Infrahub - v1.1.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.9) - 2025-03-16
+
+### Added
+
+- Improved the performance of the GraphQL cardinality-many relationship resolver by batching database calls together.
+
+### Fixed
+
+- Fixed a bug in the logic to merge a branch or proposed change which deleted hierarchical node information. Added a migration to correct the issue on existing databases. ([#6019](https://github.com/opsmill/infrahub/issues/6019))
+- Fixed a bug in one of the cypher queries to get related nodes that could cause a crash when trying to retrieve a schema from the database if that schema was merged in from a branch.
+
 ## [Infrahub - v1.1.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.8) - 2025-03-07
 
 ### Changed
