@@ -126,7 +126,7 @@ async def gather_trigger_computed_attribute_python(
     repositories = await client.get_list_repositories()
 
     all_computed_attributes: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
-    for branch in registry.branch.values():
+    for branch in list(registry.branch.values()):
         computed_attributes = await gather_python_transform_attributes(
             branch_name=branch.name, client=client, repositories=repositories
         )
