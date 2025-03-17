@@ -83,6 +83,7 @@ const sidebars: SidebarsConfig = {
         'guides/resource-manager',
         'guides/managing-api-tokens',
         'guides/computed-attributes',
+        'guides/object-template',
       ],
     },
     {
@@ -118,6 +119,7 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/computed-attributes',
+        'topics/object-template',
         'topics/activity-log',
         'topics/infrahub-event',
         'topics/tasks',
