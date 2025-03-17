@@ -474,6 +474,11 @@ async def test_sync_new_branch(
         json=admin_response,
         match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
     )
+    httpx_mock.add_response(
+        method="POST",
+        json=admin_response,
+        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-operational-status"},
+    )
 
     repo.client = client
     await repo.sync()
