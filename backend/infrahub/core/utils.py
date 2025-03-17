@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from inspect import isclass
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
@@ -23,9 +23,9 @@ async def add_relationship(
     dst_node_id: str,
     rel_type: str,
     db: InfrahubDatabase,
-    branch_name: Optional[str] = None,
-    branch_level: Optional[int] = None,
-    at: Optional[Timestamp] = None,
+    branch_name: str | None = None,
+    branch_level: int | None = None,
+    at: Timestamp | None = None,
     status=RelationshipStatus.ACTIVE,
 ) -> Record | None:
     create_rel_query = """
@@ -86,8 +86,8 @@ async def get_paths_between_nodes(
     db: InfrahubDatabase,
     source_id: str,
     destination_id: str,
-    relationships: Optional[list[str]] = None,
-    max_length: Optional[int] = None,
+    relationships: list[str] | None = None,
+    max_length: int | None = None,
     print_query=False,
 ) -> list[Record]:
     """Return all paths between 2 nodes."""
@@ -115,7 +115,7 @@ async def get_paths_between_nodes(
     return await db.execute_query(query=query, params=params, name="get_paths_between_nodes", type=QueryType.READ)
 
 
-async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None) -> int:
+async def count_relationships(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of relationships in the database."""
 
     label_str = f":{label}" if label else ""
@@ -141,7 +141,7 @@ async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
     return [result[0] for result in results]
 
 
-async def count_nodes(db: InfrahubDatabase, label: Optional[str] = None) -> int:
+async def count_nodes(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of nodes of a given label in the database."""
 
     label_str = f":{label}" if label else ""
@@ -183,7 +183,7 @@ def parse_node_kind(kind: str) -> NodeKind:
 
 
 def convert_ip_to_binary_str(
-    obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
+    obj: ipaddress.IPv6Network | ipaddress.IPv4Network | ipaddress.IPv4Interface | ipaddress.IPv6Interface,
 ) -> str:
     if isinstance(obj, ipaddress.IPv6Network | ipaddress.IPv4Network):
         prefix_bin = f"{int(obj.network_address):b}"

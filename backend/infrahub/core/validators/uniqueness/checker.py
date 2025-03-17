@@ -1,6 +1,5 @@
 import asyncio
 from itertools import chain
-from typing import Optional, Union
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -29,7 +28,7 @@ from .query import NodeUniqueAttributeConstraintQuery
 
 def get_attribute_path_from_string(
     path: str, schema: MainSchemaTypes
-) -> tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]:
+) -> tuple[AttributeSchema | RelationshipSchema, str | None]:
     if "__" in path:
         name, property_name = path.split("__")
     else:
@@ -45,7 +44,7 @@ def get_attribute_path_from_string(
 
 class UniquenessChecker(ConstraintCheckerInterface):
     def __init__(
-        self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, max_concurrent_execution: int = 5
+        self, db: InfrahubDatabase, branch: Branch | str | None = None, max_concurrent_execution: int = 5
     ) -> None:
         self.db = db
         self.branch = branch
@@ -189,14 +188,14 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     def get_uniqueness_violations(
         self, non_unique_node: NonUniqueNode
-    ) -> set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]:
-        constraint_violations: set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = set()
+    ) -> set[NonUniqueAttribute | NonUniqueRelatedAttribute]:
+        constraint_violations: set[NonUniqueAttribute | NonUniqueRelatedAttribute] = set()
         for attribute_schema in non_unique_node.node_schema.unique_attributes:
             violation = non_unique_node.get_attribute_violation(attribute_schema.name)
             if violation:
                 constraint_violations.add(violation)
         for uniqueness_constraint in non_unique_node.node_schema.uniqueness_constraints or []:
-            constraint_spec: list[tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]] = []
+            constraint_spec: list[tuple[AttributeSchema | RelationshipSchema, str | None]] = []
             for element in uniqueness_constraint:
                 sub_schema, property_name = get_attribute_path_from_string(element, non_unique_node.node_schema)
                 constraint_spec.append((sub_schema, property_name))

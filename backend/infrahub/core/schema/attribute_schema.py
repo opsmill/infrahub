@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import field_validator, model_validator
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
-    _enum_class: Optional[type[enum.Enum]] = None
+    _enum_class: type[enum.Enum] | None = None
 
     @property
     def is_attribute(self) -> bool:
@@ -82,7 +82,7 @@ class AttributeSchema(GeneratedAttributeSchema):
             self._enum_class = generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
         return self._enum_class
 
-    def convert_value_to_enum(self, value: Any) -> Optional[enum.Enum]:
+    def convert_value_to_enum(self, value: Any) -> enum.Enum | None:
         if isinstance(value, enum.Enum) or value is None:
             return value
         enum_class = self.get_enum_class()
@@ -121,11 +121,11 @@ class AttributeSchema(GeneratedAttributeSchema):
         self,
         name: str,
         filter_name: str,
-        branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool, list]] = None,
+        branch: Branch | None = None,
+        filter_value: str | int | bool | list | None = None,
         include_match: bool = True,
-        param_prefix: Optional[str] = None,
-        db: Optional[InfrahubDatabase] = None,
+        param_prefix: str | None = None,
+        db: InfrahubDatabase | None = None,
         partial_match: bool = False,
         support_profiles: bool = False,
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:

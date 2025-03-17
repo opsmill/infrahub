@@ -4,7 +4,7 @@ import copy
 import hashlib
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
@@ -74,7 +74,7 @@ class SchemaBranch:
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
     ):
-        self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
+        self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
@@ -269,7 +269,7 @@ class SchemaBranch:
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
-    def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
+    def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(
             name=name,
@@ -439,7 +439,7 @@ class SchemaBranch:
         return list(namespaces.values())
 
     def get_schemas_for_namespaces(
-        self, namespaces: Optional[list[str]] = None, include_internal: bool = False
+        self, namespaces: list[str] | None = None, include_internal: bool = False
     ) -> list[MainSchemaTypes]:
         """Retrive everything in a single dictionary."""
         all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
@@ -456,12 +456,12 @@ class SchemaBranch:
                 nodes.append(self.get(name=node_name, duplicate=True))
         return nodes
 
-    def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
+    def generate_fields_for_display_label(self, name: str) -> dict | None:
         node = self.get(name=name, duplicate=False)
         if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
-        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        fields: dict[str, str | None | dict[str, None]] = {}
         if isinstance(node, GenericSchema):
             for child_node_name in node.used_by:
                 child_node = self.get(name=child_node_name, duplicate=False)
@@ -626,7 +626,7 @@ class SchemaBranch:
         node_schema: BaseNodeSchema,
         path: str,
         allowed_path_types: SchemaElementPathType,
-        element_name: Optional[str] = None,
+        element_name: str | None = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{element_name}" if element_name else ""
@@ -905,7 +905,7 @@ class SchemaBranch:
             raise ValueError(f"Cycles exist among parents and components in schema: {exc.get_cycle_strings()}") from exc
 
     def _validate_parents_one_schema(
-        self, node_schema: Union[NodeSchema, GenericSchema], parent_relationships: list[RelationshipSchema]
+        self, node_schema: NodeSchema | GenericSchema, parent_relationships: list[RelationshipSchema]
     ) -> None:
         if not parent_relationships:
             return
@@ -1135,7 +1135,7 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            schema_to_update: NodeSchema | GenericSchema | None = None
             for relationship in node.relationships:
                 if relationship.on_delete is not None:
                     continue
