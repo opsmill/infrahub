@@ -40,6 +40,24 @@ Webhooks can also be configured to trigger based on branch types:
 
 This flexibility ensures that webhooks only trigger when relevant, depending on the use case. For example, you might configure a webhook to notify an external system only when a user makes changes directly to the default branch.
 
+### Node kind
+
+Node kinds can be configured to only trigger wehbooks for specific nodes. For example only send webhooks for the node kind of `InfraDevice`.
+
+:::note
+
+Node kind can only be used where `infrahub_node_kind_event` is `True` in [Infrahub events](../reference/infrahub-events.mdx). Below are some example events that are enabled:
+
+- `infrahub.node.*`
+- `infrahub.artifact.created`
+- `infrahub.artifact.deleted`
+- `infrahub.group.member_added`
+- `infrahub.group.member_removed`
+- `infrahub.validator.member_removed`
+
+
+:::
+
 ### Webhook configuration details
 
 - **Description**: A description can be set to identify the webhooks purpose.
