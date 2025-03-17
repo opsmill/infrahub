@@ -25,6 +25,12 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Description**: {{ event.description }}
 {% endif -%}
 
+
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: {% if event.infrahub_node_kind_event %}`true`{% else %}`false`{% endif %}
+
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|

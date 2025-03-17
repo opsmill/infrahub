@@ -87,18 +87,24 @@ class NodeMutatedEvent(InfrahubEvent):
 
 
 class NodeCreatedEvent(NodeMutatedEvent):
+    """Event generated when a node has been created"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.created"
     action: MutationAction = MutationAction.CREATED
     infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class NodeUpdatedEvent(NodeMutatedEvent):
+    """Event generated when a node has been updated"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.updated"
     action: MutationAction = MutationAction.UPDATED
     infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class NodeDeletedEvent(NodeMutatedEvent):
+    """Event generated when a node has been deleted"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.deleted"
     action: MutationAction = MutationAction.DELETED
     infrahub_node_kind_event: ClassVar[bool] = True

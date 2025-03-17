@@ -88,12 +88,16 @@ class GroupMutatedEvent(InfrahubEvent):
 
 
 class GroupMemberAddedEvent(GroupMutatedEvent):
+    """Event generated when a one or more members have been added to a group"""
+
     action: MutationAction = MutationAction.CREATED
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_added"
     infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class GroupMemberRemovedEvent(GroupMutatedEvent):
+    """Event generated when a one or more members have been removed to a group"""
+
     action: MutationAction = MutationAction.DELETED
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_removed"
     infrahub_node_kind_event: ClassVar[bool] = True

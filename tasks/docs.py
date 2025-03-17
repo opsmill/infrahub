@@ -510,6 +510,7 @@ def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
 
             event_info = {
                 "event_name": event_name_formatted,
+                "infrahub_node_kind_event": cls.infrahub_node_kind_event,
                 "event_type": event_type,
                 "description": description,
                 "fields": fields,
