@@ -83,7 +83,7 @@ class SchemaAttribute(BaseModel):
     @property
     def type_annotation(self) -> str:
         if self.optional_in_model:
-            return f"Optional[{self.object_kind}]"
+            return f"{self.object_kind} | None"
 
         return self.object_kind
 
