@@ -32,8 +32,8 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - name: From 1.0.0
-            source_version: 1.0.0
+          - name: From 1.1.0
+            source_version: 1.1.0
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
