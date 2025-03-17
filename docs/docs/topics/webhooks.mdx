@@ -48,7 +48,9 @@ Node kinds can be configured to only trigger wehbooks for specific nodes. For ex
 
 Node kind can only be used where `infrahub_node_kind_event` is `True` in [Infrahub events](../reference/infrahub-events.mdx). Below are some example events that are enabled:
 
-- `infrahub.node.*`
+- `infrahub.node.created`
+- `infrahub.node.updated`
+- `infrahub.node.deleted`
 - `infrahub.artifact.created`
 - `infrahub.artifact.deleted`
 - `infrahub.group.member_added`
