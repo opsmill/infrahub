@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import Field
 
 from infrahub.core.constants import BranchSupportType, HashableModelState
@@ -13,7 +11,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa:
 
 
 class GeneratedBaseNodeSchema(HashableModel):
-    id: Optional[str] = Field(
+    id: str | None = Field(
         default=None, description="The ID of the node", json_schema_extra={"update": "not_applicable"}
     )
     name: str = Field(
@@ -32,13 +30,13 @@ class GeneratedBaseNodeSchema(HashableModel):
         max_length=32,
         json_schema_extra={"update": "migration_required"},
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Short description of the model, will be visible in the frontend.",
         max_length=128,
         json_schema_extra={"update": "allowed"},
     )
-    label: Optional[str] = Field(
+    label: str | None = Field(
         default=None,
         description="Human friendly representation of the name/kind",
         max_length=64,
@@ -49,48 +47,48 @@ class GeneratedBaseNodeSchema(HashableModel):
         description="Type of branch support for the model.",
         json_schema_extra={"update": "not_supported"},
     )
-    default_filter: Optional[str] = Field(
+    default_filter: str | None = Field(
         default=None,
         description="Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)",
         pattern=r"^[a-z0-9\_]+$",
         json_schema_extra={"update": "allowed"},
     )
-    human_friendly_id: Optional[list[str]] = Field(
+    human_friendly_id: list[str] | None = Field(
         default=None,
         description="Human friendly and unique identifier for the object.",
         json_schema_extra={"update": "allowed"},
     )
-    display_labels: Optional[list[str]] = Field(
+    display_labels: list[str] | None = Field(
         default=None,
         description="List of attributes to use to generate the display label",
         json_schema_extra={"update": "allowed"},
     )
-    include_in_menu: Optional[bool] = Field(
+    include_in_menu: bool | None = Field(
         default=None,
         description="Defines if objects of this kind should be included in the menu.",
         json_schema_extra={"update": "allowed"},
     )
-    menu_placement: Optional[str] = Field(
+    menu_placement: str | None = Field(
         default=None,
         description="Defines where in the menu this object should be placed.",
         json_schema_extra={"update": "allowed"},
     )
-    icon: Optional[str] = Field(
+    icon: str | None = Field(
         default=None,
         description="Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
         json_schema_extra={"update": "allowed"},
     )
-    order_by: Optional[list[str]] = Field(
+    order_by: list[str] | None = Field(
         default=None,
         description="List of attributes to use to order the results by default",
         json_schema_extra={"update": "allowed"},
     )
-    uniqueness_constraints: Optional[list[list[str]]] = Field(
+    uniqueness_constraints: list[list[str]] | None = Field(
         default=None,
         description="List of multi-element uniqueness constraints that can combine relationships and attributes",
         json_schema_extra={"update": "validate_constraint"},
     )
-    documentation: Optional[str] = Field(
+    documentation: str | None = Field(
         default=None,
         description="Link to a documentation associated with this object, can be internal or external.",
         json_schema_extra={"update": "allowed"},
