@@ -14,8 +14,8 @@ async def test_gather_trigger_computed_attribute_jinja2_only_main(car_person_sch
     triggers = await gather_trigger_computed_attribute_jinja2()
     assert len(triggers) == 1
     trigger = triggers[0]
-    assert trigger.name == "TestCar_computed_desc"
-    assert trigger.generate_name() == "computed_attr_jinja2::main::TestCar_computed_desc"
+    assert trigger.name == "TestCar_computed_desc [TestCar]"
+    assert trigger.generate_name() == "computed_attr_jinja2::main::TestCar_computed_desc [TestCar]"
     assert "infrahub.branch.name" not in trigger.trigger.match
 
 
@@ -37,17 +37,22 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
     schema_branch.process()
     await branch.save(db=db)
 
-    name_main = "computed_attr_jinja2::main::TestCar_computed_desc"
-    name_branch = "computed_attr_jinja2::branch2::TestCar_computed_desc"
+    name_main = "computed_attr_jinja2::main::TestCar_computed_desc [TestCar]"
+    name_branch_first = "computed_attr_jinja2::branch2::TestCar_computed_desc [TestCar]"
+    name_branch_second = "computed_attr_jinja2::branch2::TestCar_computed_desc [TestPerson]"
 
     triggers = await gather_trigger_computed_attribute_jinja2()
     triggers_by_name = {trigger.generate_name(): trigger for trigger in triggers}
-    assert set(triggers_by_name.keys()) == {name_main, name_branch}
+    assert set(triggers_by_name.keys()) == {name_main, name_branch_first, name_branch_second}
 
     trigger_main = triggers_by_name[name_main]
     assert "infrahub.branch.name" in trigger_main.trigger.match
     assert trigger_main.trigger.match["infrahub.branch.name"] == ["!branch2"]
 
-    trigger_branch = triggers_by_name[name_branch]
+    trigger_branch = triggers_by_name[name_branch_first]
+    assert "infrahub.branch.name" in trigger_branch.trigger.match
+    assert trigger_branch.trigger.match["infrahub.branch.name"] == "branch2"
+
+    trigger_branch = triggers_by_name[name_branch_second]
     assert "infrahub.branch.name" in trigger_branch.trigger.match
     assert trigger_branch.trigger.match["infrahub.branch.name"] == "branch2"
