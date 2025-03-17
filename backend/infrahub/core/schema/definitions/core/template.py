@@ -10,3 +10,14 @@ core_object_template = {
     "uniqueness_constraints": [["template_name__value"]],
     "attributes": [{"name": "template_name", "kind": "Text", "optional": False, "unique": True, "order_weight": 1000}],
 }
+core_object_component_template = {
+    "name": "ObjectComponentTemplate",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "icon": "mdi:pencil-ruler",
+    "description": "Component template to create pre-shaped objects.",
+    "label": "Object Component Templates",
+    "display_labels": ["template_name__value"],
+    "default_filter": "template_name__value",
+    "attributes": [{"name": "template_name", "kind": "Text", "optional": False, "order_weight": 1000}],
+}
