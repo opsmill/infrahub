@@ -1,5 +1,3 @@
-from typing import Union
-
 from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
@@ -132,7 +130,7 @@ class ConstraintValidatorDeterminer:
         return constraints
 
     async def _get_constraints_for_one_field(
-        self, schema: MainSchemaTypes, field: Union[AttributeSchema, RelationshipSchema]
+        self, schema: MainSchemaTypes, field: AttributeSchema | RelationshipSchema
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in field.model_fields.items():

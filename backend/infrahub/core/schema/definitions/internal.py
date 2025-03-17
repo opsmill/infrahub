@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from types import GenericAlias
-from typing import Any, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import TypedDict
@@ -46,17 +46,17 @@ class SchemaAttribute(BaseModel):
     kind: str
     description: str
     extra: ExtraField
-    internal_kind: Optional[Union[type[Any], GenericAlias]] = None
-    regex: Optional[str] = None
-    unique: Optional[bool] = None
-    optional: Optional[bool] = None
-    min_length: Optional[int] = None
-    max_length: Optional[int] = None
-    enum: Optional[list[str]] = None
-    default_value: Optional[Any] = None
-    default_factory: Optional[str] = None
+    internal_kind: type[Any] | GenericAlias | None = None
+    regex: str | None = None
+    unique: bool | None = None
+    optional: bool | None = None
+    min_length: int | None = None
+    max_length: int | None = None
+    enum: list[str] | None = None
+    default_value: Any | None = None
+    default_factory: str | None = None
     default_to_none: bool = False
-    override_default_value: Optional[Any] = Field(
+    override_default_value: Any | None = Field(
         default=None,
         description="Currently optional is defined with different defaults for the Pydantic models compared to the internal_schema dictionary",
     )
@@ -150,8 +150,8 @@ class SchemaAttribute(BaseModel):
 class SchemaRelationship(BaseModel):
     name: str
     peer: str
-    description: Optional[str] = None
-    kind: Optional[str] = None
+    description: str | None = None
+    kind: str | None = None
     identifier: str
     cardinality: str
     branch: str
@@ -166,7 +166,7 @@ class SchemaNode(BaseModel):
     namespace: str
     branch: str
     include_in_menu: bool
-    default_filter: Optional[str] = None
+    default_filter: str | None = None
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_labels: list[str]
@@ -199,7 +199,7 @@ class SchemaNode(BaseModel):
 
 @dataclass
 class InternalSchema:
-    version: Optional[str]
+    version: str | None
     nodes: list[SchemaNode]
 
     def to_dict(self) -> dict[str, Any]:

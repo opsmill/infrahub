@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 class StandardNodeQuery(Query):
     def __init__(
-        self, node: StandardNode = None, node_id: Optional[str] = None, node_db_id: Optional[int] = None, **kwargs: Any
+        self, node: StandardNode = None, node_id: str | None = None, node_db_id: int | None = None, **kwargs: Any
     ):
         self.node = node
         self.node_id = node_id
@@ -120,7 +120,7 @@ class StandardNodeGetListQuery(Query):
     type = QueryType.READ
 
     def __init__(
-        self, node_class: StandardNode, ids: Optional[list[str]] = None, node_name: Optional[str] = None, **kwargs: Any
+        self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, **kwargs: Any
     ) -> None:
         self.ids = ids
         self.node_name = node_name

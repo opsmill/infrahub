@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator, Optional, Union
+from typing import TYPE_CHECKING, Generator
 
 from infrahub_sdk.uuidt import UUIDT
 
@@ -79,24 +79,24 @@ class RelationshipPeerData:
     peer_kind: str
     """Kind of the Peer Node."""
 
-    properties: dict[str, Union[FlagPropertyData, NodePropertyData]]
+    properties: dict[str, FlagPropertyData | NodePropertyData]
     """UUID of the Relationship Node."""
 
-    rel_node_id: Optional[UUID] = None
+    rel_node_id: UUID | None = None
     """UUID of the Relationship Node."""
 
-    peer_db_id: Optional[str] = None
+    peer_db_id: str | None = None
     """Internal DB ID of the Peer Node."""
 
-    rel_node_db_id: Optional[str] = None
+    rel_node_db_id: str | None = None
     """Internal DB ID of the Relationship Node."""
 
-    rels: Optional[list[RelData]] = None
+    rels: list[RelData] | None = None
     """Both relationships pointing at this Relationship Node."""
 
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
-    def rel_ids_per_branch(self) -> dict[str, list[Union[str, int]]]:
+    def rel_ids_per_branch(self) -> dict[str, list[str | int]]:
         response = defaultdict(list)
         for rel in self.rels:
             response[rel.branch].append(rel.db_id)
@@ -137,15 +137,15 @@ class FullRelationshipIdentifier:
 class RelationshipQuery(Query):
     def __init__(
         self,
-        rel: Union[type[Relationship], Relationship] | None = None,
-        rel_type: Optional[str] = None,
+        rel: type[Relationship] | Relationship | None = None,
+        rel_type: str | None = None,
         source: Node | None = None,
         source_id: UUID | None = None,
         destination: Node | None = None,
         destination_id: UUID | None = None,
         schema: RelationshipSchema | None = None,
         branch: Branch | None = None,
-        at: Union[Timestamp, str] | None = None,
+        at: Timestamp | str | None = None,
         **kwargs,
     ):
         if not source and not source_id:
@@ -185,7 +185,7 @@ class RelationshipQuery(Query):
 
         super().__init__(**kwargs)
 
-    def get_relationship_properties_dict(self, status: RelationshipStatus) -> dict[str, Optional[str]]:
+    def get_relationship_properties_dict(self, status: RelationshipStatus) -> dict[str, str | None]:
         rel_prop_dict = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
@@ -523,15 +523,15 @@ class RelationshipGetPeerQuery(Query):
 
     def __init__(
         self,
-        filters: Optional[dict] = None,
-        source: Optional[Node] = None,
-        source_ids: Optional[list[str]] = None,
-        source_kind: Optional[str] = None,
-        rel: Optional[Union[type[Relationship], Relationship]] = None,
-        rel_type: Optional[str] = None,
-        schema: Optional[RelationshipSchema] = None,
-        branch: Optional[Branch] = None,
-        at: Optional[Union[Timestamp, str]] = None,
+        filters: dict | None = None,
+        source: Node | None = None,
+        source_ids: list[str] | None = None,
+        source_kind: str | None = None,
+        rel: type[Relationship] | Relationship | None = None,
+        rel_type: str | None = None,
+        schema: RelationshipSchema | None = None,
+        branch: Branch | None = None,
+        at: Timestamp | str | None = None,
         **kwargs,
     ):
         if not source and not source_ids:
@@ -831,9 +831,9 @@ class RelationshipGetByIdentifierQuery(Query):
 
     def __init__(
         self,
-        identifiers: Optional[list[str]] = None,
-        full_identifiers: Optional[list[FullRelationshipIdentifier]] = None,
-        excluded_namespaces: Optional[list[str]] = None,
+        identifiers: list[str] | None = None,
+        full_identifiers: list[FullRelationshipIdentifier] | None = None,
+        excluded_namespaces: list[str] | None = None,
         **kwargs,
     ) -> None:
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
