@@ -124,9 +124,6 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
     ) -> Self:
         """
         This function is used to create a trigger definition for a computed attribute of type Jinja2.
-
-        NOTE: Currently the function will create a single trigger per computed attribute but we need to refactor it
-        to create a trigger per source node type AND filter on the specific fields for each node type
         """
         event_trigger = EventTrigger()
         event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
@@ -167,7 +164,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         )
 
         definition = cls(
-            name=f"{computed_attribute.key_name} [{trigger_node.kind}]",
+            name=f"{computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{trigger_node.kind}",
             branch=branch,
             computed_attribute=computed_attribute,
             trigger=event_trigger,
