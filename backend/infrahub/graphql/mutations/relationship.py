@@ -14,7 +14,6 @@ from infrahub.core.constants import (
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
-    RelationshipHierarchyDirection,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetKindQuery
@@ -23,7 +22,6 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import NodeSchema
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
@@ -32,6 +30,7 @@ from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
+from infrahub.groups.ancestors import collect_ancestors
 from infrahub.permissions import get_global_permission_for_kind
 
 from ..types import RelatedNodeInput
@@ -119,7 +118,12 @@ class RelationshipAdd(Mutation):
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
-                ancestors = await _collect_ancestors(info=info, node_kind=source.get_schema().kind, node_id=source.id)
+                ancestors = await collect_ancestors(
+                    db=graphql_context.db,
+                    branch=graphql_context.branch,
+                    node_kind=source.get_schema().kind,
+                    node_id=source.id,
+                )
                 group_add_event = GroupMemberAddedEvent(
                     node_id=source.id,
                     kind=source.get_schema().kind,
@@ -137,7 +141,9 @@ class RelationshipAdd(Mutation):
                     node_kind_map = await node_kind_query.get_node_kind_map()
 
                     for node_id, node_kind in node_kind_map.items():
-                        ancestors = await _collect_ancestors(info=info, node_kind=node_kind, node_id=node_id)
+                        ancestors = await collect_ancestors(
+                            db=graphql_context.db, branch=graphql_context.branch, node_kind=node_kind, node_id=node_id
+                        )
                         group_add_event = GroupMemberAddedEvent(
                             node_id=node_id,
                             kind=node_kind,
@@ -234,7 +240,12 @@ class RelationshipRemove(Mutation):
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
-                ancestors = await _collect_ancestors(info=info, node_kind=source.get_schema().kind, node_id=source.id)
+                ancestors = await collect_ancestors(
+                    db=graphql_context.db,
+                    branch=graphql_context.branch,
+                    node_kind=source.get_schema().kind,
+                    node_id=source.id,
+                )
                 group_remove_event = GroupMemberRemovedEvent(
                     node_id=source.id,
                     kind=source.get_schema().kind,
@@ -251,7 +262,9 @@ class RelationshipRemove(Mutation):
                     node_kind_map = await node_kind_query.get_node_kind_map()
 
                     for node_id, node_kind in node_kind_map.items():
-                        ancestors = await _collect_ancestors(info=info, node_kind=node_kind, node_id=node_id)
+                        ancestors = await collect_ancestors(
+                            db=graphql_context.db, branch=graphql_context.branch, node_kind=node_kind, node_id=node_id
+                        )
                         group_remove_event = GroupMemberRemovedEvent(
                             node_id=node_id,
                             kind=node_kind,
@@ -391,24 +404,6 @@ async def _validate_peer_types(
                     raise ValidationError(
                         f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
                     )
-
-
-async def _collect_ancestors(info: GraphQLResolveInfo, node_kind: str, node_id: str) -> list[EventNode]:
-    graphql_context: GraphqlContext = info.context
-    schema = graphql_context.db.schema.get(name=node_kind, branch=graphql_context.branch)
-
-    if not isinstance(schema, NodeSchema):
-        return []
-
-    ancestors = await NodeManager.query_hierarchy(
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        direction=RelationshipHierarchyDirection.ANCESTORS,
-        id=node_id,
-        node_schema=schema,
-        filters={"id": None},
-    )
-    return [EventNode(id=ancestor.get_id(), kind=ancestor.get_kind()) for ancestor in ancestors.values()]
 
 
 async def _collect_current_peers(
