@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -18,8 +17,8 @@ class ChangedIpamNodeDetails:
     node_uuid: str
     is_address: bool
     is_delete: bool
-    namespace_id: Optional[str]
-    ip_value: Optional[str]
+    namespace_id: str | None
+    ip_value: str | None
 
 
 class IpamDiffParser:
@@ -142,7 +141,7 @@ class IpamDiffParser:
             uuids_missing_data=uuids_missing_data,
         )
 
-    def _get_ip_value(self, node_diff: EnrichedDiffNode) -> Optional[str]:
+    def _get_ip_value(self, node_diff: EnrichedDiffNode) -> str | None:
         ip_attr_diff = None
         for diff_attr in node_diff.attributes:
             if diff_attr.name in {"prefix", "address"}:
@@ -155,7 +154,7 @@ class IpamDiffParser:
                 return diff_property.new_value or diff_property.previous_value
         return None
 
-    def _get_namespace_id(self, node_diff: EnrichedDiffNode) -> Optional[str]:
+    def _get_namespace_id(self, node_diff: EnrichedDiffNode) -> str | None:
         namespace_rel = None
         for diff_rel in node_diff.relationships:
             if diff_rel.name == "ip_namespace":

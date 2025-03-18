@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from infrahub.core.constants import (
@@ -99,7 +99,7 @@ class DiffPropertyIntermediate:
         return self._ordered_values
 
     @property
-    def earliest_diff_value(self) -> Optional[DiffValueIntermediate]:
+    def earliest_diff_value(self) -> DiffValueIntermediate | None:
         ordered_values = self.get_ordered_values_asc()
         if not ordered_values:
             return None
@@ -461,7 +461,7 @@ class DiffQueryParser:
         diff_branch: Branch,
         schema_manager: SchemaManager,
         from_time: Timestamp,
-        to_time: Optional[Timestamp] = None,
+        to_time: Timestamp | None = None,
         previous_node_field_specifiers: dict[str, set[str]] | None = None,
     ) -> None:
         self.base_branch_name = base_branch.name
@@ -733,7 +733,7 @@ class DiffQueryParser:
                 base_property_set = base_diff_relationship.properties_by_db_id.get(db_id)
                 if not base_property_set:
                     continue
-                base_diff_property_by_type: dict[DatabaseEdgeType, Optional[DiffRelationshipPropertyIntermediate]] = {
+                base_diff_property_by_type: dict[DatabaseEdgeType, DiffRelationshipPropertyIntermediate | None] = {
                     DatabaseEdgeType(p.property_type): None for p in property_set
                 }
                 base_diff_property_by_type[DatabaseEdgeType.IS_RELATED] = None

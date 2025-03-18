@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
@@ -570,14 +570,14 @@ class AccountTokenValidateQuery(Query):
 
         self.return_labels = ["at", "av", "acc"]
 
-    def get_account_name(self) -> Optional[str]:
+    def get_account_name(self) -> str | None:
         """Return the account name that matched the query or None."""
         if result := self.get_result():
             return result.get("av").get("value")
 
         return None
 
-    def get_account_id(self) -> Optional[str]:
+    def get_account_id(self) -> str | None:
         """Return the account id that matched the query or a None."""
         if result := self.get_result():
             return result.get("acc").get("uuid")
@@ -585,7 +585,7 @@ class AccountTokenValidateQuery(Query):
         return None
 
 
-async def validate_token(token: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> str | None:
+async def validate_token(token: str, db: InfrahubDatabase, branch: Branch | str | None = None) -> str | None:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token)
     await query.execute(db=db)

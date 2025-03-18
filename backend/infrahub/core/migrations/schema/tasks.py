@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
@@ -33,7 +33,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData, service: In
     for migration in message.migrations:
         log.info(f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})")
 
-        new_node_schema: Optional[MainSchemaTypes] = None
+        new_node_schema: MainSchemaTypes | None = None
 
         if message.new_schema.has(name=migration.path.schema_kind):
             new_node_schema = message.new_schema.get(name=migration.path.schema_kind)

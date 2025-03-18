@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -18,12 +17,12 @@ from .interface import RelationshipManagerConstraintInterface
 class NodeToValidate:
     uuid: str
     cardinality: RelationshipCardinality
-    min_count: Optional[int] = None
-    max_count: Optional[int] = None
+    min_count: int | None = None
+    max_count: int | None = None
 
 
 class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 

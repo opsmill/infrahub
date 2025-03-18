@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.schema import NodeSchema
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class RelationshipProfilesKindConstraint(RelationshipManagerConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name if branch else registry.default_branch)
