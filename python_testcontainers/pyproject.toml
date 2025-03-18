@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-include = ["infrahub_testcontainers/docker-compose.test.yml"]
+include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/haproxy.cfg"]
 
 [tool.poetry.plugins."pytest11"]
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
@@ -33,3 +33,8 @@ python = "^3.9"
 testcontainers = "~4.8"
 psutil = "*"
 pytest = "*"
+httpx = "^0.28.1"
+pydantic = "^2.10.6"
+
+[tool.poetry.group.dev.dependencies]
+rich = "^13.9.4"
