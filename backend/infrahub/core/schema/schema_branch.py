@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
-from itertools import chain
+from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
@@ -241,12 +241,6 @@ class SchemaBranch:
         for item_kind in other_only:
             other_item = schema.get(name=item_kind)
             self.set(name=item_kind, schema=other_item)
-
-        # for item_kind in local_only:
-        #     if item_kind in self.nodes:
-        #         del self.nodes[item_kind]
-        #     else:
-        #         del self.generics[item_kind]
 
     def validate_node_deletions(self, diff: SchemaDiff) -> None:
         """Given a diff, check if a deleted node is still used in relationships of other nodes."""
@@ -728,10 +722,12 @@ class SchemaBranch:
             for attr_name in attrs_to_make_unique:
                 attr_schema = node_schema.get_attribute(name=attr_name)
                 attr_schema.unique = True
+
             if attrs_to_add_to_constraints:
                 node_schema.uniqueness_constraints = (node_schema.uniqueness_constraints or []) + sorted(
                     [[f"{attr_name}__value"] for attr_name in attrs_to_add_to_constraints]
                 )
+
             self.set(name=name, schema=node_schema)
 
     def validate_uniqueness_constraints(self) -> None:
@@ -826,15 +822,30 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
+    def _is_attr_combination_unique(self, attrs_paths: list[str], uniqueness_constraints: list[list[str]]) -> bool:
+        """
+        Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
+        """
+
+        unique_constraint_group_sets = [set(ucg) for ucg in uniqueness_constraints]
+        for i in range(1, len(attrs_paths) + 1):
+            for attr_combo in combinations(attrs_paths, i):
+                if any(ucg == set(attr_combo) for ucg in unique_constraint_group_sets):
+                    return True
+        return False
+
     def validate_human_friendly_id(self) -> None:
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
-            hf_attr_names = set()
 
             if not node_schema.human_friendly_id:
                 continue
 
             allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR
+
+            # Mapping relationship identifiers -> list of attributes paths
+            rel_schemas_to_paths: dict[str, tuple[MainSchemaTypes, list[str]]] = {}
+
             for hfid_path in node_schema.human_friendly_id:
                 schema_path = self.validate_schema_path(
                     node_schema=node_schema,
@@ -843,8 +854,19 @@ class SchemaBranch:
                     element_name="human_friendly_id",
                 )
 
-                if schema_path.is_type_attribute:
-                    hf_attr_names.add(schema_path.attribute_schema.name)
+                if schema_path.is_type_relationship:
+                    # Construct the name without relationship prefix to match with how it would be defined in peer schema uniqueness constraint
+                    rel_identifier = schema_path.relationship_schema.identifier
+                    if rel_identifier not in rel_schemas_to_paths:
+                        rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
+                    rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
+
+            # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
+            for related_schema, attrs_paths in rel_schemas_to_paths.values():
+                if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                    raise ValidationError(
+                        f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                    )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
@@ -1159,42 +1181,50 @@ class SchemaBranch:
             #   but some the model has some unique attribute, we generate a human_friendly_id
             # If human_friendly_id IS defined
             #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
-            if not node.human_friendly_id and node.unique_attributes:
-                for attr in node.unique_attributes:
-                    node = self.get(name=name, duplicate=True)
-                    node.human_friendly_id = [f"{attr.name}__value"]
-                    self.set(name=node.kind, schema=node)
-                    break
-                continue
-
-            # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
-            # then use that attribute as the human_friendly_id
-            if not node.human_friendly_id and node.uniqueness_constraints:
-                for constraint_paths in node.uniqueness_constraints:
-                    if len(constraint_paths) > 1:
-                        continue
-                    constraint_path = constraint_paths[0]
-                    schema_path = node.parse_schema_path(path=constraint_path, schema=node)
-                    if (
-                        schema_path.is_type_attribute
-                        and schema_path.attribute_property_name == "value"
-                        and schema_path.attribute_schema
-                    ):
+            if not node.human_friendly_id:
+                if node.unique_attributes:
+                    for attr in node.unique_attributes:
                         node = self.get(name=name, duplicate=True)
-                        node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                        node.human_friendly_id = [f"{attr.name}__value"]
                         self.set(name=node.kind, schema=node)
                         break
+                    continue
 
-            if node.human_friendly_id and not node.uniqueness_constraints:
-                uniqueness_constraints: list[str] = []
+                # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
+                # then use that attribute as the human_friendly_id
+                if node.uniqueness_constraints:
+                    for constraint_paths in node.uniqueness_constraints:
+                        if len(constraint_paths) > 1:
+                            continue
+                        constraint_path = constraint_paths[0]
+                        schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                        if (
+                            schema_path.is_type_attribute
+                            and schema_path.attribute_property_name == "value"
+                            and schema_path.attribute_schema
+                        ):
+                            node = self.get(name=name, duplicate=True)
+                            node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                            self.set(name=node.kind, schema=node)
+                            break
+
+            # Add hfid to uniqueness constraint
+            if node.human_friendly_id:
+                uniqueness_constraint: list[str] = []
                 for item in node.human_friendly_id:
                     schema_attribute_path = node.parse_schema_path(path=item, schema=self)
                     if schema_attribute_path.is_type_attribute:
-                        uniqueness_constraints.append(item)
+                        uniqueness_constraint.append(item)
                     elif schema_attribute_path.is_type_relationship:
-                        uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
+                        uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
 
-                node.uniqueness_constraints = [uniqueness_constraints]
+                node = self.get(name=name, duplicate=True)
+                # Make sure there is no duplicate regarding generics values.
+                if node.uniqueness_constraints:
+                    if uniqueness_constraint not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(uniqueness_constraint)
+                else:
+                    node.uniqueness_constraints = [uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:

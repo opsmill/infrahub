@@ -75,8 +75,12 @@ jobs:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
       - name: Check Demo Status
         run: invoke demo.status
-      - name: Load Data
+      - name: Load Infra Data
         run: invoke demo.load-infra-data
+        env:
+          PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+      - name: Run infra data patch scripts
+        run: invoke demo.run-infra-patch-scripts
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
       - name: Stop Demo
