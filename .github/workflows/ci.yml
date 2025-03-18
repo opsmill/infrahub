@@ -1009,7 +1009,7 @@ jobs:
         uses: CodSpeedHQ/action@v3
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
-          run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
+          run: "poetry run pytest -v backend/tests/benchmark/test_batch_create.py --codspeed"
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:

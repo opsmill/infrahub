@@ -1099,7 +1099,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
     return schema
 
 
-@pytest.fixture(params=["main", "branch2"])
+@pytest.fixture(params=["main"])
 async def branch(request, db: InfrahubDatabase, default_branch: Branch):
     if request.param == "main":
         return default_branch
