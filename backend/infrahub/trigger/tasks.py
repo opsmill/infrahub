@@ -14,12 +14,12 @@ from .setup import setup_triggers
 
 @flow(name="trigger-configure-all", flow_run_name="Configure all triggers")
 async def trigger_configure_all(service: InfrahubServices) -> None:
-    webhook_trigger = await gather_trigger_webhook(client=service.client)
+    webhook_trigger = await gather_trigger_webhook(db=service.database)
     computed_attribute_j2_triggers = await gather_trigger_computed_attribute_jinja2()
     (
         computed_attribute_python_triggers,
         computed_attribute_python_query_triggers,
-    ) = await gather_trigger_computed_attribute_python(client=service.client)
+    ) = await gather_trigger_computed_attribute_python(db=service.database)
 
     triggers = (
         computed_attribute_j2_triggers

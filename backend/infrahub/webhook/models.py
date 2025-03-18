@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from httpx import Response
     from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython, CoreWebhook
 
+    from infrahub.core.protocols import CoreWebhook as CoreWebhookNode
     from infrahub.services import InfrahubServices
 
 
@@ -37,7 +38,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
         return f"{TriggerType.WEBHOOK.value}{NAME_SEPARATOR}{id}"
 
     @classmethod
-    def from_object(cls, obj: CoreWebhook) -> Self:
+    def from_object(cls, obj: CoreWebhook | CoreWebhookNode) -> Self:
         event_trigger = EventTrigger()
         if obj.event_type.value == "all":
             event_trigger.events.add("infrahub.*")

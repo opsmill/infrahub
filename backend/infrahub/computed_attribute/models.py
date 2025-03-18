@@ -31,7 +31,7 @@ from infrahub.workflows.catalogue import (
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub_sdk.data import RepositoryData
+    from infrahub.git.models import RepositoryData
 
 
 class ComputedAttributeAutomations(BaseModel):

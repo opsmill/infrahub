@@ -88,11 +88,12 @@ class TestComputedAttribute(TestInfrahubApp):
 
     async def test_gather_trigger_computed_attribute_python_main(
         self,
+        db: InfrahubDatabase,
         data: dict[str, Node],
         client: InfrahubClient,
         default_branch: Branch,
     ) -> None:
-        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(client=client)
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
         assert len(triggers_python) == 1
         assert triggers_python[0].generate_name() == "computed_attr_python::main::TestingTShirt_pitch"
         assert len(triggers_python_query) == 1
@@ -100,6 +101,7 @@ class TestComputedAttribute(TestInfrahubApp):
 
     async def test_gather_trigger_computed_attribute_python_branch(
         self,
+        db: InfrahubDatabase,
         data: dict[str, Node],
         client: InfrahubClient,
         default_branch: Branch,
@@ -110,7 +112,7 @@ class TestComputedAttribute(TestInfrahubApp):
         repo.commit.value = "decc6d49679404b201c54bbe7b0c788e268e25b7"
         await repo.save()
 
-        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(client=client)
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
         assert len(triggers_python) == 2
         assert len(triggers_python_query) == 2
 
