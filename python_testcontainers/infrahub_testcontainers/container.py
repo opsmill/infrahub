@@ -60,6 +60,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
 @dataclass
 class InfrahubDockerCompose(DockerCompose):
     project_name: str | None = None
+    profiles: list[str] = field(default_factory=list)
     env_vars: dict[str, str] = field(default_factory=dict)
 
     @classmethod
@@ -187,6 +188,8 @@ class InfrahubDockerCompose(DockerCompose):
                 docker_compose_cmd += ["-f", file]
         if self.project_name:
             docker_compose_cmd += ["--project-name", self.project_name]
+        for profile in self.profiles:
+            docker_compose_cmd += ["--profile", profile]
         if self.env_file:
             docker_compose_cmd += ["--env-file", self.env_file]
         return docker_compose_cmd
