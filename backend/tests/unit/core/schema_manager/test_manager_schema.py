@@ -2936,6 +2936,8 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind):
 
     # Verify the generated template
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
+    assert test_object_template_thing.human_friendly_id == ["template_name__value"]
+    assert test_object_template_thing.uniqueness_constraints == [["template_name__value"]]
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
     ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
@@ -2993,6 +2995,8 @@ async def test_manage_object_templates_with_component_relationships():
 
     # Verify attributes mapping of components
     test_interface_template = schema_branch.get(name=f"Template{TestKind.PHYSICAL_INTERFACE}", duplicate=False)
+    assert test_interface_template.human_friendly_id == ["device__template_name__value", "template_name__value"]
+    assert test_interface_template.uniqueness_constraints == [["template_name__value", "device"]]
     test_interface = schema_branch.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False)
     for attr in test_interface.attributes:
         template_attr = test_interface_template.get_attribute(name=attr.name)

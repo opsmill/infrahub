@@ -1875,6 +1875,12 @@ class SchemaBranch:
                 )
             )
 
+            if relationship.kind == RelationshipKind.PARENT:
+                template_schema.human_friendly_id = [
+                    f"{relationship.name}__template_name__value"
+                ] + template_schema.human_friendly_id
+                template_schema.uniqueness_constraints[0].append(relationship.name)
+
     def generate_object_template_from_node(
         self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]
     ) -> TemplateSchema | GenericSchema:
@@ -1895,7 +1901,7 @@ class SchemaBranch:
         template: TemplateSchema | GenericSchema
         need_template_kinds = [n.kind for n in need_templates]
 
-        if isinstance(node, GenericSchema):
+        if node.is_generic_schema:
             # When needing a template for a generic, we generate an empty shell mostly to make sure that schemas (including the GraphQL one) will
             # look right. We don't really care about applying inheritance of fields as it was already processed and actual templates will have the
             # correct attributes and relationships
