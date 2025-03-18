@@ -187,3 +187,18 @@ class CheckRepositoryMergeConflicts(BaseModel):
     repository_name: str = Field(..., description="The name of the Repository")
     source_branch: str = Field(..., description="The source branch")
     target_branch: str = Field(..., description="The target branch")
+
+
+class RepositoryBranchInfo(BaseModel):
+    internal_status: str
+
+
+class RepositoryData(BaseModel):
+    repository_id: str = Field(..., description="Id of the repository")
+    repository_name: str = Field(..., description="Name of the repository")
+    branches: dict[str, str] = Field(
+        ...,
+        description="Dictionary with the name of the branch as the key and the active commit id as the value",
+    )
+
+    branch_info: dict[str, RepositoryBranchInfo] = Field(default_factory=dict)

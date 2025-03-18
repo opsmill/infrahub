@@ -30,6 +30,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -564,7 +565,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one):
-    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
     schema = SchemaBranch(cache={}, name="test")
@@ -2835,10 +2836,9 @@ async def test_hierarchical_validate_parent_children(
 
 
 async def test_schema_branch_add_object_template_schema():
-    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+    device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2852,10 +2852,9 @@ async def test_schema_branch_add_object_template_schema():
 
 
 async def test_schema_branch_remove_object_template_schema():
-    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+    device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2882,13 +2881,9 @@ async def test_schema_branch_remove_object_template_schema():
 
 
 async def test_schema_branch_diff_core_object_template():
-    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
-    core_component_template_schema = GenericSchema(
-        **_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTCOMPONENTTEMPLATE)
-    )
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    device_schema = SchemaRoot(generics=[core_template_schema, core_component_template_schema], nodes=[SIMPLE_DEVICE])
+    device_schema = SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2903,7 +2898,7 @@ async def test_schema_branch_diff_core_object_template():
     diff = new_schema.diff(other=schema)
     assert diff.all == [InfrahubKind.OBJECTTEMPLATE]
 
-    DEVICE_SCHEMA.generics.extend([core_template_schema, core_component_template_schema])
+    DEVICE_SCHEMA.generics.extend([core_object_template, core_object_component_template])
     new_schema = SchemaBranch(cache={}, name="test")
     new_schema.load_schema(schema=DEVICE_SCHEMA)
     new_schema.process_inheritance()
@@ -2941,6 +2936,8 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind):
 
     # Verify the generated template
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
+    assert test_object_template_thing.human_friendly_id == ["template_name__value"]
+    assert test_object_template_thing.uniqueness_constraints == [["template_name__value"]]
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
     ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
@@ -2998,6 +2995,8 @@ async def test_manage_object_templates_with_component_relationships():
 
     # Verify attributes mapping of components
     test_interface_template = schema_branch.get(name=f"Template{TestKind.PHYSICAL_INTERFACE}", duplicate=False)
+    assert test_interface_template.human_friendly_id == ["device__template_name__value", "template_name__value"]
+    assert test_interface_template.uniqueness_constraints == [["template_name__value", "device"]]
     test_interface = schema_branch.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False)
     for attr in test_interface.attributes:
         template_attr = test_interface_template.get_attribute(name=attr.name)

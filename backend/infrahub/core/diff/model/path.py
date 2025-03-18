@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import (
     BranchSupportType,
@@ -848,13 +848,13 @@ class DatabasePath:
         return "Node" in self.property_node.labels
 
     @property
-    def peer_id(self) -> Optional[str]:
+    def peer_id(self) -> str | None:
         if not self.property_is_peer:
             return None
         return str(self.property_node.get("uuid"))
 
     @property
-    def peer_kind(self) -> Optional[str]:
+    def peer_kind(self) -> str | None:
         if not self.property_is_peer:
             return None
         return str(self.property_node.get("kind"))

@@ -27,10 +27,10 @@ from infrahub.menu.utils import create_default_menu
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
     setup_deployments,
-    setup_task_manager,
     setup_worker_pools,
 )
 
@@ -89,17 +89,11 @@ async def upgrade_cmd(
     # -------------------------------------------
     # Upgrade External system : Task Manager
     # -------------------------------------------
-    await setup_task_manager()
-
     async with get_client(sync_client=False) as client:
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
-        # await setup_triggers(
-        #     client=client,
-        #     triggers=builtin_triggers,
-        #     trigger_type=TriggerType.BUILTIN,
-        # )
+        await trigger_configure_all(service=service)
 
     await dbdriver.close()
 

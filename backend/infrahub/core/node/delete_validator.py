@@ -1,6 +1,6 @@
 from collections import defaultdict
 from enum import Enum
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -124,16 +124,14 @@ class NodeDeleteValidator:
         self._all_schemas_map = schema_branch.get_all(duplicate=False)
         self.index: NodeDeleteIndex = NodeDeleteIndex(all_schemas_map=self._all_schemas_map)
 
-    async def get_ids_to_delete(self, nodes: Iterable[Node], at: Optional[Union[Timestamp, str]] = None) -> set[str]:
+    async def get_ids_to_delete(self, nodes: Iterable[Node], at: Timestamp | str | None = None) -> set[str]:
         start_schemas = {node.get_schema() for node in nodes}
         self.index.index(start_schemas=start_schemas)
         at = Timestamp(at)
 
         return await self._analyze_delete_dependencies(start_nodes=nodes, at=at)
 
-    async def _analyze_delete_dependencies(
-        self, start_nodes: Iterable[Node], at: Optional[Union[Timestamp, str]]
-    ) -> set[str]:
+    async def _analyze_delete_dependencies(self, start_nodes: Iterable[Node], at: Timestamp | str | None) -> set[str]:
         full_relationship_identifiers = self.index.get_relationship_identifiers()
         if not full_relationship_identifiers:
             return {node.get_id() for node in start_nodes}

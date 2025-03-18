@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from netaddr import IPSet
 
@@ -28,11 +28,11 @@ class CoreIPPrefixPool(Node):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        identifier: Optional[str] = None,
-        data: Optional[dict[str, Any]] = None,
-        prefixlen: Optional[int] = None,
-        member_type: Optional[str] = None,
-        prefix_type: Optional[str] = None,
+        identifier: str | None = None,
+        data: dict[str, Any] | None = None,
+        prefixlen: int | None = None,
+        member_type: str | None = None,
+        prefix_type: str | None = None,
     ) -> Node:
         # Check if there is already a resource allocated with this identifier
         # if not, pull all existing prefixes and allocated the next available

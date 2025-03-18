@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
@@ -26,10 +26,10 @@ class CoreIPAddressPool(Node):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        identifier: Optional[str] = None,
-        data: Optional[dict[str, Any]] = None,
-        address_type: Optional[str] = None,
-        prefixlen: Optional[int] = None,
+        identifier: str | None = None,
+        data: dict[str, Any] | None = None,
+        address_type: str | None = None,
+        prefixlen: int | None = None,
     ) -> Node:
         # Check if there is already a resource allocated with this identifier
         # if not, pull all existing prefixes and allocated the next available
@@ -80,7 +80,7 @@ class CoreIPAddressPool(Node):
 
         return node
 
-    async def get_next(self, db: InfrahubDatabase, prefixlen: Optional[int] = None) -> IPAddressType:
+    async def get_next(self, db: InfrahubDatabase, prefixlen: int | None = None) -> IPAddressType:
         # Measure utilization of all prefixes identified as resources
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
