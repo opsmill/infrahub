@@ -13,6 +13,10 @@ import { BadgeConflict } from "../ui/diff-badge";
 export const Conflict = ({ id, changes, kind, name }: any) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
+  if (!changes) {
+    return null;
+  }
+
   const url = `/proposed-changes/${proposedChangesDetails.id}?${QSP.PROPOSED_CHANGES_TAB}=data#${id}`;
 
   const mainChange = changes.find((change) => {
