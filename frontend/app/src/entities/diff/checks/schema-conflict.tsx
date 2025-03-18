@@ -2,7 +2,14 @@ import { PropertyRow } from "@/entities/schema/ui/styled";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 
-export const SchemaConflict = ({ id, kind, name, type }: any) => {
+type SchemaConflictProps = {
+  id: string;
+  kind: string;
+  name: string;
+  type: string;
+};
+
+export const SchemaConflict = ({ id, kind, name, type }: SchemaConflictProps) => {
   return (
     <div>
       <div className="flex items-center mb-2">

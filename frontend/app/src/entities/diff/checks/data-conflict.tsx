@@ -10,7 +10,20 @@ import { Link } from "react-router";
 import { DiffRow } from "../node-diff/utils";
 import { BadgeConflict } from "../ui/diff-badge";
 
-export const DataConflict = ({ id, changes, kind, name }: any) => {
+type Change = {
+  branch: string;
+  previous: string;
+  new: string;
+};
+
+type DataConflictProps = {
+  id: string;
+  kind: string;
+  name: string;
+  changes: Array<Change>;
+};
+
+export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   if (!changes) {
@@ -50,20 +63,20 @@ export const DataConflict = ({ id, changes, kind, name }: any) => {
           }
           left={
             <div className="flex items-center gap-2">
-              {mainChange.previous}
+              {mainChange?.previous}
               <Icon icon="mdi:chevron-right" />
               <Badge variant="yellow" className="font-medium">
-                {mainChange.new}
+                {mainChange?.new}
               </Badge>
             </div>
           }
           leftClassName={classNames("font-normal group-hover:bg-gray-100 transition-all")}
           right={
             <div className="flex items-center gap-2">
-              {branchChange.previous}
+              {branchChange?.previous}
               <Icon icon="mdi:chevron-right" />
               <Badge variant="yellow" className="font-medium">
-                {branchChange.new}
+                {branchChange?.new}
               </Badge>
             </div>
           }
