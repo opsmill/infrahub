@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -125,7 +125,7 @@ class SchemaUpdateValidationError(BaseModel):
     model_config = ConfigDict(extra="forbid")
     path: SchemaPath
     error: UpdateValidationErrorType
-    message: Optional[str] = None
+    message: str | None = None
 
     def to_string(self) -> str:
         return f"{self.error.value!r}: {self.path.schema_kind} {self.path.field_name} {self.message}"
@@ -341,9 +341,9 @@ class SchemaUpdateValidationResult(BaseModel):
 
 class HashableModelDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    added: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    changed: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    removed: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    added: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
+    changed: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
+    removed: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
 
     @property
     def has_diff(self) -> bool:
@@ -353,7 +353,7 @@ class HashableModelDiff(BaseModel):
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: Optional[str] = None
+    id: str | None = None
     state: HashableModelState = HashableModelState.PRESENT
 
     _exclude_from_hash: list[str] = []

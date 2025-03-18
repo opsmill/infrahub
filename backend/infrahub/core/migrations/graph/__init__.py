@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from typing import TYPE_CHECKING, Sequence
 
 from .m001_add_version_to_graph import Migration001
 from .m002_attribute_is_default import Migration002
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
 
-MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMigration]]] = [
+MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -58,7 +58,7 @@ MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMi
 
 async def get_graph_migrations(
     root: Root,
-) -> Sequence[Union[GraphMigration, InternalSchemaMigration, ArbitraryMigration]]:
+) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()

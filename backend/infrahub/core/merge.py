@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
@@ -39,8 +39,8 @@ class BranchMerger:
         diff_coordinator: DiffCoordinator,
         diff_merger: DiffMerger,
         diff_repository: DiffRepository,
-        destination_branch: Optional[Branch] = None,
-        service: Optional[InfrahubServices] = None,
+        destination_branch: Branch | None = None,
+        service: InfrahubServices | None = None,
     ):
         self.source_branch = source_branch
         self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
@@ -51,9 +51,9 @@ class BranchMerger:
         self.migrations: list[SchemaUpdateMigrationInfo] = []
         self._merge_at = Timestamp()
 
-        self._source_schema: Optional[SchemaBranch] = None
-        self._destination_schema: Optional[SchemaBranch] = None
-        self._initial_source_schema: Optional[SchemaBranch] = None
+        self._source_schema: SchemaBranch | None = None
+        self._destination_schema: SchemaBranch | None = None
+        self._initial_source_schema: SchemaBranch | None = None
 
         self._service = service
 
@@ -173,7 +173,7 @@ class BranchMerger:
 
     async def merge(
         self,
-        at: Optional[Union[str, Timestamp]] = None,
+        at: str | Timestamp | None = None,
     ) -> EnrichedDiffRoot:
         """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:

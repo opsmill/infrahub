@@ -489,7 +489,28 @@ allow-dunder-method-names = [
     "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
-"backend/infrahub/core/**.py" = [
+"backend/infrahub/core/branch/models.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/graph/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/node/standard.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/query/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################

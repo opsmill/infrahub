@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core.ipam.size import get_prefix_space
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
@@ -16,10 +16,10 @@ class BuiltinIPPrefix(Node):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
-        permissions: Optional[dict] = None,  # noqa: ARG002
+        permissions: dict | None = None,  # noqa: ARG002
         include_properties: bool = True,
     ) -> dict:
         response = await super().to_graphql(

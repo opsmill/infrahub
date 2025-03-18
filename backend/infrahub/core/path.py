@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from typing_extensions import Self
@@ -56,12 +56,12 @@ class DataPath(InfrahubPath):
     path_type: PathType
     node_id: str = Field(..., description="Kind of the model in the schema")
     kind: str = Field(..., description="Kind of the main node")
-    field_name: Optional[str] = Field(
+    field_name: str | None = Field(
         default=None, description="Name of the field (either an attribute or a relationship)"
     )
-    property_name: Optional[str] = Field(default=None, description="Name of the property")
-    peer_id: Optional[str] = Field(default=None, description="")
-    value: Optional[Any] = Field(default=None, description="Optional value of the resource")
+    property_name: str | None = Field(default=None, description="Name of the property")
+    peer_id: str | None = Field(default=None, description="")
+    value: Any | None = Field(default=None, description="Optional value of the resource")
 
     @property
     def resource_type(self) -> PathResourceType:
@@ -109,11 +109,11 @@ class GroupedDataPaths:
 class SchemaPath(InfrahubPath):
     path_type: SchemaPathType
     schema_kind: str = Field(..., description="Kind of the model in the schema")
-    schema_id: Optional[str] = Field(default=None, description="UUID of the model in the schema")
-    field_name: Optional[str] = Field(
+    schema_id: str | None = Field(default=None, description="UUID of the model in the schema")
+    field_name: str | None = Field(
         default=None, description="Name of the field (either an attribute or a relationship)"
     )
-    property_name: Optional[str] = Field(default=None, description="Name of the property")
+    property_name: str | None = Field(default=None, description="Name of the property")
 
     @property
     def resource_type(self) -> PathResourceType:
@@ -133,10 +133,10 @@ class SchemaPath(InfrahubPath):
     @classmethod
     def init(
         cls,
-        schema: Union[NodeSchema, GenericSchema],
-        schema_id: Optional[str] = None,
-        field_name: Optional[str] = None,
-        property_name: Optional[str] = None,
+        schema: NodeSchema | GenericSchema,
+        schema_id: str | None = None,
+        field_name: str | None = None,
+        property_name: str | None = None,
     ) -> Self:
         if field_name and not schema.get_field(name=field_name, raise_on_error=False):
             raise ValueError(f"Field : {field_name} is not valid for {schema.kind}")

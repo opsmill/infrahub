@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Iterable, Literal, Optional, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
@@ -93,7 +93,7 @@ class ProfileAttributeIndex:
             self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
         ]
 
-        def get_profile_priority(nafd: NodeAttributesFromDB) -> tuple[Union[int, float], str]:
+        def get_profile_priority(nafd: NodeAttributesFromDB) -> tuple[int | float, str]:
             try:
                 return (int(nafd.attrs.get("profile_priority").value), nafd.node.get("uuid"))
             except (TypeError, AttributeError):
@@ -134,13 +134,13 @@ class NodeManager:
     async def query(
         cls,
         db: InfrahubDatabase,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema, str],
+        schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | str,
         filters: dict | None = ...,
         fields: dict | None = ...,
         offset: int | None = ...,
         limit: int | None = ...,
-        at: Union[Timestamp, str] | None = ...,
-        branch: Union[Branch, str] | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
         include_source: bool = ...,
         include_owner: bool = ...,
         prefetch_relationships: bool = ...,
@@ -160,8 +160,8 @@ class NodeManager:
         fields: dict | None = ...,
         offset: int | None = ...,
         limit: int | None = ...,
-        at: Union[Timestamp, str] | None = ...,
-        branch: Union[Branch, str] | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
         include_source: bool = ...,
         include_owner: bool = ...,
         prefetch_relationships: bool = ...,
@@ -180,8 +180,8 @@ class NodeManager:
         fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
-        at: Union[Timestamp, str] | None = None,
-        branch: Union[Branch, str] | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
         include_source: bool = False,
         include_owner: bool = False,
         prefetch_relationships: bool = False,
@@ -272,10 +272,10 @@ class NodeManager:
     async def count(
         cls,
         db: InfrahubDatabase,
-        schema: Union[type[SchemaProtocol], NodeSchema, GenericSchema, ProfileSchema, TemplateSchema, str],
-        filters: Optional[dict] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        schema: type[SchemaProtocol] | NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | str,
+        filters: dict | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
         account=None,  # noqa: ARG003
         partial_match: bool = False,
         branch_agnostic: bool = False,
@@ -317,8 +317,8 @@ class NodeManager:
         schema: RelationshipSchema,
         filters: dict,
         db: InfrahubDatabase,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
         branch_agnostic: bool = False,
     ) -> int:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -346,11 +346,11 @@ class NodeManager:
         source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
-        fields: Optional[dict] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        fields: dict | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
     ) -> list[Relationship]:
@@ -420,8 +420,8 @@ class NodeManager:
         node_schema: NodeSchema,
         filters: dict,
         db: InfrahubDatabase,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
     ) -> int:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -446,11 +446,11 @@ class NodeManager:
         direction: RelationshipHierarchyDirection,
         node_schema: NodeSchema,
         filters: dict,
-        fields: Optional[dict] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        fields: dict | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
     ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -1039,7 +1039,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -1095,9 +1095,9 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         ids: list[str],
-        fields: Optional[dict] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        fields: dict | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
         include_source: bool = False,
         include_owner: bool = False,
         prefetch_relationships: bool = False,
@@ -1158,7 +1158,7 @@ class NodeManager:
                 continue
 
             node = nodes_info_by_id[node_id]
-            new_node_data: dict[str, Union[str, AttributeFromDB]] = {
+            new_node_data: dict[str, str | AttributeFromDB] = {
                 "db_id": node.node_id,
                 "id": node_id,
                 "updated_at": node.updated_at,
@@ -1313,8 +1313,8 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         nodes: list[Node],
-        branch: Optional[Union[Branch, str]] = None,
-        at: Optional[Union[Timestamp, str]] = None,
+        branch: Branch | str | None = None,
+        at: Timestamp | str | None = None,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
