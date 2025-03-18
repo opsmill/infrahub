@@ -6,6 +6,7 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { Link } from "react-router";
 import { DiffRow } from "../node-diff/utils";
 import { BadgeConflict } from "../ui/diff-badge";
@@ -25,6 +26,7 @@ type DataConflictProps = {
 
 export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const schemaLabels = useAtomValue(schemaKindLabelState);
 
   if (!changes) {
     return null;
@@ -43,7 +45,7 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
   return (
     <div>
       <div className="flex items-center mb-2">
-        <Badge className="mr-2">{kind}</Badge>
+        <Badge className="mr-2">{schemaLabels[kind]}</Badge>
 
         <Id id={id} kind={kind} />
       </div>
