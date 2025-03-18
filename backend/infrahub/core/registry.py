@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -26,21 +26,21 @@ if TYPE_CHECKING:
 
 @dataclass
 class Registry:
-    id: Optional[str] = None
+    id: str | None = None
     attribute: dict[str, type[BaseAttribute]] = field(default_factory=dict)
     branch: dict[str, Branch] = field(default_factory=dict)
     node: dict = field(default_factory=dict)
-    _default_branch: Optional[str] = None
-    _default_ipnamespace: Optional[str] = None
-    _schema: Optional[SchemaManager] = None
+    _default_branch: str | None = None
+    _default_ipnamespace: str | None = None
+    _schema: SchemaManager | None = None
     default_graphql_type: dict[str, InfrahubObject | type[BaseAttribute]] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
     input_type: dict[str, type[BaseAttributeCreate | BaseAttributeUpdate]] = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
-    _branch_object: Optional[type[Branch]] = None
-    _manager: Optional[type[NodeManager]] = None
-    _storage: Optional[InfrahubObjectStorage] = None
+    _branch_object: type[Branch] | None = None
+    _manager: type[NodeManager] | None = None
+    _storage: InfrahubObjectStorage | None = None
     permission_backends: list[PermissionBackend] = field(default_factory=list)
 
     @property
@@ -113,7 +113,7 @@ class Registry:
             return True
         return False
 
-    def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
+    def get_node_schema(self, name: str, branch: Branch | str | None = None) -> NodeSchema:
         return self.schema.get_node_schema(name=name, branch=branch)
 
     def get_data_type(self, name: str) -> type[InfrahubDataType]:
@@ -121,9 +121,7 @@ class Registry:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
-    def get_full_schema(
-        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> dict[str, MainSchemaTypes]:
+    def get_full_schema(self, branch: Branch | str | None = None, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch, duplicate=duplicate)
 
@@ -137,7 +135,7 @@ class Registry:
         self.attribute = {}
         self.input_type = {}
 
-    def get_branch_from_registry(self, branch: Optional[Union[Branch, str]] = None) -> Branch:
+    def get_branch_from_registry(self, branch: Branch | str | None = None) -> Branch:
         """Return a branch object from the registry based on its name.
 
         Args:
@@ -168,8 +166,8 @@ class Registry:
     async def get_branch(
         self,
         db: InfrahubDatabase,
-        session: Optional[AsyncSession] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        session: AsyncSession | None = None,
+        branch: Branch | str | None = None,
     ) -> Branch:
         """Return a branch object based on its name.
 

@@ -319,6 +319,75 @@ class Vlan(BaseModel):
     role: str
 
 
+class TemplateInfraFrontPatchPanelInterface(BaseModel):
+    template_name: str
+    name: str
+    connector_type: str
+    description: str
+    patch_panel: dict
+
+
+class TemplateInfraPatchPanel(BaseModel):
+    template_name: str
+    module_capacity: int
+    description: str
+    tags: list[str]
+    interfaces: list[TemplateInfraFrontPatchPanelInterface]
+
+
+TEMPLATES = [
+    TemplateInfraPatchPanel(
+        template_name="Regular_Patch_Panel",
+        module_capacity=3,
+        description="Patch Panel used to connect racks",
+        tags=["green"],
+        interfaces=[
+            TemplateInfraFrontPatchPanelInterface(
+                template_name="Regular_Patch_Panel__C1.P01",
+                name="C1.P01",
+                connector_type="LC",
+                description="Position 1 on Module C1",
+                patch_panel={},
+            ),
+            TemplateInfraFrontPatchPanelInterface(
+                template_name="Regular_Patch_Panel__C1.P02",
+                name="C1.P02",
+                connector_type="LC",
+                description="Position 2 on Module C1",
+                patch_panel={},
+            ),
+            TemplateInfraFrontPatchPanelInterface(
+                template_name="Regular_Patch_Panel__C1.P03",
+                name="C1.P03",
+                connector_type="LC",
+                description="Position 3 on Module C1",
+                patch_panel={},
+            ),
+            TemplateInfraFrontPatchPanelInterface(
+                template_name="Regular_Patch_Panel__C1.P04",
+                name="C1.P04",
+                connector_type="LC",
+                description="Position 4 on Module C1",
+                patch_panel={},
+            ),
+            TemplateInfraFrontPatchPanelInterface(
+                template_name="Regular_Patch_Panel__C1.P05",
+                name="C1.P05",
+                connector_type="LC",
+                description="Position 5 on Module C1",
+                patch_panel={},
+            ),
+            TemplateInfraFrontPatchPanelInterface(
+                template_name="Regular_Patch_Panel__C1.P06",
+                name="C1.P06",
+                connector_type="LC",
+                description="Position 6 on Module C1",
+                patch_panel={},
+            ),
+        ],
+    ),
+]
+
 CONTINENT_COUNTRIES = {
     "North America": ["United States of America", "Canada"],
     "South America": ["Mexico", "Brazil"],
@@ -379,7 +448,7 @@ class DevicePatternName(str, Enum):
     EDGE = "EDGE"
 
 
-DEVICE_PATTERNS = {
+DEVICE_PATTERNS = {  # TODO: Maybe good candidate for template
     DevicePatternName.LEAF: Device(
         name="leaf",
         status="active",
@@ -1434,7 +1503,6 @@ async def generate_site(
             interface_identifier = f"{intf.name.value.lower()}.{device_name}"
 
             # Determine the IP address (if any) for this interface.
-            subnet = None
             address = None
             peer_address = None  # For roles that require a peer IP
 
@@ -1475,7 +1543,7 @@ async def generate_site(
                         "source": account_pop.id,
                     },
                 )
-                address_batch.add(task=ip.save, node=ip)
+                address_batch.add(task=ip.save, node=ip, allow_upsert=True)
 
             # Create Circuit and BGP session for upstream and peering
             if intf_role in ["upstream", "peering"]:
@@ -1497,7 +1565,7 @@ async def generate_site(
                         kind=IpamIPAddress,
                         address=peer_address,
                     )
-                    address_batch.add(task=peer_ip.save, node=peer_ip)
+                    address_batch.add(task=peer_ip.save, node=peer_ip, allow_upsert=True)
                     session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
                     bgp_session = await client.create(
                         branch=branch,
@@ -2314,6 +2382,29 @@ async def prepare_tags(client: InfrahubClient, log: logging.Logger, branch: str,
         store.set(key=tag, node=obj)
 
 
+async def prepare_patch_template(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
+    log.info("Creating Patch Panel Template")
+    batch = await client.create_batch()
+
+    # Create Patch Panel Template
+    for template in TEMPLATES:
+        patch_template = await client.create(branch=branch, kind="TemplateInfraPatchPanel", data=template.model_dump())
+        await patch_template.save(allow_upsert=True)
+
+        # and corresponding interfaces
+        for interface in template.interfaces:
+            interface.patch_panel = {"id": patch_template.id}
+            obj = await client.create(
+                branch=branch,
+                kind="TemplateInfraFrontPatchPanelInterface",
+                data=interface.model_dump(),
+            )
+            batch.add(task=obj.save, node=obj)
+
+    async for _, response in batch.execute():
+        log.debug(f"{response} - Creation Completed")
+
+
 # ---------------------------------------------------------------
 # Use the `infrahubctl run` command line to execute this script
 #
@@ -2617,6 +2708,8 @@ async def run(
         await create_bgp_mesh(client=client, branch=branch, log=log, sites=sites)
 
     await create_backbone_connectivity(client=client, branch=branch, log=log, num_sites=num_sites)
+
+    await prepare_patch_template(client=client, log=log, branch=branch)
 
     # --------------------------------------------------
     # Create some changes in additional branches

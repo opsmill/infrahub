@@ -22,14 +22,15 @@ from infrahub.core.initialization import (
 from infrahub.core.manager import NodeManager
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
-from infrahub.menu.utils import create_default_menu, get_existing_menu, update_menu
+from infrahub.menu.repository import MenuRepository
+from infrahub.menu.utils import create_default_menu
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
     setup_deployments,
-    setup_task_manager,
     setup_worker_pools,
 )
 
@@ -88,24 +89,19 @@ async def upgrade_cmd(
     # -------------------------------------------
     # Upgrade External system : Task Manager
     # -------------------------------------------
-    await setup_task_manager()
-
     async with get_client(sync_client=False) as client:
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
-        # await setup_triggers(
-        #     client=client,
-        #     triggers=builtin_triggers,
-        #     trigger_type=TriggerType.BUILTIN,
-        # )
+        await trigger_configure_all(service=service)
 
     await dbdriver.close()
 
 
 async def upgrade_menu(db: InfrahubDatabase) -> None:
-    menu_nodes = await get_existing_menu(db=db)
-    menu_items = await MenuDict.from_db(db=db, nodes=list(menu_nodes.values()))
+    menu_repository = MenuRepository(db=db)
+    menu_nodes = await menu_repository.get_menu_db()
+    menu_items = await menu_repository.get_menu(nodes=menu_nodes)
     default_menu_dict = MenuDict.from_definition_list(default_menu)
 
     if not menu_nodes:
@@ -118,7 +114,7 @@ async def upgrade_menu(db: InfrahubDatabase) -> None:
         rprint("Menu Up to date, nothing to update")
         return
 
-    await update_menu(db=db, existing_menu=menu_items, new_menu=default_menu_dict, menu_nodes=menu_nodes)
+    await menu_repository.update_menu(existing_menu=menu_items, new_menu=default_menu_dict, menu_nodes=menu_nodes)
     rprint("Menu has been updated")
 
 

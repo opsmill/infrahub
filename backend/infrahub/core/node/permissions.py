@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.permissions.constants import PermissionDecisionFlag
 
@@ -14,10 +14,10 @@ class CoreGlobalPermission(Node):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
-        permissions: Optional[dict] = None,
+        permissions: dict | None = None,
         include_properties: bool = True,
     ) -> dict:
         response = await super().to_graphql(
@@ -41,10 +41,10 @@ class CoreObjectPermission(Node):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
-        permissions: Optional[dict] = None,
+        permissions: dict | None = None,
         include_properties: bool = True,
     ) -> dict:
         response = await super().to_graphql(

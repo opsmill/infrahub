@@ -650,3 +650,86 @@ nodes:
         optional: false
         cardinality: many
         identifier: mlag_member_lag_interface
+
+  - name: PatchPanel
+    label: Patch Panel
+    description: A Patch Panel used for managing network cable connections in a data center or telecom setup.
+    icon: ic:round-device-hub
+    namespace: Infra
+    generate_template: true
+    human_friendly_id:
+      - name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: module_capacity
+        label: Module Capacity
+        kind: Number
+        optional: true
+        description: The maximum number of modules that can be housed within this patch panel.
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 2000
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: front_interfaces
+        peer: InfraFrontPatchPanelInterface
+        identifier: front_interfaces
+        optional: true
+        cardinality: many
+        kind: Component
+
+  - name: FrontPatchPanelInterface
+    label: Patch Panel Front Interfaces
+    menu_placement: InfraPatchPanel
+    namespace: Infra
+    icon: mdi:ethernet
+    human_friendly_id:
+      - patch_panel__name__value
+      - name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    uniqueness_constraints:
+      - [patch_panel, name__value]
+    attributes:
+      - name: name
+        kind: Text
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 2000
+      - name: connector_type
+        kind: Dropdown
+        order_weight: 1100
+        choices:
+          - name: FC
+            label: FC
+            description: "Standardized fiber optic connector used primarily in datacom and telecom applications."
+          - name: LC
+            label: LC
+            description: "Compact fiber optic connector with a push-pull mechanism."
+          - name: MPO
+            label: MPO
+            description: "Multi-fiber Push-On connector typically used in data centers for high-speed applications."
+    relationships:
+      - name: patch_panel
+        peer: InfraPatchPanel
+        order_weight: 900
+        identifier: front_interfaces
+        optional: false
+        cardinality: one
+        kind: Parent

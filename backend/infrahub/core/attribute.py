@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import netaddr
 import ujson
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 MAX_STRING_LENGTH = 4096
 
 
-def validate_string_length(value: Optional[str]) -> None:
+def validate_string_length(value: str | None) -> None:
     """
     Validates input string length does not exceed a given threshold, as Neo4J cannot index string values larger than 8167 bytes,
     see https://neo4j.com/developer/kb/index-limitations-and-workaround/.
@@ -75,7 +75,7 @@ class AttributeCreateData(BaseModel):
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
-    type: Optional[Union[type, tuple[type]]] = None
+    type: type | tuple[type] | None = None
 
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
@@ -87,10 +87,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         branch: Branch,
         at: Timestamp,
         node: Node,
-        id: Optional[str] = None,
-        db_id: Optional[str] = None,
-        data: Optional[Union[dict, str, AttributeFromDB]] = None,
-        updated_at: Optional[Union[Timestamp, str]] = None,
+        id: str | None = None,
+        db_id: str | None = None,
+        data: dict | str | AttributeFromDB | None = None,
+        updated_at: Timestamp | str | None = None,
         is_default: bool = False,
         is_from_profile: bool = False,
         **kwargs,
@@ -106,7 +106,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.at = at
         self.is_default = is_default
         self.is_from_profile = is_from_profile
-        self.from_pool: Optional[dict] = None
+        self.from_pool: dict | None = None
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -317,7 +317,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return data.value
 
-    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
+    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
@@ -327,7 +327,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return await self._update(at=save_at, db=db)
 
-    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
+    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
         if not self.db_id:
             return None
 
@@ -388,7 +388,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return changelog
 
-    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
+    async def _update(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
         """Update the attribute in the database.
 
         Get the current value
@@ -497,10 +497,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
-        permissions: Optional[dict] = None,
+        permissions: dict | None = None,
         include_properties: bool = True,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
@@ -677,7 +677,7 @@ class String(BaseAttribute):
 
 
 class StringOptional(String):
-    value: Optional[str]
+    value: str | None
 
 
 class HashedPassword(BaseAttribute):
@@ -690,13 +690,13 @@ class HashedPassword(BaseAttribute):
 
 
 class HashedPasswordOptional(HashedPassword):
-    value: Optional[str]
+    value: str | None
 
 
 class Integer(BaseAttribute):
     type = int
     value: int
-    from_pool: Optional[str] = None
+    from_pool: str | None = None
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -715,7 +715,7 @@ class Integer(BaseAttribute):
 
 
 class IntegerOptional(Integer):
-    value: Optional[int]
+    value: int | None
 
 
 class Boolean(BaseAttribute):
@@ -724,7 +724,7 @@ class Boolean(BaseAttribute):
 
 
 class BooleanOptional(Boolean):
-    value: Optional[bool]
+    value: bool | None
 
 
 class DateTime(BaseAttribute):
@@ -745,7 +745,7 @@ class DateTime(BaseAttribute):
 
 
 class DateTimeOptional(DateTime):
-    value: Optional[str]
+    value: str | None
 
 
 class Dropdown(BaseAttribute):
@@ -792,7 +792,7 @@ class Dropdown(BaseAttribute):
 
 
 class DropdownOptional(Dropdown):
-    value: Optional[str]
+    value: str | None
 
 
 class URL(BaseAttribute):
@@ -808,7 +808,7 @@ class URL(BaseAttribute):
 
 
 class URLOptional(URL):
-    value: Optional[str]
+    value: str | None
 
 
 class IPNetwork(BaseAttribute):
@@ -820,35 +820,35 @@ class IPNetwork(BaseAttribute):
         return ["value", "version", "binary_address", "prefixlen"]
 
     @property
-    def obj(self) -> Union[ipaddress.IPv4Network, ipaddress.IPv6Network]:
+    def obj(self) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
         """Return an ipaddress interface object."""
         if not self.value:
             raise ValueError("value for IPNetwork must be defined")
         return ipaddress.ip_network(str(self.value))
 
     @property
-    def broadcast_address(self) -> Optional[str]:
+    def broadcast_address(self) -> str | None:
         """Return the broadcast address of the ip network."""
         if not self.value:
             return None
         return str(self.obj.broadcast_address)
 
     @property
-    def hostmask(self) -> Optional[str]:
+    def hostmask(self) -> str | None:
         """Return the hostmask of the ip network."""
         if not self.value:
             return None
         return str(self.obj.hostmask)
 
     @property
-    def netmask(self) -> Optional[str]:
+    def netmask(self) -> str | None:
         """Return the netmask of the ip network."""
         if not self.value:
             return None
         return str(self.obj.netmask)
 
     @property
-    def network_address(self) -> Optional[str]:
+    def network_address(self) -> str | None:
         """Return the netmask of the ip network."""
         if not self.value:
             return None
@@ -865,35 +865,35 @@ class IPNetwork(BaseAttribute):
         return convert_ip_to_binary_str(obj=self.obj)
 
     @property
-    def prefixlen(self) -> Optional[int]:
+    def prefixlen(self) -> int | None:
         """Return the prefix length the ip network."""
         if not self.value:
             return None
         return ipaddress.ip_network(str(self.value)).prefixlen
 
     @property
-    def num_addresses(self) -> Optional[int]:
+    def num_addresses(self) -> int | None:
         """Return the number of possible addresses in the ip network."""
         if not self.value:
             return None
         return ipaddress.ip_network(str(self.value)).num_addresses
 
     @property
-    def version(self) -> Optional[int]:
+    def version(self) -> int | None:
         """Return the IP version of the ip network."""
         if not self.value:
             return None
         return ipaddress.ip_network(str(self.value)).version
 
     @property
-    def with_hostmask(self) -> Optional[str]:
+    def with_hostmask(self) -> str | None:
         """Return the network ip and the associated hostmask of the ip network."""
         if not self.value:
             return None
         return ipaddress.ip_network(str(self.value)).with_hostmask
 
     @property
-    def with_netmask(self) -> Optional[str]:
+    def with_netmask(self) -> str | None:
         """Return the network ip and the associated netmask of the ip network."""
         if not self.value:
             return None
@@ -941,7 +941,7 @@ class IPNetwork(BaseAttribute):
 
 
 class IPNetworkOptional(IPNetwork):
-    value: Optional[str]
+    value: str | None
 
 
 class IPHost(BaseAttribute):
@@ -953,63 +953,63 @@ class IPHost(BaseAttribute):
         return ["value", "version", "binary_address"]
 
     @property
-    def obj(self) -> Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface]:
+    def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
         """Return the ip adress without a prefix or subnet mask."""
         if not self.value:
             raise ValueError("value for IPHost must be defined")
         return ipaddress.ip_interface(str(self.value))
 
     @property
-    def ip(self) -> Optional[str]:
+    def ip(self) -> str | None:
         """Return the ip adress without a prefix or subnet mask."""
         if not self.value:
             return None
         return str(self.obj.ip)
 
     @property
-    def hostmask(self) -> Optional[str]:
+    def hostmask(self) -> str | None:
         """Return the hostmask of the ip address."""
         if not self.value:
             return None
         return str(self.obj.hostmask)
 
     @property
-    def netmask(self) -> Optional[str]:
+    def netmask(self) -> str | None:
         """Return the netmask of the ip address."""
         if not self.value:
             return None
         return str(self.obj.netmask)
 
     @property
-    def network(self) -> Optional[str]:
+    def network(self) -> str | None:
         """Return the network encapsuling the ip address."""
         if not self.value:
             return None
         return str(self.obj.network)
 
     @property
-    def prefixlen(self) -> Optional[int]:
+    def prefixlen(self) -> int | None:
         """Return the prefix length of the ip address."""
         if not self.value:
             return None
         return self.obj.network.prefixlen
 
     @property
-    def version(self) -> Optional[int]:
+    def version(self) -> int | None:
         """Return the IP version of the ip address."""
         if not self.value:
             return None
         return self.obj.version
 
     @property
-    def with_hostmask(self) -> Optional[str]:
+    def with_hostmask(self) -> str | None:
         """Return the ip address and the associated hostmask of the ip address."""
         if not self.value:
             return None
         return self.obj.with_hostmask
 
     @property
-    def with_netmask(self) -> Optional[str]:
+    def with_netmask(self) -> str | None:
         """Return the ip address and the associated netmask of the ip address."""
         if not self.value:
             return None
@@ -1066,7 +1066,7 @@ class IPHost(BaseAttribute):
 
 
 class IPHostOptional(IPHost):
-    value: Optional[str]
+    value: str | None
 
 
 class MacAddress(BaseAttribute):
@@ -1081,7 +1081,7 @@ class MacAddress(BaseAttribute):
         return netaddr.EUI(addr=self.value)
 
     @property
-    def oui(self) -> Optional[str]:
+    def oui(self) -> str | None:
         """Return the OUI (Organisationally Unique Identifier) for the MAC address."""
         if not self.value:
             return None
@@ -1093,58 +1093,58 @@ class MacAddress(BaseAttribute):
             return str(self.obj).removesuffix(f"-{self.ei}")
 
     @property
-    def ei(self) -> Optional[str]:
+    def ei(self) -> str | None:
         """Return the EI (Extension Identifier) for the MAC address."""
         if not self.value:
             return None
         return self.obj.ei
 
     @property
-    def version(self) -> Optional[int]:
+    def version(self) -> int | None:
         """Return the version of the MAC address."""
         if not self.value:
             return None
         return self.obj.version
 
     @property
-    def binary(self) -> Optional[str]:
+    def binary(self) -> str | None:
         """Return the MAC address in binary format."""
         if not self.value:
             return None
         return self.obj.bin
 
     @property
-    def eui48(self) -> Optional[str]:
+    def eui48(self) -> str | None:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_eui48)
 
     @property
-    def eui64(self) -> Optional[str]:
+    def eui64(self) -> str | None:
         if not self.value:
             return None
         return str(self.obj.eui64())
 
     @property
-    def bare(self) -> Optional[str]:
+    def bare(self) -> str | None:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_bare)
 
     @property
-    def dot_notation(self) -> Optional[str]:
+    def dot_notation(self) -> str | None:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_cisco)
 
     @property
-    def semicolon_notation(self) -> Optional[str]:
+    def semicolon_notation(self) -> str | None:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_unix)
 
     @property
-    def split_notation(self) -> Optional[str]:
+    def split_notation(self) -> str | None:
         if not self.value:
             return None
         return self.obj.format(dialect=netaddr.mac_pgsql)
@@ -1172,7 +1172,7 @@ class MacAddress(BaseAttribute):
 
 
 class MacAddressOptional(MacAddress):
-    value: Optional[str]
+    value: str | None
 
 
 class ListAttribute(BaseAttribute):
@@ -1208,12 +1208,12 @@ class ListAttribute(BaseAttribute):
 
 
 class ListAttributeOptional(ListAttribute):
-    value: Optional[list[Any]]
+    value: list[Any] | None
 
 
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
-    value: Union[dict, list]
+    value: dict | list
 
     @classmethod
     def deserialize_from_string(cls, value_as_string: str) -> Any:
@@ -1244,4 +1244,4 @@ class JSONAttribute(BaseAttribute):
 
 
 class JSONAttributeOptional(JSONAttribute):
-    value: Optional[Union[dict, list]]
+    value: dict | list | None

@@ -5,7 +5,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
 from infrahub.menu.constants import DEFAULT_MENU
 from infrahub.menu.models import MenuItemDefinition, MenuSection
-from infrahub.menu.utils import create_menu
+from infrahub.menu.repository import MenuRepository
 
 
 @pytest.fixture
@@ -114,8 +114,15 @@ async def menu_fixture_01_data() -> list[MenuItemDefinition]:
 
 
 @pytest.fixture
-async def menu_fixture_01(db: InfrahubDatabase, default_branch: Branch, menu_fixture_01_data: list[MenuItemDefinition]):
-    await create_menu(db=db, menu=menu_fixture_01_data)
+async def menu_repository(db: InfrahubDatabase) -> MenuRepository:
+    return MenuRepository(db=db)
+
+
+@pytest.fixture
+async def menu_fixture_01(
+    menu_repository: MenuRepository, default_branch: Branch, menu_fixture_01_data: list[MenuItemDefinition]
+):
+    await menu_repository.create_menu(menu=menu_fixture_01_data)
 
 
 @pytest.fixture

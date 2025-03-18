@@ -8,7 +8,7 @@ This document provides detailed documentation for all events used in the Infrahu
 
 :::info
 
-For more detailed explanations on how these events are used within Infrahub, see the [Infrahub event](../topics/infrahub-event) topic.
+For more detailed explanations on how these events are used within Infrahub, see the [Infrahub event](../topics/events.mdx) topic.
 
 :::
 
@@ -19,6 +19,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.artifact.created
+**Description**: Event generated when an artifact has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -46,6 +51,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.artifact.updated
+**Description**: Event generated when an artifact has been updated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -77,6 +87,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Type**: infrahub.branch.created
 **Description**: Event generated when a branch has been created
 <!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -99,6 +113,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 **Type**: infrahub.branch.deleted
 **Description**: Event generated when a branch has been deleted
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -123,6 +141,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Type**: infrahub.branch.merged
 **Description**: Event generated when a branch has been merged
 <!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -146,6 +168,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Type**: infrahub.branch.rebased
 **Description**: Event generated when a branch has been rebased
 <!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -168,6 +194,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.group.member_added
+**Description**: Event generated when a one or more members have been added to a group
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -192,6 +223,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.group.member_removed
+**Description**: Event generated when a one or more members have been removed to a group
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -218,6 +254,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.node.created
+**Description**: Event generated when a node has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -242,6 +283,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.node.deleted
+**Description**: Event generated when a node has been deleted
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -266,6 +312,11 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 **Type**: infrahub.node.updated
+**Description**: Event generated when a node has been updated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -294,6 +345,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Type**: infrahub.repository.update_commit
 **Description**: Event generated when the the commit within a repository has been updated.
 <!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -319,6 +374,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Type**: infrahub.validator.failed
 **Description**: Event generated when an validator within a pipeline has completed successfully.
 <!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -342,6 +401,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 **Type**: infrahub.validator.passed
 **Description**: Event generated when an validator within a pipeline has completed successfully.
 <!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -364,6 +427,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 **Type**: infrahub.validator.started
 **Description**: Event generated when an validator within a pipeline has started.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -389,6 +456,10 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 **Type**: infrahub.schema.updated
 **Description**: Event generated when the schema within a branch has been updated.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|

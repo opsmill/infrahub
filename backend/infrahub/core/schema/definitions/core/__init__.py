@@ -1,5 +1,7 @@
 from typing import Any
 
+from ...generic_schema import GenericSchema
+from ...node_schema import NodeSchema
 from .account import (
     core_account,
     core_account_token,
@@ -11,6 +13,7 @@ from .account import (
 from .artifact import core_artifact, core_artifact_definition, core_artifact_target
 from .builtin import builtin_tag
 from .check import core_check_definition
+from .core import core_node, core_task_target
 from .generator import core_generator_definition, core_generator_instance
 from .graphql_query import core_graphql_query
 from .group import core_generator_group, core_graphql_query_group, core_group, core_standard_group
@@ -54,27 +57,11 @@ from .propose_change_validator import (
 )
 from .repository import core_generic_repository, core_read_only_repository, core_repository
 from .resource_pool import core_ip_address_pool, core_ip_prefix_pool, core_number_pool, core_resource_pool
-from .template import core_object_template
+from .template import core_object_component_template, core_object_template
 from .transform import core_transform, core_transform_jinja2, core_transform_python
 from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
 
-core_node = {
-    "name": "Node",
-    "namespace": "Core",
-    "include_in_menu": False,
-    "description": "Base Node in Infrahub.",
-    "label": "Node",
-}
-
-core_task_target = {
-    "name": "TaskTarget",
-    "include_in_menu": False,
-    "namespace": "Core",
-    "description": "Extend a node to be associated with tasks",
-    "label": "Task Target",
-}
-
-core_models: dict[str, Any] = {
+core_models_mixed: dict[str, list] = {
     "generics": [
         core_node,
         lineage_owner,
@@ -98,6 +85,7 @@ core_models: dict[str, Any] = {
         core_base_permission,
         core_credential,
         core_object_template,
+        core_object_component_template,
         generic_menu_item,
     ],
     "nodes": [
@@ -117,7 +105,7 @@ core_models: dict[str, Any] = {
         core_object_thread,
         core_change_comment,
         core_thread_comment,
-        core_repository.to_dict(),
+        core_repository,
         core_read_only_repository,
         core_transform_jinja2,
         core_data_check,
@@ -150,4 +138,10 @@ core_models: dict[str, Any] = {
         core_account_role,
         core_account_group,
     ],
+}
+
+
+core_models: dict[str, Any] = {
+    "generics": [item.to_dict() if isinstance(item, GenericSchema) else item for item in core_models_mixed["generics"]],
+    "nodes": [item.to_dict() if isinstance(item, NodeSchema) else item for item in core_models_mixed["nodes"]],
 }

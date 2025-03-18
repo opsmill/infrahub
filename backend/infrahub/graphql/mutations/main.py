@@ -64,16 +64,18 @@ class DeleteResult:
 # Infrahub GraphQLType
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
-    schema: NodeSchema | None = None
+    schema: MainSchemaTypes | None = None
 
     @property
-    def active_schema(self) -> NodeSchema:
+    def active_schema(self) -> MainSchemaTypes:
         if self.schema:
             return self.schema
         raise InitializationError("This class is not initialized with a schema")
 
 
 class InfrahubMutationMixin:
+    _meta: InfrahubMutationOptions
+
     @classmethod
     async def mutate(  # noqa: PLR0915
         cls,
@@ -81,9 +83,8 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         context: ContextInput | None = None,
-        *args: Any,  # noqa: ARG003
-        **kwargs,
-    ):
+        **kwargs: dict[str, Any],
+    ) -> Self:
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
@@ -93,7 +94,7 @@ class InfrahubMutationMixin:
         deleted_nodes: list[Node] = []
 
         if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data, **kwargs)
+            obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
             action = MutationAction.CREATED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
@@ -160,26 +161,26 @@ class InfrahubMutationMixin:
 
             for node_changelog in deleted_changelogs:
                 meta = EventMeta.from_parent(parent=main_event)
-                event = NodeDeletedEvent(
+                delete_event = NodeDeletedEvent(
                     kind=node_changelog.node_kind,
                     node_id=node_changelog.node_id,
                     changelog=node_changelog,
                     fields=node_changelog.updated_fields,
                     meta=meta,
                 )
-                events.append(event)
+                events.append(delete_event)
 
             for node_changelog in node_changelogs:
                 if node_changelog.node_id not in deleted_ids:
                     meta = EventMeta.from_parent(parent=main_event)
-                    event = NodeUpdatedEvent(
+                    update_event = NodeUpdatedEvent(
                         kind=node_changelog.node_kind,
                         node_id=node_changelog.node_id,
                         changelog=node_changelog,
                         fields=node_changelog.updated_fields,
                         meta=meta,
                     )
-                    events.append(event)
+                    events.append(update_event)
 
             for event in events:
                 graphql_context.background.add_task(graphql_context.active_service.event.send, event)
@@ -203,7 +204,7 @@ class InfrahubMutationMixin:
         if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
             refreshed_node = await NodeManager.get_one_by_id_or_default_filter(
                 db=db,
-                kind=cls._meta.schema.kind,
+                kind=cls._meta.active_schema.kind,
                 id=obj.get_id(),
                 branch=branch,
                 include_owner=True,
@@ -214,13 +215,13 @@ class InfrahubMutationMixin:
         return obj
 
     @classmethod
-    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch):
+    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch) -> Node:
         """
         Wrapper around mutate_create_object to potentially activate locking.
         """
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.schema.kind, branch=branch, schema_branch=schema_branch
+            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
@@ -349,8 +350,8 @@ class InfrahubMutationMixin:
             NodeConstraintRunner, db=db.start_session(), branch=branch
         )
         node_class = Node
-        if cls._meta.schema.kind in registry.node:
-            node_class = registry.node[cls._meta.schema.kind]
+        if cls._meta.active_schema.kind in registry.node:
+            node_class = registry.node[cls._meta.active_schema.kind]
 
         fields_to_validate = list(data)
         try:
@@ -396,7 +397,7 @@ class InfrahubMutationMixin:
     @classmethod
     async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        result = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
         if "object" in fields:
             result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
         return cls(**result)
@@ -416,7 +417,7 @@ class InfrahubMutationMixin:
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.schema.kind, branch=branch, schema_branch=schema_branch
+            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
         )
 
         if db.is_transaction:
@@ -451,7 +452,7 @@ class InfrahubMutationMixin:
         db = database or graphql_context.db
 
         obj = node or await NodeManager.find_object(
-            db=db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=db, kind=cls._meta.active_schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
 
         try:
@@ -499,7 +500,7 @@ class InfrahubMutationMixin:
     ) -> Self:
         fields_object = await extract_fields(info.field_nodes[0].selection_set)
         fields_object = fields_object.get("object", {})
-        result = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
         if fields_object:
             result["object"] = await obj.to_graphql(db=db, fields=fields_object)
         return cls(**result)
@@ -514,7 +515,7 @@ class InfrahubMutationMixin:
         node_getters: list[MutationNodeGetterInterface],
         database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self, bool]:
-        schema_name = cls._meta.schema.kind
+        schema_name = cls._meta.active_schema.kind
 
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
@@ -548,7 +549,11 @@ class InfrahubMutationMixin:
         graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
-            db=graphql_context.db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=graphql_context.db,
+            kind=cls._meta.active_schema.kind,
+            id=data.get("id"),
+            hfid=data.get("hfid"),
+            branch=branch,
         )
 
         try:
@@ -570,8 +575,8 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
     def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | None = None,
-        _meta=None,
-        **options,
+        _meta: InfrahubMutationOptions | None = None,
+        **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema | TemplateSchema):

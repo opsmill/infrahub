@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
@@ -63,7 +63,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> Union[NodeSchema, ProfileSchema, TemplateSchema]:
+    def get_schema(self) -> NodeSchema | ProfileSchema | TemplateSchema:
         return self._schema
 
     def get_kind(self) -> str:
@@ -80,7 +80,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_updated_at(self) -> Timestamp | None:
         return self._updated_at
 
-    async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[list[str]]:
+    async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> list[str] | None:
         """Return the Human friendly id of the node."""
         if not self._schema.human_friendly_id:
             return None
@@ -91,7 +91,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return [self.get_kind()] + hfid
         return hfid
 
-    async def get_hfid_as_string(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[str]:
+    async def get_hfid_as_string(self, db: InfrahubDatabase, include_kind: bool = False) -> str | None:
         """Return the Human friendly id of the node in string format separated with a dunder (__) ."""
         hfid = await self.get_hfid(db=db, include_kind=include_kind)
         if not hfid:
@@ -161,18 +161,18 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(self, schema: Union[NodeSchema, ProfileSchema, TemplateSchema], branch: Branch, at: Timestamp):
-        self._schema: Union[NodeSchema, ProfileSchema, TemplateSchema] = schema
+    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
+        self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
 
-        self._updated_at: Optional[Timestamp] = None
+        self._updated_at: Timestamp | None = None
         self.id: str = None
         self.db_id: str = None
 
-        self._source: Optional[Node] = None
-        self._owner: Optional[Node] = None
+        self._source: Node | None = None
+        self._owner: Node | None = None
         self._is_protected: bool = None
         self._computed_jinja2_attributes: list[str] = []
 
@@ -192,10 +192,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str],
+        schema: NodeSchema | ProfileSchema | TemplateSchema | str,
         db: InfrahubDatabase,
-        branch: Optional[Union[Branch, str]] = ...,
-        at: Optional[Union[Timestamp, str]] = ...,
+        branch: Branch | str | None = ...,
+        at: Timestamp | str | None = ...,
     ) -> Self: ...
 
     @overload
@@ -204,17 +204,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         cls,
         schema: type[SchemaProtocol],
         db: InfrahubDatabase,
-        branch: Optional[Union[Branch, str]] = ...,
-        at: Optional[Union[Timestamp, str]] = ...,
+        branch: Branch | str | None = ...,
+        at: Timestamp | str | None = ...,
     ) -> SchemaProtocol: ...
 
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str, type[SchemaProtocol]],
+        schema: NodeSchema | ProfileSchema | TemplateSchema | str | type[SchemaProtocol],
         db: InfrahubDatabase,
-        branch: Optional[Union[Branch, str]] = None,
-        at: Optional[Union[Timestamp, str]] = None,
+        branch: Branch | str | None = None,
+        at: Timestamp | str | None = None,
     ) -> Self | SchemaProtocol:
         attrs: dict[str, Any] = {}
 
@@ -547,7 +547,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         return attr
 
-    async def process_label(self, db: Optional[InfrahubDatabase] = None) -> None:  # noqa: ARG002
+    async def process_label(self, db: InfrahubDatabase | None = None) -> None:  # noqa: ARG002
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         if not self._existing and hasattr(self, "label") and hasattr(self, "name"):
@@ -555,7 +555,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
                 self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs: Any) -> Self:
+    async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
         if id:
@@ -578,9 +578,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def load(
         self,
         db: InfrahubDatabase,
-        id: Optional[str] = None,
-        db_id: Optional[str] = None,
-        updated_at: Optional[Union[Timestamp, str]] = None,
+        id: str | None = None,
+        db_id: str | None = None,
+        updated_at: Timestamp | str | None = None,
         **kwargs: Any,
     ) -> Self:
         self.id = id
@@ -631,7 +631,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return node_changelog
 
     async def _update(
-        self, db: InfrahubDatabase, at: Optional[Timestamp] = None, fields: list[str] | None = None
+        self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None
     ) -> NodeChangelog:
         """Update the node in the database if needed."""
 
@@ -666,7 +666,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         node_changelog.display_label = await self.render_display_label(db=db)
         return node_changelog
 
-    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None, fields: list[str] | None = None) -> Self:
+    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
@@ -678,7 +678,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._node_changelog = await self._create(at=save_at, db=db)
         return self
 
-    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
+    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
@@ -771,7 +771,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            field: Optional[BaseAttribute] = getattr(self, field_name, None)
+            field: BaseAttribute | None = getattr(self, field_name, None)
 
             if not field:
                 response[field_name] = None
@@ -833,7 +833,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str:  # noqa: ARG002
+    async def render_display_label(self, db: InfrahubDatabase | None = None) -> str:  # noqa: ARG002
         if not self._schema.display_labels:
             return repr(self)
 

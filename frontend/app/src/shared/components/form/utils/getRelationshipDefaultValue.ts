@@ -122,6 +122,8 @@ export const getRelationshipDefaultValueFromTemplate = (
   };
 
   if ("edges" in relationshipTemplate) {
+    if (relationshipTemplate.edges.length === 0) return null;
+
     return {
       source,
       value: relationshipTemplate.edges

@@ -3,15 +3,16 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
-from infrahub_sdk.protocols import (
-    CoreTransformPython,
-)
 from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
 from infrahub.core.registry import registry
+from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
+from infrahub.git.utils import get_repositories_commit_per_branch
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,
@@ -21,7 +22,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from infrahub_sdk.data import RepositoryData
+    from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
+    from infrahub.git.models import RepositoryData
 
 
 @task(
@@ -30,7 +32,7 @@ if TYPE_CHECKING:
     cache_policy=NONE,
 )
 async def gather_python_transform_attributes(
-    branch_name: str, client: InfrahubClient, repositories: dict[str, RepositoryData] | None = None
+    db: InfrahubDatabase, branch_name: str, repositories: dict[str, RepositoryData] | None = None
 ) -> list[PythonTransformComputedAttribute]:
     log = get_run_logger()
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
@@ -39,15 +41,17 @@ async def gather_python_transform_attributes(
     transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
 
     transform_names = list(transform_attributes.keys())
+
     if not transform_names:
         return []
 
-    transforms = await client.filters(
-        kind=CoreTransformPython,
+    transforms: list[CoreTransformPythonNode] = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.TRANSFORMPYTHON,
         branch=branch_name,
+        fields={"id": None, "name": None, "repository": None, "query": None},
+        filters={"name__values": transform_names},
         prefetch_relationships=True,
-        populate_store=True,
-        name__values=transform_names,
     )
 
     found_transforms_names = [transform.name.value for transform in transforms]
@@ -56,24 +60,27 @@ async def gather_python_transform_attributes(
             log.warning(
                 msg=f"The transform {transform_name} is assigned to a computed attribute but the transform could not be found in the database."
             )
-    repositories = repositories or await client.get_list_repositories()
+    repositories = repositories or await get_repositories_commit_per_branch(db=db)
 
     computed_attributes: list[PythonTransformComputedAttribute] = []
     for transform in transforms:
+        repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+        query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+
         for attribute in transform_attributes[transform.name.value]:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
                 name=transform.name.value,
                 branch_name=branch_name,
-                repository_id=transform.repository.peer.id,
-                repository_name=transform.repository.peer.name.value,
-                repository_kind=transform.repository.peer.typename,
-                query_name=transform.query.peer.name.value,
-                query_models=transform.query.peer.models.value,
+                repository_id=repository.get_id(),
+                repository_name=repository.name.value,
+                repository_kind=repository.get_kind(),
+                query_name=query.name.value,
+                query_models=query.models.value or [],
                 computed_attribute=attribute,
                 default_schema=branch_name not in branches_with_diff_from_main,
             )
             python_transform_computed_attribute.populate_branch_commit(
-                repository_data=repositories.get(transform.repository.peer.name.value)
+                repository_data=repositories.get(repository.name.value)
             )
             computed_attributes.append(python_transform_computed_attribute)
 
@@ -96,18 +103,19 @@ async def gather_trigger_computed_attribute_jinja2() -> list[ComputedAttrJinja2T
 
     for branch_scope, branches_out_of_scope in branches_to_process:
         schema_branch = registry.schema.get_schema_branch(name=branch_scope)
-        mapping = schema_branch.computed_attributes.get_jinja2_target_map()
+        mapping = schema_branch.computed_attributes.get_jinja2_trigger_nodes()
 
         log.info(f"Generating {len(mapping)} Jinja2 trigger for {branch_scope} (except {branches_out_of_scope})")
 
-        for computed_attribute, source_node_types in mapping.items():
-            trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-                branch=branch_scope,
-                computed_attribute=computed_attribute,
-                source_node_types=source_node_types,
-                branches_out_of_scope=branches_out_of_scope,
-            )
-            triggers.append(trigger)
+        for computed_attribute, trigger_nodes in mapping.items():
+            for trigger_node in trigger_nodes:
+                trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
+                    branch=branch_scope,
+                    computed_attribute=computed_attribute,
+                    trigger_node=trigger_node,
+                    branches_out_of_scope=branches_out_of_scope,
+                )
+                triggers.append(trigger)
 
     return triggers
 
@@ -117,17 +125,20 @@ async def gather_trigger_computed_attribute_jinja2() -> list[ComputedAttrJinja2T
     cache_policy=NONE,
 )
 async def gather_trigger_computed_attribute_python(
-    client: InfrahubClient,
+    db: InfrahubDatabase,
 ) -> tuple[list[ComputedAttrPythonTriggerDefinition], list[ComputedAttrPythonQueryTriggerDefinition]]:
     triggers_python = []
     triggers_python_query = []
 
-    repositories = await client.get_list_repositories()
+    repositories = await get_repositories_commit_per_branch(db=db)
 
     all_computed_attributes: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
-    for branch in registry.branch.values():
+    for branch in list(registry.branch.values()):
+        if branch.is_global:
+            continue
+
         computed_attributes = await gather_python_transform_attributes(
-            branch_name=branch.name, client=client, repositories=repositories
+            db=db, branch_name=branch.name, repositories=repositories
         )
         for computed_attribute in computed_attributes:
             all_computed_attributes[computed_attribute.name][branch.name] = computed_attribute

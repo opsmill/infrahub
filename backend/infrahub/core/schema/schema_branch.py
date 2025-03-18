@@ -3,8 +3,8 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
-from itertools import chain
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
+from itertools import chain, combinations
+from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
@@ -74,7 +74,7 @@ class SchemaBranch:
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
     ):
-        self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
+        self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
@@ -242,12 +242,6 @@ class SchemaBranch:
             other_item = schema.get(name=item_kind)
             self.set(name=item_kind, schema=other_item)
 
-        # for item_kind in local_only:
-        #     if item_kind in self.nodes:
-        #         del self.nodes[item_kind]
-        #     else:
-        #         del self.generics[item_kind]
-
     def validate_node_deletions(self, diff: SchemaDiff) -> None:
         """Given a diff, check if a deleted node is still used in relationships of other nodes."""
         removed_schema_names = set(diff.removed.keys())
@@ -269,7 +263,7 @@ class SchemaBranch:
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
-    def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
+    def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(
             name=name,
@@ -439,7 +433,7 @@ class SchemaBranch:
         return list(namespaces.values())
 
     def get_schemas_for_namespaces(
-        self, namespaces: Optional[list[str]] = None, include_internal: bool = False
+        self, namespaces: list[str] | None = None, include_internal: bool = False
     ) -> list[MainSchemaTypes]:
         """Retrive everything in a single dictionary."""
         all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
@@ -456,12 +450,12 @@ class SchemaBranch:
                 nodes.append(self.get(name=node_name, duplicate=True))
         return nodes
 
-    def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
+    def generate_fields_for_display_label(self, name: str) -> dict | None:
         node = self.get(name=name, duplicate=False)
         if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
-        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        fields: dict[str, str | None | dict[str, None]] = {}
         if isinstance(node, GenericSchema):
             for child_node_name in node.used_by:
                 child_node = self.get(name=child_node_name, duplicate=False)
@@ -626,7 +620,7 @@ class SchemaBranch:
         node_schema: BaseNodeSchema,
         path: str,
         allowed_path_types: SchemaElementPathType,
-        element_name: Optional[str] = None,
+        element_name: str | None = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{element_name}" if element_name else ""
@@ -728,10 +722,12 @@ class SchemaBranch:
             for attr_name in attrs_to_make_unique:
                 attr_schema = node_schema.get_attribute(name=attr_name)
                 attr_schema.unique = True
+
             if attrs_to_add_to_constraints:
                 node_schema.uniqueness_constraints = (node_schema.uniqueness_constraints or []) + sorted(
                     [[f"{attr_name}__value"] for attr_name in attrs_to_add_to_constraints]
                 )
+
             self.set(name=name, schema=node_schema)
 
     def validate_uniqueness_constraints(self) -> None:
@@ -826,15 +822,30 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
+    def _is_attr_combination_unique(self, attrs_paths: list[str], uniqueness_constraints: list[list[str]]) -> bool:
+        """
+        Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
+        """
+
+        unique_constraint_group_sets = [set(ucg) for ucg in uniqueness_constraints]
+        for i in range(1, len(attrs_paths) + 1):
+            for attr_combo in combinations(attrs_paths, i):
+                if any(ucg == set(attr_combo) for ucg in unique_constraint_group_sets):
+                    return True
+        return False
+
     def validate_human_friendly_id(self) -> None:
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
-            hf_attr_names = set()
 
             if not node_schema.human_friendly_id:
                 continue
 
             allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR
+
+            # Mapping relationship identifiers -> list of attributes paths
+            rel_schemas_to_paths: dict[str, tuple[MainSchemaTypes, list[str]]] = {}
+
             for hfid_path in node_schema.human_friendly_id:
                 schema_path = self.validate_schema_path(
                     node_schema=node_schema,
@@ -843,8 +854,19 @@ class SchemaBranch:
                     element_name="human_friendly_id",
                 )
 
-                if schema_path.is_type_attribute:
-                    hf_attr_names.add(schema_path.attribute_schema.name)
+                if schema_path.is_type_relationship:
+                    # Construct the name without relationship prefix to match with how it would be defined in peer schema uniqueness constraint
+                    rel_identifier = schema_path.relationship_schema.identifier
+                    if rel_identifier not in rel_schemas_to_paths:
+                        rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
+                    rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
+
+            # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
+            for related_schema, attrs_paths in rel_schemas_to_paths.values():
+                if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                    raise ValidationError(
+                        f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                    )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
@@ -905,7 +927,7 @@ class SchemaBranch:
             raise ValueError(f"Cycles exist among parents and components in schema: {exc.get_cycle_strings()}") from exc
 
     def _validate_parents_one_schema(
-        self, node_schema: Union[NodeSchema, GenericSchema], parent_relationships: list[RelationshipSchema]
+        self, node_schema: NodeSchema | GenericSchema, parent_relationships: list[RelationshipSchema]
     ) -> None:
         if not parent_relationships:
             return
@@ -1135,7 +1157,7 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            schema_to_update: NodeSchema | GenericSchema | None = None
             for relationship in node.relationships:
                 if relationship.on_delete is not None:
                     continue
@@ -1159,42 +1181,50 @@ class SchemaBranch:
             #   but some the model has some unique attribute, we generate a human_friendly_id
             # If human_friendly_id IS defined
             #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
-            if not node.human_friendly_id and node.unique_attributes:
-                for attr in node.unique_attributes:
-                    node = self.get(name=name, duplicate=True)
-                    node.human_friendly_id = [f"{attr.name}__value"]
-                    self.set(name=node.kind, schema=node)
-                    break
-                continue
-
-            # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
-            # then use that attribute as the human_friendly_id
-            if not node.human_friendly_id and node.uniqueness_constraints:
-                for constraint_paths in node.uniqueness_constraints:
-                    if len(constraint_paths) > 1:
-                        continue
-                    constraint_path = constraint_paths[0]
-                    schema_path = node.parse_schema_path(path=constraint_path, schema=node)
-                    if (
-                        schema_path.is_type_attribute
-                        and schema_path.attribute_property_name == "value"
-                        and schema_path.attribute_schema
-                    ):
+            if not node.human_friendly_id:
+                if node.unique_attributes:
+                    for attr in node.unique_attributes:
                         node = self.get(name=name, duplicate=True)
-                        node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                        node.human_friendly_id = [f"{attr.name}__value"]
                         self.set(name=node.kind, schema=node)
                         break
+                    continue
 
-            if node.human_friendly_id and not node.uniqueness_constraints:
-                uniqueness_constraints: list[str] = []
+                # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
+                # then use that attribute as the human_friendly_id
+                if node.uniqueness_constraints:
+                    for constraint_paths in node.uniqueness_constraints:
+                        if len(constraint_paths) > 1:
+                            continue
+                        constraint_path = constraint_paths[0]
+                        schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                        if (
+                            schema_path.is_type_attribute
+                            and schema_path.attribute_property_name == "value"
+                            and schema_path.attribute_schema
+                        ):
+                            node = self.get(name=name, duplicate=True)
+                            node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                            self.set(name=node.kind, schema=node)
+                            break
+
+            # Add hfid to uniqueness constraint
+            if node.human_friendly_id:
+                uniqueness_constraint: list[str] = []
                 for item in node.human_friendly_id:
                     schema_attribute_path = node.parse_schema_path(path=item, schema=self)
                     if schema_attribute_path.is_type_attribute:
-                        uniqueness_constraints.append(item)
+                        uniqueness_constraint.append(item)
                     elif schema_attribute_path.is_type_relationship:
-                        uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
+                        uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
 
-                node.uniqueness_constraints = [uniqueness_constraints]
+                node = self.get(name=name, duplicate=True)
+                # Make sure there is no duplicate regarding generics values.
+                if node.uniqueness_constraints:
+                    if uniqueness_constraint not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(uniqueness_constraint)
+                else:
+                    node.uniqueness_constraints = [uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:
@@ -1635,8 +1665,7 @@ class SchemaBranch:
         if not self.has(name=InfrahubKind.PROFILE):
             # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
             #  Ideally, we would remove this and instead load CoreProfile properly within tests.
-            core_profile_schema = GenericSchema(**core_profile_schema_definition)
-            self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+            self.set(name=core_profile_schema_definition.kind, schema=core_profile_schema_definition)
 
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
@@ -1830,6 +1859,9 @@ class SchemaBranch:
 
     def add_relationships_to_template(self, node: NodeSchema) -> None:
         template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        if template_schema.is_generic_schema:
+            return
+
         # Remove previous relationships to account for new ones
         template_schema.relationships = [
             r for r in template_schema.relationships if r.kind == RelationshipKind.TEMPLATE
@@ -1873,10 +1905,23 @@ class SchemaBranch:
                 )
             )
 
+            if relationship.kind == RelationshipKind.PARENT:
+                template_schema.human_friendly_id = [
+                    f"{relationship.name}__template_name__value"
+                ] + template_schema.human_friendly_id
+                template_schema.uniqueness_constraints[0].append(relationship.name)
+
     def generate_object_template_from_node(
         self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]
     ) -> TemplateSchema | GenericSchema:
-        core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        # Tell if the user explicitely requested this template
+        is_autogenerated_subtemplate = node.generate_template is False
+
+        core_template_schema = (
+            self.get(name=InfrahubKind.OBJECTCOMPONENTTEMPLATE, duplicate=False)
+            if is_autogenerated_subtemplate
+            else self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        )
         core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         template_name_attr = AttributeSchema(
             **core_name_attr.model_dump(exclude=["id", "inherited"]),
@@ -1886,7 +1931,7 @@ class SchemaBranch:
         template: TemplateSchema | GenericSchema
         need_template_kinds = [n.kind for n in need_templates]
 
-        if isinstance(node, GenericSchema):
+        if node.is_generic_schema:
             # When needing a template for a generic, we generate an empty shell mostly to make sure that schemas (including the GraphQL one) will
             # look right. We don't really care about applying inheritance of fields as it was already processed and actual templates will have the
             # correct attributes and relationships
@@ -1898,42 +1943,44 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
+                attributes=[template_name_attr],
             )
 
             for used in node.used_by:
                 if used in need_template_kinds:
                     template.used_by.append(self._get_object_template_kind(node_kind=used))
-        else:
-            template = TemplateSchema(
-                name=node.kind,
-                namespace="Template",
-                label=f"Object template {node.label}",
-                description=f"Object template for {node.kind}",
-                branch=node.branch,
-                include_in_menu=False,
-                display_labels=["template_name__value"],
-                inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
-                human_friendly_id=["template_name__value"],
-                default_filter="template_name__value",
-                attributes=[template_name_attr],
-                relationships=[
-                    RelationshipSchema(
-                        name="related_nodes",
-                        identifier="node__objecttemplate",
-                        peer=node.kind,
-                        kind=RelationshipKind.TEMPLATE,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                    )
-                ],
-            )
 
-            for inherited in node.inherit_from:
-                if inherited in need_template_kinds:
-                    template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
+            return template
 
-        # Tell if the user explicitely requested this template
-        is_autogenerated_subtemplate = node.generate_template is False
+        template = TemplateSchema(
+            name=node.kind,
+            namespace="Template",
+            label=f"Object template {node.label}",
+            description=f"Object template for {node.kind}",
+            branch=node.branch,
+            include_in_menu=False,
+            display_labels=["template_name__value"],
+            human_friendly_id=["template_name__value"],
+            uniqueness_constraints=[["template_name__value"]],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
+            default_filter="template_name__value",
+            attributes=[template_name_attr],
+            relationships=[
+                RelationshipSchema(
+                    name="related_nodes",
+                    identifier="node__objecttemplate",
+                    peer=node.kind,
+                    kind=RelationshipKind.TEMPLATE,
+                    cardinality=RelationshipCardinality.MANY,
+                    branch=BranchSupportType.AWARE,
+                )
+            ],
+        )
+
+        for inherited in node.inherit_from:
+            if inherited in need_template_kinds:
+                template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
+
         for node_attr in node.attributes:
             if node_attr.unique or node_attr.read_only:
                 continue

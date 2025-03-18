@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,8 +46,8 @@ class BaseDiffElement(BaseModel):
 
 
 class ValueElement(BaseDiffElement):
-    previous: Optional[Any] = None
-    new: Optional[Any] = None
+    previous: Any | None = None
+    new: Any | None = None
 
     def __hash__(self) -> int:
         return hash(type(self))
@@ -57,12 +57,12 @@ class PropertyDiffElement(BaseDiffElement):
     branch: str
     type: str
     action: DiffAction
-    path: Optional[str] = None
+    path: str | None = None
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
-    origin_rel_id: Optional[str] = Field(None, exclude=True)
-    value: Optional[ValueElement] = None
-    changed_at: Optional[Timestamp] = None
+    origin_rel_id: str | None = Field(None, exclude=True)
+    value: ValueElement | None = None
+    changed_at: Timestamp | None = None
 
 
 class NodeAttributeDiffElement(BaseDiffElement):
@@ -72,28 +72,28 @@ class NodeAttributeDiffElement(BaseDiffElement):
     action: DiffAction
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
-    origin_rel_id: Optional[str] = Field(None, exclude=True)
-    changed_at: Optional[Timestamp] = None
+    origin_rel_id: str | None = Field(None, exclude=True)
+    changed_at: Timestamp | None = None
     properties: dict[str, PropertyDiffElement]
 
 
 class NodeDiffElement(BaseDiffElement):
-    branch: Optional[str] = None
+    branch: str | None = None
     labels: list[str]
     kind: str
     id: str
     path: str
     action: DiffAction
     db_id: str = Field(exclude=True)
-    rel_id: Optional[str] = Field(None, exclude=True)
-    changed_at: Optional[Timestamp] = None
+    rel_id: str | None = Field(None, exclude=True)
+    changed_at: Timestamp | None = None
     attributes: dict[str, NodeAttributeDiffElement] = Field(default_factory=dict)
 
 
 class RelationshipEdgeNodeDiffElement(BaseDiffElement):
     id: str
-    db_id: Optional[str] = Field(None, exclude=True)
-    rel_id: Optional[str] = Field(None, exclude=True)
+    db_id: str | None = Field(None, exclude=True)
+    rel_id: str | None = Field(None, exclude=True)
     labels: list[str]
     kind: str
 
@@ -106,11 +106,11 @@ class RelationshipDiffElement(BaseDiffElement):
     action: DiffAction
     nodes: dict[str, RelationshipEdgeNodeDiffElement]
     properties: dict[str, PropertyDiffElement]
-    changed_at: Optional[Timestamp] = None
+    changed_at: Timestamp | None = None
     paths: list[str]
     conflict_paths: list[str]
 
-    def get_node_id_by_kind(self, kind: str) -> Optional[str]:
+    def get_node_id_by_kind(self, kind: str) -> str | None:
         ids = [rel.id for rel in self.nodes.values() if rel.kind == kind]
         if ids:
             return ids[0]
@@ -149,11 +149,11 @@ class ModifiedPath(BaseModel):
     node_id: str
     path_type: PathType
     kind: str
-    element_name: Optional[str] = None
-    property_name: Optional[str] = None
-    peer_id: Optional[str] = None
+    element_name: str | None = None
+    property_name: str | None = None
+    peer_id: str | None = None
     action: DiffAction
-    change: Optional[ValueElement] = None
+    change: ValueElement | None = None
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ModifiedPath):
@@ -248,7 +248,7 @@ class DataConflict(ObjectConflict):
     conflict_path: str
     path: str
     path_type: PathType
-    property_name: Optional[str] = None
+    property_name: str | None = None
     change_type: str
     changes: list[BranchChanges] = Field(default_factory=list)
 
@@ -311,7 +311,7 @@ class BranchDiffFile(BaseModel):
 class BranchDiffRepository(BaseModel):
     branch: str
     id: str
-    display_name: Optional[str] = None
+    display_name: str | None = None
     commit_from: str
     commit_to: str
     files: list[BranchDiffFile] = Field(default_factory=list)
@@ -325,14 +325,14 @@ class BranchDiffArtifactStorage(BaseModel):
 class ArtifactTarget(BaseModel):
     id: str
     kind: str
-    display_label: Optional[str] = None
+    display_label: str | None = None
 
 
 class BranchDiffArtifact(BaseModel):
     branch: str
     id: str
-    display_label: Optional[str] = None
+    display_label: str | None = None
     action: DiffAction
-    target: Optional[ArtifactTarget] = None
-    item_new: Optional[BranchDiffArtifactStorage] = None
-    item_previous: Optional[BranchDiffArtifactStorage] = None
+    target: ArtifactTarget | None = None
+    item_new: BranchDiffArtifactStorage | None = None
+    item_previous: BranchDiffArtifactStorage | None = None

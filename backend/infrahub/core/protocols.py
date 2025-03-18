@@ -148,6 +148,10 @@ class CoreMenu(CoreNode):
     children: RelationshipManager
 
 
+class CoreObjectComponentTemplate(CoreNode):
+    template_name: String
+
+
 class CoreObjectTemplate(CoreNode):
     template_name: String
 

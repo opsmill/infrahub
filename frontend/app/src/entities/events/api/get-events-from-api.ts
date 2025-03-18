@@ -1,9 +1,10 @@
 import { Get_ActivitiesQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
 export type GlobalEventsFilters = {
+  ids?: Array<string>;
   hasChildren?: boolean;
   eventType?: Array<string>;
   primaryNodeIds?: Array<string>;
@@ -17,12 +18,11 @@ export type GlobalEventsFilters = {
   limit?: number;
 };
 
-export type GetEventsParams = ContextParams & PaginationParams & { filters: GlobalEventsFilters };
-
 export const OBJECTS_PER_PAGE = 40;
 
-const EVENTS_QUERY = gql`
-  query GET_ACTIVITIES(
+export const EVENTS_QUERY = gql`
+  query GET_INFRAHUB_EVENTS(
+    $ids: [String!]
     $hasChildren: Boolean
     $branches: [String!]
     $eventType: [String!]
@@ -37,6 +37,7 @@ const EVENTS_QUERY = gql`
     $limit: Int
   ) {
     InfrahubEvent(
+      ids: $ids
       has_children: $hasChildren
       branches: $branches
       event_type: $eventType
@@ -50,7 +51,6 @@ const EVENTS_QUERY = gql`
       offset: $offset
       limit: $limit
     ) {
-      count
       edges {
         node {
           id
@@ -123,19 +123,17 @@ const EVENTS_QUERY = gql`
   }
 `;
 
+export type GetEventsFromApiParams = PaginationParams & { filters: GlobalEventsFilters };
+
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
-  atDate,
   filters,
-}: GetEventsParams) {
+}: GetEventsFromApiParams) {
   return graphqlClient.query<Get_ActivitiesQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,
       ...filters,
-    },
-    context: {
-      date: atDate,
     },
   });
 }

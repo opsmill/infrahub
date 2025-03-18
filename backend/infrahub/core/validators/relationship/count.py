@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType, RelationshipCardinality
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -22,8 +22,8 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
     def __init__(
         self,
-        min_count_override: Optional[int] = None,
-        max_count_override: Optional[int] = None,
+        min_count_override: int | None = None,
+        max_count_override: int | None = None,
         **kwargs: Any,
     ) -> None:
         self.min_count_override = min_count_override
@@ -150,7 +150,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 class RelationshipCountChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipCountUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

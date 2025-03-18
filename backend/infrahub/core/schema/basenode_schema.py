@@ -5,7 +5,7 @@ import keyword
 import os
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -120,7 +120,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         other: Self,
         get_func: Callable,
         get_map_func: Callable,
-        obj_type: type[Union[AttributeSchema, RelationshipSchema]],
+        obj_type: type[AttributeSchema | RelationshipSchema],
     ) -> HashableModelDiff:
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
         The logic is the same for both, except that the functions we are using to access these objects are differents
@@ -176,16 +176,14 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return elements_diff
 
     @overload
-    def get_field(
-        self, name: str, raise_on_error: Literal[True] = True
-    ) -> Union[AttributeSchema, RelationshipSchema]: ...
+    def get_field(self, name: str, raise_on_error: Literal[True] = True) -> AttributeSchema | RelationshipSchema: ...
 
     @overload
     def get_field(
         self, name: str, raise_on_error: Literal[False] = False
-    ) -> Optional[Union[AttributeSchema, RelationshipSchema]]: ...
+    ) -> AttributeSchema | RelationshipSchema | None: ...
 
-    def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
+    def get_field(self, name: str, raise_on_error: bool = True) -> AttributeSchema | RelationshipSchema | None:
         if field := self.get_attribute_or_none(name=name):
             return field
 
@@ -204,7 +202,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_attribute_or_none(self, name: str) -> Optional[AttributeSchema]:
+    def get_attribute_or_none(self, name: str) -> AttributeSchema | None:
         for item in self.attributes:
             if item.name == name:
                 return item
@@ -230,7 +228,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         raise ValueError(f"Unable to find the relationship with the ID: {id}")
 
-    def get_relationship_or_none(self, name: str) -> Optional[RelationshipSchema]:
+    def get_relationship_or_none(self, name: str) -> RelationshipSchema | None:
         for item in self.relationships:
             if item.name == name:
                 return item
@@ -242,9 +240,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     @overload
     def get_relationship_by_identifier(
         self, id: str, raise_on_error: Literal[False] = False
-    ) -> Optional[RelationshipSchema]: ...
+    ) -> RelationshipSchema | None: ...
 
-    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Optional[RelationshipSchema]:
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema | None:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -343,7 +341,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             fields[subpaths[0]] = cls.convert_path_to_graphql_fields(path=subpaths[1])
         return fields
 
-    def generate_fields_for_display_label(self) -> Optional[dict]:
+    def generate_fields_for_display_label(self) -> dict | None:
         """Generate a dictionary containing the list of fields that are required
         to generate the display_label.
 
@@ -353,12 +351,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not self.display_labels:
             return None
 
-        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        fields: dict[str, str | None | dict[str, None]] = {}
         for item in self.display_labels:
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
 
-    def generate_fields_for_hfid(self) -> Optional[dict]:
+    def generate_fields_for_hfid(self) -> dict | None:
         """Generate a dictionary containing the list of fields that are required
         to generate the hfid.
 
@@ -368,7 +366,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not self.human_friendly_id:
             return None
 
-        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        fields: dict[str, str | None | dict[str, None]] = {}
         for item in self.human_friendly_id:
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
@@ -381,11 +379,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         return value
 
-    def parse_schema_path(self, path: str, schema: Optional[SchemaBranch] = None) -> SchemaAttributePath:
+    def parse_schema_path(self, path: str, schema: SchemaBranch | None = None) -> SchemaAttributePath:
         schema_path = SchemaAttributePath()
-        relationship_piece: Optional[str] = None
-        attribute_piece: Optional[str] = None
-        property_piece: Optional[str] = None
+        relationship_piece: str | None = None
+        attribute_piece: str | None = None
+        property_piece: str | None = None
 
         path_parts = path.split("__")
         if path_parts[0] in self.relationship_names:
@@ -457,10 +455,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
 @dataclass
 class SchemaAttributePath:
-    relationship_schema: Optional[RelationshipSchema] = None
-    related_schema: Optional[Union[NodeSchema, GenericSchema]] = None
-    attribute_schema: Optional[AttributeSchema] = None
-    attribute_property_name: Optional[str] = None
+    relationship_schema: RelationshipSchema | None = None
+    related_schema: NodeSchema | GenericSchema | None = None
+    attribute_schema: AttributeSchema | None = None
+    attribute_property_name: str | None = None
 
     @property
     def is_type_attribute(self) -> bool:
@@ -491,6 +489,10 @@ class SchemaAttributePath:
         if self.attribute_property_name:
             return self.attribute_property_name
         raise AttributePathParsingError("An attribute_property_name was expected but not found")
+
+    @property
+    def attribute_path_as_str(self) -> str:
+        return self.active_attribute_schema.name + "__" + self.active_attribute_property_name
 
 
 @dataclass

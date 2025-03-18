@@ -9,7 +9,11 @@ from pydantic import BaseModel, Field, computed_field
 from typing_extensions import Self
 
 from infrahub.core import registry
-from infrahub.core.schema.schema_branch_computed import ComputedAttributeTarget, PythonDefinition  # noqa: TC001
+from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
+    ComputedAttributeTarget,
+    ComputedAttributeTriggerNode,
+    PythonDefinition,
+)
 from infrahub.events import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import (
@@ -27,7 +31,7 @@ from infrahub.workflows.catalogue import (
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub_sdk.data import RepositoryData
+    from infrahub.git.models import RepositoryData
 
 
 class ComputedAttributeAutomations(BaseModel):
@@ -115,22 +119,24 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         cls,
         branch: str,
         computed_attribute: ComputedAttributeTarget,
-        source_node_types: list[str],
+        trigger_node: ComputedAttributeTriggerNode,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
         """
         This function is used to create a trigger definition for a computed attribute of type Jinja2.
-
-        NOTE: Currently the function will create a single trigger per computed attribute but we need to refactor it
-        to create a trigger per source node type AND filter on the specific fields for each node type
         """
         event_trigger = EventTrigger()
         event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
-        event_trigger.match = {"infrahub.node.kind": source_node_types}
+        event_trigger.match = {"infrahub.node.kind": trigger_node.kind}
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
+
+        event_trigger.match_related = {
+            "prefect.resource.role": "infrahub.node.field_update",
+            "infrahub.field.name": trigger_node.fields,
+        }
 
         workflow = ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -158,7 +164,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         )
 
         definition = cls(
-            name=computed_attribute.key_name,
+            name=f"{computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{trigger_node.kind}",
             branch=branch,
             computed_attribute=computed_attribute,
             trigger=event_trigger,

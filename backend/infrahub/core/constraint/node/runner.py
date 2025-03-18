@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
@@ -23,7 +23,7 @@ class NodeConstraintRunner:
         self.node_constraints = node_constraints
         self.relationship_manager_constraints = relationship_manager_constraints
 
-    async def check(self, node: Node, field_filters: Optional[list[str]] = None) -> None:
+    async def check(self, node: Node, field_filters: list[str] | None = None) -> None:
         async with self.db.start_session() as db:
             await node.resolve_relationships(db=db)
 

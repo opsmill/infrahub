@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -36,7 +36,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         return bool(self.deprecation)
 
     def to_dict(self) -> dict:
-        data = self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        data = self.model_dump(exclude_unset=True, exclude_none=True)
         for field_name, value in data.items():
             if isinstance(value, Enum):
                 data[field_name] = value.value
@@ -45,7 +45,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     def get_class(self) -> type[Relationship]:
         return Relationship
 
-    def get_peer_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> MainSchemaTypes:
+    def get_peer_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> MainSchemaTypes:
         return db.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
@@ -79,11 +79,11 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         self,
         db: InfrahubDatabase,
         filter_name: str,
-        filter_value: Optional[Union[str, int, bool]] = None,
-        name: Optional[str] = None,  # noqa: ARG002
-        branch: Optional[Branch] = None,
+        filter_value: str | int | bool | None = None,
+        name: str | None = None,  # noqa: ARG002
+        branch: Branch | None = None,
         include_match: bool = True,
-        param_prefix: Optional[str] = None,
+        param_prefix: str | None = None,
         partial_match: bool = False,
         support_profiles: bool = False,  # noqa: ARG002
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:

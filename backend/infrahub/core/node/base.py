@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from ..utils import SubclassWithMeta, SubclassWithMeta_Meta
 
 
 class BaseOptions:
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
     _frozen: bool = False
 

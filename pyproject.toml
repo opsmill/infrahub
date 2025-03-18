@@ -309,42 +309,6 @@ module = "infrahub.message_bus.operations"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.check.artifact"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.check.generator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.check.repository"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.refresh.webhook"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.artifact"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.graphql_query_group"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.repository"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.schema.migration"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.schema.validator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.trace"
 ignore_errors = true
 
@@ -525,7 +489,28 @@ allow-dunder-method-names = [
     "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
-"backend/infrahub/core/**.py" = [
+"backend/infrahub/core/branch/models.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/graph/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/node/standard.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/query/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
