@@ -1261,6 +1261,22 @@ class SchemaBranch:
             if changed:
                 self.set(name=name, schema=node)
 
+    def _handle_overridden_generic_fields(self, generic_schema: GenericSchema, node_schema: NodeSchema) -> None:
+        """
+        If a non-inherited attribute or relationship on the node_schema has the same ID as the
+        corresponding field on the generic schema, then the node-level field is in the process
+        of being overridden and we need to remove the ID from the node field to ensure that a
+        new field is created on the node_schema instead of incorrectly updating the generic field
+        """
+        interface_fields_by_name = {a.name: a for a in generic_schema.attributes}
+        interface_fields_by_name.update({r.name: r for r in generic_schema.relationships})
+        for node_field in node_schema.local_attributes + node_schema.local_relationships:
+            interface_field = interface_fields_by_name.get(node_field.name)
+            if not interface_field:
+                continue
+            if node_field.id == interface_field.id:
+                node_field.id = None
+
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
         from the Interface objects defined in inherited_from.
@@ -1301,6 +1317,7 @@ class SchemaBranch:
                 # Store the list of node referencing a specific generics
                 generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=generic_kind_schema)
+                self._handle_overridden_generic_fields(generic_schema=generic_kind_schema, node_schema=node)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(

@@ -10,7 +10,6 @@ from infrahub.core.constants import HashableModelState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.relationship.model import RelationshipManager
-from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 
@@ -206,14 +205,18 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_generic_without_deleted_fields(self, db: InfrahubDatabase, schema_generic_base: dict[str, Any]) -> dict[str, Any]:
+    def schema_generic_without_deleted_fields(
+        self, db: InfrahubDatabase, schema_generic_base: dict[str, Any]
+    ) -> dict[str, Any]:
         schema_dict = schema_generic_base.copy()
         schema_dict["attributes"] = [a for a in schema_dict["attributes"] if a["name"] != "generic_attr_text"]
         schema_dict["relationships"] = [r for r in schema_dict["relationships"] if r["name"] != "things"]
         return schema_dict
 
     @pytest.fixture(scope="class")
-    def schema_specific_one_with_deleted_overrides(self, schema_specific_one_with_overrides: dict[str, Any]) -> dict[str, Any]:
+    def schema_specific_one_with_deleted_overrides(
+        self, schema_specific_one_with_overrides: dict[str, Any]
+    ) -> dict[str, Any]:
         schema_dict = schema_specific_one_with_overrides.copy()
         for attr in schema_dict["attributes"]:
             if attr["name"] == "generic_attr_text":
@@ -242,7 +245,7 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         registry.schema.set_schema_branch(name=branch.name, schema=current_schema_branch)
 
     async def _validate_inherited_schema_fields(
-        self, db: InfrahubDatabase, branch: Branch, generic_schema: GenericSchema, inheriting_schemas: list[NodeSchema]
+        self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
     ) -> list[str]:
         """
         Validate the following:
@@ -251,7 +254,7 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
          - SchemaNode nodes have relationship to SchemaAttribute or SchemaRelationship nodes for
             all local relationships and attributes
         """
-        node_kind_map = {}
+        node_kind_map: dict[str, list[str]] = {}
         for node_schema in inheriting_schemas:
             if node_schema.namespace not in node_kind_map:
                 node_kind_map[node_schema.namespace] = []
@@ -336,9 +339,8 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
-            generic_schema=db.schema.get(name=GENERIC_KIND, duplicate=False),
             inheriting_schemas=[
-                db.schema.get(name=schema_kind, branch=branch, duplicate=False)
+                db.schema.get_node_schema(name=schema_kind, branch=branch, duplicate=False)
                 for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
             ],
         )
@@ -366,6 +368,7 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                                     "generic_attr_text": {
                                         "added": {},
                                         "changed": {
+                                            "id": None,
                                             "default_value": None,
                                             "inherited": None,
                                         },
@@ -380,6 +383,7 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                                     "things": {
                                         "added": {},
                                         "changed": {
+                                            "id": None,
                                             "max_count": None,
                                             "inherited": None,
                                         },
@@ -449,9 +453,8 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert set(generic_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
-        # TODO: currently failing
-        # generic_attr_text_schema = generic_schema.get_attribute("generic_attr_text")
-        # assert generic_attr_text_schema.default_value is None
+        generic_attr_text_schema = generic_schema.get_attribute("generic_attr_text")
+        assert generic_attr_text_schema.default_value is None
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
         assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
         assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
@@ -472,9 +475,8 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
-            generic_schema=updated_schema_branch.get(name=GENERIC_KIND, duplicate=False),
             inheriting_schemas=[
-                updated_schema_branch.get(name=schema_kind, duplicate=False)
+                updated_schema_branch.get_node(name=schema_kind, duplicate=False)
                 for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
             ],
         )
@@ -577,14 +579,14 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
 
         await self._refresh_registry(db=db, branch=branch)
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
-        # TODO: this fails, probably a bug in the delete attr migration
+        # TODO: this fails b/c of a bug in the NodeAttributeRemove migration
+        # captured in https://github.com/opsmill/infrahub/issues/6073
         # assert retrieved_specific_one.generic_attr_text.value == "Alpha"
         assert retrieved_specific_one.generic_attr_num.value == 1
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
         assert rels_one[0].peer_id == initial_dataset["thing_one"].id
-        # TODO: this fails, overridden `things` relationship is incorrectly deleted on TestingSpecificOne
-        # assert isinstance(retrieved_specific_one.things, RelationshipManager)
+        assert isinstance(retrieved_specific_one.things, RelationshipManager)
 
         retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
         assert not hasattr(retrieved_specific_two, "generic_attr_text")
@@ -600,13 +602,9 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert "things" not in generic_schema.relationship_names
         assert "favorite_thing" in generic_schema.relationship_names
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
-        # TODO: this fails, probably a bug in the delete attr migration
-        # assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
-        # assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
-        assert set(specific_one_schema.attribute_names) == {"generic_attr_num"}
-        assert not specific_one_schema.local_attribute_names
-        assert "things" not in specific_one_schema.relationship_names
-        assert "favorite_thing" in specific_one_schema.relationship_names
+        assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
+        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
+        assert {"favorite_thing", "things"} <= set(specific_one_schema.relationship_names)
         specific_two_schema = updated_schema_branch.get(SPECIFIC_TWO_KIND, duplicate=False)
         assert set(specific_two_schema.attribute_names) == {"generic_attr_num", "specific_attr_text"}
         assert set(specific_two_schema.local_attribute_names) == {"specific_attr_text"}
@@ -617,15 +615,13 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
-            generic_schema=updated_schema_branch.get(name=GENERIC_KIND, duplicate=False),
             inheriting_schemas=[
-                updated_schema_branch.get(name=schema_kind, duplicate=False)
+                updated_schema_branch.get_node(name=schema_kind, duplicate=False)
                 for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
             ],
         )
         assert not errors
 
-    @pytest.mark.skip(reason="we do not correctly support overriding generic fields on the inheriting schema right now")
     async def test_step04_check_deleted_overridden_fields(
         self,
         db: InfrahubDatabase,
@@ -662,7 +658,6 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
             },
         }
 
-    @pytest.mark.skip(reason="we do not correctly support overriding generic fields on the inheriting schema right now")
     async def test_step04_load_schema_with_override_deletes(
         self,
         db: InfrahubDatabase,
@@ -713,19 +708,13 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
-            generic_schema=updated_schema_branch.get(name=GENERIC_KIND, duplicate=False),
             inheriting_schemas=[
-                updated_schema_branch.get(name=schema_kind, duplicate=False)
+                updated_schema_branch.get_node(name=schema_kind, duplicate=False)
                 for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
             ],
         )
         assert not errors
 
-"""
-MATCH p0 = (schema_node:SchemaNode|SchemaGeneric)-[:HAS_ATTRIBUTE]-(:Attribute {name: "name"})-[:HAS_VALUE]->(av:AttributeValue)
-WHERE av.value in ["SpecificOne", "SpecificTwo", "Generic"]
-MATCH p1 = (schema_node)-[:IS_RELATED]-(sr:Relationship)-[:IS_RELATED]-(:SchemaRelationship|SchemaAttribute)-[:HAS_ATTRIBUTE]-(:Attribute {name: "name"})-[:HAS_VALUE]-(rav:AttributeValue)
-WHERE sr.name IN ["schema__node__relationships", "schema__node__attributes"]
-AND rav.value IN ["generic_attr_text"]
-RETURN p0, p1
-"""
+
+# TODO
+# need test for deleting an overridden inherited attr when the generic version of the attr still exists
