@@ -43,6 +43,7 @@ class InfrahubPerformanceTest:
             self.infrahub_version = client.get_version()
         if compose:
             self.extract_compose_information(compose)
+            compose.profiles.append("performance")
 
     def finalize(self, session: Session) -> None:
         self.end_time = datetime.now(UTC)

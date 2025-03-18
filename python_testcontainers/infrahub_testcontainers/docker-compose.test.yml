@@ -160,8 +160,19 @@ services:
       - "./${INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY}"
     tty: true
 
+  scraper:
+    profiles:
+      - performance
+    image: "${SCRAPER_DOCKER_IMAGE:-victoriametrics/victoria-metrics:v1.110.0}"
+    volumes:
+      - vmdata:/victoria-metrics-data
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--promscrape.config=/etc/prometheus/prometheus.yml"
+
 volumes:
   database_data:
   database_logs:
   storage_data:
   workflow_db:
+  vmdata:
