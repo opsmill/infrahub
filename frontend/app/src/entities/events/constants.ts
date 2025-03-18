@@ -21,6 +21,14 @@ export const GROUP_EVENTS = [GROUP_EVENT];
 
 export const EVENT_TYPE_CHOICES = [
   {
+    label: "Artifact created",
+    name: "infrahub.artifact.created",
+  },
+  {
+    label: "Artifact updated",
+    name: "infrahub.artifact.updated",
+  },
+  {
     label: "Node created",
     name: "infrahub.node.created",
   },
