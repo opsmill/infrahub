@@ -1,10 +1,8 @@
-import time
 import uuid
 
 import pytest
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.batch import InfrahubBatch
-from mypy.checkexpr import defaultdict
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
@@ -12,39 +10,8 @@ from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
 
-class TestBenchmarkBatches(TestInfrahubApp):
-    @pytest.fixture
-    def timing_collector(self):
-        timing_info = defaultdict(dict)
-        yield timing_info
-        # Print the collected timing information in a grid format at the end of all test runs
-        print("\nTiming information for all test runs:")
-        # Dynamically generate column headers
-        all_keys = set()
-        for batch_size in timing_info:
-            all_keys.update(timing_info[batch_size].keys())
-        all_keys = sorted(all_keys)
-
-        # Calculate the maximum width for each column
-        col_widths = {
-            key: max(len(key), len(timing_info[batch_size].get(key, "N/A")))
-            for key in all_keys
-            for batch_size in timing_info
-        }
-
-        # Print header row
-        header = f"{'Batch Size':<10} | " + " | ".join(f"{key:<{col_widths[key]}}" for key in all_keys)
-        print(header)
-        print("=" * (10 + sum(col_widths.values()) + 3 * len(all_keys)))
-
-        # Print data rows
-        for batch_size in sorted(timing_info.keys()):
-            row = f"{batch_size:<10} | "
-            for key in all_keys:
-                elapsed_time = timing_info[batch_size].get(key, "N/A")
-                row += f"{elapsed_time:<{col_widths[key]}} | "
-            print(row)
-
+@pytest.mark.timeout(1000)  # Increase timeout as codspeed runs tests multiple times.
+class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
     async def create_car_batch(
         self,
         batch_size: int,
@@ -90,7 +57,7 @@ class TestBenchmarkBatches(TestInfrahubApp):
         res = await client.schema.load([car_person_schema_unique_owner], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
-    @pytest.mark.parametrize("allow_upsert", [True])
+    @pytest.mark.parametrize("allow_upsert", [True, False])
     @pytest.mark.parametrize("batch_size", [100])
     def test_create_nodes_batch(
         self,
@@ -102,7 +69,6 @@ class TestBenchmarkBatches(TestInfrahubApp):
         batch_size: int,
         aio_benchmark,
         exec_async,
-        timing_collector,
     ) -> None:
         batch = exec_async(
             self.create_car_batch,
@@ -113,23 +79,12 @@ class TestBenchmarkBatches(TestInfrahubApp):
             branch=branch.name,
         )
 
-        # Raises a "loop already running" error
         aio_benchmark(
             execute_batch,
             infrahub_batch=batch,
-            branch=branch.name,
-            allow_upsert=allow_upsert,
-            batch_size=batch_size,
-            timing_collector=timing_collector,
         )
 
 
-async def execute_batch(infrahub_batch, branch, allow_upsert, batch_size, timing_collector):
-    start_time = time.time()
+async def execute_batch(infrahub_batch):
     async for _, _ in infrahub_batch.execute():
         pass
-
-    # Store data in order to have a manual report containing all test runs results
-    elapsed_time = time.time() - start_time
-    key = f"{branch}, allow_upsert={allow_upsert}"
-    timing_collector[batch_size][key] = f"{elapsed_time:.2f}s"

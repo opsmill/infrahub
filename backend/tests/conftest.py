@@ -207,13 +207,7 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[
         return None
 
     container = start_neo4j_container(NEO4J_IMAGE)
-
-    def finalize():
-        print("Neo4j container logs:")
-        print(container.get_logs())
-        container.stop()
-
-    request.addfinalizer(finalize)
+    request.addfinalizer(container.stop)
 
     return {
         PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
@@ -1099,7 +1093,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
     return schema
 
 
-@pytest.fixture(params=["main"])
+@pytest.fixture(params=["main", "branch2"])
 async def branch(request, db: InfrahubDatabase, default_branch: Branch):
     if request.param == "main":
         return default_branch
