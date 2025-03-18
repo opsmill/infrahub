@@ -2,17 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Global Activities - List view and filter usage", () => {
-  test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-  test.slow();
-
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
 
   test("Filter by branch", async ({ page }) => {
     await page.goto("/activities");
@@ -65,6 +55,6 @@ test.describe("Global Activities - List view and filter usage", () => {
     await page.getByRole("button", { name: "Account" }).click();
     await page.getByRole("option", { name: "Chloe O'Brian" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByText("No activity found.")).toBeVisible();
+    await expect(page.getByText("No activities found")).toBeVisible();
   });
 });

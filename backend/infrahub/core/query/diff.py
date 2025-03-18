@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
@@ -21,8 +21,8 @@ class DiffQuery(Query):
     def __init__(
         self,
         branch: Branch,
-        diff_from: Union[Timestamp, str] = None,
-        diff_to: Union[Timestamp, str] = None,
+        diff_from: Timestamp | str = None,
+        diff_to: Timestamp | str = None,
         **kwargs,
     ):
         """A diff is always in the context of a branch"""

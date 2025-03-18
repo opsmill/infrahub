@@ -1,7 +1,8 @@
 import { EventType } from "@/entities/events/types";
-import { GetEventsParams, getEventsFromApi } from "../api/get-events-from-api";
+import { GetEventsFromApiParams, getEventsFromApi } from "../api/get-events-from-api";
 import { INFRAHUB_EVENT } from "../constants";
 
+export type GetEventsParams = GetEventsFromApiParams;
 export type GetEvents = (params: GetEventsParams) => Promise<Array<EventType>>;
 
 export const getEvents: GetEvents = async (params) => {

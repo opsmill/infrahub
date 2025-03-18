@@ -30,6 +30,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -564,7 +565,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one):
-    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
     schema = SchemaBranch(cache={}, name="test")
@@ -2835,10 +2836,9 @@ async def test_hierarchical_validate_parent_children(
 
 
 async def test_schema_branch_add_object_template_schema():
-    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+    device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2852,10 +2852,9 @@ async def test_schema_branch_add_object_template_schema():
 
 
 async def test_schema_branch_remove_object_template_schema():
-    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+    device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2882,10 +2881,9 @@ async def test_schema_branch_remove_object_template_schema():
 
 
 async def test_schema_branch_diff_core_object_template():
-    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+    device_schema = SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2900,7 +2898,7 @@ async def test_schema_branch_diff_core_object_template():
     diff = new_schema.diff(other=schema)
     assert diff.all == [InfrahubKind.OBJECTTEMPLATE]
 
-    DEVICE_SCHEMA.generics.append(core_template_schema)
+    DEVICE_SCHEMA.generics.extend([core_object_template, core_object_component_template])
     new_schema = SchemaBranch(cache={}, name="test")
     new_schema.load_schema(schema=DEVICE_SCHEMA)
     new_schema.process_inheritance()

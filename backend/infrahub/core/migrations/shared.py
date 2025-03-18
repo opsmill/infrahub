@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
@@ -43,13 +43,11 @@ class SchemaMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
 
-    new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
-    previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    new_node_schema: NodeSchema | GenericSchema | None = None
+    previous_node_schema: NodeSchema | GenericSchema | None = None
     schema_path: SchemaPath
 
-    async def execute(
-        self, db: InfrahubDatabase, branch: Branch, at: Optional[Union[Timestamp, str]] = None
-    ) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
 
@@ -65,13 +63,13 @@ class SchemaMigration(BaseModel):
         return result
 
     @property
-    def new_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def new_schema(self) -> NodeSchema | GenericSchema:
         if self.new_node_schema:
             return self.new_node_schema
         raise ValueError("new_node_schema hasn't been initialized")
 
     @property
-    def previous_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def previous_schema(self) -> NodeSchema | GenericSchema:
         if self.previous_node_schema:
             return self.previous_node_schema
         raise ValueError("previous_node_schema hasn't been initialized")

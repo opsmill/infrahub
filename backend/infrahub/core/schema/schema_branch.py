@@ -4,7 +4,7 @@ import copy
 import hashlib
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
@@ -74,7 +74,7 @@ class SchemaBranch:
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
     ):
-        self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
+        self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
@@ -269,7 +269,7 @@ class SchemaBranch:
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
-    def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
+    def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(
             name=name,
@@ -439,7 +439,7 @@ class SchemaBranch:
         return list(namespaces.values())
 
     def get_schemas_for_namespaces(
-        self, namespaces: Optional[list[str]] = None, include_internal: bool = False
+        self, namespaces: list[str] | None = None, include_internal: bool = False
     ) -> list[MainSchemaTypes]:
         """Retrive everything in a single dictionary."""
         all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
@@ -456,12 +456,12 @@ class SchemaBranch:
                 nodes.append(self.get(name=node_name, duplicate=True))
         return nodes
 
-    def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
+    def generate_fields_for_display_label(self, name: str) -> dict | None:
         node = self.get(name=name, duplicate=False)
         if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
-        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        fields: dict[str, str | None | dict[str, None]] = {}
         if isinstance(node, GenericSchema):
             for child_node_name in node.used_by:
                 child_node = self.get(name=child_node_name, duplicate=False)
@@ -626,7 +626,7 @@ class SchemaBranch:
         node_schema: BaseNodeSchema,
         path: str,
         allowed_path_types: SchemaElementPathType,
-        element_name: Optional[str] = None,
+        element_name: str | None = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{element_name}" if element_name else ""
@@ -905,7 +905,7 @@ class SchemaBranch:
             raise ValueError(f"Cycles exist among parents and components in schema: {exc.get_cycle_strings()}") from exc
 
     def _validate_parents_one_schema(
-        self, node_schema: Union[NodeSchema, GenericSchema], parent_relationships: list[RelationshipSchema]
+        self, node_schema: NodeSchema | GenericSchema, parent_relationships: list[RelationshipSchema]
     ) -> None:
         if not parent_relationships:
             return
@@ -1135,7 +1135,7 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            schema_to_update: NodeSchema | GenericSchema | None = None
             for relationship in node.relationships:
                 if relationship.on_delete is not None:
                     continue
@@ -1635,8 +1635,7 @@ class SchemaBranch:
         if not self.has(name=InfrahubKind.PROFILE):
             # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
             #  Ideally, we would remove this and instead load CoreProfile properly within tests.
-            core_profile_schema = GenericSchema(**core_profile_schema_definition)
-            self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+            self.set(name=core_profile_schema_definition.kind, schema=core_profile_schema_definition)
 
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
@@ -1830,6 +1829,9 @@ class SchemaBranch:
 
     def add_relationships_to_template(self, node: NodeSchema) -> None:
         template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        if template_schema.is_generic_schema:
+            return
+
         # Remove previous relationships to account for new ones
         template_schema.relationships = [
             r for r in template_schema.relationships if r.kind == RelationshipKind.TEMPLATE
@@ -1876,7 +1878,14 @@ class SchemaBranch:
     def generate_object_template_from_node(
         self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]
     ) -> TemplateSchema | GenericSchema:
-        core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        # Tell if the user explicitely requested this template
+        is_autogenerated_subtemplate = node.generate_template is False
+
+        core_template_schema = (
+            self.get(name=InfrahubKind.OBJECTCOMPONENTTEMPLATE, duplicate=False)
+            if is_autogenerated_subtemplate
+            else self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        )
         core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         template_name_attr = AttributeSchema(
             **core_name_attr.model_dump(exclude=["id", "inherited"]),
@@ -1898,42 +1907,44 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
+                attributes=[template_name_attr],
             )
 
             for used in node.used_by:
                 if used in need_template_kinds:
                     template.used_by.append(self._get_object_template_kind(node_kind=used))
-        else:
-            template = TemplateSchema(
-                name=node.kind,
-                namespace="Template",
-                label=f"Object template {node.label}",
-                description=f"Object template for {node.kind}",
-                branch=node.branch,
-                include_in_menu=False,
-                display_labels=["template_name__value"],
-                inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
-                human_friendly_id=["template_name__value"],
-                default_filter="template_name__value",
-                attributes=[template_name_attr],
-                relationships=[
-                    RelationshipSchema(
-                        name="related_nodes",
-                        identifier="node__objecttemplate",
-                        peer=node.kind,
-                        kind=RelationshipKind.TEMPLATE,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                    )
-                ],
-            )
 
-            for inherited in node.inherit_from:
-                if inherited in need_template_kinds:
-                    template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
+            return template
 
-        # Tell if the user explicitely requested this template
-        is_autogenerated_subtemplate = node.generate_template is False
+        template = TemplateSchema(
+            name=node.kind,
+            namespace="Template",
+            label=f"Object template {node.label}",
+            description=f"Object template for {node.kind}",
+            branch=node.branch,
+            include_in_menu=False,
+            display_labels=["template_name__value"],
+            human_friendly_id=["template_name__value"],
+            uniqueness_constraints=[["template_name__value"]],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
+            default_filter="template_name__value",
+            attributes=[template_name_attr],
+            relationships=[
+                RelationshipSchema(
+                    name="related_nodes",
+                    identifier="node__objecttemplate",
+                    peer=node.kind,
+                    kind=RelationshipKind.TEMPLATE,
+                    cardinality=RelationshipCardinality.MANY,
+                    branch=BranchSupportType.AWARE,
+                )
+            ],
+        )
+
+        for inherited in node.inherit_from:
+            if inherited in need_template_kinds:
+                template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
+
         for node_attr in node.attributes:
             if node_attr.unique or node_attr.read_only:
                 continue

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
@@ -20,9 +20,9 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute,
-        attr_id: Optional[str] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Branch] = None,
+        attr_id: str | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | None = None,
         **kwargs: Any,
     ):
         self.attr = attr

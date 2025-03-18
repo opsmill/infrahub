@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core import registry
 from infrahub.core.migrations.shared import MigrationResult
-from infrahub.core.schema import GenericSchema
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.log import get_logger
@@ -31,14 +30,11 @@ class Migration017(InternalSchemaMigration):
         """
         Load CoreProfile schema node in db.
         """
-
-        core_profile = GenericSchema(**core_profile_schema_definition)
-
         default_branch = registry.get_branch_from_registry()
         manager = SchemaManager()
         manager.set_schema_branch(name=default_branch.name, schema=self.get_internal_schema())
 
         db.add_schema(manager.get_schema_branch(default_branch.name))
-        await manager.load_node_to_db(node=core_profile, db=db, branch=default_branch)
+        await manager.load_node_to_db(node=core_profile_schema_definition, db=db, branch=default_branch)
 
         return MigrationResult()

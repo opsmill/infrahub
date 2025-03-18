@@ -14,8 +14,8 @@ async def test_gather_trigger_computed_attribute_jinja2_only_main(car_person_sch
     triggers = await gather_trigger_computed_attribute_jinja2()
     assert len(triggers) == 1
     trigger = triggers[0]
-    assert trigger.name == "TestCar_computed_desc [TestCar]"
-    assert trigger.generate_name() == "computed_attr_jinja2::main::TestCar_computed_desc [TestCar]"
+    assert trigger.name == "TestCar_computed_desc::kind::TestCar"
+    assert trigger.generate_name() == "computed_attr_jinja2::main::TestCar_computed_desc::kind::TestCar"
     assert "infrahub.branch.name" not in trigger.trigger.match
 
 
@@ -37,9 +37,9 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
     schema_branch.process()
     await branch.save(db=db)
 
-    name_main = "computed_attr_jinja2::main::TestCar_computed_desc [TestCar]"
-    name_branch_first = "computed_attr_jinja2::branch2::TestCar_computed_desc [TestCar]"
-    name_branch_second = "computed_attr_jinja2::branch2::TestCar_computed_desc [TestPerson]"
+    name_main = "computed_attr_jinja2::main::TestCar_computed_desc::kind::TestCar"
+    name_branch_first = "computed_attr_jinja2::branch2::TestCar_computed_desc::kind::TestCar"
+    name_branch_second = "computed_attr_jinja2::branch2::TestCar_computed_desc::kind::TestPerson"
 
     triggers = await gather_trigger_computed_attribute_jinja2()
     triggers_by_name = {trigger.generate_name(): trigger for trigger in triggers}

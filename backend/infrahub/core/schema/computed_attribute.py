@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import ConfigDict, Field, model_serializer
 
@@ -8,10 +8,10 @@ from infrahub.core.models import HashableModel
 
 class ComputedAttribute(HashableModel):
     kind: ComputedAttributeKind
-    jinja2_template: Optional[str] = Field(
+    jinja2_template: str | None = Field(
         default=None, description="The Jinja2 template in string format, required when assignment_type=jinja2"
     )
-    transform: Optional[str] = Field(
+    transform: str | None = Field(
         default=None, description="The Python Transform name or ID, required when assignment_type=transform"
     )
 
