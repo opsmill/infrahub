@@ -490,6 +490,10 @@ class SchemaAttributePath:
             return self.attribute_property_name
         raise AttributePathParsingError("An attribute_property_name was expected but not found")
 
+    @property
+    def attribute_path_as_str(self) -> str:
+        return self.active_attribute_schema.name + "__" + self.active_attribute_property_name
+
 
 @dataclass
 class SchemaAttributePathValue(SchemaAttributePath):

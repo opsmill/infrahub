@@ -62,19 +62,19 @@ _SCHEMA = {
         # Valid hfid
         (["name__value", "owner__name__value"], [["name__value"]], False),
         (["owner__name__value", "owner__age__value"], [["name__value", "age__value"]], False),
+        (["owner__name__value", "owner__age__value"], [["name__value"]], False),
         (["owner__name__value", "owner__age__value"], [["name__value"], ["age__value"]], False),
         (
             ["owner__name__value", "owner__age__value", "driver__name__value", "driver__age__value"],
             [["name__value"], ["age__value"]],
             False,
         ),
+        (["owner__name__value", "owner__age__value", "owner__salary__value"], [["name__value", "age__value"]], False),
         # Non-valid hfid
         (["name__value", "owner__name__value"], [["age__value"]], True),
-        (["owner__name__value", "owner__age__value"], [["name__value"]], True),
-        (["owner__name__value", "owner__age__value"], [["name__value"], ["age__value", "salary__value"]], True),
         (
             ["owner__name__value", "owner__age__value"],
-            [["name__value"], ["age__value", "salary__value"], ["salary__value"], ["name__value", "salary__value"]],
+            [["age__value", "salary__value"], ["name__value", "salary__value"]],
             True,
         ),
         (["owner__name__value", "owner__age__value", "driver__name__value"], [["name__value", "age__value"]], True),
@@ -93,7 +93,7 @@ async def test_schema_constraints(human_friendly_id, uniqueness_constraints, sho
 
     if should_raise:
         with pytest.raises(
-            ValidationError, match=r"of TestCar does not refer a unique attribute combination of peer TestPerson"
+            ValidationError, match=r"HFID of TestCar refers peer TestPerson with a non-unique combination of attributes"
         ):
             schema_branch.load_schema(schema=schema_root)
             schema_branch.process()

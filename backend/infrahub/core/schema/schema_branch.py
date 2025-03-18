@@ -822,48 +822,17 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
-    @staticmethod
-    def _get_all_uc_not_overlapping(uniqueness_constraints: list[list[str]]) -> list[set[str]]:
+    def _is_attr_combination_unique(self, attrs_paths: list[str], uniqueness_constraints: list[list[str]]) -> bool:
         """
-        Compute all combinations of uniqueness constraints from a given set of constraints.
-        For instance,
-        Input [["name"], ["age"], ["color", "salary"]] would return
-
-        [{'name'}, {'age'}, {'color', 'salary'}, {'age', 'name'}, {'name', 'color', 'salary'},
-         {'age', 'color', 'salary'}, {'age', 'name', 'color', 'salary'}]
+        Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
         """
 
-        def has_no_overlap(combinations: tuple[list[str], ...]) -> bool:
-            # Check if there is any overlap between any two lists in the combination
-            combined_set = set()
-            for sublist in combinations:
-                for item in sublist:
-                    if item in combined_set:
-                        return False
-                    combined_set.add(item)
-            return True
-
-        all_uniqueness_constraints = []
-        n = len(uniqueness_constraints)
-        for r in range(1, n + 1):
-            for comb in combinations(uniqueness_constraints, r):
-                if has_no_overlap(comb):
-                    uniqueness_constraint = set().union(*[set(uc) for uc in comb])
-                    all_uniqueness_constraints.append(uniqueness_constraint)
-        return all_uniqueness_constraints
-
-    def _is_attr_combination_unique(self, attrs_paths: list[str], schema_node: MainSchemaTypes) -> bool:
-        """
-        First compute all combinations of uniqueness constraints from the defined one. Then, check whether
-        input attributes paths combination is one of them.
-        """
-
-        if not schema_node.uniqueness_constraints:
-            return False
-        all_uniqueness_combinations = self._get_all_uc_not_overlapping(schema_node.uniqueness_constraints)
-        if set(attrs_paths) not in all_uniqueness_combinations:
-            return False
-        return True
+        unique_constraint_group_sets = [set(ucg) for ucg in uniqueness_constraints]
+        for i in range(1, len(attrs_paths) + 1):
+            for attr_combo in combinations(attrs_paths, i):
+                if any(ucg == set(attr_combo) for ucg in unique_constraint_group_sets):
+                    return True
+        return False
 
     def validate_human_friendly_id(self) -> None:
         for name in self.generic_names_without_templates + self.node_names:
@@ -890,15 +859,13 @@ class SchemaBranch:
                     rel_identifier = schema_path.relationship_schema.identifier
                     if rel_identifier not in rel_schemas_to_paths:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
-                    rel_schemas_to_paths[rel_identifier][1].append(
-                        schema_path.active_attribute_schema.name + "__" + schema_path.active_attribute_property_name
-                    )
+                    rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
 
             # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
             for related_schema, attrs_paths in rel_schemas_to_paths.values():
-                if not self._is_attr_combination_unique(attrs_paths, related_schema):
+                if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
                     raise ValidationError(
-                        f"HFID items {attrs_paths} of {node_schema.kind} does not refer a unique attribute combination of peer {related_schema.kind}"
+                        f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
                     )
 
     def validate_required_relationships(self) -> None:
