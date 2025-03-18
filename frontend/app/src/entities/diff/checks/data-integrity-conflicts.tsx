@@ -3,7 +3,6 @@ import { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
 import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { Conflict } from "./conflict";
 
 export const DataIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "conflicts">) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -24,7 +23,7 @@ export const DataIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "confl
 
       <div>
         {conflicts?.value?.map((conflict: any) => {
-          return <Conflict key={conflict.id} {...conflict} />;
+          return <DataConflict key={conflict.id} {...conflict} />;
         })}
       </div>
     </div>

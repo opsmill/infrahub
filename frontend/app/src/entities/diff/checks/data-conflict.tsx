@@ -10,7 +10,7 @@ import { Link } from "react-router";
 import { DiffRow } from "../node-diff/utils";
 import { BadgeConflict } from "../ui/diff-badge";
 
-export const Conflict = ({ id, changes, kind, name }: any) => {
+export const DataConflict = ({ id, changes, kind, name }: any) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   if (!changes) {
