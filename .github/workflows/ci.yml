@@ -417,6 +417,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install tini
+        run: "apt-get update && apt-get install -y tini"
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
@@ -441,7 +443,8 @@ jobs:
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Run tests"
-        run: "poetry run pytest backend/tests/integration_docker/"
+        # Use tini to properly propagate cancellation signal to pytest, so that containers are properly destroyed
+        run: "exec tini -s -g -- poetry run pytest backend/tests/integration_docker/"
 
   # ---------------------------------------------------
   # DISABLING Memgraph for now :(
