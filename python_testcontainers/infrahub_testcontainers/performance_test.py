@@ -36,6 +36,7 @@ class InfrahubPerformanceTest:
         self.start_time = datetime.now(UTC)
         self.end_time: datetime | None = None
         self.results_url = results_url
+        self.initialized = False
 
     def initialize(self, name: str, compose: InfrahubDockerCompose | None = None, client: Any | None = None) -> None:  # noqa: ANN401
         self.name = name
@@ -45,10 +46,13 @@ class InfrahubPerformanceTest:
             self.extract_compose_information(compose)
             compose.profiles.append("performance")
 
+        self.initialized = True
+
     def finalize(self, session: Session) -> None:
-        self.end_time = datetime.now(UTC)
-        self.extract_test_session_information(session)
-        self.send_results()
+        if self.initialized:
+            self.end_time = datetime.now(UTC)
+            self.extract_test_session_information(session)
+            self.send_results()
 
     def extract_compose_information(self, compose: InfrahubDockerCompose) -> None:
         self.env_vars = compose.env_vars
