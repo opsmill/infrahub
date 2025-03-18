@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Iterable
 
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE
@@ -40,7 +40,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         updated_node: Node,
         node_schema: MainSchemaTypes,
         path_groups: list[list[SchemaAttributePath]],
-        filters: Optional[list[str]] = None,
+        filters: list[str] | None = None,
     ) -> NodeUniquenessQueryRequest:
         query_request = NodeUniquenessQueryRequest(kind=node_schema.kind)
         for path_group in path_groups:
@@ -160,8 +160,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         self,
         node: Node,
         node_schema: MainSchemaTypes,
-        at: Optional[Timestamp] = None,
-        filters: Optional[list[str]] = None,
+        at: Timestamp | None = None,
+        filters: list[str] | None = None,
     ) -> None:
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
         path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
@@ -176,7 +176,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         await query.execute(db=self.db)
         await self._check_results(updated_node=node, path_groups=path_groups, query_results=query.get_results())
 
-    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[list[str]] = None) -> None:
+    async def check(self, node: Node, at: Timestamp | None = None, filters: list[str] | None = None) -> None:
         def _frozen_constraints(schema: MainSchemaTypes) -> frozenset[frozenset[str]]:
             if not schema.uniqueness_constraints:
                 return frozenset()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import ujson
 
@@ -22,7 +22,7 @@ class SchemaAttributeUpdateQuery(Query):
         node_name: str,
         node_namespace: str,
         new_value: Any,
-        previous_value: Optional[Any] = None,
+        previous_value: Any | None = None,
         **kwargs: Any,
     ):
         self.attr_name = attribute_name

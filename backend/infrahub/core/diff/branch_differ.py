@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from typing_extensions import Self
 
@@ -35,12 +35,12 @@ class BranchDiffer:
     def __init__(
         self,
         branch: Branch,
-        origin_branch: Optional[Branch] = None,
+        origin_branch: Branch | None = None,
         branch_only: bool = False,
-        diff_from: Optional[Union[str, Timestamp]] = None,
-        diff_to: Optional[Union[str, Timestamp]] = None,
-        db: Optional[InfrahubDatabase] = None,
-        service: Optional[InfrahubServices] = None,
+        diff_from: str | Timestamp | None = None,
+        diff_to: str | Timestamp | None = None,
+        db: InfrahubDatabase | None = None,
+        service: InfrahubServices | None = None,
     ):
         """_summary_
 
@@ -81,7 +81,7 @@ class BranchDiffer:
 
         # Results organized by Branch
         self._results: dict[str, dict] = defaultdict(lambda: {"nodes": {}, "rels": defaultdict(dict), "files": {}})
-        self._calculated_diff_files_at: Optional[Timestamp] = None
+        self._calculated_diff_files_at: Timestamp | None = None
 
     @property
     def service(self) -> InfrahubServices:
@@ -101,9 +101,9 @@ class BranchDiffer:
         db: InfrahubDatabase,
         branch: Branch,
         branch_only: bool = False,
-        diff_from: Optional[Union[str, Timestamp]] = None,
-        diff_to: Optional[Union[str, Timestamp]] = None,
-        service: Optional[InfrahubServices] = None,
+        diff_from: str | Timestamp | None = None,
+        diff_to: str | Timestamp | None = None,
+        service: InfrahubServices | None = None,
     ) -> Self:
         origin_branch = branch.get_origin_branch()
 
