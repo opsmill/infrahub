@@ -15,6 +15,7 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { DataIntegrityConflicts } from "./data-integrity-conflicts";
+import { SchemaIntegrityConflicts } from "./schema-integrity-conflicts";
 
 type tCheckProps = {
   id: string;
@@ -170,6 +171,10 @@ export const Check = ({ id }: tCheckProps) => {
 
       {__typename === "CoreDataCheck" && conflicts?.value?.length && (
         <DataIntegrityConflicts conflicts={conflicts} />
+      )}
+
+      {__typename === "CoreSchemaCheck" && conflicts?.value?.length && (
+        <SchemaIntegrityConflicts conflicts={conflicts} />
       )}
     </div>
   );
