@@ -68,7 +68,7 @@ class APISchemaMixin:
     @classmethod
     def set_kind(cls, values: Any) -> Any:
         if isinstance(values, dict):
-            values["kind"] = f'{values["namespace"]}{values["name"]}'
+            values["kind"] = f"{values['namespace']}{values['name']}"
         return values
 
 

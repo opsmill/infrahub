@@ -51,7 +51,7 @@ class WorkflowDefinition(BaseModel):
 
     @property
     def entrypoint(self) -> str:
-        return f'backend/{self.module.replace(".", "/")}:{self.function}'
+        return f"backend/{self.module.replace('.', '/')}:{self.function}"
 
     @property
     def full_name(self) -> str:

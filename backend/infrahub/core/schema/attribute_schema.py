@@ -56,7 +56,7 @@ class AttributeSchema(GeneratedAttributeSchema):
     def validate_dropdown_choices(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that choices are defined for a dropdown but not for other kinds."""
         if values.get("kind") != "Dropdown" and values.get("choices"):
-            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind'] }")
+            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind']}")
 
         if values.get("kind") == "Dropdown" and not values.get("choices"):
             raise ValueError("The property 'choices' is required for kind=Dropdown")

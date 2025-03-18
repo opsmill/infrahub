@@ -219,7 +219,7 @@ def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:
     ):
         url = httpx.URL(data["location"]["value"])
         if url.host in config.SETTINGS.git.append_git_suffix:
-            data["location"]["value"] = f'{data["location"]["value"]}.git'
+            data["location"]["value"] = f"{data['location']['value']}.git"
 
 
 class ProcessRepository(Mutation):

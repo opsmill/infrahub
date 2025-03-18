@@ -2538,8 +2538,8 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
         InfrahubKind.GLOBALPERMISSION,
         InfrahubKind.OBJECTPERMISSION,
     ]
-    nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
-    generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
+    nodes = [item for item in core_models["nodes"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
+    generics = [item for item in core_models["generics"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
     registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
 
 
