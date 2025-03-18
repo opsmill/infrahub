@@ -26,8 +26,8 @@ export function AccountTokenCreateAction() {
   if (!schema) return <LoadingIndicator className="p-4" />;
 
   const handleSuccess = async (result: AccountTokenCreateResponse) => {
-    await queryClient.invalidateQueries(getInfrahubAccountTokenQueryOptions());
     setResult(result);
+    await queryClient.invalidateQueries(getInfrahubAccountTokenQueryOptions());
   };
 
   return (
