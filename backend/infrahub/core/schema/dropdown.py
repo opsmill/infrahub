@@ -1,5 +1,4 @@
 import re
-from typing import Optional
 
 from pydantic import field_validator
 
@@ -10,9 +9,9 @@ HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
 
 class DropdownChoice(HashableModel):
     name: str
-    description: Optional[str] = None
-    color: Optional[str] = None
-    label: Optional[str] = None
+    description: str | None = None
+    color: str | None = None
+    label: str | None = None
 
     _sort_by: list[str] = ["name"]
 

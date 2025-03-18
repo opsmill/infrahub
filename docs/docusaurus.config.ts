@@ -107,7 +107,7 @@ const config: Config = {
     },
     prism: {
       theme: prismThemes.oneDark,
-      additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml", "yaml"],
+      additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml", "yaml", "hcl"],
     },
   } satisfies Preset.ThemeConfig,
 

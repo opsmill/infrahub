@@ -54,7 +54,7 @@ from .propose_change_validator import (
 )
 from .repository import core_generic_repository, core_read_only_repository, core_repository
 from .resource_pool import core_ip_address_pool, core_ip_prefix_pool, core_number_pool, core_resource_pool
-from .template import core_object_template
+from .template import core_object_component_template, core_object_template
 from .transform import core_transform, core_transform_jinja2, core_transform_python
 from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
 
@@ -98,6 +98,7 @@ core_models: dict[str, Any] = {
         core_base_permission,
         core_credential,
         core_object_template,
+        core_object_component_template,
         generic_menu_item,
     ],
     "nodes": [

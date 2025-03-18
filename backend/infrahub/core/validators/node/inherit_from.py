@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.utils import compare_lists
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class NodeInheritFromChecker(ConstraintCheckerInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

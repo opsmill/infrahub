@@ -8,9 +8,8 @@ from prefect.logging import get_run_logger
 
 from infrahub import config
 from infrahub.trigger.catalogue import builtin_triggers
-from infrahub.trigger.constants import DEPRECATED_STATIC_TRIGGER_NAMES
 from infrahub.trigger.models import TriggerType
-from infrahub.trigger.tasks import setup_triggers
+from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
@@ -75,5 +74,4 @@ async def setup_task_manager() -> None:
             client=client,
             triggers=builtin_triggers,
             trigger_type=TriggerType.BUILTIN,
-            deprecated_triggers=DEPRECATED_STATIC_TRIGGER_NAMES,
         )

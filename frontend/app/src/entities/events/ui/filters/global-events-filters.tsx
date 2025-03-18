@@ -13,7 +13,7 @@ export const GlobalEventsFilters = () => {
   return (
     <ScrollArea scrollX>
       <TagGroup className="flex" selectionMode="single" aria-label="Filter group">
-        <TagList className="flex items-center gap-2 py-3">
+        <TagList className="flex items-center gap-2">
           <GlobalBranchFilter
             name="branches"
             label="Branch"

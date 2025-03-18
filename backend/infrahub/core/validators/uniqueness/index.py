@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     from infrahub.core.query import QueryResult
@@ -29,7 +29,7 @@ class GroupedIndexKey:
 
 
 class UniquenessQueryResultsIndex:
-    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Optional[set[str]] = None) -> None:
+    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: set[str] | None = None) -> None:
         self._relationship_index: dict[str, dict[str, set[str]]] = {}
         self._attribute_index: dict[str, dict[Any, set[str]]] = {}
         self._node_index: dict[str, dict[str, Any]] = {}

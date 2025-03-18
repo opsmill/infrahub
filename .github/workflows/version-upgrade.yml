@@ -32,8 +32,8 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - name: From 1.0.0
-            source_version: 1.0.0
+          - name: From 1.1.0
+            source_version: 1.1.0
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
@@ -90,8 +90,8 @@ jobs:
       - name: Build Demo
         run: invoke dev.build
 
-      - name: Run database migration
-        run: invoke dev.migrate
+      - name: Upgrade Infrahub and apply the latest database migrations
+        run: invoke dev.upgrade
 
       - name: Start Demo
         run: invoke dev.start

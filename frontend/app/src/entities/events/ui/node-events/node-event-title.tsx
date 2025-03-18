@@ -1,10 +1,11 @@
+import { QSP } from "@/config/qsp";
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { useAtomValue } from "jotai";
-import { getLink } from "./utils";
 
 export const NodeEventTitle = ({
   event,
@@ -26,11 +27,9 @@ export const NodeEventTitle = ({
         <NodeLabel id={primary_node.id} kind={primary_node?.kind} branch={branch} />
       ) : (
         <Link
-          to={getLink({
-            kind: primary_node?.kind,
-            id: primary_node.id,
-            branch,
-          })}
+          to={getObjectDetailsUrl2(primary_node?.kind, primary_node.id, [
+            { name: QSP.BRANCH, value: branch },
+          ])}
         >
           <NodeLabel id={primary_node.id} kind={primary_node?.kind} branch={branch} />
         </Link>

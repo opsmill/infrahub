@@ -149,6 +149,7 @@ class InfrahubEvent(BaseModel):
     meta: EventMeta = Field(..., description="Metadata for the event")
 
     event_name: ClassVar[str] = Field(..., description="The name of the event")
+    infrahub_node_kind_event: ClassVar[bool] = False
 
     def get_id(self) -> str:
         return self.meta.get_id()

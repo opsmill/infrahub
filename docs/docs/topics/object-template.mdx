@@ -1,0 +1,28 @@
+---
+title: Object Template
+---
+
+In many infrastructures, multiple instances of objects share a common structure. Consider network devices: we know in advance the port setup for a given model. When documenting this in our source of truth, repeatedly entering the same port details is both inefficient and error-prone. The Object Template feature allows you to create a reusable blueprint for any object. This blueprint can be used to generate multiple instances that adhere to the predefined structure, ensuring uniformity while reducing manual effort.
+
+![Template High Level](../media/guides/object-template/object_template_mockup.png)
+
+Within a template, you can define:
+
+- **Node attributes** - Standard properties and characteristics of the object.
+- **Relationships** - Connections to other nodes in the infrastructure.
+- **Components** - Sub-elements or modules that belong to the object.
+
+When creating a new object instance, users can optionally select a template. If chosen, Infrahub automatically applies the corresponding template. Users can then customize each instance by overriding specific attributes or relationships, ensuring both flexibility and consistency.
+
+![Template Choice](../media/guides/object-template/template_or_from_scratch.png)
+
+See the [object-template guide](../guides/object-template) for more information.
+
+## Component relationship
+
+When enabling template generation on a given schema node, Infrahub automatically detects whether the object has any component relationships. If it does, Infrahub will generate corresponding templates for those related objects as well.
+
+## Limitations
+
+- Templates are created only for component relationships. Other types of relationships will continue to reference actual objects in the database rather than templates.
+- Modifications to a template will not retroactively update objects that were previously created using that template.

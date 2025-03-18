@@ -51,8 +51,14 @@ class ArtifactEvent(InfrahubEvent):
 
 
 class ArtifactCreatedEvent(ArtifactEvent):
+    """Event generated when an artifact has been created"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.artifact.created"
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class ArtifactUpdatedEvent(ArtifactEvent):
+    """Event generated when an artifact has been updated"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.artifact.updated"
+    infrahub_node_kind_event: ClassVar[bool] = True

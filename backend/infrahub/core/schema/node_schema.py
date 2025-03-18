@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import AllowOverrideType, InfrahubKind
 
@@ -119,7 +119,7 @@ class NodeSchema(GeneratedNodeSchema):
                 item_idx = existing_inherited_relationships[relationship.name]
                 self.relationships[item_idx].update_from_generic(other=new_relationship)
 
-    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:
         if not self.hierarchy:
             raise ValueError("The node is not part of a hierarchy")
         schema = db.schema.get(name=self.hierarchy, branch=branch)

@@ -25,6 +25,7 @@ class NodeMutatedEvent(InfrahubEvent):
                 {
                     "prefect.resource.id": f"infrahub.node.{self.node_id}",
                     "prefect.resource.role": "infrahub.node.field_update",
+                    "infrahub.field.name": attribute.name,
                     "infrahub.attribute.name": attribute.name,
                     "infrahub.attribute.value": "NULL" if attribute.value is None else str(attribute.value),
                     "infrahub.attribute.kind": attribute.kind,
@@ -35,6 +36,16 @@ class NodeMutatedEvent(InfrahubEvent):
                     "infrahub.attribute.action": attribute.value_update_status.value,  # type: ignore[attr-defined]
                 }
             )
+
+        for relationship_name in self.changelog.relationships.keys():
+            related.append(
+                {
+                    "prefect.resource.id": f"infrahub.node.{self.node_id}",
+                    "prefect.resource.role": "infrahub.node.field_update",
+                    "infrahub.field.name": relationship_name,
+                }
+            )
+
         if self.changelog.parent:
             related.append(
                 {
@@ -76,18 +87,27 @@ class NodeMutatedEvent(InfrahubEvent):
 
 
 class NodeCreatedEvent(NodeMutatedEvent):
+    """Event generated when a node has been created"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.created"
     action: MutationAction = MutationAction.CREATED
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class NodeUpdatedEvent(NodeMutatedEvent):
+    """Event generated when a node has been updated"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.updated"
     action: MutationAction = MutationAction.UPDATED
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class NodeDeletedEvent(NodeMutatedEvent):
+    """Event generated when a node has been deleted"""
+
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.deleted"
     action: MutationAction = MutationAction.DELETED
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 def get_node_event(action: MutationAction) -> type[NodeDeletedEvent] | type[NodeUpdatedEvent] | type[NodeCreatedEvent]:

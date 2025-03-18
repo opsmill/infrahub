@@ -12,6 +12,7 @@ from typing_extensions import Self
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
+from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
@@ -53,6 +54,9 @@ class WebhookTriggerDefinition(TriggerDefinition):
                 "prefect.resource.role": "infrahub.branch",
                 "infrahub.resource.label": f"!{registry.default_branch}",
             }
+
+        if obj.node_kind.value and obj.event_type.value in get_all_infrahub_node_kind_events():
+            event_trigger.match = {"infrahub.node.kind": obj.node_kind.value}
 
         definition = cls(
             id=obj.id,

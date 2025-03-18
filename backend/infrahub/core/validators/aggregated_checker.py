@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.exceptions import ValidationError
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class AggregatedConstraintChecker:
     def __init__(
-        self, constraints: list[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Optional[Branch] = None
+        self, constraints: list[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Branch | None = None
     ):
         self.constraints = constraints
         self.db = db

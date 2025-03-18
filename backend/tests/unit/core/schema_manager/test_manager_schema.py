@@ -928,7 +928,7 @@ async def test_schema_branch_validate_kinds_peer():
     with pytest.raises(ValueError) as exc:
         schema.validate_kinds()
 
-    assert str(exc.value) == "TestCriticality: Relationship 'first' is referencing an invalid peer 'TestNotPresent'"
+    assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
 
 
 async def test_schema_branch_validate_kinds_inherit():
@@ -2851,11 +2851,44 @@ async def test_schema_branch_add_object_template_schema():
     assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
 
 
-async def test_schema_branch_diff_core_object_template():
+async def test_schema_branch_remove_object_template_schema():
     core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
     device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    node_template = schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    assert node_template
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
+
+    # Disable template
+    SIMPLE_DEVICE.generate_template = False
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    with pytest.raises(SchemaNotFoundError, match=r"Unable to find the schema"):
+        schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert not core_template_schema.used_by
+
+
+async def test_schema_branch_diff_core_object_template():
+    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
+    core_component_template_schema = GenericSchema(
+        **_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTCOMPONENTTEMPLATE)
+    )
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_template_schema, core_component_template_schema], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=device_schema)
@@ -2870,7 +2903,7 @@ async def test_schema_branch_diff_core_object_template():
     diff = new_schema.diff(other=schema)
     assert diff.all == [InfrahubKind.OBJECTTEMPLATE]
 
-    DEVICE_SCHEMA.generics.append(core_template_schema)
+    DEVICE_SCHEMA.generics.extend([core_template_schema, core_component_template_schema])
     new_schema = SchemaBranch(cache={}, name="test")
     new_schema.load_schema(schema=DEVICE_SCHEMA)
     new_schema.process_inheritance()
@@ -2910,7 +2943,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind):
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
-    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique])
+    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
     assert sorted(
         [
             r.name
@@ -2970,3 +3003,56 @@ async def test_manage_object_templates_with_component_relationships():
         template_attr = test_interface_template.get_attribute(name=attr.name)
         # Optional value in component template should match original's
         assert attr.optional == template_attr.optional
+
+    # Verify when a node is marked as absent
+    ABSENT_VIRTUAL_INTERFACE = copy.deepcopy(DEVICE_SCHEMA)
+    ABSENT_VIRTUAL_INTERFACE.get(name=TestKind.VIRTUAL_INTERFACE).state = HashableModelState.ABSENT
+
+    schema_branch = SchemaBranch(cache={}, name="absent-node")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=ABSENT_VIRTUAL_INTERFACE))
+    schema_branch.process_inheritance()
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+    }
+
+
+async def test_identify_object_templates_with_generics():
+    USELESS_DEVICE_SCHEMA = copy.deepcopy(DEVICE_SCHEMA)
+    USELESS_DEVICE_SCHEMA.nodes.append(
+        NodeSchema(
+            name="UselessDevice",
+            namespace="Testing",
+            inherit_from=[TestKind.INTERFACE_HOLDER],
+            include_in_menu=True,
+            label="Useless Device",
+            default_filter="name__value",
+            generate_template=True,
+            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+        )
+    )
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=USELESS_DEVICE_SCHEMA))
+    schema_branch.process_inheritance()
+
+    # As we requested template for TestingDevice, which is an implementation of generic TestingInterfaceHolder we must make sure not to propagate
+    # templating to TestingUselessDevice
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+        TestKind.VIRTUAL_INTERFACE,
+    }

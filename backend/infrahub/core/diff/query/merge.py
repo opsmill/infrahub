@@ -36,6 +36,7 @@ class DiffMergeQuery(Query):
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
         }
+        # ruff: noqa: E501
         query = """
 UNWIND $node_diff_dicts AS node_diff_map
 CALL {
@@ -242,9 +243,11 @@ CALL {
                 CASE
                     WHEN startNode(source_r_rel_2).uuid = r.uuid THEN "r"
                     ELSE "l"
-                END AS r2_dir
+                END AS r2_dir,
+                source_r_rel_1.hierarchy AS r1_hierarchy,
+                source_r_rel_2.hierarchy AS r2_hierarchy
             }
-            WITH n, r, r1_dir, r2_dir, rel_name, rel_peer_id, related_rel_status
+            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, related_rel_status
             CALL {
                 WITH n, rel_name, rel_peer_id, related_rel_status
                 OPTIONAL MATCH (n)
@@ -258,12 +261,12 @@ CALL {
                 SET target_r_rel_1.to = $at
                 SET target_r_rel_2.to = $at
             }
-            WITH n, r, r1_dir, r2_dir, rel_name, rel_peer_id, related_rel_status
+            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, related_rel_status
             // ------------------------------
             // conditionally create new IS_RELATED relationships on target_branch, if necessary
             // ------------------------------
             CALL {
-                WITH n, r, r1_dir, r2_dir, rel_name, rel_peer_id, related_rel_status
+                WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, related_rel_status
                 MATCH (p:Node {uuid: rel_peer_id})
                 OPTIONAL MATCH (n)
                     -[r_rel_1:IS_RELATED {branch: $target_branch, status: related_rel_status}]
@@ -274,42 +277,42 @@ CALL {
                 AND (r_rel_1.to >= $at OR r_rel_1.to IS NULL)
                 AND r_rel_2.from <= $at
                 AND (r_rel_2.to >= $at OR r_rel_2.to IS NULL)
-                WITH n, r, r1_dir, r2_dir, p, related_rel_status, r_rel_1, r_rel_2
+                WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, p, related_rel_status, r_rel_1, r_rel_2
                 WHERE r_rel_1 IS NULL
                 AND r_rel_2 IS NULL
                 // ------------------------------
                 // create IS_RELATED relationships with directions maintained from source
                 // ------------------------------
                 CALL {
-                    WITH n, r, r1_dir, related_rel_status
-                    WITH n, r, r1_dir, related_rel_status
+                    WITH n, r, r1_dir, r1_hierarchy, related_rel_status
+                    WITH n, r, r1_dir, r1_hierarchy, related_rel_status
                     WHERE r1_dir = "r"
                     CREATE (n)
-                        -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status}]
+                        -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r1_hierarchy}]
                         ->(r)
                 }
                 CALL {
-                    WITH n, r, r1_dir, related_rel_status
-                    WITH n, r, r1_dir, related_rel_status
+                    WITH n, r, r1_dir, r1_hierarchy, related_rel_status
+                    WITH n, r, r1_dir, r1_hierarchy, related_rel_status
                     WHERE r1_dir = "l"
                     CREATE (n)
-                        <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status}]
+                        <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r1_hierarchy}]
                         -(r)
                 }
                 CALL {
-                    WITH r, p, r2_dir, related_rel_status
-                    WITH r, p, r2_dir, related_rel_status
+                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
+                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
                     WHERE r2_dir = "r"
                     CREATE (r)
-                        -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status}]
+                        -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy}]
                         ->(p)
                 }
                 CALL {
-                    WITH r, p, r2_dir, related_rel_status
-                    WITH r, p, r2_dir, related_rel_status
+                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
+                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
                     WHERE r2_dir = "l"
                     CREATE (r)
-                        <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status}]
+                        <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy}]
                         -(p)
                 }
             }

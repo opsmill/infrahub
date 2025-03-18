@@ -14,10 +14,10 @@ from prefect.logging import get_run_logger
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerType
-from infrahub.trigger.tasks import setup_triggers
+from infrahub.trigger.setup import setup_triggers
 from infrahub.workflows.utils import add_tags
 
-from .constants import AUTOMATION_NAME_RUN
+from .gather import gather_trigger_webhook
 from .models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook, WebhookTriggerDefinition
 
 if TYPE_CHECKING:
@@ -111,15 +111,13 @@ async def webhook_process(
 async def configure_webhook_all(service: InfrahubServices) -> None:
     log = get_run_logger()
 
-    webhooks = await service.client.all(kind=CoreWebhook)
-    triggers = [WebhookTriggerDefinition.from_object(webhook) for webhook in webhooks]
+    triggers = await gather_trigger_webhook(client=service.client)
 
     async with get_client(sync_client=False) as prefect_client:
         await setup_triggers(
             client=prefect_client,
             triggers=triggers,
             trigger_type=TriggerType.WEBHOOK,
-            deprecated_triggers=[AUTOMATION_NAME_RUN],
         )  # type: ignore[misc]
 
     log.info(f"{len(triggers)} Webhooks automation configuration completed")

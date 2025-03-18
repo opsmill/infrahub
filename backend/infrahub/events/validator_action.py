@@ -38,15 +38,18 @@ class ValidatorStartedEvent(ValidatorEvent):
     """Event generated when an validator within a pipeline has started."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.validator.started"
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class ValidatorPassedEvent(ValidatorEvent):
     """Event generated when an validator within a pipeline has completed successfully."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.validator.passed"
+    infrahub_node_kind_event: ClassVar[bool] = True
 
 
 class ValidatorFailedEvent(ValidatorEvent):
     """Event generated when an validator within a pipeline has completed successfully."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.validator.failed"
+    infrahub_node_kind_event: ClassVar[bool] = True

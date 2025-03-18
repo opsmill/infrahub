@@ -36,7 +36,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isPending || error) return;
+    if (!branches) return;
 
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
     if (selectedBranch) {
@@ -60,7 +60,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     navigate("/");
   }, [branches, branchInQueryString]);
 
-  if (isPending || !currentBranch) {
+  if (isPending || currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
     return <InfrahubLoading>loading branches...</InfrahubLoading>;
   }
 

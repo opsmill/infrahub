@@ -268,6 +268,30 @@ describe("getRelationshipDefaultValue", () => {
         ],
       });
     });
+
+    it("returns default form field value when template relationship has empty edges", () => {
+      // GIVEN
+      const relationshipData = undefined;
+      const relationshipName = "emptyRelationship";
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        display_label: "Template Object" as any,
+        __typename: "TemplateType" as any,
+        emptyRelationship: {
+          edges: [],
+        },
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
   });
 
   describe("filter form", () => {

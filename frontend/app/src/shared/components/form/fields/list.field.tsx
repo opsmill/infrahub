@@ -50,7 +50,9 @@ const ListField = ({
                 {...props}
                 value={fieldData?.value ?? ""}
                 onChange={(newValue) => {
-                  field.onChange(updateFormFieldValue(newValue, defaultValue));
+                  field.onChange(
+                    updateFormFieldValue(newValue.length > 0 ? newValue : null, defaultValue)
+                  );
                 }}
               />
             </FormInput>

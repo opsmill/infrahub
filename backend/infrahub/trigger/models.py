@@ -10,6 +10,7 @@ from prefect.events.schemas.automations import Posture
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
+from infrahub import __version__
 from infrahub.workflows.models import WorkflowDefinition  # noqa: TC001
 
 from .constants import NAME_SEPARATOR
@@ -21,8 +22,10 @@ if TYPE_CHECKING:
 class TriggerType(str, Enum):
     BUILTIN = "builtin"
     WEBHOOK = "webhook"
+    COMPUTED_ATTR_JINJA2 = "computed_attr_jinja2"
+    COMPUTED_ATTR_PYTHON = "computed_attr_python"
+    COMPUTED_ATTR_PYTHON_QUERY = "computed_attr_python_query"
     # OBJECT = "object"
-    # COMPUTED_ATTR = "computed_attr"
 
 
 class EventTrigger(BaseModel):
@@ -94,7 +97,7 @@ class TriggerDefinition(BaseModel):
         return [action.name for action in self.actions]
 
     def get_description(self) -> str:
-        return f"Automation for Trigger {self.name} of type {self.type.value}"
+        return f"Automation for Trigger {self.name} of type {self.type.value} (v{__version__})"
 
     def generate_name(self) -> str:
         return f"{self.type.value}{NAME_SEPARATOR}{self.name}"
@@ -102,6 +105,13 @@ class TriggerDefinition(BaseModel):
     def validate_actions(self) -> None:
         for action in self.actions:
             action.validate_parameters()
+
+
+class TriggerBranchDefinition(TriggerDefinition):
+    branch: str
+
+    def generate_name(self) -> str:
+        return f"{self.type.value}{NAME_SEPARATOR}{self.branch}{NAME_SEPARATOR}{self.name}"
 
 
 class BuiltinTriggerDefinition(TriggerDefinition):

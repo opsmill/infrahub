@@ -4,14 +4,12 @@ import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { stateAtom } from "@/shared/stores/state.atom";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router";
 
@@ -20,11 +18,6 @@ const ObjectPageLayout = () => {
 
   const generics = useAtomValue(genericSchemasAtom);
   const { schema } = useSchema(objectKind);
-  const state = useAtomValue(stateAtom);
-
-  if (!state.isReady) {
-    return <InfrahubLoading>Loading config...</InfrahubLoading>;
-  }
 
   if (!schema) return <NoDataFound message={`No schema found for ${objectKind}`} />;
 

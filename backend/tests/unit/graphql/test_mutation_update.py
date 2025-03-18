@@ -4,7 +4,8 @@ from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.models import RelationshipCardinalityOneChangelog
+from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
+from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -462,12 +463,27 @@ async def test_update_single_relationship(
     assert car_peer.id == person_jim_main.id
     assert gql_params.context.background
     await gql_params.context.background()
-    assert len(memory_event.events) == 1
-    event = memory_event.events[0]
-    assert isinstance(event, NodeMutatedEvent)
-    assert isinstance(event.changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
-    assert event.changelog.relationships["owner"].peer_id == person_jim_main.id
-    assert event.changelog.relationships["owner"].peer_kind == "TestPerson"
+    assert len(memory_event.events) == 3
+    main_event = memory_event.events[0]
+    related_event_01 = memory_event.events[1]
+    related_event_02 = memory_event.events[2]
+    assert isinstance(main_event, NodeMutatedEvent)
+    assert isinstance(related_event_01, NodeMutatedEvent)
+    assert isinstance(related_event_02, NodeMutatedEvent)
+    assert isinstance(main_event.changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
+    assert main_event.changelog.relationships["owner"].peer_id == person_jim_main.id
+    assert main_event.changelog.relationships["owner"].peer_kind == "TestPerson"
+    assert main_event.changelog.relationships["owner"].peer_status == DiffAction.UPDATED
+    johns_event = [event for event in [related_event_01, related_event_02] if event.node_id == person_john_main.id][0]
+    jims_event = [event for event in [related_event_01, related_event_02] if event.node_id == person_jim_main.id][0]
+    assert isinstance(johns_event.changelog.relationships["cars"], RelationshipCardinalityManyChangelog)
+    assert len(johns_event.changelog.relationships["cars"].peers) == 1
+    assert johns_event.changelog.relationships["cars"].peers[0].peer_id == car_accord_main.id
+    assert johns_event.changelog.relationships["cars"].peers[0].peer_status == DiffAction.REMOVED
+    assert isinstance(jims_event.changelog.relationships["cars"], RelationshipCardinalityManyChangelog)
+    assert len(jims_event.changelog.relationships["cars"].peers) == 1
+    assert jims_event.changelog.relationships["cars"].peers[0].peer_id == car_accord_main.id
+    assert jims_event.changelog.relationships["cars"].peers[0].peer_status == DiffAction.ADDED
 
 
 async def test_update_default_value(

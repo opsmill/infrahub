@@ -64,6 +64,7 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'guides/installation',
+        'guides/installation-enterprise',
         'guides/create-schema',
         'guides/import-schema',
         'guides/menu',
@@ -82,6 +83,7 @@ const sidebars: SidebarsConfig = {
         'guides/resource-manager',
         'guides/managing-api-tokens',
         'guides/computed-attributes',
+        'guides/object-template',
       ],
     },
     {
@@ -117,6 +119,7 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/computed-attributes',
+        'topics/object-template',
         'topics/activity-log',
         'topics/infrahub-event',
         'topics/tasks',
@@ -213,6 +216,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'release-notes/infrahub/release-1_2_0',
+            'release-notes/infrahub/release-1_1_9',
             'release-notes/infrahub/release-1_1_8',
             'release-notes/infrahub/release-1_1_7',
             'release-notes/infrahub/release-1_1_6',

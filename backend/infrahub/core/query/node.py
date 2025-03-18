@@ -5,7 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeToProcess:
-    schema: Optional[Union[NodeSchema, ProfileSchema, TemplateSchema]]
+    schema: NodeSchema | ProfileSchema | TemplateSchema | None
 
     node_id: str
     node_uuid: str
@@ -65,7 +65,7 @@ class AttributeFromDB:
     attr_uuid: str
 
     attr_value_id: str
-    attr_value_uuid: Optional[str]
+    attr_value_uuid: str | None
 
     value: Any
     content: Any
@@ -96,11 +96,11 @@ class PeerInfo:
 class NodeQuery(Query):
     def __init__(
         self,
-        node: Optional[Node] = None,
-        node_id: Optional[str] = None,
-        node_db_id: Optional[int] = None,
-        id: Optional[str] = None,
-        branch: Optional[Branch] = None,
+        node: Node | None = None,
+        node_id: str | None = None,
+        node_db_id: int | None = None,
+        id: str | None = None,
+        branch: Branch | None = None,
         **kwargs,
     ) -> None:
         # TODO Validate that Node is a valid node
@@ -462,7 +462,7 @@ class NodeListGetAttributeQuery(Query):
     def __init__(
         self,
         ids: list[str],
-        fields: Optional[dict] = None,
+        fields: dict | None = None,
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
@@ -665,18 +665,21 @@ class NodeListGetRelationshipsQuery(Query):
         MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_in) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "inbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_out) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "outbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "bidirectional" as direction
         """ % {"filters": rels_filter}
 
@@ -804,7 +807,7 @@ class FieldAttributeRequirementType(Enum):
 @dataclass
 class FieldAttributeRequirement:
     field_name: str
-    field: Optional[Union[AttributeSchema, RelationshipSchema]]
+    field: AttributeSchema | RelationshipSchema | None
     field_attr_name: str
     field_attr_value: Any
     index: int
@@ -864,7 +867,7 @@ class NodeGetListQuery(Query):
     def __init__(
         self,
         schema: NodeSchema,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         partial_match: bool = False,
         order: OrderModel | None = None,
         **kwargs: Any,
@@ -1311,8 +1314,8 @@ class NodeGetHierarchyQuery(Query):
         self,
         node_id: str,
         direction: RelationshipHierarchyDirection,
-        node_schema: Union[NodeSchema, GenericSchema],
-        filters: Optional[dict] = None,
+        node_schema: NodeSchema | GenericSchema,
+        filters: dict | None = None,
         hierarchical_ordering: bool = False,
         **kwargs: Any,
     ) -> None:
