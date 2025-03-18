@@ -1,7 +1,11 @@
-from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_jinja2
+from infrahub.computed_attribute.gather import (
+    gather_trigger_computed_attribute_jinja2,
+    gather_trigger_computed_attribute_python,
+)
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
@@ -56,3 +60,14 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
     trigger_branch = triggers_by_name[name_branch_second]
     assert "infrahub.branch.name" in trigger_branch.trigger.match
     assert trigger_branch.trigger.match["infrahub.branch.name"] == "branch2"
+
+
+async def test_gather_trigger_computed_attribute_python(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr, transform01: Node
+):
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+    assert triggers
+    assert trigger_queries
+
+    trigger = triggers[0]
+    assert trigger.name == "TestCar_computed_desc_python"

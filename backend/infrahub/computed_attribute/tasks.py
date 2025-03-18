@@ -361,7 +361,7 @@ async def computed_attribute_setup_python(
         await add_tags(branches=[branch_name])
         await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
 
-    triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(client=service.client)
+    triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=service.database)
 
     for trigger in triggers_python:
         if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
