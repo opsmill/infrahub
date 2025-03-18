@@ -38,7 +38,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         return bool(self.deprecation)
 
     def to_dict(self) -> dict:
-        data = self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        data = self.model_dump(exclude_unset=True, exclude_none=True)
         for field_name, value in data.items():
             if isinstance(value, Enum):
                 data[field_name] = value.value
