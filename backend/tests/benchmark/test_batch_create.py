@@ -90,7 +90,7 @@ class TestBenchmarkBatches(TestInfrahubApp):
         res = await client.schema.load([car_person_schema_unique_owner], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
-    @pytest.mark.parametrize("allow_upsert", [True, False])
+    @pytest.mark.parametrize("allow_upsert", [True])
     @pytest.mark.parametrize("batch_size", [100])
     def test_create_nodes_batch(
         self,

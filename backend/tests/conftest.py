@@ -207,7 +207,13 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[
         return None
 
     container = start_neo4j_container(NEO4J_IMAGE)
-    request.addfinalizer(container.stop)
+
+    def finalize():
+        print("Neo4j container logs:")
+        print(container.get_logs())
+        container.stop()
+
+    request.addfinalizer(finalize)
 
     return {
         PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
