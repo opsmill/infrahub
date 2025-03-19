@@ -58,6 +58,7 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
       await page.getByRole("option", { name: "Tag Builtin" }).click();
       await page.getByLabel("Tag").click();
       await page.getByRole("option", { name: "red" }).click();
+      await expect(page.getByRole("option", { name: "red" })).not.toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("Members2").click();
 
