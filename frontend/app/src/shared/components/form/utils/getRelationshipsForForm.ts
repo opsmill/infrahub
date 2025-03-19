@@ -18,6 +18,7 @@ export const getRelationshipsForForm = (
   // For update forms, only include relationships with cardinality 'one' or those with eligible kinds (Attribute or Parent). Other should be display as tabs on details view
   return relationships.filter((relationship) => {
     if (relationship.cardinality === "one" && relationship.kind !== "Template") return true;
+    if (!isUpdate && relationship.name === "member_of_groups") return true;
 
     if (schema && (isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema))) {
       return !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(relationship.name);
