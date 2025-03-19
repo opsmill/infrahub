@@ -12,10 +12,6 @@ class TelemetryBranchData(BaseModel):
     total: int
 
 
-class TelemetryFeatureData(BaseModel):
-    total: int
-
-
 class TelemetrySchemaData(BaseModel):
     node_count: int
     generic_count: int

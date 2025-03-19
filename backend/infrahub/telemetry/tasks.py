@@ -26,7 +26,7 @@ from .task_manager import gather_prefect_information
 from .utils import determine_infrahub_type
 
 
-@task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
 async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
     main_schema = registry.schema.get_schema_branch(name=branch.name)
     return TelemetrySchemaData(
@@ -36,7 +36,7 @@ async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
     )
 
 
-@task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
 async def gather_feature_information(service: InfrahubServices) -> dict[str, int]:
     async with service.database.start_session() as db:
         data = {}
@@ -57,7 +57,7 @@ async def gather_feature_information(service: InfrahubServices) -> dict[str, int
         return data
 
 
-@task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
 async def gather_anonymous_telemetry_data(service: InfrahubServices) -> TelemetryData:
     start_time = time.time()
 
@@ -89,7 +89,7 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> Telemetr
     return data
 
 
-@task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)
 async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:
     """Send the telemetry data to the specified URL, using HTTP POST."""
     response = await service.http.post(url=url, json=payload)

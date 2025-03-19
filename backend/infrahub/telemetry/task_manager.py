@@ -12,7 +12,7 @@ from infrahub.trigger.models import TriggerType
 from .models import TelemetryPrefectData, TelemetryWorkPoolData
 
 
-@task(name="telemetry-gather-work-pools", task_run_name="Gather Work Pools", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-gather-work-pools", task_run_name="Gather Work Pools", cache_policy=NONE)
 async def gather_prefect_work_pools(client: PrefectClient) -> list[TelemetryWorkPoolData]:
     work_pools = await client.read_work_pools()
     data: list[TelemetryWorkPoolData] = []
@@ -31,7 +31,7 @@ async def gather_prefect_work_pools(client: PrefectClient) -> list[TelemetryWork
     return data
 
 
-@task(name="telemetry-gather-events", task_run_name="Gather Events", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-gather-events", task_run_name="Gather Events", cache_policy=NONE)
 async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
     infrahub_events = get_all_events()
     events: dict[str, int] = {}
@@ -51,7 +51,7 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
     return events
 
 
-@task(name="telemetry-gather-automations", task_run_name="Gather Automations", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-gather-automations", task_run_name="Gather Automations", cache_policy=NONE)
 async def gather_prefect_automations(client: PrefectClient) -> dict[str, Any]:
     automations = await client.read_automations()
 
@@ -65,7 +65,7 @@ async def gather_prefect_automations(client: PrefectClient) -> dict[str, Any]:
     return data
 
 
-@task(name="telemetry-gather-prefect-information", task_run_name="Gather Prefect Information", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-gather-prefect-information", task_run_name="Gather Prefect Information", cache_policy=NONE)
 async def gather_prefect_information() -> TelemetryPrefectData:
     async with get_client(sync_client=False) as client:
         data = TelemetryPrefectData(

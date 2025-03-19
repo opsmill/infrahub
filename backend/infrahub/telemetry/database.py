@@ -47,7 +47,7 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
     )
 
 
-@task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabaseData:
     async with db.start_session() as dbs:
         server_info = []
