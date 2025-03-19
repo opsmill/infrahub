@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -50,7 +50,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
-    ):
+    ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
         async with graphql_context.db.start_transaction() as dbt:
@@ -88,7 +88,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
         node: Node | None = None,  # noqa: ARG003
-    ):
+    ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.get_one_by_id_or_default_filter(

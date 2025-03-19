@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
@@ -45,7 +45,7 @@ log = get_logger()
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema | None = None, _meta=None, **options):
+    def __init_subclass_with_meta__(cls, schema: NodeSchema | None = None, _meta=None, **options) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -64,7 +64,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
-    ):
+    ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
@@ -151,7 +151,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
         node: Node | None = None,
-    ):
+    ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
