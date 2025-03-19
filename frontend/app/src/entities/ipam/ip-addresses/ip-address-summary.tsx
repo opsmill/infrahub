@@ -4,9 +4,8 @@ import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import { IpamSummarySkeleton } from "@/entities/ipam/prefixes/ipam-summary-skeleton";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
@@ -14,7 +13,6 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Link } from "@/shared/components/ui/link";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 import { useParams } from "react-router";
 
 export default function IpAddressSummary() {
@@ -56,12 +54,21 @@ type IpAddressSummaryContentProps = {
   ipAddressKind: string;
 };
 const IpAddressSummaryContent = ({ ipAddressId, ipAddressKind }: IpAddressSummaryContentProps) => {
-  const nodes = useAtomValue(nodeSchemasAtom);
-  const generics = useAtomValue(genericSchemasAtom);
+  const { schema: ipAddressSchema } = useSchema(ipAddressKind);
 
-  const ipAddressSchema = [...nodes, ...generics].find(({ kind }) => kind === ipAddressKind);
-
-  const columns = getSchemaObjectColumns({ schema: ipAddressSchema });
+  const columns = ipAddressSchema
+    ? [
+        ...(ipAddressSchema.attributes ?? []).map((attribute) => ({
+          isAttribute: true,
+          ...attribute,
+        })),
+        ...(ipAddressSchema.relationships ?? []).map((relationship) => ({
+          isRelationship: true,
+          paginated: relationship.cardinality === "many",
+          ...relationship,
+        })),
+      ]
+    : [];
 
   const query = gql(
     getObjectDetailsPaginated({
