@@ -17,7 +17,7 @@ class MemoryCache(InfrahubCache):
         return [await self.get(key) for key in keys]
 
     async def list_keys(self, filter_pattern: str) -> list[str]:
-        regex_pattern = f'^{filter_pattern.replace("*", ".*").replace("?", ".")}$'
+        regex_pattern = f"^{filter_pattern.replace('*', '.*').replace('?', '.')}$"
         compiled_pattern = re.compile(regex_pattern)
         return [key for key in self.storage.keys() if compiled_pattern.match(key)]
 

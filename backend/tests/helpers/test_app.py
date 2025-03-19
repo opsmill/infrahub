@@ -133,9 +133,9 @@ class TestInfrahubApp(TestInfrahub):
         # on worker rely on server's `services.service`, which is not initialized with a client,
         # instead of the worker one. Thus, we temporarily set `services.service.client`
         # here to mock worker's `services.service`.
-        assert isinstance(
-            service.workflow, WorkflowLocalExecution
-        ), "These tests are currently meant to run with a local worker"
+        assert isinstance(service.workflow, WorkflowLocalExecution), (
+            "These tests are currently meant to run with a local worker"
+        )
 
         service._client = sdk_client
         return sdk_client
