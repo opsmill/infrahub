@@ -1,5 +1,4 @@
 import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { InfoButton } from "@/shared/components/buttons/info-button";
@@ -71,7 +70,6 @@ const getCheckBorderColor = (severity?: string) => {
 };
 
 export const Check = ({ id }: tCheckProps) => {
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   const { loading, error, data } = useQuery(GET_CHECKS, { variables: { ids: [id] } });
