@@ -45,7 +45,6 @@ from infrahub.core.schema import (
     SchemaRoot,
 )
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
-from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
 from infrahub.support.macro import MacroDefinition
@@ -250,6 +249,9 @@ class SchemaBranch:
     def validate_update(
         self, other: SchemaBranch, diff: SchemaDiff, enforce_update_support: bool = True
     ) -> SchemaUpdateValidationResult:
+        # FIXME: I' mot a big fan of this approach to solve import loop
+        from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+
         result = SchemaUpdateValidationResult.init(
             diff=diff, schema=other, enforce_update_support=enforce_update_support
         )
