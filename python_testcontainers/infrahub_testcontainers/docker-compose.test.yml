@@ -167,6 +167,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
       - "--promscrape.config=/etc/prometheus/prometheus.yml"
+    ports:
+      - ${INFRAHUB_TESTING_SCRAPER_PORT:-0}:8428
 
 volumes:
   database_data:

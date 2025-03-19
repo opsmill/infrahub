@@ -88,6 +88,12 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     session.infrahub_performance_test.finalize(session=session)
 
 
+def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> None:
+    """Fetch metrics at each test teardown because there's no better hook...
+    pytest_sessionfinish() is executed after fixtures has been finalized and pytest_fixture_post_finalizer() is too late"""
+    item.session.infrahub_performance_test.fetch_metrics()
+
+
 def pytest_configure(config: pytest.Config) -> None:
     if config.getoption("infrahub_performance_use_backup") and config.getoption("infrahub_performance_create_backup"):
         raise pytest.UsageError("--performance-use-backup and --performance-create-backup are mutually exclusive")

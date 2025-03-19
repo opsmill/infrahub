@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/haproxy.cfg"]
+include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/haproxy.cfg", "infrahub_testcontainers/prometheus.yml"]
 
 [tool.poetry.plugins."pytest11"]
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
