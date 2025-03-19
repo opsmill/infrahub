@@ -75,7 +75,7 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ):
+    ) -> DeleteResult:
         if data["id"] == registry.default_ipnamespace:
             raise ValueError("Cannot delete default IPAM namespace")
 
@@ -368,7 +368,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getters: list[MutationNodeGetterInterface],
         database: InfrahubDatabase | None = None,
-    ):
+    ) -> tuple[Node, Self, bool]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 

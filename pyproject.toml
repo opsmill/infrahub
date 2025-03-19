@@ -555,13 +555,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/graphql/mutations/**.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN206", # Missing return type annotation for classmethod
-]
-
 "backend/infrahub/menu/generator.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
