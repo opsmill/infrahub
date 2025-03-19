@@ -33,6 +33,7 @@ class InfrahubPerformanceTest:
         self.metrics = {}
         self.host = get_system_stats()
         self.env_vars = {}
+        self.project_name = ""
         self.test_info = {}
         self.start_time = datetime.now(UTC)
         self.end_time: datetime | None = None
@@ -57,6 +58,7 @@ class InfrahubPerformanceTest:
 
     def extract_compose_information(self, compose: InfrahubDockerCompose) -> None:
         self.env_vars = compose.env_vars
+        self.project_name = compose.project_name
         self.scraper_endpoint = (
             f"http://127.0.0.1:{compose.get_service_host_and_port(service_name="scraper")[1]}/api/v1/export"
         )
@@ -84,13 +86,21 @@ class InfrahubPerformanceTest:
 
     def fetch_metrics(self) -> None:
         with httpx.Client() as client:
-            print(self.scraper_endpoint)
+            # Get Infrahub metrics
             response = client.post(
                 url=self.scraper_endpoint,
-                content=b'match[]={__name__!=""}',
+                content='match[]={__name__=~"infrahub.*"}',
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             self.metrics = [json.loads(line) for line in response.text.splitlines()]
+
+            # Get system metrics, filter by docker project name
+            response = client.post(
+                url=self.scraper_endpoint,
+                content=f'match[]={{__name__=~"container.*", container_label_com_docker_compose_project="{self.project_name}"}}',
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            self.metrics += [json.loads(line) for line in response.text.splitlines()]
 
     def __enter__(self) -> Self:
         return self
