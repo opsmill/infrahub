@@ -167,11 +167,11 @@ export const Check = ({ id }: tCheckProps) => {
         </div>
       </div>
 
-      {__typename === "CoreDataCheck" && conflicts?.value?.length && (
+      {__typename === "CoreDataCheck" && !!conflicts?.value?.length && (
         <DataIntegrityConflicts conflicts={conflicts} />
       )}
 
-      {__typename === "CoreSchemaCheck" && conflicts?.value?.length && (
+      {__typename === "CoreSchemaCheck" && !!conflicts?.value?.length && (
         <SchemaIntegrityConflicts conflicts={conflicts} />
       )}
     </div>
