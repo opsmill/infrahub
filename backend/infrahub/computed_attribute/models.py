@@ -134,7 +134,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = branch
 
         event_trigger.match_related = {
-            "prefect.resource.role": "infrahub.node.field_update",
+            "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": trigger_node.fields,
         }
 
