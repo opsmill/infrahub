@@ -161,8 +161,6 @@ services:
     tty: true
 
   scraper:
-    profiles:
-      - performance
     image: "${SCRAPER_DOCKER_IMAGE:-victoriametrics/victoria-metrics:v1.110.0}"
     volumes:
       - vmdata:/victoria-metrics-data
