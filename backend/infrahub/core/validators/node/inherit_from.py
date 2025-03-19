@@ -6,7 +6,7 @@ from infrahub_sdk.utils import compare_lists
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
-from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
 
 from ..interface import ConstraintCheckerInterface
@@ -50,7 +50,7 @@ class NodeInheritFromChecker(ConstraintCheckerInterface):
         }
 
         # Gather IDs for each inherited node in use for candidate schema
-        request_inherited: list[GenericSchema] = []
+        request_inherited: list[MainSchemaTypes] = []
         for n in request.node_schema.inherit_from:
             try:
                 request_inherited.append(request.schema_branch.get(name=n, duplicate=False))

@@ -5,6 +5,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema import DropdownChoice
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.choices import AttributeChoicesChecker, AttributeChoicesUpdateValidatorQuery
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
@@ -250,6 +251,7 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, criticality_schem
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=branch)
