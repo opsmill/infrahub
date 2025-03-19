@@ -22,6 +22,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
     "server": ContainerService(container="infrahub-server-lb", port=8000),
     "task-manager": ContainerService(container="task-manager", port=4200),
     "database": ContainerService(container="database", port=7687),
+    "scraper": ContainerService(container="scraper", port=8428),
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
@@ -111,10 +112,11 @@ class InfrahubDockerCompose(DockerCompose):
         test_compose_file = directory / "docker-compose.yml"
         test_compose_file.write_bytes(compose_file.read_bytes())
 
-        haproxy_config_file = current_directory / "haproxy.cfg"
+        for file in ["haproxy.cfg", "prometheus.yml"]:
+            config_file = current_directory / file
 
-        test_haproxy_config_file = directory / "haproxy.cfg"
-        test_haproxy_config_file.write_bytes(haproxy_config_file.read_bytes())
+            test_config_file = directory / file
+            test_config_file.write_bytes(config_file.read_bytes())
 
         return test_compose_file
 
