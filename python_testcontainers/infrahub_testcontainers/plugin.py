@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from .performance_test import InfrahubPerformanceTest
+
+if TYPE_CHECKING:
+    import _pytest
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -85,12 +90,18 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     """whole test run finishes."""
+    if not session.config.getoption("infrahub_performance_report"):
+        return
+
     session.infrahub_performance_test.finalize(session=session)
 
 
 def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> None:
     """Fetch metrics at each test teardown because there's no better hook...
     pytest_sessionfinish() is executed after fixtures has been finalized and pytest_fixture_post_finalizer() is too late"""
+    if not item.config.getoption("infrahub_performance_report"):
+        return
+
     item.session.infrahub_performance_test.fetch_metrics()
 
 
@@ -103,12 +114,19 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "performance_load_data: Load initial data into the database")
 
 
-# def pytest_terminal_summary(session: pytest.Session, terminalreporter):
+def pytest_terminal_summary(
+    terminalreporter: _pytest.terminal.TerminalReporter, exitstatus: int, config: pytest.Config
+) -> None:
+    if not config.getoption("infrahub_performance_report"):
+        return
 
-#     performance_test = session.infrahub_performance_test
+    performance_test = terminalreporter._session.infrahub_performance_test
 
-#     report = [f"{measurement.name}: {measurement.value} {measurement.unit}" for measurement in performance_test.measurements]
-#     terminalreporter.write('\n' + "\n".join(report) + '\n')
+    report = [
+        f"{measurement.name}: {measurement.value} {measurement.unit.value}"
+        for measurement in performance_test.measurements
+    ]
+    terminalreporter.write("\n" + "\n".join(report) + "\n")
 
 
 @pytest.fixture
