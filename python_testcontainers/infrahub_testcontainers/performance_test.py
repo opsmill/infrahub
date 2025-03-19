@@ -44,7 +44,6 @@ class InfrahubPerformanceTest:
             self.infrahub_version = client.get_version()
         if compose:
             self.extract_compose_information(compose)
-            compose.profiles.append("performance")
 
         self.initialized = True
 
