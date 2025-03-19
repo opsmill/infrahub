@@ -23,9 +23,10 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta
-from infrahub.events.node_action import NodeDeletedEvent, NodeUpdatedEvent, get_node_event
+from infrahub.events.node_action import NodeDeletedEvent, NodeMutatedEvent, NodeUpdatedEvent, get_node_event
 from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.graphql.context import apply_external_context
+from infrahub.groups.parsers import GroupNodeMutationParser
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
@@ -154,7 +155,7 @@ class InfrahubMutationMixin:
             relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
             node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=obj.node_changelog)
 
-            events = [main_event]
+            events: list[NodeMutatedEvent] = [main_event]
 
             deleted_changelogs = [node.node_changelog for node in deleted_nodes if node.id != obj.id]
             deleted_ids = {node.node_id for node in deleted_changelogs}
@@ -182,7 +183,10 @@ class InfrahubMutationMixin:
                     )
                     events.append(update_event)
 
-            for event in events:
+            group_parser = GroupNodeMutationParser(db=graphql_context.db, branch=graphql_context.branch)
+            group_events = await group_parser.group_events_from_node_actions(events=events)
+
+            for event in events + group_events:
                 graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
         return mutation
