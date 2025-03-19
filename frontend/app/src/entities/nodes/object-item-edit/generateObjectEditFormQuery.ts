@@ -27,7 +27,7 @@ export const generateObjectEditFormQuery = ({
               withPermissions: true,
             }),
             ...addRelationshipsToRequest(
-              getRelationshipsForForm(schema.relationships ?? [], true),
+              getRelationshipsForForm(schema.relationships ?? [], true, schema),
               { withMetadata: true }
             ),
             ...("generate_profile" in schema && schema.generate_profile
