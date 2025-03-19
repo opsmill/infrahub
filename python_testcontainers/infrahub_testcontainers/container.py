@@ -23,6 +23,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
     "task-manager": ContainerService(container="task-manager", port=4200),
     "database": ContainerService(container="database", port=7687),
     "scraper": ContainerService(container="scraper", port=8428),
+    "cadvisor": ContainerService(container="cadvisor", port=8080),
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
