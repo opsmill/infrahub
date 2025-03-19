@@ -32,7 +32,7 @@ export const getFormFieldsFromSchema = ({
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
     ...(schema.attributes ?? []),
-    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate),
+    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate, schema),
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
