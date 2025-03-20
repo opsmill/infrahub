@@ -1371,14 +1371,14 @@ class SchemaBranch:
                     generic_schema, generic_rel = generic_fields_map[rel.name]
                     if rel.branch == generic_schema.branch == generic_rel.branch != node.branch:
                         needs_update = True
-
-                peer_node = self.get(name=rel.peer, duplicate=False)
-                if node.branch == peer_node.branch:
-                    rels_to_update[rel.name] = node.branch
-                elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
-                    rels_to_update[rel.name] = BranchSupportType.LOCAL
-                else:
-                    rels_to_update[rel.name] = BranchSupportType.AWARE
+                if needs_update:
+                    peer_node = self.get(name=rel.peer, duplicate=False)
+                    if node.branch == peer_node.branch:
+                        rels_to_update[rel.name] = node.branch
+                    elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
+                        rels_to_update[rel.name] = BranchSupportType.LOCAL
+                    else:
+                        rels_to_update[rel.name] = BranchSupportType.AWARE
 
             if not attrs_to_update and not rels_to_update:
                 continue
