@@ -8,7 +8,7 @@ import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_reciev
 
 # Webhooks
 
-The **Webhook System** enables external notifications based on the [Events](./infrahub-event.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
+The **Webhook System** enables external notifications based on the [Events](./events.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
 
 ## Configuring webhooks
 
@@ -46,7 +46,7 @@ Node kinds can be configured to only trigger webhooks for specific nodes. For ex
 
 :::note
 
-Node kind can only be used where `infrahub_node_kind_event` is `True` in [Infrahub events](../reference/infrahub-events.mdx). Below are some example events that are enabled:
+Node kind can only be used where `node_kind` is `True` in [Infrahub events](../reference/infrahub-events.mdx). Below are some example events that are enabled:
 
 - `infrahub.node.created`
 - `infrahub.node.updated`

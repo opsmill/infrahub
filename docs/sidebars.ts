@@ -125,7 +125,7 @@ const sidebars: SidebarsConfig = {
         'topics/auth',
         'topics/computed-attributes',
         'topics/activity-log',
-        'topics/infrahub-event',
+        'topics/events',
         'topics/tasks',
         'topics/webhooks',
       ],
