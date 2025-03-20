@@ -10,7 +10,6 @@ from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
@@ -22,14 +21,11 @@ from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events import EventMeta
-from infrahub.events.node_action import NodeDeletedEvent, NodeMutatedEvent, NodeUpdatedEvent, get_node_event
+from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.graphql.context import apply_external_context
-from infrahub.groups.parsers import GroupNodeMutationParser
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
-from infrahub.worker import WORKER_IDENTITY
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 from .node_getter.by_hfid import MutationNodeGetterByHfid
@@ -78,7 +74,7 @@ class InfrahubMutationMixin:
     _meta: InfrahubMutationOptions
 
     @classmethod
-    async def mutate(  # noqa: PLR0915
+    async def mutate(
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
@@ -133,60 +129,17 @@ class InfrahubMutationMixin:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            account_id: str | None = None
-            if graphql_context.account_session:
-                account_id = graphql_context.account_session.account_id
-
-            meta = EventMeta(
-                account_id=account_id,
-                initiator_id=WORKER_IDENTITY,
-                request_id=request_id,
+            events = await generate_node_mutation_events(
+                node=obj,
+                deleted_nodes=deleted_nodes,
+                db=graphql_context.db,
                 branch=graphql_context.branch,
                 context=graphql_context.get_context(),
+                request_id=request_id,
+                action=action,
             )
-            node_event_class = get_node_event(action)
-            main_event = node_event_class(
-                kind=obj._schema.kind,
-                node_id=obj.id,
-                changelog=obj.node_changelog,
-                fields=_get_data_fields(data),
-                meta=meta,
-            )
-            relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
-            node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=obj.node_changelog)
 
-            events: list[NodeMutatedEvent] = [main_event]
-
-            deleted_changelogs = [node.node_changelog for node in deleted_nodes if node.id != obj.id]
-            deleted_ids = {node.node_id for node in deleted_changelogs}
-
-            for node_changelog in deleted_changelogs:
-                meta = EventMeta.from_parent(parent=main_event)
-                delete_event = NodeDeletedEvent(
-                    kind=node_changelog.node_kind,
-                    node_id=node_changelog.node_id,
-                    changelog=node_changelog,
-                    fields=node_changelog.updated_fields,
-                    meta=meta,
-                )
-                events.append(delete_event)
-
-            for node_changelog in node_changelogs:
-                if node_changelog.node_id not in deleted_ids:
-                    meta = EventMeta.from_parent(parent=main_event)
-                    update_event = NodeUpdatedEvent(
-                        kind=node_changelog.node_kind,
-                        node_id=node_changelog.node_id,
-                        changelog=node_changelog,
-                        fields=node_changelog.updated_fields,
-                        meta=meta,
-                    )
-                    events.append(update_event)
-
-            group_parser = GroupNodeMutationParser(db=graphql_context.db, branch=graphql_context.branch)
-            group_events = await group_parser.group_events_from_node_actions(events=events)
-
-            for event in events + group_events:
+            for event in events:
                 graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
         return mutation
