@@ -368,7 +368,6 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                                     "generic_attr_text": {
                                         "added": {},
                                         "changed": {
-                                            "id": None,
                                             "default_value": None,
                                             "inherited": None,
                                         },
@@ -383,7 +382,6 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                                     "things": {
                                         "added": {},
                                         "changed": {
-                                            "id": None,
                                             "max_count": None,
                                             "inherited": None,
                                         },
