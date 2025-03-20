@@ -10,7 +10,7 @@ import { ReactNode } from "react";
 
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
   "infrahub.branch.created": (props: BranchCreatedEvent) => (
-    <div className="text-gray-500">
+    <div className="text-gray-600">
       created the branch{" "}
       <Link to={`/branches/${props.created_branch}`} className="text-black">
         {props.created_branch ?? "-"}
@@ -18,7 +18,7 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
     </div>
   ),
   "infrahub.branch.rebased": (props: BranchRebasedEvent) => (
-    <div className="text-gray-500">
+    <div className="text-gray-600">
       rebased the branch{" "}
       <Link to={`/branches/${props.rebased_branch}`} className="text-black">
         {props.rebased_branch ?? "-"}
@@ -26,12 +26,12 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
     </div>
   ),
   "infrahub.branch.merged": (props: BranchMergedEvent) => (
-    <div className="text-gray-500">
+    <div className="text-gray-600">
       merged the branch <span className="text-black">{props.source_branch ?? "-"}</span>
     </div>
   ),
   "infrahub.branch.deleted": (props: BranchDeletedEvent) => (
-    <div className="text-gray-500">
+    <div className="text-gray-600">
       deleted the branch <span className="text-black">{props.deleted_branch ?? "-"}</span>
     </div>
   ),
