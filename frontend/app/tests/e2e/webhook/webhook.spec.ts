@@ -45,21 +45,21 @@ test.describe("/objects/CoreWebhook", () => {
 
         await page.getByRole("button", { name: "Save" }).click();
       });
+    });
 
-      await test.step("webhook detail view", async () => {
-        // Give time for activity log to be propagated.
-        await page
-          .getByTestId("identifier-cell")
-          .getByRole("link", { name: "Ansible EDA", exact: true })
-          .click();
+    test("Access webhook", async ({ page }) => {
+      // Give time for activity log to be propagated.
+      await page
+        .getByTestId("identifier-cell")
+        .getByRole("link", { name: "Ansible EDA", exact: true })
+        .click();
 
-        while (await page.getByText("No activity found for this").isVisible()) {
-          await page.reload();
-        }
-        await expect(page.getByText("NameAnsible EDA")).toBeVisible();
-        await expect(page.getByText("View all activities")).toBeVisible();
-        await saveScreenshotForDocs(page, "webhook_detail");
-      });
+      while (await page.getByText("No activity found for this").isVisible()) {
+        await page.reload();
+      }
+      await expect(page.getByText("NameAnsible EDA")).toBeVisible();
+      await expect(page.getByText("View all activities")).toBeVisible();
+      await saveScreenshotForDocs(page, "webhook_detail");
     });
   });
 });
