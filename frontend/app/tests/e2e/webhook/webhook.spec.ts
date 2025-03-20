@@ -48,12 +48,14 @@ test.describe("/objects/CoreWebhook", () => {
 
       await test.step("webhook detail view", async () => {
         // Give time for activity log to be propagated.
-        await page.waitForTimeout(10000);
         await page
           .getByTestId("identifier-cell")
           .getByRole("link", { name: "Ansible EDA", exact: true })
           .click();
 
+        while (await page.getByText("No activity found for this object.").isVisible()) {
+          await page.reload();
+        }
         await expect(page.getByText("NameAnsible EDA")).toBeVisible();
         await expect(page.getByText("View all activities")).toBeVisible();
         await saveScreenshotForDocs(page, "webhook_detail");
