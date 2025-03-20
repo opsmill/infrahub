@@ -1,4 +1,4 @@
-import { Get_ActivitiesQuery } from "@/shared/api/graphql/generated/graphql";
+import { Get_Infrahub_EventsQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
@@ -117,6 +117,13 @@ export const EVENTS_QUERY = gql`
               kind
             }
           }
+          ... on ArtifactEvent {
+            checksum
+            storage_id
+            artifact_definition_id
+            checksum_previous
+            storage_id_previous
+          }
         }
       }
     }
@@ -129,7 +136,7 @@ export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
   filters,
 }: GetEventsFromApiParams) {
-  return graphqlClient.query<Get_ActivitiesQuery>({
+  return graphqlClient.query<Get_Infrahub_EventsQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,

@@ -1,7 +1,8 @@
 import { EventType } from "@/entities/events/types";
-import { EventDetails } from "@/entities/events/ui/event-card";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { InfoIcon } from "lucide-react";
+import { EventDetails } from "./event-details";
 
 export function EventDetailsPopover(props: EventType) {
   return (
