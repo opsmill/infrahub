@@ -13,7 +13,6 @@ test.describe("/objects/CoreWebhook", () => {
 
   test.describe("when logged in as admin account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-    test.describe.configure({ mode: "serial" });
 
     test("Create a webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
@@ -49,18 +48,25 @@ test.describe("/objects/CoreWebhook", () => {
     });
 
     test("Access webhook", async ({ page }) => {
-      // Give time for activity log to be propagated.
-      await page
-        .getByTestId("identifier-cell")
-        .getByRole("link", { name: "Ansible EDA", exact: true })
-        .click();
+      await test.step("load webhooks", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await expect(page.getByTestId("object-header")).toContainText("Webhook");
+      });
 
-      while (await page.getByText("No activity found for this").isVisible()) {
-        await page.reload();
-      }
-      await expect(page.getByText("NameAnsible EDA")).toBeVisible();
-      await expect(page.getByText("View all activities")).toBeVisible();
-      await saveScreenshotForDocs(page, "webhook_detail");
+      await test.step("webhook detail view", async () => {
+        // Give time for activity log to be propagated.
+        await page
+          .getByTestId("identifier-cell")
+          .getByRole("link", { name: "Ansible EDA", exact: true })
+          .click();
+
+        while (await page.getByText("No activity found for this").isVisible()) {
+          await page.reload();
+        }
+        await expect(page.getByText("NameAnsible EDA")).toBeVisible();
+        await expect(page.getByText("View all activities")).toBeVisible();
+        await saveScreenshotForDocs(page, "webhook_detail");
+      });
     });
   });
 });
