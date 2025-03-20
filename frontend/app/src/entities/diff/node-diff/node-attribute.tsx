@@ -4,7 +4,6 @@ import { DiffAttribute, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow } from "@/entities/diff/node-diff/utils";
 import { useParams } from "react-router";
 import { BadgeConflict } from "../ui/diff-badge";
-import { Conflict } from "./conflict";
 
 type DiffNodeAttributeProps = {
   attribute: DiffAttribute;
@@ -41,7 +40,7 @@ export const DiffNodeAttribute = ({
       right={newValue}
     >
       <div className="divide-y border-t">
-        {attribute.conflict && <Conflict conflict={attribute.conflict} />}
+        {attribute.conflict && <DataConflict conflict={attribute.conflict} />}
 
         {attribute.properties.map((property, index: number) => (
           <DiffNodeProperty key={index} property={property} status={status} />

@@ -22,9 +22,9 @@ async def test_schema_is_nonnull(db: InfrahubDatabase, default_branch, car_perso
             assert isinstance(edge_type, GraphQLNonNull), f"Field 'edges' of {name} is not NonNull"
 
             if isinstance(edge_type.of_type, GraphQLList):
-                assert isinstance(
-                    edge_type.of_type.of_type, GraphQLNonNull
-                ), f"Element of 'edges' of {name} is not NonNull"
+                assert isinstance(edge_type.of_type.of_type, GraphQLNonNull), (
+                    f"Element of 'edges' of {name} is not NonNull"
+                )
 
         elif isinstance(field.type, GraphQLObjectType) and "edges" in field.type.fields:
             edge_type = field.type.fields["edges"].type

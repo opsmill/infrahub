@@ -6,12 +6,31 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { Link } from "react-router";
 import { DiffRow } from "../node-diff/utils";
 import { BadgeConflict } from "../ui/diff-badge";
 
-export const Conflict = ({ id, changes, kind, name }: any) => {
+type Change = {
+  branch: string;
+  previous: string;
+  new: string;
+};
+
+type DataConflictProps = {
+  id: string;
+  kind: string;
+  name: string;
+  changes: Array<Change>;
+};
+
+export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const schemaLabels = useAtomValue(schemaKindLabelState);
+
+  if (!changes) {
+    return null;
+  }
 
   const url = `/proposed-changes/${proposedChangesDetails.id}?${QSP.PROPOSED_CHANGES_TAB}=data#${id}`;
 
@@ -26,7 +45,7 @@ export const Conflict = ({ id, changes, kind, name }: any) => {
   return (
     <div>
       <div className="flex items-center mb-2">
-        <Badge className="mr-2">{kind}</Badge>
+        <Badge className="mr-2">{schemaLabels[kind]}</Badge>
 
         <Id id={id} kind={kind} />
       </div>
@@ -46,20 +65,20 @@ export const Conflict = ({ id, changes, kind, name }: any) => {
           }
           left={
             <div className="flex items-center gap-2">
-              {mainChange.previous}
+              {mainChange?.previous}
               <Icon icon="mdi:chevron-right" />
               <Badge variant="yellow" className="font-medium">
-                {mainChange.new}
+                {mainChange?.new}
               </Badge>
             </div>
           }
           leftClassName={classNames("font-normal group-hover:bg-gray-100 transition-all")}
           right={
             <div className="flex items-center gap-2">
-              {branchChange.previous}
+              {branchChange?.previous}
               <Icon icon="mdi:chevron-right" />
               <Badge variant="yellow" className="font-medium">
-                {branchChange.new}
+                {branchChange?.new}
               </Badge>
             </div>
           }

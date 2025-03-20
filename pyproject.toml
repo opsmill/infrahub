@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.2.0b1"
+version = "1.2.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -89,7 +89,7 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-ruff = "0.8.6"
+ruff = "0.11.0"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -494,20 +494,21 @@ allow-dunder-method-names = [
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "UP007",  # Use X | Y for type annotations
+    "UP045",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/core/graph/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "UP007",  # Use X | Y for type annotations
+    "UP045",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/core/node/standard.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "UP007",  # Use X | Y for type annotations
+    "UP045",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/core/query/**.py" = [
@@ -554,18 +555,15 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/graphql/mutations/**.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "ANN206", # Missing return type annotation for classmethod
-]
-
 "backend/infrahub/menu/generator.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "PLR0915", # Too many statements
+]
+
+"backend/infrahub/serve/log.py" = [
+    "LOG004",  # `.exception()` call outside exception handlers
 ]
 
 "backend/tests/**.py" = [
@@ -623,6 +621,9 @@ allow-dunder-method-names = [
     "PT021",   # Use `yield` instead of `request.addfinalizer`
 ]
 
+"tasks/**.py" = [
+    "PT028", # Test function parameter has default argument (these are not tests)
+]
 
 "tasks/release.py" = [
     ##################################################################################################

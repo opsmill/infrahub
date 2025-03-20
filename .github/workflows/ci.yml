@@ -103,7 +103,7 @@ jobs:
         with:
           submodules: true
       - name: "Setup environment"
-        run: "pip install ruff==0.8.6"
+        run: "pip install ruff==0.11.0"
       - name: "Linting: ruff check"
         run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
@@ -520,7 +520,8 @@ jobs:
       - name: "Setup environment"
         run: |
           pipx install poetry==1.8.5
-          poetry config virtualenvs.prefer-active-python true
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
           pip install invoke toml
       - name: "Install Package"
         run: "poetry install"
@@ -604,6 +605,10 @@ jobs:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
       - name: "Install dependencies"
         run: npm install
       - name: "Setup Python environment"
@@ -738,6 +743,10 @@ jobs:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
 
       - name: Install Invoke
         run: pip install invoke toml

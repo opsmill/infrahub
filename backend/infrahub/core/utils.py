@@ -266,7 +266,7 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
         abstract = options.pop("abstract", False)
         if abstract:
             assert not options, (
-                "Abstract types can only contain the abstract attribute. " f"Received: abstract, {', '.join(options)}"
+                f"Abstract types can only contain the abstract attribute. Received: abstract, {', '.join(options)}"
             )
         else:
             super_class = super(cls, cls)
