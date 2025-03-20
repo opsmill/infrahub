@@ -13,6 +13,7 @@ test.describe("/objects/CoreWebhook", () => {
 
   test.describe("when logged in as admin account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+    test.describe.configure({ mode: "serial" });
 
     test("Create a webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
