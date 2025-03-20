@@ -4,7 +4,7 @@ import copy
 import hashlib
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any, Callable, Iterator
+from typing import Any
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
@@ -62,9 +62,6 @@ from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
 
-if TYPE_CHECKING:
-    from pydantic import ValidationInfo
-
 
 class SchemaBranch:
     def __init__(
@@ -89,15 +86,11 @@ class SchemaBranch:
             self.templates = data.get("templates", {})
 
     @classmethod
-    def __get_validators__(cls) -> Iterator[Callable[..., Any]]:  # noqa: PLW3201
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v: Any, info: ValidationInfo) -> Self:  # noqa: ARG003
-        if isinstance(v, cls):
-            return v
-        if isinstance(v, dict):
-            return cls.from_dict_schema_object(data=v)
+    def validate(cls, data: Any) -> Self:  # noqa: ARG003
+        if isinstance(data, cls):
+            return data
+        if isinstance(data, dict):
+            return cls.from_dict_schema_object(data=data)
         raise ValueError("must be a class or a dict")
 
     @property
