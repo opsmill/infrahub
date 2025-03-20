@@ -1,10 +1,12 @@
-import { EventType } from "@/entities/events/types";
+import { BranchEvent, EventType } from "@/entities/events/types";
+import { ArtifactEvent, GroupEvent, StandardEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
-import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
+
+import { ArtifactEventTitle } from "./artifact-events/artifact-event-title";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
 import { NodeEventTitle } from "./node-events/node-event-title";
@@ -15,16 +17,25 @@ const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
     return <NodeEventTitle {...props} />;
   }
 
-  if (BRANCH_EVENTS.includes(__typename)) {
-    return <BranchEventTitle {...props} />;
+  if (
+    __typename === "BranchCreatedEvent" ||
+    __typename === "BranchDeletedEvent" ||
+    __typename === "BranchMergedEvent" ||
+    __typename === "BranchRebasedEvent"
+  ) {
+    return <BranchEventTitle {...(props as BranchEvent)} />;
   }
 
-  if (STANDARD_EVENTS.includes(__typename)) {
-    return <StandardEventTitle {...props} />;
+  if (__typename === "StandardEvent") {
+    return <StandardEventTitle {...(props as StandardEvent)} />;
   }
 
-  if (GROUP_EVENTS.includes(__typename)) {
-    return <GroupEventTitle {...props} />;
+  if (__typename === "GroupEvent") {
+    return <GroupEventTitle {...(props as GroupEvent)} />;
+  }
+
+  if (__typename === "ArtifactEvent") {
+    return <ArtifactEventTitle {...(props as ArtifactEvent)} />;
   }
 
   return <span className="flex items-center text-sm text-gray-500 ">{props.event}</span>;

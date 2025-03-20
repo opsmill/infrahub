@@ -1,10 +1,10 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
+import { GroupEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 import { ReactElement } from "react";
 
-export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> = {
+export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactElement> = {
   "infrahub.group.member_added": (props) => {
     return (
       <div className="flex flex-wrap items-center gap-1 whitespace-nowrap">
@@ -73,12 +73,12 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) =>
   },
 };
 
-export const GroupEventTitle = (props: EventNodeInterface) => {
+export const GroupEventTitle = (props: GroupEvent) => {
   const { event, account_id } = props;
 
   return (
     <div className="flex items-center flex-wrap gap-1 text-sm">
-      <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
+      {account_id ? <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} /> : "-"}
 
       <div className="text-gray-500">
         {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}

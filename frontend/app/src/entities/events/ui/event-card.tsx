@@ -5,7 +5,7 @@ import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover"
 
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 import { Icon } from "@iconify-icon/react";
-import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
+import { ArtifactEventTitle } from "./artifact-events/artifact-event-title";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
 import { EventAttributes } from "./node-events/event-attributes";
@@ -23,11 +23,16 @@ export const EventCard = (props: EventType) => {
 
           {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 
-          {BRANCH_EVENTS.includes(props.__typename) && <BranchEventTitle {...props} />}
+          {(props.__typename === "BranchCreatedEvent" ||
+            props.__typename === "BranchDeletedEvent" ||
+            props.__typename === "BranchMergedEvent" ||
+            props.__typename === "BranchRebasedEvent") && <BranchEventTitle {...props} />}
 
-          {STANDARD_EVENTS.includes(props.__typename) && <StandardEventTitle {...props} />}
+          {props.__typename === "StandardEvent" && <StandardEventTitle {...props} />}
 
-          {GROUP_EVENTS.includes(props.__typename) && <GroupEventTitle {...props} />}
+          {props.__typename === "GroupEvent" && <GroupEventTitle {...props} />}
+
+          {props.__typename === "ArtifactEvent" && <ArtifactEventTitle {...props} />}
 
           <div className="flex justify-between text-gray-500">
             <DateDisplay date={props.occurred_at} />

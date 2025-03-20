@@ -1,10 +1,15 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
+import {
+  BranchCreatedEvent,
+  BranchDeletedEvent,
+  BranchMergedEvent,
+  BranchRebasedEvent,
+} from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { ReactNode } from "react";
 
-export const BRANCH_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactNode> = {
-  "infrahub.branch.created": (props) => (
+export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
+  "infrahub.branch.created": (props: BranchCreatedEvent) => (
     <div className="text-gray-500">
       created the branch{" "}
       <Link to={`/branches/${props.created_branch}`} className="text-black">
@@ -12,7 +17,7 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) =
       </Link>
     </div>
   ),
-  "infrahub.branch.rebased": (props) => (
+  "infrahub.branch.rebased": (props: BranchRebasedEvent) => (
     <div className="text-gray-500">
       rebased the branch{" "}
       <Link to={`/branches/${props.rebased_branch}`} className="text-black">
@@ -20,19 +25,19 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) =
       </Link>
     </div>
   ),
-  "infrahub.branch.merged": (props) => (
+  "infrahub.branch.merged": (props: BranchMergedEvent) => (
     <div className="text-gray-500">
       merged the branch <span className="text-black">{props.source_branch ?? "-"}</span>
     </div>
   ),
-  "infrahub.branch.deleted": (props) => (
+  "infrahub.branch.deleted": (props: BranchDeletedEvent) => (
     <div className="text-gray-500">
       deleted the branch <span className="text-black">{props.deleted_branch ?? "-"}</span>
     </div>
   ),
 };
 
-export const BranchEventTitle = (props: EventNodeInterface) => {
+export const BranchEventTitle = (props: any) => {
   const { event, account_id, branch } = props;
 
   return (
