@@ -83,6 +83,8 @@ const sidebars: SidebarsConfig = {
         'guides/sso',
         'guides/check',
         'guides/managing-api-tokens',
+        'guides/computed-attributes',
+        'guides/webhooks',
       ],
     },
     {
@@ -121,6 +123,11 @@ const sidebars: SidebarsConfig = {
         'topics/tasks',
         'topics/transformation',
         'topics/auth',
+        'topics/computed-attributes',
+        'topics/activity-log',
+        'topics/events',
+        'topics/tasks',
+        'topics/webhooks',
       ],
     },
     {

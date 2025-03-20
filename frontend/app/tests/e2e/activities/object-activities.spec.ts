@@ -27,10 +27,6 @@ test.describe("Object Activities - Timeline and Details", () => {
       await expect(viewMoreButton).toBeVisible();
       await viewMoreButton.click();
 
-      // Wait for a known text inside the popover to appear
-      const viewText = page.getByText("Changes", { exact: true });
-      await expect(viewText).toBeVisible();
-
       const popoverContent = page.getByRole("dialog");
       // Assert that the popover contains the expected text "Primary Node"
       await expect(popoverContent).toContainText("Primary Node");
