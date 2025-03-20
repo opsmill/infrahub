@@ -36,6 +36,12 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         }
         color1 = await client.create(kind="TestingColor", data=data)
         await color1.save()
+        data = {
+            "name": "Ember Glow",
+            "description": "A deep, fiery red-orange reminiscent of smoldering embers at dusk.",
+        }
+        color2 = await client.create(kind="TestingColor", data=data)
+        await color2.save()
 
         data = {
             "name": "Explorer",
@@ -62,3 +68,20 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             await sleep(1)
 
         assert tshirt1_updated.description.value == final_desc
+
+        tshirt1_second_update = await client.get(kind="TestingTShirt", id=tshirt1.id)
+        tshirt1_second_update.color = color2
+        await tshirt1_second_update.save()
+
+        expected_description = (
+            "A Ember Glow Explorer t-shirt. A deep, fiery red-orange reminiscent of smoldering embers at dusk."
+        )
+
+        for _ in range(10):
+            # Give the computed attribute triggers a little while to run
+            tshirt1_second_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
+            if tshirt1_second_update_result.description.value == expected_description:
+                break
+            await sleep(1)
+
+        assert tshirt1_second_update_result.description.value == expected_description
