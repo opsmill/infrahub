@@ -140,17 +140,17 @@ class ComputedAttributes:
             if schema_path.active_attribute_schema.name not in trigger_node.local_fields:
                 trigger_node.local_fields[schema_path.active_attribute_schema.name] = []
 
-            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(source_attribute)
+            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(deepcopy(source_attribute))
         elif schema_path.is_type_relationship:
             if schema_path.active_attribute_schema.name not in trigger_node.local_fields:
                 trigger_node.local_fields[schema_path.active_attribute_schema.name] = []
 
-            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(source_attribute)
+            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(deepcopy(source_attribute))
 
             if schema_path.active_relationship_schema.name not in trigger_node.relationships:
                 trigger_node.relationships[schema_path.active_relationship_schema.name] = []
 
-            trigger_node.relationships[schema_path.active_relationship_schema.name].append(source_attribute)
+            trigger_node.relationships[schema_path.active_relationship_schema.name].append(deepcopy(source_attribute))
 
             if source_attribute.kind not in self._computed_jinja2_attribute_map:
                 self._computed_jinja2_attribute_map[source_attribute.kind] = RegisteredNodeComputedAttribute()
@@ -164,7 +164,7 @@ class ComputedAttributes:
                 ] = []
             self._computed_jinja2_attribute_map[source_attribute.kind].local_fields[
                 schema_path.active_relationship_schema.name
-            ].append(source_attribute)
+            ].append(deepcopy(source_attribute))
 
     def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         if mapping := self._computed_jinja2_attribute_map.get(kind):
