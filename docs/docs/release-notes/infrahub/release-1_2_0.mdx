@@ -59,7 +59,7 @@ For example, you can create a "PatchPanel" template that includes 48 pre-defined
 Then, when creating a new PatchPanel object, you can choose to either create it from the template or from scratch.
 This flexibility allows you to leverage the power of templates while still having the option to customize individual objects as needed.
 
-![Template Choice](../../media/guides/object-template/template_or_from_scratch.png)
+![Te.mplate Choice](../../media/guides/object-template/template_or_from_scratch.png)
 
 Key benefits of utilizing Templates include:
 
@@ -78,6 +78,12 @@ For more information on Templates, please see the below documentation.
 
 - https://docs.infrahub.app/topics/object-template
 - https://docs.infrahub.app/guides/object-template
+
+#### Template schema Namespace
+
+With the introduction of this feature we have to restrict the Template schema namespace. This namespace is now only available Infrahub's internal usage.
+
+If you have an existing schema that is using this namespace, you will first have to migrate these nodes to a different namespace. More information on how to perform schema updates can be found in our [documentation](https://docs.infrahub.app/topics/schema#schema-update-and-data-migrations).
 
 ### Activity log
 
@@ -161,6 +167,12 @@ The top menu has also been made more compact, to provide a cleaner look.
 
 !["Example screenshot of Infrahub 1.2 showing the new builtin menu."](../../media/release_notes/infrahub_1_2/menu_refresh.png)
 
+### Backup process
+
+Users of Neo4j-enterprise and infrahub-enterprise already had the capability to backup the Neo4j database following the process in our [documentation](https://docs.infrahub.app/guides/database-backup).
+
+With Infrahub 1.2.0 there's a new requirement to also backup the Postgres database that is used for Infrahub's internal task and event system. More information can be found in the [Installing Infrahub Enterprise guide](https://docs.infrahub.app/guides/installation-enterprise#backup-and-restore-infrahub-enterprise).
+
 ## Changelog
 
 The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
@@ -232,6 +244,13 @@ The process to migrate your instance of Infrahub to the latest version may vary 
 However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
 
 Please ensure you have a **backup of your Infrahub environment** prior to attempting any migration or upgrade activities.
+
+### Template schema Namespace
+
+Before you start the migration to v1.2.0 you should verify if you are using the Template schema namespace.
+
+Please [read this section](#template-schema-namespace) before you continue, if you are using the Template namespace.
+If you don't use the Template namespace you can continue with the next steps.
 
 ### Migration of an Infrahub instance
 
