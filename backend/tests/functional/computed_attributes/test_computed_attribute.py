@@ -96,8 +96,15 @@ class TestComputedAttribute(TestInfrahubApp):
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
         assert len(triggers_python) == 1
         assert triggers_python[0].generate_name() == "computed_attr_python::main::TestingTShirt_pitch"
-        assert len(triggers_python_query) == 1
-        assert triggers_python_query[0].generate_name() == "computed_attr_python_query::main::TestingTShirt_pitch"
+        assert len(triggers_python_query) == 2
+        assert (
+            triggers_python_query[0].generate_name()
+            == "computed_attr_python_query::main::TestingTShirt_pitch::kind::TestingTShirt"
+        )
+        assert (
+            triggers_python_query[1].generate_name()
+            == "computed_attr_python_query::main::TestingTShirt_pitch::kind::TestingColor"
+        )
 
     async def test_gather_trigger_computed_attribute_python_branch(
         self,
@@ -114,7 +121,7 @@ class TestComputedAttribute(TestInfrahubApp):
 
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
         assert len(triggers_python) == 2
-        assert len(triggers_python_query) == 2
+        assert len(triggers_python_query) == 4
 
     async def test_description_after_color_change_jinja2(
         self,
