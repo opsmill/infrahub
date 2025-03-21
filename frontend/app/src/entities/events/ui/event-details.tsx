@@ -85,7 +85,7 @@ export const EventDetails = ({
       )}
       {!!ancestors?.length && (
         <PropertyRow
-          title="Related Nodes"
+          title="Ancestors"
           value={
             <div className="flex flex-col items-end gap-1">
               {ancestors.map((node) => {
@@ -106,7 +106,7 @@ export const EventDetails = ({
       )}
       {!!members?.length && (
         <PropertyRow
-          title="Related Nodes"
+          title="Members"
           value={
             <div className="flex flex-col items-end gap-1">
               {members.map((node) => {
