@@ -364,7 +364,7 @@ extensions:
         - name: organization
           peer: OrganizationGeneric
           optional: true
-          cardinality: many
+          cardinality: one
           kind: Attribute
     - kind: InfraBGPPeerGroup
       attributes:
