@@ -77,6 +77,14 @@ export const EVENTS_QUERY = gql`
               value
               value_previous
             }
+            relationships {
+              action
+              name
+              peer {
+                id
+                kind
+              }
+            }
             payload
           }
           ... on StandardEvent {
