@@ -1030,11 +1030,6 @@ jobs:
           token: ${{ secrets.CODSPEED_TOKEN }}
           run: "poetry run pytest -v backend/tests/benchmark/ --codspeed --ignore=backend/tests/benchmark/intensive"
 
-      - name: Run benchmarks
-        uses: CodSpeedHQ/action@v3
-        with:
-          token: ${{ secrets.CODSPEED_TOKEN }}
-          run: "poetry run pytest -vvvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:
