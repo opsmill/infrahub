@@ -815,10 +815,15 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
-    def _is_attr_combination_unique(self, attrs_paths: list[str], uniqueness_constraints: list[list[str]]) -> bool:
+    def _is_attr_combination_unique(
+        self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None
+    ) -> bool:
         """
         Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
         """
+
+        if not uniqueness_constraints:
+            return False
 
         unique_constraint_group_sets = [set(ucg) for ucg in uniqueness_constraints]
         for i in range(1, len(attrs_paths) + 1):
