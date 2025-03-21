@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
@@ -19,12 +19,14 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.merger.merger import DiffMerger
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.manager import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+
 
 log = get_logger()
 
@@ -37,8 +39,8 @@ class BranchMerger:
         diff_coordinator: DiffCoordinator,
         diff_merger: DiffMerger,
         diff_repository: DiffRepository,
-        destination_branch: Optional[Branch] = None,
-        service: Optional[InfrahubServices] = None,
+        destination_branch: Branch | None = None,
+        service: InfrahubServices | None = None,
     ):
         self.source_branch = source_branch
         self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
@@ -49,9 +51,9 @@ class BranchMerger:
         self.migrations: list[SchemaUpdateMigrationInfo] = []
         self._merge_at = Timestamp()
 
-        self._source_schema: Optional[SchemaBranch] = None
-        self._destination_schema: Optional[SchemaBranch] = None
-        self._initial_source_schema: Optional[SchemaBranch] = None
+        self._source_schema: SchemaBranch | None = None
+        self._destination_schema: SchemaBranch | None = None
+        self._initial_source_schema: SchemaBranch | None = None
 
         self._service = service
 
@@ -171,8 +173,8 @@ class BranchMerger:
 
     async def merge(
         self,
-        at: Optional[Union[str, Timestamp]] = None,
-    ) -> None:
+        at: str | Timestamp | None = None,
+    ) -> EnrichedDiffRoot:
         """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
@@ -198,8 +200,9 @@ class BranchMerger:
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
         self._merge_at = Timestamp(at)
-        await self.diff_merger.merge_graph(at=self._merge_at)
+        branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
         await self.merge_repositories()
+        return branch_diff
 
     async def rollback(self) -> None:
         await self.diff_merger.rollback(at=self._merge_at)

@@ -5,7 +5,7 @@ import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { ReactElement, forwardRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 type CommentFormData = {
   comment: string;

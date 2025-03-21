@@ -1,7 +1,7 @@
 ---
 services:
   database:
-    profiles: [demo, dev]
+    profiles: [demo, dev, debug]
     image: "${DATABASE_DOCKER_IMAGE:-neo4j:enterprise}"
     environment:
       - "NEO4J_AUTH=neo4j/admin"
@@ -11,6 +11,7 @@ services:
       - "NEO4J_server_backup_enabled=true"
       - "NEO4J_server_backup_listen__address=0.0.0.0:6362"
       - "NEO4J_metrics_prometheus_enabled=true"
+      - "NEO4J_metrics_enabled=true"
       - "NEO4J_metrics_prometheus_endpoint=0.0.0.0:2004"
     volumes:
       - "./plugins:/plugins"

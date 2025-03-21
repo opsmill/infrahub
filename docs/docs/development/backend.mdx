@@ -129,3 +129,23 @@ Formatting code in the backend relies on [Ruff](https://docs.astral.sh/ruff/) an
 ```shell
 poetry run invoke format
 ```
+
+## Python SDK
+
+The Infrahub backend and workers rely on the `infrahub-sdk` package to function, and occasionally, updates or additions to the repository are necessary. This guide will help you ensure that the SDK is correctly initialized, updated, and maintained.
+
+### Cloning the repository with submodules
+
+If you find that the `python_sdk` folder is empty, it may be because the repository was not cloned with the `--recursive` flag. This can be fixed using the following command:
+
+```shell
+git submodule update --init
+```
+
+To prevent this issue in the future, always clone the repository with submodules using:
+
+```shell
+git clone --recursive git@github.com:opsmill/infrahub.git
+```
+
+To get the latest commits for both `Infrahub` and the `infrahub-sdk` use `invoke pull`.

@@ -19,8 +19,6 @@ from infrahub.core.query.standard_node import (
 )
 from infrahub.exceptions import Error, InitializationError
 
-# pylint: disable=redefined-builtin
-
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from pydantic.fields import FieldInfo
@@ -173,9 +171,9 @@ class StandardNode(BaseModel):
 
             if value == NULL_VALUE:
                 attrs[key] = None
-            elif issubclass(field_type, (int, float, bool, str, UUID)):
+            elif issubclass(field_type, int | float | bool | str | UUID):
                 attrs[key] = value
-            elif isinstance(value, (str, bytes)):
+            elif isinstance(value, str | bytes):
                 attrs[key] = ujson.loads(value)
 
         return cls(**attrs)
@@ -203,7 +201,7 @@ class StandardNode(BaseModel):
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
                     data[attr_name] = attr_value.model_dump_json()
-            elif issubclass(field_type, (int, float, bool, str, UUID)):
+            elif issubclass(field_type, int | float | bool | str | UUID):
                 data[attr_name] = attr_value
             else:
                 data[attr_name] = ujson.dumps(attr_value)

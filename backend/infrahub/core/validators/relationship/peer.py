@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch)
         allowed_peer_kinds = [peer_schema.kind]
         if isinstance(peer_schema, GenericSchema):
@@ -108,7 +108,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 class RelationshipPeerChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipPeerUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
+from graphql.type.definition import GraphQLNonNull
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
@@ -15,21 +16,21 @@ from ..permissions import get_permissions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema import NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
 
 
 async def account_resolver(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
     fields = await extract_fields(info.field_nodes[0].selection_set)
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
 
-    async with context.db.start_session() as db:
+    async with graphql_context.db.start_session() as db:
         results = await NodeManager.query(
             schema=InfrahubKind.GENERICACCOUNT,
-            filters={"ids": [context.account_session.account_id]},
+            filters={"ids": [graphql_context.account_session.account_id]},
             fields=fields,
             db=db,
             order=OrderModel(disable=True),
@@ -38,7 +39,9 @@ async def account_resolver(
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
+        raise NodeNotFoundError(
+            node_type=InfrahubKind.GENERICACCOUNT, identifier=graphql_context.account_session.account_id
+        )
 
 
 async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
@@ -70,14 +73,18 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         raise ValueError(f"expected either 2 or 4 args for default_resolver, got {len(args)}")
 
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema: NodeSchema = (
+        info.parent_type.of_type.graphene_type._meta.schema
+        if isinstance(info.parent_type, GraphQLNonNull)
+        else info.parent_type.graphene_type._meta.schema
+    )
 
     # If the field is an attribute, return its value directly
     if field_name not in node_schema.relationship_names:
         return parent.get(field_name, None)
 
     # Extract the contextual information from the request context
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -92,7 +99,7 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    async with context.db.start_session() as db:
+    async with graphql_context.db.start_session() as db:
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
@@ -100,22 +107,23 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
             schema=node_rel,
             filters=filters,
             fields=fields,
-            at=context.at,
-            branch=context.branch,
+            at=graphql_context.at,
+            branch=graphql_context.branch,
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
             fetch_peers=True,
         )
 
         if node_rel.cardinality == "many":
             return [
-                await obj.to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids) for obj in objs
+                await obj.to_graphql(db=db, fields=fields, related_node_ids=graphql_context.related_node_ids)
+                for obj in objs
             ]
 
         # If cardinality is one
         if not objs:
             return None
 
-        return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
+        return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=graphql_context.related_node_ids)
 
 
 async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResolveInfo) -> dict:
@@ -128,7 +136,7 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
 
 
 async def default_paginated_list_resolver(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     offset: int | None = None,
     limit: int | None = None,
@@ -136,11 +144,16 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: MainSchemaTypes = info.return_type.graphene_type._meta.schema
+    schema: NodeSchema = (
+        info.return_type.of_type.graphene_type._meta.schema
+        if isinstance(info.return_type, GraphQLNonNull)
+        else info.return_type.graphene_type._meta.schema
+    )
+
     fields = await extract_selection(info.field_nodes[0], schema=schema)
 
-    context: GraphqlContext = info.context
-    async with context.db.start_session() as db:
+    graphql_context: GraphqlContext = info.context
+    async with graphql_context.db.start_session() as db:
         response: dict[str, Any] = {"edges": []}
         filters = {
             key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
@@ -149,8 +162,12 @@ async def default_paginated_list_resolver(
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
 
-        permission_set: Optional[dict[str, Any]] = None
-        permissions = await get_permissions(schema=schema, context=context) if context.permissions else None
+        permission_set: dict[str, Any] | None = None
+        permissions = (
+            await get_permissions(schema=schema, graphql_context=graphql_context)
+            if graphql_context.permissions
+            else None
+        )
         if fields.get("permissions"):
             response["permissions"] = permissions
 
@@ -166,11 +183,11 @@ async def default_paginated_list_resolver(
                 schema=schema,
                 filters=filters or None,
                 fields=node_fields,
-                at=context.at,
-                branch=context.branch,
+                at=graphql_context.at,
+                branch=graphql_context.branch,
                 limit=limit,
                 offset=offset,
-                account=context.account_session,
+                account=graphql_context.account_session,
                 include_source=True,
                 include_owner=True,
                 partial_match=partial_match,
@@ -185,8 +202,8 @@ async def default_paginated_list_resolver(
                     db=db,
                     schema=schema,
                     filters=filters,
-                    at=context.at,
-                    branch=context.branch,
+                    at=graphql_context.at,
+                    branch=graphql_context.branch,
                     partial_match=partial_match,
                 )
 
@@ -197,7 +214,7 @@ async def default_paginated_list_resolver(
                     "node": await obj.to_graphql(
                         db=db,
                         fields=node_fields,
-                        related_node_ids=context.related_node_ids,
+                        related_node_ids=graphql_context.related_node_ids,
                         permissions=permission_set,
                     )
                 }
@@ -209,16 +226,16 @@ async def default_paginated_list_resolver(
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
-    context: GraphqlContext = info.context
-    resolver = context.single_relationship_resolver
+    graphql_context: GraphqlContext = info.context
+    resolver = graphql_context.single_relationship_resolver
     return await resolver.resolve(parent=parent, info=info, **kwargs)
 
 
 async def many_relationship_resolver(
     parent: dict, info: GraphQLResolveInfo, include_descendants: bool | None = False, **kwargs: Any
 ) -> dict[str, Any]:
-    context: GraphqlContext = info.context
-    resolver = context.many_relationship_resolver
+    graphql_context: GraphqlContext = info.context
+    resolver = graphql_context.many_relationship_resolver
     return await resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
 
 
@@ -243,9 +260,13 @@ async def hierarchy_resolver(
     fields by only reusing information below the 'node' key.
     """
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema: NodeSchema = (
+        info.parent_type.of_type.graphene_type._meta.schema
+        if isinstance(info.parent_type, GraphQLNonNull)
+        else info.parent_type.graphene_type._meta.schema
+    )
 
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -264,7 +285,7 @@ async def hierarchy_resolver(
 
     response: dict[str, Any] = {"edges": [], "count": None}
 
-    async with context.db.start_session() as db:
+    async with graphql_context.db.start_session() as db:
         if "count" in fields:
             response["count"] = await NodeManager.count_hierarchy(
                 db=db,
@@ -272,8 +293,8 @@ async def hierarchy_resolver(
                 direction=direction,
                 node_schema=node_schema,
                 filters=filters,
-                at=context.at,
-                branch=context.branch,
+                at=graphql_context.at,
+                branch=graphql_context.branch,
             )
 
         if not node_fields:
@@ -288,8 +309,8 @@ async def hierarchy_resolver(
             fields=node_fields,
             offset=offset,
             limit=limit,
-            at=context.at,
-            branch=context.branch,
+            at=graphql_context.at,
+            branch=graphql_context.branch,
         )
 
         if not objs:

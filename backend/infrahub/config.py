@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import toml
 from infrahub_sdk.utils import generate_uuid
@@ -140,7 +140,7 @@ class MainSettings(BaseSettings):
         default=Path("/opt/infrahub/docs/build/search-index.json"),
         description="Full path of saved json containing pre-indexed documentation",
     )
-    internal_address: Optional[str] = Field(default=None)
+    internal_address: str | None = Field(default=None)
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
@@ -153,7 +153,7 @@ class MainSettings(BaseSettings):
         default=["infrahub.permissions.LocalPermissionBackend"],
         description="List of modules to handle permissions, they will be run in the given order",
     )
-    public_url: Optional[str] = Field(
+    public_url: str | None = Field(
         default=None,
         description="Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.",
     )
@@ -231,10 +231,10 @@ class DatabaseSettings(BaseSettings):
     password: str = "admin"
     address: str = "localhost"
     port: int = 7687
-    database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
         default=5_000,
         ge=1,
@@ -277,12 +277,12 @@ class BrokerSettings(BaseSettings):
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
-    port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
-    rabbitmq_http_port: Optional[int] = Field(default=None, ge=1, le=65535)
+    port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    rabbitmq_http_port: int | None = Field(default=None, ge=1, le=65535)
     namespace: str = "infrahub"
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"
@@ -305,7 +305,7 @@ class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
     enable: bool = True
     address: str = "localhost"
-    port: Optional[int] = Field(
+    port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
@@ -314,7 +314,7 @@ class CacheSettings(BaseSettings):
     password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
 
     @property
     def service_port(self) -> int:
@@ -328,7 +328,7 @@ class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
     enable: bool = True
     address: str = "localhost"
-    port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
     default_worker_type: str = "infrahubasync"
@@ -443,10 +443,10 @@ class InitialSettings(BaseSettings):
         default="main",
         description="Defines the name of the default branch within Infrahub, can only be set once during initialization of the system.",
     )
-    admin_token: Optional[str] = Field(default=None, description="An optional initial token for the admin account.")
+    admin_token: str | None = Field(default=None, description="An optional initial token for the admin account.")
     admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
-    agent_token: Optional[str] = Field(default=None, description="An optional initial token for a git-agent account.")
-    agent_password: Optional[str] = Field(
+    agent_token: str | None = Field(default=None, description="An optional initial token for a git-agent account.")
+    agent_password: str | None = Field(
         default=None, description="An optional initial password for a git-agent account."
     )
 
@@ -507,9 +507,9 @@ class SecurityOIDCProvider2(SecurityOIDCSettings):
 class SecurityOIDCProviderSettings(BaseModel):
     """This class is meant to facilitate configuration of OIDC providers when loading configuration from a infrahub.toml file."""
 
-    google: Optional[SecurityOIDCGoogle] = Field(default=None)
-    provider1: Optional[SecurityOIDCProvider1] = Field(default=None)
-    provider2: Optional[SecurityOIDCProvider2] = Field(default=None)
+    google: SecurityOIDCGoogle | None = Field(default=None)
+    provider1: SecurityOIDCProvider1 | None = Field(default=None)
+    provider2: SecurityOIDCProvider2 | None = Field(default=None)
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
@@ -555,9 +555,9 @@ class SecurityOAuth2Google(SecurityOAuth2Settings):
 class SecurityOAuth2ProviderSettings(BaseModel):
     """This class is meant to facilitate configuration of OAuth2 providers when loading configuration from a infrahub.toml file."""
 
-    google: Optional[SecurityOAuth2Google] = Field(default=None)
-    provider1: Optional[SecurityOAuth2Provider1] = Field(default=None)
-    provider2: Optional[SecurityOAuth2Provider2] = Field(default=None)
+    google: SecurityOAuth2Google | None = Field(default=None)
+    provider1: SecurityOAuth2Provider1 | None = Field(default=None)
+    provider2: SecurityOAuth2Provider2 | None = Field(default=None)
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -573,9 +573,9 @@ class MiscellaneousSettings(BaseSettings):
 class RemoteLoggingSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOGGING_REMOTE_")
     enable: bool = False
-    frontend_dsn: Optional[str] = None
-    api_server_dsn: Optional[str] = None
-    git_agent_dsn: Optional[str] = None
+    frontend_dsn: str | None = None
+    api_server_dsn: str | None = None
+    git_agent_dsn: str | None = None
 
 
 class LoggingSettings(BaseSettings):
@@ -585,8 +585,8 @@ class LoggingSettings(BaseSettings):
 class AnalyticsSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_ANALYTICS_")
     enable: bool = True
-    address: Optional[str] = None
-    api_key: Optional[str] = None
+    address: str | None = None
+    api_key: str | None = None
 
 
 class ExperimentalFeaturesSettings(BaseSettings):
@@ -713,19 +713,19 @@ class TraceSettings(BaseSettings):
     exporter_protocol: TraceTransportProtocol = Field(
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
-    exporter_endpoint: Optional[str] = Field(default=None, description="OTLP endpoint for exporting traces")
+    exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
 
 
 @dataclass
 class Override:
-    message_bus: Optional[InfrahubMessageBus] = None
-    cache: Optional[InfrahubCache] = None
-    workflow: Optional[InfrahubWorkflow] = None
+    message_bus: InfrahubMessageBus | None = None
+    cache: InfrahubCache | None = None
+    workflow: InfrahubWorkflow | None = None
 
 
 @dataclass
-class ConfiguredSettings:  # pylint: disable=too-many-public-methods
-    settings: Optional[Settings] = None
+class ConfiguredSettings:
+    settings: Settings | None = None
 
     def initialize(self, config_file: Path | str | None = None) -> None:
         """Initialize the settings if they have not been initialized."""
@@ -846,7 +846,7 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name: Path | str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> Settings:
+def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -866,7 +866,7 @@ def load(config_file_name: Path | str = "infrahub.toml", config_data: Optional[d
     return Settings()
 
 
-def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
+def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> None:
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationError which is raised when settings are specified but invalid.

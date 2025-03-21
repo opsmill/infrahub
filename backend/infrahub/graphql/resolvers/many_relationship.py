@@ -85,7 +85,7 @@ class ManyRelationshipResolver:
 
         node_schema: MainSchemaTypes = info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
 
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
         fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -114,9 +114,9 @@ class ManyRelationshipResolver:
 
             if include_descendants:
                 descendant_ids = await self.get_descendant_ids(
-                    db=context.db,
-                    branch=context.branch,
-                    at=context.at,
+                    db=graphql_context.db,
+                    branch=graphql_context.branch,
+                    at=graphql_context.at,
                     parent_id=ids[0],
                     node_schema=node_schema,
                 )
@@ -124,9 +124,9 @@ class ManyRelationshipResolver:
 
         if "count" in fields:
             peer_count = await self.get_peer_count(
-                db=context.db,
-                branch=context.branch,
-                at=context.at,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
                 ids=ids,
                 source_kind=source_kind,
                 rel_schema=node_rel,
@@ -139,11 +139,11 @@ class ManyRelationshipResolver:
 
         if offset or limit:
             node_graph = await self._get_entities_simple(
-                db=context.db,
-                branch=context.branch,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
                 ids=ids,
-                at=context.at,
-                related_node_ids=context.related_node_ids,
+                at=graphql_context.at,
+                related_node_ids=graphql_context.related_node_ids,
                 source_kind=source_kind,
                 rel_schema=node_rel,
                 filters=filters,
@@ -153,11 +153,11 @@ class ManyRelationshipResolver:
             )
         else:
             node_graph = await self._get_entities_with_data_loader(
-                db=context.db,
-                branch=context.branch,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
                 ids=ids,
-                at=context.at,
-                related_node_ids=context.related_node_ids,
+                at=graphql_context.at,
+                related_node_ids=graphql_context.related_node_ids,
                 source_kind=source_kind,
                 rel_schema=node_rel,
                 filters=filters,

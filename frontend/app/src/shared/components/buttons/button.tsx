@@ -1,4 +1,4 @@
-import LoadingScreen from "@/shared/components/loading-screen";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
@@ -109,8 +109,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       onClick={handleClick}
       disabled={isLoading ? true : propsToPass.disabled}
     >
-      {isLoading && <LoadingScreen size={18} hideText className="px-4" />}
-      {!isLoading && children}
+      {isLoading ? <Spinner className="mr-2" /> : children}
     </button>
   );
 });

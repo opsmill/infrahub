@@ -2,7 +2,7 @@ import { breadcrumbItemStyle } from "@/shared/components/layout/breadcrumb-navig
 import { classNames } from "@/shared/utils/common";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
-import { Link, LinkProps } from "react-router-dom";
+import { Link, LinkProps } from "react-router";
 
 export const BreadcrumbLink = React.forwardRef<
   HTMLAnchorElement,

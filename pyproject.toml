@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.1.9"
+version = "1.2.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -24,10 +24,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.10, < 3.13"
-neo4j = "~5.24"
-neo4j-rust-ext = "^5.24.0.0"
-pydantic = "2.7.2"
-pydantic-settings = "2.6.1"
+neo4j = "~5.28"
+neo4j-rust-ext = "~5.28"
+pydantic = "~2.10"
+pydantic-settings = "~2.8"
 pytest = "~7.4"
 aio-pika = "~9.4"
 structlog = "24.1.0"
@@ -35,7 +35,8 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "0.12.5"
-prefect = "3.0.11"
+prefect = "3.2.11"
+prefect-redis = "0.2.2"
 ujson = "^5"
 Jinja2 = "^3"
 gitpython = "^3"
@@ -72,11 +73,11 @@ numpy = [
     { version = "^1.26.2", python = ">=3.12" },
 ]
 dulwich = "^0.22.7"
+whenever = "0.7.2"
 
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
-pylint = "~3.1"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
@@ -88,7 +89,7 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-ruff = "0.8.6"
+ruff = "0.11.0"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -130,60 +131,6 @@ branch = true
 
 [tool.coverage.report]
 exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
-
-[tool.pylint.general]
-extension-pkg-whitelist = ["pydantic", "ujson"]
-
-[tool.pylint.format]
-disable = "logging-fstring-interpolation"
-
-[tool.pylint.basic]
-# No docstrings required for private methods (Pylint default), or for test_ functions.
-no-docstring-rgx = "^(_|test_)"
-
-[tool.pylint.messages_control]
-# Line length is enforced by Black, so pylint doesn't need to check it.
-# Pylint and Black disagree about how to format multi-line arrays; Black wins.
-# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
-# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
-disable = """,
-    line-too-long,
-    missing-module-docstring,
-    missing-function-docstring,
-    missing-class-docstring,
-    consider-using-from-import,
-    invalid-name,
-    too-many-arguments,
-    too-many-locals,
-    keyword-arg-before-vararg,
-    too-few-public-methods,
-    too-many-instance-attributes,
-    fixme,
-    consider-using-f-string,
-    protected-access,
-    import-self,
-    wrong-import-order,
-    assigning-non-slot,
-    no-member,
-    unsupported-membership-test,
-    unsubscriptable-object,
-    unsupported-assignment-operation,
-    not-an-iterable,
-    too-many-return-statements,
-    unnecessary-comprehension,
-    multiple-statements,
-    self-assigning-variable,
-    no-else-return,
-    """
-
-[tool.pylint.miscellaneous]
-notes = """,
-    FIXME,
-    XXX,
-    """
-
-[tool.pylint.similarities]
-min-similarity-lines = 20
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -333,10 +280,6 @@ module = "infrahub.graphql.mutations.proposed_change"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.relationship"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.repository"
 ignore_errors = true
 
@@ -358,10 +301,6 @@ module = "infrahub.graphql.types.standard_node"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.utils"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.lock"
 ignore_errors = true
 
@@ -370,47 +309,12 @@ module = "infrahub.message_bus.operations"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.check.artifact"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.check.generator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.check.repository"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.refresh.webhook"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.artifact"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.graphql_query_group"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.requests.repository"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.schema.migration"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.schema.validator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.trace"
 ignore_errors = true
 
 [tool.ruff]
 line-length = 120
+target-version = "py310"
 
 exclude = [
     ".git",
@@ -443,8 +347,6 @@ ignore = [
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
     "FA",       # flake8-future-annotations
-    "ARG",      # flake8-unused-arguments
-    "PT",       # flake8-pytest-style
     "PGH",      # pygrep-hooks
     "ERA",      # eradicate commented-out code
     "SLF001",   # flake8-self
@@ -466,15 +368,6 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "B007",    # Loop control variable not used within loop body
-    "B008",    # Do not perform function call `Depends` in argument defaults;
-    "B009",    # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
-    "B010",    # [*] Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.
-    "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
-    "C403",    # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
-    "C409",    # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
-    "C414",    # Unnecessary `list` call within `sorted()`
-    "C420",    # Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead
     "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
     "FURB140", # Use `itertools.starmap` instead of the generator
@@ -495,16 +388,13 @@ ignore = [
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0914", # Too many local variables
-    "PLR0915", # Too many statements
     "PLR0916", # Too many Boolean expressions
     "PLR0917", # Too many positional arguments
-    "PLR1702", # Too many nested blocks
     "PLR2004", # Magic value used in comparison this could possibly be fine in the tests folders
     "PLR6201", # Use a `set` literal when testing for membership
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508", # Invalid type for environment variable default; expected `str` or `None`
-    "PYI061",  # [*] `Literal[None]` can be replaced with `None`
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
@@ -515,11 +405,8 @@ ignore = [
     "RUF021",  # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
     "RUF036",  # `None` not at the end of the type annotation.
-    "RUF039",  # [*] First argument to `re.compile()` is not raw string
     "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
-    "RUF051",  # [*] Use `pop` instead of `key in dict` followed by `del dict[key]`
     "RUF052",  # Local dummy variable `_meta` is accessed
-    "RUF056",  # [*] Avoid providing a falsy fallback to `dict.get()` in boolean test positions. The default fallback `None` is already falsy.
     "RUF100",  # [*] Unused `noqa` directive (non-enabled: `INP001`)
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
@@ -537,12 +424,22 @@ ignore = [
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM201",  # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
     "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
-    "SIM910",  #  Use `data.get("identifier")` instead of `data.get("identifier", None)`
     "TC006",   # [*] Add quotes to type expression in `typing.cast()`
     "UP012",   # Unnecessary call to encode as UTF-8
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.File",
+    "fastapi.Query",
+    "fastapi.params.Query",
+    "typer.Argument",
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -560,7 +457,7 @@ max-line-length = 150
 
 [tool.ruff.lint.mccabe]
 # Target max-complexity=10
-max-complexity = 33
+max-complexity = 30
 
 [tool.ruff.lint.pylint]
 
@@ -578,34 +475,123 @@ allow-dunder-method-names = [
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/cli/db.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR1702", # Too many nested blocks
+    "PLR0915", # Too many statements
 ]
 
 "backend/infrahub/config.py" = [
     "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
-"backend/infrahub/graphql/mutations/**.py" = [
+"backend/infrahub/core/branch/models.py" = [
     ##################################################################################################
-    # Review and change the below later                                                              #
+    # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN206", # Missing return type annotation for classmethod
+    "UP007",  # Use X | Y for type annotations
+    "UP045",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/graph/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP045",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/node/standard.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP045",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/query/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/models.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR1702", # Too many nested blocks
+]
+
+
+"backend/infrahub/core/query/attribute.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+
+"backend/infrahub/core/query/relationship.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/core/schema/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/menu/generator.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/serve/log.py" = [
+    "LOG004",  # `.exception()` call outside exception handlers
 ]
 
 "backend/tests/**.py" = [
-    "S101", # Use of assert detected
-    "S105", #  Possible hardcoded password assigned to variable
-    "S106", #  Possible hardcoded password assigned to argument
+    "S101",    # Use of assert detected
+    "S105",    # Possible hardcoded password assigned to variable
+    "S106",    # Possible hardcoded password assigned to argument
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "ARG003",  # Unused class method argument
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
-    "ANN002", # Missing type annotation for `*args`
-    "ANN003", # Missing type annotation for `**kwargs`
-    "ANN201", # Missing return type annotation for public function
-    "ANN202", # Missing return type annotation for private function
-    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-
+    "ANN001",  # Missing type annotation for function argument
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    "PLR0915", # Too many statements
+    "PT003",   # `scope='function'` is implied in `@pytest.fixture()`
+    "PT007",   # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",   # `pytest.raises()` block should contain a single simple statement
+    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
+    "PT014",   # Duplicate of test case in `pytest.mark.parametrize`
+    "PT018",   # Assertion should be broken down into multiple parts
+    "PT021",   # Use `yield` instead of `request.addfinalizer`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -625,7 +611,27 @@ allow-dunder-method-names = [
     ##################################################################################################
     "C901",   # `generate_site` is too complex (34 > 33)"
     "E501",   # Line too long
+    "PLR0915", # Too many statements
 ]
+
+"python_testcontainers/infrahub_testcontainers/helpers.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PT021",   # Use `yield` instead of `request.addfinalizer`
+]
+
+"tasks/**.py" = [
+    "PT028", # Test function parameter has default argument (these are not tests)
+]
+
+"tasks/release.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
 
 "utilities/**.py" = [
     ##################################################################################################

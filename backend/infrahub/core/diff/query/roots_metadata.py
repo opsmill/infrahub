@@ -29,7 +29,7 @@ class EnrichedDiffRootsMetadataQuery(Query):
         self.to_time = to_time
         self.tracking_id = tracking_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "diff_branch_names": self.diff_branch_names,
             "base_branch_names": self.base_branch_names,

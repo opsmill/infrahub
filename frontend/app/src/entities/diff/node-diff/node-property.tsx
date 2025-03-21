@@ -4,8 +4,7 @@ import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router-dom";
-import { Conflict } from "./conflict";
+import { useParams } from "react-router";
 import { DiffThread } from "./thread";
 
 type DiffNodePropertyProps = {
@@ -79,7 +78,7 @@ export const DiffNodeProperty = ({ status, property, className }: DiffNodeProper
       rightClassName="font-normal"
       right={getNewValue(property)}
     >
-      {property.conflict && <Conflict conflict={property.conflict} />}
+      {property.conflict && <DataConflict conflict={property.conflict} />}
     </DiffRow>
   );
 };

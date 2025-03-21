@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -105,7 +105,6 @@ class SchemaDiff(BaseModel):
 
         indent_str = " " * indentation
 
-        # pylint: disable=too-many-nested-blocks
         for node_action, node_info in data.items():
             for node_name, elements in node_info.items():
                 print(f"{str(node_name).ljust(column_size)} | {str(node_action).title()}")
@@ -126,7 +125,7 @@ class SchemaUpdateValidationError(BaseModel):
     model_config = ConfigDict(extra="forbid")
     path: SchemaPath
     error: UpdateValidationErrorType
-    message: Optional[str] = None
+    message: str | None = None
 
     def to_string(self) -> str:
         return f"{self.error.value!r}: {self.path.schema_kind} {self.path.field_name} {self.message}"
@@ -152,7 +151,7 @@ class SchemaUpdateConstraintInfo(BaseModel):
         return "schema.validator.path"
 
     def __hash__(self) -> int:
-        return hash((type(self),) + tuple([self.constraint_name + self.path.get_path()]))
+        return hash((type(self),) + tuple(self.constraint_name + self.path.get_path()))
 
 
 class SchemaUpdateValidationResult(BaseModel):
@@ -170,7 +169,7 @@ class SchemaUpdateValidationResult(BaseModel):
         return obj
 
     def process_diff(self, schema: SchemaBranch) -> None:
-        for schema_name, schema_diff in self.diff.removed.items():
+        for schema_name in self.diff.removed.keys():
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=SchemaPath(  # type: ignore[call-arg]
@@ -331,7 +330,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def add_validator_for_migration(self, validator_map: dict[str, Any]) -> None:
         for migration in self.migrations:
-            if validator_map.get(migration.migration_name, None):
+            if validator_map.get(migration.migration_name):
                 self.constraints.append(
                     SchemaUpdateConstraintInfo(
                         path=migration.path,
@@ -342,9 +341,9 @@ class SchemaUpdateValidationResult(BaseModel):
 
 class HashableModelDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    added: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    changed: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    removed: dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    added: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
+    changed: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
+    removed: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
 
     @property
     def has_diff(self) -> bool:
@@ -354,7 +353,7 @@ class HashableModelDiff(BaseModel):
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: Optional[str] = None
+    id: str | None = None
     state: HashableModelState = HashableModelState.PRESENT
 
     _exclude_from_hash: list[str] = []
@@ -384,7 +383,7 @@ class HashableModel(BaseModel):
                 md5hash.update(item)
 
         if display_values:
-            from rich import print as rprint  # pylint: disable=import-outside-toplevel
+            from rich import print as rprint
 
             rprint(tuple(values))
 
@@ -494,8 +493,8 @@ class HashableModel(BaseModel):
             raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
 
         shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
-        local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
-        other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
+        local_only_ids = set(local_sub_items.keys()) - set(shared_ids)
+        other_only_ids = set(other_sub_items.keys()) - set(shared_ids)
 
         new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
         new_list.extend(
@@ -536,7 +535,7 @@ class HashableModel(BaseModel):
             if attr_other is None or attr_local == attr_other:
                 continue
 
-            if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
+            if attr_local is None or isinstance(attr_other, int | str | bool | float):
                 setattr(self, field_name, attr_other)
                 continue
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_optional_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
@@ -82,7 +82,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
 class RelationshipOptionalChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipOptionalUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

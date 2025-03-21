@@ -52,7 +52,7 @@ class NodeDataLoader(DataLoader[str, Node | None]):
         self.query_params = query_params
         self.db = db
 
-    async def batch_load_fn(self, keys: list[Any]) -> list[Node | None]:  # pylint: disable=method-hidden
+    async def batch_load_fn(self, keys: list[Any]) -> list[Node | None]:
         async with self.db.start_session() as db:
             nodes_by_id = await NodeManager.get_many(
                 db=db,

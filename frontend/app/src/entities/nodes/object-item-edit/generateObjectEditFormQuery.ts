@@ -1,4 +1,4 @@
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
@@ -7,7 +7,7 @@ export const generateObjectEditFormQuery = ({
   schema,
   objectId,
 }: {
-  schema: iNodeSchema | IProfileSchema;
+  schema: NodeSchema | ProfileSchema;
   objectId: string;
 }): string => {
   const request = {
@@ -20,9 +20,16 @@ export const generateObjectEditFormQuery = ({
         edges: {
           node: {
             id: true,
+            hfid: true,
             display_label: true,
-            ...addAttributesToRequest(schema.attributes ?? [], { withPermissions: true }),
-            ...addRelationshipsToRequest(getRelationshipsForForm(schema.relationships ?? [], true)),
+            ...addAttributesToRequest(schema.attributes ?? [], {
+              withMetadata: true,
+              withPermissions: true,
+            }),
+            ...addRelationshipsToRequest(
+              getRelationshipsForForm(schema.relationships ?? [], true, schema),
+              { withMetadata: true }
+            ),
             ...("generate_profile" in schema && schema.generate_profile
               ? {
                   profiles: {

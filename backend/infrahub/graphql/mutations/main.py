@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Mapping
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -9,21 +10,22 @@ from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
+from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events import EventMeta, NodeMutatedEvent
-from infrahub.exceptions import ValidationError
+from infrahub.events.generator import generate_node_mutation_events
+from infrahub.exceptions import InitializationError, ValidationError
+from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
-from infrahub.worker import WORKER_IDENTITY
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 from .node_getter.by_hfid import MutationNodeGetterByHfid
@@ -33,82 +35,112 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreObjectTemplate
+    from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.types.context import ContextInput
 
     from ..initialization import GraphqlContext
     from .node_getter.interface import MutationNodeGetterInterface
 
-# pylint: disable=unused-argument
 
 log = get_logger()
 
 KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [InfrahubKind.GENERICGROUP]
 
 
+@dataclass
+class DeleteResult:
+    node: Node
+    mutation: InfrahubMutationMixin
+    deleted_nodes: list[Node] = field(default_factory=list)
+
+
 # ------------------------------------------
 # Infrahub GraphQLType
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
-    schema: Optional[NodeSchema] = None
+    schema: MainSchemaTypes | None = None
+
+    @property
+    def active_schema(self) -> MainSchemaTypes:
+        if self.schema:
+            return self.schema
+        raise InitializationError("This class is not initialized with a schema")
 
 
 class InfrahubMutationMixin:
+    _meta: InfrahubMutationOptions
+
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):
-        context: GraphqlContext = info.context
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        context: ContextInput | None = None,
+        **kwargs: dict[str, Any],
+    ) -> Self:
+        graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         obj = None
         mutation = None
         action = MutationAction.UNDEFINED
+        deleted_nodes: list[Node] = []
 
         if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(info=info, branch=context.branch, data=data, **kwargs)
-            action = MutationAction.ADDED
+            obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
+            action = MutationAction.CREATED
         elif "Update" in cls.__name__:
-            obj, mutation = await cls.mutate_update(info=info, branch=context.branch, data=data, **kwargs)
+            obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
             node_getters = [
-                MutationNodeGetterById(db=context.db, node_manager=node_manager),
-                MutationNodeGetterByHfid(db=context.db, node_manager=node_manager),
-                MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
+                MutationNodeGetterById(db=graphql_context.db, node_manager=node_manager),
+                MutationNodeGetterByHfid(db=graphql_context.db, node_manager=node_manager),
+                MutationNodeGetterByDefaultFilter(db=graphql_context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                info=info, branch=context.branch, data=data, node_getters=node_getters, **kwargs
+                info=info, branch=graphql_context.branch, data=data, node_getters=node_getters, **kwargs
             )
             if created:
-                action = MutationAction.ADDED
+                action = MutationAction.CREATED
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(info=info, branch=context.branch, data=data, **kwargs)
-            action = MutationAction.REMOVED
+            delete_result = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
+            obj = delete_result.node
+            mutation = delete_result.mutation
+            deleted_nodes = delete_result.deleted_nodes
+
+            action = MutationAction.DELETED
         else:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
-        context.at = Timestamp()
+        graphql_context.at = Timestamp()
 
-        if config.SETTINGS.broker.enable and context.background:
+        if config.SETTINGS.broker.enable and graphql_context.background and obj.node_changelog.has_changes:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True, include_properties=False)
-            event = NodeMutatedEvent(
-                branch=context.branch.name,
-                kind=obj._schema.kind,
-                node_id=obj.id,
-                data=graphql_payload,
+            events = await generate_node_mutation_events(
+                node=obj,
+                deleted_nodes=deleted_nodes,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                context=graphql_context.get_context(),
+                request_id=request_id,
                 action=action,
-                fields=_get_data_fields(data),
-                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
 
-            context.background.add_task(context.active_service.event.send, event)
+            for event in events:
+                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
         return mutation
 
@@ -121,30 +153,32 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def _refresh_for_profile_update(
-        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: Optional[set[str]] = None
+        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: set[str] | None = None
     ) -> Node:
         if not hasattr(obj, "profiles"):
             return obj
         current_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
         if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
-            return await NodeManager.get_one_by_id_or_default_filter(
+            refreshed_node = await NodeManager.get_one_by_id_or_default_filter(
                 db=db,
-                kind=cls._meta.schema.kind,
+                kind=cls._meta.active_schema.kind,
                 id=obj.get_id(),
                 branch=branch,
                 include_owner=True,
                 include_source=True,
             )
+            refreshed_node._node_changelog = obj.node_changelog
+            return refreshed_node
         return obj
 
     @classmethod
-    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch):
+    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch) -> Node:
         """
         Wrapper around mutate_create_object to potentially activate locking.
         """
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.schema.kind, branch=branch, schema_branch=schema_branch
+            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
@@ -153,15 +187,109 @@ class InfrahubMutationMixin:
         return await cls.mutate_create_object(data=data, db=db, branch=branch)
 
     @classmethod
+    async def _get_template_relationship_peers(
+        cls, db: InfrahubDatabase, template: CoreObjectTemplate, relationship: RelationshipSchema
+    ) -> Mapping[str, Node]:
+        """For a given relationship on the template, fetch the related peers."""
+        template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
+        if relationship.cardinality == RelationshipCardinality.MANY:
+            return await template_relationship_manager.get_peers(db=db)
+
+        peers: dict[str, Node] = {}
+        template_relationship_peer = await template_relationship_manager.get_peer(db=db)
+        if template_relationship_peer:
+            peers[template_relationship_peer.id] = template_relationship_peer
+        return peers
+
+    @classmethod
+    async def _extract_peer_data(
+        cls,
+        db: InfrahubDatabase,
+        template_peer: Node,
+        obj_peer_schema: MainSchemaTypes,
+        parent_obj: Node,
+        current_template: CoreObjectTemplate,
+    ) -> Mapping[str, Any]:
+        obj_peer_data: dict[str, Any] = {}
+
+        for attr in template_peer.get_schema().attribute_names:
+            if attr not in obj_peer_schema.attribute_names:
+                continue
+            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value, "source": template_peer.id}
+
+        for rel in template_peer.get_schema().relationship_names:
+            rel_manager: RelationshipManager = getattr(template_peer, rel)
+            if (
+                rel_manager.schema.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                or rel_manager.schema.name not in obj_peer_schema.relationship_names
+            ):
+                continue
+
+            if list(await rel_manager.get_peers(db=db)) == [current_template.id]:
+                obj_peer_data[rel] = {"id": parent_obj.id}
+
+        return obj_peer_data
+
+    @classmethod
+    async def _handle_template_relationships(
+        cls,
+        db: InfrahubDatabase,
+        branch: Branch,
+        obj: Node,
+        template: CoreObjectTemplate,
+        data: InputObjectType,
+        constraint_runner: NodeConstraintRunner | None = None,
+    ) -> None:
+        if constraint_runner is None:
+            component_registry = get_component_registry()
+            constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+
+        for relationship in obj.get_relationships(kind=RelationshipKind.COMPONENT, exclude=list(data)):
+            template_relationship_peers = await cls._get_template_relationship_peers(
+                db=db, template=template, relationship=relationship
+            )
+            if not template_relationship_peers:
+                continue
+
+            for template_relationship_peer in template_relationship_peers.values():
+                # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
+                obj_peer_schema = registry.schema.get_node_schema(
+                    name=template_relationship_peer.get_schema().kind.removeprefix("Template"),
+                    branch=branch,
+                    duplicate=False,
+                )
+                obj_peer_data = await cls._extract_peer_data(
+                    db=db,
+                    template_peer=template_relationship_peer,
+                    obj_peer_schema=obj_peer_schema,
+                    parent_obj=obj,
+                    current_template=template,
+                )
+
+                obj_peer = await Node.init(schema=obj_peer_schema, db=db)
+                await obj_peer.new(db=db, **obj_peer_data)
+                await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
+                await obj_peer.save(db=db)
+
+                await cls._handle_template_relationships(
+                    db=db,
+                    branch=branch,
+                    constraint_runner=constraint_runner,
+                    obj=obj_peer,
+                    template=template_relationship_peer,
+                    data=data,
+                )
+
+    @classmethod
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
         obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch)
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
         return obj, result
@@ -179,8 +307,8 @@ class InfrahubMutationMixin:
             NodeConstraintRunner, db=db.start_session(), branch=branch
         )
         node_class = Node
-        if cls._meta.schema.kind in registry.node:
-            node_class = registry.node[cls._meta.schema.kind]
+        if cls._meta.active_schema.kind in registry.node:
+            node_class = registry.node[cls._meta.active_schema.kind]
 
         fields_to_validate = list(data)
         try:
@@ -189,6 +317,16 @@ class InfrahubMutationMixin:
                 await obj.new(db=db, **data)
                 await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                 await obj.save(db=db)
+
+                object_template = await obj.get_object_template(db=db)
+                if object_template:
+                    await cls._handle_template_relationships(
+                        db=db,
+                        branch=branch,
+                        template=object_template,
+                        obj=obj,
+                        data=data,
+                    )
             else:
                 async with db.start_transaction() as dbt:
                     obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
@@ -196,8 +334,17 @@ class InfrahubMutationMixin:
                     await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                     await obj.save(db=dbt)
 
+                    object_template = await obj.get_object_template(db=dbt)
+                    if object_template:
+                        await cls._handle_template_relationships(
+                            db=dbt,
+                            branch=branch,
+                            template=object_template,
+                            obj=obj,
+                            data=data,
+                        )
         except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
+            raise ValidationError(input_value=str(exc)) from exc
 
         if await cls._get_profile_ids(db=db, obj=obj):
             obj = await cls._refresh_for_profile_update(db=db, branch=branch, obj=obj)
@@ -207,7 +354,7 @@ class InfrahubMutationMixin:
     @classmethod
     async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        result = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
         if "object" in fields:
             result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
         return cls(**result)
@@ -227,7 +374,7 @@ class InfrahubMutationMixin:
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.schema.kind, branch=branch, schema_branch=schema_branch
+            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
         )
 
         if db.is_transaction:
@@ -255,14 +402,14 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,
+        node: Node | None = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         obj = node or await NodeManager.find_object(
-            db=db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=db, kind=cls._meta.active_schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
 
         try:
@@ -274,7 +421,12 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_update_object(
-        cls, db: InfrahubDatabase, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch, obj: Node
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,  # noqa: ARG003
+        data: InputObjectType,
+        branch: Branch,
+        obj: Node,
     ) -> Node:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
@@ -285,11 +437,12 @@ class InfrahubMutationMixin:
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
 
         fields = list(data.keys())
-        for field in ("id", "hfid"):
-            if field in fields:
-                fields.remove(field)
+        for field_to_remove in ("id", "hfid"):
+            if field_to_remove in fields:
+                fields.remove(field_to_remove)
 
         await obj.save(db=db, fields=fields)
+
         obj = await cls._refresh_for_profile_update(
             db=db, branch=branch, obj=obj, previous_profile_ids=before_mutate_profile_ids
         )
@@ -304,7 +457,7 @@ class InfrahubMutationMixin:
     ) -> Self:
         fields_object = await extract_fields(info.field_nodes[0].selection_set)
         fields_object = fields_object.get("object", {})
-        result = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
         if fields_object:
             result["object"] = await obj.to_graphql(db=db, fields=fields_object)
         return cls(**result)
@@ -317,12 +470,12 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         node_getters: list[MutationNodeGetterInterface],
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self, bool]:
-        schema_name = cls._meta.schema.kind
+        schema_name = cls._meta.active_schema.kind
 
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         node_schema = db.schema.get(name=schema_name, branch=branch)
 
@@ -349,15 +502,19 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+    ) -> DeleteResult:
+        graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
-            db=context.db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=graphql_context.db,
+            kind=cls._meta.active_schema.kind,
+            id=data.get("id"),
+            hfid=data.get("hfid"),
+            branch=branch,
         )
 
         try:
-            async with context.db.start_transaction() as db:
+            async with graphql_context.db.start_transaction() as db:
                 deleted = await NodeManager.delete(db=db, branch=branch, nodes=[obj])
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
@@ -367,16 +524,19 @@ class InfrahubMutationMixin:
 
         ok = True
 
-        return obj, cls(ok=ok)
+        return DeleteResult(node=obj, mutation=cls(ok=ok), deleted_nodes=deleted)
 
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
-        cls, schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema]] = None, _meta=None, **options
+    def __init_subclass_with_meta__(
+        cls,
+        schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | None = None,
+        _meta: InfrahubMutationOptions | None = None,
+        **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
+        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema | TemplateSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:

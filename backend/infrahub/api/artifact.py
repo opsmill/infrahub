@@ -5,7 +5,14 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db, get_permission_manager
+from infrahub.api.dependencies import (
+    BranchParams,
+    get_branch_params,
+    get_context,
+    get_current_user,
+    get_db,
+    get_permission_manager,
+)
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
@@ -19,7 +26,9 @@ from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
+    from infrahub.context import InfrahubContext
     from infrahub.permissions import PermissionManager
+    from infrahub.services import InfrahubServices
 
 log = get_logger()
 router = APIRouter(prefix="/artifact")
@@ -57,12 +66,13 @@ async def generate_artifact(
     request: Request,
     artifact_definition_id: str,
     payload: ArtifactGeneratePayload = Body(
-        ArtifactGeneratePayload(),
+        ArtifactGeneratePayload(),  # noqa: B008
         description="Payload of the request, can be used to limit the scope of the query to a specific list of hosts",
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     permission_manager: PermissionManager = Depends(get_permission_manager),
+    context: InfrahubContext = Depends(get_context),
 ) -> None:
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
@@ -83,7 +93,7 @@ async def generate_artifact(
         branch=branch_params.branch,
     )
 
-    service = request.app.state.service
+    service: InfrahubServices = request.app.state.service
     model = RequestArtifactDefinitionGenerate(
         artifact_definition_id=artifact_definition.id,
         artifact_definition_name=artifact_definition.name.value,
@@ -91,4 +101,6 @@ async def generate_artifact(
         limit=payload.nodes,
     )
 
-    await service.workflow.submit_workflow(workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model})
+    await service.workflow.submit_workflow(
+        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
+    )

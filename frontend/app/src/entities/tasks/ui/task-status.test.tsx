@@ -1,4 +1,4 @@
-import { useCurrentBranch } from "@/entities/branches/ui/hooks/use-current-branch";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
 import { NetworkStatus } from "@apollo/client";
 import { describe, expect, test } from "vitest";
@@ -6,7 +6,7 @@ import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { TaskStatus } from "./task-status";
 
-vi.mock("@/entities/branches/ui/hooks/use-current-branch");
+vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/tasks/api/get-branch-task-status-from-api");
 
 describe("TaskStatus", () => {
@@ -16,7 +16,7 @@ describe("TaskStatus", () => {
   test("renders task status with pulse when tasks are running", async () => {
     // GIVEN
     const branch = generateBranch({ name: "branch1" });
-    useCurrentBranchMock.mockReturnValue(branch);
+    useCurrentBranchMock.mockReturnValue({ currentBranch: branch, setCurrentBranch: () => {} });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: { InfrahubTaskBranchStatus: { count: 1 } },
       loading: false,
@@ -44,7 +44,10 @@ describe("TaskStatus", () => {
 
   test("renders task status without pulse when no tasks are running", async () => {
     // GIVEN
-    useCurrentBranchMock.mockReturnValue(generateBranch({ name: "branch1" }));
+    useCurrentBranchMock.mockReturnValue({
+      currentBranch: generateBranch({ name: "branch1" }),
+      setCurrentBranch: () => {},
+    });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: { InfrahubTaskBranchStatus: { count: 0 } },
       loading: false,
@@ -66,7 +69,10 @@ describe("TaskStatus", () => {
 
   test("renders error icon with tooltip when query fails", async () => {
     // GIVEN
-    useCurrentBranchMock.mockReturnValue(generateBranch({ name: "branch1" }));
+    useCurrentBranchMock.mockReturnValue({
+      currentBranch: generateBranch({ name: "branch1" }),
+      setCurrentBranch: () => {},
+    });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: null!,
       error: {} as any,

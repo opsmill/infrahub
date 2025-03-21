@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
+    SERVICE_TASK_MANAGER_NAME,
     SERVICE_SERVER_NAME,
     SERVICE_WORKER_NAME,
     Namespace,
@@ -73,7 +74,7 @@ def pull_images(context: Context, database: str, namespace: Namespace) -> None:
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         for service in AVAILABLE_SERVICES:
-            if service in [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME]:
+            if service in [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, SERVICE_TASK_MANAGER_NAME]:
                 continue
             command = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME} pull {service}"
             execute_command(context=context, command=command)
@@ -133,6 +134,16 @@ def update_core_schema(context: Context, database: str, namespace: Namespace, de
         command = f"{base_cmd} run {SERVICE_SERVER_NAME} infrahub db update-core-schema"
         if debug:
             command += " --debug"
+        execute_command(context=context, command=command)
+
+
+def upgrade_infrahub(context: Context, database: str, namespace: Namespace) -> None:
+    """Update Infrahub to the latest version."""
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
+        compose_cmd = get_compose_cmd(namespace=namespace)
+        base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
+        command = f"{base_cmd} run {SERVICE_SERVER_NAME} infrahub upgrade"
         execute_command(context=context, command=command)
 
 

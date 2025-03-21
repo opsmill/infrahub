@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn, Optional, Union
+from typing import TYPE_CHECKING, NoReturn
 from uuid import UUID  # noqa: TC003
 
 import git
@@ -122,7 +122,7 @@ class BranchInLocal(BaseModel):
     has_worktree: bool = False
 
 
-class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public-methods
+class InfrahubRepositoryBase(BaseModel, ABC):
     """
     Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out
@@ -144,12 +144,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         False, description="Flag to indicate if a remote repository (named origin) is present in the config."
     )
 
-    client: Optional[InfrahubClient] = Field(
+    client: InfrahubClient | None = Field(
         default=None,
         description="Infrahub Client, used to query the Repository and Branch information in the graph and to update the commit.",
     )
 
-    cache_repo: Optional[Repo] = Field(None, description="Internal cache of the GitPython Repo object")
+    cache_repo: Repo | None = Field(None, description="Internal cache of the GitPython Repo object")
     service: InfrahubServices = Field(
         ..., description="Service object with access to the message queue, the database etc.."
     )
@@ -395,9 +395,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return [Worktree.init(response) for response in responses]
 
     def get_client(self) -> InfrahubClient:
-        if self.client:
-            return self.client
-        return self.service.client
+        return self.sdk
 
     def get_location(self) -> str:
         if self.location:
@@ -586,7 +584,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
+    def create_commit_worktree(self, commit: str) -> bool | Worktree:
         """Create a new worktree for a given commit."""
 
         # Check of the worktree already exist
@@ -702,7 +700,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 log.info("New commit detected", repository=self.name, branch=branch_name)
                 updated_branches.append(branch_name)
 
-        return sorted(list(new_branches)), sorted(updated_branches)
+        return sorted(new_branches), sorted(updated_branches)
 
     def validate_remote_branch(self, branch_name: str) -> bool:
         """Process a remote branch to validate that we can use it safely.
@@ -746,7 +744,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         branch_id: str | None = None,
         create_if_missing: bool = False,
         update_commit_value: bool = True,
-    ) -> Union[bool, str]:
+    ) -> bool | str:
         """Pull the latest update from the remote repository on a given branch."""
 
         if not self.has_origin:
@@ -814,10 +812,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     async def find_files(
         self,
-        extension: Union[str, list[str]],
+        extension: str | list[str],
         branch_name: str | None = None,
         commit: str | None = None,
-        directory: Optional[Path] = None,
+        directory: Path | None = None,
     ) -> list[Path]:
         """Return the path of all files matching a specific extension in a given Branch or Commit."""
         if not branch_name and not commit:

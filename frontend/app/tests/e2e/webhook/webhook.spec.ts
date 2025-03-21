@@ -1,0 +1,72 @@
+import { expect, test } from "@playwright/test";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
+
+test.describe("/objects/CoreWebhook", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
+  test.describe("when logged in as admin account", () => {
+    test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+    test("Create a webhook", async ({ page }) => {
+      await test.step("load webhooks", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await expect(page.getByTestId("object-header")).toContainText("Webhook");
+        await saveScreenshotForDocs(page, "webhook_list");
+      });
+
+      await test.step("create a new webhook", async () => {
+        await page.getByTestId("create-object-button").click();
+
+        await page.getByLabel("Select an object type").click();
+        await page.getByRole("option", { name: "Standard Webhook Core" }).click();
+
+        await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+        await page.getByLabel("Name *").fill("Ansible EDA");
+
+        await page.getByLabel("Branch Scope").click();
+        await page.getByRole("option", { name: "All Branches All branches" }).click();
+
+        await page.getByLabel("Description").fill("Ansible EDA Webhook Reciever");
+
+        await page.getByLabel("Url *").fill("http://ansible-eda:8080");
+
+        await page.getByLabel("Shared Key *").fill("secret");
+
+        await page.getByLabel("Validate Certificates").uncheck();
+
+        await saveScreenshotForDocs(page, "webhook_create");
+
+        await page.getByRole("button", { name: "Save" }).click();
+      });
+    });
+
+    test("Access webhook", async ({ page }) => {
+      await test.step("load webhooks", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await expect(page.getByTestId("object-header")).toContainText("Webhook");
+      });
+
+      await test.step("webhook detail view", async () => {
+        // Give time for activity log to be propagated.
+        await page
+          .getByTestId("identifier-cell")
+          .getByRole("link", { name: "Ansible EDA", exact: true })
+          .click();
+
+        while (await page.getByText("No activity found for this").isVisible()) {
+          await page.reload();
+        }
+        await expect(page.getByText("NameAnsible EDA")).toBeVisible();
+        await expect(page.getByText("View all activities")).toBeVisible();
+        await saveScreenshotForDocs(page, "webhook_detail");
+      });
+    });
+  });
+});

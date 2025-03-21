@@ -1,7 +1,7 @@
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_GROUPS } from "@/entities/role-manager/api/getGroups";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -10,6 +10,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
@@ -19,7 +20,6 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import LoadingScreen from "../../../shared/components/loading-screen";
 import { getPermission } from "../../permission/utils";
 import { GroupMembers } from "./group-member";
 
@@ -116,7 +116,7 @@ function Groups() {
   }
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen message="Retrieving groups..." />;
+    return <LoadingIndicator message="Retrieving groups..." className="h-[calc(100vh-13rem)]" />;
   }
 
   if (!permission?.view.isAllowed) {

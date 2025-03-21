@@ -223,13 +223,14 @@ The default devcontainer `.devcontainer/devcontainer.json` launches Infrahub wit
 
 A first version of our K8S helm-chart is available in our repository.
 
-<ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub/tree/stable/helm" openInNewTab />
+<ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub/infrahub" openInNewTab />
 
 The following are required for production deployments using Helm:
 
 * data persistence for the database must be enabled
 * multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-* S3 storage should be configured for the Infrahub API Server
+* S3 storage should be configured for the Infrahub API Server, it is required if you have multiple replicas
 
 :::warning
 

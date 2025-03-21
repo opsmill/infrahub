@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants.infrahubkind import STANDARDGROUP
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
-from infrahub.services import services
 from tests.helpers.graphql import graphql_query
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -21,6 +20,7 @@ class TestNodeWithTypeNameAttr(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch,
         client,
+        service,
     ):
         schema = {
             "version": "1.0",
@@ -62,7 +62,7 @@ class TestNodeWithTypeNameAttr(TestInfrahubApp):
             }
         """
 
-        result = await graphql_query(query=query, db=db, service=services.service, branch=default_branch)
+        result = await graphql_query(query=query, db=db, service=service, branch=default_branch)
         assert result.errors is None
         assert result.data is not None
         assert (

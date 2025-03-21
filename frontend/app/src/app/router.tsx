@@ -4,23 +4,35 @@ import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
 import queryString from "query-string";
-import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
+import { Slide, ToastContainer } from "react-toastify";
 import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 
 export const router = createBrowserRouter([
   {
     path: "",
+    errorElement: <ErrorBoundaryRouter />,
     element: (
       <QueryParamProvider
-        adapter={ReactRouter6Adapter}
+        adapter={ReactRouter7Adapter}
         options={{
           searchStringToObject: queryString.parse,
           objectToSearchString: queryString.stringify,
         }}
       >
+        <ToastContainer
+          hideProgressBar={true}
+          transition={Slide}
+          autoClose={5000}
+          closeOnClick={false}
+          newestOnTop
+          position="bottom-right"
+        />
         <Outlet />
       </QueryParamProvider>
     ),
@@ -30,14 +42,16 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <BranchesProvider>
-              <Outlet />
+              <SchemaProvider>
+                <Outlet />
+              </SchemaProvider>
             </BranchesProvider>
           </RequireAuth>
         ),
         children: [
           {
             path: "/",
-            lazy: () => import("@/shared/components/layout/layout"),
+            lazy: () => import("@/shared/components/layout/app-layout"),
             children: [
               {
                 index: true,
@@ -74,7 +88,38 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
+                path: "/activities",
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "link",
+                      label: "Activities",
+                      to: constructPath("/activities"),
+                    };
+                  },
+                },
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/activities"),
+                  },
+                  {
+                    path: ":activityId",
+                    lazy: () => import("@/pages/activities/details"),
+                    handle: {
+                      breadcrumb: (match: UIMatch) => {
+                        return {
+                          type: "id",
+                          value: match.params.activityId,
+                          link: "/activities",
+                        };
+                      },
+                    },
+                  },
+                ],
+              },
+              {
+                path: `/objects/${ARTIFACT_OBJECT}/:artifactId`,
                 handle: {
                   breadcrumb: () => {
                     return {
@@ -87,12 +132,12 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/entities/artifacts/ui/artifact-details"),
+                    lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
                     handle: {
                       breadcrumb: (match: UIMatch) => {
                         return {
                           type: "select",
-                          value: match.params.objectid,
+                          value: match.params.artifactId,
                           kind: ARTIFACT_OBJECT,
                         };
                       },

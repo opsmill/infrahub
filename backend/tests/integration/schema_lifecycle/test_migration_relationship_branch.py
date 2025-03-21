@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -15,12 +15,10 @@ from infrahub.exceptions import InitializationError
 from ..shared import load_schema
 from .shared import CAR_KIND, MANUFACTURER_KIND_01, PERSON_KIND, TAG_KIND, TestSchemaLifecycleBase
 
-# pylint: disable=unused-argument
-
 
 class BranchState:
     def __init__(self) -> None:
-        self._branch: Optional[Branch] = None
+        self._branch: Branch | None = None
 
     @property
     def branch(self) -> Branch:

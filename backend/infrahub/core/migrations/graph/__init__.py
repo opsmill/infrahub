@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from typing import TYPE_CHECKING, Sequence
 
 from .m001_add_version_to_graph import Migration001
 from .m002_attribute_is_default import Migration002
@@ -23,13 +23,14 @@ from .m018_uniqueness_nulls import Migration018
 from .m019_restore_rels_to_time import Migration019
 from .m020_duplicate_edges import Migration020
 from .m021_missing_hierarchy_merge import Migration021
+from .m022_add_generate_template_attr import Migration022
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
 
     from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
 
-MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMigration]]] = [
+MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -51,12 +52,13 @@ MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMi
     Migration019,
     Migration020,
     Migration021,
+    Migration022,
 ]
 
 
 async def get_graph_migrations(
     root: Root,
-) -> Sequence[Union[GraphMigration, InternalSchemaMigration, ArbitraryMigration]]:
+) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from typing_extensions import Self
@@ -25,10 +25,10 @@ log = get_logger()
 
 class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
-        _meta: Optional[Any] = None,
+        _meta: Any | None = None,
         **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
@@ -48,20 +48,22 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_create(info=info, data=data, branch=branch)
 
-        if context.service:
+        if graphql_context.service:
             model = RequestArtifactDefinitionGenerate(
                 branch=branch.name,
                 artifact_definition_id=artifact_definition.id,
                 artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
             )
-            await context.service.workflow.submit_workflow(
-                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
 
         return artifact_definition, result
@@ -72,21 +74,23 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_update(info=info, data=data, branch=branch)
 
-        if context.service:
+        if graphql_context.service:
             model = RequestArtifactDefinitionGenerate(
                 branch=branch.name,
                 artifact_definition_id=artifact_definition.id,
                 artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
             )
-            await context.service.workflow.submit_workflow(
-                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
 
         return artifact_definition, result

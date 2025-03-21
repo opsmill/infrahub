@@ -1,235 +1,181 @@
-from datetime import timedelta
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import ujson
-from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython
-from prefect import flow
+from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
+from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
+from prefect import flow, task
 from prefect.automations import AutomationCore
+from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client
-from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
-from prefect.events.actions import RunDeployment
-from prefect.events.schemas.automations import EventTrigger, Posture
-from prefect.events.schemas.events import ResourceSpecification
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind, MutationAction
-from infrahub.exceptions import NodeNotFoundError
-from infrahub.services import services
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_SEND, WEBHOOK_TRIGGER
+from infrahub.message_bus.types import KVTTL
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
+from infrahub.trigger.models import TriggerType
+from infrahub.trigger.setup import setup_triggers
+from infrahub.workflows.utils import add_tags
 
-from .constants import AUTOMATION_NAME, AUTOMATION_NAME_RUN
-from .models import CustomWebhook, SendWebhookData, StandardWebhook, TransformWebhook, Webhook
+from .gather import gather_trigger_webhook
+from .models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook, WebhookTriggerDefinition
+
+if TYPE_CHECKING:
+    from httpx import Response
+
+WEBHOOK_MAP: dict[str, type[Webhook]] = {
+    "StandardWebhook": StandardWebhook,
+    "CustomWebhook": CustomWebhook,
+    "TransformWebhook": TransformWebhook,
+}
 
 
-@flow(name="event-send-webhook", flow_run_name="Send Webhook")
-async def send_webhook(model: SendWebhookData) -> None:
-    service = services.service
-    log = get_run_logger()
+@task(name="webhook-send", task_run_name="Send Standard Webhook {webhook.name}", cache_policy=NONE, retries=3)
+async def webhook_send(
+    webhook: Webhook, context: EventContext, event_data: dict, service: InfrahubServices
+) -> Response:
+    response = await webhook.send(data=event_data, context=context, service=service)
+    response.raise_for_status()
+    return response
 
-    webhook_definition = await service.cache.get(key=f"webhook:active:{model.webhook_id}")
-    if not webhook_definition:
-        log.warning("Webhook not found")
-        raise NodeNotFoundError(
-            node_type="Webhook", identifier=model.webhook_id, message="The requested Webhook was not found"
+
+@task(name="webhook-convert-node", task_run_name="Convert node to webhook", cache_policy=NONE)
+async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubClient) -> Webhook:
+    webhook_kind = webhook_node.get_kind()
+
+    if webhook_kind not in ["CoreStandardWebhook", "CoreCustomWebhook"]:
+        raise ValueError(f"Unsupported webhook kind: {webhook_kind}")
+
+    if webhook_kind == "CoreStandardWebhook":
+        return StandardWebhook.from_object(obj=webhook_node)
+
+    # Processing Custom Webhook
+    if webhook_node.transformation.id:
+        transform = await client.get(
+            kind=CoreTransformPython,
+            id=webhook_node.transformation.id,
+            prefetch_relationships=True,
+            include=["name", "class_name", "file_path", "repository"],
         )
+        return TransformWebhook.from_object(obj=webhook_node, transform=transform)
 
-    webhook_data = ujson.loads(webhook_definition)
-    payload: dict[str, Any] = {"event_type": model.event_type, "data": model.event_data, "service": service}
-    webhook_map: dict[str, type[Webhook]] = {
-        "standard": StandardWebhook,
-        "custom": CustomWebhook,
-        "transform": TransformWebhook,
-    }
-    webhook_class = webhook_map[webhook_data["webhook_type"]]
-    payload.update(webhook_data["webhook_configuration"])
-    webhook = webhook_class(**payload)
-    await webhook.send()
-
-    log.info("Successfully sent webhook")
+    return CustomWebhook.from_object(obj=webhook_node)
 
 
-@flow(name="webhook-trigger-actions", flow_run_name="Trigger configured webhooks")
-async def trigger_webhooks(event_type: str, event_data: str) -> None:
-    service = services.service
-    payload: dict = ujson.loads(event_data)
-
-    webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
-    for webhook in webhooks:
-        webhook_id = webhook.split(":")[-1]
-        model = SendWebhookData(webhook_id=webhook_id, event_type=event_type, event_data=payload)
-        await service.workflow.submit_workflow(workflow=WEBHOOK_SEND, parameters={"model": model})
-
-
-@flow(name="webhook-setup-automations", flow_run_name="Configuration webhook automation and populate cache")
-async def configure_webhooks() -> None:
-    service = services.service
+@flow(name="webhook-process", flow_run_name="Send webhook for {webhook_name}")
+async def webhook_process(
+    webhook_id: str,
+    webhook_name: str,  # noqa: ARG001
+    webhook_kind: str,
+    event_id: str,
+    event_type: str,
+    event_occured_at: str,
+    event_payload: dict,
+    service: InfrahubServices,
+    branch_name: str | None = None,
+) -> None:
     log = get_run_logger()
 
-    log.debug("Refreshing webhook configuration")
-    standard_webhooks = await service.client.all(kind=CoreStandardWebhook)
-    custom_webhooks = await service.client.all(kind=CoreCustomWebhook)
+    if branch_name:
+        await add_tags(branches=[branch_name])
 
-    expected_webhooks = []
-    for webhook in standard_webhooks:
-        webhook_key = f"webhook:active:{webhook.id}"
-        expected_webhooks.append(webhook_key)
-        standard_payload = {
-            "webhook_type": "standard",
-            "webhook_configuration": {
-                "url": webhook.url.value,
-                "shared_key": webhook.shared_key.value,
-                "validate_certificates": webhook.validate_certificates.value,
-            },
-        }
-        await service.cache.set(key=webhook_key, value=ujson.dumps(standard_payload))
+    webhook_data_str = await service.cache.get(key=f"webhook:{webhook_id}")
+    if not webhook_data_str:
+        log.info(f"Webhook {webhook_id} not found in cache")
+        webhook_node = await service.client.get(kind=webhook_kind, id=webhook_id)
+        webhook = await convert_node_to_webhook(webhook_node=webhook_node, client=service.client)
+        webhook_data = webhook.to_cache()
+        await service.cache.set(key=f"webhook:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS)
 
-    for webhook in custom_webhooks:
-        webhook_key = f"webhook:active:{webhook.id}"
-        expected_webhooks.append(webhook_key)
-        payload: dict[str, Any] = {
-            "webhook_type": "custom",
-            "webhook_configuration": {
-                "url": webhook.url.value,
-                "validate_certificates": webhook.validate_certificates.value,
-            },
-        }
-        if webhook.transformation.id:
-            transform = await service.client.get(
-                kind=CoreTransformPython,
-                id=webhook.transformation.id,
-                prefetch_relationships=True,
-                populate_store=True,
-                include=["name", "class_name", "file_path", "repository"],
-            )
-            payload["webhook_type"] = "transform"
-            payload["webhook_configuration"]["transform_name"] = transform.name.value
-            payload["webhook_configuration"]["transform_class"] = transform.class_name.value
-            payload["webhook_configuration"]["transform_file"] = transform.file_path.value
-            payload["webhook_configuration"]["repository_id"] = transform.repository.id
-            payload["webhook_configuration"]["repository_name"] = transform.repository.peer.name.value
+    else:
+        webhook_data = ujson.loads(webhook_data_str)
 
-        await service.cache.set(key=webhook_key, value=ujson.dumps(payload))
+        if webhook_data["webhook_type"] not in WEBHOOK_MAP:
+            raise ValueError(f"Unsupported webhook kind: {webhook_data['webhook_type']}")
 
-    cached_webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
-    for cached_webhook in cached_webhooks:
-        if cached_webhook not in expected_webhooks:
-            await service.cache.delete(key=cached_webhook)
+        webhook_class = WEBHOOK_MAP[webhook_data["webhook_type"]]
+        webhook = webhook_class.from_cache(webhook_data)
 
-    has_webhooks = bool(expected_webhooks)
+    webhook_context = EventContext.from_event(
+        event_id=event_id,
+        event_type=event_type,
+        event_occured_at=event_occured_at,
+        event_payload=event_payload,
+    )
+    event_data = event_payload.get("data", {})
+    response = await webhook_send(webhook=webhook, context=webhook_context, event_data=event_data, service=service)
+    log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
 
-    async with get_client(sync_client=False) as client:
-        deployments = {
-            item.name: item
-            for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(
-                        any_=[
-                            WEBHOOK_TRIGGER.name,
-                        ]
-                    )
-                )
-            )
-        }
-        if WEBHOOK_TRIGGER.name not in deployments:
-            raise ValueError("Unable to find the deployment for WEBHOOK_TRIGGER")
 
-        deployment_id_webhook_trigger = deployments[WEBHOOK_TRIGGER.name].id
+@flow(name="webhook-setup-automation-all", flow_run_name="Configure all webhooks")
+async def configure_webhook_all(service: InfrahubServices) -> None:
+    log = get_run_logger()
 
-        webhook_configure_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_RUN)
+    triggers = await gather_trigger_webhook(db=service.database)
 
-        if not has_webhooks:
-            if webhook_configure_automation:
-                await client.delete_automation(automation_id=webhook_configure_automation.id)
-            return
+    async with get_client(sync_client=False) as prefect_client:
+        await setup_triggers(
+            client=prefect_client,
+            triggers=triggers,
+            trigger_type=TriggerType.WEBHOOK,
+        )  # type: ignore[misc]
+
+    log.info(f"{len(triggers)} Webhooks automation configuration completed")
+
+
+@flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
+async def configure_webhook_one(
+    webhook_name: str,  # noqa: ARG001
+    event_data: dict,
+    service: InfrahubServices,
+) -> None:
+    log = get_run_logger()
+
+    webhook = await service.client.get(kind=CoreWebhook, id=event_data["node_id"])
+    trigger = WebhookTriggerDefinition.from_object(webhook)
+
+    async with get_client(sync_client=False) as prefect_client:
+        # Query the deployment associated with the trigger to have its ID
+        deployment_name = trigger.get_deployment_names()[0]
+        deployment = await prefect_client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
 
         automation = AutomationCore(
-            name=AUTOMATION_NAME_RUN,
-            description="Trigger all configured webhooks on mutations",
+            name=trigger.generate_name(),
+            description=trigger.get_description(),
             enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.node.*"},
-                within=timedelta(0),
-                match=ResourceSpecification(
-                    {
-                        "infrahub.node.action": MutationAction.available_types(),
-                    }
-                ),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_webhook_trigger,
-                    parameters={
-                        "event_type": "{{ event.resource['infrahub.node.kind'] }}.{{ event.resource['infrahub.node.action'] }}",
-                        "event_data": "{{ event.payload['data'] | tojson }}",
-                    },
-                    job_variables={},
-                ),
-            ],
+            trigger=trigger.trigger.get_prefect(),
+            actions=[action.get(deployment.id) for action in trigger.actions],
         )
 
-        if webhook_configure_automation:
-            await client.update_automation(automation_id=webhook_configure_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME_RUN} Updated")
+        existing_automations = await prefect_client.read_automations_by_name(trigger.generate_name())
+        existing_automation = existing_automations[0] if existing_automations else None
+
+        if existing_automation:
+            await prefect_client.update_automation(automation_id=existing_automation.id, automation=automation)
+            log.info(f"Automation {trigger.generate_name()} updated")
         else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME_RUN} Created")
+            await prefect_client.create_automation(automation=automation)
+            log.info(f"Automation {trigger.generate_name()} created")
+
+        await service.cache.delete(key=f"webhook:{webhook.id}")
 
 
-@flow(name="webhook-setup-configuration-trigger", flow_run_name="Setup automations for webhooks")
-async def trigger_webhook_configuration() -> None:
+@flow(name="webhook-delete-automation", flow_run_name="Delete webhook automation for {webhook_name}")
+async def delete_webhook_automation(
+    webhook_id: str,
+    webhook_name: str,  # noqa: ARG001
+    service: InfrahubServices,
+) -> None:
     log = get_run_logger()
 
-    async with get_client(sync_client=False) as client:
-        deployments = {
-            item.name: item
-            for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(
-                        any_=[
-                            WEBHOOK_CONFIGURE.name,
-                        ]
-                    )
-                )
-            )
-        }
-        if WEBHOOK_CONFIGURE.name not in deployments:
-            raise ValueError("Unable to find the deployment for WEBHOOK_CONFIGURE")
+    async with get_client(sync_client=False) as prefect_client:
+        automation_name = WebhookTriggerDefinition.generate_name_from_id(id=webhook_id)
 
-        deployment_id_webhook_setup = deployments[WEBHOOK_CONFIGURE.name].id
+        existing_automations = await prefect_client.read_automations_by_name(automation_name)
+        existing_automation = existing_automations[0] if existing_automations else None
 
-        webhook_configure_automation = await client.find_automation(id_or_name=AUTOMATION_NAME)
+        if existing_automation:
+            await prefect_client.delete_automation(automation_id=existing_automation.id)
+            log.info(f"Automation {automation_name} deleted")
 
-        automation = AutomationCore(
-            name=AUTOMATION_NAME,
-            description="Trigger actions on schema update event",
-            enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.node.*"},
-                within=timedelta(0),
-                match=ResourceSpecification(
-                    {
-                        "infrahub.node.kind": [InfrahubKind.WEBHOOK, InfrahubKind.STANDARDWEBHOOK],
-                    }
-                ),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_webhook_setup,
-                    parameters={},
-                    job_variables={},
-                ),
-            ],
-        )
-
-        if webhook_configure_automation:
-            await client.update_automation(automation_id=webhook_configure_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME} Updated")
-        else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME} Created")
+        await service.cache.delete(key=f"webhook:{webhook_id}")

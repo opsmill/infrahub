@@ -60,8 +60,9 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
       <DateTimePicker
         selected={currentDate}
         onChange={handleChangeDate}
-        showTimeInput
         customInput={<CustomInput ref={refCustomInput} />}
+        showTimeSelect
+        timeIntervals={1}
         calendarStartDay={1}
       />
 

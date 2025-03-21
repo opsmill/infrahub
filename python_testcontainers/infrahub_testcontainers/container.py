@@ -3,7 +3,6 @@ import uuid
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Optional
 
 from testcontainers.compose import DockerCompose
 from typing_extensions import Self
@@ -24,7 +23,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
-    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get("INFRAHUB_TESTING_WEB_CONCURRENCY", 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
+    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
     "INFRAHUB_TESTING_PRODUCTION": "false",
     "INFRAHUB_TESTING_DB_ADDRESS": "database",
@@ -54,10 +53,10 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
 
 @dataclass
 class InfrahubDockerCompose(DockerCompose):
-    project_name: Optional[str] = None
+    project_name: str | None = None
 
     @classmethod
-    def init(cls, directory: Optional[Path] = None, version: Optional[str] = None) -> Self:
+    def init(cls, directory: Path | None = None, version: str | None = None) -> Self:
         if not directory:
             directory = Path.cwd()
 
@@ -102,7 +101,7 @@ class InfrahubDockerCompose(DockerCompose):
             PROJECT_ENV_VARIABLES.update(
                 {
                     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub-enterprise",
-                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get("INFRAHUB_TESTING_WEB_CONCURRENCY", 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
+                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-enterprise",
                 }

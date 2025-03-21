@@ -41,6 +41,7 @@ exceptions:
   - High Availability
   - Human Friendly Identifier
   - Infrahub
+  - Infrahub Enterprise
   - infrahubctl
   - IPHost
   - IP

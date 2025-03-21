@@ -1,0 +1,50 @@
+import { SEARCH_ANY_FILTER } from "@/config/constants";
+import { SearchInput, SearchInputProps } from "@/shared/components/inputs/search-input";
+import { useDebounce } from "@/shared/hooks/useDebounce";
+import useFilters from "@/shared/hooks/useFilters";
+import { useSearch } from "@/shared/hooks/useSearch";
+
+import { ModelSchema } from "@/entities/schema/types";
+import { useEffect, useState } from "react";
+
+interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
+  schema?: ModelSchema;
+}
+
+export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchInputProps) => {
+  const [filters, setFilters] = useFilters();
+  const [search, setSearch] = useSearch();
+  const [inputValue, setInputValue] = useState(search ?? "");
+  const debouncedInputValue = useDebounce(inputValue, 300);
+
+  const removeSearchFilter = () => {
+    setFilters(filters.filter((f) => f.name !== SEARCH_ANY_FILTER));
+  };
+
+  useEffect(() => {
+    if (debouncedInputValue) {
+      setSearch(debouncedInputValue);
+    } else {
+      removeSearchFilter();
+    }
+  }, [debouncedInputValue]);
+
+  useEffect(() => {
+    // Reset input value when search filter is removed externally
+    if (!search && inputValue) {
+      setInputValue("");
+    }
+  }, [search]);
+
+  return (
+    <SearchInput
+      className="h-8"
+      value={inputValue}
+      onChange={setInputValue}
+      placeholder={"Search " + (schema?.label ?? schema?.name)}
+      data-testid="object-list-search-bar"
+      onPressReset={removeSearchFilter}
+      {...props}
+    />
+  );
+};

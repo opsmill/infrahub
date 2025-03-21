@@ -1,13 +1,19 @@
 import pytest
 
 from infrahub import config
+from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
+from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.services import InfrahubServices
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 
 
@@ -215,7 +221,13 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     assert obj1.height.is_visible is False
 
 
-async def test_update_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
+async def test_update_all_attributes(
+    db: InfrahubDatabase,
+    default_branch,
+    all_attribute_types_schema,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
+):
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(
         db=db,
@@ -252,7 +264,11 @@ async def test_update_all_attributes(db: InfrahubDatabase, default_branch, all_a
         % obj1.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -262,6 +278,7 @@ async def test_update_all_attributes(db: InfrahubDatabase, default_branch, all_a
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestAllAttributeTypesUpdate"]["ok"] is True
 
     objs = await NodeManager.query(db=db, schema="TestAllAttributeTypes")
@@ -278,6 +295,14 @@ async def test_update_all_attributes(db: InfrahubDatabase, default_branch, all_a
     assert obj.ipaddress.is_default is False
     assert obj.prefix.value == "10.3.4.0/24"
     assert obj.prefix.is_default is False
+    assert gql_params.context.background
+    await gql_params.context.background()
+    assert len(memory_event.events) == 1
+    event = memory_event.events[0]
+    assert isinstance(event, NodeMutatedEvent)
+    assert sorted(event.changelog.attributes.keys()) == ["ipaddress", "mybool", "myint", "mylist", "mystring", "prefix"]
+    assert event.changelog.attributes["ipaddress"].value == "10.3.4.254/24"
+    assert event.changelog.attributes["ipaddress"].value_previous == "10.5.0.1/27"
 
 
 @pytest.fixture
@@ -387,7 +412,13 @@ async def test_update_invalid_input(db: InfrahubDatabase, person_john_main: Node
 
 
 async def test_update_single_relationship(
-    db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, car_accord_main: Node, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    car_accord_main: Node,
+    branch: Branch,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
 ):
     query = """
     mutation {
@@ -409,7 +440,11 @@ async def test_update_single_relationship(
         car_accord_main.id,
         person_jim_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -419,12 +454,36 @@ async def test_update_single_relationship(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
     assert car_peer.id == person_jim_main.id
+    assert gql_params.context.background
+    await gql_params.context.background()
+    assert len(memory_event.events) == 3
+    main_event = memory_event.events[0]
+    related_event_01 = memory_event.events[1]
+    related_event_02 = memory_event.events[2]
+    assert isinstance(main_event, NodeMutatedEvent)
+    assert isinstance(related_event_01, NodeMutatedEvent)
+    assert isinstance(related_event_02, NodeMutatedEvent)
+    assert isinstance(main_event.changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
+    assert main_event.changelog.relationships["owner"].peer_id == person_jim_main.id
+    assert main_event.changelog.relationships["owner"].peer_kind == "TestPerson"
+    assert main_event.changelog.relationships["owner"].peer_status == DiffAction.UPDATED
+    johns_event = [event for event in [related_event_01, related_event_02] if event.node_id == person_john_main.id][0]
+    jims_event = [event for event in [related_event_01, related_event_02] if event.node_id == person_jim_main.id][0]
+    assert isinstance(johns_event.changelog.relationships["cars"], RelationshipCardinalityManyChangelog)
+    assert len(johns_event.changelog.relationships["cars"].peers) == 1
+    assert johns_event.changelog.relationships["cars"].peers[0].peer_id == car_accord_main.id
+    assert johns_event.changelog.relationships["cars"].peers[0].peer_status == DiffAction.REMOVED
+    assert isinstance(jims_event.changelog.relationships["cars"], RelationshipCardinalityManyChangelog)
+    assert len(jims_event.changelog.relationships["cars"].peers) == 1
+    assert jims_event.changelog.relationships["cars"].peers[0].peer_id == car_accord_main.id
+    assert jims_event.changelog.relationships["cars"].peers[0].peer_status == DiffAction.ADDED
 
 
 async def test_update_default_value(

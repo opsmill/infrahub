@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -14,7 +13,7 @@ class Worktree(BaseModel):
     identifier: str
     directory: Path
     commit: str
-    branch: Optional[str] = None
+    branch: str | None = None
 
     @classmethod
     def init(cls, text: str) -> Worktree:

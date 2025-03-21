@@ -1,0 +1,478 @@
+---
+title: Infrahub Events
+---
+
+# Infrahub events
+
+This document provides detailed documentation for all events used in the Infrahub event system.
+
+:::info
+
+For more detailed explanations on how these events are used within Infrahub, see the [Infrahub event](../topics/events.mdx) topic.
+
+:::
+
+## Artifact events
+
+<!-- vale off -->
+### Artifact Created Event
+<!-- vale on -->
+
+**Type**: infrahub.artifact.created
+**Description**: Event generated when an artifact has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the artifact |
+| **artifact_definition_id** | The ID of the artifact definition |
+| **target_id** | The ID of the target of the artifact |
+| **target_kind** | The kind of the target of the artifact |
+| **checksum** | The current checksum of the artifact |
+| **checksum_previous** | The previous checksum of the artifact |
+| **storage_id** | The current storage id of the artifact |
+| **storage_id_previous** | The previous storage id of the artifact |
+<!-- vale on -->
+<!-- vale off -->
+### Artifact Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.artifact.updated
+**Description**: Event generated when an artifact has been updated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the artifact |
+| **artifact_definition_id** | The ID of the artifact definition |
+| **target_id** | The ID of the target of the artifact |
+| **target_kind** | The kind of the target of the artifact |
+| **checksum** | The current checksum of the artifact |
+| **checksum_previous** | The previous checksum of the artifact |
+| **storage_id** | The current storage id of the artifact |
+| **storage_id_previous** | The previous storage id of the artifact |
+<!-- vale on -->
+## Branch events
+
+<!-- vale off -->
+### Branch Created Event
+<!-- vale on -->
+
+**Type**: infrahub.branch.created
+**Description**: Event generated when a branch has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **branch_id** | The ID of the branch |
+| **sync_with_git** | Indicates if the branch was extended to Git |
+<!-- vale on -->
+<!-- vale off -->
+### Branch Deleted Event
+<!-- vale on -->
+
+**Type**: infrahub.branch.deleted
+**Description**: Event generated when a branch has been deleted
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **branch_id** | The ID of the mutated node |
+| **sync_with_git** | Indicates if the branch was extended to Git |
+<!-- vale on -->
+<!-- vale off -->
+### Branch Merged Event
+<!-- vale on -->
+
+**Type**: infrahub.branch.merged
+**Description**: Event generated when a branch has been merged
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **branch_id** | The ID of the branch |
+| **proposed_change_id** | The ID of the proposed change that merged this branch if applicable |
+<!-- vale on -->
+<!-- vale off -->
+### Branch Rebased Event
+<!-- vale on -->
+
+**Type**: infrahub.branch.rebased
+**Description**: Event generated when a branch has been rebased
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_id** | The ID of the mutated node |
+| **branch_name** | The name of the branch |
+<!-- vale on -->
+## Group events
+
+<!-- vale off -->
+### Group Member Added Event
+<!-- vale on -->
+
+**Type**: infrahub.group.member_added
+**Description**: Event generated when a one or more members have been added to a group
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
+<!-- vale on -->
+<!-- vale off -->
+### Group Member Removed Event
+<!-- vale on -->
+
+**Type**: infrahub.group.member_removed
+**Description**: Event generated when a one or more members have been removed to a group
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
+<!-- vale on -->
+## Node events
+
+<!-- vale off -->
+### Node Created Event
+<!-- vale on -->
+
+**Type**: infrahub.node.created
+**Description**: Event generated when a node has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **changelog** | Data on modified object |
+| **fields** | Fields provided in the mutation |
+<!-- vale on -->
+<!-- vale off -->
+### Node Deleted Event
+<!-- vale on -->
+
+**Type**: infrahub.node.deleted
+**Description**: Event generated when a node has been deleted
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **changelog** | Data on modified object |
+| **fields** | Fields provided in the mutation |
+<!-- vale on -->
+<!-- vale off -->
+### Node Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.node.updated
+**Description**: Event generated when a node has been updated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **changelog** | Data on modified object |
+| **fields** | Fields provided in the mutation |
+<!-- vale on -->
+## Commit events
+
+<!-- vale off -->
+### Commit Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.repository.update_commit
+**Description**: Event generated when the the commit within a repository has been updated.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **commit** | The commit the repository was updated to |
+| **repository_id** | The ID of the repository |
+| **repository_name** | The name of the repository |
+<!-- vale on -->
+## Validator events
+
+<!-- vale off -->
+### Validator Failed Event
+<!-- vale on -->
+
+**Type**: infrahub.validator.failed
+**Description**: Event generated when an validator within a pipeline has completed successfully.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the validator |
+| **kind** | The kind of the validator |
+| **proposed_change_id** | The ID of the proposed change |
+<!-- vale on -->
+<!-- vale off -->
+### Validator Passed Event
+<!-- vale on -->
+
+**Type**: infrahub.validator.passed
+**Description**: Event generated when an validator within a pipeline has completed successfully.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the validator |
+| **kind** | The kind of the validator |
+| **proposed_change_id** | The ID of the proposed change |
+<!-- vale on -->
+<!-- vale off -->
+### Validator Started Event
+<!-- vale on -->
+
+**Type**: infrahub.validator.started
+**Description**: Event generated when an validator within a pipeline has started.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the validator |
+| **kind** | The kind of the validator |
+| **proposed_change_id** | The ID of the proposed change |
+<!-- vale on -->
+## Schema events
+
+<!-- vale off -->
+### Schema Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.schema.updated
+**Description**: Event generated when the schema within a branch has been updated.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **schema_hash** | Schema hash after the update |
+<!-- vale on -->

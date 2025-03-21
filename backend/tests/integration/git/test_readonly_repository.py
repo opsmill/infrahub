@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
@@ -14,7 +16,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.lock import InfrahubLockRegistry
-from infrahub.services import services
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.core.protocols import CoreCheckDefinition, CoreReadOnlyRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
     from tests.conftest import TestHelper
 
 
@@ -44,6 +46,14 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def load_car_schema(self, db: InfrahubDatabase) -> None:
         await load_schema(db=db, schema=CAR_SCHEMA)
+
+    @pytest.fixture(scope="class")
+    async def context(self) -> InfrahubContext:
+        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        return InfrahubContext(
+            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            branch=BranchContext(name="main", id="d18808fe-70c8-4782-bd55-144d6980036f"),
+        )
 
     @pytest.fixture(scope="class")
     async def person_john(self, db: InfrahubDatabase, load_car_schema) -> Node:
@@ -134,6 +144,8 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         db: InfrahubDatabase,
         client: InfrahubClient,
         helper: TestHelper,
+        context: InfrahubContext,
+        service: InfrahubServices,
     ):
         await client.branch.merge(branch_name="ro_repository")
 
@@ -150,8 +162,8 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
                 artifact_definition_id=artifact_definition.id,
                 artifact_definition_name=artifact_definition.name.value,
             )
-            await services.service.workflow.submit_workflow(
-                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+            await service.workflow.submit_workflow(
+                REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
             )
 
         artifacts = await client.all(kind=CoreArtifact)
@@ -169,6 +181,8 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         client: InfrahubClient,
         helper: TestHelper,
         person_john: Node,
+        context: InfrahubContext,
+        service: InfrahubServices,
     ):
         from infrahub.core import registry
         from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
@@ -192,8 +206,8 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
                 artifact_definition_name=artifact_definition.name.value,
                 branch="branch",
             )
-            await services.service.workflow.submit_workflow(
-                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+            await service.workflow.submit_workflow(
+                REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
             )
 
         artifacts = await client.all(kind=CoreArtifact, branch="branch")

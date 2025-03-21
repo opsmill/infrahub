@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import ujson
 
@@ -22,7 +22,7 @@ class SchemaAttributeUpdateQuery(Query):
         node_name: str,
         node_namespace: str,
         new_value: Any,
-        previous_value: Optional[Any] = None,
+        previous_value: Any | None = None,
         **kwargs: Any,
     ):
         self.attr_name = attribute_name
@@ -67,7 +67,7 @@ class SchemaAttributeUpdateQuery(Query):
 
         return query
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["attr_name"] = self.attr_name
         self.params["attr_new_value"] = (
             ujson.dumps(self.attr_new_value) if isinstance(self.attr_new_value, list) else self.attr_new_value

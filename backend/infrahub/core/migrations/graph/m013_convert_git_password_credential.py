@@ -36,7 +36,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
     name = "migration_013_convert_repository_with_cred"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = Timestamp()
         filters, params = at.get_query_filter_path()
 
@@ -172,7 +172,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
     name = "migration_013_convert_repository_without_cred"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = Timestamp()
         filters, params = at.get_query_filter_path()
 
@@ -237,8 +237,7 @@ class Migration013DeleteUsernamePasswordGenericSchema(DeleteElementInSchemaQuery
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             element_names=["username", "password"],
@@ -255,8 +254,7 @@ class Migration013DeleteUsernamePasswordReadWriteSchema(DeleteElementInSchemaQue
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             element_names=["username", "password"],
@@ -273,8 +271,7 @@ class Migration013DeleteUsernamePasswordReadOnlySchema(DeleteElementInSchemaQuer
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             element_names=["username", "password"],
@@ -289,8 +286,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
     type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             node_kind="CoreGenericRepository",
@@ -315,7 +311,7 @@ class Migration013(GraphMigration):
     ]
     minimum_version: int = 12
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
         return result

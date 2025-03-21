@@ -10,7 +10,7 @@ from infrahub.graphql.manager import GraphQLSchemaManager
 
 
 def generate_graphql_schema(
-    db: InfrahubDatabase,  # pylint: disable=unused-argument
+    db: InfrahubDatabase,
     branch: Branch | str,
     include_query: bool = True,
     include_mutation: bool = True,

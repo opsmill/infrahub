@@ -14,7 +14,7 @@ import {
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export interface MenuSectionInternalProps {
   items: MenuItem[];
@@ -25,14 +25,20 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (!item.children?.length) {
     return (
       <DropdownMenuItem asChild>
-        <Link to={constructPath(item.path)}>{item.label}</Link>
+        <Link to={constructPath(item.path)}>
+          <Icon icon={item.icon} className="min-w-4" />
+          {item.label}
+        </Link>
       </DropdownMenuItem>
     );
   }
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>{item.label}</DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger>
+        <Icon icon={item.icon} className="min-w-4" />
+        {item.label}
+      </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         {item.children.map((childItem) => (
           <RecursiveInternalMenuItem key={childItem.identifier} item={childItem} />

@@ -39,7 +39,6 @@ async def generate_restricted_menu(
     return menu
 
 
-# pylint: disable=too-many-branches,too-many-statements
 async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem]) -> MenuDict:
     structure = MenuDict()
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)
@@ -71,7 +70,7 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
         menu_item = structure.find_item(name=parent_full_name)
         if menu_item:
             child_item = MenuItemDict.from_node(obj=item)
-            menu_item.children[child_item.identifier] = child_item
+            menu_item.children[str(child_item.identifier)] = child_item
         else:
             log.warning(
                 "new_menu_request: unable to find the parent menu item",
@@ -91,20 +90,20 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
 
             schema = full_schema[item_name]
             menu_item = MenuItemDict.from_schema(model=schema)
-            already_in_schema = bool(structure.find_item(name=menu_item.identifier))
+            already_in_schema = bool(structure.find_item(name=str(menu_item.identifier)))
             if already_in_schema:
                 items_to_add[item_name] = True
                 continue
 
             if not schema.menu_placement:
                 first_element = MenuItemDict.from_schema(model=schema)
-                first_element.identifier = f"{first_element.identifier}Sub"
+                first_element.name = f"{first_element.name}Sub"
                 first_element.order_weight = 1
-                menu_item.children[first_element.identifier] = first_element
-                structure.data[menu_item.identifier] = menu_item
+                menu_item.children[str(first_element.identifier)] = first_element
+                structure.data[str(menu_item.identifier)] = menu_item
                 items_to_add[item_name] = True
             elif menu_placement := structure.find_item(name=schema.menu_placement):
-                menu_placement.children[menu_item.identifier] = menu_item
+                menu_placement.children[str(menu_item.identifier)] = menu_item
                 items_to_add[item_name] = True
                 continue
 
@@ -131,7 +130,7 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
             item=schema.kind,
             menu_placement=schema.menu_placement,
         )
-        default_menu.children[menu_item.identifier] = menu_item
+        default_menu.children[str(menu_item.identifier)] = menu_item
         items_to_add[item_name] = True
 
     return structure

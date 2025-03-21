@@ -1,5 +1,4 @@
 import { QSP } from "@/config/qsp";
-import { useConfig } from "@/entities/config/get-config.query";
 import { StringParam, useQueryParam } from "use-query-params";
 
 type tPagination = {
@@ -33,8 +32,6 @@ const getVerifiedOffset = (offset: number, config: any) => {
 };
 
 const usePagination = (): [tPagination, Function] => {
-  const { data: config } = useConfig();
-
   const [paginationInQueryString, setPaginationInQueryString] = useQueryParam(
     QSP.PAGINATION,
     StringParam
@@ -46,14 +43,14 @@ const usePagination = (): [tPagination, Function] => {
 
   // Get the final pagination with verifyed values
   const pagination = {
-    limit: getVerifiedLimit(parsedPagination?.limit, config),
-    offset: getVerifiedOffset(parsedPagination?.offset, config),
+    limit: getVerifiedLimit(parsedPagination?.limit, null),
+    offset: getVerifiedOffset(parsedPagination?.offset, null),
   };
 
   // Set the pagination in the QSP
   const setPagination = (newPagination: tPagination) => {
-    const newLimit = getVerifiedLimit(newPagination?.limit, config);
-    const newOffset = getVerifiedOffset(newPagination?.offset, config);
+    const newLimit = getVerifiedLimit(newPagination?.limit, null);
+    const newOffset = getVerifiedOffset(newPagination?.offset, null);
 
     const newValidatedPagination = {
       limit: newLimit,

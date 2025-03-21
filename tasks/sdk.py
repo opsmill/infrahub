@@ -1,5 +1,3 @@
-from typing import Optional
-
 from invoke import Context, task
 from invoke.runners import Result
 
@@ -66,29 +64,16 @@ def mypy(context: Context) -> None:
 
 
 @task
-def pylint(context: Context) -> None:
-    """This will run pylint for the specified name and Python version."""
-
-    print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = "pylint infrahub_sdk/"
-    exec_directory = MAIN_DIRECTORY_PATH
-
-    with context.cd(exec_directory):
-        context.run(exec_cmd)
-
-
-@task
-def lint(context: Context) -> Optional[Result]:
+def lint(context: Context) -> Result | None:
     """This will run all linter."""
     ruff(context)
     mypy(context)
-    pylint(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
 @task
-def test_unit(context: Context) -> Optional[Result]:
+def test_unit(context: Context) -> Result | None:
     """Run unit tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'unit'}"
@@ -96,7 +81,7 @@ def test_unit(context: Context) -> Optional[Result]:
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:  # noqa: ARG001
     """Run integration tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'integration'}"

@@ -28,8 +28,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
-from infrahub.menu.menu import default_menu
-from infrahub.menu.utils import create_menu_children
+from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
 
@@ -303,14 +302,6 @@ async def create_ipam_namespace(
     log.info(f"Created IPAM Namespace: {name}")
 
     return obj
-
-
-async def create_default_menu(db: InfrahubDatabase) -> None:
-    for item in default_menu:
-        obj = await item.to_node(db=db)
-        await obj.save(db=db)
-        if item.children:
-            await create_menu_children(db=db, parent=obj, children=item.children)
 
 
 async def create_super_administrator_role(db: InfrahubDatabase) -> Node:

@@ -259,8 +259,8 @@ class TestDiffReadQuery(TestInfrahub):
             include_parents=True,
         )
 
-        assert set([node.label for node in diffs_without[0].nodes]) == {"paris-r1", "paris rack2", "THING1"}
-        assert set([node.label for node in diffs_with[0].nodes]) == {
+        assert {node.label for node in diffs_without[0].nodes} == {"paris-r1", "paris rack2", "THING1"}
+        assert {node.label for node in diffs_with[0].nodes} == {
             "paris",
             "THING1",
             "paris-r1",

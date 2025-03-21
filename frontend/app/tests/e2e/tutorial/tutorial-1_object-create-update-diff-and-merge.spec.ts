@@ -38,9 +38,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("confirm creation and update UI", async () => {
       await expect(page.locator("#alert-success-Tenant-created")).toContainText("Tenant created");
-      const tenantRow = page.locator("tbody >> tr").filter({ hasText: "my-first-tenant" });
-      await expect(tenantRow).toContainText("my-first-tenant");
-      await expect(tenantRow).toContainText("Testing Infrahub");
+      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
+      await expect(page.getByText("Testing Infrahub")).toBeVisible();
     });
   });
 
@@ -106,7 +105,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByRole("link", { name: "View all branches" }).click();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
       await page.getByTestId("branches-items").getByText("cr1234").click();
-      await expect(page.locator("dl")).toContainText("cr1234");
+      await expect(page.getByRole("definition").filter({ hasText: "cr1234" })).toBeVisible();
     });
 
     await test.step("trigger the diff update", async () => {
@@ -142,7 +141,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
       await page.getByRole("menuitem", { name: "Tenant" }).click();
 
-      await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
+      await expect(page.getByTestId("object-items")).toContainText("Changes from branch cr1234");
     });
   });
 
@@ -167,8 +166,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("Row my-first-tenant is visible again when we reset date input", async () => {
       await page.getByTestId("reset-timeframe-selector").click();
-      await expect(page.getByRole("link", { name: "Changes from branch cr1234" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Testing Infrahub" })).not.toBeVisible();
+      await expect(page.getByTestId("object-items")).toContainText("Changes from branch cr1234");
+      await expect(page.getByTestId("object-items")).not.toContainText("Testing Infrahub");
     });
   });
 });

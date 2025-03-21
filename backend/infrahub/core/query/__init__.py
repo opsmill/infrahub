@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -68,9 +68,9 @@ class QueryRelDirection(Enum):
 @dataclass
 class QueryElement:
     type: QueryElementType
-    name: Optional[str] = None
-    labels: Optional[list[str]] = None
-    params: Optional[dict] = None
+    name: str | None = None
+    labels: list[str] | None = None
+    params: dict | None = None
 
     def __str__(self) -> str:
         main_str = "%s%s%s" % (self.name or "", self.labels_as_str, self.params_as_str)
@@ -112,7 +112,7 @@ class QueryRel(QueryElement):
     type: QueryElementType = QueryElementType.RELATIONSHIP
     direction: QueryRelDirection = QueryRelDirection.BIDIR
     length_min: int = 1
-    length_max: Optional[int] = None
+    length_max: int | None = None
 
     def __str__(self) -> str:
         length_str = ""
@@ -160,7 +160,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]], labels: list[str]):
+    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]):
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -212,23 +212,23 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]:
+    def _get(self, label: str) -> Neo4jNode | Neo4jRelationship | list[Neo4jNode]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
         return_id = self.labels.index(label)
         return self.data[return_id]
 
-    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
+    def get(self, label: str) -> Neo4jNode | Neo4jRelationship:
         return self._get(label=label)
 
-    def get_as_str(self, label: str) -> Optional[str]:
+    def get_as_str(self, label: str) -> str | None:
         item = self._get(label=label)
         if item:
             return str(item)
         return None
 
-    def get_as_optional_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> Optional[RETURN_TYPE]:
+    def get_as_optional_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> RETURN_TYPE | None:
         """Return a label as a given type.
 
         For example if an integer is needed the caller would use:
@@ -305,7 +305,7 @@ class QueryResult:
 class QueryStats:
     stats: list[QueryStat] = field(default_factory=list)
 
-    def add(self, data: Optional[dict[str, Any]]) -> None:
+    def add(self, data: dict[str, Any] | None) -> None:
         if data:
             self.stats.append(QueryStat.from_metadata(data))
 
@@ -322,13 +322,13 @@ class QueryStats:
 @dataclass
 class QueryStat:
     contains_updates: bool = False
-    labels_added: Optional[int] = None
-    labels_removed: Optional[int] = None
-    nodes_created: Optional[int] = None
-    nodes_deleted: Optional[int] = None
-    properties_set: Optional[int] = None
-    relationships_created: Optional[int] = None
-    relationships_deleted: Optional[int] = None
+    labels_added: int | None = None
+    labels_removed: int | None = None
+    nodes_created: int | None = None
+    nodes_deleted: int | None = None
+    properties_set: int | None = None
+    relationships_created: int | None = None
+    relationships_deleted: int | None = None
 
     @classmethod
     def from_metadata(cls, data: dict[str, Any]) -> Self:
@@ -346,11 +346,11 @@ class Query(ABC):
 
     def __init__(
         self,
-        branch: Optional[Branch] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        order_by: Optional[list[str]] = None,
+        branch: Branch | None = None,
+        at: Timestamp | str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        order_by: list[str] | None = None,
         branch_agnostic: bool = False,
     ):
         if branch:
@@ -379,7 +379,7 @@ class Query(ABC):
 
         self.stats: QueryStats = QueryStats()
 
-    def update_return_labels(self, value: Union[str, list[str]]) -> None:
+    def update_return_labels(self, value: str | list[str]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
             self.return_labels.append(value)
             return
@@ -391,10 +391,10 @@ class Query(ABC):
     async def init(
         cls,
         db: InfrahubDatabase,
-        branch: Optional[Branch] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        branch: Branch | None = None,
+        at: Timestamp | str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
         **kwargs: Any,
     ) -> Self:
         query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
@@ -412,7 +412,7 @@ class Query(ABC):
         Right now it's mainly used to add more labels to the metrics."""
         return {}
 
-    def add_to_query(self, query: Union[str, list[str]]) -> None:
+    def add_to_query(self, query: str | list[str]) -> None:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
@@ -424,7 +424,7 @@ class Query(ABC):
         else:
             self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
-    def add_subquery(self, subquery: str, with_clause: Optional[str] = None) -> None:
+    def add_subquery(self, subquery: str, with_clause: str | None = None) -> None:
         self.add_to_query("CALL {")
         self.add_to_query(subquery)
         self.add_to_query("}")
@@ -435,8 +435,8 @@ class Query(ABC):
         self,
         var: bool = False,
         inline: bool = False,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> str:
         # Make a local copy of the _query_lines
         limit = limit or self.limit
@@ -479,7 +479,7 @@ class Query(ABC):
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
-            if isinstance(v, (int, list)):
+            if isinstance(v, int | list):
                 return str(v)
             return f'"{v}"'
 
@@ -517,7 +517,7 @@ class Query(ABC):
         params = []
 
         for key, value in self.params.items():
-            if isinstance(value, (int, list)):
+            if isinstance(value, int | list):
                 params.append(f"{key}: {str(value)}")
             else:
                 params.append(f'{key}: "{value}"')
@@ -602,7 +602,7 @@ class Query(ABC):
 
         return results[0][0]
 
-    def get_result(self) -> Optional[QueryResult]:
+    def get_result(self) -> QueryResult | None:
         """Return a single Result."""
 
         if not self.has_been_executed:
@@ -670,8 +670,6 @@ class Query(ABC):
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        # pylint: disable=import-outside-toplevel
-
         from rich.console import Console
         from rich.table import Table
 
@@ -689,7 +687,6 @@ class Query(ABC):
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 
         print("-------------------------------------------------------")

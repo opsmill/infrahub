@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 
 class Error(Exception):
     HTTP_CODE: int = 500
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
-    errors: Optional[list] = None
+    errors: list | None = None
 
     def api_response(self) -> dict[str, Any]:
         """Return error response."""
@@ -43,6 +43,15 @@ class InitializationError(Error):
 class DatabaseError(Error):
     HTTP_CODE: int = 503
     DESCRIPTION = "Database unavailable"
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
+class ServiceUnavailableError(Error):
+    HTTP_CODE: int = 503
+    DESCRIPTION = "Service unavailable"
 
     def __init__(self, message: str) -> None:
         self.message = message
@@ -282,7 +291,7 @@ class MigrationError(Error):
 class ValidationError(Error):
     HTTP_CODE = 422
 
-    def __init__(self, input_value: Union[str, dict, list]) -> None:
+    def __init__(self, input_value: str | dict | list) -> None:
         self.message = ""
         self.location = None
         self.messages = {}

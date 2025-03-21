@@ -1,5 +1,5 @@
-export const focusStyle =
-  "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500 focus-visible:ring-offset-2";
+export const focusVisibleStyle =
+  "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-600/25 focus-visible:border-custom-blue-600";
 
 export const focusWithinStyle =
   "transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-custom-blue-600/25 focus-within:border-custom-blue-600";

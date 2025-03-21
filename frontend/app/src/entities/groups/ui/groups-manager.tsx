@@ -3,12 +3,12 @@ import { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupTriggerButton from "@/entities/groups/ui/add-group-trigger-button";
 import ObjectGroupsList from "@/entities/groups/ui/object-groups-list";
 import { getPermission } from "@/entities/permission/utils";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
@@ -17,7 +17,7 @@ import { useState } from "react";
 
 export type GroupsManagerProps = {
   className?: string;
-  schema: IModelSchema;
+  schema: ModelSchema;
   objectId: string;
   onUpdateCompleted?: () => void;
 };
@@ -36,7 +36,7 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
   );
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {

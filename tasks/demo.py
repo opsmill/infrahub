@@ -16,7 +16,12 @@ from .container_ops import (
     stop_services,
     update_core_schema,
 )
-from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
+from .infra_ops import (
+    load_infrastructure_data,
+    load_infrastructure_menu,
+    load_infrastructure_schema,
+    run_infrastructure_patch_scripts,
+)
 from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
@@ -118,6 +123,12 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> No
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
     load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
     restart_services(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def run_infra_patch_scripts(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Run demo patches scripts"""
+    run_infrastructure_patch_scripts(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])

@@ -2,9 +2,10 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { Route, Routes } from "react-router-dom";
-import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
+import { Route, Routes } from "react-router";
+import { BranchContext } from "../../../src/entities/branches/ui/branches-provider";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
+import { generateBranch } from "../../fake/branch";
 import {
   deviceDetailsMocksASNName,
   deviceDetailsMocksData,
@@ -16,7 +17,6 @@ import {
   getPermissionsData,
   getPermissionsQuery,
 } from "../../mocks/data/devices";
-import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const graphqlQueryItemsUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
@@ -26,6 +26,17 @@ const graphqlQueryItemsPath = "/objects/:objectKind/:objectid";
 
 // Mock the apollo query and data
 const mocks: any[] = [
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsMocksQuery}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: deviceDetailsMocksData,
+    },
+  },
   {
     request: {
       query: gql`
@@ -51,15 +62,6 @@ const mocks: any[] = [
   },
 ];
 
-// Provide the initial value for jotai
-const ObjectDetailsProvider = () => {
-  return (
-    <TestProvider initialValues={[[schemaState, deviceDetailsMocksSchema]]}>
-      <ObjectDetailsPage />
-    </TestProvider>
-  );
-};
-
 describe("List screen", () => {
   it("should fetch object details and render a list of details", () => {
     cy.viewport(1920, 1080);
@@ -69,11 +71,16 @@ describe("List screen", () => {
 
     // Mount the view with the default route and the mocked data
     cy.mount(
-      <MockedProvider mocks={mocks} addTypename={false}>
-        <Routes>
-          <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
-        </Routes>
-      </MockedProvider>,
+      <BranchContext value={{ currentBranch: generateBranch(), setCurrentBranch: () => {} }}>
+        <MockedProvider mocks={mocks} addTypename={false}>
+          <Routes>
+            <Route
+              element={<ObjectDetailsPage schema={deviceDetailsMocksSchema[0]} />}
+              path={graphqlQueryItemsPath}
+            />
+          </Routes>
+        </MockedProvider>
+      </BranchContext>,
       {
         // Add iniital route for the app router, to display the current items view
         routerProps: {

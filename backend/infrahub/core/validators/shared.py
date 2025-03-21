@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 from infrahub.core.path import GroupedDataPaths, SchemaPath  # noqa: TC001
 from infrahub.core.query import Query, QueryType
@@ -12,7 +12,7 @@ class SchemaValidatorQuery(Query):
 
     def __init__(
         self,
-        node_schema: Union[NodeSchema, GenericSchema],
+        node_schema: NodeSchema | GenericSchema,
         schema_path: SchemaPath,
         **kwargs: Any,
     ) -> None:

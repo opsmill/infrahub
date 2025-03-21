@@ -22,8 +22,7 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
             raise RuntimeError("diff_branch_name not set")
         return self._diff_branch_name
 
-    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
-        log.info("Beginning path identifier diff enrichment...")
+    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:  # noqa: ARG002
         self._diff_branch_name = enriched_diff_root.diff_branch_name
         for node in enriched_diff_root.nodes:
             node_path = DataPath(

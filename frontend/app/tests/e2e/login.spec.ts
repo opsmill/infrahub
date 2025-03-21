@@ -1,4 +1,4 @@
-import { Page, expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 const disableSSO = async (page: Page) => {
@@ -107,7 +107,7 @@ test.describe("/login", () => {
     test("should redirect to the initial page after login", async ({ page }) => {
       await disableSSO(page);
       const date = encodeURIComponent(new Date().toISOString());
-      const initialPage = `/objects/BuiltinTag?branch=atl1-delete-upstream&at=${date}`;
+      const initialPage = `/objects/BuiltinTag?at=${date}&branch=atl1-delete-upstream`;
       await page.goto(initialPage);
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
@@ -170,7 +170,7 @@ test.describe("/login", () => {
 
       await page.goto("/objects/BuiltinTag");
 
-      await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
     });
   });
 });

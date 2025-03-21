@@ -1,4 +1,4 @@
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { buildRelationshipSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema.test";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -33,19 +33,24 @@ describe("getObjectFromFilters - test", () => {
 
   it("returns value for a relationship of cardinality one correctly", () => {
     // GIVEN
-    const filters: Array<Filter> = [{ name: "relationship1__ids", value: ["id1"] }];
+    const filters: Array<Filter> = [
+      {
+        name: "relationship1__ids",
+        value: [{ id: "id1", display_label: "relationship1", __typename: "peer1" }],
+      },
+    ];
     const schema = {
       relationships: [
         buildRelationshipSchema({ name: "relationship1", cardinality: "one", peer: "peer1" }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const objectData = getObjectFromFilters(schema, filters);
 
     // THEN
     expect(objectData).toEqual({
-      relationship1: { node: { id: "id1", display_label: "", __typename: "peer1" } },
+      relationship1: { node: { id: "id1", display_label: "relationship1", __typename: "peer1" } },
     });
   });
 
@@ -61,7 +66,7 @@ describe("getObjectFromFilters - test", () => {
       relationships: [
         buildRelationshipSchema({ name: "relationship1", cardinality: "many", peer: "peer1" }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const objectData = getObjectFromFilters(schema, filters);

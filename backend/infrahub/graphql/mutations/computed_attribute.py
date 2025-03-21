@@ -5,12 +5,15 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, InputObjectType, Mutation, String
 
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import ComputedAttributeKind, MutationAction, PermissionAction, PermissionDecision
+from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
-from infrahub.events import EventMeta, NodeMutatedEvent
+from infrahub.events import EventMeta
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data
 from infrahub.worker import WORKER_IDENTITY
 
@@ -30,6 +33,7 @@ class InfrahubComputedAttributeUpdateInput(InputObjectType):
 class UpdateComputedAttribute(Mutation):
     class Arguments:
         data = InfrahubComputedAttributeUpdateInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -40,9 +44,12 @@ class UpdateComputedAttribute(Mutation):
         _: dict,
         info: GraphQLResolveInfo,
         data: InfrahubComputedAttributeUpdateInput,
+        context: ContextInput | None = None,
     ) -> UpdateComputedAttribute:
-        context: GraphqlContext = info.context
-        node_schema = registry.schema.get_node_schema(name=str(data.kind), branch=context.branch.name, duplicate=False)
+        graphql_context: GraphqlContext = info.context
+        node_schema = registry.schema.get_node_schema(
+            name=str(data.kind), branch=graphql_context.branch.name, duplicate=False
+        )
         target_attribute = node_schema.get_attribute(name=str(data.attribute))
         if (
             not target_attribute.computed_attribute
@@ -50,20 +57,21 @@ class UpdateComputedAttribute(Mutation):
         ):
             raise ValidationError(input_value=f"{node_schema.kind}.{target_attribute.name} is not a computed attribute")
 
-        context.active_permissions.raise_for_permission(
+        graphql_context.active_permissions.raise_for_permission(
             permission=ObjectPermission(
                 namespace=node_schema.namespace,
                 name=node_schema.name,
                 action=PermissionAction.UPDATE.value,
                 decision=PermissionDecision.ALLOW_DEFAULT.value
-                if context.branch.name == registry.default_branch
+                if graphql_context.branch.name == registry.default_branch
                 else PermissionDecision.ALLOW_OTHER.value,
             )
         )
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if not (
             target_node := await NodeManager.get_one(
-                db=context.db, kind=node_schema.kind, id=str(data.id), branch=context.branch
+                db=graphql_context.db, kind=node_schema.kind, id=str(data.id), branch=graphql_context.branch
             )
         ):
             raise NodeNotFoundError(
@@ -81,26 +89,26 @@ class UpdateComputedAttribute(Mutation):
             )
         if attribute_field.value != str(data.value):
             attribute_field.value = str(data.value)
-            async with context.db.start_transaction() as dbt:
+            async with graphql_context.db.start_transaction() as dbt:
                 await target_node.save(db=dbt, fields=[str(data.attribute)])
 
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            graphql_payload = await target_node.to_graphql(
-                db=context.db, filter_sensitive=True, include_properties=False
-            )
-
-            event = NodeMutatedEvent(
-                branch=context.branch.name,
+            event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                data=graphql_payload,
+                changelog=target_node.node_changelog.model_dump(),
                 fields=[str(data.attribute)],
-                action=MutationAction.UPDATED,
-                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                meta=EventMeta(
+                    context=graphql_context.get_context(),
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=request_id,
+                    account_id=graphql_context.active_account_session.account_id,
+                    branch=graphql_context.branch,
+                ),
             )
-            await context.active_service.event.send(event=event)
+            await graphql_context.active_service.event.send(event=event)
 
         result: dict[str, Any] = {"ok": True}
 

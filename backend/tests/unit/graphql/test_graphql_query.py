@@ -2048,10 +2048,9 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     assert result2.errors is None
     assert result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
     assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
-    assert (
+    assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"] == Timestamp(
         result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
-        == Timestamp(result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]).to_string()
-    )
+    ).to_string(with_z=False)
     assert (
         result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
         != result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
@@ -2125,12 +2124,9 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
         result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
         != result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
     )
-    assert (
+    assert result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"] == Timestamp(
         result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
-        == Timestamp(
-            result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
-        ).to_string()
-    )
+    ).to_string(with_z=False)
 
 
 async def test_query_attribute_node_property_source(
@@ -2365,7 +2361,7 @@ async def test_query_relationship_node_property(
     assert result.errors is None
 
     results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestPerson"]["edges"]}
-    assert sorted(list(results.keys())) == ["Jane", "John"]
+    assert sorted(results.keys()) == ["Jane", "John"]
     assert len(results["John"]["cars"]["edges"]) == 1
     assert len(results["Jane"]["cars"]["edges"]) == 1
 
@@ -2506,7 +2502,7 @@ async def test_query_relationship_node_property(
     owner_results = {
         item["node"]["name"]["value"]: item["node"] for item in result.data["people_with_cars_and_owners"]["edges"]
     }
-    assert sorted(list(owner_results.keys())) == ["Jane", "John"]
+    assert sorted(owner_results.keys()) == ["Jane", "John"]
     assert len(owner_results["John"]["cars"]["edges"]) == 1
     assert len(owner_results["Jane"]["cars"]["edges"]) == 1
 
@@ -2522,7 +2518,7 @@ async def test_query_relationship_node_property(
     source_results = {
         item["node"]["name"]["value"]: item["node"] for item in result.data["people_with_cars_and_sources"]["edges"]
     }
-    assert sorted(list(source_results.keys())) == ["Jane", "John"]
+    assert sorted(source_results.keys()) == ["Jane", "John"]
     assert len(source_results["John"]["cars"]["edges"]) == 1
     assert len(source_results["Jane"]["cars"]["edges"]) == 1
 

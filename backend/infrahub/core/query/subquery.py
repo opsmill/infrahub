@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import QueryNode
 
@@ -17,16 +17,16 @@ async def build_subquery_filter(
     filter_name: str,
     filter_value: Any,
     branch_filter: str,
-    field: Optional[Union[AttributeSchema, RelationshipSchema]] = None,
+    field: AttributeSchema | RelationshipSchema | None = None,
     node_alias: str = "n",
-    name: Optional[str] = None,
+    name: str | None = None,
     branch: Branch = None,
     subquery_idx: int = 1,
     partial_match: bool = False,
     optional_match: bool = False,
     result_prefix: str = "filter",
     support_profiles: bool = False,
-    extra_tail_properties: Optional[dict[str, str]] = None,
+    extra_tail_properties: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
     support_profiles = (
         support_profiles and field and field.is_attribute and filter_name in ("value", "values", "isnull")
@@ -102,16 +102,16 @@ async def build_subquery_filter(
 
 async def build_subquery_order(
     db: InfrahubDatabase,
-    field: Union[AttributeSchema, RelationshipSchema],
+    field: AttributeSchema | RelationshipSchema,
     order_by: str,
     branch_filter: str,
     node_alias: str = "n",
-    name: Optional[str] = None,
+    name: str | None = None,
     branch: Branch = None,
     subquery_idx: int = 1,
-    result_prefix: Optional[str] = None,
+    result_prefix: str | None = None,
     support_profiles: bool = False,
-    extra_tail_properties: Optional[dict[str, str]] = None,
+    extra_tail_properties: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
     support_profiles = support_profiles and field and field.is_attribute and order_by in ("value", "values")
     params = {}
@@ -143,7 +143,7 @@ async def build_subquery_order(
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     to_return_parts = {f"last.{order_by if order_by != 'values' and '__' not in order_by else 'value'}": prefix}
-    with_parts: dict[str, Optional[str]] = {
+    with_parts: dict[str, str | None] = {
         "last": None,
     }
     if extra_tail_properties:

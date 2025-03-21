@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator, Optional
+from typing import TYPE_CHECKING, AsyncIterator
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
@@ -24,7 +25,7 @@ jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
 
 
-async def cookie_auth_scheme(request: Request) -> Optional[str]:
+async def cookie_auth_scheme(request: Request) -> str | None:
     return request.cookies.get("access_token")  # Replace with the actual name of your JWT cookie
 
 
@@ -61,7 +62,7 @@ async def get_access_token(
 async def get_refresh_token(
     request: Request,
     db: InfrahubDatabase = Depends(get_db),
-    jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme),
+    jwt_header: HTTPAuthorizationCredentials | None = Depends(jwt_scheme),
 ) -> RefreshTokenData:
     token = None
 
@@ -82,8 +83,8 @@ async def get_refresh_token(
 
 async def get_branch_params(
     db: InfrahubDatabase = Depends(get_db),
-    branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
-    at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
+    branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
+    at: str | None = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
     branch = await registry.get_branch(db=db, branch=branch_name)
 
@@ -92,7 +93,7 @@ async def get_branch_params(
 
 async def get_branch_dep(
     db: InfrahubDatabase = Depends(get_db),
-    branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
+    branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
 ) -> Branch:
     return await registry.get_branch(db=db, branch=branch_name)
 
@@ -133,3 +134,10 @@ async def get_permission_manager(
     await permission_manager.load_permissions(db=db, branch=branch_params.branch)
 
     return permission_manager
+
+
+async def get_context(
+    branch: Branch = Depends(get_branch_dep),
+    account_session: AccountSession = Depends(get_current_user),
+) -> InfrahubContext:
+    return InfrahubContext.init(branch=branch, account=account_session)

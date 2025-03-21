@@ -1,4 +1,3 @@
-import { getConfigQueryOptions } from "@/entities/config/get-config.query";
 import {
   Permission,
   PermissionAction,
@@ -6,8 +5,8 @@ import {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
-import { queryClient } from "@/shared/api/rest/client";
 import { warnUnexpectedType } from "@/shared/utils/common";
+import { PERMISSION_ALLOW_ALL } from "./constants";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
   if (!decision)
@@ -31,11 +30,7 @@ const getMessage = (action: string, decision?: PermissionDecisionData): string =
 export function getPermission(permission?: Array<{ node: PermissionData }>): Permission {
   if (!Array.isArray(permission)) return PERMISSION_ALLOW_ALL;
 
-  const config = queryClient.getQueryData(getConfigQueryOptions().queryKey);
-
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
-    if (action === "view" && config?.main.allow_anonymous_access) return { isAllowed: true };
-
     const permissionAllowNode = permission.find(({ node }) => node[action] === "ALLOW");
 
     if (permissionAllowNode) {
@@ -57,10 +52,3 @@ export function getPermission(permission?: Array<{ node: PermissionData }>): Per
     delete: createPermissionAction("delete"),
   };
 }
-
-export const PERMISSION_ALLOW_ALL: Permission = {
-  view: { isAllowed: true },
-  create: { isAllowed: true },
-  update: { isAllowed: true },
-  delete: { isAllowed: true },
-};

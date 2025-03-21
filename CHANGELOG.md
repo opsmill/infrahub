@@ -11,6 +11,69 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.0) - 2025-03-19
+
+### Added
+
+- Added Containerlab to the GitHub Codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
+- We have completely redesigned the object tables to improve usability, performance, and clarity:
+
+  - Display Improvements:
+    - Attributes and relationships are now clearly differentiated in the table
+    - HFID is displayed when available
+
+  - Performance Enhancements:
+    - Infinite scroll replaces pagination for smoother navigation
+    - Query performance improved for faster node list loading
+
+  - Filtering Enhancements:
+    - Filter specific columns directly by clicking the column header
+    - New conditional filters: *contains*, *is empty*, *is not empty*
+    - **Note:** Filtering is not yet available in relationship tables
+
+  - New action menu on each row; edit or delete a node without opening the detail page
+  - And more coming soon!
+
+  ([#3456](https://github.com/opsmill/infrahub/issues/3456))
+- You can now manually trigger a Generator Instance or Generation Definition run from the UI. ([#5354](https://github.com/opsmill/infrahub/issues/5354))
+- Added validation to the UI for `min_count` and `max_count` in relationships fields. ([#5661](https://github.com/opsmill/infrahub/issues/5661))
+- Added a new feature to create object templates when setting `generate_template: true` in the schema on a node.
+- Added activities logs into the node details view.
+- Added icon support to sub-menu items in the sidebar.
+- Improved Infrahub app layout for a cleaner look. Made the top menu more compact.
+- On object creation, you can now specify a list of groups to add the object to.
+- We updated the global UI layout for better balance, alignment, and to prepare for future enhancements.
+
+### Changed
+
+- Replaced `PrefixPool` with `netaddr.IPSet`. ([#3547](https://github.com/opsmill/infrahub/issues/3547))
+- Modified the query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID. The full models will still show up if a fragment is used under the meta data properties. This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
+- Improved typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Made object list retrieval faster with an optimized query.
+- Reorganized builtin/default menu to provide a better user experience. The "Unified Storage" and "Change Control" sections have been deprecated, and their contents moved to either Object Management or Integrations to be more aligned with the purpose of each page.
+- Updated Infrahub account tokens view:
+
+  - Redesigned for a faster, cleaner experience.
+  - Improved clarity and formatting of expiration dates.
+  - Resolved an issue where expiration data was not being sent to the API.
+
+### Fixed
+
+- Fixed a bug where deleting an object from the details view keeps you on your current branch instead of redirecting to the main branch. ([#5232](https://github.com/opsmill/infrahub/issues/5232))
+- Fixed an event error in event state after merging a proposed change, they were incorrectly set as "merging" instead of "merged". ([#5600](https://github.com/opsmill/infrahub/issues/5600))
+- Fixed an issue where the pool selection was not displayed correctly when eligible in a hierarchical relationship field. ([#5888](https://github.com/opsmill/infrahub/issues/5888))
+- Default prefix type in IP Prefix Pool form can now be selected from a dropdown. ([#5889](https://github.com/opsmill/infrahub/issues/5889))
+- Fixed incorrect toast messages for IP address pool creation, updates, and errors. ([#5908](https://github.com/opsmill/infrahub/issues/5908))
+- Resolved an issue where Generic/Component Relationships couldn’t be added or updated in IPAM views. ([#5924](https://github.com/opsmill/infrahub/issues/5924))
+- Infrahub will now correctly display all relationships in IPAM summary views ([#5925](https://github.com/opsmill/infrahub/issues/5925))
+- Fixed an issue where list attribute could not be cleared using UI edit form. ([#5934](https://github.com/opsmill/infrahub/issues/5934))
+
+### Housekeeping
+
+- Activated `ruff` B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
+- Activated `ruff` C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
+- Added a basic integration test for the HTTP service adapter. ([#5553](https://github.com/opsmill/infrahub/issues/5553))
+
 ## [Infrahub - v1.1.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.9) - 2025-03-16
 
 ### Added

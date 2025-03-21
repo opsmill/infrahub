@@ -47,6 +47,7 @@ generator_definition
 generator_definitions
 get_artifact
 github
+gitlab
 graphene
 graphiql
 graphql
@@ -96,7 +97,9 @@ order_weight
 openconfig
 opentelemetry
 order_by
+pg_dump
 Postgress
+Postgresql
 Prefetch
 profile_name
 pseudocode

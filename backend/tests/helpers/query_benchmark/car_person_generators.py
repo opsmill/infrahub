@@ -1,6 +1,6 @@
 import random
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -59,7 +59,7 @@ class EngineGenerator(DataGenerator):
 
 
 class CarWithDiffInSecondBranchGenerator(CarGenerator):
-    persons: Optional[dict[str, Node]]  # mapping of existing cars names -> node
+    persons: dict[str, Node] | None  # mapping of existing cars names -> node
     nb_persons: int
     diff_ratio: float  # 0.1 means 10% of added nodes, 10% of deleted nodes, 10% of modified nodes
     main_branch: Branch
@@ -157,7 +157,7 @@ class PersonGenerator(DataGenerator):
     async def load_persons(
         self,
         nb_persons: int,
-        cars: Optional[dict[str, Node]] = None,
+        cars: dict[str, Node] | None = None,
     ) -> dict[str, Node]:
         """
         Load persons and return a mapping person_name -> person_node.

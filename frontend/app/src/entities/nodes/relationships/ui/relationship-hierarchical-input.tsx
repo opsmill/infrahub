@@ -1,5 +1,6 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import {
   RelationshipComboboxList,
   RelationshipComboboxListProps,
@@ -40,6 +41,7 @@ export const RelationshipHierarchicalContent = ({
 
         <PopoverTabsContent value="list">
           <RelationshipComboboxList {...props} />
+          <AddRelationshipAction {...props} />
         </PopoverTabsContent>
 
         <PopoverTabsContent value="tree">

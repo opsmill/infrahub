@@ -52,7 +52,7 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
         await jesko.new(db=db, name="Jesko", color="Red", owner=john, manufacturer=koenigsegg, profiles=[car_profile])
         await jesko.save(db=db)
 
-        bus_simulator.service.cache = RedisCache()
+        bus_simulator.service._cache = RedisCache()
 
     @pytest.fixture(scope="class")
     async def update_profile(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
@@ -78,7 +78,7 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
 
-        # Ensure all validators and all tasks are successfull
+        # Ensure all validators and all tasks are successful
         assert all(
             validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value for validator in peers.values()
         )

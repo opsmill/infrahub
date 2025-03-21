@@ -64,9 +64,12 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'guides/installation',
+        'guides/installation-enterprise',
         'guides/create-schema',
         'guides/import-schema',
         'guides/menu',
+        'guides/computed-attributes',
+        'guides/resource-manager',
         'guides/accounts-permissions',
         'guides/groups',
         'guides/generator',
@@ -79,9 +82,9 @@ const sidebars: SidebarsConfig = {
         'guides/object-storage',
         'guides/sso',
         'guides/check',
-        'guides/resource-manager',
         'guides/managing-api-tokens',
         'guides/computed-attributes',
+        'guides/webhooks',
       ],
     },
     {
@@ -93,12 +96,15 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'topics/infrahub-yml',
+        'topics/activity-log',
         'topics/architecture',
         'topics/artifact',
         'topics/check',
+        'topics/computed-attributes',
         'topics/metadata',
         'topics/database-backup',
         'topics/developer-guide',
+        'topics/events',
         'topics/local-demo-environment',
         'topics/generator',
         'topics/graphql',
@@ -114,9 +120,14 @@ const sidebars: SidebarsConfig = {
         'topics/resource-manager',
         'topics/resources-testing-framework',
         'topics/schema',
+        'topics/tasks',
         'topics/transformation',
         'topics/auth',
         'topics/computed-attributes',
+        'topics/activity-log',
+        'topics/events',
+        'topics/tasks',
+        'topics/webhooks',
       ],
     },
     {
@@ -127,6 +138,27 @@ const sidebars: SidebarsConfig = {
         slug: 'reference'
       },
       items: [
+        'reference/api-server',
+        'reference/configuration',
+        {
+          type: 'category',
+          label: 'infrahub cli',
+          link: {
+            type: 'generated-index',
+            slug: 'reference/infrahub-cli',
+          },
+          items: [
+            'reference/infrahub-cli/infrahub-db',
+            'reference/infrahub-cli/infrahub-git-agent',
+            'reference/infrahub-cli/infrahub-server'
+          ],
+        },
+        'reference/infrahub-events',
+        'reference/menu',
+        'reference/message-bus-events',
+        'reference/dotinfrahub', //Repository Configuration File
+        'reference/permissions',
+
         {
           type: 'category',
           label: 'Schema',
@@ -144,28 +176,9 @@ const sidebars: SidebarsConfig = {
             'reference/schema/validator-migration',
           ],
         },
-        'reference/menu',
-        {
-          type: 'category',
-          label: 'infrahub cli',
-          link: {
-            type: 'generated-index',
-            slug: 'reference/infrahub-cli',
-          },
-          items: [
-            'reference/infrahub-cli/infrahub-db',
-            'reference/infrahub-cli/infrahub-git-agent',
-            'reference/infrahub-cli/infrahub-server'
-          ],
-        },
-        'reference/configuration',
-        'reference/git-agent',
-        'reference/message-bus-events',
-        'reference/api-server',
-        'reference/dotinfrahub',
+        'reference/schema-validation',
+        'reference/task-worker',
         'reference/infrahub-tests',
-        'reference/permissions',
-        'reference/schema-validation'
       ],
     },
     {
@@ -208,6 +221,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_2_0',
             'release-notes/infrahub/release-1_1_9',
             'release-notes/infrahub/release-1_1_8',
             'release-notes/infrahub/release-1_1_7',

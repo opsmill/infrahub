@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
@@ -20,9 +20,9 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute,
-        attr_id: Optional[str] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Branch] = None,
+        attr_id: str | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | None = None,
         **kwargs: Any,
     ):
         self.attr = attr
@@ -44,7 +44,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -95,7 +95,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -132,7 +132,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -161,7 +161,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 
@@ -185,15 +185,15 @@ class AttributeGetQuery(AttributeQuery):
         self.return_labels = ["a", "ap", "r2"]
 
 
-async def default_attribute_query_filter(  # pylint: disable=unused-argument,too-many-branches,too-many-statements
+async def default_attribute_query_filter(
     name: str,
     filter_name: str,
-    branch: Branch | None = None,
+    branch: Branch | None = None,  # noqa: ARG001
     filter_value: str | int | bool | list | None = None,
     attribute_kind: str | None = None,
     include_match: bool = True,
     param_prefix: str | None = None,
-    db: InfrahubDatabase | None = None,
+    db: InfrahubDatabase | None = None,  # noqa: ARG001
     partial_match: bool = False,
     support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
@@ -203,10 +203,10 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
     query_params: dict[str, Any] = {}
     query_where: list[str] = []
 
-    if filter_value and not isinstance(filter_value, (str, bool, int, list)):
+    if filter_value and not isinstance(filter_value, str | bool | int | list):
         raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
 
-    if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
+    if isinstance(filter_value, list) and not all(isinstance(value, str | bool | int) for value in filter_value):
         raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
 
     param_prefix = param_prefix or f"attr_{name}"

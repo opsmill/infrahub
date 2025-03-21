@@ -18,7 +18,7 @@ class SetMissingHierarchyQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
         MATCH (r:Root)
         WITH r.default_branch AS default_branch
@@ -46,6 +46,6 @@ class Migration021(GraphMigration):
     minimum_version: int = 20
     queries: Sequence[type[Query]] = [SetMissingHierarchyQuery]
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
         return result

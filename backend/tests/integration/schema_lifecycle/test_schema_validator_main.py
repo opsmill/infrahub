@@ -19,7 +19,6 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
 ACCORD_COLOR = "#3443eb"
 VELOCIPEDE_KIND = "TestingVelocipede"
 

@@ -9,6 +9,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
+    get_context,
     get_current_user,
     get_db,
 )
@@ -28,8 +29,8 @@ from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTH
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
+    from infrahub.context import InfrahubContext
     from infrahub.services import InfrahubServices
-
 router = APIRouter()
 
 
@@ -38,6 +39,7 @@ async def transform_python(
     request: Request,
     transform_id: str,
     db: InfrahubDatabase = Depends(get_db),
+    context: InfrahubContext = Depends(get_context),
     branch_params: BranchParams = Depends(get_branch_params),
     _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
@@ -62,7 +64,9 @@ async def transform_python(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = await prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = await prepare_graphql_params(
+        db=request.app.state.db, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+    )
 
     result = await graphql(
         schema=gql_params.schema,
@@ -88,7 +92,7 @@ async def transform_python(
     )
 
     response = await service.workflow.execute_workflow(
-        workflow=TRANSFORM_PYTHON_RENDER, parameters={"message": message}
+        workflow=TRANSFORM_PYTHON_RENDER, context=context, parameters={"message": message}
     )
     return JSONResponse(content=response)
 
@@ -99,6 +103,7 @@ async def transform_jinja2(
     transform_id: str = Path(description="ID or Name of the Jinja2 Transform to render"),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
+    context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
 ) -> PlainTextResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
@@ -122,7 +127,9 @@ async def transform_jinja2(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = await prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = await prepare_graphql_params(
+        db=request.app.state.db, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+    )
 
     result = await graphql(
         schema=gql_params.schema,
@@ -148,6 +155,6 @@ async def transform_jinja2(
     service: InfrahubServices = request.app.state.service
 
     response = await service.workflow.execute_workflow(
-        workflow=TRANSFORM_JINJA2_RENDER, expected_return=str, parameters={"message": message}
+        workflow=TRANSFORM_JINJA2_RENDER, context=context, expected_return=str, parameters={"message": message}
     )
     return PlainTextResponse(content=response)

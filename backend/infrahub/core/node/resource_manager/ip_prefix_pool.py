@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
+
+from netaddr import IPSet
 
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
@@ -11,7 +13,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolSetReserved,
 )
 from infrahub.exceptions import ValidationError
-from infrahub.pools.prefix import PrefixPool
+from infrahub.pools.prefix import get_next_available_prefix
 
 from .. import Node
 
@@ -26,11 +28,11 @@ class CoreIPPrefixPool(Node):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        identifier: Optional[str] = None,
-        data: Optional[dict[str, Any]] = None,
-        prefixlen: Optional[int] = None,
-        member_type: Optional[str] = None,
-        prefix_type: Optional[str] = None,
+        identifier: str | None = None,
+        data: dict[str, Any] | None = None,
+        prefixlen: int | None = None,
+        member_type: str | None = None,
+        prefix_type: str | None = None,
     ) -> Node:
         # Check if there is already a resource allocated with this identifier
         # if not, pull all existing prefixes and allocated the next available
@@ -99,14 +101,15 @@ class CoreIPPrefixPool(Node):
                 branch_agnostic=True,
             )
 
-            pool = PrefixPool(resource.prefix.value)  # type: ignore[attr-defined]
+            pool = IPSet([resource.prefix.value])
             for subnet in subnets:
-                pool.reserve(subnet=str(subnet.prefix))
+                pool.remove(addr=str(subnet.prefix))
 
             try:
-                next_available = pool.get(prefixlen=prefixlen)
+                prefix_ver = ipaddress.ip_network(resource.prefix.value).version
+                next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_ver=prefix_ver)
                 return next_available
-            except IndexError:
+            except ValueError:
                 continue
 
         raise IndexError("No more resources available")

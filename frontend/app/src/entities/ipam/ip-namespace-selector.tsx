@@ -1,4 +1,3 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
 import { GET_IP_NAMESPACES } from "@/entities/ipam/api/ip-namespaces";
 import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -11,17 +10,16 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useEffect, useId } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import { constructPathForIpam } from "./common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
 
 export default function IpNamespaceSelector() {
-  const currentBranchName = useAtomValue(currentBranchAtom);
-  const { loading, data, error } = useQuery(GET_IP_NAMESPACES, { skip: !currentBranchName });
+  const { loading, data, error } = useQuery(GET_IP_NAMESPACES);
 
   if (loading) {
     return <Skeleton className="h-10 w-80" />;

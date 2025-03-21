@@ -1,6 +1,6 @@
 import ipaddress
 from ipaddress import IPv4Interface
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
@@ -20,7 +20,7 @@ from infrahub.graphql.mutations.node_getter.interface import MutationNodeGetterI
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_logger
 
-from .main import InfrahubMutationMixin, InfrahubMutationOptions
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
@@ -32,10 +32,10 @@ async def validate_namespace(
     db: InfrahubDatabase,
     branch: Branch | str | None,
     data: InputObjectType,
-    existing_namespace_id: Optional[str] = None,
+    existing_namespace_id: str | None = None,
 ) -> str:
     """Validate or set (if not present) the namespace to pass to the mutation and return its ID."""
-    namespace_id: Optional[str] = None
+    namespace_id: str | None = None
     if "ip_namespace" not in data or not data["ip_namespace"]:
         namespace_id = existing_namespace_id or registry.default_ipnamespace
         data["ip_namespace"] = {"id": namespace_id}
@@ -53,10 +53,10 @@ async def validate_namespace(
 
 class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
-        _meta: Optional[Any] = None,
+        _meta: Any | None = None,
         **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
@@ -75,7 +75,7 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ):
+    ) -> DeleteResult:
         if data["id"] == registry.default_ipnamespace:
             raise ValueError("Cannot delete default IPAM namespace")
 
@@ -84,10 +84,10 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
 
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
-        _meta: Optional[Any] = None,
+        _meta: Any | None = None,
         **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
@@ -130,10 +130,10 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
         namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
@@ -176,11 +176,11 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,
+        node: Node | None = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         address = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -217,10 +217,10 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         node_getters: list[MutationNodeGetterInterface],
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self, bool]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
         prefix, result, created = await super().mutate_upsert(
@@ -235,16 +235,16 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ):
+    ) -> DeleteResult:
         return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
 class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
-        _meta: Optional[Any] = None,
+        _meta: Any | None = None,
         **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
@@ -284,10 +284,10 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
         namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
         async with db.start_transaction() as dbt:
@@ -327,11 +327,11 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,
+        node: Node | None = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         prefix = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -367,10 +367,10 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         node_getters: list[MutationNodeGetterInterface],
-        database: Optional[InfrahubDatabase] = None,
-    ):
-        context: GraphqlContext = info.context
-        db = database or context.db
+        database: InfrahubDatabase | None = None,
+    ) -> tuple[Node, Self, bool]:
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
         prefix, result, created = await super().mutate_upsert(
@@ -402,18 +402,20 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = context.db
+    ) -> DeleteResult:
+        graphql_context: GraphqlContext = info.context
+        db = graphql_context.db
 
-        prefix = await NodeManager.get_one(data.get("id"), context.db, branch=branch, prefetch_relationships=True)
+        prefix = await NodeManager.get_one(
+            data.get("id"), graphql_context.db, branch=branch, prefetch_relationships=True
+        )
         if not prefix:
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 
         namespace_rels = await prefix.ip_namespace.get_relationships(db=db)
         namespace_id = namespace_rels[0].peer_id
         try:
-            async with context.db.start_transaction() as dbt:
+            async with graphql_context.db.start_transaction() as dbt:
                 if lock_name := cls._get_lock_name(namespace_id, branch):
                     async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
                         reconciled_prefix = await cls._reconcile_prefix(
@@ -429,4 +431,4 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         ok = True
 
-        return reconciled_prefix, cls(ok=ok)
+        return DeleteResult(node=reconciled_prefix, mutation=cls(ok=ok))

@@ -5,15 +5,15 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { gql } from "@apollo/client";
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 
 function RoleManagement() {
   const { loading, error } = useQuery(gql(getObjectPermissionsQuery(GLOBAL_PERMISSION_OBJECT)));
 
   if (loading) {
-    return <LoadingScreen message="Loading permissions..." />;
+    return <LoadingIndicator message="Checking permissions..." className="h-full" />;
   }
 
   if (error) {

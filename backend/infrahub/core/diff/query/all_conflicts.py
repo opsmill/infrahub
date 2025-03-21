@@ -24,7 +24,7 @@ class EnrichedDiffAllConflictsQuery(Query):
         if self.tracking_id is None and self.diff_id is None:
             raise RuntimeError("tracking_id or diff_id is required")
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "diff_branch_name": self.diff_branch_name,
             "diff_id": self.diff_id,

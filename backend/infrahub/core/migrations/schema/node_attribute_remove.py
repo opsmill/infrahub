@@ -18,7 +18,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
     name = "migration_node_attribute_remove_01"
     insert_return: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

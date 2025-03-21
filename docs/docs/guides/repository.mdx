@@ -1,6 +1,7 @@
 ---
 title: Adding external repositories
 ---
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -13,79 +14,64 @@ Infrahub supports two different types of connections to external Git repositorie
 
 ## Recommendations
 
-- We recommend to use a dedicated repository for Infrahub resources.
-- We recommend to configure the branch `main` as `default_branch`.
-- Use `Read-only Repository` preferably for slow moving assets as pulling the changes is a manual operation. It goes well with putting a release tag as a ref and bump the ref from release to release.
-- Use `Read-only Repository` for shared assets across multiple instances or repository external to your organization.
+- We recommend using a dedicated repository for Infrahub resources.
+- We recommend configuring the branch `main` as `default_branch`.
+- Use `Read-only Repository` preferably for slow-moving assets as pulling the changes is a manual operation (it works well with tagging a release and bumping the ref from release to release).
+- Use `Read-only Repository` for shared assets across multiple instances or repositories external to your organization.
 
 ## Adding a repository {#add-repository}
 
-You will need to submit an access token with your request to create a repository in Infrahub. Infrahub uses your username and this token to connect to the external Git repository.
+To create a repository in Infrahub, you'll need to submit the following details:
 
-- [Via the web interface](#via-the-web-interface)
-- [Via the GraphQL interface](#via-the-graphql-interface)
-- [Via the Infrahub SDK](#via-the-infrahub-sdk)
+- **Repository location:** The URL of the external repository (for example, `https://github.com/opsmill/infrahub.git`).
+- **Authentication:** (Optional) A credential object containing your username/password or personal token.
+- **Name:** The identifier you wish to assign to the repository in Infrahub.
+- **Description:** (Optional) A comment or description about the repository.
+- **Ref:** (Optional) A branch, tag, or commit reference to pull.
+- **Tags:** (Optional) Any tags to associate with the repository.
 
-:::info
+:::info Access Token & Private Repository
 
-If your repository is private you might want to have a personal token to access the repository. If you use GitHub as your Git Server you can find further information in this [Guide](#github-access-token)
+If your repository is private, you might want to use a personal token to access it. If you use GitHub as your Git Server, see this [Guide](#github-access-token).
 
 :::
-
-### Via the web interface
-
-![Add a Git Repository ](../media/create_repository.png)
-{/*TODO: Generate this screen*/}
-
-1. Log in to the Infrahub UI
-2. Go to `Unified Storage` > `Repository`
-3. Click on the `+ Add Git Repository` button
-4. Select the repository type
-5. Complete the required information:
 
 <Tabs>
-  <TabItem value="Repository location" default>
-    The URL of the external repository, for example `https://github.com/opsmill/infrahub.git`.
+  <TabItem value="Via the Web Interface" default>
+  ### Via the Web Interface
+
+  1. Log in to the Infrahub UI.
+  2. Go to **Integrations > Git Repositories**.
+  3. Click on the **+ Add Git Repository** button.
+  4. Select the repository type.
+  5. Complete the required information.
+
+  ![Add a Git Repository](../media/create_repository.png)
+  {/*TODO: Generate this screen*/}
+
+  :::success Validate that everything is correct
+  In the UI, you should see your new repository. If its Operational Status is `Unknown`, verify the location and credentials.
+
+  :::
   </TabItem>
-  <TabItem value="Authentication">
-    (Optional): Credential object holding your username / password or personal token with access to the Git repository specified.
-  </TabItem>
-  <TabItem value="Name">
-    The name you want to give the repository in Infrahub for identification purposes.
-  </TabItem>
-  <TabItem value="Description">
-    (Optional): A description or comment about the repository used for informational purposes.
-  </TabItem>
-  <TabItem value="Ref">
-    (Optional): Branch, tag or commit reference to pull.
-  </TabItem>
-  <TabItem value="Tags">
-    (Optional): Assign any tags to be associated with the repository.
-  </TabItem>
-</Tabs>
 
-:::success Validate that everything is correct
+  <TabItem value="Via the GraphQL Interface">
+  ### Via the GraphQL Interface
 
-In the UI, you should see your new repository. If the repository you added has `Unknown` as Operational Status it means that Infrahub didn't managed to reach your repository. Verify the location and credentials.
+  Using the GraphQL Interface, you can add a `Repository` or `Read-only Repository` via a [Mutation](../topics/graphql).
+  {/*TODO: Detail usage if using an external GraphQL browser like Insomnia*/}
 
-:::
+  1. Open the [GraphQL Interface](http://localhost:8000/graphql).
+  2. If needed (for example with a private repository), create a Credential object with your username and password/token:
 
-### Via the GraphQL interface
-
-Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only Repository` via a [Mutation](../topics/graphql).
-{/*TODO: Detail usage if using external GraphQL browser i.e. insomnia*/}
-
-1. Open the [GraphQL Interface](http://localhost:8000/graphql).
-2. If needed, i.e., your repository is private, create a Credential object to hold your username / password.
-
-```graphql
+  ```graphql
   # Endpoint: http://127.0.0.1:8000/graphql/main
   mutation {
     CorePasswordCredentialCreate(
       data: {
-        name: {value: "my-git-credential"},
-        username: {value: "MY_USERNAME"},
-        password: {value: "MY_TOKEN_OR_PASSWORD"}
+        name: { value: "my-git-credential" },
+        username: { value: "MY_USERNAME" },
+        password: { value: "MY_TOKEN_OR_PASSWORD" }
       }
     ) {
       ok
@@ -94,71 +80,67 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
       }
     }
   }
-```
+  ```
 
-3. Copy-paste the correct mutation from below and complete the information
+  3. Use one of the mutations below based on your repository type:
 
-<Tabs>
-  <TabItem value="Repository" default>
-
-```graphql
-  # Endpoint: http://127.0.0.1:8000/graphql/main
-  mutation {
-    CoreRepositoryCreate(
-      data: {
-        name: {value: "My Git Repository"},
-        location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
-        # The HFID returned during step 2 will be the name of the credentials
-        credential: {hfid: "my-git-credential"}
-      }
-    ) {
-      ok
-      object {
-        id
-      }
-    }
-  }
-```
-
-  </TabItem>
-  <TabItem value="Read-only Repository">
-    **Make sure that you are on the correct Infrahub branch.** Unlike a Repository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
-
-```graphql
-  # Endpoint : http://127.0.0.1:8000/graphql/<branch>
-  mutation {
-    CoreReadOnlyRepositoryCreate(
-      data: {
-        name: {value: "My Git Repository"},
-        location: {value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git"},
-        ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" },
-        # Optional: the HFID returned during step 2 will be the name of the credentials
-        credential: {hfid: "my-git-credential"}
-      }
-    ) {
-      ok
-      object {
-        id
+  <Tabs>
+    <TabItem value="Repository" default>
+    ```graphql
+    # Endpoint: http://127.0.0.1:8000/graphql/main
+    mutation {
+      CoreRepositoryCreate(
+        data: {
+          name: { value: "My Git Repository" },
+          location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" },
+          # The HFID returned in step 2 will be used for the credentials
+          credential: { hfid: "my-git-credential" }
+        }
+      ) {
+        ok
+        object {
+          id
+        }
       }
     }
-  }
-```
+    ```
+    </TabItem>
+    <TabItem value="Read-only Repository">
+    ```graphql
+    # Endpoint: http://127.0.0.1:8000/graphql/<branch>
+    mutation {
+      CoreReadOnlyRepositoryCreate(
+        data: {
+          name: { value: "My Git Repository" },
+          location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" },
+          ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" },
+          # Optional: use the credential created earlier
+          credential: { hfid: "my-git-credential" }
+        }
+      ) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    ```
+    </TabItem>
+  </Tabs>
 
+  :::success Validate that everything is correct
+  The repository should appear under [Integrations / Git Repositories](http://localhost:8000/objects/CoreGenericRepository). If its Operational Status is `Unknown`, verify your repository’s location and credentials.
+
+  :::
   </TabItem>
-</Tabs>
 
-:::success Validate that everything is correct
+  <TabItem value="Via the Infrahub SDK">
+  ### Via the Infrahub SDK
 
-The repository should be visible under [Unified Storage / Repository](http://localhost:8000/objects/CoreGenericRepository). If the repository you added has `Unknown` as Operational Status it means that Infrahub didn't managed to reach your repository. Verify the location and credentials.
+  1. Install and set up the [Infrahub SDK]($(base_url)python-sdk/introduction).
+  2. If your repository is private, create a Credential object with your username/password (recommended for Repository to allow branch creation):
 
-:::
-
-### Via the Infrahub SDK
-
-1. Install and setup the [Infrahub SDK]($(base_url)python-sdk/introduction)
-2. If needed, i.e., your repository is private, create a Credential object to hold your username / password. We highly recommend to provide credentials for Repository to allow branch creation from Infrahub.
-
-```python
+  ```python
   # Create credential object ...
   credential = client.create(
       "CorePasswordCredential",
@@ -166,88 +148,76 @@ The repository should be visible under [Unified Storage / Repository](http://loc
       username="MY_USERNAME",
       password="MY_TOKEN_OR_PASSWORD",
   )
-
-  # ... and save it!
   credential.save()
-```
+  ```
 
-3. Create the correct repository object
+  3. Create the repository object:
 
-<Tabs>
-  <TabItem value="Repository" default>
+  <Tabs>
+    <TabItem value="Repository" default>
+    ```python
+    # Create repository object ...
+    repository = client.create(
+        "CoreRepository",
+        name="My Git repository",
+        location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
+        credential=credential,  # The credential object created above
+    )
+    repository.save()
+    ```
+    </TabItem>
+    <TabItem value="Read-only Repository">
+    ```python
+    # Create repository object ...
+    repository = client.create(
+        "CoreReadOnlyRepository",
+        name="My Git repository",
+        location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
+        ref="BRANCH/TAG/COMMIT_TO_TRACK",
+        credential=credential,  # Optional: use the credential created above
+    )
+    repository.save()
+    ```
+    </TabItem>
+  </Tabs>
 
-```python
-  # Create repository object ...
-  repository = client.create(
-      "CoreRepository",
-      name="My Git repository",
-      location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
-      # The credential object created at step 2
-      credential=credential,
-  )
-
-  # and save it ...
-  repository.save()
-```
-
-  </TabItem>
-  <TabItem value="Read-only Repository">
-
-```python
-  # Create repository object ...
-  repository = client.create(
-      "CoreReadOnlyRepository",
-      name="My Git repository",
-      location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
-      ref="BRANCH/TAG/COMMIT_TO_TRACK",
-      # Optional: the credential object created at step 2
-      credential=credential,
-  )
-
-  # and save it ...
-  repository.save()
-```
+  {/*TODO: Via the Infrahub CTL*/}
 
   </TabItem>
 </Tabs>
-
-{/*TODO: Via the Infrahub CTL*/}
 
 ## Pulling changes for read-only repository
 
-`Read-only Repository` and `Repository` work in different ways when it comes to tracking changes on the remote repository. Please refer to the [Repository Topic](../topics/repository#read-only-vs-core) for further details.
+`Read-only Repository` and `Repository` track remote changes differently. For further details, refer to the [Repository Topic](../topics/repository#read-only-vs-core).
 
 :::warning
-
-Unlike `Repository`, Infrahub does not automatically update `Read-only Repository` with changes from the external repository. To pull in changes from the external repository you must update the `ref` of the `Read-only Repository` to the desired value.
+Unlike a `Repository`, Infrahub does not automatically update a `Read-only Repository` with remote changes. To update, you must change the `ref` value.
 
 :::
 
-### Via the web interface
-
-1. Log in to the Infrahub UI
-2. Go to `Unified Storage` > `Repository`
-3. Click on the `CoreReadOnlyRepository` record
-4. Click on the `Edit Read-Only Repository` button
-5. Change the required information:
-
 <Tabs>
-  <TabItem value="Ref">
-    (Optional): Branch, tag or commit reference to pull.
+  <TabItem value="Via the Web Interface" default>
+  ### Via the Web Interface
+
+  1. Log in to the Infrahub UI.
+  2. Go to **Integrations > Git Repositories**.
+  3. Click on the desired `CoreReadOnlyRepository` record.
+  4. Click on the **Edit Read-Only Repository** button.
+  5. Change the `ref` with the branch, tag, or commit reference to pull
+
   </TabItem>
-</Tabs>
+  <TabItem value="Via the GraphQL Interface">
+  ### Via the GraphQL Interface
 
-### Via the GraphQL interface
+  1. Open the [GraphQL Interface](http://localhost:8000/graphql).
+  2. Use the mutation below, filling in the details:
 
-1. Open the [GraphQL Interface](http://localhost:8000/graphql).
-2. Copy-paste the correct mutation from below and complete the information
-
-```graphql
-  # Endpoint : http://127.0.0.1:8000/graphql/main
+  ```graphql
+  # Endpoint: http://127.0.0.1:8000/graphql/main
   mutation {
     CoreReadOnlyRepositoryUpdate(
       data: {
-        hfid: ["My Git repository"]
+        hfid: ["My Git repository"],
         ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" }
       }
     ) {
@@ -257,52 +227,56 @@ Unlike `Repository`, Infrahub does not automatically update `Read-only Repositor
       }
     }
   }
-```
+  ```
+
+  </TabItem>
+</Tabs>
 
 ## Troubleshooting repository
 
-Various issues could affect repositories. The [Repository Status](../topics/repository#repository-statuses) gives you further details about the root cause.
+For troubleshooting, consult the [Repository Status](../topics/repository#repository-statuses) for potential issues. You can also view the low-level repository operations output from the UI:
 
-Also, directly from the UI you can access the output of low level repository operations:
-
-1. Log in to the Infrahub UI
-2. Go to `Unified Storage` > `Repository`
-3. Click on the `CoreReadOnlyRepository` record
-4. Click on the `Tasks` tab
+1. Log in to the Infrahub UI.
+2. Go to **Integrations > Git Repositories**.
+3. Select the relevant `CoreReadOnlyRepository` record.
+4. Click on the **Tasks** tab.
 
 {/*TODO: Add further use cases like sync-issue*/}
 
 ## GitHub access token {#github-access-token}
 
-If you are using GitHub as your Git Server and your repository is private, you need to have an access token to be able to access the repository. You can use either a classic [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) or a [Fine-grained Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token).
+If your repository is private on GitHub, you need an access token.
+
+You can use either :
+
+- a classic [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic)
+- a [Fine-grained Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token).
 
 <details>
   <summary>Generate a GitHub fine-grained personal access token</summary>
 
-  1. Go to settings > Developer Settings > Personal access tokens [New GitHub token](https://github.com/settings/personal-access-tokens/new)
-  2. Select Fine-grained tokens
-  3. Limit the scope of the token in **Repository Access** > **Only Select Repositories**
+  1. Go to **Settings > Developer Settings > Personal access tokens > New GitHub token**.
+  2. Select **Fine-grained tokens**.
+  3. Limit the scope under **Repository Access > Only Select Repositories**.
   4. Grant the token permission:
-    - a. If you want to create a `Repository` using this token, then you will need to give it `Read/Write` access for the **Content** of the repository.
-    - b. If you want to create a `Read-only Repositor`y using this token, then you will only need to give it `Read` access for the **Content** of the repository.
+
+     - For a `Repository`, grant **Read/Write** access to the repository content.
+     - For a `Read-only Repository`, grant **Read** access only.
 
   ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
 </details>
 
 ## Installing custom CA certificates
 
-If the git server hosting your external git repository is using a server certificate that is signed by a certificate authority that is not part of trust store, then you will have to add the CA certificate using the following process.
+If your Git server uses a certificate signed by an unknown CA, add the CA certificate as follows.
 
 :::info
-
-In this process we will have to build a custom docker image. This docker image will have to be rebuild every time you want to use a new release.
+You will need to build a custom Docker image, and rebuild it with each new release.
 
 :::
 
-First you will have to gather the CA certificate (and any intermediate CA certificates) in PEM format and store it on you local disk.
-This guide makes the assumption that you have saved the CA certificate file as `mycacertificate.crt`
-
-Next we will have to create a Dockerfile. The file should be saved as `Dockerfile` in the same directory as the directory containing the CA certificate you want to install.
+1. Save your CA certificate (and any intermediate certificates) in PEM format (such as `mycacertificate.crt`).
+2. Create a Dockerfile (in the same directory as your certificate):
 
 ```dockerfile
 ARG INFRAHUB_VERSION=latest
@@ -312,15 +286,13 @@ COPY mycacertificate.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 ```
 
-We then have to build a Docker image from the Dockerfile. We can do this by executing this command
+3. Build the Docker image:
 
 ```shell
 INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
-This will build a custom docker image and tag it as `custom/infrahub:latest`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
-
-As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
+4. Create a `docker-compose.override.yml` file in the `development` directory:
 
 ```yaml
 ---
@@ -329,25 +301,21 @@ services:
     image: custom/infrahub:latest
 ```
 
-A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](../guides/installation).
+Start your development environment with the `invoke demo.start` command as explained in the [Installing Infrahub guide](../guides/installation).
 
 ## Disable certificate verification
 
-You can disable certificate verification for the external Git repository by following the following process.
-
 :::warning
-
-Disabling certificate validation is a BAD practice and is STRONGLY discouraged
+Disabling certificate validation is a BAD practice and is STRONGLY discouraged.
 
 :::
 
 :::info
-
-In this process we will have to build a custom docker image. This docker image will have to be rebuild every time you want to use a new release.
+You will need to build a custom Docker image, and rebuild it with each new release.
 
 :::
 
-We will have to create a Dockerfile, that should be saved as `Dockerfile` on your local filesystem.
+1. Create a Dockerfile on your local system:
 
 ```dockerfile
 ARG INFRAHUB_VERSION=latest
@@ -356,15 +324,13 @@ FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
 RUN git config --global http.sslVerify "false"
 ```
 
-We then have to build a Docker image from the Dockerfile. We can do this by executing this command
+2. Build the Docker image:
 
 ```shell
 INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
-This will build a custom docker image and tag it as `custom/infrahub:latest`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
-
-As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
+3. Create a `docker-compose.override.yml` file in the `development` directory:
 
 ```yaml
 ---
@@ -373,25 +339,23 @@ services:
     image: custom/infrahub:latest
 ```
 
-A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](../guides/installation).
+Start your environment with `invoke demo.start` as detailed in the [Installing Infrahub guide](../guides/installation).
 
 ## Using a proxy server
 
-In some scenarios Infrahub's git worker containers are not allowed to connect directly to the git server hosting your repository and the connection has to pass through a proxy server.
+In some cases, Infrahub’s git worker containers must connect through a proxy.
 
 :::info
-
-This way of using a proxy server for git repositories only works when using HTTP(S) connections. SSH connections are not supported.
+This method works only for HTTP(S) connections (SSH is not supported).
 
 :::
 
 :::info
-
-In this process we will have to build a custom docker image. This docker image will have to be rebuild every time you want to use a new release.
+You will need to build a custom Docker image, and rebuild it with each new release.
 
 :::
 
-We will have to create a Dockerfile, that should be saved as `Dockerfile` on your local filesystem. In the Dockerfile you will have to adapt the URL for the proxy to your environment. Replace `user:password` with the username and password you have to use for the proxy, if required. Replace the FQDN `internal.proxy` to the FQDN of the proxy and modify the port, if required.
+1. Create a Dockerfile. Update the proxy URL, replacing `user:password` with your credentials and modifying the FQDN/port as needed:
 
 ```dockerfile
 ARG INFRAHUB_VERSION=latest
@@ -400,15 +364,13 @@ FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
 RUN git config --global http.proxy http://user:password@internal.proxy:8080
 ```
 
-We then have to build a Docker image from the Dockerfile. We can do this by executing this command
+2. Build the Docker image:
 
 ```shell
 INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
-This will build a custom docker image and tag it as `custom/infrahub:latest`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
-
-As a last step we have to create a `docker-compose.override.yml` file with the following contents in the `development` directory of your clone of the Infrahub repository.
+3. Create a `docker-compose.override.yml` file in the `development` directory:
 
 ```yaml
 ---
@@ -417,4 +379,4 @@ services:
     image: custom/infrahub:latest
 ```
 
-A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](../guides/installation).
+Start your development environment with `invoke demo.start` as explained in the [Installing Infrahub guide](../guides/installation).

@@ -1,36 +1,24 @@
-import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
-import ArtifactsDetails from "@/entities/artifacts/ui/artifact-details";
+import { GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router";
 import GraphqlQueryDetailsPage from "./CoreGraphQLQuery/graphql-query-details";
 
-export function ObjectDetailsPage() {
-  const { objectKind, objectid } = useParams();
+export function ObjectDetailsPage({ schema }: { schema: ModelSchema }) {
+  const { objectid } = useParams();
 
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
-
-  const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
-
-  if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
-
-  if (!objectid) return <ObjectItems schema={schema} />;
-
-  const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid);
+  const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid as string);
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
   }
 
   if (!permission.view.isAllowed) {
@@ -69,18 +57,19 @@ export function ObjectDetailsPage() {
 
 export const Component = () => {
   const { objectKind, objectid } = useParams();
+  const { schema } = useSchema(objectKind);
+
+  if (!schema) {
+    return <ErrorScreen message={`Schema ${objectKind} not found.`} />;
+  }
 
   if (!objectid) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
   }
 
-  if (objectKind === ARTIFACT_OBJECT) {
-    return <ArtifactsDetails artifactId={objectid} />;
-  }
-
   if (objectKind === GRAPHQL_QUERY_OBJECT) {
-    return <GraphqlQueryDetailsPage graphqlQueryId={objectid} />;
+    return <GraphqlQueryDetailsPage graphqlQuerySchema={schema} graphqlQueryId={objectid} />;
   }
 
-  return <ObjectDetailsPage />;
+  return <ObjectDetailsPage schema={schema} />;
 };

@@ -5,7 +5,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
 import { HTMLAttributes } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import ResourcePoolUtilization from "./ResourcePoolUtilization";
 
 export type ResourceProps = {

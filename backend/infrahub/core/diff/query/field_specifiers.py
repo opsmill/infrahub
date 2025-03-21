@@ -12,7 +12,7 @@ class EnrichedDiffFieldSpecifiersQuery(Query):
         super().__init__(**kwargs)
         self.diff_id = diff_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["diff_id"] = self.diff_id
         query = """
 CALL {
