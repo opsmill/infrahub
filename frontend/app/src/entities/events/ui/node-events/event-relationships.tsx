@@ -1,7 +1,6 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { Card } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
@@ -16,22 +15,20 @@ export const EventRelationships = ({ relationships }: Pick<NodeMutatedEvent, "re
   if (relationships.length === 0) return null;
 
   return (
-    <Card className="grid grid-cols-[min-content_auto] gap-1.5 text-xs bg-zinc-50">
-      <ScrollArea>
-        {relationships.map(({ action, name, peer }) => {
-          return (
-            <React.Fragment key={`${action}_${name}`}>
-              <div className="flex items-center gap-2 overflow-hidden">
-                {ActionMapping[action] ?? "-"}
+    <Card className="flex flex-col gap-1.5 text-xs bg-zinc-50">
+      {relationships.map(({ action, name, peer }) => {
+        return (
+          <React.Fragment key={`${peer.id}`}>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="truncate text-left text-gray-600">{name}</div>
 
-                <div className="truncate text-left text-gray-600">{name}</div>
+              {ActionMapping[action] ?? "-"}
 
-                <NodeLabel id={peer.id} kind={peer.kind} />
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </ScrollArea>
+              <NodeLabel id={peer.id} kind={peer.kind} />
+            </div>
+          </React.Fragment>
+        );
+      })}
     </Card>
   );
 };
