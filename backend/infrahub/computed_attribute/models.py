@@ -126,7 +126,14 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         This function is used to create a trigger definition for a computed attribute of type Jinja2.
         """
         event_trigger = EventTrigger()
-        event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
+        event_trigger.events.add(NodeUpdatedEvent.event_name)
+        if computed_attribute.attribute.optional:
+            # If the computed attribute not optional it means that Infrahub will have assigned the value during
+            # the creation of the node so we don't need to match on node creation events as it would only add
+            # extra work that doesn't accomplish anything. For this reason the filter should only match on the
+            # node creation events if the attribute is optional.
+            event_trigger.events.add(NodeCreatedEvent.event_name)
+
         event_trigger.match = {"infrahub.node.kind": trigger_node.kind}
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
