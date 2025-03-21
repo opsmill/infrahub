@@ -145,6 +145,17 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         chart_yaml["appVersion"] = app_version
         chart_yaml["version"] = new_helm_version
 
+        if chart == "infrahub":
+            dependency_version = new_helm_version
+        elif chart == "infrahub-enterprise":
+            if "dependencies" in chart_yaml:
+                for dependency in chart_yaml["dependencies"]:
+                    if dependency["name"] == "infrahub":
+                        # Update 'infrahub' dependencies in helm chart
+                        dependency["version"] = dependency_version
+                        print(f"'infrahub' dependency update to {dependency_version} in {chart}")
+                        break
+
         yaml.dump(chart_yaml, chart_path)
 
         print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
