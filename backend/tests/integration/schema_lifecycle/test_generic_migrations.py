@@ -19,6 +19,7 @@ from .shared import TestSchemaLifecycleBase
 GENERIC_KIND = "TestingGeneric"
 SPECIFIC_ONE_KIND = "TestingSpecificOne"
 SPECIFIC_TWO_KIND = "TestingSpecificTwo"
+SPECIFIC_THREE_KIND = "TestingSpecificThree"
 THING_KIND = "TestingThing"
 
 
@@ -81,13 +82,26 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step01(
-        self, schema_generic_base, schema_specific_one_base, schema_specific_two_base, schema_thing
+    def schema_specific_three_base(self) -> dict[str, Any]:
+        return {
+            "name": "SpecificThree",
+            "namespace": "Testing",
+            "inherit_from": ["TestingGeneric"],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step_01(
+        self,
+        schema_generic_base,
+        schema_specific_one_base,
+        schema_specific_two_base,
+        schema_specific_three_base,
+        schema_thing,
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_generic_base],
-            "nodes": [schema_specific_one_base, schema_specific_two_base, schema_thing],
+            "nodes": [schema_specific_one_base, schema_specific_two_base, schema_specific_three_base, schema_thing],
         }
 
     @pytest.fixture(scope="class")
@@ -97,9 +111,9 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
-        self, db: InfrahubDatabase, initialize_registry, client: InfrahubClient, schema_step01, branch_name: str
+        self, db: InfrahubDatabase, initialize_registry, client: InfrahubClient, schema_step_01, branch_name: str
     ) -> dict[str, Node]:
-        await load_schema(db=db, schema=schema_step01)
+        await load_schema(db=db, schema=schema_step_01)
 
         thing_one = await Node.init(schema=THING_KIND, db=db)
         await thing_one.new(db=db, value="ONE")
@@ -109,6 +123,10 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         await thing_two.new(db=db, value="TWO")
         await thing_two.save(db=db)
 
+        thing_three = await Node.init(schema=THING_KIND, db=db)
+        await thing_three.new(db=db, value="THREE")
+        await thing_three.save(db=db)
+
         specific_one = await Node.init(schema=SPECIFIC_ONE_KIND, db=db)
         await specific_one.new(db=db, generic_attr_text="Alpha", generic_attr_num=1, favorite_thing=thing_one)
         await specific_one.save(db=db)
@@ -117,12 +135,18 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         await specific_two.new(db=db, generic_attr_text="Bravo", generic_attr_num=2, favorite_thing=thing_two)
         await specific_two.save(db=db)
 
+        specific_three = await Node.init(schema=SPECIFIC_THREE_KIND, db=db)
+        await specific_three.new(db=db, generic_attr_text="Charlie", generic_attr_num=3, favorite_thing=thing_three)
+        await specific_three.save(db=db)
+
         await client.branch.create(branch_name=branch_name, wait_until_completion=True)
         objs = {
             "thing_one": thing_one,
             "thing_two": thing_two,
+            "thing_three": thing_three,
             "specific_one": specific_one,
             "specific_two": specific_two,
+            "specific_three": specific_three,
         }
         return objs
 
@@ -170,13 +194,60 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         return schema_dict
 
     @pytest.fixture(scope="class")
-    def schema_step02(
-        self, schema_generic_base, schema_specific_one_with_overrides, schema_specific_two_with_new_fields, schema_thing
+    def schema_specific_three_with_overrides(self, schema_specific_three_base: dict[str, Any]) -> dict[str, Any]:
+        schema_dict = schema_specific_three_base.copy()
+        schema_dict["attributes"] = [
+            {"name": "generic_attr_text", "kind": "Text", "optional": True, "regex": "^[A-Z][a-z]+"},
+            {"name": "specific_attr_num", "kind": "Number", "optional": True},
+        ]
+        return schema_dict
+
+    @pytest.fixture(scope="class")
+    def schema_step_02(
+        self,
+        schema_generic_base,
+        schema_specific_one_with_overrides,
+        schema_specific_two_with_new_fields,
+        schema_specific_three_with_overrides,
+        schema_thing,
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_generic_base],
-            "nodes": [schema_specific_one_with_overrides, schema_specific_two_with_new_fields, schema_thing],
+            "nodes": [
+                schema_specific_one_with_overrides,
+                schema_specific_two_with_new_fields,
+                schema_specific_three_with_overrides,
+                schema_thing,
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_specific_three_with_deleted_override(
+        self, schema_specific_three_with_overrides: dict[str, Any]
+    ) -> dict[str, Any]:
+        schema_dict = schema_specific_three_with_overrides.copy()
+        schema_dict["attributes"][0]["state"] = "absent"
+        return schema_dict
+
+    @pytest.fixture(scope="class")
+    def schema_step_03(
+        self,
+        schema_generic_base,
+        schema_specific_one_with_overrides,
+        schema_specific_two_with_new_fields,
+        schema_specific_three_with_deleted_override,
+        schema_thing,
+    ) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "generics": [schema_generic_base],
+            "nodes": [
+                schema_specific_one_with_overrides,
+                schema_specific_two_with_new_fields,
+                schema_specific_three_with_deleted_override,
+                schema_thing,
+            ],
         }
 
     @pytest.fixture(scope="class")
@@ -191,7 +262,7 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         return schema_dict
 
     @pytest.fixture(scope="class")
-    def schema_step03(
+    def schema_step04(
         self,
         schema_generic_with_deletes,
         schema_specific_one_with_overrides,
@@ -227,7 +298,7 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         return schema_dict
 
     @pytest.fixture(scope="class")
-    def schema_step04(
+    def schema_step_05(
         self,
         schema_generic_without_deleted_fields,
         schema_specific_one_with_deleted_overrides,
@@ -334,14 +405,14 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, branch: Branch, initial_dataset):
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
-        assert len(all_specifics) == 2
+        assert len(all_specifics) == 3
 
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
             inheriting_schemas=[
                 db.schema.get_node_schema(name=schema_kind, branch=branch, duplicate=False)
-                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
+                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND)
             ],
         )
         assert not errors
@@ -351,9 +422,9 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         client: InfrahubClient,
         initial_dataset,
         branch: Branch,
-        schema_step02: dict[str, Any],
+        schema_step_02: dict[str, Any],
     ):
-        success, response = await client.schema.check(schemas=[schema_step02], branch=branch.name)
+        success, response = await client.schema.check(schemas=[schema_step_02], branch=branch.name)
         assert success
         assert response == {
             "diff": {
@@ -413,6 +484,28 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                         },
                         "removed": {},
                     },
+                    SPECIFIC_THREE_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {
+                                    "specific_attr_num": None,
+                                },
+                                "changed": {
+                                    "generic_attr_text": {
+                                        "added": {},
+                                        "changed": {
+                                            "regex": None,
+                                            "inherited": None,
+                                        },
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
                 },
                 "removed": {},
             },
@@ -424,10 +517,10 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         client: InfrahubClient,
         initial_dataset,
         branch: Branch,
-        schema_step02: dict[str, Any],
+        schema_step_02: dict[str, Any],
     ):
         # Load the new schema and apply the migrations
-        response = await client.schema.load(schemas=[schema_step02], branch=branch.name)
+        response = await client.schema.load(schemas=[schema_step_02], branch=branch.name)
         assert not response.errors
 
         await self._refresh_registry(db=db, branch=branch)
@@ -446,6 +539,16 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
         assert isinstance(retrieved_specific_two.things, RelationshipManager)
+
+        retrieved_specific_three = await NodeManager.get_one(
+            db=db, branch=branch, id=initial_dataset["specific_three"].id
+        )
+        assert retrieved_specific_three.generic_attr_text.value == "Charlie"
+        assert retrieved_specific_three.generic_attr_num.value == 3
+        rels_three = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
+        assert len(rels_three) == 1
+        assert rels_three[0].peer_id == initial_dataset["thing_three"].id
+        assert isinstance(retrieved_specific_three.things, RelationshipManager)
 
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
@@ -469,13 +572,25 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert set(specific_two_schema.local_attribute_names) == {"specific_attr_text"}
         assert set(specific_two_schema.relationship_names) >= {"things", "favorite_thing", "specific_things"}
         assert set(specific_two_schema.local_relationship_names) >= {"specific_things"}
+        specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
+        assert set(specific_three_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "specific_attr_num",
+        }
+        assert set(specific_three_schema.local_attribute_names) == {"generic_attr_text", "specific_attr_num"}
+        overridden_generic_attr_text_schema = specific_three_schema.get_attribute("generic_attr_text")
+        assert overridden_generic_attr_text_schema.regex == "^[A-Z][a-z]+"
+        assert set(specific_three_schema.relationship_names) >= {"things", "favorite_thing"}
+        assert "things" not in specific_three_schema.local_relationship_names
+        assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
             inheriting_schemas=[
                 updated_schema_branch.get_node(name=schema_kind, duplicate=False)
-                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
+                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND)
             ],
         )
         assert not errors
@@ -498,16 +613,133 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                     rel_schema = schema.get_relationship(name=rel["name"])
                     rel["id"] = rel_schema.id
 
-    async def test_step03_check_delete_generic_fields(
+    async def test_step03_check_delete_overridden_field(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initial_dataset,
         branch: Branch,
-        schema_step03: dict[str, Any],
+        schema_step_03: dict[str, Any],
     ):
-        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step03)
-        success, response = await client.schema.check(schemas=[schema_step03], branch=branch.name)
+        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_03)
+        success, response = await client.schema.check(schemas=[schema_step_03], branch=branch.name)
+        assert success
+        assert response == {
+            "diff": {
+                "added": {},
+                "changed": {
+                    SPECIFIC_THREE_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {},
+                                "changed": {
+                                    "generic_attr_text": {
+                                        "added": {},
+                                        "changed": {"id": None, "inherited": None, "regex": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
+                },
+                "removed": {},
+            },
+        }
+
+    async def test_step03_load_schema_with_deleted_override(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset,
+        branch: Branch,
+        schema_step_03: dict[str, Any],
+    ):
+        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_03)
+        # Load the new schema and apply the migrations
+        response = await client.schema.load(schemas=[schema_step_03], branch=branch.name)
+        assert not response.errors
+
+        await self._refresh_registry(db=db, branch=branch)
+        retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
+        assert retrieved_specific_one.generic_attr_text.value == "Alpha"
+        assert retrieved_specific_one.generic_attr_num.value == 1
+        rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
+        assert len(rels_one) == 1
+        assert rels_one[0].peer_id == initial_dataset["thing_one"].id
+        assert isinstance(retrieved_specific_one.things, RelationshipManager)
+
+        retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
+        assert retrieved_specific_two.generic_attr_text.value == "Bravo"
+        assert retrieved_specific_two.generic_attr_num.value == 2
+        rels_two = await retrieved_specific_two.favorite_thing.get_relationships(db=db)
+        assert len(rels_two) == 1
+        assert rels_two[0].peer_id == initial_dataset["thing_two"].id
+        assert isinstance(retrieved_specific_two.things, RelationshipManager)
+
+        retrieved_specific_three = await NodeManager.get_one(
+            db=db, branch=branch, id=initial_dataset["specific_three"].id
+        )
+        assert retrieved_specific_three.generic_attr_text.value == "Charlie"
+        assert retrieved_specific_three.generic_attr_num.value == 3
+        rels_three = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
+        assert len(rels_three) == 1
+        assert rels_three[0].peer_id == initial_dataset["thing_three"].id
+        assert isinstance(retrieved_specific_three.things, RelationshipManager)
+
+        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
+        assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text"}
+        assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
+        specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
+        assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
+        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
+        assert {"favorite_thing", "things"} <= set(specific_one_schema.relationship_names)
+        specific_two_schema = updated_schema_branch.get(SPECIFIC_TWO_KIND, duplicate=False)
+        assert set(specific_two_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "specific_attr_text",
+        }
+        assert set(specific_two_schema.local_attribute_names) == {"specific_attr_text"}
+        assert set(specific_two_schema.relationship_names) >= {"favorite_thing", "specific_things", "things"}
+        assert set(specific_two_schema.local_relationship_names) >= {"specific_things"}
+        specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
+        assert set(specific_three_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "specific_attr_num",
+        }
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        generic_attr_text_schema = specific_three_schema.get_attribute("generic_attr_text")
+        assert generic_attr_text_schema.regex is None
+        assert set(specific_three_schema.relationship_names) >= {"things", "favorite_thing"}
+        assert "things" not in specific_three_schema.local_relationship_names
+        assert "favorite_thing" not in specific_three_schema.local_relationship_names
+
+        errors = await self._validate_inherited_schema_fields(
+            db=db,
+            branch=branch,
+            inheriting_schemas=[
+                updated_schema_branch.get_node(name=schema_kind, duplicate=False)
+                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND)
+            ],
+        )
+        assert not errors
+
+    async def test_step04_check_delete_generic_fields(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset,
+        branch: Branch,
+        schema_step04: dict[str, Any],
+    ):
+        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step04)
+        success, response = await client.schema.check(schemas=[schema_step04], branch=branch.name)
         assert success
         assert response == {
             "diff": {
@@ -557,22 +789,50 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                         },
                         "removed": {},
                     },
+                    SPECIFIC_THREE_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {},
+                                "changed": {
+                                    "generic_attr_text": {
+                                        "added": {},
+                                        "changed": {"state": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                            "relationships": {
+                                "added": {},
+                                "changed": {
+                                    "things": {
+                                        "added": {},
+                                        "changed": {"state": None},
+                                        "removed": {},
+                                    }
+                                },
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
                 },
                 "removed": {},
             },
         }
 
-    async def test_step03_load_schema_with_generic_deletes(
+    async def test_step04_load_schema_with_generic_deletes(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initial_dataset,
         branch: Branch,
-        schema_step03: dict[str, Any],
+        schema_step04: dict[str, Any],
     ):
-        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step03)
+        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step04)
         # Load the new schema and apply the migrations
-        response = await client.schema.load(schemas=[schema_step03], branch=branch.name)
+        response = await client.schema.load(schemas=[schema_step04], branch=branch.name)
         assert not response.errors
 
         await self._refresh_registry(db=db, branch=branch)
@@ -594,6 +854,16 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
         assert not hasattr(retrieved_specific_two, "things")
 
+        retrieved_specific_three = await NodeManager.get_one(
+            db=db, branch=branch, id=initial_dataset["specific_three"].id
+        )
+        assert not hasattr(retrieved_specific_three, "generic_attr_text")
+        assert retrieved_specific_three.generic_attr_num.value == 3
+        rels_two = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
+        assert len(rels_two) == 1
+        assert rels_two[0].peer_id == initial_dataset["thing_three"].id
+        assert not hasattr(retrieved_specific_three, "things")
+
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert generic_schema.attribute_names == ["generic_attr_num"]
@@ -609,27 +879,32 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert set(specific_two_schema.relationship_names) >= {"favorite_thing", "specific_things"}
         assert "things" not in specific_two_schema.relationship_names
         assert set(specific_two_schema.local_relationship_names) >= {"specific_things"}
+        specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
+        assert set(specific_three_schema.attribute_names) == {"generic_attr_num", "specific_attr_num"}
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        assert set(specific_three_schema.relationship_names) >= {"favorite_thing"}
+        assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
             inheriting_schemas=[
                 updated_schema_branch.get_node(name=schema_kind, duplicate=False)
-                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
+                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND)
             ],
         )
         assert not errors
 
-    async def test_step04_check_deleted_overridden_fields(
+    async def test_step05_check_deleted_overridden_fields(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initial_dataset,
         branch: Branch,
-        schema_step04: dict[str, Any],
+        schema_step_05: dict[str, Any],
     ):
-        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step04)
-        success, response = await client.schema.check(schemas=[schema_step04], branch=branch.name)
+        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_05)
+        success, response = await client.schema.check(schemas=[schema_step_05], branch=branch.name)
         assert success
         assert response == {
             "diff": {
@@ -656,17 +931,17 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
             },
         }
 
-    async def test_step04_load_schema_with_override_deletes(
+    async def test_step05_load_schema_with_override_deletes(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initial_dataset,
         branch: Branch,
-        schema_step04: dict[str, Any],
+        schema_step_05: dict[str, Any],
     ):
-        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step04)
+        await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_05)
         # Load the new schema and apply the migrations
-        response = await client.schema.load(schemas=[schema_step04], branch=branch.name)
+        response = await client.schema.load(schemas=[schema_step_05], branch=branch.name)
         assert not response.errors
 
         await self._refresh_registry(db=db, branch=branch)
@@ -686,6 +961,16 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
         assert not hasattr(retrieved_specific_two, "things")
 
+        retrieved_specific_threee = await NodeManager.get_one(
+            db=db, branch=branch, id=initial_dataset["specific_three"].id
+        )
+        assert not hasattr(retrieved_specific_threee, "generic_attr_text")
+        assert retrieved_specific_threee.generic_attr_num.value == 3
+        rels_three = await retrieved_specific_threee.favorite_thing.get_relationships(db=db)
+        assert len(rels_three) == 1
+        assert rels_three[0].peer_id == initial_dataset["thing_three"].id
+        assert not hasattr(retrieved_specific_threee, "things")
+
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert generic_schema.attribute_names == ["generic_attr_num"]
@@ -702,17 +987,19 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert set(specific_two_schema.relationship_names) >= {"favorite_thing", "specific_things"}
         assert "things" not in specific_two_schema.relationship_names
         assert set(specific_two_schema.local_relationship_names) >= {"specific_things"}
+        specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
+        assert set(specific_three_schema.attribute_names) == {"generic_attr_num", "specific_attr_num"}
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        assert set(specific_three_schema.relationship_names) >= {"favorite_thing"}
+        assert "things" not in specific_three_schema.relationship_names
+        assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
         errors = await self._validate_inherited_schema_fields(
             db=db,
             branch=branch,
             inheriting_schemas=[
                 updated_schema_branch.get_node(name=schema_kind, duplicate=False)
-                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND)
+                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND)
             ],
         )
         assert not errors
-
-
-# TODO
-# need test for deleting an overridden inherited attr when the generic version of the attr still exists
