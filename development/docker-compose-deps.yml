@@ -29,6 +29,7 @@ services:
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
+      PREFECT__SERVER_WEBSERVER_ONLY: "true"
     healthcheck:
       test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
       interval: 5s
@@ -41,6 +42,19 @@ services:
     labels:
       namespace: "prefect"
       pod: "prefect-server"
+  task-manager-background-svc:
+    profiles: [demo, dev]
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
+    command: prefect server services start
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+      PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
+    depends_on:
+      task-manager:
+        condition: service_healthy
+    labels:
+      namespace: "prefect"
+      pod: "prefect-server-background-services"
   task-manager-db:
     profiles: [demo, dev]
     image: postgres:16-alpine
