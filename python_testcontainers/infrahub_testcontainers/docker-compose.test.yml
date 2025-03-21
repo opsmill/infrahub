@@ -84,6 +84,7 @@ services:
     environment:
       PREFECT_UI_ENABLED: "${INFRAHUB_TESTING_PREFECT_UI_ENABLED}" # enabling UI requires permissions, run container as root to enable UI
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+      PREFECT__SERVER_WEBSERVER_ONLY: "true"
     healthcheck:
       test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
       interval: 5s
@@ -92,6 +93,16 @@ services:
       start_period: 10s
     ports:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
+
+  task-manager-background-svc:
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: prefect server services start
+    restart: unless-stopped
+    depends_on:
+      task-manager:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
 
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
