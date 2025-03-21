@@ -622,7 +622,9 @@ nodes:
     display_labels:
       - name__value
     uniqueness_constraints:
-      - ["manufacturer", "name__value"]
+      - ["name__value"]
+    human_friendly_id:
+      - name__value
     attributes:
       - name: name
         kind: Text
@@ -645,8 +647,9 @@ nodes:
     relationships:
       - name: manufacturer
         peer: OrganizationGeneric
-        optional: false
+        optional: true
         cardinality: one
+        kind: Attribute
   - name: ProviderNetwork
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant"
