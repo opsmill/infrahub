@@ -1174,25 +1174,25 @@ class SchemaBranch:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_human_friendly_id(self) -> None:
+        """
+        For each schema node, if there is no HFID defined, set it with:
+        - The first unique attribute if existing
+        - Otherwise the first uniqueness constraint with a single attribute
+
+        Also, HFID is added to the uniqueness constraints.
+        """
         for name in self.generic_names_without_templates + self.node_names:
             node = self.get(name=name, duplicate=False)
 
-            # If human_friendly_id IS NOT defined
-            #   but some the model has some unique attribute, we generate a human_friendly_id
-            # If human_friendly_id IS defined
-            #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
             if not node.human_friendly_id:
                 if node.unique_attributes:
-                    for attr in node.unique_attributes:
-                        node = self.get(name=name, duplicate=True)
-                        node.human_friendly_id = [f"{attr.name}__value"]
-                        self.set(name=node.kind, schema=node)
-                        break
-                    continue
+                    node = self.get(name=name, duplicate=True)
+                    node.human_friendly_id = [f"{node.unique_attributes[0].name}__value"]
+                    self.set(name=node.kind, schema=node)
 
                 # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
                 # then use that attribute as the human_friendly_id
-                if node.uniqueness_constraints:
+                elif node.uniqueness_constraints:
                     for constraint_paths in node.uniqueness_constraints:
                         if len(constraint_paths) > 1:
                             continue

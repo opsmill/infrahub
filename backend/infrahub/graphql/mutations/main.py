@@ -22,14 +22,12 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.generator import generate_node_mutation_events
-from infrahub.exceptions import InitializationError, ValidationError
+from infrahub.exceptions import HFIDViolatedError, InitializationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
-from .node_getter.by_hfid import MutationNodeGetterByHfid
-from .node_getter.by_id import MutationNodeGetterById
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -42,7 +40,6 @@ if TYPE_CHECKING:
     from infrahub.graphql.types.context import ContextInput
 
     from ..initialization import GraphqlContext
-    from .node_getter.interface import MutationNodeGetterInterface
 
 
 log = get_logger()
@@ -98,13 +95,15 @@ class InfrahubMutationMixin:
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
-            node_getters = [
-                MutationNodeGetterById(db=graphql_context.db, node_manager=node_manager),
-                MutationNodeGetterByHfid(db=graphql_context.db, node_manager=node_manager),
-                MutationNodeGetterByDefaultFilter(db=graphql_context.db, node_manager=node_manager),
-            ]
+            node_getter_default_filter = MutationNodeGetterByDefaultFilter(
+                db=graphql_context.db, node_manager=node_manager
+            )
             obj, mutation, created = await cls.mutate_upsert(
-                info=info, branch=graphql_context.branch, data=data, node_getters=node_getters, **kwargs
+                info=info,
+                branch=graphql_context.branch,
+                data=data,
+                node_getter_default_filter=node_getter_default_filter,
+                **kwargs,
             )
             if created:
                 action = MutationAction.CREATED
@@ -311,40 +310,37 @@ class InfrahubMutationMixin:
             node_class = registry.node[cls._meta.active_schema.kind]
 
         fields_to_validate = list(data)
-        try:
-            if db.is_transaction:
-                obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
-                await obj.new(db=db, **data)
-                await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-                await obj.save(db=db)
+        if db.is_transaction:
+            obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
+            await obj.new(db=db, **data)
+            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+            await obj.save(db=db)
 
-                object_template = await obj.get_object_template(db=db)
+            object_template = await obj.get_object_template(db=db)
+            if object_template:
+                await cls._handle_template_relationships(
+                    db=db,
+                    branch=branch,
+                    template=object_template,
+                    obj=obj,
+                    data=data,
+                )
+        else:
+            async with db.start_transaction() as dbt:
+                obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
+                await obj.new(db=dbt, **data)
+                await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+                await obj.save(db=dbt)
+
+                object_template = await obj.get_object_template(db=dbt)
                 if object_template:
                     await cls._handle_template_relationships(
-                        db=db,
+                        db=dbt,
                         branch=branch,
                         template=object_template,
                         obj=obj,
                         data=data,
                     )
-            else:
-                async with db.start_transaction() as dbt:
-                    obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
-                    await obj.new(db=dbt, **data)
-                    await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-                    await obj.save(db=dbt)
-
-                    object_template = await obj.get_object_template(db=dbt)
-                    if object_template:
-                        await cls._handle_template_relationships(
-                            db=dbt,
-                            branch=branch,
-                            template=object_template,
-                            obj=obj,
-                            data=data,
-                        )
-        except ValidationError as exc:
-            raise ValidationError(input_value=str(exc)) from exc
 
         if await cls._get_profile_ids(db=db, obj=obj):
             obj = await cls._refresh_for_profile_update(db=db, branch=branch, obj=obj)
@@ -367,6 +363,7 @@ class InfrahubMutationMixin:
         branch: Branch,
         db: InfrahubDatabase,
         obj: Node,
+        run_constraint_checks: bool = True,
     ) -> tuple[Node, Self]:
         """
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
@@ -380,18 +377,31 @@ class InfrahubMutationMixin:
         if db.is_transaction:
             if lock_names:
                 async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
+                    obj = await cls.mutate_update_object(
+                        db=db, info=info, data=data, branch=branch, obj=obj, run_constraint_checks=run_constraint_checks
+                    )
             else:
-                obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
+                obj = await cls.mutate_update_object(
+                    db=db, info=info, data=data, branch=branch, obj=obj, run_constraint_checks=run_constraint_checks
+                )
             result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
             return obj, result
 
         async with db.start_transaction() as dbt:
             if lock_names:
                 async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=obj)
+                    obj = await cls.mutate_update_object(
+                        db=dbt,
+                        info=info,
+                        data=data,
+                        branch=branch,
+                        obj=obj,
+                        run_constraint_checks=run_constraint_checks,
+                    )
             else:
-                obj = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=obj)
+                obj = await cls.mutate_update_object(
+                    db=dbt, info=info, data=data, branch=branch, obj=obj, run_constraint_checks=run_constraint_checks
+                )
             result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
             return obj, result
 
@@ -412,10 +422,7 @@ class InfrahubMutationMixin:
             db=db, kind=cls._meta.active_schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
 
-        try:
-            obj, result = await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
-        except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
+        obj, result = await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
 
         return obj, result
 
@@ -427,6 +434,7 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         obj: Node,
+        run_constraint_checks: bool = True,
     ) -> Node:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
@@ -434,7 +442,8 @@ class InfrahubMutationMixin:
         before_mutate_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
-        await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+        if run_constraint_checks:
+            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
 
         fields = list(data.keys())
         for field_to_remove in ("id", "hfid"):
@@ -469,31 +478,83 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        node_getters: list[MutationNodeGetterInterface],
+        node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self, bool]:
+        """
+        First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
+        default_filter. If not, we will try to create the node, but this creation might fail if payload contains
+        hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
+        we would update the node without rerunning uniqueness constraint.
+        """
+
         schema_name = cls._meta.active_schema.kind
 
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
-
-        node_schema = db.schema.get(name=schema_name, branch=branch)
-
+        dict_data = dict(data)
         node = None
-        for getter in node_getters:
-            node = await getter.get_node(node_schema=node_schema, data=data, branch=branch)
-            if node:
-                break
+        run_constraint_checks = True
 
-        if node:
-            updated_obj, mutation = await cls.mutate_update(info=info, data=data, branch=branch, database=db, node=node)
+        if "id" in dict_data:
+            # Currently support for creating a node with a given id is not supported,
+            # so this will raise an error if node id does not exist in db.
+            # Note that upserting with an `id` in the payload should not happen then, as it would mean the node already
+            # exists, in which case we should update client side instead of upsert.
+            node = await NodeManager.get_one(
+                db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True
+            )
+            updated_obj, mutation = await cls._call_mutate_update(
+                info=info,
+                data=data,
+                db=db,
+                branch=branch,
+                obj=node,
+                run_constraint_checks=run_constraint_checks,
+            )
             return updated_obj, mutation, False
-        # We need to convert the InputObjectType into a dict in order to remove hfid that isn't a valid input when creating the object
-        data_dict = dict(data)
+
+        if cls._meta.active_schema.default_filter is not None:
+            node = await node_getter_default_filter.get_node(
+                node_schema=cls._meta.active_schema, data=data, branch=branch
+            )
+
         if "hfid" in data:
-            del data_dict["hfid"]
-        created_obj, mutation = await cls.mutate_create(info=info, data=data_dict, branch=branch)
-        return created_obj, mutation, True
+            # Node might already exist or not. Note that if it exists, an extra query is performed
+            # thus client should avoid specifying `hfid` as input.
+            # It is supposed to be pointless as payload already contains fields composing hfid (mandatory fields while creating).
+            node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
+
+        if node is not None:
+            updated_obj, mutation = await cls._call_mutate_update(
+                info=info,
+                data=data,
+                db=db,
+                branch=branch,
+                obj=node,
+                run_constraint_checks=run_constraint_checks,
+            )
+            return updated_obj, mutation, False
+
+        try:
+            dict_data.pop("hfid", "unused")  # `hfid` is invalid for creation.
+            created_obj, mutation = await cls.mutate_create(info=info, data=dict_data, branch=branch)
+            return created_obj, mutation, True
+        except HFIDViolatedError as exc:
+            # Only the HFID constraint has been violated, it means the node exists and we can update without rerunning constraints
+            if len(exc.matching_nodes_ids) > 1:
+                raise ValueError("Internal error, database already corrupted, should not happen") from exc
+            node_id = list(exc.matching_nodes_ids)[0]
+            node = await NodeManager.get_one(db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True)
+            updated_obj, mutation = await cls._call_mutate_update(
+                info=info,
+                data=data,
+                db=db,
+                branch=branch,
+                obj=node,
+                run_constraint_checks=run_constraint_checks,
+            )
+            return updated_obj, mutation, False
 
     @classmethod
     @retry_db_transaction(name="object_delete")
@@ -513,11 +574,8 @@ class InfrahubMutationMixin:
             branch=branch,
         )
 
-        try:
-            async with graphql_context.db.start_transaction() as db:
-                deleted = await NodeManager.delete(db=db, branch=branch, nodes=[obj])
-        except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
+        async with graphql_context.db.start_transaction() as db:
+            deleted = await NodeManager.delete(db=db, branch=branch, nodes=[obj])
 
         deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
         log.info(f"nodes deleted: {deleted_str}")

@@ -129,22 +129,22 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
         branch = await self.get_branch()
         schema_branch = self.db.schema.get_schema_branch(name=branch.name)
-        path_groups = schema.get_unique_constraint_schema_attribute_paths(
-            include_unique_attributes=True, schema_branch=schema_branch
-        )
-        for constraint_group in path_groups:
+        uniqueness_constraint_paths = schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
+        for uniqueness_constraint_path in uniqueness_constraint_paths:
             non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}
             constraint_group_relationship_identifiers = [
                 schema_attribute_path.relationship_schema.get_identifier()
-                for schema_attribute_path in constraint_group
+                for schema_attribute_path in uniqueness_constraint_path.attributes_paths
                 if schema_attribute_path.relationship_schema
             ]
             constraint_group_attribute_names = [
                 schema_attribute_path.attribute_schema.name
-                for schema_attribute_path in constraint_group
+                for schema_attribute_path in uniqueness_constraint_path.attributes_paths
                 if schema_attribute_path.attribute_schema
             ]
-            node_ids_in_violation = results_index.get_node_ids_for_path_group(path_group=constraint_group)
+            node_ids_in_violation = results_index.get_node_ids_for_path_group(
+                path_group=uniqueness_constraint_path.attributes_paths
+            )
             for result in query_results:
                 node_id = str(result.get("node_id"))
                 if node_id not in node_ids_in_violation:
