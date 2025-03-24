@@ -248,10 +248,6 @@ module = "infrahub.core.schema.manager"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.utils"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.database"
 ignore_errors = true
 
@@ -306,10 +302,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.trace"
 ignore_errors = true
 
 [tool.ruff]
