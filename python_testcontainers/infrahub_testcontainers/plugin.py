@@ -88,7 +88,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     )
 
 
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:  # noqa: ARG001
     """whole test run finishes."""
     if not session.config.getoption("infrahub_performance_report"):
         return
@@ -96,7 +96,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     session.infrahub_performance_test.finalize(session=session)
 
 
-def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> None:
+def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> None:  # noqa: ARG001
     """Fetch metrics at each test teardown because there's no better hook...
     pytest_sessionfinish() is executed after fixtures has been finalized and pytest_fixture_post_finalizer() is too late"""
     if not item.config.getoption("infrahub_performance_report"):
@@ -115,7 +115,9 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_terminal_summary(
-    terminalreporter: _pytest.terminal.TerminalReporter, exitstatus: int, config: pytest.Config
+    terminalreporter: _pytest.terminal.TerminalReporter,
+    exitstatus: int,  # noqa: ARG001
+    config: pytest.Config,
 ) -> None:
     if not config.getoption("infrahub_performance_report"):
         return
