@@ -723,6 +723,9 @@ class SchemaManager(NodeManager):
             for rel in await rm.get(db=db):
                 item = await rel.get_peer(db=db)
                 item_data = {"id": item.id}
+                inherited_attr = getattr(item, "inherited", None)
+                if inherited_attr and getattr(inherited_attr, "value", False) is True:
+                    continue
                 for item_name in item._attributes:
                     item_attr = getattr(item, item_name)
                     item_data[item_name] = item_attr.get_value()
