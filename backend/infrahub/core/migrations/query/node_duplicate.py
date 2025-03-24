@@ -169,10 +169,11 @@ class NodeDuplicateQuery(Query):
             SET rel_outband.to = $current_time
         )
         WITH active_node, new_node
+        // Process Inbound Relationship
         MATCH (active_node)<-[]-(peer)
         CALL {
             WITH active_node, peer
-            MATCH (active_node)-[r]->(peer)
+            MATCH (active_node)<-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_inband1, peer as p1
             ORDER BY r.branch_level DESC, r.from DESC
