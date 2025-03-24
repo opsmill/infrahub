@@ -23,7 +23,7 @@ class DedupCardinalityOneRelsQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         """
         Nodes having cardinality one relationship might end up with more than one relationship due to some concurrency
         issue. In that case, this query keeps only the most recent relationship.
@@ -86,11 +86,11 @@ class DedupCardinalityOneRelsQuery(Query):
         self.add_to_query(query)
 
 
-class Migration021(GraphMigration):
+class Migration023(GraphMigration):
     name: str = "dedup_cardinality_one_rels"
-    minimum_version: int = 20
+    minimum_version: int = 22
     queries: Sequence[type[Query]] = [DedupCardinalityOneRelsQuery]
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
         return result
