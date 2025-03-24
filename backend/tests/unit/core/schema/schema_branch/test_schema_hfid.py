@@ -71,6 +71,7 @@ _SCHEMA = {
         ),
         (["owner__name__value", "owner__age__value", "owner__salary__value"], [["name__value", "age__value"]], False),
         # Non-valid hfid
+        (["name__value", "owner__name__value"], None, True),
         (["name__value", "owner__name__value"], [["age__value"]], True),
         (
             ["owner__name__value", "owner__age__value"],
