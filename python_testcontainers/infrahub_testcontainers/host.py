@@ -23,10 +23,10 @@ def get_system_stats() -> dict[str, Any]:
     # Memory information
     memory = psutil.virtual_memory()
     memory_stats = {
-        "total_memory": float(f"{memory.total / (1024 ** 3):.2f}"),  # GB
-        "available_memory": float(f"{memory.available / (1024 ** 3):.2f}"),  # GB
+        "total_memory": float(f"{memory.total / (1024**3):.2f}"),  # GB
+        "available_memory": float(f"{memory.available / (1024**3):.2f}"),  # GB
         "memory_percent_used": memory.percent,
-        "memory_used": float(f"{memory.used / (1024 ** 3):.2f}"),  # GB
+        "memory_used": float(f"{memory.used / (1024**3):.2f}"),  # GB
     }
 
     # Platform information

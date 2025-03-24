@@ -5,7 +5,7 @@ from types import TracebackType
 from typing import Any
 
 import httpx
-from pytest import Session
+import pytest
 from typing_extensions import Self
 
 from .constants import PERFORMANCE_TEST_KIND, PERFORMANCE_TEST_VERSION
@@ -41,7 +41,12 @@ class InfrahubPerformanceTest:
         self.scraper_endpoint = ""
         self.initialized = False
 
-    def initialize(self, name: str, compose: InfrahubDockerCompose | None = None, client: Any | None = None) -> None:  # noqa: ANN401
+    def initialize(
+        self,
+        name: str,
+        compose: InfrahubDockerCompose | None = None,
+        client: Any | None = None,  # noqa: ANN401
+    ) -> None:
         self.name = name
         if client:
             self.infrahub_version = client.get_version()
@@ -50,7 +55,7 @@ class InfrahubPerformanceTest:
 
         self.initialized = True
 
-    def finalize(self, session: Session) -> None:
+    def finalize(self, session: pytest.Session) -> None:
         if self.initialized:
             self.end_time = datetime.now(UTC)
             self.extract_test_session_information(session)
@@ -60,10 +65,10 @@ class InfrahubPerformanceTest:
         self.env_vars = compose.env_vars
         self.project_name = compose.project_name
         self.scraper_endpoint = (
-            f"http://127.0.0.1:{compose.get_service_host_and_port(service_name="scraper")[1]}/api/v1/export"
+            f"http://127.0.0.1:{compose.get_service_host_and_port(service_name='scraper')[1]}/api/v1/export"
         )
 
-    def extract_test_session_information(self, session: Session) -> None:
+    def extract_test_session_information(self, session: pytest.Session) -> None:
         self.test_info = {
             "summary": {
                 "exitstatus": session.exitstatus,
@@ -75,9 +80,19 @@ class InfrahubPerformanceTest:
     def add_context(self, name: str, value: float | str = 0, unit: ContextUnit = ContextUnit.COUNT) -> None:
         self.context[name] = InfrahubResultContext(name=name, value=value, unit=unit)
 
-    def add_measurement(self, definition: MeasurementDefinition, value: float | str, **kwargs: str | float) -> None:
+    def add_measurement(
+        self,
+        definition: MeasurementDefinition,
+        value: float | str,
+        **kwargs: str | float,
+    ) -> None:
         self.measurements.append(
-            InfrahubMeasurementItem(name=definition.name, value=value, unit=definition.unit, context=kwargs or {})
+            InfrahubMeasurementItem(
+                name=definition.name,
+                value=value,
+                unit=definition.unit,
+                context=kwargs or {},
+            )
         )
 
     def start_measurement(self, definition: MeasurementDefinition, **kwargs: str | float) -> Self:
@@ -106,7 +121,10 @@ class InfrahubPerformanceTest:
         return self
 
     def __exit__(
-        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         if not exc_type and self.active_measurements:
             self.add_measurement(
