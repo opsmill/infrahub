@@ -1209,22 +1209,15 @@ class SchemaBranch:
                             break
 
             # Add hfid to uniqueness constraint
-            if node.human_friendly_id:
-                uniqueness_constraint: list[str] = []
-                for item in node.human_friendly_id:
-                    schema_attribute_path = node.parse_schema_path(path=item, schema=self)
-                    if schema_attribute_path.is_type_attribute:
-                        uniqueness_constraint.append(item)
-                    elif schema_attribute_path.is_type_relationship:
-                        uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
-
+            hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
+            if hfid_uniqueness_constraint:
                 node = self.get(name=name, duplicate=True)
                 # Make sure there is no duplicate regarding generics values.
                 if node.uniqueness_constraints:
-                    if uniqueness_constraint not in node.uniqueness_constraints:
-                        node.uniqueness_constraints.append(uniqueness_constraint)
+                    if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(list(hfid_uniqueness_constraint))
                 else:
-                    node.uniqueness_constraints = [uniqueness_constraint]
+                    node.uniqueness_constraints = [list(hfid_uniqueness_constraint)]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:

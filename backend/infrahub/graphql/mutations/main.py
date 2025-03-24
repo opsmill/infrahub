@@ -543,7 +543,7 @@ class InfrahubMutationMixin:
         except HFIDViolatedError as exc:
             # Only the HFID constraint has been violated, it means the node exists and we can update without rerunning constraints
             if len(exc.matching_nodes_ids) > 1:
-                raise ValueError("Internal error, database already corrupted, should not happen") from exc
+                raise RuntimeError(f"Multiple {schema_name} nodes have the same hfid (database corrupted)") from exc
             node_id = list(exc.matching_nodes_ids)[0]
             node = await NodeManager.get_one(db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True)
             updated_obj, mutation = await cls._call_mutate_update(

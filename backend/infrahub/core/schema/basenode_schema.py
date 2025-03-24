@@ -444,7 +444,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 for uniqueness_path_part in uniqueness_path_group
             ]
             uniqueness_constraint_type = self.get_uniqueness_constraint_type(
-                uniqueness_constraint=uniqueness_path_group, schema_branch=schema_branch
+                uniqueness_constraint=set(uniqueness_path_group), schema_branch=schema_branch
             )
             uniqueness_constraint_path = SchemaUniquenessConstraintPath(
                 attributes_paths=attributes_paths, typ=uniqueness_constraint_type
@@ -453,28 +453,28 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         return uniqueness_constraint_paths
 
-    def convert_hfid_to_uniqueness_constraint(self, schema_branch: SchemaBranch) -> list[str] | None:
+    def convert_hfid_to_uniqueness_constraint(self, schema_branch: SchemaBranch) -> set[str] | None:
         if self.human_friendly_id is None:
             return None
 
-        uniqueness_constraint: list[str] = []
+        uniqueness_constraint = set()
         for item in self.human_friendly_id:
             schema_attribute_path = self.parse_schema_path(path=item, schema=schema_branch)
             if schema_attribute_path.is_type_attribute:
-                uniqueness_constraint.append(item)
+                uniqueness_constraint.add(item)
             elif schema_attribute_path.is_type_relationship:
-                uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
+                uniqueness_constraint.add(schema_attribute_path.relationship_schema.name)
         return uniqueness_constraint
 
     def get_uniqueness_constraint_type(
-        self, uniqueness_constraint: list[str], schema_branch: SchemaBranch
+        self, uniqueness_constraint: set[str], schema_branch: SchemaBranch
     ) -> UniquenessConstraintType:
         hfid = self.convert_hfid_to_uniqueness_constraint(schema_branch=schema_branch)
         if hfid is None:
             return UniquenessConstraintType.STANDARD
         if uniqueness_constraint == hfid:
             return UniquenessConstraintType.HFID
-        if all(path in hfid for path in uniqueness_constraint):
+        if uniqueness_constraint <= hfid:
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
 
