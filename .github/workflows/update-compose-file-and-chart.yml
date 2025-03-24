@@ -88,5 +88,5 @@ jobs:
         run: |
           git config --global user.name "opsmill-bot"
           git config --global user.email "github-bot@opsmill.com"
-          git commit -a -m 'chore: bump appVersion'
+          git commit -a -m 'chore: bump appVersion' || true
           git push
