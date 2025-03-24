@@ -1,1 +1,1 @@
-Add relationships informations in the activities details
+Add relationships changes details in the activities
