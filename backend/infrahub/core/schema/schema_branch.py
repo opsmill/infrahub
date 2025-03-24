@@ -1242,7 +1242,7 @@ class SchemaBranch:
             node = node.duplicate()
             changed = False
 
-            if node.hierarchy not in node.inherit_from:
+            if node.hierarchy and node.hierarchy not in node.inherit_from:
                 node.inherit_from.append(node.hierarchy)
                 changed = True
 
@@ -1266,16 +1266,14 @@ class SchemaBranch:
     ) -> dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]]:
         generic_fields_map: dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]] = {}
         if isinstance(node_schema, NodeSchema) and node_schema.inherit_from:
-            node_attr_names = set(node_schema.attribute_names)
-            node_rel_names = set(node_schema.relationship_names)
             for generic_kind in node_schema.inherit_from:
                 generic_schema = self.get_generic(name=generic_kind, duplicate=False)
                 for generic_attr in generic_schema.attributes:
-                    if generic_attr.name in node_attr_names:
+                    if generic_attr.name in node_schema.attribute_names:
                         generic_fields_map[generic_attr.name] = (generic_schema, generic_attr)
                         continue
                 for generic_rel in generic_schema.relationships:
-                    if generic_rel.name in node_rel_names:
+                    if generic_rel.name in node_schema.relationship_names:
                         generic_fields_map[generic_rel.name] = (generic_schema, generic_rel)
                         continue
         return generic_fields_map
@@ -1332,7 +1330,7 @@ class SchemaBranch:
 
         # Update all generics with the list of nodes referrencing them.
         for generic_name in self.generics.keys():
-            generic = self.get(name=generic_name)
+            generic = self.get_generic(name=generic_name)
 
             if generic.kind in generics_used_by:
                 generic.used_by = sorted(generics_used_by[generic.kind])
@@ -1355,7 +1353,7 @@ class SchemaBranch:
             attrs_to_update: dict[str, BranchSupportType] = {}
             for attr in node.attributes:
                 if attr.inherited and attr.name in generic_fields_map:
-                    generic_schema, generic_attr = generic_fields_map.get(attr.name)
+                    generic_schema, generic_attr = generic_fields_map[attr.name]
                     if attr.branch == generic_schema.branch == generic_attr.branch != node.branch:
                         attrs_to_update[attr.name] = node.branch
 
