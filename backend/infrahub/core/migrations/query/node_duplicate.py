@@ -9,8 +9,6 @@ from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
-    from pydantic.fields import FieldInfo
-
     from infrahub.database import InfrahubDatabase
 
 
@@ -47,17 +45,13 @@ class NodeDuplicateQuery(Query):
         return query
 
     @staticmethod
-    def _render_sub_query_per_rel_type(
-        rel_name: str,
-        rel_type: str,
-        rel_def: FieldInfo,
-    ) -> str:
+    def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
-        if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
+        if rel_dir in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
             subquery.append(f"""
                 CREATE (new_node)-[new_active_edge:{rel_type} $rel_props_new ]->(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
@@ -70,7 +64,7 @@ class NodeDuplicateQuery(Query):
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
-        elif rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
+        elif rel_dir in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
             subquery.append(f"""
                 CREATE (new_node)<-[new_active_edge:{rel_type} $rel_props_new ]-(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
@@ -90,11 +84,10 @@ class NodeDuplicateQuery(Query):
     def _render_sub_query_out(cls) -> str:
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_outband",
-                rel_type=rel_type,
-                rel_def=rel_def,
+                rel_name="rel_outband", rel_type=rel_type, rel_dir=GraphRelDirection.OUTBOUND
             )
-            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
+            for rel_type, field_info in GraphNodeRelationships.model_fields.items()
+            if field_info.default.direction in (GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER)
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
         return sub_query_out
@@ -103,11 +96,10 @@ class NodeDuplicateQuery(Query):
     def _render_sub_query_in(cls) -> str:
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_inband",
-                rel_type=rel_type,
-                rel_def=rel_def,
+                rel_name="rel_inband", rel_type=rel_type, rel_dir=GraphRelDirection.INBOUND
             )
-            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
+            for rel_type, field_info in GraphNodeRelationships.model_fields.items()
+            if field_info.default.direction in (GraphRelDirection.INBOUND, GraphRelDirection.EITHER)
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in
@@ -172,7 +164,7 @@ class NodeDuplicateQuery(Query):
         FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_outband.to = $current_time
         )
-        WITH active_node, new_node
+        WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
         MATCH (active_node)<-[]-(peer)
         CALL {

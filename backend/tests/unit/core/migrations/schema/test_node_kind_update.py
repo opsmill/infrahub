@@ -178,4 +178,4 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
         branch=default_branch,
     )
     await hierarchy_query.execute(db=db)
-    assert list(hierarchy_query.get_peer_ids())
+    assert list(hierarchy_query.get_peer_ids()) == [continent_europe.get_id()]
