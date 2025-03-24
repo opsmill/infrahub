@@ -304,10 +304,6 @@ ignore_errors = true
 module = "infrahub.message_bus.operations"
 ignore_errors = true
 
-[[tool.mypy.overrides]]
-module = "infrahub.trace"
-ignore_errors = true
-
 [tool.ruff]
 line-length = 120
 target-version = "py310"

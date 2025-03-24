@@ -9,7 +9,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter
 from opentelemetry.trace import StatusCode
 
 from infrahub.worker import WORKER_IDENTITY
@@ -19,7 +19,7 @@ def get_current_span_with_context() -> trace.Span:
     return trace.get_current_span()
 
 
-def get_traceid() -> str:
+def get_traceid() -> str | None:
     current_span = get_current_span_with_context()
     trace_id = current_span.get_span_context().trace_id
     if trace_id == 0:
@@ -63,7 +63,7 @@ def create_tracer_provider(
 ) -> TracerProvider:
     # Create a BatchSpanProcessor exporter based on the type
     if exporter_type == "console":
-        exporter = ConsoleSpanExporter()
+        exporter: SpanExporter = ConsoleSpanExporter()
     elif exporter_type == "otlp":
         if not exporter_endpoint:
             raise ValueError("Exporter type is set to otlp but endpoint is not set")
@@ -76,7 +76,7 @@ def create_tracer_provider(
 
     extra_attributes = {}
     if os.getenv("OTEL_RESOURCE_ATTRIBUTES"):
-        extra_attributes = dict(attr.split("=") for attr in os.getenv("OTEL_RESOURCE_ATTRIBUTES").split(","))
+        extra_attributes = dict(attr.split("=") for attr in os.getenv("OTEL_RESOURCE_ATTRIBUTES", "").split(","))
 
     # Resource can be required for some backends, e.g. Jaeger
     resource = Resource(
