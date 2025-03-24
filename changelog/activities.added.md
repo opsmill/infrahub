@@ -1,0 +1,1 @@
+Add relationships informations in the activities details
