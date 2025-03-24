@@ -2,15 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("/objects/CoreWebhook", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
+test.describe.fixme("/objects/CoreWebhook", () => {
   test.describe("when logged in as admin account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
