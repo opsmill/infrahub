@@ -62,22 +62,26 @@ class NodeDuplicateQuery(Query):
                 CREATE (new_node)-[new_active_edge:{rel_type} $rel_props_new ]->(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
             subquery.append(f"""
                 CREATE (active_node)-[deleted_edge:{rel_type} $rel_props_prev ]->(peer_node)
                 SET deleted_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
         elif rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
             subquery.append(f"""
                 CREATE (new_node)<-[new_active_edge:{rel_type} $rel_props_new ]-(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
             subquery.append(f"""
                 CREATE (active_node)<-[deleted_edge:{rel_type} $rel_props_prev ]-(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
         subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
