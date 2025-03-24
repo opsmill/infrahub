@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from infrahub.core.branch import Branch
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class SchemaConstraintValidatorRequest(BaseModel):
@@ -12,6 +13,7 @@ class SchemaConstraintValidatorRequest(BaseModel):
     constraint_name: str = Field(..., description="The name of the constraint to validate")
     node_schema: Union[NodeSchema, GenericSchema] = Field(..., description="Schema of Node or Generic to validate")
     schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to validate")
+    schema_branch: SchemaBranch = Field(..., description="SchemaBranch of the element to validate")
 
 
 class SchemaViolation(BaseModel):

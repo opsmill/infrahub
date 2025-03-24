@@ -6,6 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.node.inherit_from import NodeInheritFromChecker
 from infrahub.database import InfrahubDatabase
@@ -21,6 +22,7 @@ async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch,
         constraint_name="node.inherit_from.update",
         node_schema=dog_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestDog"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeInheritFromChecker(db=db, branch=branch)
@@ -41,6 +43,7 @@ async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch,
         constraint_name="node.inherit_from.update",
         node_schema=dog_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestDog"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeInheritFromChecker(db=db, branch=branch)

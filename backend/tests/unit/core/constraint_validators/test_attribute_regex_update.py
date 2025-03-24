@@ -4,6 +4,7 @@ from infrahub.core.constants import NULL_VALUE, PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
@@ -169,6 +170,7 @@ async def test_validator(
         constraint_name="attribute.regex.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = AttributeRegexChecker(db=db, branch=default_branch)
