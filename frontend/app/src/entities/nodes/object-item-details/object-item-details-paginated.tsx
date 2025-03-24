@@ -154,28 +154,30 @@ export default function ObjectItemDetails({
                             isFromProfile={objectDetailsData[attribute.name].is_from_profile}
                             isProtected={objectDetailsData[attribute.name].is_protected}
                             header={
-                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
-                                <div className="font-semibold">{attribute.label}</div>
-                                <ButtonWithTooltip
-                                  disabled={!permission.update.isAllowed}
-                                  tooltipEnabled={!permission.update.isAllowed}
-                                  tooltipContent={permission.update.message}
-                                  onClick={() => {
-                                    setMetaEditFieldDetails({
-                                      type: "attribute",
-                                      attributeOrRelationshipName: attribute.name,
-                                      label: attribute.label || attribute.name,
-                                    });
-                                    setShowMetaEditModal(true);
-                                  }}
-                                  variant="ghost"
-                                  size="icon"
-                                  data-testid="edit-metadata-button"
-                                  data-cy="metadata-edit-button"
-                                >
-                                  <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                                </ButtonWithTooltip>
-                              </div>
+                              !attribute.read_only && (
+                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                                  <div className="font-semibold">{attribute.label}</div>
+                                  <ButtonWithTooltip
+                                    disabled={!permission.update.isAllowed}
+                                    tooltipEnabled={!permission.update.isAllowed}
+                                    tooltipContent={permission.update.message}
+                                    onClick={() => {
+                                      setMetaEditFieldDetails({
+                                        type: "attribute",
+                                        attributeOrRelationshipName: attribute.name,
+                                        label: attribute.label || attribute.name,
+                                      });
+                                      setShowMetaEditModal(true);
+                                    }}
+                                    variant="ghost"
+                                    size="icon"
+                                    data-testid="edit-metadata-button"
+                                    data-cy="metadata-edit-button"
+                                  >
+                                    <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                                  </ButtonWithTooltip>
+                                </div>
+                              )
                             }
                           />
                         )}

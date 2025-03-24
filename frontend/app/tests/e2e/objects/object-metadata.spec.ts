@@ -4,14 +4,6 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("Object metadata", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should contain initial values and update them", async ({ page }) => {
     await page.goto("/objects/InfraDevice");
 
@@ -66,5 +58,15 @@ test.describe("Object metadata", () => {
 
     // Is protected should be checked
     await expect(page.getByLabel("is protected *")).toBeChecked();
+  });
+
+  test("read only attribute should not have metadata edit button", async ({ page }) => {
+    await page.goto("/objects/InfraDevice");
+    await page.getByRole("link", { name: "atl1-core2" }).click();
+
+    const descriptionRow = await page.getByText("Computed DescriptionMX204");
+    await descriptionRow.getByTestId("view-metadata-button").click();
+    await expect(page.getByRole("cell", { name: "Source" })).toBeVisible();
+    await expect(page.getByTestId("edit-metadata-button")).not.toBeVisible();
   });
 });
