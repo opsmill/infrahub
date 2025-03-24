@@ -1,17 +1,16 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
-from infrahub.core.migrations.schema.node_kind_update import (
-    NodeKindUpdateMigration,
-    NodeKindUpdateMigrationQuery01,
-)
+from infrahub.core.constants import RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.constants import TestKind
 from tests.helpers.db_validation import validate_node_relationships
-from tests.helpers.schema import load_schema
+from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
 async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
@@ -128,3 +127,55 @@ async def test_migration_agnostic_relationship(
 
     await validate_node_relationships(node=person_john, db=db, branch=registry.get_global_branch())
     await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
+
+
+async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch):
+    await load_schema(db=db, schema=LOCATION_SCHEMA)
+
+    continent_europe = await Node.init(db=db, schema=TestKind.CONTINENT)
+    await continent_europe.new(db=db, name={"value": "Europe"}, shortname={"value": "EU"})
+    await continent_europe.save(db=db)
+
+    country_france = await Node.init(db=db, schema=TestKind.COUNTRY)
+    await country_france.new(db=db, name="France", shortname={"value": "FR"}, parent=continent_europe.id)
+    await country_france.save(db=db)
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    continent_schema = candidate_schema.get(name=TestKind.CONTINENT)
+    candidate_schema.delete(name=TestKind.CONTINENT)
+    continent_schema.name = "NewContinent"
+    continent_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewContinent", schema=continent_schema)
+    assert continent_schema.kind == "Test2NewContinent"
+    candidate_schema.get(name=TestKind.COUNTRY, duplicate=False).parent = "Test2NewContinent"
+
+    assert await count_nodes(db=db, label=TestKind.CONTINENT) == 1
+    assert await count_nodes(db=db, label="Test2NewContinent") == 0
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name=TestKind.CONTINENT),
+        new_node_schema=continent_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind=TestKind.CONTINENT, field_name="namespace"
+        ),
+    )
+
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 1
+    assert await count_nodes(db=db, label=TestKind.CONTINENT) == 1
+    assert await count_nodes(db=db, label="Test2NewContinent") == 1
+
+    country_schema = schema.get(name=TestKind.COUNTRY, duplicate=False)
+    assert country_schema.parent == "Test2NewContinent"
+
+    hierarchy_query = await NodeGetHierarchyQuery.init(
+        db=db,
+        direction=RelationshipHierarchyDirection.ANCESTORS,
+        node_id=country_france.id,
+        node_schema=country_schema,
+        branch=default_branch,
+    )
+    await hierarchy_query.execute(db=db)
+    assert list(hierarchy_query.get_peer_ids())
