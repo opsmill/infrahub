@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from prefect.events.schemas.automations import Automation  # noqa: TC002
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
 from infrahub.core import registry
@@ -15,6 +15,7 @@ from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
     PythonDefinition,
 )
 from infrahub.events import NodeCreatedEvent, NodeUpdatedEvent
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer  # noqa: TC001
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import (
     EventTrigger,
@@ -75,12 +76,13 @@ class ComputedAttributeAutomations(BaseModel):
 
 
 class PythonTransformComputedAttribute(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
     repository_id: str
     repository_name: str
     repository_kind: str
     query_name: str
-    query_models: list[str]
+    query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
     default_schema: bool
     branch_name: str
@@ -205,6 +207,19 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
+            kind=computed_attribute.computed_attribute.kind
+        )
+        event_trigger.match_related = {
+            "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
+        }
+
+        if update_fields and "display_label" not in update_fields:
+            # The GraphQLQuery analyzer doesn't yet support figuring out which updates would match the "display label"
+            # of a query. Because of this we temporarily match any field if the display_label is part of the computed
+            # attribute query
+            event_trigger.match_related["infrahub.field.name"] = update_fields
+
         definition = cls(
             name=computed_attribute.computed_attribute.key_name,
             branch=branch,
@@ -241,14 +256,29 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
     def from_object(
         cls,
         branch: str,
+        kind: str,
         computed_attribute: PythonTransformComputedAttribute,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        event_trigger = EventTrigger()
-        event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
+        # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
+        # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object
+        # where the computed attribute belongs that to will need to be created first which will trigger its own initial
+        # process to populated the original members of the GraphQL query group
+        event_trigger = EventTrigger(events={NodeUpdatedEvent.event_name})
         event_trigger.match = {
-            "infrahub.node.kind": computed_attribute.query_models,
+            "infrahub.node.kind": kind,
         }
+
+        update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(kind=kind)
+        event_trigger.match_related = {
+            "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
+        }
+
+        if update_fields and "display_label" not in update_fields:
+            # The GraphQLQuery analyzer doesn't yet support figuring out which updates would match the "display label"
+            # of a query. Because of this we temporarily match any field if the display_label is part of the computed
+            # attribute query
+            event_trigger.match_related["infrahub.field.name"] = update_fields
 
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
@@ -256,7 +286,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = branch
 
         definition = cls(
-            name=computed_attribute.computed_attribute.key_name,
+            name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
             actions=[
