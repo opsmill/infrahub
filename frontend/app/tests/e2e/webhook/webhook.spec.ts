@@ -2,8 +2,9 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe.fixme("/objects/CoreWebhook", () => {
+test.describe("/objects/CoreWebhook", () => {
   test.describe("when logged in as admin account", () => {
+    test.describe.configure({ mode: "serial" });
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     test("Create a webhook", async ({ page }) => {
@@ -36,6 +37,7 @@ test.describe.fixme("/objects/CoreWebhook", () => {
         await saveScreenshotForDocs(page, "webhook_create");
 
         await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByText("StandardWebhook created")).toBeVisible();
       });
     });
 
@@ -54,6 +56,8 @@ test.describe.fixme("/objects/CoreWebhook", () => {
 
         while (await page.getByText("No activity found for this").isVisible()) {
           await page.reload();
+          await expect(page.getByText("Activities", { exact: true })).toBeVisible();
+          await expect(page.getByText("Loading...")).toBeHidden();
         }
         await expect(page.getByText("NameAnsible EDA")).toBeVisible();
         await expect(page.getByText("View all activities")).toBeVisible();
