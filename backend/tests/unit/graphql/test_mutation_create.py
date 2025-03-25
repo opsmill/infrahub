@@ -1052,14 +1052,10 @@ async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branc
     assert result.data["TestCriticalityCreate"] is None
 
 
-@pytest.mark.parametrize("branch_name", ("default_branch", "test_branch"))
 async def test_create_with_object_template(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch_name: str
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=default_branch.name)
-    branch = (
-        default_branch if default_branch.name == branch_name else await create_branch(branch_name=branch_name, db=db)
-    )
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
 
     query = """
     mutation NewDevice($device_name: String!, $template_id: String!) {
@@ -1193,14 +1189,10 @@ async def test_create_with_object_template(
     assert sorted([(await sfp.interface.get_peer(db=db)).name.value for sfp in device_sfps]) == if_names
 
 
-@pytest.mark.parametrize("branch_name", ("default_branch", "test_branch"))
 async def test_create_without_object_template(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch_name: str
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=default_branch.name)
-    branch = (
-        default_branch if default_branch.name == branch_name else await create_branch(branch_name=branch_name, db=db)
-    )
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
 
     query = """
     mutation NewDevice($device_name: String!, $manufacturer: String!) {
