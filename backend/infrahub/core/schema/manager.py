@@ -744,3 +744,24 @@ class SchemaManager(NodeManager):
         """Convert a schema_node object loaded from the database into GenericSchema object."""
         node_data = await cls._prepare_node_data(schema_node=schema_node, db=db)
         return GenericSchema(**node_data)
+
+    def purge_inactive_branches(self, active_branches: list[str]) -> list[str]:
+        """Return non active branches that were purged."""
+
+        hashes_to_keep: set[str] = set()
+        for active_branch in active_branches:
+            if branch := self._branches.get(active_branch):
+                nodes = branch.get_all(include_internal=True, duplicate=False)
+                hashes_to_keep.update([node.get_hash() for node in nodes.values()])
+
+        removed_branches: list[str] = []
+        for branch_name in list(self._branches.keys()):
+            if branch_name not in active_branches:
+                del self._branches[branch_name]
+                removed_branches.append(branch_name)
+
+        for hash_key in list(self._cache.keys()):
+            if hash_key not in hashes_to_keep:
+                del self._cache[hash_key]
+
+        return removed_branches
