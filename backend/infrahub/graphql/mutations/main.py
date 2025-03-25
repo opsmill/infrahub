@@ -266,7 +266,7 @@ class InfrahubMutationMixin:
                     current_template=template,
                 )
 
-                obj_peer = await Node.init(schema=obj_peer_schema, db=db)
+                obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch)
                 await obj_peer.new(db=db, **obj_peer_data)
                 await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
                 await obj_peer.save(db=db)
