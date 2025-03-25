@@ -11,6 +11,7 @@ test.describe("Verify branch merge button state", () => {
       await page.getByTestId("create-branch-button").click();
       await page.getByRole("textbox", { name: "New branch name *" }).fill("merge-action-test");
       await page.getByRole("button", { name: "Create a new branch" }).click();
+      await expect(page.getByText("New branch name *")).not.toBeVisible();
       await expect(page.getByTestId("branches-items").getByText("merge-action-test")).toBeVisible();
       await page.getByTestId("branches-items").getByText("merge-action-test").click();
       await expect(page.getByText("Namemerge-action-test")).toBeVisible();
