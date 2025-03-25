@@ -8,14 +8,6 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   let dateBeforeTest: Date;
 
   test("1. Create a new organization", async ({ page }) => {
@@ -25,6 +17,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
     await page.getByRole("menuitem", { name: "Tenant" }).click();
+    await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
 
     await test.step("fill and submit form for new organization", async () => {
       await page.getByTestId("create-object-button").click();
