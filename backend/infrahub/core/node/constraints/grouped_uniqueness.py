@@ -232,11 +232,9 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 violation.typ == UniquenessConstraintType.SUBSET_OF_HFID and not is_hfid_violated
             ):
                 error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
-                errors = [ValidationError({field_name: error_msg}) for field_name in violation.fields]
-                raise ValidationError(errors)
+                raise ValidationError(error_msg)
 
         for violation in violations:
             if violation.typ == UniquenessConstraintType.HFID:
                 error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
-                errors = [ValidationError({field_name: error_msg}) for field_name in violation.fields]
-                raise HFIDViolatedError(errors, matching_nodes_ids=violation.nodes_ids)
+                raise HFIDViolatedError(error_msg, matching_nodes_ids=violation.nodes_ids)

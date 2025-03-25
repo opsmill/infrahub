@@ -1215,9 +1215,9 @@ class SchemaBranch:
                 # Make sure there is no duplicate regarding generics values.
                 if node.uniqueness_constraints:
                     if hfid_uniqueness_constraint not in node.uniqueness_constraints:
-                        node.uniqueness_constraints.append(list(hfid_uniqueness_constraint))
+                        node.uniqueness_constraints.append(hfid_uniqueness_constraint)
                 else:
-                    node.uniqueness_constraints = [list(hfid_uniqueness_constraint)]
+                    node.uniqueness_constraints = [hfid_uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:

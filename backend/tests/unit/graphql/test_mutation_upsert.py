@@ -12,6 +12,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET
+from tests.node_creation import create_and_save
 
 
 async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
@@ -232,9 +233,33 @@ async def test_update_by_id_to_nonunique_value_raises_error(
         variable_values={},
     )
 
-    expected_error = "Violates uniqueness constraint 'name' at name"
+    expected_error = "Violates uniqueness constraint 'name'"
     assert result.errors
     assert any(expected_error in error.message for error in result.errors)
+
+
+async def test_non_unique_value_raises_error(db: InfrahubDatabase, animal_person_schema, branch: Branch):
+    _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
+
+    # Make sure correct raised error is raised while violating uniqueness constraint of a non hfid-related attribute.
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: {value: "Jim"}, bag: {value: "bag-jacks"}}) {
+            ok
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    assert "Violates uniqueness constraint 'bag'" in result.errors[0].message
 
 
 async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):

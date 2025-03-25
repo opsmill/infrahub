@@ -453,17 +453,17 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         return uniqueness_constraint_paths
 
-    def convert_hfid_to_uniqueness_constraint(self, schema_branch: SchemaBranch) -> set[str] | None:
+    def convert_hfid_to_uniqueness_constraint(self, schema_branch: SchemaBranch) -> list[str] | None:
         if self.human_friendly_id is None:
             return None
 
-        uniqueness_constraint = set()
+        uniqueness_constraint = []
         for item in self.human_friendly_id:
             schema_attribute_path = self.parse_schema_path(path=item, schema=schema_branch)
             if schema_attribute_path.is_type_attribute:
-                uniqueness_constraint.add(item)
+                uniqueness_constraint.append(item)
             elif schema_attribute_path.is_type_relationship:
-                uniqueness_constraint.add(schema_attribute_path.relationship_schema.name)
+                uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
         return uniqueness_constraint
 
     def get_uniqueness_constraint_type(
@@ -472,9 +472,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         hfid = self.convert_hfid_to_uniqueness_constraint(schema_branch=schema_branch)
         if hfid is None:
             return UniquenessConstraintType.STANDARD
-        if uniqueness_constraint == hfid:
+        hfid_set = set(hfid)
+        if uniqueness_constraint == hfid_set:
             return UniquenessConstraintType.HFID
-        if uniqueness_constraint <= hfid:
+        if uniqueness_constraint <= hfid_set:
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
 

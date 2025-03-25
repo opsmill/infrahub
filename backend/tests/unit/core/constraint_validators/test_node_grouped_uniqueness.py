@@ -8,7 +8,8 @@ from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import HFIDViolatedError, ValidationError
+from tests.node_creation import create_and_save
 
 
 class TestNodeGroupedUniquenessConstraint:
@@ -327,3 +328,21 @@ class TestNodeGroupedUniquenessConstraint:
 
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'color-owner'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_node_1)
+
+    async def test_hfid_violated(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid):
+        person_john = await create_and_save(db=db, schema="TestPerson", name="John")
+        _ = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
+        car_mercedes_2 = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
+
+        with pytest.raises(HFIDViolatedError, match="Violates uniqueness constraint 'name-owner'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_2)
+
+    async def test_subset_hfid_violated(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid):
+        person_john = await create_and_save(db=db, schema="TestPerson", name="John")
+        person_maria = await create_and_save(db=db, schema="TestPerson", name="Maria")
+        _ = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
+        car_mercedes_of_maria = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_maria)
+
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'") as exc_info:
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_of_maria)
+        assert not isinstance(exc_info.value, HFIDViolatedError), "HFIDViolatedError should not be raised here"

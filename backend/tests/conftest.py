@@ -681,6 +681,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "bag", "kind": "Text", "optional": True, "unique": True},
                 ],
                 "relationships": [
                     {
