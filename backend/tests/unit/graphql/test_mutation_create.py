@@ -1052,10 +1052,14 @@ async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branc
     assert result.data["TestCriticalityCreate"] is None
 
 
+@pytest.mark.parametrize("branch_name", ("default_branch", "test_branch"))
 async def test_create_with_object_template(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch_name: str
 ):
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=default_branch.name)
+    branch = (
+        default_branch if default_branch.name == branch_name else await create_branch(branch_name=branch_name, db=db)
+    )
 
     query = """
     mutation NewDevice($device_name: String!, $template_id: String!) {
@@ -1070,7 +1074,7 @@ async def test_create_with_object_template(
       }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     # Random non-existing ID for template
     result = await graphql(
@@ -1082,7 +1086,7 @@ async def test_create_with_object_template(
     )
     assert "Unable to find the object template in the database" in result.errors[0].message
 
-    device_template: Node = await Node.init(schema=f"Template{TestKind.DEVICE}", db=db, branch=default_branch)
+    device_template: Node = await Node.init(schema=f"Template{TestKind.DEVICE}", db=db, branch=branch)
     await device_template.new(
         db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
     )
@@ -1098,7 +1102,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
@@ -1114,7 +1118,7 @@ async def test_create_with_object_template(
     interface_templates: list[Node] = []
     for if_name in if_names:
         interface_template: Node = await Node.init(
-            schema=f"Template{TestKind.PHYSICAL_INTERFACE}", db=db, branch=default_branch
+            schema=f"Template{TestKind.PHYSICAL_INTERFACE}", db=db, branch=branch
         )
         await interface_template.new(
             db=db, template_name=f"MX204 {if_name}", device=device_template, name=if_name, phys_type="QSFP28 (100GE)"
@@ -1135,7 +1139,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr02"
@@ -1143,7 +1147,7 @@ async def test_create_with_object_template(
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # Validate that interfaces relationship has been populated according to object template
-    interfaces = await NodeManager.query(db=db, branch=default_branch, schema=TestKind.PHYSICAL_INTERFACE)
+    interfaces = await NodeManager.query(db=db, branch=branch, schema=TestKind.PHYSICAL_INTERFACE)
     assert len(interfaces) == len(if_names)
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert len(device_interfaces) == len(if_names)
@@ -1152,7 +1156,7 @@ async def test_create_with_object_template(
     # Add a SFP to each interface of the object template
     template_interfaces = await device_template.interfaces.get_peers(db=db)
     for interface in template_interfaces.values():
-        sfp_template: Node = await Node.init(schema=f"Template{TestKind.SFP}", db=db, branch=default_branch)
+        sfp_template: Node = await Node.init(schema=f"Template{TestKind.SFP}", db=db, branch=branch)
         await sfp_template.new(
             db=db,
             template_name=f"QSFP {interface.name.value}",
@@ -1172,7 +1176,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr03"
@@ -1189,10 +1193,14 @@ async def test_create_with_object_template(
     assert sorted([(await sfp.interface.get_peer(db=db)).name.value for sfp in device_sfps]) == if_names
 
 
+@pytest.mark.parametrize("branch_name", ("default_branch", "test_branch"))
 async def test_create_without_object_template(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch_name: str
 ):
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=default_branch.name)
+    branch = (
+        default_branch if default_branch.name == branch_name else await create_branch(branch_name=branch_name, db=db)
+    )
 
     query = """
     mutation NewDevice($device_name: String!, $manufacturer: String!) {
@@ -1210,7 +1218,7 @@ async def test_create_without_object_template(
       }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -1222,7 +1230,7 @@ async def test_create_without_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
