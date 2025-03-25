@@ -263,18 +263,6 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_6'
           ],
         },
-        {
-          type: 'category',
-          label: 'Python SDK',
-          link: {
-            type: 'generated-index',
-            slug: 'release-notes/python-sdk',
-          },
-          items: [
-            // 'release-notes/python-sdk/release-1_0-DRAFT',
-            'release-notes/python-sdk/release-0_13'
-          ],
-        },
       ],
     },
     'faq/faq',
