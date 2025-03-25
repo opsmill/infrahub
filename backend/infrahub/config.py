@@ -157,6 +157,11 @@ class MainSettings(BaseSettings):
         default=None,
         description="Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.",
     )
+    schema_strict_mode: bool = Field(
+        default=True,
+        description="Enable strict schema validation. When set to `False`, "
+        "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
