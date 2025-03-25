@@ -1,0 +1,1 @@
+Rename command `demo.migrate` to `demo.upgrade`
