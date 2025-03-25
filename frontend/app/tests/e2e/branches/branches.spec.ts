@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../constants";
-import { createBranch } from "../utils";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranch } from "../../utils";
 
 test.describe("Branches creation and deletion", () => {
   test.describe("when not logged in", () => {
