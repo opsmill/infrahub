@@ -1,0 +1,28 @@
+query DeviceQuery($id: ID!) {
+  InfraDevice(ids: [$id]) {
+    edges {
+      node {
+        device_type {
+            value
+        }
+        instance {
+          value
+        }
+        site {
+          node {
+            name {
+              value
+            }
+            parent {
+              node {
+                name {
+                  value
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

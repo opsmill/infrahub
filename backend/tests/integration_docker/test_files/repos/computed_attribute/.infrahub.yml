@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/develop.json
+---
+python_transforms:
+  - name: DeviceNameAttribute
+    class_name: DeviceNameAttribute
+    file_path: "transforms/device_name_attribute.py"
+
+queries:
+  - name: device_name_attribute
+    file_path: "transforms/device_name_attribute.gql"

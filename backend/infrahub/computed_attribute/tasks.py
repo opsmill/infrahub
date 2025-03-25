@@ -235,7 +235,7 @@ async def process_jinja2(
         branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
     )
     schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
-    await service.client.schema.all(branch=branch_name, refresh=True)
+    await service.client.schema.all(branch=branch_name, refresh=True, schema_hash=schema_branch.get_hash())
 
     computed_macros = [
         attrib

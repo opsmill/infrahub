@@ -13,6 +13,8 @@ from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 from infrahub.git.utils import get_repositories_commit_per_branch
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import prepare_graphql_params
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,
@@ -37,6 +39,7 @@ async def gather_python_transform_attributes(
     log = get_run_logger()
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     branches_with_diff_from_main = registry.get_altered_schema_branches()
+    branch = registry.get_branch_from_registry(branch=branch_name)
 
     transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
 
@@ -61,12 +64,18 @@ async def gather_python_transform_attributes(
                 msg=f"The transform {transform_name} is assigned to a computed attribute but the transform could not be found in the database."
             )
     repositories = repositories or await get_repositories_commit_per_branch(db=db)
+    graphql_params = await prepare_graphql_params(db=db, branch=branch)
 
     computed_attributes: list[PythonTransformComputedAttribute] = []
     for transform in transforms:
         repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
         query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-
+        query_analyzer = InfrahubGraphQLQueryAnalyzer(
+            query=query.query.value,
+            branch=branch,
+            schema_branch=schema_branch,
+            schema=graphql_params.schema,
+        )
         for attribute in transform_attributes[transform.name.value]:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
                 name=transform.name.value,
@@ -74,8 +83,8 @@ async def gather_python_transform_attributes(
                 repository_id=repository.get_id(),
                 repository_name=repository.name.value,
                 repository_kind=repository.get_kind(),
+                query_analyzer=query_analyzer,
                 query_name=query.name.value,
-                query_models=query.models.value or [],
                 computed_attribute=attribute,
                 default_schema=branch_name not in branches_with_diff_from_main,
             )
@@ -164,11 +173,13 @@ async def gather_trigger_computed_attribute_python(
             )
             triggers_python.append(trigger_python)
 
-            trigger_python_query = ComputedAttrPythonQueryTriggerDefinition.from_object(
-                computed_attribute=branches[branch_scope],
-                branch=branch_scope,
-                branches_out_of_scope=branches_out_of_scope,
-            )
-            triggers_python_query.append(trigger_python_query)
+            for kind in branches[branch_scope].query_analyzer.query_report.requested_read.keys():
+                trigger_python_query = ComputedAttrPythonQueryTriggerDefinition.from_object(
+                    kind=kind,
+                    computed_attribute=branches[branch_scope],
+                    branch=branch_scope,
+                    branches_out_of_scope=branches_out_of_scope,
+                )
+                triggers_python_query.append(trigger_python_query)
 
     return triggers_python, triggers_python_query
