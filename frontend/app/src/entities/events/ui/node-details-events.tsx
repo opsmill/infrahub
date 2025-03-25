@@ -3,8 +3,8 @@ import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.quer
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
-import { Spinner } from "@/shared/components/ui/spinner";
 import React from "react";
 import { useGetEvents } from "../domain/get-events.query";
 import { EventCard } from "./event-card";
@@ -37,11 +37,7 @@ export const NodeEvents = ({
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center flex-grow">
-        <Spinner />
-      </div>
-    );
+    return <LoadingIndicator className="p-4" message="" />;
   }
 
   if (error) {
