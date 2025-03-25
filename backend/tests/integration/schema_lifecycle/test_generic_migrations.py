@@ -23,7 +23,7 @@ SPECIFIC_THREE_KIND = "TestingSpecificThree"
 THING_KIND = "TestingThing"
 
 
-class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
+class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_thing(self) -> dict[str, Any]:
         return {
@@ -110,8 +110,12 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         return f"branch-{num}"
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(
-        self, db: InfrahubDatabase, initialize_registry, client: InfrahubClient, schema_step_01, branch_name: str
+    async def initial_objects(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initialize_registry,
+        schema_step_01,
     ) -> dict[str, Node]:
         await load_schema(db=db, schema=schema_step_01)
 
@@ -139,7 +143,6 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         await specific_three.new(db=db, generic_attr_text="Charlie", generic_attr_num=3, favorite_thing=thing_three)
         await specific_three.save(db=db)
 
-        await client.branch.create(branch_name=branch_name, wait_until_completion=True)
         objs = {
             "thing_one": thing_one,
             "thing_two": thing_two,
@@ -149,6 +152,18 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
             "specific_three": specific_three,
         }
         return objs
+
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_objects: dict[str, Node],
+        client: InfrahubClient,
+        branch_name: str,
+    ) -> dict[str, Node]:
+        await client.branch.create(branch_name=branch_name, wait_until_completion=True)
+        return initial_objects
 
     @pytest.fixture(params=[True, False])
     async def branch(self, request, db: InfrahubDatabase, default_branch: Branch, branch_name: str) -> Branch:
@@ -315,99 +330,16 @@ class TestSchemaLifecycleGenericUpdates(TestSchemaLifecycleBase):
         current_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         registry.schema.set_schema_branch(name=branch.name, schema=current_schema_branch)
 
-    async def _validate_inherited_schema_fields(
+    async def validate_database(
         self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
     ) -> list[str]:
-        """
-        Validate the following:
-         - SchemaNode nodes do not have relationship to SchemaAttribute or SchemaRelationship nodes for
-            any inherited relationships or attributes
-         - SchemaNode nodes have relationship to SchemaAttribute or SchemaRelationship nodes for
-            all local relationships and attributes
-        """
-        node_kind_map: dict[str, list[str]] = {}
-        for node_schema in inheriting_schemas:
-            if node_schema.namespace not in node_kind_map:
-                node_kind_map[node_schema.namespace] = []
-            node_kind_map[node_schema.namespace].append(node_schema.name)
-        params = {
-            "node_kind_map": node_kind_map,
-        }
-        branch_filter, branch_params = branch.get_query_filter_path()
-        params.update(branch_params)
-        query = """
-MATCH (schema_node:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(ns_value:AttributeValue)
-WHERE $node_kind_map[ns_value.value] IS NOT NULL
-MATCH (schema_node)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(name_value:AttributeValue)
-WHERE name_value.value IN $node_kind_map[ns_value.value]
-WITH schema_node, ns_value.value + name_value.value AS node_kind
-MATCH (schema_node)-[:IS_RELATED]-(:Relationship {name: "schema__node__relationships"})-[:IS_RELATED]-(:SchemaRelationship)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(rnv:AttributeValue)
-WITH DISTINCT schema_node, node_kind, rnv
-CALL {
-    WITH schema_node, rnv
-    MATCH path = (schema_node)-[r1:IS_RELATED]-(:Relationship {name: "schema__node__relationships"})-[r2:IS_RELATED]-(:SchemaRelationship)
-        -[r3:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r4:HAS_VALUE]->(rnv)
-    WHERE all(r IN relationships(path) WHERE %(branch_filter)s)
-    RETURN all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY (r1.branch_level + r2.branch_level + r3.branch_level + r4.branch_level) DESC,
-        r4.from DESC, r3.from DESC, r2.from DESC, r1.from DESC
-    LIMIT 1
-}
-WITH schema_node, node_kind, rnv, is_active
-WHERE is_active = TRUE
-WITH schema_node, node_kind, collect(rnv.value) AS relationship_names
-MATCH (schema_node)-[:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[:IS_RELATED]-(:SchemaAttribute)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(anv:AttributeValue)
-WITH DISTINCT schema_node, node_kind, relationship_names, anv
-CALL {
-    WITH schema_node, anv
-    MATCH path = (schema_node)-[r1:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[r2:IS_RELATED]-(:SchemaAttribute)
-        -[r3:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r4:HAS_VALUE]->(anv)
-    WHERE all(r IN relationships(path) WHERE %(branch_filter)s)
-    RETURN all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY (r1.branch_level + r2.branch_level + r3.branch_level + r4.branch_level) DESC,
-        r4.from DESC, r3.from DESC, r2.from DESC, r1.from DESC
-    LIMIT 1
-}
-WITH node_kind, relationship_names, anv, is_active
-WHERE is_active = TRUE
-RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
-        """ % {"branch_filter": branch_filter}
-        results = await db.execute_query(query=query, params=params)
-        errors = []
-
-        schema_by_kind = {schema.kind: schema for schema in inheriting_schemas}
-        for result in results:
-            node_kind = result.get("node_kind")
-            db_relationship_names = set(result.get("relationship_names"))
-            db_attribute_names = set(result.get("attribute_names"))
-            node_schema = schema_by_kind[node_kind]
-            expected_local_rels = set(node_schema.local_relationship_names)
-            expected_local_attrs = set(node_schema.local_attribute_names)
-            for extra_generic_rel in db_relationship_names - expected_local_rels:
-                errors.append(
-                    f"Node schema '{node_kind}' has a relationship to generic-only relationship '{extra_generic_rel}'"
-                )
-            for extra_generic_attr in db_attribute_names - expected_local_attrs:
-                errors.append(
-                    f"Node schema '{node_kind}' has a relationship to generic-only attribute '{extra_generic_attr}'"
-                )
-            for missing_local_rel in expected_local_rels - db_relationship_names:
-                errors.append(
-                    f"Node schema '{node_kind}' is missing a relationship to local relationship '{missing_local_rel}'"
-                )
-            for missing_local_attr in expected_local_attrs - db_attribute_names:
-                errors.append(
-                    f"Node schema '{node_kind}' is missing a relationship to local attribute '{missing_local_attr}'"
-                )
-        return errors
+        return []
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, branch: Branch, initial_dataset):
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 3
 
-        errors = await self._validate_inherited_schema_fields(
+        errors = await self.validate_database(
             db=db,
             branch=branch,
             inheriting_schemas=[
@@ -585,7 +517,7 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert "things" not in specific_three_schema.local_relationship_names
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
-        errors = await self._validate_inherited_schema_fields(
+        errors = await self.validate_database(
             db=db,
             branch=branch,
             inheriting_schemas=[
@@ -720,7 +652,7 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert "things" not in specific_three_schema.local_relationship_names
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
-        errors = await self._validate_inherited_schema_fields(
+        errors = await self.validate_database(
             db=db,
             branch=branch,
             inheriting_schemas=[
@@ -885,7 +817,7 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert set(specific_three_schema.relationship_names) >= {"favorite_thing"}
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
-        errors = await self._validate_inherited_schema_fields(
+        errors = await self.validate_database(
             db=db,
             branch=branch,
             inheriting_schemas=[
@@ -994,7 +926,7 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         assert "things" not in specific_three_schema.relationship_names
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
-        errors = await self._validate_inherited_schema_fields(
+        errors = await self.validate_database(
             db=db,
             branch=branch,
             inheriting_schemas=[
@@ -1003,3 +935,139 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
             ],
         )
         assert not errors
+
+
+class TestSchemaLifecycleGenericUpdates(SchemaLifecycleGenericBase):
+    async def validate_database(
+        self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
+    ) -> list[str]:
+        return await self._validate_inherited_schema_fields(db=db, branch=branch, inheriting_schemas=inheriting_schemas)
+
+    async def _validate_inherited_schema_fields(
+        self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
+    ) -> list[str]:
+        """
+        Validate the following:
+         - SchemaNode nodes do not have relationship to SchemaAttribute or SchemaRelationship nodes for
+            any inherited relationships or attributes
+         - SchemaNode nodes have relationship to SchemaAttribute or SchemaRelationship nodes for
+            all local relationships and attributes
+        """
+        node_kind_map: dict[str, list[str]] = {}
+        for node_schema in inheriting_schemas:
+            if node_schema.namespace not in node_kind_map:
+                node_kind_map[node_schema.namespace] = []
+            node_kind_map[node_schema.namespace].append(node_schema.name)
+        params = {
+            "node_kind_map": node_kind_map,
+        }
+        branch_filter, branch_params = branch.get_query_filter_path()
+        params.update(branch_params)
+        query = """
+MATCH (schema_node:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(ns_value:AttributeValue)
+WHERE $node_kind_map[ns_value.value] IS NOT NULL
+MATCH (schema_node)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(name_value:AttributeValue)
+WHERE name_value.value IN $node_kind_map[ns_value.value]
+WITH schema_node, ns_value.value + name_value.value AS node_kind
+MATCH (schema_node)-[:IS_RELATED]-(:Relationship {name: "schema__node__relationships"})-[:IS_RELATED]-(:SchemaRelationship)
+    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(rnv:AttributeValue)
+WITH DISTINCT schema_node, node_kind, rnv
+CALL {
+    WITH schema_node, rnv
+    MATCH path = (schema_node)-[r1:IS_RELATED]-(:Relationship {name: "schema__node__relationships"})-[r2:IS_RELATED]-(:SchemaRelationship)
+        -[r3:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r4:HAS_VALUE]->(rnv)
+    WHERE all(r IN relationships(path) WHERE %(branch_filter)s)
+    RETURN all(r IN relationships(path) WHERE r.status = "active") AS is_active
+    ORDER BY (r1.branch_level + r2.branch_level + r3.branch_level + r4.branch_level) DESC,
+        r4.from DESC, r3.from DESC, r2.from DESC, r1.from DESC
+    LIMIT 1
+}
+WITH schema_node, node_kind, rnv, is_active
+WHERE is_active = TRUE
+WITH schema_node, node_kind, collect(rnv.value) AS relationship_names
+MATCH (schema_node)-[:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[:IS_RELATED]-(:SchemaAttribute)
+    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(anv:AttributeValue)
+WITH DISTINCT schema_node, node_kind, relationship_names, anv
+CALL {
+    WITH schema_node, anv
+    MATCH path = (schema_node)-[r1:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[r2:IS_RELATED]-(:SchemaAttribute)
+        -[r3:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r4:HAS_VALUE]->(anv)
+    WHERE all(r IN relationships(path) WHERE %(branch_filter)s)
+    RETURN all(r IN relationships(path) WHERE r.status = "active") AS is_active
+    ORDER BY (r1.branch_level + r2.branch_level + r3.branch_level + r4.branch_level) DESC,
+        r4.from DESC, r3.from DESC, r2.from DESC, r1.from DESC
+    LIMIT 1
+}
+WITH node_kind, relationship_names, anv, is_active
+WHERE is_active = TRUE
+RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
+        """ % {"branch_filter": branch_filter}
+        results = await db.execute_query(query=query, params=params)
+        errors = []
+
+        schema_by_kind = {schema.kind: schema for schema in inheriting_schemas}
+        for result in results:
+            node_kind = result.get("node_kind")
+            db_relationship_names = set(result.get("relationship_names"))
+            db_attribute_names = set(result.get("attribute_names"))
+            node_schema = schema_by_kind[node_kind]
+            expected_local_rels = set(node_schema.local_relationship_names)
+            expected_local_attrs = set(node_schema.local_attribute_names)
+            for extra_generic_rel in db_relationship_names - expected_local_rels:
+                errors.append(
+                    f"Node schema '{node_kind}' has a relationship to generic-only relationship '{extra_generic_rel}'"
+                )
+            for extra_generic_attr in db_attribute_names - expected_local_attrs:
+                errors.append(
+                    f"Node schema '{node_kind}' has a relationship to generic-only attribute '{extra_generic_attr}'"
+                )
+            for missing_local_rel in expected_local_rels - db_relationship_names:
+                errors.append(
+                    f"Node schema '{node_kind}' is missing a relationship to local relationship '{missing_local_rel}'"
+                )
+            for missing_local_attr in expected_local_attrs - db_attribute_names:
+                errors.append(
+                    f"Node schema '{node_kind}' is missing a relationship to local attribute '{missing_local_attr}'"
+                )
+        return errors
+
+
+class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGenericBase):
+    """
+    Same tests as TestSchemaLifecycleGenericUpdates, but start with duplicated inherited SchemaAttributes
+    and SchemaRelationships in the database b/c this is how we used to store inherited fields of a schema
+    And skip the database-level verification in TestSchemaLifecycleGenericUpdates b/c it would fail
+    """
+
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_objects: dict[str, Node],
+        client: InfrahubClient,
+        branch_name: str,
+    ) -> dict[str, Node]:
+        # add duplicative inherited attrs and rels to database for inheriting schemas
+        # b/c this is how data used to be stored
+        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        attribute_schema = main_schema_branch.get_node(name="SchemaAttribute", duplicate=False)
+        relationship_schema = main_schema_branch.get_node(name="SchemaRelationship", duplicate=False)
+        for schema_kind in [SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND]:
+            node_schema = main_schema_branch.get(schema_kind)
+            node_schema_instance = await NodeManager.get_one(db=db, branch=default_branch, id=node_schema.get_id())
+            for attr_name in ("generic_attr_text", "generic_attr_num"):
+                attr = node_schema.get_attribute(attr_name)
+                new_attr = await registry.schema.create_attribute_in_db(
+                    db=db, branch=default_branch, schema=attribute_schema, parent=node_schema_instance, item=attr
+                )
+                attr.id = new_attr.id
+            for rel_name in ("things", "favorite_thing"):
+                rel = node_schema.get_relationship(rel_name)
+                new_rel = await registry.schema.create_relationship_in_db(
+                    db=db, branch=default_branch, schema=relationship_schema, parent=node_schema_instance, item=rel
+                )
+                rel.id = new_rel.id
+            main_schema_branch.set(name=schema_kind, schema=node_schema)
+        await client.branch.create(branch_name=branch_name, wait_until_completion=True)
+        return initial_objects
