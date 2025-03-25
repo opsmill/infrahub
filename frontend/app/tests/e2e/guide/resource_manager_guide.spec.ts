@@ -46,6 +46,8 @@ test.describe("Resource Managers guide", () => {
 
       await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_ip");
       await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("IP prefix pool created")).toBeVisible();
     });
 
     await test.step("Use Pool to allocate IP on Device", async () => {
