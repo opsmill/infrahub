@@ -38,7 +38,7 @@ class NodeInheritFromChecker(ConstraintCheckerInterface):
             name=request.node_schema.kind, branch=request.branch, duplicate=False
         )
 
-        if not isinstance(request.node_schema, NodeSchema) or request.schema_branch is None:
+        if not isinstance(request.node_schema, NodeSchema):
             return grouped_data_paths_list
 
         _, removed, _ = compare_lists(list1=current_schema.inherit_from, list2=request.node_schema.inherit_from)
@@ -53,17 +53,18 @@ class NodeInheritFromChecker(ConstraintCheckerInterface):
         request_inherited: list[MainSchemaTypes] = []
         for n in request.node_schema.inherit_from:
             try:
-                request_inherited.append(request.schema_branch.get(name=n, duplicate=False))
+                schema = request.schema_branch.get(name=n, duplicate=False)
             except SchemaNotFoundError:
-                request_inherited.append(self.db.schema.get(name=n, branch=request.branch, duplicate=False))
+                schema = self.db.schema.get(name=n, branch=request.branch, duplicate=False)
+            request_inherited.append(schema)
         request_inherit_from_ids = {g.id: g.kind for g in request_inherited}
 
         # Compare IDs to find out if some inherited nodes were removed
         # Comparing IDs helps us in understanding if a node was renamed or really removed
-        _, removedIds, _ = compare_lists(
+        _, removed_ids, _ = compare_lists(
             list1=list(current_inherit_from_ids.keys()), list2=list(request_inherit_from_ids.keys())
         )
-        if removed := [current_inherit_from_ids[k] for k in removedIds]:
+        if removed := [current_inherit_from_ids[k] for k in removed_ids]:
             group_data_path.add_data_path(
                 DataPath(
                     branch=str(request.branch.name),
