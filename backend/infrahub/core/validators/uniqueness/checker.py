@@ -1,21 +1,16 @@
+from __future__ import annotations
+
 import asyncio
 from itertools import chain
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
-from infrahub.core.query import QueryResult
-from infrahub.core.schema import (
-    AttributeSchema,
-    MainSchemaTypes,
-    RelationshipSchema,
-)
+from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
-from infrahub.database import InfrahubDatabase
 
 from ..interface import ConstraintCheckerInterface
-from ..model import SchemaConstraintValidatorRequest
 from .model import (
     NodeUniquenessQueryRequest,
     NonUniqueAttribute,
@@ -25,6 +20,12 @@ from .model import (
     QueryRelationshipAttributePath,
 )
 from .query import NodeUniqueAttributeConstraintQuery
+
+if TYPE_CHECKING:
+    from infrahub.core.query import QueryResult
+    from infrahub.database import InfrahubDatabase
+
+    from ..model import SchemaConstraintValidatorRequest
 
 
 def get_attribute_path_from_string(
