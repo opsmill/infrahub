@@ -4,6 +4,7 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.optional import AttributeOptionalChecker, AttributeOptionalUpdateValidatorQuery
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
@@ -161,6 +162,7 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main,
         constraint_name="attribute.optional.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = AttributeOptionalChecker(db=db, branch=branch)
