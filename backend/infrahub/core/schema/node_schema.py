@@ -98,6 +98,7 @@ class NodeSchema(GeneratedNodeSchema):
                 continue
 
             new_attribute = attribute.duplicate()
+            new_attribute.id = None
             new_attribute.inherited = True
 
             if attribute.name not in existing_inherited_fields:
@@ -111,6 +112,7 @@ class NodeSchema(GeneratedNodeSchema):
                 continue
 
             new_relationship = relationship.duplicate()
+            new_relationship.id = None
             new_relationship.inherited = True
 
             if relationship.name not in existing_inherited_fields:

@@ -128,6 +128,7 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "_updated_at",
         "color",
         "display_label",
+        "driver",
         "hfid",
         "id",
         "is_electric",
@@ -149,6 +150,7 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
     assert sorted(person._meta.fields.keys()) == [
         "_updated_at",
         "cars",
+        "cars_driven",
         "display_label",
         "height",
         "hfid",
