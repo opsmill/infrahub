@@ -1,6 +1,6 @@
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeCore } from "@/entities/nodes/types";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
@@ -23,7 +23,7 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
       </div>
 
       <Link
-        to={getObjectDetailsUrl2(node.__typename, node.id)}
+        to={getObjectDetailsUrl(node.__typename, node.id)}
         className="text-custom-blue-800 font-medium hover:underline"
       >
         {getNodeLabel(node)}

@@ -1,5 +1,5 @@
 import { PROFILE_KIND } from "@/config/constants";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-loading";
@@ -29,7 +29,7 @@ export default function BreadcrumbSchemaSelector({
         <BreadcrumbSchemaSelector kind={PROFILE_KIND} />
         <BreadcrumbSeparator />
         <BreadcrumbLink
-          to={getObjectDetailsUrl2(kind)}
+          to={getObjectDetailsUrl(kind)}
           className={classNames(isLast && breadcrumbActiveStyle)}
           {...props}
         >
@@ -45,7 +45,7 @@ export default function BreadcrumbSchemaSelector({
         <BreadcrumbSchemaSelector kind={schema.hierarchy} />
         <BreadcrumbSeparator />
         <BreadcrumbLink
-          to={getObjectDetailsUrl2(kind)}
+          to={getObjectDetailsUrl(kind)}
           className={classNames(isLast && breadcrumbActiveStyle)}
           {...props}
         >
@@ -57,7 +57,7 @@ export default function BreadcrumbSchemaSelector({
 
   return (
     <BreadcrumbLink
-      to={getObjectDetailsUrl2(kind)}
+      to={getObjectDetailsUrl(kind)}
       className={classNames(isLast && breadcrumbActiveStyle)}
       {...props}
     >

@@ -24,6 +24,7 @@ from .m019_restore_rels_to_time import Migration019
 from .m020_duplicate_edges import Migration020
 from .m021_missing_hierarchy_merge import Migration021
 from .m022_add_generate_template_attr import Migration022
+from .m023_deduplicate_cardinality_one_relationships import Migration023
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -53,6 +54,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration020,
     Migration021,
     Migration022,
+    Migration023,
 ]
 
 

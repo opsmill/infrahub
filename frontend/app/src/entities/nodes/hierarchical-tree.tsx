@@ -10,7 +10,6 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -157,9 +156,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
       onNodeSelect={({ element, isSelected }) => {
         if (!isSelected) return;
 
-        const url = constructPath(
-          getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string)
-        );
+        const url = getObjectDetailsUrl(element.metadata?.kind as string, element.id.toString());
         navigate(url);
       }}
       className={className}
@@ -174,7 +171,7 @@ const ObjectTreeItem = ({ element }: TreeItemProps) => {
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
 
-  const url = constructPath(getObjectDetailsUrl(element.id.toString(), schema?.kind as string));
+  const url = getObjectDetailsUrl(schema?.kind as string, element.id.toString());
   return (
     <Link
       to={url}
