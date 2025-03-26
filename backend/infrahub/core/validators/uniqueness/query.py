@@ -30,7 +30,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
     def get_context(self) -> dict[str, str]:
         return {"kind": self.query_request.kind}
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-branches
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         from_times = db.render_list_comprehension(items="relationships(potential_path)", item_name="from")

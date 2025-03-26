@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -17,16 +16,16 @@ from .interface import RelationshipManagerConstraintInterface
 class NodeToValidate:
     uuid: str
     cardinality: RelationshipCardinality
-    min_count: Optional[int] = None
-    max_count: Optional[int] = None
+    min_count: int | None = None
+    max_count: int | None = None
 
 
 class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:  # noqa: ARG002
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
 
         # NOTE adding resolve here because we need to retrieve the real ID

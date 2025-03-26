@@ -1,7 +1,6 @@
 ---
 # yamllint disable rule:truthy
-name: Publish Infrahub-Server Package
-
+name: Publish Infrahub-Server, Infrahub-Testcontainers Packages
 on:
   workflow_dispatch:
     inputs:
@@ -30,14 +29,16 @@ on:
 
 jobs:
   publish_to_pypi:
-    name: "Publish Infrahub SDK to PyPI"
+    name: "Publish Infrahub-Server and Infrahub-Testcontainers to PyPI"
     runs-on: "ubuntu-22.04"
+    strategy:
+      matrix:
+        package_dir: ["", "python_testcontainers"]
     steps:
       - name: "Set up Python"
         uses: "actions/setup-python@v5"
         with:
           python-version: "3.12"
-
       - name: "Install Poetry"
         uses: "snok/install-poetry@v1"
         with:
@@ -45,24 +46,23 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
-
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
         with:
           submodules: true
-
       - name: "Install Dependencies"
         run: "poetry install"
-
+        working-directory: ${{ matrix.package_dir }}
       - name: "Add PyPI secret"
         run: "poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}"
-
+        working-directory: ${{ matrix.package_dir }}
       - name: "Poetry build"
         run: "poetry build"
-
+        working-directory: ${{ matrix.package_dir }}
       - name: "show output"
         run: "ls -la dist/"
-
+        working-directory: ${{ matrix.package_dir }}
       - name: "Poetry push PyPI"
         if: ${{ inputs.publish }}
         run: "poetry publish"
+        working-directory: ${{ matrix.package_dir }}

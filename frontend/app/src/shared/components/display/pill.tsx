@@ -1,4 +1,4 @@
-import LoadingScreen from "@/shared/components/loading-screen";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ReactNode } from "react";
@@ -48,7 +48,7 @@ export const Pill = (props: tPill) => {
 
   return (
     <span className={classNames(DEFAULT_CLASS(className), customClassName, className)}>
-      {isLoading && <LoadingScreen size={8} hideText />}
+      {isLoading && <Spinner />}
       {error && <Icon icon={"mdi:warning-outline"} />}
       {!isLoading && children}
     </span>

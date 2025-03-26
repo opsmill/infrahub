@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_regex_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -70,7 +70,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeRegexChecker(ConstraintCheckerInterface):
     query_classes = [AttributeRegexUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 

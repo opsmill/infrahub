@@ -9,7 +9,7 @@ import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { fetchStream } from "@/shared/api/rest/fetch";
@@ -18,7 +18,6 @@ import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
@@ -30,7 +29,8 @@ import { useAtomValue } from "jotai/index";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
-import { useParams } from "react-router-dom";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
@@ -108,7 +108,7 @@ export const FileContentDiff = (props: any) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState(false);
   const [newFile, setNewFile] = useState(false);
@@ -390,7 +390,7 @@ export const FileContentDiff = (props: any) => {
   };
 
   if (loading || isLoading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {

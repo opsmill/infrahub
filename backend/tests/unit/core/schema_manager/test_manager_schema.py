@@ -9,6 +9,8 @@ from infrahub_sdk.utils import compare_lists
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     AllowOverrideType,
     BranchSupportType,
     HashableModelState,
@@ -28,12 +30,14 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
-from tests.helpers.schema import CHILD, THING
+from tests.constants import TestKind
+from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
 
 from .conftest import _get_schema_by_kind
 
@@ -230,25 +234,33 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
     animal_person_schema_dict,
 ):
     schema = SchemaBranch(cache={}, name="test")
-    for node_schema in animal_person_schema_dict["generics"]:
-        if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
-            node_schema["uniqueness_constraints"] = None
-            node_schema["human_friendly_id"] = None
-    for node_schema in animal_person_schema_dict["nodes"]:
-        if node_schema["name"] == "Dog" and node_schema["namespace"] == "Test":
-            node_schema["uniqueness_constraints"] = uniqueness_constraints
-            node_schema["human_friendly_id"] = human_friendly_id
-            for attr_schema in node_schema["attributes"]:
-                attr_schema["unique"] = attr_schema["name"] in unique_attributes
-    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+    animal_schema = animal_person_schema_dict["generics"][0]
+    assert animal_schema["name"] == "Animal" and animal_schema["namespace"] == "Test"
+    animal_schema["uniqueness_constraints"] = None
+    animal_schema["human_friendly_id"] = None
 
-    schema.process_inheritance()
-    schema.validate_human_friendly_id()
-    schema.process_human_friendly_id()
+    dog_schema = animal_person_schema_dict["nodes"][0]
+    assert dog_schema["name"] == "Dog" and dog_schema["namespace"] == "Test"
+    dog_schema["uniqueness_constraints"] = uniqueness_constraints
+    dog_schema["human_friendly_id"] = human_friendly_id
+    expected_uniqueness_constraints = []
+    for attr_schema in dog_schema["attributes"]:
+        attr_schema["unique"] = attr_schema["name"] in unique_attributes
+        if attr_schema["unique"]:
+            expected_uniqueness_constraints.append([attr_schema["name"] + "__value"])
+
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+    schema.process()
 
     dog_node = schema.get("TestDog")
-    expected_uniqueness_constraints = uniqueness_constraints or [human_friendly_id]
-    assert dog_node.uniqueness_constraints == expected_uniqueness_constraints
+    if uniqueness_constraints:
+        expected_uniqueness_constraints += uniqueness_constraints
+    if human_friendly_id:
+        expected_uniqueness_constraints += [human_friendly_id]
+
+    assert {tuple(uc) for uc in dog_node.uniqueness_constraints} == {
+        tuple(uc) for uc in expected_uniqueness_constraints
+    }
 
 
 @pytest.mark.parametrize(
@@ -297,6 +309,7 @@ async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict
     schema.process_human_friendly_id()
 
     animal = schema.get(name="TestAnimal")
+
     assert sorted(animal.used_by) == ["TestCat", "TestDog"]
 
     dog = schema.get(name="TestDog")
@@ -341,7 +354,7 @@ async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints
     assert dog.human_friendly_id == ["name__value"]
     # person human friendly ID and uniqueness_constraints remain as they were set
     assert person.human_friendly_id == ["name__value", "other_name__value"]
-    assert person.uniqueness_constraints == [["name__value"]]
+    assert person.uniqueness_constraints == [["name__value"], ["name__value", "other_name__value"]]
 
 
 async def test_schema_branch_process_branch_support(schema_all_in_one):
@@ -518,7 +531,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     def extract_weights(schema: SchemaBranch):
         weights = []
         for node in schema.get_all().values():
-            if not isinstance(node, (NodeSchema, GenericSchema)):
+            if not isinstance(node, NodeSchema | GenericSchema):
                 continue
             for item in node.attributes + node.relationships:
                 weights.append(f"{node.name}__{item.name}__{item.order_weight}")
@@ -561,7 +574,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one):
-    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
     schema = SchemaBranch(cache={}, name="test")
@@ -925,7 +938,7 @@ async def test_schema_branch_validate_kinds_peer():
     with pytest.raises(ValueError) as exc:
         schema.validate_kinds()
 
-    assert str(exc.value) == "TestCriticality: Relationship 'first' is referencing an invalid peer 'TestNotPresent'"
+    assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
 
 
 async def test_schema_branch_validate_kinds_inherit():
@@ -2829,3 +2842,225 @@ async def test_hierarchical_validate_parent_children(
 
     await uk.new(db=db, name="United Kingdom", parent=eu)
     await uk.save(db=db)
+
+
+async def test_schema_branch_add_object_template_schema():
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    node_template = schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    assert node_template
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
+
+
+async def test_schema_branch_remove_object_template_schema():
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    node_template = schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    assert node_template
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
+
+    # Disable template
+    SIMPLE_DEVICE.generate_template = False
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    with pytest.raises(SchemaNotFoundError, match=r"Unable to find the schema"):
+        schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert not core_template_schema.used_by
+
+
+async def test_schema_branch_diff_core_object_template():
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    new_schema = schema.duplicate()
+    template_schema = new_schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=True)
+    template_schema.description = "New description"
+    new_schema.set(name=InfrahubKind.OBJECTTEMPLATE, schema=template_schema)
+
+    diff = new_schema.diff(other=schema)
+    assert diff.all == [InfrahubKind.OBJECTTEMPLATE]
+
+    DEVICE_SCHEMA.generics.extend([core_object_template, core_object_component_template])
+    new_schema = SchemaBranch(cache={}, name="test")
+    new_schema.load_schema(schema=DEVICE_SCHEMA)
+    new_schema.process_inheritance()
+    new_schema.manage_object_template_schemas()
+
+    diff = schema.diff(other=new_schema)
+    # We must not see kinds from the Template namespace
+    assert diff.all == [
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+        TestKind.VIRTUAL_INTERFACE,
+    ]
+
+
+@pytest.mark.parametrize("relationship_kind", (RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC))
+async def test_manage_object_templates(relationship_kind: RelationshipKind):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    THING_WITH_TEMPLATE = copy.deepcopy(THING)
+    THING_WITH_TEMPLATE.generate_template = True
+    THING_WITH_TEMPLATE.relationships[0].kind = relationship_kind
+    schema_branch.load_schema(
+        schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
+    )
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.THING, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {TestKind.THING}
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    # Verify the generated template
+    test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
+    assert test_object_template_thing.human_friendly_id == ["template_name__value"]
+    assert test_object_template_thing.uniqueness_constraints == [["template_name__value"]]
+    assert sorted(
+        [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
+    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
+    assert sorted(
+        [
+            r.name
+            for r in test_object_template_thing.relationships
+            if r.name not in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes")
+        ]
+    ) == sorted([r.name for r in THING_WITH_TEMPLATE.relationships])
+
+
+async def test_manage_object_templates_with_component_relationships():
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=DEVICE_SCHEMA))
+    schema_branch.process_inheritance()
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+        TestKind.VIRTUAL_INTERFACE,
+    }
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    # Verify the generated template
+    test_object_template_device = schema_branch.get_template(f"Template{TestKind.DEVICE}", duplicate=False)
+    for attr in DEVICE.attributes:
+        if attr.unique:
+            with pytest.raises(ValueError, match=r"Unable to find the attribute"):
+                test_object_template_device.get_attribute(name=attr.name)
+        else:
+            template_attr = test_object_template_device.get_attribute(name=attr.name)
+            assert template_attr.optional
+
+    # Check for the relationship from the object back to its template
+    test_device = schema_branch.get_node(name=TestKind.DEVICE, duplicate=False)
+    assert test_device.generate_template
+    assert test_device.get_relationship(name="object_template").peer == test_object_template_device.kind
+
+    # Make sure interfaces relationship is converted to interface templates
+    assert test_object_template_device.get_relationship("interfaces").peer == f"Template{TestKind.INTERFACE}"
+    # Make sure identifier matches as they are set to be the same
+    assert (
+        test_object_template_device.get_relationship("interfaces").identifier.removeprefix("template_")
+        == schema_branch.get_node(name=TestKind.DEVICE, duplicate=False).get_relationship("interfaces").identifier
+    )
+
+    # Verify attributes mapping of components
+    test_interface_template = schema_branch.get(name=f"Template{TestKind.PHYSICAL_INTERFACE}", duplicate=False)
+    assert test_interface_template.human_friendly_id == ["device__template_name__value", "template_name__value"]
+    assert test_interface_template.uniqueness_constraints == [["template_name__value", "device"]]
+    test_interface = schema_branch.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False)
+    for attr in test_interface.attributes:
+        template_attr = test_interface_template.get_attribute(name=attr.name)
+        # Optional value in component template should match original's
+        assert attr.optional == template_attr.optional
+
+    # Verify when a node is marked as absent
+    ABSENT_VIRTUAL_INTERFACE = copy.deepcopy(DEVICE_SCHEMA)
+    ABSENT_VIRTUAL_INTERFACE.get(name=TestKind.VIRTUAL_INTERFACE).state = HashableModelState.ABSENT
+
+    schema_branch = SchemaBranch(cache={}, name="absent-node")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=ABSENT_VIRTUAL_INTERFACE))
+    schema_branch.process_inheritance()
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+    }
+
+
+async def test_identify_object_templates_with_generics():
+    USELESS_DEVICE_SCHEMA = copy.deepcopy(DEVICE_SCHEMA)
+    USELESS_DEVICE_SCHEMA.nodes.append(
+        NodeSchema(
+            name="UselessDevice",
+            namespace="Testing",
+            inherit_from=[TestKind.INTERFACE_HOLDER],
+            include_in_menu=True,
+            label="Useless Device",
+            default_filter="name__value",
+            generate_template=True,
+            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+        )
+    )
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=USELESS_DEVICE_SCHEMA))
+    schema_branch.process_inheritance()
+
+    # As we requested template for TestingDevice, which is an implementation of generic TestingInterfaceHolder we must make sure not to propagate
+    # templating to TestingUselessDevice
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.DEVICE, duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+        TestKind.VIRTUAL_INTERFACE,
+    }

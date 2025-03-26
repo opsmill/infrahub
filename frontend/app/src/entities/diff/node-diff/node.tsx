@@ -8,7 +8,7 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router";
 import { DiffNodeAttribute } from "./node-attribute";
 import { getNewValue, getPreviousValue } from "./node-property";
 import { DiffNodeRelationship } from "./node-relationship";

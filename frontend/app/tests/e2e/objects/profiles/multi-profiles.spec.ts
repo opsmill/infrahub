@@ -72,7 +72,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await expect(page.getByLabel("Description")).toHaveValue("Desc from L2 profile v2");
       await expect(page.getByTestId("source-profile-badge")).toContainText("L2 profile v2");
 
-      await page.getByRole("option", { name: "L2 profile v2" }).click();
+      await page.getByText("L2 profile v2×").getByTestId("remove-option").click();
       await expect(page.getByLabel("Description")).toHaveValue("Desc from generic profile");
       await expect(page.getByTestId("source-profile-badge")).toContainText("Generic profile");
     });

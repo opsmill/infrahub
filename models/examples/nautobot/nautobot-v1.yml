@@ -76,8 +76,8 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-  - name: Choice
-    namespace: Template
+  - name: Generic
+    namespace: Choice
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
@@ -306,7 +306,7 @@ nodes:
         kind: Component
       - name: type
         label: type
-        peer: TemplateCircuitType
+        peer: ChoiceCircuitType
         optional: false
         cardinality: one
         kind: Attribute
@@ -339,7 +339,7 @@ nodes:
         cardinality: one
         kind: Parent
   - name: CircuitType
-    namespace: Template
+    namespace: Choice
     description: "A type of Circuit"
     label: "Circuit Type"
     icon: "mdi:poll"
@@ -349,7 +349,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     relationships:
       - name: circuit
         cardinality: many
@@ -398,7 +398,7 @@ nodes:
         kind: Attribute
       - name: model
         label: Model
-        peer: TemplateDeviceType
+        peer: ChoiceDeviceType
         optional: false
         cardinality: one
         kind: Attribute
@@ -452,7 +452,7 @@ nodes:
         cardinality: one
         kind: Attribute
   - name: DeviceType
-    namespace: Template
+    namespace: Choice
     description: "A model of device"
     label: "Device Type"
     icon: "mdi:poll"
@@ -465,7 +465,7 @@ nodes:
     uniqueness_constraints:
       - ["manufacturer", "name__value"]
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     attributes:
       - name: part_number
         label: Part Number
@@ -592,7 +592,7 @@ nodes:
         cardinality: one
         kind: Attribute
   - name: LocationType
-    namespace: Template
+    namespace: Choice
     description: "A type of Location"
     label: "Location Type"
     icon: "mdi:map-marker-question"
@@ -602,7 +602,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     relationships:
       - name: location
         identifier: location__type
@@ -622,7 +622,9 @@ nodes:
     display_labels:
       - name__value
     uniqueness_constraints:
-      - ["manufacturer", "name__value"]
+      - ["name__value"]
+    human_friendly_id:
+      - name__value
     attributes:
       - name: name
         kind: Text
@@ -645,8 +647,9 @@ nodes:
     relationships:
       - name: manufacturer
         peer: OrganizationGeneric
-        optional: false
+        optional: true
         cardinality: one
+        kind: Attribute
   - name: ProviderNetwork
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant"
@@ -1069,7 +1072,7 @@ nodes:
         cardinality: one
         kind: Generic
       - name: location_type
-        peer: TemplateLocationType
+        peer: ChoiceLocationType
         optional: true
         cardinality: one
       - name: status

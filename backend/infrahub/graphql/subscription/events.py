@@ -19,7 +19,7 @@
 
 # log = get_logger(name="infrahub.graphql")
 
-# async def resolver_event(root: dict, info: GraphQLResolveInfo, topics: Optional[List] = None):  # pylint: disable=unused-argument
+# async def resolver_event(root: dict, info: GraphQLResolveInfo, topics: Optional[List] = None):
 #     pass
 # connection = await get_broker()
 

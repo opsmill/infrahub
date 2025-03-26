@@ -1,13 +1,22 @@
+import { POOLS_PEER } from "@/entities/ipam/constants";
 import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+  templateSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
+import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -27,7 +36,7 @@ import { useState } from "react";
 const getParentRelationship = (peer?: string) => {
   if (!peer) return;
 
-  const nodes = store.get(schemaState);
+  const nodes = store.get(nodeSchemasAtom);
   const peerSchema = nodes.find((schema) => schema.kind === peer);
   const parentRelationship = peerSchema?.relationships?.find((rel) => rel.kind === "Parent");
 
@@ -50,8 +59,8 @@ const RelationshipField = ({
   relationship,
   ...props
 }: RelationshipFieldProps) => {
-  const generics = useAtomValue(genericsState);
-  const schemaList = useAtomValue(schemaState);
+  const generics = useAtomValue(genericSchemasAtom);
+  const schemaList = useAtomValue(nodeSchemasAtom);
 
   const [selectedGeneric, setSelectedGeneric] = useState<Node | null>(
     parent ? options?.find((option) => option.id === parent) : null
@@ -116,10 +125,13 @@ const RelationshipField = ({
   }
 
   if (generic) {
-    const profiles = store.get(profilesAtom);
+    const profiles = store.get(profileSchemasAtom);
+    const templates = store.get(templateSchemasAtom);
     const genericOptions = (generic.used_by || [])
       .map((name: string) => {
-        const relatedSchema = [...schemaList, ...profiles].find((s) => s.kind === name);
+        const relatedSchema = [...schemaList, ...profiles, ...templates].find(
+          (s) => s.kind === name
+        );
 
         if (relatedSchema) {
           return {
@@ -332,6 +344,19 @@ const RelationshipField = ({
         render={({ field }) => {
           const fieldData: FormRelationshipValue = field.value;
 
+          const peer = relationship?.peer;
+          const { schema, isNode } = useSchema(peer);
+          const canSelectFromPool =
+            isNode && !!schema.inherit_from?.some((from) => POOLS_PEER.includes(from));
+          const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
+
+          const onChange = (newValue: Node | PoolValue | null) => {
+            field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+          };
+
+          const value =
+            fieldData?.value && !Array.isArray(fieldData.value) ? (fieldData.value as Node) : null;
+
           return (
             <div className="relative flex flex-col space-y-2">
               <LabelFormField
@@ -339,22 +364,25 @@ const RelationshipField = ({
                 unique={unique}
                 required={!!rules?.required}
                 description={description}
-                variant={parentRelationship && "small"}
+                variant={parentRelationship ? "small" : undefined}
                 fieldData={fieldData}
               />
 
-              <FormInput>
-                <RelationshipInput
-                  {...field}
-                  {...props}
-                  value={fieldData?.value}
-                  onChange={(newValue) => {
-                    field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
-                  }}
-                  peer={relationship?.peer}
-                  parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
-                />
-              </FormInput>
+              <div className="flex gap-2">
+                <FormInput>
+                  <RelationshipInput
+                    {...field}
+                    {...props}
+                    value={value}
+                    onChange={onChange}
+                    peer={peer}
+                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                  />
+                </FormInput>
+                {canSelectFromPool && (
+                  <PoolSelect peer={peer} selectedPoolId={selectedPoolId} onChange={onChange} />
+                )}
+              </div>
               <FormMessage />
             </div>
           );

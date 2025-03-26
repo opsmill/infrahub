@@ -1,13 +1,11 @@
 import { CONFIG } from "@/config/config";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { WSClient } from "@/shared/api/graphql/websocket";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import {
   OperationVariables,
   useLazyQuery as useApolloLazyQuery,
   useMutation as useApolloMutation,
   useQuery as useApolloQuery,
-  useSubscription as useApolloSubscription,
 } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import usePagination from "../../hooks/usePagination";
@@ -63,19 +61,6 @@ export const useMutation: typeof useApolloMutation<any, Record<string, any>, { u
     context: {
       uri: CONFIG.GRAPHQL_URL(branch?.name, date),
     },
-  });
-};
-
-const client = new WSClient();
-
-export const useSubscription = (QUERY: any, options?: OperationVariables) => {
-  const branch = useAtomValue(currentBranchAtom);
-
-  const wsClient = client.getClient(branch?.name);
-
-  return useApolloSubscription(QUERY, {
-    client: wsClient,
-    ...options,
   });
 };
 

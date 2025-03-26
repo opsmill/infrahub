@@ -1,13 +1,19 @@
+import os
 import shutil
+import subprocess  # noqa: S404
+import sys
 from itertools import islice
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
-import pendulum
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
+from prefect.logging.loggers import disable_run_logger
+from prefect.settings import get_current_settings
+from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
@@ -50,11 +56,12 @@ from infrahub.core.schema import (
     core_models,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
@@ -64,14 +71,6 @@ from tests.test_data import dataset01 as ds01
 @pytest.fixture(scope="module", autouse=True)
 def load_component_dependency_registry():
     build_component_registry()
-
-
-@pytest.fixture(params=["main", "branch2"])
-async def branch(request, db: InfrahubDatabase, default_branch: Branch):
-    if request.param == "main":
-        return default_branch
-
-    return await create_branch(branch_name=str(request.param), db=db)
 
 
 @pytest.fixture(scope="session")
@@ -85,6 +84,53 @@ def neo4j_factory():
     """
     hydration_scope = HydrationHandler().new_hydration_scope()
     return hydration_scope._graph_hydrator
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prefect_test_fixture():
+    def _run_uvicorn_command(self) -> subprocess.Popen[Any]:
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
+        # used to turn off serving the UI
+        server_env = {
+            "PREFECT_UI_ENABLED": "0",
+            "PREFECT__SERVER_EPHEMERAL": "1",
+            "PREFECT__SERVER_FINAL": "1",
+        }
+
+        return subprocess.Popen(
+            args=[
+                sys.executable,
+                "-m",
+                "uvicorn",
+                # "--app-dir",
+                # str(infrahub.__module_path__.parent),
+                "--factory",
+                "infrahub.prefect_server.app:create_infrahub_prefect",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(self.port),
+                "--log-level",
+                "error",
+                "--lifespan",
+                "on",
+            ],
+            env={
+                **os.environ,
+                **server_env,
+                **get_current_settings().to_environment_variables(exclude_unset=True),
+            },
+        )
+
+    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
+        with prefect_test_harness(server_startup_timeout=60):
+            yield
+
+
+@pytest.fixture(scope="session")
+def prefect_test(prefect_test_fixture):
+    with disable_run_logger():
+        yield
 
 
 @pytest.fixture
@@ -113,6 +159,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
@@ -151,8 +198,8 @@ async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
 
     params = {
         "branch": "main",
-        "time1": pendulum.now(tz="UTC").to_iso8601_string(),
-        "time2": pendulum.now(tz="UTC").subtract(seconds=5).to_iso8601_string(),
+        "time1": Timestamp().to_string(),
+        "time2": Timestamp().subtract(seconds=5).to_string(),
     }
 
     query = """
@@ -209,20 +256,20 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     """
 
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
-        "time0": time0.to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
-        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
-        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
-        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
-        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m25": time0.subtract(seconds=25).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
+        "time_m40": time0.subtract(seconds=40).to_string(),
+        "time_m45": time0.subtract(seconds=45).to_string(),
+        "time_m50": time0.subtract(seconds=50).to_string(),
+        "time_m60": time0.subtract(seconds=60).to_string(),
     }
 
     # Update Main Branch and Create new Branch1
@@ -388,10 +435,10 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
     CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "aware"})
-    CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
-    CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
-    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (c2)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (r2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (r2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
@@ -430,21 +477,21 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     """
 
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
         "global_branch": GLOBAL_BRANCH_NAME,
-        "time0": time0.to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
-        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
-        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
-        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
-        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m25": time0.subtract(seconds=25).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
+        "time_m40": time0.subtract(seconds=40).to_string(),
+        "time_m45": time0.subtract(seconds=45).to_string(),
+        "time_m50": time0.subtract(seconds=50).to_string(),
+        "time_m60": time0.subtract(seconds=60).to_string(),
     }
 
     # Update Main Branch and Create new Branch1
@@ -655,15 +702,15 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     """
 
     # ---- Create all timestamps and save them in Params -----------------
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
-        "time0": time0.to_iso8601_string(),
+        "time0": time0.to_string(),
     }
 
     for cnt in range(1, 30):
         nbr_sec = cnt * 5
-        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_iso8601_string()
+        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_string()
 
     # ---- Create all Branches and register them in the Registry -----------------
     # Update Main Branch
@@ -973,16 +1020,16 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 async def base_dataset_04(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
 ) -> dict:
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
-        "time0": time0.to_iso8601_string(),
-        "time_m5": time0.subtract(seconds=5).to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m5": time0.subtract(seconds=5).to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
     }
 
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
@@ -1150,7 +1197,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
     """
 
     q1 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-    await q1.new(db=db, name="query01", query=query)
+    await q1.new(db=db, name="query01", query=query, models=["TestPerson"])
     await q1.save(db=db)
 
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
@@ -2127,17 +2174,17 @@ async def hierarchical_location_schema(
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
 ) -> dict[str, Node]:
-    return await _build_hierarchical_location_data(db=db)
+    return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
 ) -> dict[str, Node]:
-    return await _build_hierarchical_location_data(db=db)
+    return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
-async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, Node]:
+async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
     REGIONS = (
         ("north-america",),
         ("europe",),
@@ -2157,13 +2204,13 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, N
     nodes = {}
 
     for region in REGIONS:
-        obj = await Node.init(db=db, schema="LocationRegion")
+        obj = await Node.init(db=db, branch=branch, schema="LocationRegion")
         await obj.new(db=db, name=region[0])
         await obj.save(db=db)
         nodes[obj.name.value] = obj
 
     for site in SITES:
-        obj = await Node.init(db=db, schema="LocationSite")
+        obj = await Node.init(db=db, branch=branch, schema="LocationSite")
         await obj.new(db=db, name=site[0], parent=site[1])
         await obj.save(db=db)
         nodes[obj.name.value] = obj
@@ -2171,7 +2218,7 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, N
         for idx in range(1, NBR_RACKS_PER_SITE + 1):
             rack_name = f"{site[0]}-r{idx}"
             statuses = ["online", "offline"]
-            obj = await Node.init(db=db, schema="LocationRack")
+            obj = await Node.init(db=db, branch=branch, schema="LocationRack")
             await obj.new(db=db, name=rack_name, parent=site[0], status=statuses[idx - 1])
             await obj.save(db=db)
             nodes[obj.name.value] = obj
@@ -2483,8 +2530,8 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
         InfrahubKind.GLOBALPERMISSION,
         InfrahubKind.OBJECTPERMISSION,
     ]
-    nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
-    generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
+    nodes = [item for item in core_models["nodes"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
+    generics = [item for item in core_models["generics"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
     registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
 
 
@@ -2601,8 +2648,8 @@ async def authentication_base(
     register_core_models_schema,
     register_builtin_models_schema,
     register_organization_schema,
-):
-    pass
+) -> Node:
+    return create_test_admin
 
 
 @pytest.fixture
@@ -2614,7 +2661,7 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 
 
 @pytest.fixture
-async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
+async def session_first_account(db: InfrahubDatabase, first_account: Node) -> AccountSession:
     session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
     return session
 
@@ -2934,21 +2981,13 @@ async def prefix_pool_01(
     return ip_dataset_prefix_v4
 
 
-@pytest.fixture()
+@pytest.fixture
 def workflow_local():
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
     yield workflow
     config.OVERRIDE.workflow = original
-
-
-@pytest.fixture
-def init_service(db: InfrahubDatabase):
-    original = services.service
-    services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
-    yield services.service
-    services.service = original
 
 
 @pytest.fixture

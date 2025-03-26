@@ -1,7 +1,7 @@
 import { useSearchAnywhereContext } from "@/shared/components/search/search-anywhere-context";
 import { CommandItem } from "@/shared/components/ui/command";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 export interface SearchAnywhereItemProps extends React.ComponentProps<typeof CommandItem> {
   to: string;

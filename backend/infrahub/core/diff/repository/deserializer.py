@@ -18,10 +18,12 @@ from ..model.path import (
     EnrichedDiffSingleRelationship,
     deserialize_tracking_id,
 )
+from ..parent_node_adder import DiffParentNodeAdder, ParentNodeAddRequest
 
 
 class EnrichedDiffDeserializer:
-    def __init__(self) -> None:
+    def __init__(self, parent_adder: DiffParentNodeAdder) -> None:
+        self.parent_adder = parent_adder
         self._diff_root_map: dict[str, EnrichedDiffRoot] = {}
         self._diff_node_map: dict[tuple[str, str], EnrichedDiffNode] = {}
         self._diff_node_attr_map: dict[tuple[str, str, str], EnrichedDiffAttribute] = {}
@@ -127,14 +129,15 @@ class EnrichedDiffDeserializer:
 
     def _deserialize_parents(self) -> None:
         for enriched_root, node_path_tuples in self._parents_path_map.items():
+            self.parent_adder.initialize(enriched_diff_root=enriched_root)
             for node_uuid, parents_path in node_path_tuples:
                 # Remove the node itself from the path
                 parents_path_slice = parents_path.nodes[1:]
 
                 # TODO Ensure the list is even
                 current_node_uuid = node_uuid
-                for rel, parent in zip(parents_path_slice[::2], parents_path_slice[1::2]):
-                    enriched_root.add_parent(
+                for rel, parent in zip(parents_path_slice[::2], parents_path_slice[1::2], strict=False):
+                    parent_request = ParentNodeAddRequest(
                         node_id=current_node_uuid,
                         parent_id=parent.get("uuid"),
                         parent_kind=parent.get("kind"),
@@ -144,6 +147,7 @@ class EnrichedDiffDeserializer:
                         parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
                         parent_rel_label=rel.get("label"),
                     )
+                    self.parent_adder.add_parent(parent_request=parent_request)
                     current_node_uuid = parent.get("uuid")
 
     @classmethod
@@ -164,23 +168,23 @@ class EnrichedDiffDeserializer:
     def build_diff_root_metadata(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
-        tracking_id_str = cls._get_str_or_none_property_value(node=root_node, property_name="tracking_id")
-        tracking_id = None
-        if tracking_id_str:
-            tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
+        partner_uuid = cls._get_str_or_none_property_value(node=root_node, property_name="partner_uuid")
+        tracking_id_str = str(root_node.get("tracking_id"))
+        tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
         return EnrichedDiffRootMetadata(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,
             to_time=to_time,
             uuid=str(root_node.get("uuid")),
-            partner_uuid=str(root_node.get("partner_uuid")),
+            partner_uuid=partner_uuid,
             tracking_id=tracking_id,
-            num_added=int(root_node.get("num_added")),
-            num_updated=int(root_node.get("num_updated")),
-            num_removed=int(root_node.get("num_removed")),
-            num_conflicts=int(root_node.get("num_conflicts")),
+            num_added=int(root_node.get("num_added", 0)),
+            num_updated=int(root_node.get("num_updated", 0)),
+            num_removed=int(root_node.get("num_removed", 0)),
+            num_conflicts=int(root_node.get("num_conflicts", 0)),
             contains_conflict=str(root_node.get("contains_conflict")).lower() == "true",
+            exists_on_database=True,
         )
 
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:
@@ -197,10 +201,10 @@ class EnrichedDiffDeserializer:
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node_node.get("action"))),
             path_identifier=str(node_node.get("path_identifier")),
-            num_added=int(node_node.get("num_added")),
-            num_updated=int(node_node.get("num_updated")),
-            num_removed=int(node_node.get("num_removed")),
-            num_conflicts=int(node_node.get("num_conflicts")),
+            num_added=int(node_node.get("num_added", 0)),
+            num_updated=int(node_node.get("num_updated", 0)),
+            num_removed=int(node_node.get("num_removed", 0)),
+            num_conflicts=int(node_node.get("num_conflicts", 0)),
             contains_conflict=str(node_node.get("contains_conflict")).lower() == "true",
         )
         self._diff_node_map[node_key] = enriched_node
@@ -220,10 +224,10 @@ class EnrichedDiffDeserializer:
             changed_at=Timestamp(str(diff_attr_node.get("changed_at"))),
             path_identifier=str(diff_attr_node.get("path_identifier")),
             action=DiffAction(str(diff_attr_node.get("action"))),
-            num_added=int(diff_attr_node.get("num_added")),
-            num_updated=int(diff_attr_node.get("num_updated")),
-            num_removed=int(diff_attr_node.get("num_removed")),
-            num_conflicts=int(diff_attr_node.get("num_conflicts")),
+            num_added=int(diff_attr_node.get("num_added", 0)),
+            num_updated=int(diff_attr_node.get("num_updated", 0)),
+            num_removed=int(diff_attr_node.get("num_removed", 0)),
+            num_conflicts=int(diff_attr_node.get("num_conflicts", 0)),
             contains_conflict=str(diff_attr_node.get("contains_conflict")).lower() == "true",
         )
         self._diff_node_attr_map[attr_key] = enriched_attr
@@ -247,10 +251,10 @@ class EnrichedDiffDeserializer:
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(relationship_group_node.get("action"))),
             path_identifier=str(relationship_group_node.get("path_identifier")),
-            num_added=int(relationship_group_node.get("num_added")),
-            num_conflicts=int(relationship_group_node.get("num_conflicts")),
-            num_removed=int(relationship_group_node.get("num_removed")),
-            num_updated=int(relationship_group_node.get("num_updated")),
+            num_added=int(relationship_group_node.get("num_added", 0)),
+            num_conflicts=int(relationship_group_node.get("num_conflicts", 0)),
+            num_removed=int(relationship_group_node.get("num_removed", 0)),
+            num_updated=int(relationship_group_node.get("num_updated", 0)),
             contains_conflict=str(relationship_group_node.get("contains_conflict")).lower() == "true",
         )
 
@@ -282,10 +286,10 @@ class EnrichedDiffDeserializer:
             peer_id=diff_element_peer_id,
             peer_label=peer_label,
             path_identifier=str(relationship_element_node.get("path_identifier")),
-            num_added=int(relationship_element_node.get("num_added")),
-            num_updated=int(relationship_element_node.get("num_updated")),
-            num_removed=int(relationship_element_node.get("num_removed")),
-            num_conflicts=int(relationship_element_node.get("num_conflicts")),
+            num_added=int(relationship_element_node.get("num_added", 0)),
+            num_updated=int(relationship_element_node.get("num_updated", 0)),
+            num_removed=int(relationship_element_node.get("num_removed", 0)),
+            num_conflicts=int(relationship_element_node.get("num_conflicts", 0)),
             contains_conflict=str(relationship_element_node.get("contains_conflict")).lower() == "true",
         )
         enriched_relationship_group.relationships.add(enriched_rel_element)

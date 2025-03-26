@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
@@ -21,8 +21,8 @@ class DiffQuery(Query):
     def __init__(
         self,
         branch: Branch,
-        diff_from: Union[Timestamp, str] = None,
-        diff_to: Union[Timestamp, str] = None,
+        diff_from: Timestamp | str = None,
+        diff_to: Timestamp | str = None,
         **kwargs,
     ):
         """A diff is always in the context of a branch"""
@@ -63,7 +63,7 @@ class DiffCountChanges(Query):
         self.diff_to = diff_to
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params = {
             "from_time": self.diff_from.to_string(),
             "to_time": self.diff_to.to_string(),
@@ -154,7 +154,7 @@ CALL {
     relationship_peer_side_query = """
 WITH diff_path, latest_base_path, has_more_data
 UNWIND [diff_path, latest_base_path] AS penultimate_path
-WITH penultimate_path, has_more_data
+WITH DISTINCT penultimate_path, has_more_data
 CALL {
     WITH penultimate_path
     WITH penultimate_path, nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
@@ -189,7 +189,7 @@ CALL {
     // ------------------------
     AND (n.uuid IS NULL OR peer.uuid IS NULL OR n.uuid <> peer.uuid)
     WITH peer_path, r_peer, r_prop
-    ORDER BY r_peer.branch = r_prop.branch DESC, r_peer.from DESC, r_peer.status ASC
+    ORDER BY r_peer.branch = r_prop.branch DESC, r_peer.status = r_prop.status DESC, r_peer.from DESC, r_peer.status ASC
     LIMIT 1
     RETURN peer_path
 }
@@ -226,7 +226,7 @@ WITH reduce(
 class DiffNodePathsQuery(DiffCalculationQuery):
     name = "diff_node_paths"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
         self.params.update(
@@ -365,7 +365,7 @@ CALL {
 class DiffFieldPathsQuery(DiffCalculationQuery):
     name = "diff_field_paths"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
 
@@ -516,6 +516,7 @@ CALL {
     ORDER BY
         type(r_prop),
         mid_r_root.branch = mid_diff_rel.branch DESC,
+        (mid_diff_rel.status = r_prop.status AND mid_diff_rel.branch = r_prop.branch) DESC,
         r_prop.from DESC,
         mid_r_root.from DESC
     WITH prop, type(r_prop) AS type_r_prop, head(collect(path)) AS latest_prop_path
@@ -547,7 +548,7 @@ WHERE intra_branch_update = FALSE
 class DiffPropertyPathsQuery(DiffCalculationQuery):
     name = "diff_property_paths"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
 

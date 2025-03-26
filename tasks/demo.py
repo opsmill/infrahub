@@ -6,18 +6,21 @@ from invoke.context import Context
 from invoke.tasks import task
 
 from .container_ops import (
-    collect_support_data,
     destroy_environment,
     display_container_status,
-    migrate_database,
     pull_images,
     restart_services,
     show_service_status,
     start_services,
     stop_services,
-    update_core_schema,
+    upgrade_infrahub,
 )
-from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
+from .infra_ops import (
+    load_infrastructure_data,
+    load_infrastructure_menu,
+    load_infrastructure_schema,
+    run_infrastructure_patch_scripts,
+)
 from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
@@ -68,11 +71,10 @@ def destroy(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     destroy_environment(context=context, database=database, namespace=NAMESPACE)
 
 
-@task(optional=["database"])
-def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Apply the latest database migrations."""
-    migrate_database(context=context, database=database, namespace=NAMESPACE)
-    update_core_schema(context=context, database=database, namespace=NAMESPACE)
+@task(optional=["database"], aliases=["migrate"])
+def upgrade(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Upgrade Infrahub to the latest version and apply the required migrations."""
+    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
@@ -122,6 +124,12 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> No
 
 
 @task(optional=["database"])
+def run_infra_patch_scripts(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Run demo patches scripts"""
+    run_infrastructure_patch_scripts(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
 def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load the base schema for infrastructure."""
     load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
@@ -131,9 +139,3 @@ def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None
 def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load infrastructure demo data."""
     load_infrastructure_data(context=context, database=database, namespace=NAMESPACE)
-
-
-@task(optional=["database"])
-def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
-    """Collect all logs and create a support archive."""
-    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)

@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("Role management - Roles CRUD", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
-  test("should create a role ", async ({ page }) => {
+  test("Should create a role ", async ({ page }) => {
     await test.step("access main view", async () => {
       await page.goto("/role-management/roles");
     });
@@ -29,6 +30,7 @@ test.describe("Role management - Roles CRUD", () => {
         .getByText("global:manage_repositories:")
         .click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
+      await saveScreenshotForDocs(page, "guides/permissions/permissions_role");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Role created!")).toBeVisible();
     });
@@ -46,7 +48,7 @@ test.describe("Role management - Roles CRUD", () => {
     });
   });
 
-  test("should update a role ", async ({ page }) => {
+  test("Should update a role ", async ({ page }) => {
     await test.step("access main view", async () => {
       await page.goto("/role-management/roles");
     });
@@ -79,7 +81,7 @@ test.describe("Role management - Roles CRUD", () => {
     });
   });
 
-  test("should delete a role ", async ({ page }) => {
+  test("Should delete a role ", async ({ page }) => {
     await test.step("access main view", async () => {
       await page.goto("/role-management/roles");
     });

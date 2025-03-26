@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, Int, List, ObjectType, String
+from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node, is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
@@ -27,7 +27,7 @@ class NodeEdge(ObjectType):
 
 class NodeEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=NodeEdge, required=True), required=False)
+    edges = Field(List(of_type=NonNull(NodeEdge)), required=True)
 
 
 def _collapse_ipv6(s: str) -> str:
@@ -97,21 +97,21 @@ def _collapse_ipv6(s: str) -> str:
 
 
 async def search_resolver(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     q: str,
     limit: int = 10,
     partial_match: bool = True,
 ) -> dict[str, Any]:
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
     results: list[CoreNode] = []
 
     fields = await extract_fields_first_node(info)
 
     if is_valid_uuid(q):
-        matching: Optional[CoreNode] = await NodeManager.get_one(
-            db=context.db, branch=context.branch, at=context.at, id=q
+        matching: CoreNode | None = await NodeManager.get_one(
+            db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:
             results.append(matching)
@@ -124,8 +124,8 @@ async def search_resolver(
 
         for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
             objs = await NodeManager.query(
-                db=context.db,
-                branch=context.branch,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
                 schema=kind,
                 filters={"any__value": q},
                 limit=limit,
@@ -133,7 +133,7 @@ async def search_resolver(
             )
             results.extend(objs)
 
-    if "edges" in fields and len(results) > 0:
+    if "edges" in fields:
         response["edges"] = [{"node": {"id": obj.id, "kind": obj.get_kind()}} for obj in results]
 
     if "count" in fields:
@@ -148,4 +148,5 @@ InfrahubSearchAnywhere = Field(
     limit=Int(required=False),
     partial_match=Boolean(required=False),
     resolver=search_resolver,
+    required=True,
 )

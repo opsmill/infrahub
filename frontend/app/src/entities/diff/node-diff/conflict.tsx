@@ -1,13 +1,13 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { resolveConflict } from "@/entities/diff/api/resolveConflict";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -16,7 +16,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 export const Conflict = ({ conflict }: any) => {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -63,7 +63,7 @@ export const Conflict = ({ conflict }: any) => {
 
   return (
     <div className="flex items-center justify-end gap-2 p-2">
-      {isLoading && <LoadingScreen hideText size={16} />}
+      {isLoading && <Spinner />}
 
       <span className="text-xs">Choose the branch to resolve the conflict:</span>
 

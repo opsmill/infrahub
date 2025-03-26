@@ -30,21 +30,9 @@ def random_ascii_string(length: int = 10) -> str:
 
 def get_container_resource_usage(container_id: str) -> ContainerStats:
     client = docker.from_env()
-
-    try:
-        stats = client.containers.get(container_id).stats(stream=False)
-    except docker.errors.NotFound:
-        raise Exception
-
-    try:
-        cpu_usage = get_cpu_usage(stats)
-    except KeyError:
-        raise Exception
-
-    try:
-        memory_usage = get_memory_usage(stats)
-    except KeyError:
-        raise Exception
+    stats = client.containers.get(container_id).stats(stream=False)
+    cpu_usage = get_cpu_usage(stats)
+    memory_usage = get_memory_usage(stats)
 
     return ContainerStats(cpu_usage, memory_usage)
 

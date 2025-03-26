@@ -1,35 +1,16 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { MountOptions, MountReturn } from "cypress/react";
-import { mount } from "cypress/react18";
+import { mount } from "cypress/react";
 import queryString from "query-string";
 import React from "react";
-import { MemoryRouter, MemoryRouterProps } from "react-router-dom";
+import { MemoryRouter, MemoryRouterProps } from "react-router";
 import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
-
-// ***********************************************************
-// This example support/component.ts is processed and
-// loaded automatically before your test files.
-//
-// This is a great place to put global configuration and
-// behavior that modifies Cypress.
-//
-// You can change the location of this file or turn off
-// automatically serving support files with the
-// 'supportFile' configuration option.
-//
-// You can read more here:
-// https://on.cypress.io/configuration
-// ***********************************************************
-
-// Import commands.js using ES2015 syntax:
-import "./commands";
 
 import "../../src/app/styles/index.css";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../../src/shared/api/rest/client";
+import { ReactRouter7Adapter } from "../../src/shared/lib/use-query-params";
 
-// Alternatively you can use CommonJS syntax:
-// require('./commands')
+import "./commands";
 
 // Augment the Cypress namespace to include type definitions for
 // your custom command.
@@ -59,7 +40,7 @@ Cypress.Commands.add("mount", (component, options = {}) => {
       <QueryClientProvider client={queryClient}>
         <MemoryRouter {...routerProps} basename="/">
           <QueryParamProvider
-            adapter={ReactRouter6Adapter}
+            adapter={ReactRouter7Adapter}
             options={{
               searchStringToObject: queryString.parse,
               objectToSearchString: queryString.stringify,
@@ -74,6 +55,3 @@ Cypress.Commands.add("mount", (component, options = {}) => {
 
   return mount(wrapped, mountOptions);
 });
-
-// Example use:
-// cy.mount(<MyComponent />)

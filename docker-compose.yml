@@ -50,6 +50,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CONFIG:
   INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-localhost}
   INFRAHUB_DB_DATABASE:
+  INFRAHUB_DB_MAX_CONCURRENT_QUERIES: ${INFRAHUB_DB_MAX_CONCURRENT_QUERIES:-0}
+  INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY: ${INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY:-0.01}
   INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY: ${INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY:-5}
   INFRAHUB_DB_PASSWORD: ${INFRAHUB_DB_PASSWORD:-admin}
   INFRAHUB_DB_PORT: ${INFRAHUB_DB_PORT:-7687}
@@ -87,6 +89,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_PERMISSION_BACKENDS: ${INFRAHUB_PERMISSION_BACKENDS:-["infrahub.permissions.LocalPermissionBackend"]}
   INFRAHUB_PRODUCTION:
   INFRAHUB_PUBLIC_URL:
+  INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_SCHEMA_STRICT_MODE:-true}
   INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME:-3600}
   INFRAHUB_SECURITY_OAUTH2_PROVIDERS:
   INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS:
@@ -174,8 +177,8 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.11-python3.12}"
-    command: prefect server start --host 0.0.0.0 --ui
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.0}"
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
       task-manager-db:
@@ -199,13 +202,15 @@ services:
     volumes:
       - workflow_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -q -d ${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect} -U ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}"
       interval: 10s
       timeout: 5s
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -251,7 +256,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.0}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

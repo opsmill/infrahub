@@ -8,48 +8,13 @@ This document provides detailed documentation for all events used in the Infrahu
 
 :::info
 
-For more detailed explanations on how to use these events within Infrahub, see the [event handling](../topics/event-handling) topic.
+For more detailed explanations on how these events are used within Infrahub, see the [bus event handling](../topics/bus-event-handling) topic.
 
 :::
 
 ## Messages events
 <!-- markdownlint-disable MD012 -->
 <!-- vale off -->
-### Check Artifact
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.artifact.create
-<!-- vale on -->
-
-**Description**: Runs a check to verify the creation of an artifact.
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_name** | Name of the artifact | string | None |
-| **artifact_definition** | The the ID of the artifact definition | string | None |
-| **commit** | The commit to target | string | None |
-| **content_type** | Content type of the artifact | string | None |
-| **transform_type** | The type of transform associated with this artifact | string | None |
-| **transform_location** | The transforms location within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this artifact | string | None |
-| **target_name** | Name of the artifact target | string | None |
-| **artifact_id** | The id of the artifact if it previously existed | N/A | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **timeout** | Timeout for requests used to generate this artifact | integer | None |
-| **variables** | Input variables when generating the artifact | object | None |
-| **validator_id** | The ID of the validator | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Check Generator
 <!-- vale on -->
 
@@ -78,121 +43,13 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **variables** | Input variables when running the generator | object | None |
 | **validator_id** | The ID of the validator | string | None |
 | **proposed_change** | The unique ID of the Proposed Change | N/A | None |
+| **context** | The Infrahub context | N/A | None |
 <!-- vale on -->
-
-<!-- vale off -->
-### Check Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.repository.check_definition
-<!-- vale on -->
-
-**Description**: Triggers user defined checks to run based on a Check Definition.
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.merge_conflicts
-<!-- vale on -->
-
-**Description**: Runs a check to validate if there are merge conflicts for a proposed change between two branches.
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.user_check
-<!-- vale on -->
-
-**Description**: Runs a check as defined within a CoreCheckDefinition within a repository.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **variables** | Input variables when running the check | object | None |
-| **name** | The name of the check | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **timeout** | The timeout for the check | integer | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Event Branch
 <!-- vale on -->
 
-<!-- vale off -->
-#### Event event.branch.create
-<!-- vale on -->
-
-**Description**: Sent a new branch is created.
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was created | string | None |
-| **branch_id** | The unique ID of the branch | string | None |
-| **sync_with_git** | Indicates if Infrahub should extend this branch to git. | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.delete
-<!-- vale on -->
-
-**Description**: Sent when a branch has been deleted.
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was deleted | string | None |
-| **branch_id** | The unique ID of the branch | string | None |
-| **sync_with_git** | Indicates if the branch was extended to Git | boolean | None |
-<!-- vale on -->
 <!-- vale off -->
 #### Event event.branch.merge
 <!-- vale on -->
@@ -207,62 +64,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **source_branch** | The source branch | string | None |
 | **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.rebased
-<!-- vale on -->
-
-**Description**: Sent when a branch has been rebased.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was rebased | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Node
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.node.mutated
-<!-- vale on -->
-
-**Description**: Sent when a node has been mutated
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was created | string | None |
-| **kind** | The type of object modified | string | None |
-| **node_id** | The ID of the mutated node | string | None |
-| **action** | The action taken on the node | string | None |
-| **data** | Data on modified object | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Schema
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.schema.update
-<!-- vale on -->
-
-**Description**: Sent when the schema on a branch has been updated.
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch where the update occurred | string | None |
+| **context** | The context of the event | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -284,7 +86,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **worker_id** | The worker ID that got elected | string | None |
 <!-- vale on -->
 
-
 <!-- vale off -->
 ### Finalize Validator
 <!-- vale on -->
@@ -305,8 +106,9 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **validator_execution_id** | The id of current execution of the associated validator | string | None |
 | **start_time** | Start time when the message was first created | string | None |
 | **validator_type** | The type of validator to complete | string | None |
+| **context** | The Infrahub context | N/A | None |
+| **proposed_change** | The ID of the proposed change | string | None |
 <!-- vale on -->
-
 
 <!-- vale off -->
 ### Git File
@@ -350,7 +152,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_location** | The location of repository | string | None |
 <!-- vale on -->
-
 
 <!-- vale off -->
 ### Refresh Git
@@ -408,31 +209,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **branch** | The branch that was rebased | string | None |
 <!-- vale on -->
 
-
-<!-- vale off -->
-### Request Artifact Definition
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.artifact_definition.check
-<!-- vale on -->
-
-**Description**: Sent to validate the generation of artifacts in relation to a proposed change.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_definition** | The Artifact Definition | N/A | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The target branch | string | None |
-<!-- vale on -->
-
 <!-- vale off -->
 ### Request Generator Definition
 <!-- vale on -->
@@ -455,6 +231,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch** | The source branch | string | None |
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The target branch | string | None |
+| **context** | The Infrahub context | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -478,6 +255,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **check_type** | Can be used to restrict the pipeline to a specific type of job | N/A | all |
+| **context** | The context of the task | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.refresh_artifacts
@@ -496,50 +274,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
+| **context** | The context of the task | N/A | None |
 <!-- vale on -->
-
-<!-- vale off -->
-### Request Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.repository.checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the checks for a repository to be executed.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository** | The unique ID of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.repository.user_checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the user defined checks on a repository.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **target_branch** | The target branch | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Send Echo
@@ -549,9 +285,9 @@ For more detailed explanations on how to use these events within Infrahub, see t
 #### Event send.echo.request
 <!-- vale on -->
 
-**Description**: Sent a echo request, i.e., ping message.
+**Description**: Sent a echo request, a ping message for example.
 
-**Priority**: 3
+**Priority**: 5
 
 <!-- vale off -->
 | Key | Description | Type | Default Value |
@@ -559,562 +295,32 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **message** | The message to send | string | None |
 <!-- vale on -->
-
 
 
 
 ## Responses events
 
 <!-- vale off -->
-### Check Artifact
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.artifact.create
-<!-- vale on -->
-
-**Description**: Runs a check to verify the creation of an artifact.
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_name** | Name of the artifact | string | None |
-| **artifact_definition** | The the ID of the artifact definition | string | None |
-| **commit** | The commit to target | string | None |
-| **content_type** | Content type of the artifact | string | None |
-| **transform_type** | The type of transform associated with this artifact | string | None |
-| **transform_location** | The transforms location within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this artifact | string | None |
-| **target_name** | Name of the artifact target | string | None |
-| **artifact_id** | The id of the artifact if it previously existed | N/A | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **timeout** | Timeout for requests used to generate this artifact | integer | None |
-| **variables** | Input variables when generating the artifact | object | None |
-| **validator_id** | The ID of the validator | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Check Generator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.generator.run
-<!-- vale on -->
-
-**Description**: A check that runs a generator.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator definition | N/A | None |
-| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this generator | string | None |
-| **target_name** | Name of the generator target | string | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **variables** | Input variables when running the generator | object | None |
-| **validator_id** | The ID of the validator | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Check Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.repository.check_definition
-<!-- vale on -->
-
-**Description**: Triggers user defined checks to run based on a Check Definition.
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.merge_conflicts
-<!-- vale on -->
-
-**Description**: Runs a check to validate if there are merge conflicts for a proposed change between two branches.
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.user_check
-<!-- vale on -->
-
-**Description**: Runs a check as defined within a CoreCheckDefinition within a repository.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **variables** | Input variables when running the check | object | None |
-| **name** | The name of the check | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **timeout** | The timeout for the check | integer | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Event Branch
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.branch.create
-<!-- vale on -->
-
-**Description**: Sent a new branch is created.
-
-**Priority**: 5
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was created | string | None |
-| **branch_id** | The unique ID of the branch | string | None |
-| **sync_with_git** | Indicates if Infrahub should extend this branch to git. | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.delete
-<!-- vale on -->
-
-**Description**: Sent when a branch has been deleted.
-
-**Priority**: 5
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was deleted | string | None |
-| **branch_id** | The unique ID of the branch | string | None |
-| **sync_with_git** | Indicates if the branch was extended to Git | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.merge
-<!-- vale on -->
-
-**Description**: Sent when a branch has been merged.
-
-**Priority**: 5
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.rebased
-<!-- vale on -->
-
-**Description**: Sent when a branch has been rebased.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was rebased | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Node
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.node.mutated
-<!-- vale on -->
-
-**Description**: Sent when a node has been mutated
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was created | string | None |
-| **kind** | The type of object modified | string | None |
-| **node_id** | The ID of the mutated node | string | None |
-| **action** | The action taken on the node | string | None |
-| **data** | Data on modified object | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Schema
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.schema.update
-<!-- vale on -->
-
-**Description**: Sent when the schema on a branch has been updated.
-
-**Priority**: 5
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch where the update occurred | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Worker
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.worker.new_primary_api
-<!-- vale on -->
-
-**Description**: Sent on startup or when a new primary API worker is elected.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **worker_id** | The worker ID that got elected | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Finalize Validator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event finalize.validator.execution
-<!-- vale on -->
-
-**Description**: Update the status of a validator after all checks have been completed.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **start_time** | Start time when the message was first created | string | None |
-| **validator_type** | The type of validator to complete | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
 ### Git File
 <!-- vale on -->
 
 <!-- vale off -->
 #### Event git.file.get
 <!-- vale on -->
-
-**Description**: Read a file from a Git repository.
-
 **Priority**: 4
 
-
 <!-- vale off -->
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
-| **commit** | The commit id to use to access the file | string | None |
-| **file** | The path and filename within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The kind of the repository | string | None |
+| **passed** | N/A | boolean | True |
+| **routing_key** | N/A | string | git.file.get |
+| **data.content** | N/A | N/A | None |
+| **data.error_message** | N/A | N/A | None |
+| **data.http_code** | N/A | N/A | None |
+| **errors** | N/A | array | None |
+| **initial_message** | Initial message in dict format, the primary goal of this field is to provide additional context when there is an error | N/A | None |
 <!-- vale on -->
-
-<!-- vale off -->
-### Git Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event git.repository.connectivity
-<!-- vale on -->
-
-**Description**: Validate connectivity and credentials to remote repository
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_location** | The location of repository | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Refresh Git
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event refresh.git.fetch
-<!-- vale on -->
-
-**Description**: Fetch a repository remote changes.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **location** | The external URL of the repository | string | None |
-| **repository_id** | The unique ID of the repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The type of repository | string | None |
-| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-| **infrahub_branch_id** | Id of the Infrahub branch on which to sync the remote repository | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Refresh Registry
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event refresh.registry.branches
-<!-- vale on -->
-
-**Description**: Sent to indicate that the registry should be refreshed and new branch data loaded.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event refresh.registry.rebased_branch
-<!-- vale on -->
-
-**Description**: Sent to refresh a rebased branch within the local registry.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was rebased | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Request Artifact Definition
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.artifact_definition.check
-<!-- vale on -->
-
-**Description**: Sent to validate the generation of artifacts in relation to a proposed change.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_definition** | The Artifact Definition | N/A | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The target branch | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Generator Definition
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.generator_definition.check
-<!-- vale on -->
-
-**Description**: Sent to trigger Generators to run for a proposed change.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator Definition | N/A | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The target branch | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Proposed Change
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.proposed_change.pipeline
-<!-- vale on -->
-
-**Description**: Sent request the start of a pipeline connected to a proposed change.
-
-**Priority**: 5
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the proposed change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **check_type** | Can be used to restrict the pipeline to a specific type of job | N/A | all |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.refresh_artifacts
-<!-- vale on -->
-
-**Description**: Sent trigger the refresh of artifacts that are impacted by the proposed change.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.repository.checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the checks for a repository to be executed.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository** | The unique ID of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.repository.user_checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the user defined checks on a repository.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **target_branch** | The target branch | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Send Echo
@@ -1123,17 +329,16 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale off -->
 #### Event send.echo.request
 <!-- vale on -->
-
-**Description**: Sent a echo request, i.e., ping message.
-
-**Priority**: 3
-
+**Priority**: 5
 
 <!-- vale off -->
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
-| **message** | The message to send | string | None |
+| **passed** | N/A | boolean | True |
+| **routing_key** | N/A | string | send.echo.request |
+| **data.response** | The response string | string | None |
+| **errors** | N/A | array | None |
+| **initial_message** | Initial message in dict format, the primary goal of this field is to provide additional context when there is an error | N/A | None |
 <!-- vale on -->
-
 

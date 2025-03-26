@@ -22,8 +22,8 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.server import app, app_initialization
-from infrahub.services import services
+from infrahub.server import app, lifespan
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.message_bus import BusSimulator
@@ -32,6 +32,8 @@ from .test_client import InfrahubTestClient
 
 
 class TestInfrahub:
+    default_services: InfrahubServices
+
     @pytest.fixture(scope="class")
     def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> Path:
         storage_dir = Path(tmpdir_factory.getbasetemp().strpath) / "storage"
@@ -59,12 +61,17 @@ class TestInfrahubApp(TestInfrahub):
         return str(UUIDT())
 
     @pytest.fixture(scope="class")
-    def bus_simulator(self, db: InfrahubDatabase) -> Generator[BusSimulator, None, None]:
-        bus = BusSimulator(database=db, workflow=WorkflowLocalExecution())
-        original = config.OVERRIDE.message_bus
+    async def bus_simulator(
+        self,
+        db: InfrahubDatabase,
+    ) -> BusSimulator:
+        # Creating another service object to get service correctly initialized is a hack.
+        # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
+        # or ideally properly patch production code responsible for Bus instantiation instead
+        bus = BusSimulator()
+        _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
-        yield bus
-        config.OVERRIDE.message_bus = original
+        return bus
 
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_local(self, prefect: Generator[str, None, None]) -> AsyncGenerator[WorkflowLocalExecution, None]:
@@ -74,6 +81,10 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def service(self, test_client: InfrahubTestClient) -> AsyncGenerator[InfrahubServices, None]:
+        return app.state.service
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
@@ -96,16 +107,18 @@ class TestInfrahubApp(TestInfrahub):
     @pytest.fixture(scope="class")
     async def test_client(
         self, initialize_registry: None, redis: dict[int, int] | None, nats: dict[int, int] | None
-    ) -> InfrahubTestClient:
-        # This call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
+    ) -> AsyncGenerator[InfrahubTestClient, None]:
+        # NOTE 1: lifespan call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
         # while services.service.client is not set. There might be a design issue here: a client is needed while
         # the app is being initialized.
-        await app_initialization(app, enable_scheduler=False)
-        return InfrahubTestClient(app=app, base_url="http://testserver")
+        # NOTE 2: FastAPI does not have an asynchronous TestClient, thus we rely on httpx.AsyncClient which does not trigger
+        # lifespan events (see https://fastapi.tiangolo.com/advanced/async-tests/#in-detail).
+        async with lifespan(app):
+            yield InfrahubTestClient(app=app, base_url="http://testserver")
 
     @pytest.fixture(scope="class")
     async def client(
-        self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator
+        self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator, service: InfrahubServices
     ) -> InfrahubClient:
         config = Config(
             api_token=api_token,
@@ -116,19 +129,16 @@ class TestInfrahubApp(TestInfrahub):
 
         sdk_client = InfrahubClient(config=config)
 
-        bus_simulator.service._client = sdk_client
-
         # Some tests rely on infrahub worker which runs locally during testing. Thus, code supposed to run
         # on worker rely on server's `services.service`, which is not initialized with a client,
         # instead of the worker one. Thus, we temporarily set `services.service.client`
         # here to mock worker's `services.service`.
-        assert isinstance(
-            services.service.workflow, WorkflowLocalExecution
-        ), "These tests are currently meant to run with a local worker"
-        original_service_client = services.service._client
-        services.service.set_client(sdk_client)
-        yield sdk_client
-        services.service.set_client(original_service_client)
+        assert isinstance(service.workflow, WorkflowLocalExecution), (
+            "These tests are currently meant to run with a local worker"
+        )
+
+        service._client = sdk_client
+        return sdk_client
 
     @pytest.fixture(scope="class")
     async def initialize_registry(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from ..interface import ConstraintCheckerInterface
 from ..query import NodeNotPresentValidatorQuery
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class NodeRelationshipAddChecker(ConstraintCheckerInterface):
     query_classes = [NodeNotPresentValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 

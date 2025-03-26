@@ -1,0 +1,125 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+nodes:
+  - name: IPAddress
+    namespace: Ipam
+    include_in_menu: false
+    uniqueness_constraints:
+      - ["address__value"]
+    inherit_from:
+      - "BuiltinIPAddress"
+    description: "IP Address"
+    icon: "mdi:ip-outline"
+    label: "IP Address"
+    relationships:
+      - name: interface
+        peer: InfraInterfaceL3
+        optional: true
+        cardinality: one
+  - name: BGPSession
+    namespace: Infra
+    description: "A BGP Session represent a point to point connection between two routers"
+    label: "BGP Session"
+    icon: "mdi:router"
+    inherit_from:
+      - "CoreArtifactTarget"
+    human_friendly_id: ["remote_as__asn__value", "remote_ip__address__value", "device__name__value"]
+    order_by:
+      - device__name__value
+      - remote_as__asn__value
+    attributes:
+      - name: type
+        kind: Text
+        enum: [EXTERNAL, INTERNAL]
+        order_weight: 1
+      - name: description
+        kind: Text
+        optional: true
+      - name: import_policies
+        kind: Text
+        optional: true
+        order_weight: 8
+      - name: export_policies
+        kind: Text
+        optional: true
+        order_weight: 9
+      - name: status
+        kind: Dropdown
+        order_weight: 6
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        order_weight: 7
+        choices:
+          - name: backbone
+            label: Backbone
+            description: "Provide main data routes"
+            color: "#6a5acd"
+          - name: upstream
+            label: Upstream
+            description: "Connect to Internet service provider"
+            color: "#9090de"
+          - name: peering
+            label: Peering
+            description: "Connect with other networks via an IX"
+            color: "#85db9b"
+    relationships:
+      - name: local_as
+        identifier: bgpsession__local_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 2
+      - name: remote_as
+        identifier: bgpsession__remote_as
+        peer: InfraAutonomousSystem
+        optional: false
+        cardinality: one
+        kind: Attribute
+        order_weight: 3
+      - name: local_ip
+        identifier: bgpsession__local_ip
+        peer: IpamIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 4
+      - name: remote_ip
+        identifier: bgpsession__remote_ip
+        peer: IpamIPAddress
+        optional: false
+        cardinality: one
+        kind: Attribute
+        order_weight: 5
+      - name: device
+        peer: InfraDevice
+        optional: false
+        cardinality: one
+      - name: peer_group
+        peer: InfraBGPPeerGroup
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: peer_session
+        peer: InfraBGPSession
+        optional: true
+        cardinality: one
+        kind: Attribute

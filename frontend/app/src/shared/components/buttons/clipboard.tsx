@@ -1,7 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { ClipboardDocumentCheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "./button";
 
@@ -15,18 +15,11 @@ type tClipboard = {
 export const Clipboard = (props: tClipboard) => {
   const { value, alert = "Content copied", tooltip = "Copy content", className } = props;
 
-  const [isCopied, setIsCopied] = useState(false);
+  const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   const handleCopy = async () => {
-    setIsCopied(true);
-
-    await navigator.clipboard.writeText(value);
-
+    await copyToClipboard(value);
     toast(<Alert message={alert} type={ALERT_TYPES.INFO} />);
-
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 3000);
   };
 
   return (

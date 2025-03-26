@@ -1,27 +1,25 @@
-"use client";
-
 import { classNames } from "@/shared/utils/common";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import * as React from "react";
 
 export const ScrollArea = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
+  React.ElementRef<typeof ScrollAreaPrimitive.Viewport>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
     scrollX?: boolean;
     scrollY?: boolean;
+    scrollBarClassName?: string;
   }
->(({ className, children, scrollX = false, scrollY = true, ...props }, ref) => (
+>(({ className, children, scrollX = false, scrollY = true, scrollBarClassName, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
-    ref={ref}
     scrollHideDelay={0}
     className={classNames("relative overflow-hidden", className)}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]" ref={ref}>
       {children}
     </ScrollAreaPrimitive.Viewport>
-    {scrollX && <ScrollBar orientation="horizontal" />}
-    {scrollY && <ScrollBar orientation="vertical" />}
+    {scrollX && <ScrollBar orientation="horizontal" className={scrollBarClassName} />}
+    {scrollY && <ScrollBar orientation="vertical" className={scrollBarClassName} />}
     <ScrollAreaPrimitive.Corner />
   </ScrollAreaPrimitive.Root>
 ));

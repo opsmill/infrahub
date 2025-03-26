@@ -26,6 +26,7 @@ class Namespace(str, Enum):
     DEFAULT = "default"  # aka demo
     DEV = "dev"
     TEST = "test"
+    DEBUG = "debug"
 
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
@@ -35,6 +36,7 @@ INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
 INFRAHUB_DEBUG: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG", "false"))
+INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE", "false"))
 INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
@@ -49,8 +51,6 @@ CACHE_DOCKER_IMAGE = os.getenv(
     "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
 
-TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.11-python3.12")
-
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
@@ -64,12 +64,13 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
 SERVICE_SERVER_NAME = "server"
 SERVICE_WORKER_NAME = "task-worker"
+SERVICE_TASK_MANAGER_NAME = "task-manager"
 AVAILABLE_SERVICES = [
     SERVICE_SERVER_NAME,
     SERVICE_WORKER_NAME,
     "database",
     "message-queue",
-    "task-manager",
+    SERVICE_TASK_MANAGER_NAME,
     "cache",
 ]
 
@@ -87,6 +88,7 @@ IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
 OVERRIDE_FILE = Path("development/docker-compose.override.yml")
 DEFAULT_FILE = Path("development/docker-compose.default.yml")
 LOCAL_FILE = Path("development/docker-compose.local-build.yml")
+LOCAL_FILE_DEPS = Path("development/docker-compose.local-build-deps.yml")
 COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     Path("development/docker-compose-database-memgraph.yml"),
@@ -197,6 +199,12 @@ def get_compose_cmd(namespace: Namespace) -> str:
 
     if INFRAHUB_DEBUG:
         options.append("--profile debug")
+        if INFRAHUB_DEBUG_TRACE:
+            options.append("--profile trace")
+            os.environ["INFRAHUB_TRACE_ENABLE"] = "True"
+            os.environ["INFRAHUB_TRACE_INSECURE"] = "True"
+            os.environ["INFRAHUB_TRACE_EXPORTER_TYPE"] = "otlp"
+            os.environ["INFRAHUB_TRACE_EXPORTER_ENDPOINT"] = "http://tempo:4317"
 
     if dumb_terminal():
         options.append("--ansi never")
@@ -220,7 +228,7 @@ def execute_command(context: Context, command: str, print_cmd: bool = False, hid
     return context.run(command, pty=params["pty"], hide=should_hide)
 
 
-def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:
+def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:  # noqa: ARG001
     ENV_VARS_DICT = {
         "IMAGE_NAME": IMAGE_NAME,
         "IMAGE_VER": IMAGE_VER,
@@ -229,7 +237,6 @@ def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> 
         "NBR_WORKERS": NBR_WORKERS,
         "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
         "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
-        "TASK_MANAGER_DOCKER_IMAGE": TASK_MANAGER_DOCKER_IMAGE,
         "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
     }
 
@@ -262,6 +269,7 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
 
     if "local" in IMAGE_VER or (namespace == Namespace.DEV and not REQUESTED_IMAGE_VER):
         COMPOSE_FILES.append(LOCAL_FILE)
+        COMPOSE_FILES.append(LOCAL_FILE_DEPS)
 
     if os.getenv("CI") is not None:
         COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE)
@@ -281,6 +289,8 @@ def build_dev_compose_files_cmd(database: str) -> str:
     if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE)
+
+    DEV_COMPOSE_FILES.append(LOCAL_FILE_DEPS)
 
     return f"-f {' -f '.join(map(str, DEV_COMPOSE_FILES))}"
 

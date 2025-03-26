@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
@@ -43,13 +43,11 @@ class SchemaMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
 
-    new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
-    previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    new_node_schema: NodeSchema | GenericSchema | None = None
+    previous_node_schema: NodeSchema | GenericSchema | None = None
     schema_path: SchemaPath
 
-    async def execute(
-        self, db: InfrahubDatabase, branch: Branch, at: Optional[Union[Timestamp, str]] = None
-    ) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
 
@@ -58,20 +56,20 @@ class SchemaMigration(BaseModel):
                     query = await migration_query.init(db=ts, branch=branch, at=at, migration=self)
                     await query.execute(db=ts)
                     result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-                except Exception as exc:  # pylint: disable=broad-exception-caught
+                except Exception as exc:
                     result.errors.append(str(exc))
                     return result
 
         return result
 
     @property
-    def new_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def new_schema(self) -> NodeSchema | GenericSchema:
         if self.new_node_schema:
             return self.new_node_schema
         raise ValueError("new_node_schema hasn't been initialized")
 
     @property
-    def previous_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def previous_schema(self) -> NodeSchema | GenericSchema:
         if self.previous_node_schema:
             return self.previous_node_schema
         raise ValueError("previous_node_schema hasn't been initialized")
@@ -120,15 +118,17 @@ class GraphMigration(BaseModel):
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         async with db.start_transaction() as ts:
-            result = MigrationResult()
+            return await self.do_execute(db=ts)
 
-            for migration_query in self.queries:
-                try:
-                    query = await migration_query.init(db=ts)
-                    await query.execute(db=ts)
-                except Exception as exc:  # pylint: disable=broad-exception-caught
-                    result.errors.append(str(exc))
-                    return result
+    async def do_execute(self, db: InfrahubDatabase) -> MigrationResult:
+        result = MigrationResult()
+        for migration_query in self.queries:
+            try:
+                query = await migration_query.init(db=db)
+                await query.execute(db=db)
+            except Exception as exc:
+                result.errors.append(str(exc))
+                return result
 
         return result
 
@@ -141,7 +141,7 @@ class InternalSchemaMigration(BaseModel):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema.schema_branch import SchemaBranch  # pylint: disable=import-outside-toplevel
+        from infrahub.core.schema.schema_branch import SchemaBranch
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)
@@ -167,7 +167,7 @@ class InternalSchemaMigration(BaseModel):
             try:
                 execution_result = await migration.execute(db=db, branch=default_branch)
                 result.errors.extend(execution_result.errors)
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:
                 result.errors.append(str(exc))
                 return result
 

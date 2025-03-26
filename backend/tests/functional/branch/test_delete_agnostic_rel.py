@@ -2,15 +2,58 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pytest
+from infrahub_sdk.exceptions import GraphQLError
+
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.node import InfrahubNode
 
 
 class TestDeleteAgnosticRel(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def load_schema(self, client: InfrahubClient, car_person_branch_agnostic_schema: dict[str, Any]) -> None:
+        await client.schema.load([car_person_branch_agnostic_schema])
+
+    @pytest.fixture(scope="class")
+    async def owner_1(self, client: InfrahubClient, load_schema) -> InfrahubNode:
+        owner_1 = await client.create(kind="TestPerson", name="owner_1")
+        await owner_1.save()
+        return owner_1
+
+    @pytest.fixture(scope="class")
+    async def owner_2(self, client: InfrahubClient, load_schema) -> InfrahubNode:
+        owner_2 = await client.create(kind="TestPerson", name="owner_2")
+        await owner_2.save()
+        return owner_2
+
+    @pytest.fixture(scope="class")
+    async def car(self, client: InfrahubClient, load_schema, owner_1: InfrahubNode) -> InfrahubNode:
+        car = await client.create(kind="TestCar", name="car_name", agnostic_owner=owner_1)
+        await car.save()
+        return car
+
+    @pytest.fixture(scope="class")
+    async def car_2(self, client: InfrahubClient, load_schema, owner_2: InfrahubNode) -> InfrahubNode:
+        car = await client.create(kind="TestCar", name="car_name_2", agnostic_owner=owner_2)
+        await car.save()
+        return car
+
+    @pytest.fixture(scope="class")
+    async def roofrack_2(self, client: InfrahubClient, load_schema, car_2: InfrahubNode) -> InfrahubNode:
+        roofrack = await client.create(kind="TestRoofrack", size="big", car=car_2)
+        await roofrack.save()
+        return roofrack
+
     async def test_delete_agnostic_rel(
-        self, client: InfrahubClient, car_person_branch_agnostic_schema: dict[str, Any]
+        self,
+        client: InfrahubClient,
+        load_schema,
+        owner_1: InfrahubNode,
+        owner_2: InfrahubNode,
+        car: InfrahubNode,
     ) -> None:
         """
         Loads a car-person agnostic schema, then :
@@ -20,22 +63,42 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         This test makes sure changing owner, involving deleting relationship with first owner, works correctly.
         See https://github.com/opsmill/infrahub/issues/5559.
         """
-
-        await client.schema.load([car_person_branch_agnostic_schema])
-
-        owner_1 = await client.create(kind="TestPerson", name="owner_1")
-        await owner_1.save()
-
-        car = await client.create(kind="TestCar", name="car_name", owner=owner_1)
+        car = await client.get(kind="TestCar", name__value="car_name", prefetch_relationships=True)
+        car.agnostic_owner = owner_2
         await car.save()
 
         car = await client.get(kind="TestCar", name__value="car_name", prefetch_relationships=True)
+        assert car.agnostic_owner.peer.name.value == "owner_2"
 
-        owner_2 = await client.create(kind="TestPerson", name="owner_2")
-        await owner_2.save()
+    async def test_delete_aware_mandatory_node_blocked(
+        self, client: InfrahubClient, owner_2: InfrahubNode, car: InfrahubNode
+    ) -> None:
+        owner_2 = await client.get(kind="TestPerson", name__value="owner_2")
 
-        car.owner = owner_2
-        await car.save()
+        with pytest.raises(GraphQLError) as exc:
+            await owner_2.delete()
 
+        assert (
+            f"Cannot delete TestPerson '{owner_2.id}'. It is linked to mandatory relationship agnostic_owner on node TestCar '{car.id}'"
+            in exc.value.message
+        )
+
+    async def test_delete_agnostic_node(self, client: InfrahubClient, owner_2: InfrahubNode, car: InfrahubNode) -> None:
         car = await client.get(kind="TestCar", name__value="car_name", prefetch_relationships=True)
-        assert car.owner.peer.name.value == "owner_2"
+        await car.delete()
+
+        owner_2 = await client.get(kind="TestPerson", name__value=owner_2.name.value, prefetch_relationships=True)
+        assert len(owner_2.cars.peers) == 0
+
+    async def test_delete_aware_node_with_agnostic_parent_blocked(
+        self, client: InfrahubClient, car_2: InfrahubNode, roofrack_2: InfrahubNode
+    ) -> None:
+        car_2 = await client.get(kind="TestCar", name__value=car_2.name.value, prefetch_relationships=True)
+
+        with pytest.raises(GraphQLError) as exc:
+            await car_2.delete()
+
+        assert (
+            f"Cannot delete TestCar '{car_2.id}'. It is linked to mandatory relationship car on node TestRoofrack '{roofrack_2.id}'"
+            in exc.value.message
+        )

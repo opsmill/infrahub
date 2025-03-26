@@ -1,6 +1,6 @@
 from collections import defaultdict
 from enum import Enum
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -11,7 +11,7 @@ from infrahub.core.query.relationship import (
     RelationshipGetByIdentifierQuery,
     RelationshipPeersData,
 )
-from infrahub.core.schema import MainSchemaTypes, NodeSchema, ProfileSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -28,7 +28,7 @@ class NodeDeleteIndex:
         # {node_schema: {DeleteRelationshipType: {relationship_identifier: peer_node_schema}}}
         self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, set[str]]]] = {}
 
-    def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema]) -> None:
+    def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
         self._index_cascading_deletes(start_schemas=start_schemas)
         self._index_dependent_schema(start_schemas=start_schemas)
 
@@ -50,7 +50,7 @@ class NodeDeleteIndex:
             self._dependency_graph[kind][relationship_type] = defaultdict(set)
         self._dependency_graph[kind][relationship_type][relationship_identifier].update(peer_kinds)
 
-    def _index_cascading_deletes(self, start_schemas: Iterable[NodeSchema | ProfileSchema]) -> None:
+    def _index_cascading_deletes(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
         kinds_to_check: set[str] = {schema.kind for schema in start_schemas}
         while True:
             try:
@@ -72,7 +72,7 @@ class NodeDeleteIndex:
                     if peer_kind not in self._dependency_graph:
                         kinds_to_check.add(peer_kind)
 
-    def _index_dependent_schema(self, start_schemas: Iterable[NodeSchema | ProfileSchema]) -> None:
+    def _index_dependent_schema(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
         start_schema_kinds: set[str] = set()
         for start_schema in start_schemas:
             start_schema_kinds.add(start_schema.kind)
@@ -124,16 +124,14 @@ class NodeDeleteValidator:
         self._all_schemas_map = schema_branch.get_all(duplicate=False)
         self.index: NodeDeleteIndex = NodeDeleteIndex(all_schemas_map=self._all_schemas_map)
 
-    async def get_ids_to_delete(self, nodes: Iterable[Node], at: Optional[Union[Timestamp, str]] = None) -> set[str]:
+    async def get_ids_to_delete(self, nodes: Iterable[Node], at: Timestamp | str | None = None) -> set[str]:
         start_schemas = {node.get_schema() for node in nodes}
         self.index.index(start_schemas=start_schemas)
         at = Timestamp(at)
 
         return await self._analyze_delete_dependencies(start_nodes=nodes, at=at)
 
-    async def _analyze_delete_dependencies(
-        self, start_nodes: Iterable[Node], at: Optional[Union[Timestamp, str]]
-    ) -> set[str]:
+    async def _analyze_delete_dependencies(self, start_nodes: Iterable[Node], at: Timestamp | str | None) -> set[str]:
         full_relationship_identifiers = self.index.get_relationship_identifiers()
         if not full_relationship_identifiers:
             return {node.get_id() for node in start_nodes}

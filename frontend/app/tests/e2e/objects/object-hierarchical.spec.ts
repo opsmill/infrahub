@@ -12,8 +12,8 @@ test.describe("Object hierarchical view", () => {
     });
 
     await test.step("display every node type when model is a generic", async () => {
-      await expect(page.getByRole("link", { name: "LocationContinent" }).first()).toBeVisible();
-      await expect(page.getByRole("link", { name: "LocationCountry" }).first()).toBeVisible();
+      await expect(page.getByTestId("object-items")).toContainText("Continent");
+      await expect(page.getByTestId("object-items")).toContainText("Country");
     });
 
     await test.step("clicking on a tree chevron should should open tree but not redirect page", async () => {
@@ -38,7 +38,7 @@ test.describe("Object hierarchical view", () => {
 
     await test.step("navigate using tab", async () => {
       await page.getByText("Children5").click();
-      await expect(page.getByRole("link", { name: "Atlanta" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1" })).toBeVisible();
     });
   });
 
@@ -49,7 +49,7 @@ test.describe("Object hierarchical view", () => {
     });
 
     await test.step("open site selection and verify All tab", async () => {
-      await page.getByLabel("Site *").click();
+      await page.getByLabel("Site").click();
       await expect(page.getByRole("tab", { name: "All" })).toBeVisible();
       await expect(page.getByRole("option", { name: "atl1" })).toBeVisible();
     });
@@ -62,7 +62,7 @@ test.describe("Object hierarchical view", () => {
     });
 
     await test.step("verify selected site", async () => {
-      await expect(page.getByLabel("Site *")).toContainText("atl1");
+      await expect(page.getByLabel("Site")).toContainText("atl1");
     });
   });
 });

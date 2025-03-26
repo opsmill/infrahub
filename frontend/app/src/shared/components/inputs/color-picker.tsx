@@ -1,7 +1,7 @@
-import { POPOVER_SIZE, PopOver } from "@/shared/components/display/popover";
 import { Input } from "@/shared/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, getTextColor } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
 import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
 import { forwardRef, useState } from "react";
 
@@ -28,16 +28,10 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
     };
   };
 
-  const PopOverButton = (
-    <div className="w-[20px] h-[20px] bg-gradient-to-br from-custom-white via-custom-blue-50 to-custom-gray rounded-full p-2 ml-2 cursor-pointer">
-      <Icon icon="mdi:eyedropper-variant text-custom-white" />
-    </div>
-  );
-
   return (
     <div
       className={classNames(
-        "flex items-center relative",
+        "flex items-center gap-2 relative",
         disabled && "pointer-events-none opacity-50"
       )}
     >
@@ -48,23 +42,21 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
         value={value ?? ""}
         style={getInputStyle()}
         onChange={(e) => handleInputChange(e.target.value)}
-        className={classNames("flex-1", className)}
+        className={className}
       />
-      <div className="flex">
-        <PopOver
-          buttonComponent={PopOverButton}
-          title={"Select a color"}
-          height={POPOVER_SIZE.NONE}
-          width={POPOVER_SIZE.NONE}
-          className="right- left-0"
-        >
-          {() => (
-            <div className="p-2">
-              <Colorful color={hsva} onChange={handleChange} disableAlpha />
-            </div>
+
+      <Popover>
+        <PopoverTrigger
+          className={classNames(
+            focusVisibleStyle,
+            "size-5 bg-gradient-to-br from-custom-white via-custom-blue-50 to-custom-gray rounded-full shrink-0"
           )}
-        </PopOver>
-      </div>
+        />
+
+        <PopoverContent className="p-2">
+          <Colorful color={hsva} onChange={handleChange} disableAlpha />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 });

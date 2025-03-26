@@ -17,7 +17,6 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await test.step("Navigate to CoreGraphQLQuery page", async () => {
       await page.goto("/objects/CoreGraphQLQuery");
       await expect(page.getByRole("heading", { name: "GraphQL Query" })).toBeVisible();
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
     });
 
     await test.step("Create a new graphql query", async () => {
@@ -65,7 +64,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await expect(
       page.getByText("DescriptionA profile for E2E test ", { exact: true })
     ).toBeVisible();
-    await expect(page.getByText("query GET_TAGS {")).toBeVisible();
+    await expect(page.getByText("1query GET_TAGS {")).toBeVisible();
 
     await page.getByTestId("edit-button").click();
     await page.getByLabel("Description").fill("A profile for E2E test updated");
@@ -97,11 +96,12 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
   test("delete a graphql query", async ({ page }) => {
     await page.goto("/objects/CoreGraphQLQuery");
 
-    await test.step("Delete the profile", async () => {
-      await page
-        .getByRole("row", { name: "test-graphql-query" })
-        .getByTestId("delete-row-button")
-        .click();
+    await test.step("Delete the graphql query", async () => {
+      await page.getByTestId("actions-cell-test-graphql-query").click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
+      await expect(
+        page.getByText("Are you sure you want to remove test-graphql-query?")
+      ).toBeVisible();
       await page.getByTestId("modal-delete-confirm").click();
     });
 

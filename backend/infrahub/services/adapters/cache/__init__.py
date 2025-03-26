@@ -1,36 +1,36 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.message_bus.types import KVTTL
-    from infrahub.services import InfrahubServices
 
 
-class InfrahubCache:
+class InfrahubCache(ABC):
     """Base class for caching services"""
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the cache"""
-
+    @abstractmethod
     async def delete(self, key: str) -> None:
         """Delete a key from the cache."""
         raise NotImplementedError()
 
-    async def get(self, key: str) -> Optional[str]:
+    @abstractmethod
+    async def get(self, key: str) -> str | None:
         """Retrieve a value from the cache."""
         raise NotImplementedError()
 
-    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+    @abstractmethod
+    async def get_values(self, keys: list[str]) -> list[str | None]:
         """Return a list the values for requested keys."""
         raise NotImplementedError()
 
+    @abstractmethod
     async def list_keys(self, filter_pattern: str) -> list[str]:
         """Return a list of active keys that match the provided filter."""
         raise NotImplementedError()
 
-    async def set(
-        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
-    ) -> Optional[bool]:
+    @abstractmethod
+    async def set(self, key: str, value: str, expires: KVTTL | None = None, not_exists: bool = False) -> bool | None:
         """Set a value in the cache."""
         raise NotImplementedError()

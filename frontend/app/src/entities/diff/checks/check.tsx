@@ -1,21 +1,20 @@
 import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { MoreButton } from "@/shared/components/buttons/more-button";
+import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { PopOver } from "@/shared/components/display/popover";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";
-import { Badge } from "@/shared/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { Conflict } from "./conflict";
+import { DataIntegrityConflicts } from "./data-integrity-conflicts";
+import { SchemaIntegrityConflicts } from "./schema-integrity-conflicts";
 
 type tCheckProps = {
   id: string;
@@ -71,7 +70,6 @@ const getCheckBorderColor = (severity?: string) => {
 };
 
 export const Check = ({ id }: tCheckProps) => {
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   const { loading, error, data } = useQuery(GET_CHECKS, { variables: { ids: [id] } });
@@ -147,9 +145,15 @@ export const Check = ({ id }: tCheckProps) => {
                 created_at?.value && <DateDisplay date={created_at?.value} />
               )}
 
-              <PopOver buttonComponent={MoreButton}>
-                <List columns={columns} row={row} />
-              </PopOver>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <InfoButton />
+                </PopoverTrigger>
+
+                <PopoverContent>
+                  <List columns={columns} row={row} />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -163,26 +167,12 @@ export const Check = ({ id }: tCheckProps) => {
         </div>
       </div>
 
-      {!!conflicts?.value?.length && (
-        <div className="bg-white p-2 rounded-md border border-gray-100">
-          <div className="grid grid-cols-3">
-            <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
-              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
-              {proposedChangesDetails.destination_branch?.value}
-            </Badge>
+      {__typename === "CoreDataCheck" && !!conflicts?.value?.length && (
+        <DataIntegrityConflicts conflicts={conflicts} />
+      )}
 
-            <Badge variant="blue" className="bg-transparent">
-              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
-              {proposedChangesDetails.source_branch?.value}
-            </Badge>
-          </div>
-
-          <div>
-            {conflicts?.value?.map((conflict: any) => {
-              return <Conflict key={id} {...conflict} check={check} />;
-            })}
-          </div>
-        </div>
+      {__typename === "CoreSchemaCheck" && !!conflicts?.value?.length && (
+        <SchemaIntegrityConflicts conflicts={conflicts} />
       )}
     </div>
   );

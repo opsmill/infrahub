@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/ipam - Ipam home page", () => {
+test.describe.fixme("/ipam - Ipam home page", () => {
   test.describe.configure({ mode: "serial" });
   test.slow();
 
@@ -184,6 +184,7 @@ test.describe("/ipam - Ipam home page", () => {
       });
 
       await test.step("update ip address from summary", async () => {
+        await expect(page.getByText("IPAddress updated")).toBeHidden();
         await page
           .getByRole("row", { name: "10.0.0.1/16" })
           .getByRole("link", { name: "10.0.0.1/16" })

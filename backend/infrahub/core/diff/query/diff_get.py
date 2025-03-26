@@ -11,7 +11,8 @@ from .filters import EnrichedDiffQueryFilters
 QUERY_MATCH_NODES = """
     // get the roots of all diffs in the query
     MATCH (diff_root:DiffRoot)
-    WHERE diff_root.base_branch = $base_branch
+    WHERE (diff_root.is_merged IS NULL OR diff_root.is_merged <> TRUE)
+    AND diff_root.base_branch = $base_branch
     AND diff_root.diff_branch IN $diff_branches
     AND ($from_time IS NULL OR diff_root.from_time >= $from_time)
     AND ($to_time IS NULL OR diff_root.to_time <= $to_time)
@@ -51,7 +52,7 @@ class EnrichedDiffGetQuery(Query):
         self.diff_ids = diff_ids
         self.filters = filters or EnrichedDiffQueryFilters()
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "base_branch": self.base_branch_name,
             "diff_branches": self.diff_branch_names,

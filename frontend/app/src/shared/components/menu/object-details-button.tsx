@@ -9,10 +9,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { CopyToClipboard } from "../buttons/copy-to-clipboard";
 
-interface ObjectDetailsButtonProps extends ButtonProps {
+export interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;
   hfid?: string;
   className?: string;

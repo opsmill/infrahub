@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.node import Node
 from infrahub.dependencies.registry import build_component_registry
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
+    from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -372,3 +376,19 @@ def query_introspection() -> str:
         }
     """
     return query
+
+
+@pytest.fixture
+async def account_bob(db: InfrahubDatabase, default_branch: Branch) -> Node:
+    bob = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=default_branch)
+    await bob.new(db=db, name="bob", password=str(uuid4()))
+    await bob.save(db=db)
+    return bob
+
+
+@pytest.fixture
+async def account_bill(db: InfrahubDatabase, default_branch: Branch) -> Node:
+    bill = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=default_branch)
+    await bill.new(db=db, name="bill", password=str(uuid4()))
+    await bill.save(db=db)
+    return bill

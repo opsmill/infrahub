@@ -1,6 +1,8 @@
 ---
 title: Architecture
 ---
+import CodeBlock from '@theme/CodeBlock';
+import import_deployTf from '!!raw-loader!../../../development/deploy.tf';
 
 # Infrahub architecture
 
@@ -17,6 +19,7 @@ The main components are:
 - A **Task manager** based on `Prefect` to orchestrate workflow tasks.
 - A **Task worker** written in Python to execute specific tasks such as managing the interaction with external Git repositories.
 - A **Graph database** based on `neo4j`.
+- A **Relational database** based on `PostgreSQL`.
 - A **Message bus** based on `RabbitMQ`.
 - A **Cache** based on `redis`.
 - An **Object Store** based on local storage or `Amazon S3`.
@@ -126,3 +129,8 @@ NEO4J_dbms_connector_bolt_tls__level=REQUIRED
 Infrahub may be deployed with no single-point of failure, and horizontally scaled architectures can be deployed. An example of a HA deployment is below:
 
 ![Infrahub Architecture](../media/high_level_architecture_ha.excalidraw.svg)
+
+<details>
+  <summary>An example of HA deployment using Terraform on a 3-nodes Kubernetes cluster</summary>
+  <CodeBlock language="hcl" title="deploy.tf">{import_deployTf}</CodeBlock>
+</details>

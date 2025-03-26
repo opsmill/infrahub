@@ -1,11 +1,11 @@
-import { iGenericSchema } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema } from "@/entities/schema/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { GenericSelector } from "@/shared/components/form/generic-selector";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
 import { useState } from "react";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
-  genericSchema: iGenericSchema;
+  genericSchema: GenericSchema;
 }
 
 export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectFormProps) => {
@@ -28,7 +28,7 @@ export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectForm
         onChange={setKindToCreate}
       />
 
-      {kindToCreate && <ObjectForm kind={kindToCreate} {...props} />}
+      {kindToCreate && <ObjectForm key={kindToCreate} kind={kindToCreate} {...props} />}
     </>
   );
 };

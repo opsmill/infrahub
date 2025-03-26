@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters, DiffSummaryQuery, EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -163,15 +164,15 @@ class TestDiffReadQuery(TestInfrahub):
         diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
         diff_coordinator.data_check_synchronizer.synchronize.return_value = []
 
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
         )
 
         return {
             "diff_branch": diff_branch,
-            "from_time": enriched_diff.from_time,
-            "to_time": enriched_diff.to_time,
+            "from_time": enriched_diff_metadata.from_time,
+            "to_time": enriched_diff_metadata.to_time,
         }
 
     @pytest.mark.parametrize(
@@ -236,7 +237,7 @@ class TestDiffReadQuery(TestInfrahub):
         assert summary == counters
 
     async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data):
-        repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
         diffs_without = await repository.get(
             base_branch_name=default_branch.name,
             diff_branch_names=[load_data["diff_branch"].name],
@@ -258,8 +259,8 @@ class TestDiffReadQuery(TestInfrahub):
             include_parents=True,
         )
 
-        assert set([node.label for node in diffs_without[0].nodes]) == {"paris-r1", "paris rack2", "THING1"}
-        assert set([node.label for node in diffs_with[0].nodes]) == {
+        assert {node.label for node in diffs_without[0].nodes} == {"paris-r1", "paris rack2", "THING1"}
+        assert {node.label for node in diffs_with[0].nodes} == {
             "paris",
             "THING1",
             "paris-r1",

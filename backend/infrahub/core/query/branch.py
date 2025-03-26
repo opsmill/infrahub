@@ -20,7 +20,7 @@ class AddNodeToBranch(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (root:Root)
         MATCH (d) WHERE %(id_func)s(d) = $node_id
@@ -50,7 +50,7 @@ class DeleteBranchRelationshipsQuery(Query):
         self.branch_name = branch_name
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)
@@ -78,7 +78,7 @@ class GetAllBranchInternalRelationshipQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH p = ()-[r]-()
         WHERE r.branch = $branch_name
@@ -98,7 +98,7 @@ class RebaseBranchUpdateRelationshipQuery(Query):
         self.ids = ids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH ()-[r]->()
         WHERE %(id_func)s(r) IN $ids
@@ -125,7 +125,7 @@ class RebaseBranchDeleteRelationshipQuery(Query):
         self.ids = ids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)

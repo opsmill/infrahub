@@ -64,9 +64,12 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'guides/installation',
+        'guides/installation-enterprise',
         'guides/create-schema',
         'guides/import-schema',
         'guides/menu',
+        'guides/computed-attributes',
+        'guides/resource-manager',
         'guides/accounts-permissions',
         'guides/groups',
         'guides/generator',
@@ -75,13 +78,14 @@ const sidebars: SidebarsConfig = {
         'guides/python-transform',
         'guides/artifact',
         'guides/database-backup',
+        'guides/managing-api-tokens',
+        'guides/object-template',
         'guides/profiles',
         'guides/object-storage',
         'guides/sso',
         'guides/check',
-        'guides/resource-manager',
-        'guides/managing-api-tokens',
-        'guides/computed-attributes',
+
+        'guides/webhooks',
       ],
     },
     {
@@ -93,20 +97,24 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'topics/infrahub-yml',
+        'topics/auth',
+        'topics/activity-log',
         'topics/architecture',
         'topics/artifact',
         'topics/check',
+        'topics/computed-attributes',
         'topics/metadata',
         'topics/database-backup',
         'topics/developer-guide',
+        'topics/events',
         'topics/local-demo-environment',
         'topics/generator',
         'topics/graphql',
         'topics/groups',
         'topics/hardware-requirements',
-        'topics/version-control',
         'topics/ipam',
         'topics/object-storage',
+        'topics/object-template',
         'topics/permissions-roles',
         'topics/profiles',
         'topics/proposed-change',
@@ -114,9 +122,10 @@ const sidebars: SidebarsConfig = {
         'topics/resource-manager',
         'topics/resources-testing-framework',
         'topics/schema',
+        'topics/tasks',
         'topics/transformation',
-        'topics/auth',
-        'topics/computed-attributes',
+        'topics/version-control',
+        'topics/webhooks',
       ],
     },
     {
@@ -127,6 +136,27 @@ const sidebars: SidebarsConfig = {
         slug: 'reference'
       },
       items: [
+        'reference/api-server',
+        'reference/configuration',
+        {
+          type: 'category',
+          label: 'infrahub cli',
+          link: {
+            type: 'generated-index',
+            slug: 'reference/infrahub-cli',
+          },
+          items: [
+            'reference/infrahub-cli/infrahub-db',
+            'reference/infrahub-cli/infrahub-git-agent',
+            'reference/infrahub-cli/infrahub-server'
+          ],
+        },
+        'reference/infrahub-events',
+        'reference/menu',
+        'reference/message-bus-events',
+        'reference/dotinfrahub', //Repository Configuration File
+        'reference/permissions',
+
         {
           type: 'category',
           label: 'Schema',
@@ -144,75 +174,10 @@ const sidebars: SidebarsConfig = {
             'reference/schema/validator-migration',
           ],
         },
-        'reference/menu',
-        {
-          type: 'category',
-          label: 'infrahub cli',
-          link: {
-            type: 'generated-index',
-            slug: 'reference/infrahub-cli',
-          },
-          items: [
-            'reference/infrahub-cli/infrahub-db',
-            'reference/infrahub-cli/infrahub-git-agent',
-            'reference/infrahub-cli/infrahub-server'
-          ],
-        },
-        'reference/configuration',
-        'reference/git-agent',
-        'reference/message-bus-events',
-        'reference/api-server',
-        'reference/dotinfrahub',
+        'reference/schema-validation',
+        'reference/task-worker',
         'reference/infrahub-tests',
-        'reference/permissions',
-        'reference/schema-validation'
       ],
-    },
-    {
-      type: 'category',
-      label: 'Python SDK',
-      link: {
-        type: 'doc',
-        id: 'python-sdk/readme'
-      },
-      items: [
-        {
-          type: 'category',
-          label: 'Guides',
-          items: [
-            'python-sdk/guides/installation',
-            'python-sdk/guides/client',
-            'python-sdk/guides/query_data',
-            'python-sdk/guides/create_update_delete',
-            'python-sdk/guides/branches',
-            'python-sdk/guides/store',
-            'python-sdk/guides/tracking',
-            'python-sdk/guides/batch',
-            'python-sdk/guides/object-storage',
-            'python-sdk/guides/resource-manager'
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Topics',
-          items: [
-            'python-sdk/topics/tracking'
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Reference',
-          items: [
-            'python-sdk/reference/config'
-          ],
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'infrahubctl',
-      link: { type: 'doc', id: 'infrahubctl' },
-      items: [{ type: 'autogenerated', dirName: 'infrahubctl' }],
     },
     {
       type: 'category',
@@ -254,6 +219,10 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_2_0',
+            'release-notes/infrahub/release-1_1_9',
+            'release-notes/infrahub/release-1_1_8',
+            'release-notes/infrahub/release-1_1_7',
             'release-notes/infrahub/release-1_1_6',
             'release-notes/infrahub/release-1_1_5',
             'release-notes/infrahub/release-1_1_4',
@@ -290,18 +259,6 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_8',
             'release-notes/infrahub/release-0_7',
             'release-notes/infrahub/release-0_6'
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Python SDK',
-          link: {
-            type: 'generated-index',
-            slug: 'release-notes/python-sdk',
-          },
-          items: [
-            // 'release-notes/python-sdk/release-1_0-DRAFT',
-            'release-notes/python-sdk/release-0_13'
           ],
         },
       ],

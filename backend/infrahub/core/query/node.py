@@ -5,7 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -31,14 +31,13 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
+    from infrahub.core.schema.template_schema import TemplateSchema
     from infrahub.database import InfrahubDatabase
-
-# pylint: disable=consider-using-f-string,redefined-builtin,too-many-lines
 
 
 @dataclass
 class NodeToProcess:
-    schema: Optional[Union[NodeSchema, ProfileSchema]]
+    schema: NodeSchema | ProfileSchema | TemplateSchema | None
 
     node_id: str
     node_uuid: str
@@ -66,7 +65,7 @@ class AttributeFromDB:
     attr_uuid: str
 
     attr_value_id: str
-    attr_value_uuid: Optional[str]
+    attr_value_uuid: str | None
 
     value: Any
     content: Any
@@ -97,11 +96,11 @@ class PeerInfo:
 class NodeQuery(Query):
     def __init__(
         self,
-        node: Optional[Node] = None,
-        node_id: Optional[str] = None,
-        node_db_id: Optional[int] = None,
-        id: Optional[str] = None,
-        branch: Optional[Branch] = None,
+        node: Node | None = None,
+        node_id: str | None = None,
+        node_db_id: int | None = None,
+        id: str | None = None,
+        branch: Branch | None = None,
         **kwargs,
     ) -> None:
         # TODO Validate that Node is a valid node
@@ -127,7 +126,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -203,15 +202,16 @@ class NodeCreateAllQuery(NodeQuery):
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
-        query = """
-        MATCH (root:Root)
-        CREATE (n:Node:%(labels)s $node_prop )
-        CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
+        attrs_query = """
         WITH distinct n
-        FOREACH ( attr IN $attrs |
+        UNWIND $attrs AS attr
+        CALL {
+            WITH n, attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
+            WITH n, attr, av, a
+            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -225,11 +225,19 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( attr IN $attrs_iphost |
+        }"""
+
+        attrs_iphost_query = """
+        WITH distinct n
+        UNWIND $attrs_iphost AS attr_iphost
+        CALL {
+            WITH n, attr_iphost
+            WITH n, attr_iphost AS attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPHost { %(iphost_prop)s })
+            WITH n, attr, av, a
+            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -243,11 +251,20 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( attr IN $attrs_ipnetwork |
+        }
+        """ % {"iphost_prop": ", ".join(iphost_prop_list)}
+
+        attrs_ipnetwork_query = """
+        WITH distinct n
+        UNWIND $attrs_ipnetwork AS attr_ipnetwork
+        CALL {
+            WITH n, attr_ipnetwork
+            WITH n, attr_ipnetwork AS attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPNetwork { %(ipnetwork_prop)s })
+            WITH n, attr, av, a
+            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -261,8 +278,14 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( rel IN $rels_bidir |
+        }
+        """ % {"ipnetwork_prop": ", ".join(ipnetwork_prop_list)}
+
+        rels_bidir_query = """
+        WITH distinct n
+        UNWIND $rels_bidir AS rel
+        CALL {
+            WITH n, rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -279,8 +302,15 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( rel IN $rels_out |
+        }
+        """ % {"rel_prop": rel_prop_str}
+
+        rels_out_query = """
+        WITH distinct n
+        UNWIND $rels_out AS rel_out
+        CALL {
+            WITH n, rel_out
+            WITH n, rel_out as rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -297,8 +327,15 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( rel IN $rels_in |
+        }
+        """ % {"rel_prop": rel_prop_str}
+
+        rels_in_query = """
+        WITH distinct n
+        UNWIND $rels_in AS rel_in
+        CALL {
+            WITH n, rel_in
+            WITH n, rel_in AS rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
@@ -315,14 +352,23 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
-        )
+        }
+        """ % {"rel_prop": rel_prop_str}
+
+        query = f"""
+        MATCH (root:Root)
+        CREATE (n:Node:%(labels)s $node_prop )
+        CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
+        {attrs_query if self.params["attrs"] else ""}
+        {attrs_iphost_query if self.params["attrs_iphost"] else ""}
+        {attrs_ipnetwork_query if self.params["attrs_ipnetwork"] else ""}
+        {rels_bidir_query if self.params["rels_bidir"] else ""}
+        {rels_out_query if self.params["rels_out"] else ""}
+        {rels_in_query if self.params["rels_in"] else ""}
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
         """ % {
             "labels": ":".join(self.node.get_labels()),
-            "rel_prop": rel_prop_str,
-            "iphost_prop": ", ".join(iphost_prop_list),
-            "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
         }
 
         self.params["at"] = at.to_string()
@@ -360,7 +406,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -390,7 +436,7 @@ class NodeCheckIDQuery(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["uuid"] = self.node_id
 
         query = """
@@ -416,7 +462,7 @@ class NodeListGetAttributeQuery(Query):
     def __init__(
         self,
         ids: list[str],
-        fields: Optional[dict] = None,
+        fields: dict | None = None,
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
@@ -430,7 +476,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -607,7 +653,7 @@ class NodeListGetRelationshipsQuery(Query):
         self.relationship_identifiers = relationship_identifiers
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
         self.params["relationship_identifiers"] = self.relationship_identifiers
 
@@ -619,18 +665,21 @@ class NodeListGetRelationshipsQuery(Query):
         MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_in) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "inbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_out) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "outbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
         WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
         AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        AND n.uuid <> peer.uuid
         RETURN n, rel, peer, r1, r2, "bidirectional" as direction
         """ % {"filters": rels_filter}
 
@@ -663,7 +712,7 @@ class NodeGetKindQuery(Query):
         self.ids = ids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH p = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)
         WHERE n.uuid IN $ids
@@ -689,7 +738,7 @@ class NodeListGetInfoQuery(Query):
         self.ids = ids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -758,7 +807,7 @@ class FieldAttributeRequirementType(Enum):
 @dataclass
 class FieldAttributeRequirement:
     field_name: str
-    field: Optional[Union[AttributeSchema, RelationshipSchema]]
+    field: AttributeSchema | RelationshipSchema | None
     field_attr_name: str
     field_attr_value: Any
     index: int
@@ -818,7 +867,7 @@ class NodeGetListQuery(Query):
     def __init__(
         self,
         schema: NodeSchema,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         partial_match: bool = False,
         order: OrderModel | None = None,
         **kwargs: Any,
@@ -879,7 +928,7 @@ class NodeGetListQuery(Query):
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
@@ -1265,8 +1314,8 @@ class NodeGetHierarchyQuery(Query):
         self,
         node_id: str,
         direction: RelationshipHierarchyDirection,
-        node_schema: Union[NodeSchema, GenericSchema],
-        filters: Optional[dict] = None,
+        node_schema: NodeSchema | GenericSchema,
+        filters: dict | None = None,
         hierarchical_ordering: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -1278,7 +1327,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)

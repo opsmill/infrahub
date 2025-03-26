@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from ..utils import SubclassWithMeta, SubclassWithMeta_Meta
 
 
 class BaseOptions:
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
     _frozen: bool = False
 
@@ -21,7 +19,7 @@ class BaseOptions:
         if not self._frozen:
             super().__setattr__(name, value)
         else:
-            raise Exception(f"Can't modify frozen Options {self}")  # pylint: disable=broad-exception-raised
+            raise Exception(f"Can't modify frozen Options {self}")
 
     def __repr__(self):
         return f"<{self.__class__.__name__} name={repr(self.name)}>"

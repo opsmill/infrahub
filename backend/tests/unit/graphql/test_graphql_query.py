@@ -2048,10 +2048,9 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     assert result2.errors is None
     assert result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
     assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
-    assert (
+    assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"] == Timestamp(
         result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
-        == Timestamp(result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]).to_string()
-    )
+    ).to_string(with_z=False)
     assert (
         result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
         != result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
@@ -2125,12 +2124,9 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
         result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
         != result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
     )
-    assert (
+    assert result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"] == Timestamp(
         result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
-        == Timestamp(
-            result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
-        ).to_string()
-    )
+    ).to_string(with_z=False)
 
 
 async def test_query_attribute_node_property_source(
@@ -2365,7 +2361,7 @@ async def test_query_relationship_node_property(
     assert result.errors is None
 
     results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestPerson"]["edges"]}
-    assert sorted(list(results.keys())) == ["Jane", "John"]
+    assert sorted(results.keys()) == ["Jane", "John"]
     assert len(results["John"]["cars"]["edges"]) == 1
     assert len(results["Jane"]["cars"]["edges"]) == 1
 
@@ -2436,6 +2432,185 @@ async def test_query_relationship_node_property(
     assert results["bolt"]["owner"]["properties"]["source"]
     assert results["bolt"]["owner"]["properties"]["source"]["id"] == first_account.id
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
+
+    # test many relationship query with mixed properties on peer
+    query = """
+    query {
+        people_with_cars_and_owners: TestPerson {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                owner {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        people_with_cars_and_sources: TestPerson {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                source {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+
+    owner_results = {
+        item["node"]["name"]["value"]: item["node"] for item in result.data["people_with_cars_and_owners"]["edges"]
+    }
+    assert sorted(owner_results.keys()) == ["Jane", "John"]
+    assert len(owner_results["John"]["cars"]["edges"]) == 1
+    assert len(owner_results["Jane"]["cars"]["edges"]) == 1
+
+    assert owner_results["John"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert owner_results["John"]["cars"]["edges"][0]["properties"]["owner"]
+    assert owner_results["John"]["cars"]["edges"][0]["properties"]["owner"]["id"] == first_account.id
+    assert "source" not in owner_results["John"]["cars"]["edges"][0]["properties"]
+
+    assert owner_results["Jane"]["cars"]["edges"][0]["node"]["name"]["value"] == "bolt"
+    assert owner_results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
+    assert "source" not in owner_results["Jane"]["cars"]["edges"][0]["properties"]
+
+    source_results = {
+        item["node"]["name"]["value"]: item["node"] for item in result.data["people_with_cars_and_sources"]["edges"]
+    }
+    assert sorted(source_results.keys()) == ["Jane", "John"]
+    assert len(source_results["John"]["cars"]["edges"]) == 1
+    assert len(source_results["Jane"]["cars"]["edges"]) == 1
+
+    assert source_results["John"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert "owner" not in source_results["John"]["cars"]["edges"][0]["properties"]
+    assert source_results["John"]["cars"]["edges"][0]["properties"]["source"] is None
+
+    assert source_results["Jane"]["cars"]["edges"][0]["node"]["name"]["value"] == "bolt"
+    assert "owner" not in source_results["Jane"]["cars"]["edges"][0]["properties"]
+    assert source_results["Jane"]["cars"]["edges"][0]["properties"]["source"]
+    assert source_results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
+
+    assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
+
+
+async def test_same_many_relationship_with_different_limits_offsets(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_camry_main: Node,
+    car_yaris_main: Node,
+) -> None:
+    query = """
+    query {
+        people_with_cars_1: TestPerson {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    cars(limit: 1, offset: 0) {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        people_with_cars_2: TestPerson {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    cars(limit: 1, offset: 1) {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    john_cars_by_uuid = sorted([car_accord_main, car_prius_main], key=lambda c: c.id)
+    jane_cars_by_uuid = sorted([car_camry_main, car_yaris_main], key=lambda c: c.id)
+
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+
+    for person_node in result.data["people_with_cars_1"]["edges"]:
+        person_name = person_node["node"]["name"]["value"]
+        assert len(person_node["node"]["cars"]["edges"]) == 1
+        if person_name == "John":
+            assert person_node["node"]["cars"]["edges"][0]["node"]["id"] == john_cars_by_uuid[0].id
+        elif person_name == "Jane":
+            assert person_node["node"]["cars"]["edges"][0]["node"]["id"] == jane_cars_by_uuid[0].id
+    for person_node in result.data["people_with_cars_2"]["edges"]:
+        person_name = person_node["node"]["name"]["value"]
+        assert len(person_node["node"]["cars"]["edges"]) == 1
+        if person_name == "John":
+            assert person_node["node"]["cars"]["edges"][0]["node"]["id"] == john_cars_by_uuid[1].id
+        elif person_name == "Jane":
+            assert person_node["node"]["cars"]["edges"][0]["node"]["id"] == jane_cars_by_uuid[1].id
 
 
 async def test_query_attribute_flag_property(
@@ -3252,6 +3427,133 @@ async def test_hierarchical_location_include_descendants(
     assert asia["things"]["count"] == 7
 
 
+async def test_properties_on_different_query_paths(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data_thing: dict[str, Node],
+    account_bob: Node,
+    account_bill: Node,
+):
+    paris_owner = account_bob
+    paris_rack_ids = [node.id for name, node in hierarchical_location_data_thing.items() if name.startswith("paris-r")]
+    paris_racks = await NodeManager.get_many(db=db, ids=paris_rack_ids)
+    for rack in paris_racks.values():
+        thing_rels = await rack.things.get_relationships(db=db)
+        await rack.things.update(
+            db=db, data=[{"id": rel.peer_id, "_relation__owner": paris_owner.id} for rel in thing_rels]
+        )
+        await rack.save(db=db)
+
+    london_source = account_bill
+    london_rack_ids = [
+        node.id for name, node in hierarchical_location_data_thing.items() if name.startswith("london-r")
+    ]
+    london_racks = await NodeManager.get_many(db=db, ids=london_rack_ids)
+    for rack in london_racks.values():
+        thing_rels = await rack.things.get_relationships(db=db)
+        await rack.things.update(
+            db=db, data=[{"id": rel.peer_id, "_relation__source": london_source.id} for rel in thing_rels]
+        )
+        await rack.save(db=db)
+
+    query = """
+    query GetRack {
+        LocationRack(parent__name__values: "europe") {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    things {
+                        edges {
+                            properties {
+                                owner {
+                                    id
+                                }
+                            }
+                            node {
+                                id
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        LocationSite(parent__name__values: "europe") {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    children {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                                things {
+                                    edges {
+                                        properties {
+                                        source {
+                                                id
+                                            }
+                                        }
+                                        node {
+                                            id
+                                            name {
+                                                value
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    # check owners are correct
+    for rack in result.data["LocationRack"]["edges"]:
+        rack_name = rack["node"]["name"]["value"]
+        for thing_rel in rack["node"]["things"]["edges"]:
+            assert "source" not in thing_rel["properties"]
+            if rack_name.startswith("paris"):
+                assert thing_rel["properties"]["owner"]["id"] == paris_owner.id
+            else:
+                assert thing_rel["properties"]["owner"] is None
+
+    # check sources are correct
+    for site in result.data["LocationSite"]["edges"]:
+        for rack in site["node"]["children"]["edges"]:
+            rack_name = rack["node"]["name"]["value"]
+            for thing_rel in rack["node"]["things"]["edges"]:
+                assert "owner" not in thing_rel["properties"]
+                if rack_name.startswith("london"):
+                    assert thing_rel["properties"]["source"]["id"] == london_source.id
+                else:
+                    assert thing_rel["properties"]["source"] is None
+
+
 async def test_hierarchical_groups_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data: dict[str, Node]
 ):
@@ -3295,19 +3597,27 @@ async def test_hierarchical_groups_descendants(
 
     member_names = [hierarchical_groups_data[member_id].name.value for member_id in members_ids]
 
+    # members returned in order of group names
     assert member_names == [
+        # grp1
         "tag-0",
         "tag-1",
+        # grp11
         "tag-2",
         "tag-3",
-        "tag-4",
-        "tag-5",
+        # grp111
         "tag-6",
         "tag-7",
+        # grp112
         "tag-8",
         "tag-9",
+        # grp12
+        "tag-4",
+        "tag-5",
+        # grp 121
         "tag-10",
         "tag-11",
+        # grp 122
         "tag-12",
         "tag-13",
     ]

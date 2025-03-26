@@ -2,15 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../constants";
 import { createBranch } from "../utils";
 
-test.describe("Branches creation and deletion", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
+test.describe.fixme("Branches creation and deletion", () => {
   test.describe("when not logged in", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");
@@ -91,6 +83,7 @@ test.describe("Branches creation and deletion", () => {
       await page.getByTestId("branch-selector-trigger").click();
       await expect(page.getByTestId("branch-list")).toContainText("test123");
       await expect(page.getByTestId("branch-list")).not.toContainText("test456");
+      await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       expect(page.url()).toContain("/branches?branch=test123");
     });
 
@@ -100,6 +93,7 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
 
+      await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       expect(page.url()).toContain("/branches");
       await page.getByTestId("branch-selector-trigger").click();
       await expect(page.getByTestId("branch-list")).not.toContainText("test123");

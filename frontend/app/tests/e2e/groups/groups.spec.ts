@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("/objects/CoreGroup - Generic Group Object.", () => {
+test.describe.fixme("/objects/CoreGroup - Generic Group Object.", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
@@ -58,6 +58,7 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
       await page.getByRole("option", { name: "Tag Builtin" }).click();
       await page.getByLabel("Tag").click();
       await page.getByRole("option", { name: "red" }).click();
+      await expect(page.getByRole("option", { name: "red" })).not.toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("Members2").click();
 

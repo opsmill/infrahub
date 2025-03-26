@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_enum_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         if self.attribute_schema.enum is None:
             return
 
@@ -74,7 +74,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeEnumChecker(ConstraintCheckerInterface):
     query_classes = [AttributeEnumUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 

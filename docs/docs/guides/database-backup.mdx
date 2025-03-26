@@ -9,6 +9,12 @@ Please [see this topic](../topics/database-backup) for the requirements for usin
 
 This guide assumes that you cloned the Infrahub repository to your machine, but you can also copy the content of [this tool's Python file](https://github.com/opsmill/infrahub/tree/stable/utilities/db_backup/__main__.py) into a local Python file and run it that way.
 
+An alternative to avoid cloning the Infrahub repository is to directly run it through the Infrahub Docker image:
+
+```python
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock registry.opsmill.io/opsmill/infrahub python -m utilities.db_backup
+```
+
 ## Backup a remote Infrahub database
 
 ```python
@@ -16,6 +22,11 @@ python -m utilities.db_backup neo4j backup --database-url=172.28.64.1 /infrahub_
 ```
 
 In this example, the "remote" Infrahub database is accessible at `172.28.64.1` and I want to store the generated backup files in the `/infrahub_backups` directory.
+Since the tool starts a helper container, the database may not be directly accessible from Docker depending on your network. You can try using the `--host-network` option:
+
+```python
+python -m utilities.db_backup neo4j backup --host-network --database-url=172.28.64.1 /infrahub_backups
+```
 
 ## Backup a local Infrahub database with a non-default backup port
 

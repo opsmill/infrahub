@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from .generated.genericnode_schema import GeneratedGenericSchema
 
@@ -24,7 +24,11 @@ class GenericSchema(GeneratedGenericSchema):
     def is_profile_schema(self) -> bool:
         return False
 
-    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+    @property
+    def is_template_schema(self) -> bool:
+        return False
+
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:  # noqa: ARG002
         if self.hierarchical:
             return self
 

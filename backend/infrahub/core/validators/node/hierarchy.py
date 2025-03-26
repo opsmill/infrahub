@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
 
 from ..interface import ConstraintCheckerInterface
-from ..shared import (
-    SchemaValidatorQuery,
-)
+from ..shared import SchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -31,7 +29,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         self.check_parent = check_parent
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         if self.check_children and self.check_parent:
             raise RuntimeError("Cannot check children and parent at same time")
         if self.check_children:
@@ -145,7 +143,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

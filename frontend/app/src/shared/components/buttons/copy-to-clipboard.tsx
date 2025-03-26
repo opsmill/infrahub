@@ -1,6 +1,6 @@
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import React, { useState } from "react";
 import { Button, ButtonProps } from "./button-primitive";
 
 interface CopyToClipboardProps extends ButtonProps {
@@ -14,25 +14,13 @@ export const CopyToClipboard = ({
   children,
   ...props
 }: CopyToClipboardProps) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    try {
-      event.stopPropagation();
-
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
-    } catch (error) {
-      console.error("Failed to copy: ", error);
-    }
-  };
+  const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   return (
-    <Button size={size} variant={variant} onClick={handleCopy} {...props}>
+    <Button size={size} variant={variant} onClick={() => copyToClipboard(text)} {...props}>
       <Icon
         icon={
-          copied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"
+          isCopied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"
         }
         className={classNames("text-base", children && "mr-2")}
       />

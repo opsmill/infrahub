@@ -7,12 +7,15 @@ from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
 
 from infrahub import config
+from infrahub.trigger.catalogue import builtin_triggers
+from infrahub.trigger.models import TriggerType
+from infrahub.trigger.setup import setup_triggers
 
-from .catalogue import automation_setup_workflows, worker_pools, workflows
+from .catalogue import worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 
 
-@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)
+@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_worker_pools(client: PrefectClient) -> None:
     log = get_run_logger()
     for worker in worker_pools:
@@ -28,7 +31,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             log.warning(f"Work pool {worker.name} already present ")
 
 
-@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)
+@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_deployments(client: PrefectClient) -> None:
     log = get_run_logger()
     for workflow in workflows:
@@ -38,12 +41,8 @@ async def setup_deployments(client: PrefectClient) -> None:
         await workflow.save(client=client, work_pool=work_pool)
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
-    for automation_setup_workflow in automation_setup_workflows:
-        automation_setup = automation_setup_workflow.get_function()
-        await automation_setup()
 
-
-@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)
+@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_blocks() -> None:
     log = get_run_logger()
 
@@ -71,3 +70,8 @@ async def setup_task_manager() -> None:
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
+        await setup_triggers(
+            client=client,
+            triggers=builtin_triggers,
+            trigger_type=TriggerType.BUILTIN,
+        )

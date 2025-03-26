@@ -10,7 +10,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
 # flake8: noqa
-# pylint: skip-file
+
 
 DEVICE_ROLES = ["edge"]
 INTF_ROLES = ["backbone", "transit", "peering", "peer", "loopback", "management", "spare"]

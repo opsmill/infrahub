@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 class StandardNodeQuery(Query):
     def __init__(
-        self, node: StandardNode = None, node_id: Optional[str] = None, node_db_id: Optional[int] = None, **kwargs: Any
+        self, node: StandardNode = None, node_id: str | None = None, node_db_id: int | None = None, **kwargs: Any
     ):
         self.node = node
         self.node_id = node_id
@@ -30,7 +30,7 @@ class RootNodeCreateQuery(StandardNodeQuery):
     name = "standard_node_create"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -46,7 +46,7 @@ class StandardNodeCreateQuery(StandardNodeQuery):
     name = "standard_node_create"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -63,7 +63,7 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
     name = "standard_node_update"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
         self.params["node_prop"]["uuid"] = str(self.node.uuid)
@@ -83,7 +83,7 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
     insert_return = False
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (n:%s { uuid: $uuid })
         DETACH DELETE (n)
@@ -103,7 +103,7 @@ class StandardNodeGetItemQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
             MATCH (n:%(node_type)s)
             WHERE %(id_func)s(n) = $node_id OR n.uuid = $node_id
@@ -120,7 +120,7 @@ class StandardNodeGetListQuery(Query):
     type = QueryType.READ
 
     def __init__(
-        self, node_class: StandardNode, ids: Optional[list[str]] = None, node_name: Optional[str] = None, **kwargs: Any
+        self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, **kwargs: Any
     ) -> None:
         self.ids = ids
         self.node_name = node_name
@@ -128,7 +128,7 @@ class StandardNodeGetListQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         filters = []
         if self.ids:
             filters.append("n.uuid in $ids_value")

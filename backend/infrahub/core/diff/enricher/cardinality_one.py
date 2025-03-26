@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 from ..model.path import (
     CalculatedDiffs,
@@ -15,6 +16,8 @@ from .interface import DiffEnricherInterface
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
+
+log = get_logger()
 
 
 class DiffCardinalityOneEnricher(DiffEnricherInterface):
@@ -32,8 +35,9 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
         self.db = db
         self._node_schema_map: dict[str, MainSchemaTypes] = {}
 
-    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
+    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:  # noqa: ARG002
         self._node_schema_map = {}
+        log.info("Beginning cardinality-one diff enrichment...")
         for diff_node in enriched_diff_root.nodes:
             for relationship_group in diff_node.relationships:
                 if (
@@ -41,6 +45,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                     and len(relationship_group.relationships) > 0
                 ):
                     self.consolidate_cardinality_one_diff_elements(diff_relationship=relationship_group)
+        log.info("Cardinality-one diff enrichment complete.")
 
     def _determine_action(self, previous_value: Any, new_value: Any) -> DiffAction:
         if previous_value == new_value:
@@ -103,14 +108,9 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                 )
             )
         if consolidated_properties:
-            element_timestamps = {element.changed_at for element in diff_relationship.relationships}
             element_actions = {element.action for element in diff_relationship.relationships}
             # check if this is a simultaneous update
-            if (
-                len(diff_relationship.relationships) > 1
-                and len(element_timestamps) == 1
-                and {DiffAction.REMOVED, DiffAction.ADDED} <= element_actions
-            ):
+            if len(diff_relationship.relationships) > 1 and {DiffAction.REMOVED, DiffAction.ADDED} <= element_actions:
                 latest_element = [
                     element for element in diff_relationship.relationships if element.action is DiffAction.ADDED
                 ][0]

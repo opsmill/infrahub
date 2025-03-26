@@ -15,7 +15,7 @@ export const SearchAnywhereContext = React.createContext<SearchAnywhereContextPr
 });
 
 export const useSearchAnywhereContext = () => {
-  const context = React.useContext(SearchAnywhereContext);
+  const context = React.use(SearchAnywhereContext);
   if (context === undefined) {
     throw new Error("useSearchAnywhereContext must be used within a SearchAnywhereContext");
   }

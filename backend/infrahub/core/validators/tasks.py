@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
 from prefect.cache_policies import NONE
@@ -13,14 +15,19 @@ from infrahub.core.validators.model import (
     SchemaConstraintValidatorRequest,
 )
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.utils import add_tags
 
 from .models.validate_migration import SchemaValidateMigrationData, SchemaValidatorPathResponseData
 
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
+
 
 @flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations", persist_result=True)
-async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
+async def schema_validate_migrations(
+    message: SchemaValidateMigrationData, service: InfrahubServices
+) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
     log = get_run_logger()
     await add_tags(branches=[message.branch.name])
@@ -33,7 +40,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
     # NOTE this task is a good candidate to add a progress bar
     for constraint in message.constraints:
         schema = message.schema_branch.get(name=constraint.path.schema_kind)
-        if not isinstance(schema, (GenericSchema, NodeSchema)):
+        if not isinstance(schema, GenericSchema | NodeSchema):
             continue
         batch.add(
             task=schema_path_validate,
@@ -41,13 +48,15 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             constraint_name=constraint.constraint_name,
             node_schema=schema,
             schema_path=constraint.path,
+            schema_branch=message.schema_branch,
+            service=service,
         )
 
     results = [result async for _, result in batch.execute()]
     return results
 
 
-@task(
+@task(  # type: ignore[arg-type]
     name="schema-path-validate",
     task_run_name="Validate schema path {constraint_name} in {branch.name}",
     description="Validate if a given migration is compatible with the existing data",
@@ -59,15 +68,16 @@ async def schema_path_validate(
     constraint_name: str,
     node_schema: NodeSchema | GenericSchema,
     schema_path: SchemaPath,
+    schema_branch: SchemaBranch,
+    service: InfrahubServices,
 ) -> SchemaValidatorPathResponseData:
-    service = services.service
-
     async with service.database.start_session() as db:
         constraint_request = SchemaConstraintValidatorRequest(
             branch=branch,
             constraint_name=constraint_name,
             node_schema=node_schema,
             schema_path=schema_path,
+            schema_branch=schema_branch,
         )
 
         component_registry = get_component_registry()

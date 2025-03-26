@@ -1,11 +1,10 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { ModelSchema } from "@/entities/schema/types";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 import React, { Fragment, useRef, useState } from "react";
 import ModalDelete from "../modals/modal-delete";
 
@@ -45,7 +44,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
   };
 
   return (
-    <SlideOverContext.Provider value={context}>
+    <SlideOverContext value={context}>
       <Transition.Root show={isOpen} as={Fragment}>
         <Dialog
           as="div"
@@ -112,12 +111,12 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
         setOpen={() => setPreventClose(false)}
         confirmLabel="Close"
       />
-    </SlideOverContext.Provider>
+    </SlideOverContext>
   );
 }
 
 type SlideOverTitleProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   currentObjectLabel?: string | null;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
@@ -129,14 +128,14 @@ export const SlideOverTitle = ({
   title,
   subtitle,
 }: SlideOverTitleProps) => {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
 
   return (
     <div className="space-y-2">
       <div className="flex">
         <Badge variant="blue" className="flex items-center gap-1">
           <Icon icon="mdi:layers-triple" />
-          <span>{currentBranch?.name}</span>
+          <span>{currentBranch.name}</span>
         </Badge>
 
         <ObjectHelpButton

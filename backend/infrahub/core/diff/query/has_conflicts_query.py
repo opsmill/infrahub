@@ -25,7 +25,7 @@ class EnrichedDiffHasConflictQuery(Query):
         self.tracking_id = tracking_id
         self.diff_id = diff_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "diff_branch_name": self.diff_branch_name,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
@@ -33,8 +33,11 @@ class EnrichedDiffHasConflictQuery(Query):
         }
         query = """
 MATCH (diff_root:DiffRoot)
-WHERE ($diff_id IS NOT NULL AND diff_root.uuid = $diff_id)
-OR ($tracking_id IS NOT NULL AND diff_root.tracking_id = $tracking_id AND diff_root.diff_branch = $diff_branch_name)
+WHERE (diff_root.is_merged IS NULL OR diff_root.is_merged <> TRUE)
+AND (
+    ($diff_id IS NOT NULL AND diff_root.uuid = $diff_id)
+    OR ($tracking_id IS NOT NULL AND diff_root.tracking_id = $tracking_id AND diff_root.diff_branch = $diff_branch_name)
+)
 WITH (
     exists(
         (diff_root)-[:DIFF_HAS_NODE]->(:DiffNode)-[:DIFF_HAS_CONFLICT]->(:DiffConflict)

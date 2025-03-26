@@ -5,7 +5,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -13,7 +13,13 @@ import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
-import { Combobox } from "@/shared/components/ui/combobox-legacy";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/shared/components/ui/combobox";
 import {
   Form,
   FormField,
@@ -26,7 +32,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -82,22 +88,36 @@ export const ProposedChangeCreateForm = () => {
               },
             },
           }}
-          render={({ field }) => (
-            <div className="w-full relative mb-2 flex flex-col">
-              <FormLabel>Source Branch *</FormLabel>
-              <FormInput>
-                <Combobox
-                  {...field}
-                  placeholder="Select a branch..."
-                  items={branchesToSelectOptions(sourceBranches).map(({ name }) => ({
-                    value: name,
-                    label: name,
-                  }))}
-                />
-              </FormInput>
-              <FormMessage />
-            </div>
-          )}
+          render={({ field }) => {
+            const fieldData: string | null = field.value;
+
+            return (
+              <div className="w-full relative mb-2 flex flex-col">
+                <FormLabel>Source Branch *</FormLabel>
+                <Combobox>
+                  <FormInput>
+                    <ComboboxTrigger>{fieldData}</ComboboxTrigger>
+                  </FormInput>
+
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {branchesToSelectOptions(sourceBranches).map(({ name }) => (
+                        <ComboboxItem
+                          key={name}
+                          value={name}
+                          selectedValue={fieldData}
+                          onSelect={() => field.onChange(name)}
+                        >
+                          {name}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                <FormMessage />
+              </div>
+            );
+          }}
         />
 
         <Icon
@@ -112,9 +132,11 @@ export const ProposedChangeCreateForm = () => {
           render={({ field }) => (
             <div className="w-full relative mb-2 flex flex-col">
               <FormLabel>Destination Branch *</FormLabel>
-              <FormInput>
-                <Combobox disabled {...field} />
-              </FormInput>
+              <Combobox>
+                <FormInput>
+                  <ComboboxTrigger disabled>{field.value}</ComboboxTrigger>
+                </FormInput>
+              </Combobox>
               <FormMessage />
             </div>
           )}

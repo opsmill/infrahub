@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 from infrahub.core.query import Query, QueryType
@@ -19,7 +19,7 @@ class AttributeAddQuery(Query):
         attribute_name: str,
         attribute_kind: str,
         branch_support: str,
-        default_value: Optional[Any] = None,
+        default_value: Any | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_kind = node_kind
@@ -30,7 +30,7 @@ class AttributeAddQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

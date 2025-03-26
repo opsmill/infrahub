@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -34,7 +34,7 @@ from infrahub.utils import InfrahubStringEnum
 
 from .constants import DatabaseType, Neo4jRuntime
 from .memgraph import DatabaseManagerMemgraph
-from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
+from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
@@ -69,7 +69,7 @@ class InfrahubDatabaseSessionMode(InfrahubStringEnum):
     WRITE = "write"
 
 
-def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
+def get_branch_name(branch: Branch | str | None = None) -> str:
     if not branch:
         return registry.default_branch
     if isinstance(branch, str):
@@ -82,43 +82,39 @@ class DatabaseSchemaManager:
     def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
-    def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
-    def get_node_schema(
-        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> NodeSchema:
+    def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
         if schema.is_node_schema:
             return schema
 
         raise ValueError("The selected node is not of type NodeSchema")
 
-    def set(self, name: str, schema: MainSchemaTypes, branch: Optional[str] = None) -> int:
+    def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.set(name=name, schema=schema, branch=branch)
         return self._db._schemas[branch_name].set(name=name, schema=schema)
 
-    def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+    def has(self, name: str, branch: Branch | str | None = None) -> bool:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.has(name=name, branch=branch)
         return self._db._schemas[branch_name].has(name=name)
 
-    def get_full(
-        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> dict[str, MainSchemaTypes]:
+    def get_full(self, branch: Branch | str | None = None, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get_full(branch=branch)
         return self._db._schemas[branch_name].get_all(duplicate=duplicate)
 
     async def get_full_safe(
-        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+        self, branch: Branch | str | None = None, duplicate: bool = True
     ) -> dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
         return self.get_full(branch=branch, duplicate=duplicate)
@@ -173,6 +169,19 @@ class InfrahubDatabase:
         elif self.db_type == DatabaseType.MEMGRAPH:
             self.manager = DatabaseManagerMemgraph(db=self)
 
+    def __del__(self) -> None:
+        if not self._session or not self._is_session_local or self._session.closed():
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            loop.create_task(self._session.close())
+        else:
+            asyncio.run(self._session.close())
+
     @property
     def is_session(self) -> bool:
         if self._mode == InfrahubDatabaseMode.SESSION:
@@ -193,10 +202,10 @@ class InfrahubDatabase:
 
         return {}
 
-    def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
+    def add_schema(self, schema: SchemaBranch, name: str | None = None) -> None:
         self._schemas[name or schema.name] = schema
 
-    def start_session(self, read_only: bool = False, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+    def start_session(self, read_only: bool = False, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
         session_mode = InfrahubDatabaseSessionMode.WRITE
         if read_only:
@@ -216,7 +225,7 @@ class InfrahubDatabase:
             **context,
         )
 
-    def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+    def start_transaction(self, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         context = self.get_context()
 
         return self.__class__(
@@ -248,7 +257,7 @@ class InfrahubDatabase:
         self._is_session_local = True
         return self._session
 
-    async def transaction(self, name: Optional[str]) -> AsyncTransaction:
+    async def transaction(self, name: str | None) -> AsyncTransaction:
         if self._transaction:
             return self._transaction
 
@@ -277,9 +286,9 @@ class InfrahubDatabase:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         if self._mode == InfrahubDatabaseMode.SESSION:
             return await self._session.close()
@@ -307,7 +316,7 @@ class InfrahubDatabase:
         params: dict[str, Any] | None = None,
         name: str = "undefined",
         context: dict[str, str] | None = None,
-        type: QueryType | None = None,  # pylint: disable=redefined-builtin
+        type: QueryType | None = None,
     ) -> list[Record]:
         results, _ = await self.execute_query_with_metadata(
             query=query, params=params, name=name, context=context, type=type
@@ -320,8 +329,16 @@ class InfrahubDatabase:
         params: dict[str, Any] | None = None,
         name: str = "undefined",
         context: dict[str, str] | None = None,
-        type: QueryType | None = None,  # pylint: disable=redefined-builtin
+        type: QueryType | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
+        connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
+        CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
+
+        if config.SETTINGS.database.max_concurrent_queries:
+            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:  # noqa: ASYNC110
+                await asyncio.sleep(config.SETTINGS.database.max_concurrent_queries_delay)
+                connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
+
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
             if name:
@@ -372,9 +389,9 @@ class InfrahubDatabase:
                 return results, response._metadata or {}
 
     async def run_query(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
     ) -> AsyncResult:
-        _query: Union[str | Query] = query
+        _query: str | Query = query
         if self.is_transaction:
             execution_method = await self.transaction(name=name)
         else:
@@ -501,6 +518,7 @@ def retry_db_transaction(
                         if exc.code != "Neo.ClientError.Statement.EntityNotFound":
                             raise exc
                     retry_time: float = random.randrange(100, 500) / 1000
+                    log.exception("Retry handler caught database error")
                     log.info(
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
                         retry_time=retry_time,

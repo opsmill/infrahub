@@ -47,10 +47,12 @@ generator_definition
 generator_definitions
 get_artifact
 github
+gitlab
 graphene
 graphiql
 graphql
 greymatter
+healthcheck
 hfid
 hfids
 hostname
@@ -95,6 +97,9 @@ order_weight
 openconfig
 opentelemetry
 order_by
+pg_dump
+Postgress
+Postgresql
 Prefetch
 profile_name
 pseudocode
@@ -107,6 +112,7 @@ regenerate_host_artifact
 repo
 REST
 resources
+schema's
 schema_mapping
 sdk
 subcommand

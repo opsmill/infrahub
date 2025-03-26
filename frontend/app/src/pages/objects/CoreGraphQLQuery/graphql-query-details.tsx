@@ -1,89 +1,85 @@
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
+import { GraphqlQueryActivities } from "@/entities/graphql/ui/graphql-query-activities";
 import GraphqlQueryDetailsCard from "@/entities/graphql/ui/graphql-query-details-card";
 import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
 import GraphqlQueryViewerCard from "@/entities/graphql/ui/graphql-query-viewer-card";
-import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { Permission } from "@/entities/permission/types";
-import { getPermission } from "@/entities/permission/utils";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema, NodeSchema } from "@/entities/schema/types";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
-import useQuery from "@/shared/api/graphql/useQuery";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { useTitle } from "@/shared/hooks/useTitle";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
 
-export default function GraphqlQueryDetailsPage({ graphqlQueryId }: { graphqlQueryId: string }) {
+export interface GraphqlQueryDetailsPageProps {
+  graphqlQuerySchema: ModelSchema;
+  graphqlQueryId: string;
+}
+
+export default function GraphqlQueryDetailsPage({
+  graphqlQuerySchema,
+  graphqlQueryId,
+}: GraphqlQueryDetailsPageProps) {
   useTitle("GraphQL Query details");
 
-  const objectid = graphqlQueryId;
+  const { isPending, error, data: permission } = useGetObjectPermissions(GRAPHQL_QUERY_OBJECT);
 
-  const nodes = useAtomValue(schemaState);
-  const graphqlQuerySchema = nodes.find((s) => s.kind === GRAPHQL_QUERY_OBJECT);
+  if (isPending) {
+    return <LoadingIndicator className="h-[calc(100vh-10rem)]" />;
+  }
 
-  const columns = getSchemaObjectColumns({ schema: graphqlQuerySchema });
-
-  const query = gql(
-    getObjectDetailsPaginated({
-      objectid,
-      kind: GRAPHQL_QUERY_OBJECT,
-      columns,
-      hasPermissions: true,
-    })
-  );
-
-  const { loading, data, refetch } = useQuery(query, {
-    skip: !graphqlQuerySchema,
-  });
-
-  if (!graphqlQuerySchema || loading) return <GraphQLQueryDetailsPageSkeleton />;
-
-  const graphqlQueries = data && data.CoreGraphQLQuery.edges;
-  if (graphqlQueries.length === 0) return <NoDataFound />;
-
-  const graphqlQuery: CoreGraphQlQuery = graphqlQueries[0].node;
-
-  const permission = getPermission(data?.[GRAPHQL_QUERY_OBJECT]?.permissions?.edges);
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching permissions." />;
+  }
 
   if (!permission.view.isAllowed) {
     return <UnauthorizedScreen message={permission.view.message} />;
   }
 
   return (
-    graphqlQuery && (
-      <GraphqlQueryDetailsContent
-        graphqlQuerySchema={graphqlQuerySchema}
-        graphqlQuery={graphqlQuery}
-        refetch={refetch}
-        permission={permission}
-      />
-    )
+    <GraphqlQueryDetails
+      graphqlQueryId={graphqlQueryId}
+      graphqlQuerySchema={graphqlQuerySchema as NodeSchema}
+      permission={permission}
+    />
   );
 }
 
-const GraphqlQueryDetailsContent = ({
-  graphqlQuery,
+const GraphqlQueryDetails = ({
+  graphqlQueryId,
   graphqlQuerySchema,
-  refetch,
   permission,
 }: {
-  graphqlQuery: CoreGraphQlQuery;
-  graphqlQuerySchema: iNodeSchema;
-  refetch: () => Promise<unknown>;
+  graphqlQueryId: string;
+  graphqlQuerySchema: NodeSchema;
   permission: Permission;
 }) => {
-  return (
-    <section className="flex flex-wrap lg:flex-nowrap items-start gap-2 p-2">
-      <GraphqlQueryDetailsCard
-        data={graphqlQuery}
-        schema={graphqlQuerySchema}
-        refetch={refetch}
-        permission={permission}
-      />
+  const { loading, data, refetch } = useObjectDetails(graphqlQuerySchema, graphqlQueryId);
 
-      <GraphqlQueryViewerCard query={graphqlQuery.query.value ?? ""} permission={permission} />
+  if (loading) return <GraphQLQueryDetailsPageSkeleton />;
+
+  const graphqlQueries = data && data.CoreGraphQLQuery.edges;
+  if (graphqlQueries.length === 0) return <NoDataFound />;
+
+  const graphqlQuery: CoreGraphQlQuery = graphqlQueries[0].node;
+
+  return (
+    <section className="grid grid-cols-1 lg:grid-cols-2 gap-2 p-2">
+      <GraphqlQueryViewerCard query={graphqlQuery.query.value ?? ""} />
+
+      <div className="flex flex-col gap-2">
+        <GraphqlQueryDetailsCard
+          data={graphqlQuery}
+          schema={graphqlQuerySchema}
+          refetch={refetch}
+          permission={permission}
+        />
+
+        <GraphqlQueryActivities id={graphqlQueryId} />
+      </div>
     </section>
   );
 };

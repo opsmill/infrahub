@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Int, List, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 from prefect.client.schemas.objects import StateType
 
@@ -17,12 +17,12 @@ if TYPE_CHECKING:
 
 
 class Tasks(ObjectType):
-    edges = List(TaskNodes)
-    count = Int()
+    edges = List(NonNull(TaskNodes), required=True)
+    count = Int(required=True)
 
     @staticmethod
     async def resolve(
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,
@@ -49,7 +49,7 @@ class Tasks(ObjectType):
 
     @staticmethod
     async def resolve_branch_status(
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         branch: str,
     ) -> dict[str, Any]:
@@ -72,11 +72,11 @@ class Tasks(ObjectType):
         limit: int | None = None,
         offset: int | None = None,
     ) -> dict[str, Any]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 
         prefect_tasks = await PrefectTask.query(
-            db=context.db,
+            db=graphql_context.db,
             fields=fields,
             q=q,
             ids=ids,
@@ -97,7 +97,6 @@ class Tasks(ObjectType):
 
 Task = Field(
     Tasks,
-    resolver=Tasks.resolve,
     limit=Int(required=False),
     offset=Int(required=False),
     related_node__ids=List(String),
@@ -106,11 +105,14 @@ Task = Field(
     workflow=List(String),
     ids=List(String),
     q=String(required=False),
+    resolver=Tasks.resolve,
+    required=True,
 )
 
 TaskBranchStatus = Field(
     Tasks,
-    resolver=Tasks.resolve_branch_status,
     branch=String(required=False),
     description="Return the list of all pending or running tasks that can modify the data, for a given branch",
+    resolver=Tasks.resolve_branch_status,
+    required=True,
 )

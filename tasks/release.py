@@ -96,61 +96,92 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
+def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
     # Get the app version directly from pyproject.toml
     app_version = get_version_from_pyproject()  # Returns a string like '1.1.0a1'
 
-    # Initialize YAML and load the Chart.yaml file
-    yaml: YAML = init_yaml_obj()
-    chart_path = Path(chart_file)
-    chart_yaml = yaml.load(chart_path)
+    for chart in ["infrahub", "infrahub-enterprise"]:
+        # Initialize YAML and load the Chart.yaml file
+        yaml: YAML = init_yaml_obj()
+        chart_path = Path(chart_repo) / "charts" / Path(chart) / "Chart.yaml"
+        chart_yaml = yaml.load(chart_path)
 
-    if "appVersion" not in chart_yaml:
-        raise ValueError(f"appVersion not found in {chart_file}; no updates made.")
+        if "appVersion" not in chart_yaml:
+            raise ValueError(f"appVersion not found in {str(chart_path)}; no updates made.")
 
-    old_app_version = chart_yaml.get("appVersion", "")
-    if old_app_version == app_version:
-        print(
-            f"{chart_file} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
-        )
-        return
+        old_app_version = chart_yaml.get("appVersion", "")
+        if old_app_version == app_version:
+            print(
+                f"{str(chart_path)} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
+            )
+            return
 
-    # Handle Helm chart version increment
-    old_helm_version = chart_yaml.get("version", "")
-    if not old_helm_version:
-        raise ValueError(f"Helm chart `version` not found in {chart_file}; no updates made.")
+        # Handle Helm chart version increment
+        old_helm_version = chart_yaml.get("version", "")
+        if not old_helm_version:
+            raise ValueError(f"Helm chart `version` not found in {str(chart_path)}; no updates made.")
 
-    # Split the Helm chart version into components for increment logic
-    major, minor, patch = map(int, old_helm_version.split("."))
-    new_helm_version = f"{major}.{minor}.{patch}"
+        # Split the Helm chart version into components for increment logic
+        major, minor, patch = map(int, old_helm_version.split("."))
+        new_helm_version = f"{major}.{minor}.{patch}"
 
-    # Determine the appropriate increment
-    try:
-        if app_version > old_app_version:
-            if int(app_version.split(".")[0]) > major:
-                new_helm_version = f"{major + 1}.0.0"
-            elif int(app_version.split(".")[1]) > minor:
-                new_helm_version = f"{major}.{minor + 1}.0"
-            elif int(app_version.split(".")[2].split("a")[0]) > patch:  # For alpha, beta handling
-                new_helm_version = f"{major}.{minor}.{patch + 1}"
-    except Exception:
-        # Fallback in case app_version has non-standard format for Helm comparison
-        print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
+        # Determine the appropriate increment
+        try:
+            if app_version > old_app_version:
+                if int(app_version.split(".")[0]) > major:
+                    new_helm_version = f"{major + 1}.0.0"
+                elif int(app_version.split(".")[1]) > minor:
+                    new_helm_version = f"{major}.{minor + 1}.0"
+                elif int(app_version.split(".")[2].split("a")[0]) > patch:  # For alpha, beta handling
+                    new_helm_version = f"{major}.{minor}.{patch + 1}"
+        except Exception:
+            # Fallback in case app_version has non-standard format for Helm comparison
+            print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
 
-    # Update the YAML
-    chart_yaml["appVersion"] = app_version
-    chart_yaml["version"] = new_helm_version
+        # Update the YAML
+        chart_yaml["appVersion"] = app_version
+        chart_yaml["version"] = new_helm_version
 
-    yaml.dump(chart_yaml, chart_path)
+        if chart == "infrahub":
+            dependency_version = new_helm_version
 
-    print(f"{chart_file} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
+            yaml_values: YAML = init_yaml_obj()
+            values_path = Path(chart_repo) / "charts" / Path(chart) / "values.yaml"
+            values_yaml = yaml_values.load(values_path)
+
+            if (
+                "prefect-server" not in values_yaml
+                or "server" not in values_yaml["prefect-server"]
+                or "image" not in values_yaml["prefect-server"]["server"]
+                or "prefectTag" not in values_yaml["prefect-server"]["server"]["image"]
+                or "repository" not in values_yaml["prefect-server"]["server"]["image"]
+                or values_yaml["prefect-server"]["server"]["image"]["repository"]
+                != "registry.opsmill.io/opsmill/infrahub"
+            ):
+                print(f"prefect-server image tag not found in {str(values_path)}; no updates made.")
+            else:
+                values_yaml["prefect-server"]["server"]["image"]["prefectTag"] = app_version
+                yaml_values.dump(values_yaml, values_path)
+                print(f"{str(values_path)} updated with `prefectTag`: {app_version}")
+        elif chart == "infrahub-enterprise":
+            if "dependencies" in chart_yaml:
+                for dependency in chart_yaml["dependencies"]:
+                    if dependency["name"] == "infrahub":
+                        # Update 'infrahub' dependencies in helm chart
+                        dependency["version"] = dependency_version
+                        print(f"'infrahub' dependency update to {dependency_version} in {chart}")
+                        break
+
+        yaml.dump(chart_yaml, chart_path)
+
+        print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
 
 
 @task
-def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
+def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
 
@@ -163,7 +194,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     docker_yaml: dict = yaml.load(docker_path)
 
     # Define services to update
-    services_to_update = ["infrahub-server", "task-worker"]
+    services_to_update = ["infrahub-server", "task-worker", "task-manager"]
     updates_made = False
 
     # Iterate over the services and update their image versions
@@ -196,7 +227,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
 
 @task
-def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:
+def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
     """Update test containers pyproject.toml with the current version from pyproject.toml."""
     print(" - [release] Update python_testcontainers/pyproject.toml")
 
@@ -339,7 +370,7 @@ def update_docker_compose_env_vars(
 
 @task
 def gen_config_env(
-    context: Context,
+    context: Context,  # noqa: ARG001
     docker_file: str | None = "docker-compose.yml",
     update_docker_file: bool | None = False,
 ) -> None:

@@ -3,17 +3,15 @@ import { IpDetailsCard } from "@/entities/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
@@ -58,13 +56,22 @@ type PrefixSummaryContentProps = {
 };
 
 const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProps) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const { schema: prefixSchema } = useSchema(prefixKind);
 
-  const prefixSchema = [...nodes, ...generics].find(({ kind }) => kind === prefixKind);
-
-  const columns = getSchemaObjectColumns({ schema: prefixSchema });
+  const columns = prefixSchema
+    ? [
+        ...(prefixSchema.attributes ?? []).map((attribute) => ({
+          isAttribute: true,
+          ...attribute,
+        })),
+        ...(prefixSchema.relationships ?? []).map((relationship) => ({
+          isRelationship: true,
+          paginated: relationship.cardinality === "many",
+          ...relationship,
+        })),
+      ]
+    : [];
 
   const filters = namespace ? `ip_namespace__ids: ["${namespace}"]` : "";
 

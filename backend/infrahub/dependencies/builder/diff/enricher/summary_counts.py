@@ -4,5 +4,5 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 class DiffSummaryCountsEnricherDependency(DependencyBuilder[DiffSummaryCountsEnricher]):
     @classmethod
-    def build(cls, context: DependencyBuilderContext) -> DiffSummaryCountsEnricher:
+    def build(cls, context: DependencyBuilderContext) -> DiffSummaryCountsEnricher:  # noqa: ARG003
         return DiffSummaryCountsEnricher()

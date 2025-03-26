@@ -21,7 +21,7 @@ class IndexNodeMemgraph(IndexItem):
 
 
 class IndexManagerMemgraph(IndexManagerBase):
-    def init(self, nodes: list[IndexItem], rels: list[IndexItem]) -> None:
+    def init(self, nodes: list[IndexItem], rels: list[IndexItem]) -> None:  # noqa: ARG002
         self.nodes = [IndexNodeMemgraph(**item.model_dump()) for item in nodes]
         self.initialized = True
 

@@ -21,8 +21,8 @@ class InfrahubInterfaceOptions(InterfaceOptions):
 class InfrahubInterface(Interface):
     @classmethod
     def resolve_type(cls, instance: dict[str, Any], info: GraphQLResolveInfo) -> InfrahubObject:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         if KIND_GRAPHQL_FIELD_NAME in instance:
-            return context.types[instance[KIND_GRAPHQL_FIELD_NAME]]
+            return graphql_context.types[instance[KIND_GRAPHQL_FIELD_NAME]]
 
         raise ValueError("Unable to identify the type of the instance.")

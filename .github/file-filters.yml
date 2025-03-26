@@ -17,8 +17,8 @@ sdk_files: &sdk_files
   - "python_sdk" # Catch updates to the submodule commit
 
 infrahub_poetry_files: &infrahub_poetry_files
-  - "pyproject.toml"
-  - "poetry.lock"
+  - "**/pyproject.toml"
+  - "**/poetry.lock"
 
 frontend_files: &frontend_files
   - "frontend/app/**"
@@ -38,9 +38,6 @@ release_files: &release_files
   - "changelog/*.md"
   - CHANGELOG.md
   - "docs/docs/release_notes/infrahub/*.mdx"
-
-helm_files: &helm_files
-  - "helm/**"
 
 python_all: &python_all
   - "**/*.py"
@@ -82,9 +79,6 @@ documentation_generated_all:
 
 release_all:
   - *release_files
-
-helm_all:
-  - *helm_files
 
 frontend_all:
   - *frontend_files

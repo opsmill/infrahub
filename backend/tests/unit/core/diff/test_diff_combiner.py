@@ -1,10 +1,9 @@
 from dataclasses import replace
-from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from pendulum.datetime import DateTime
+from whenever import Instant
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
@@ -36,10 +35,10 @@ from .factories import (
 
 class TestDiffCombiner:
     def setup_method(self):
-        self.diff_from_1 = Timestamp(DateTime(2024, 3, 5, 7, 9, 11, tzinfo=UTC))
-        self.diff_to_1 = Timestamp(DateTime(2024, 3, 5, 9, 11, 13, tzinfo=UTC))
-        self.diff_from_2 = Timestamp(DateTime(2024, 3, 5, 7, 9, 14, tzinfo=UTC))
-        self.diff_to_2 = Timestamp(DateTime(2024, 3, 5, 11, 13, 15, tzinfo=UTC))
+        self.diff_from_1 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 11))
+        self.diff_to_1 = Timestamp(Instant.from_utc(2024, 3, 5, 9, 11, 13))
+        self.diff_from_2 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 14))
+        self.diff_to_2 = Timestamp(Instant.from_utc(2024, 3, 5, 11, 13, 15))
         self.base_branch = "main"
         self.diff_branch = "branch"
         self.diff_root_1 = EnrichedRootFactory.build(
@@ -53,18 +52,21 @@ class TestDiffCombiner:
             diff_branch_name=self.diff_branch,
             from_time=self.diff_from_2,
             to_time=self.diff_to_2,
+            tracking_id=self.diff_root_1.tracking_id,
         )
         self.expected_combined = EnrichedRootFactory.build(
             base_branch_name=self.base_branch,
             diff_branch_name=self.diff_branch,
             from_time=self.diff_from_1,
             to_time=self.diff_to_2,
+            tracking_id=self.diff_root_1.tracking_id,
             nodes=set(),
             num_added=0,
             num_updated=0,
             num_removed=0,
             num_conflicts=0,
             contains_conflict=False,
+            exists_on_database=False,
         )
         self.schema_manager = AsyncMock(spec=SchemaManager)
         registry.schema = self.schema_manager

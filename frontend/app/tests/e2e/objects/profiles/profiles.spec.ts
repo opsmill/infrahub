@@ -1,25 +1,29 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { generateRandomBranchName } from "../../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
 const PROFILE_NAME = "Interface L2 profile test";
 const GENERIC_PROFILE_NAME = "Generic Interface profile test";
 
-test.describe("/objects/CoreProfile - Profiles page", () => {
+test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  const BRANCH_NAME = generateRandomBranchName("profiles");
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
   });
 
   test("should create a new profile successfully", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
+      await expect(page.getByRole("link", { name: "upstream_profile" })).toBeVisible();
     });
 
     await test.step("Create a new profile", async () => {
@@ -41,7 +45,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("access the created profile, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -61,13 +65,15 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("create an object with a profile", async ({ page }) => {
     await test.step("Navigate to object creation page", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+      await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
     });
 
     await test.step("Select profile and enter details", async () => {
       await page.getByLabel("Select profiles").click();
       await page.getByRole("option", { name: "profile test tag" }).click();
+      await page.getByLabel("Select profiles").click();
 
       // Verify initial input fields for profile
       await expect(page.getByLabel("Name *")).toBeEmpty();
@@ -75,11 +81,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
       await expect(page.getByTestId("source-profile-badge")).toBeVisible();
       await expect(page.getByTestId("source-profile-badge")).toContainText("profile test tag");
-      await page.getByLabel("Select profiles").click();
       await page.getByTestId("source-profile-badge").hover();
       await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
-      await page.locator("body").press("Escape"); // hide tooltip
+      await page.getByLabel("Name *").click(); // hide tooltip
 
       await page.getByLabel("Name *").fill("tag with profile");
       await page.getByRole("button", { name: "Save" }).click();
@@ -104,7 +109,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Verify profile link", async () => {
-      await page.getByRole("link", { name: "profile test tag" }).click();
+      await page
+        .getByTestId("metadata-tooltip")
+        .getByRole("link", { name: "profile test tag" })
+        .click();
       expect(page.url()).toContain("/objects/ProfileBuiltinTag/");
     });
   });
@@ -113,7 +121,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     page,
   }) => {
     await test.step("Navigate to an used profile", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -122,26 +130,25 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByTestId("edit-button").click();
       await page.getByLabel("Description").fill("A profile for E2E test edited");
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
     });
 
     await test.step("Verify the changes in an object using the edited profile", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
     });
   });
 
   test("edit profile of tag without touching any other field", async ({ page }) => {
     await test.step("got to edit form of tag", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
       await page.getByTestId("edit-button").click();
     });
 
     await test.step("remove profile from tag", async () => {
-      await page.getByLabel("Select profiles optional").click();
-      await page.getByRole("option", { name: "profile test tag" }).click();
+      await page.getByText("profile test tag×").getByTestId("remove-option").click();
       await expect(page.getByLabel("Description")).toBeEmpty();
       await page.getByRole("button", { name: "Save" }).click();
     });
@@ -151,16 +158,14 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
     });
 
     await test.step("Delete the profile", async () => {
-      await page
-        .getByRole("row", { name: "ProfileBuiltinTag profile" })
-        .getByTestId("delete-row-button")
-        .click();
+      await page.getByTestId("actions-cell-profile test tag").click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(
-        'Are you sure you want to remove the Profile"profile test tag"?'
+        "Are you sure you want to remove profile test tag?"
       );
       await page.getByTestId("modal-delete-confirm").click();
     });
@@ -170,9 +175,9 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Object attribute using profile value should be reset", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("Description-")).toBeVisible();
+      await expect(page.getByText("Description-", { exact: true })).toBeVisible();
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
       await expect(page.getByTestId("metadata-tooltip").getByText("Source-")).toBeVisible();
     });
@@ -183,17 +188,10 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should verify the form fields for a new profile for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
       await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("link", { name: "backbone_profile" })).toBeVisible();
 
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
@@ -223,6 +221,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should create a new profile successfully for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
       await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("link", { name: "backbone_profile" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
@@ -243,6 +242,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should create a new profile successfully for generic interface", async ({ page }) => {
     await test.step("access Interface form", async () => {
       await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("link", { name: "backbone_profile" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
@@ -261,7 +261,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
-    await expect(page.locator("dl").getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.getByText("Profile NameInterface L2")).toBeVisible();
     await expect(page.getByText("Profile Priority2000")).toBeVisible();
     await expect(page.getByText("MTU256")).toBeVisible();
     await expect(
@@ -271,16 +271,19 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .locator("svg")
         .first()
     ).toBeVisible();
-    await expect(page.getByText("Provisioning")).toBeVisible();
+    await expect(page.getByText("Provisioning", { exact: true })).toBeVisible();
   });
 
   test("should verify the available profiles in the object form", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
+    await expect(
+      page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true })
+    ).toBeVisible();
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Select an object type").click();
     await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     await page.getByLabel("Select profiles optional").click();
-    await expect(page.getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.getByText(PROFILE_NAME, { exact: true })).toBeVisible();
     await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });
 });

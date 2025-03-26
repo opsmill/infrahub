@@ -10,4 +10,4 @@ async def request(message: messages.SendEchoRequest, service: InfrahubServices) 
     service.log.info(f"Received message: {message.message}")
     if message.reply_requested:
         response = SendEchoRequestResponse(data=SendEchoRequestResponseData(response=f"Reply to: {message.message}"))
-        await service.reply(message=response, initiator=message)
+        await service.message_bus.reply_if_initiator_meta(message=response, initiator=message)

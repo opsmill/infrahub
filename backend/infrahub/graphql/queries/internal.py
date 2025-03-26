@@ -17,10 +17,10 @@ class Info(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,  # pylint: disable=unused-argument
-        info: GraphQLResolveInfo,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG004
+        info: GraphQLResolveInfo,  # noqa: ARG004
     ) -> dict[str, str]:
         return {"deployment_id": str(registry.id), "version": __version__}
 
 
-InfrahubInfo = Field(Info, resolver=Info.resolve)
+InfrahubInfo = Field(Info, resolver=Info.resolve, required=True)

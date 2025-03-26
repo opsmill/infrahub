@@ -28,10 +28,6 @@
   description: "Issue related to the CI pipeline"
   color: "f25009"
 
-- name: "group/helm"
-  description: "Issue related to the Helm chart"
-  color: "326ce5"
-
 - name: "group/schema"
   description: "Issue related to some schemas"
   color: "fbceb1"
@@ -178,6 +174,10 @@
 - name: "ci/skip-changelog"
   description: "Don't include this PR in the changelog"
   color: "c30664"
+
+- name: "ci/run-intensive-benchmarks"
+  description: "Run intensive CodSpeed benchmarks, usually excluded."
+  color: "73FA20"
 
 - name: "cd/preview"
   description: "Deploy preview branch"

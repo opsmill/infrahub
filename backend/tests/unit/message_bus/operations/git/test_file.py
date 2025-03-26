@@ -17,9 +17,8 @@ async def test_file_get(git_fixture_repo: InfrahubRepository, helper):
         file="sample.txt",
     )
 
-    bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(client=InfrahubClient(), message_bus=bus_simulator)
-    bus_simulator.service = service
+    bus_simulator = await helper.get_message_bus_simulator()
+    service = await InfrahubServices.new(client=InfrahubClient(), message_bus=bus_simulator)
 
     reply = await service.message_bus.rpc(message=message, response_class=messages.GitFileGetResponse)
     assert reply.passed

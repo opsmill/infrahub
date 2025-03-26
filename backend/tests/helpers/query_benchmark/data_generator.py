@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 from rich.console import Console
 from rich.progress import Progress
@@ -37,7 +37,7 @@ async def load_data_and_profile(
     graphs_output_location: Path,
     test_label: str,
     graph_generator: GraphProfileGenerator,
-    memory_profiling_rate: Optional[int] = None,
+    memory_profiling_rate: int | None = None,
 ) -> None:
     """
     Loads data using the provided data generator, profiles the execution at specified loading intervals,

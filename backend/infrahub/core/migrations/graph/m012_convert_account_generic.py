@@ -54,8 +54,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
             branch_support=BranchSupportType.AGNOSTIC.value,
         )
 
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(new_attr=new_attr, previous_attr=previous_attr, branch=global_branch, **kwargs)
 
@@ -113,8 +112,7 @@ class Migration012AddLabelData(NodeDuplicateQuery):
             sync_with_git=False,
         )
 
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(new_node=new_node, previous_node=previous_node, branch=branch, **kwargs)
 
@@ -165,8 +163,7 @@ class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery)
             dst_peer=InfrahubKind.ACCOUNTTOKEN,
         )
 
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=global_branch, **kwargs)
 
@@ -189,8 +186,7 @@ class Migration012RenameRelationshipRefreshTokenData(RelationshipDuplicateQuery)
             dst_peer=InfrahubKind.REFRESHTOKEN,
         )
 
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=global_branch, **kwargs)
 
@@ -213,8 +209,7 @@ class Migration012RenameRelationshipThreadData(RelationshipDuplicateQuery):
             dst_peer=InfrahubKind.THREAD,
         )
 
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=global_branch, **kwargs)
 
@@ -237,8 +232,7 @@ class Migration012RenameRelationshipCommentData(RelationshipDuplicateQuery):
             dst_peer=InfrahubKind.COMMENT,
         )
 
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(new_rel=new_rel, previous_rel=previous_rel, branch=default_branch, **kwargs)
 
@@ -249,8 +243,7 @@ class Migration012DeleteOldElementsSchema(DeleteElementInSchemaQuery):
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             element_names=["name", "password", "label", "description", "type", "role", "tokens"],
@@ -267,8 +260,7 @@ class Migration012UpdateDisplayLabels(SchemaAttributeUpdateQuery):
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             attribute_name="display_labels",
@@ -285,8 +277,7 @@ class Migration012UpdateOrderBy(SchemaAttributeUpdateQuery):
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             attribute_name="order_by",
@@ -303,8 +294,7 @@ class Migration012UpdateDefaultFilter(SchemaAttributeUpdateQuery):
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             attribute_name="default_filter",
@@ -321,8 +311,7 @@ class Migration012UpdateHFID(SchemaAttributeUpdateQuery):
     insert_return = False
 
     def __init__(self, **kwargs: Any):
-        if "branch" in kwargs:
-            del kwargs["branch"]
+        kwargs.pop("branch", None)
 
         super().__init__(
             attribute_name="human_friendly_id",
@@ -350,7 +339,7 @@ class Migration012(GraphMigration):
     ]
     minimum_version: int = 11
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
         return result

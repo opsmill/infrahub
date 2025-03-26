@@ -33,7 +33,7 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
     rebaseBranchMutation.mutate(
       {
         branchName: branch.name,
-        waitForCompletion: false,
+        waitUntilCompletion: false,
       },
       {
         onSuccess: async () => {

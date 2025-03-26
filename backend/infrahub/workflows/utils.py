@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from prefect import get_client
 from prefect.runtime import flow_run
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.registry import registry
 from infrahub.tasks.registry import refresh_branches
 
@@ -27,7 +28,15 @@ async def add_tags(
     client = get_client(sync_client=False)
     current_flow_run_id = flow_run.id
     current_tags: list[str] = flow_run.tags
-    branch_tags = [WorkflowTag.BRANCH.render(identifier=branch_name) for branch_name in branches] if branches else []
+    branch_tags = (
+        [
+            WorkflowTag.BRANCH.render(identifier=branch_name)
+            for branch_name in branches
+            if branch_name != GLOBAL_BRANCH_NAME
+        ]
+        if branches
+        else []
+    )
     node_tags = [WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes] if nodes else []
     others_tags = others or []
     new_tags = set(current_tags + branch_tags + node_tags + others_tags)
@@ -76,4 +85,4 @@ async def wait_for_schema_to_converge(
 
         iteration += 1
 
-    log.info(f"Schema converged after {delay * iteration} seconds")
+    log.info(f"Schema converged after {delay * iteration:.2f} seconds")

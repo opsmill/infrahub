@@ -3,43 +3,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk import Config, InfrahubClient
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.utils import delete_all_nodes
 from infrahub.git import InfrahubRepository
-from infrahub.server import app, app_initialization
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
-from tests.helpers.test_client import InfrahubTestClient
 
 if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
+
     from infrahub.database import InfrahubDatabase
     from tests.helpers.file_repo import FileRepo
 
 
-@pytest.fixture
-def init_service():
-    original = services.service
-    service = InfrahubServices(client=InfrahubClient())
-    services.service = service
-    yield service
-    services.service = original
-
-
 class TestTransforms(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase):
-        await delete_all_nodes(db=db)
-        await first_time_initialization(db=db)
+    async def base_dataset(self, db: InfrahubDatabase, client):
         await load_schema(db, schema=CAR_SCHEMA)
-
-        await initialization(db=db)
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, age=25)
@@ -80,23 +64,6 @@ class TestTransforms(TestInfrahubApp):
         await q1.save(db=db)
 
     @pytest.fixture(scope="class")
-    async def test_client(
-        self,
-        base_dataset,
-        redis: dict[int, int] | None,
-        nats: dict[int, int] | None,
-    ) -> InfrahubTestClient:
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
-
-    @pytest.fixture(scope="class")
-    async def client(self, test_client: InfrahubTestClient, integration_helper):  # type: ignore[override]
-        admin_token = await integration_helper.create_token()
-        config = Config(api_token=admin_token, requester=test_client.async_request)
-
-        return InfrahubClient(config=config)
-
-    @pytest.fixture(scope="class")
     async def repo(self, test_client, client, db: InfrahubDatabase, git_repo_car_dealership: FileRepo, git_repos_dir):
         # Create the repository in the Graph
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
@@ -114,11 +81,14 @@ class TestTransforms(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
             client=client,
+            service=await InfrahubServices.new(database=db),
         )
 
         return repo
 
-    async def test_transform_jinja(self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository):
+    async def test_transform_jinja(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
+    ):
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
@@ -136,7 +106,7 @@ class TestTransforms(TestInfrahubApp):
         assert response.text == "Name: John"
 
     async def test_transform_python(
-        self, db: InfrahubDatabase, client: InfrahubClient, init_service, repo: InfrahubRepository
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
     ):
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)

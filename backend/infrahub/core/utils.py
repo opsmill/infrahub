@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from inspect import isclass
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
@@ -23,10 +23,10 @@ async def add_relationship(
     dst_node_id: str,
     rel_type: str,
     db: InfrahubDatabase,
-    branch_name: Optional[str] = None,
-    branch_level: Optional[int] = None,
-    at: Optional[Timestamp] = None,
-    status=RelationshipStatus.ACTIVE,
+    branch_name: str | None = None,
+    branch_level: int | None = None,
+    at: Timestamp | None = None,
+    status: RelationshipStatus = RelationshipStatus.ACTIVE,
 ) -> Record | None:
     create_rel_query = """
     MATCH (s) WHERE %(id_func)s(s) = $src_node_id
@@ -62,7 +62,9 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
-async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Timestamp = None) -> list[Record] | None:
+async def update_relationships_to(
+    ids: list[str], db: InfrahubDatabase, to: Timestamp | None = None
+) -> list[Record] | None:
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -72,6 +74,7 @@ async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Time
     query = """
     MATCH ()-[r]->()
     WHERE %(id_func)s(r) IN $ids
+    AND r.to IS NULL
     SET r.to = $to
     RETURN %(id_func)s(r)
     """ % {"id_func": db.get_id_function_name()}
@@ -85,9 +88,9 @@ async def get_paths_between_nodes(
     db: InfrahubDatabase,
     source_id: str,
     destination_id: str,
-    relationships: Optional[list[str]] = None,
-    max_length: Optional[int] = None,
-    print_query=False,
+    relationships: list[str] | None = None,
+    max_length: int | None = None,
+    print_query: bool = False,
 ) -> list[Record]:
     """Return all paths between 2 nodes."""
 
@@ -114,7 +117,7 @@ async def get_paths_between_nodes(
     return await db.execute_query(query=query, params=params, name="get_paths_between_nodes", type=QueryType.READ)
 
 
-async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None) -> int:
+async def count_relationships(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of relationships in the database."""
 
     label_str = f":{label}" if label else ""
@@ -140,7 +143,7 @@ async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
     return [result[0] for result in results]
 
 
-async def count_nodes(db: InfrahubDatabase, label: Optional[str] = None) -> int:
+async def count_nodes(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of nodes of a given label in the database."""
 
     label_str = f":{label}" if label else ""
@@ -182,9 +185,9 @@ def parse_node_kind(kind: str) -> NodeKind:
 
 
 def convert_ip_to_binary_str(
-    obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
+    obj: ipaddress.IPv6Network | ipaddress.IPv4Network | ipaddress.IPv4Interface | ipaddress.IPv6Interface,
 ) -> str:
-    if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
+    if isinstance(obj, ipaddress.IPv6Network | ipaddress.IPv4Network):
         prefix_bin = f"{int(obj.network_address):b}"
         return prefix_bin.zfill(obj.max_prefixlen)
 
@@ -204,7 +207,7 @@ def build_regex_attr(value: str | int | bool) -> str:
     """
     if isinstance(value, str):
         return f'"{value}"'
-    if isinstance(value, (bool, int)):
+    if isinstance(value, bool | int):
         value_str = str(value).lower()
         return rf'(?<=[^\w"\d]){value_str}(?=[^\w"\d])'
 
@@ -229,26 +232,26 @@ class _NewClass:
 _all_vars = set(dir(_OldClass) + dir(_NewClass))
 
 
-def props(x) -> dict[str, Any]:
+def props(x: Any) -> dict[str, Any]:
     return {key: vars(x).get(key, getattr(x, key)) for key in dir(x) if key not in _all_vars}
 
 
 class SubclassWithMeta_Meta(type):
     _meta = None
 
-    def __str__(cls):
+    def __str__(cls) -> str:
         if cls._meta:
             return cls._meta.name
         return cls.__name__
 
-    def __repr__(cls):
+    def __repr__(cls) -> str:
         return f"<{cls.__name__} meta={repr(cls._meta)}>"
 
 
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     """This class improves __init_subclass__ to receive automatically the options from meta"""
 
-    def __init_subclass__(cls, **meta_options):
+    def __init_subclass__(cls, **meta_options: dict[str, Any]) -> None:
         """This method just terminates the super() chain"""
         _Meta = getattr(cls, "Meta", None)
         _meta_props = {}
@@ -265,7 +268,7 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
         abstract = options.pop("abstract", False)
         if abstract:
             assert not options, (
-                "Abstract types can only contain the abstract attribute. " f"Received: abstract, {', '.join(options)}"
+                f"Abstract types can only contain the abstract attribute. Received: abstract, {', '.join(options)}"
             )
         else:
             super_class = super(cls, cls)
@@ -273,5 +276,5 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
                 super_class.__init_subclass_with_meta__(**options)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options) -> None:
+    def __init_subclass_with_meta__(cls, **meta_options: dict[str, Any]) -> None:
         """This method just terminates the super() chain"""

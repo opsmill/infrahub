@@ -8,7 +8,6 @@ from .conflicts_enricher import DiffConflictsEnricherDependency
 from .data_check_synchronizer import DiffDataCheckSynchronizerDependency
 from .enricher.aggregated import DiffAggregatedEnricherDependency
 from .enricher.labels import DiffLabelsEnricherDependency
-from .enricher.summary_counts import DiffSummaryCountsEnricherDependency
 from .repository import DiffRepositoryDependency
 
 
@@ -22,7 +21,6 @@ class DiffCoordinatorDependency(DependencyBuilder[DiffCoordinator]):
             diff_enricher=DiffAggregatedEnricherDependency.build(context=context),
             conflicts_enricher=DiffConflictsEnricherDependency.build(context=context),
             labels_enricher=DiffLabelsEnricherDependency.build(context=context),
-            summary_counts_enricher=DiffSummaryCountsEnricherDependency.build(context=context),
             data_check_synchronizer=DiffDataCheckSynchronizerDependency.build(context=context),
             conflict_transferer=DiffConflictTransfererDependency.build(context=context),
         )

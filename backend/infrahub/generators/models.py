@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -9,7 +7,7 @@ class RequestGeneratorRun(BaseModel):
     """Runs a generator."""
 
     generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator definition")
-    generator_instance: Optional[str] = Field(
+    generator_instance: str | None = Field(
         default=None, description="The id of the generator instance if it previously existed"
     )
     commit: str = Field(..., description="The commit to target")
@@ -30,6 +28,7 @@ class RequestGeneratorDefinitionRun(BaseModel):
 
     generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator Definition")
     branch: str = Field(..., description="The branch to target")
+    target_members: list[str] = Field(default_factory=list, description="List of targets to run the generator for")
 
 
 class ProposedChangeGeneratorDefinition(BaseModel):

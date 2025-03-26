@@ -1,7 +1,7 @@
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import {
   DropdownMenu,
@@ -10,10 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 type SchemaHelpMenuProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
 };
 
 export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {

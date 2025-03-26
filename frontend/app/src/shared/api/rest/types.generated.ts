@@ -576,6 +576,12 @@ export interface components {
              */
             generate_profile: boolean;
             /**
+             * Generate Template
+             * @description Indicate if an object template schema should be generated for this schema
+             * @default false
+             */
+            generate_template: boolean;
+            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -688,6 +694,12 @@ export interface components {
              * @default true
              */
             generate_profile: boolean;
+            /**
+             * Generate Template
+             * @description Indicate if an object template schema should be generated for this schema
+             * @default false
+             */
+            generate_template: boolean;
             /**
              * Hierarchy
              * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
@@ -803,6 +815,108 @@ export interface components {
             /**
              * Inherit From
              * @description List of Generic Kind that this profile is inheriting from
+             */
+            inherit_from?: string[];
+            /** Kind */
+            kind?: string | null;
+            /** Hash */
+            hash: string;
+        };
+        /** APITemplateSchema */
+        APITemplateSchema: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of attributes to use to order the results by default
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: components["schemas"]["AttributeSchema-Output"][];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchema"][];
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this template is inheriting from
              */
             inherit_from?: string[];
             /** Kind */
@@ -1286,6 +1400,12 @@ export interface components {
              */
             generate_profile: boolean;
             /**
+             * Generate Template
+             * @description Indicate if an object template schema should be generated for this schema
+             * @default false
+             */
+            generate_template: boolean;
+            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -1595,6 +1715,12 @@ export interface components {
              */
             generate_profile: boolean;
             /**
+             * Generate Template
+             * @description Indicate if an object template schema should be generated for this schema
+             * @default false
+             */
+            generate_template: boolean;
+            /**
              * Hierarchy
              * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
              */
@@ -1649,7 +1775,7 @@ export interface components {
          * RelationshipKind
          * @enum {string}
          */
-        RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy" | "Profile";
+        RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy" | "Profile" | "Template";
         /** RelationshipSchema */
         RelationshipSchema: {
             /**
@@ -1868,6 +1994,8 @@ export interface components {
             generics?: components["schemas"]["APIGenericSchema"][];
             /** Profiles */
             profiles?: components["schemas"]["APIProfileSchema"][];
+            /** Templates */
+            templates?: components["schemas"]["APITemplateSchema"][];
             /** Namespaces */
             namespaces?: components["schemas"]["SchemaNamespace"][];
         };
@@ -2596,7 +2724,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["APIProfileSchema"] | components["schemas"]["APINodeSchema"] | components["schemas"]["APIGenericSchema"];
+                    "application/json": components["schemas"]["APIProfileSchema"] | components["schemas"]["APINodeSchema"] | components["schemas"]["APIGenericSchema"] | components["schemas"]["APITemplateSchema"];
                 };
             };
             /** @description Validation Error */

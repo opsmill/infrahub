@@ -3,8 +3,8 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
-from itertools import chain
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
+from itertools import chain, combinations
+from typing import Any
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
@@ -12,6 +12,8 @@ from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -43,6 +45,7 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaAttributePath,
     SchemaRoot,
+    TemplateSchema,
 )
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -53,16 +56,12 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ... import config
+from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
-
-if TYPE_CHECKING:
-    from pydantic import ValidationInfo
-
-
-# pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 
 class SchemaBranch:
@@ -73,28 +72,26 @@ class SchemaBranch:
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
     ):
-        self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
+        self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
+        self.templates: dict[str, str] = {}
         self.computed_attributes = computed_attributes or ComputedAttributes()
 
         if data:
             self.nodes = data.get("nodes", {})
             self.generics = data.get("generics", {})
             self.profiles = data.get("profiles", {})
+            self.templates = data.get("templates", {})
 
     @classmethod
-    def __get_validators__(cls) -> Iterator[Callable[..., Any]]:  # noqa: PLW3201
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v: Any, info: ValidationInfo) -> Self:  # pylint: disable=unused-argument
-        if isinstance(v, cls):
-            return v
-        if isinstance(v, dict):
-            return cls.from_dict_schema_object(data=v)
+    def validate(cls, data: Any) -> Self:  # noqa: ARG003
+        if isinstance(data, cls):
+            return data
+        if isinstance(data, dict):
+            return cls.from_dict_schema_object(data=data)
         raise ValueError("must be a class or a dict")
 
     @property
@@ -106,13 +103,21 @@ class SchemaBranch:
         return list(self.generics.keys())
 
     @property
+    def generic_names_without_templates(self) -> list[str]:
+        return [g for g in self.generic_names if not g.startswith("Template")]
+
+    @property
     def profile_names(self) -> list[str]:
         return list(self.profiles.keys())
 
-    def get_all_kind_id_map(self, exclude_profiles: bool = False) -> dict[str, str]:
+    @property
+    def template_names(self) -> list[str]:
+        return list(self.templates.keys())
+
+    def get_all_kind_id_map(self, nodes_and_generics_only: bool = False) -> dict[str, str]:
         kind_id_map = {}
-        if exclude_profiles:
-            names = self.node_names + self.generic_names
+        if nodes_and_generics_only:
+            names = self.node_names + self.generic_names_without_templates
         else:
             names = self.all_names
         for name in names:
@@ -124,7 +129,7 @@ class SchemaBranch:
 
     @property
     def all_names(self) -> list[str]:
-        return self.node_names + self.generic_names + self.profile_names
+        return self.node_names + self.generic_names + self.profile_names + self.template_names
 
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
@@ -142,13 +147,14 @@ class SchemaBranch:
         return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles}
+        return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles, "templates": self.templates}
 
     def to_dict_schema_object(self, duplicate: bool = False) -> dict[str, dict[str, MainSchemaTypes]]:
         return {
             "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
             "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
             "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
+            "templates": {name: self.get(name, duplicate=duplicate) for name in self.templates},
         }
 
     @classmethod
@@ -157,10 +163,11 @@ class SchemaBranch:
             "nodes": NodeSchema,
             "generics": GenericSchema,
             "profiles": ProfileSchema,
+            "templates": TemplateSchema,
         }
 
         cache: dict[str, MainSchemaTypes] = {}
-        nodes: dict[str, dict[str, str]] = {"nodes": {}, "generics": {}, "profiles": {}}
+        nodes: dict[str, dict[str, str]] = {"nodes": {}, "generics": {}, "profiles": {}, "templates": {}}
 
         for node_type, node_class in type_mapping.items():
             for node_name, node_data in data[node_type].items():
@@ -174,8 +181,8 @@ class SchemaBranch:
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
-        local_kind_id_map = self.get_all_kind_id_map(exclude_profiles=True)
-        other_kind_id_map = other.get_all_kind_id_map(exclude_profiles=True)
+        local_kind_id_map = self.get_all_kind_id_map(nodes_and_generics_only=True)
+        other_kind_id_map = other.get_all_kind_id_map(nodes_and_generics_only=True)
         clean_local_ids = [id for id in local_kind_id_map.values() if id is not None]
         clean_other_ids = [id for id in other_kind_id_map.values() if id is not None]
         shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
@@ -229,12 +236,6 @@ class SchemaBranch:
             other_item = schema.get(name=item_kind)
             self.set(name=item_kind, schema=other_item)
 
-        # for item_kind in local_only:
-        #     if item_kind in self.nodes:
-        #         del self.nodes[item_kind]
-        #     else:
-        #         del self.generics[item_kind]
-
     def validate_node_deletions(self, diff: SchemaDiff) -> None:
         """Given a diff, check if a deleted node is still used in relationships of other nodes."""
         removed_schema_names = set(diff.removed.keys())
@@ -256,7 +257,7 @@ class SchemaBranch:
         result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
 
-    def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
+    def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(
             name=name,
@@ -281,6 +282,8 @@ class SchemaBranch:
             self.generics[name] = schema_hash
         elif "Profile" in schema.__class__.__name__:
             self.profiles[name] = schema_hash
+        elif "Template" in schema.__class__.__name__:
+            self.templates[name] = schema_hash
 
         return schema_hash
 
@@ -292,6 +295,7 @@ class SchemaBranch:
 
         If duplicate is set to false, the real object will be returned.
         """
+
         key = None
         if name in self.nodes:
             key = self.nodes[name]
@@ -299,6 +303,8 @@ class SchemaBranch:
             key = self.generics[name]
         elif name in self.profiles:
             key = self.profiles[name]
+        elif name in self.templates:
+            key = self.templates[name]
 
         if key and duplicate:
             return self._cache[key].duplicate()
@@ -330,6 +336,13 @@ class SchemaBranch:
             raise ValueError(f"{name!r} is not of type ProfileSchema")
         return item
 
+    def get_template(self, name: str, duplicate: bool = True) -> TemplateSchema:
+        """Access a specific TemplateSchema, defined by its kind."""
+        item = self.get(name=name, duplicate=duplicate)
+        if not isinstance(item, TemplateSchema):
+            raise ValueError(f"{name!r} is not of type TemplateSchema")
+        return item
+
     def delete(self, name: str) -> None:
         if name in self.nodes:
             del self.nodes[name]
@@ -337,6 +350,8 @@ class SchemaBranch:
             del self.generics[name]
         elif name in self.profiles:
             del self.profiles[name]
+        elif name in self.templates:
+            del self.templates[name]
         else:
             raise SchemaNotFoundError(
                 branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
@@ -412,7 +427,7 @@ class SchemaBranch:
         return list(namespaces.values())
 
     def get_schemas_for_namespaces(
-        self, namespaces: Optional[list[str]] = None, include_internal: bool = False
+        self, namespaces: list[str] | None = None, include_internal: bool = False
     ) -> list[MainSchemaTypes]:
         """Retrive everything in a single dictionary."""
         all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
@@ -429,12 +444,12 @@ class SchemaBranch:
                 nodes.append(self.get(name=node_name, duplicate=True))
         return nodes
 
-    def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
+    def generate_fields_for_display_label(self, name: str) -> dict | None:
         node = self.get(name=name, duplicate=False)
-        if isinstance(node, (NodeSchema, ProfileSchema)):
+        if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
-        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        fields: dict[str, str | None | dict[str, None]] = {}
         if isinstance(node, GenericSchema):
             for child_node_name in node.used_by:
                 child_node = self.get(name=child_node_name, duplicate=False)
@@ -490,6 +505,8 @@ class SchemaBranch:
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
+        self.manage_object_template_schemas()
+        self.manage_object_template_relationships()
         self.manage_profile_schemas()
         self.manage_profile_relationships()
         self.add_hierarchy_generic()
@@ -520,6 +537,9 @@ class SchemaBranch:
         self.process_relationships()
         self.process_human_friendly_id()
 
+    def _generate_identifier_string(self, node_kind: str, peer_kind: str) -> str:
+        return "__".join(sorted([node_kind, peer_kind])).lower()
+
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
         for name in self.all_names:
@@ -532,7 +552,7 @@ class SchemaBranch:
             for rel in node.relationships:
                 if rel.identifier:
                     continue
-                rel.identifier = str("__".join(sorted([node.kind, rel.peer]))).lower()
+                rel.identifier = self._generate_identifier_string(node.kind, rel.peer)
             self.set(name=name, schema=node)
 
     def validate_identifiers(self) -> None:
@@ -594,7 +614,7 @@ class SchemaBranch:
         node_schema: BaseNodeSchema,
         path: str,
         allowed_path_types: SchemaElementPathType,
-        element_name: Optional[str] = None,
+        element_name: str | None = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{element_name}" if element_name else ""
@@ -660,7 +680,7 @@ class SchemaBranch:
         return schema_attribute_path
 
     def sync_uniqueness_constraints_and_unique_attributes(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
@@ -696,10 +716,12 @@ class SchemaBranch:
             for attr_name in attrs_to_make_unique:
                 attr_schema = node_schema.get_attribute(name=attr_name)
                 attr_schema.unique = True
+
             if attrs_to_add_to_constraints:
                 node_schema.uniqueness_constraints = (node_schema.uniqueness_constraints or []) + sorted(
                     [[f"{attr_name}__value"] for attr_name in attrs_to_add_to_constraints]
                 )
+
             self.set(name=name, schema=node_schema)
 
     def validate_uniqueness_constraints(self) -> None:
@@ -775,7 +797,7 @@ class SchemaBranch:
             )
 
     def validate_default_values(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
             for node_attr in node_schema.local_attributes:
                 if node_attr.default_value is None:
@@ -794,15 +816,35 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
+    def _is_attr_combination_unique(
+        self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None
+    ) -> bool:
+        """
+        Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
+        """
+
+        if not uniqueness_constraints:
+            return False
+
+        unique_constraint_group_sets = [set(ucg) for ucg in uniqueness_constraints]
+        for i in range(1, len(attrs_paths) + 1):
+            for attr_combo in combinations(attrs_paths, i):
+                if any(ucg == set(attr_combo) for ucg in unique_constraint_group_sets):
+                    return True
+        return False
+
     def validate_human_friendly_id(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
-            hf_attr_names = set()
 
             if not node_schema.human_friendly_id:
                 continue
 
             allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR
+
+            # Mapping relationship identifiers -> list of attributes paths
+            rel_schemas_to_paths: dict[str, tuple[MainSchemaTypes, list[str]]] = {}
+
             for hfid_path in node_schema.human_friendly_id:
                 schema_path = self.validate_schema_path(
                     node_schema=node_schema,
@@ -811,12 +853,24 @@ class SchemaBranch:
                     element_name="human_friendly_id",
                 )
 
-                if schema_path.is_type_attribute:
-                    hf_attr_names.add(schema_path.attribute_schema.name)
+                if schema_path.is_type_relationship:
+                    # Construct the name without relationship prefix to match with how it would be defined in peer schema uniqueness constraint
+                    rel_identifier = schema_path.relationship_schema.identifier
+                    if rel_identifier not in rel_schemas_to_paths:
+                        rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
+                    rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
+
+            if config.SETTINGS.main.schema_strict_mode:
+                # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
+                for related_schema, attrs_paths in rel_schemas_to_paths.values():
+                    if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                        raise ValidationError(
+                            f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                        )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
-        for name in self.node_names + self.generic_names:
+        for name in self.node_names + self.generic_names_without_templates:
             node_schema = self.get(name=name, duplicate=False)
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional:
@@ -834,7 +888,7 @@ class SchemaBranch:
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
         dependency_map: dict[str, set[str]] = defaultdict(set)
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
             parent_relationships: list[RelationshipSchema] = []
@@ -873,7 +927,7 @@ class SchemaBranch:
             raise ValueError(f"Cycles exist among parents and components in schema: {exc.get_cycle_strings()}") from exc
 
     def _validate_parents_one_schema(
-        self, node_schema: Union[NodeSchema, GenericSchema], parent_relationships: list[RelationshipSchema]
+        self, node_schema: NodeSchema | GenericSchema, parent_relationships: list[RelationshipSchema]
     ) -> None:
         if not parent_relationships:
             return
@@ -934,9 +988,9 @@ class SchemaBranch:
             for rel in node.relationships:
                 if rel.peer in [InfrahubKind.GENERICGROUP]:
                     continue
-                if not self.has(rel.peer):
+                if not self.has(rel.peer) or self.get(rel.peer, duplicate=False).state == HashableModelState.ABSENT:
                     raise ValueError(
-                        f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
+                        f"{node.kind}: Relationship {rel.name!r} is referring an invalid peer {rel.peer!r}"
                     ) from None
 
     def validate_computed_attributes(self) -> None:
@@ -1103,7 +1157,7 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            schema_to_update: NodeSchema | GenericSchema | None = None
             for relationship in node.relationships:
                 if relationship.on_delete is not None:
                     continue
@@ -1120,49 +1174,50 @@ class SchemaBranch:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_human_friendly_id(self) -> None:
-        for name in self.generic_names + self.node_names:
+        """
+        For each schema node, if there is no HFID defined, set it with:
+        - The first unique attribute if existing
+        - Otherwise the first uniqueness constraint with a single attribute
+
+        Also, HFID is added to the uniqueness constraints.
+        """
+        for name in self.generic_names_without_templates + self.node_names:
             node = self.get(name=name, duplicate=False)
 
-            # If human_friendly_id IS NOT defined
-            #   but some the model has some unique attribute, we generate a human_friendly_id
-            # If human_friendly_id IS defined
-            #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
-            if not node.human_friendly_id and node.unique_attributes:
-                for attr in node.unique_attributes:
+            if not node.human_friendly_id:
+                if node.unique_attributes:
                     node = self.get(name=name, duplicate=True)
-                    node.human_friendly_id = [f"{attr.name}__value"]
+                    node.human_friendly_id = [f"{node.unique_attributes[0].name}__value"]
                     self.set(name=node.kind, schema=node)
-                    break
-                continue
 
-            # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
-            # then use that attribute as the human_friendly_id
-            if not node.human_friendly_id and node.uniqueness_constraints:
-                for constraint_paths in node.uniqueness_constraints:
-                    if len(constraint_paths) > 1:
-                        continue
-                    constraint_path = constraint_paths[0]
-                    schema_path = node.parse_schema_path(path=constraint_path, schema=node)
-                    if (
-                        schema_path.is_type_attribute
-                        and schema_path.attribute_property_name == "value"
-                        and schema_path.attribute_schema
-                    ):
-                        node = self.get(name=name, duplicate=True)
-                        node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
-                        self.set(name=node.kind, schema=node)
-                        break
+                # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
+                # then use that attribute as the human_friendly_id
+                elif node.uniqueness_constraints:
+                    for constraint_paths in node.uniqueness_constraints:
+                        if len(constraint_paths) > 1:
+                            continue
+                        constraint_path = constraint_paths[0]
+                        schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                        if (
+                            schema_path.is_type_attribute
+                            and schema_path.attribute_property_name == "value"
+                            and schema_path.attribute_schema
+                        ):
+                            node = self.get(name=name, duplicate=True)
+                            node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
+                            self.set(name=node.kind, schema=node)
+                            break
 
-            if node.human_friendly_id and not node.uniqueness_constraints:
-                uniqueness_constraints: list[str] = []
-                for item in node.human_friendly_id:
-                    schema_attribute_path = node.parse_schema_path(path=item, schema=self)
-                    if schema_attribute_path.is_type_attribute:
-                        uniqueness_constraints.append(item)
-                    elif schema_attribute_path.is_type_relationship:
-                        uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
-
-                node.uniqueness_constraints = [uniqueness_constraints]
+            # Add hfid to uniqueness constraint
+            hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
+            if hfid_uniqueness_constraint:
+                node = self.get(name=name, duplicate=True)
+                # Make sure there is no duplicate regarding generics values.
+                if node.uniqueness_constraints:
+                    if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(hfid_uniqueness_constraint)
+                else:
+                    node.uniqueness_constraints = [hfid_uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:
@@ -1182,7 +1237,7 @@ class SchemaBranch:
             node = node.duplicate()
             changed = False
 
-            if node.hierarchy not in node.inherit_from:
+            if node.hierarchy and node.hierarchy not in node.inherit_from:
                 node.inherit_from.append(node.hierarchy)
                 changed = True
 
@@ -1200,6 +1255,23 @@ class SchemaBranch:
 
             if changed:
                 self.set(name=name, schema=node)
+
+    def _get_generic_fields_map(
+        self, node_schema: MainSchemaTypes
+    ) -> dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]]:
+        generic_fields_map: dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]] = {}
+        if isinstance(node_schema, NodeSchema) and node_schema.inherit_from:
+            for generic_kind in node_schema.inherit_from:
+                generic_schema = self.get_generic(name=generic_kind, duplicate=False)
+                for generic_attr in generic_schema.attributes:
+                    if generic_attr.name in node_schema.attribute_names:
+                        generic_fields_map[generic_attr.name] = (generic_schema, generic_attr)
+                        continue
+                for generic_rel in generic_schema.relationships:
+                    if generic_rel.name in node_schema.relationship_names:
+                        generic_fields_map[generic_rel.name] = (generic_schema, generic_rel)
+                        continue
+        return generic_fields_map
 
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
@@ -1253,7 +1325,7 @@ class SchemaBranch:
 
         # Update all generics with the list of nodes referrencing them.
         for generic_name in self.generics.keys():
-            generic = self.get(name=generic_name)
+            generic = self.get_generic(name=generic_name)
 
             if generic.kind in generics_used_by:
                 generic.used_by = sorted(generics_used_by[generic.kind])
@@ -1267,45 +1339,50 @@ class SchemaBranch:
 
         if either node on a relationship support branch, the relationship must be branch aware.
         """
-        # pylint: disable=too-many-branches
 
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            # Check if this node requires a change before duplicating
-            change_required = False
-            for attr in node.attributes:
-                if attr.branch is None:
-                    change_required = True
-                    break
-            if not change_required:
-                for rel in node.relationships:
-                    if rel.branch is None:
-                        change_required = True
-                        break
+            generic_fields_map = self._get_generic_fields_map(node_schema=node)
 
-            if not change_required:
+            attrs_to_update: dict[str, BranchSupportType] = {}
+            for attr in node.attributes:
+                if attr.inherited and attr.name in generic_fields_map:
+                    generic_schema, generic_attr = generic_fields_map[attr.name]
+                    if attr.branch == generic_schema.branch == generic_attr.branch != node.branch:
+                        attrs_to_update[attr.name] = node.branch
+
+                if attr.branch is None:
+                    attrs_to_update[attr.name] = node.branch
+
+            rels_to_update: dict[str, BranchSupportType] = {}
+            for rel in node.relationships:
+                if not rel.inherited and rel.branch is not None:
+                    continue
+                needs_update = rel.branch is None
+                if needs_update is False and rel.inherited and rel.name in generic_fields_map:
+                    generic_schema, generic_rel = generic_fields_map[rel.name]
+                    if rel.branch == generic_schema.branch == generic_rel.branch != node.branch:
+                        needs_update = True
+                if needs_update:
+                    peer_node = self.get(name=rel.peer, duplicate=False)
+                    if node.branch == peer_node.branch:
+                        rels_to_update[rel.name] = node.branch
+                    elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
+                        rels_to_update[rel.name] = BranchSupportType.LOCAL
+                    else:
+                        rels_to_update[rel.name] = BranchSupportType.AWARE
+
+            if not attrs_to_update and not rels_to_update:
                 continue
 
             node = node.duplicate()
-
-            for attr in node.attributes:
-                if attr.branch is not None:
-                    continue
-
-                attr.branch = node.branch
-
-            for rel in node.relationships:
-                if rel.branch is not None:
-                    continue
-
-                peer_node = self.get(name=rel.peer, duplicate=False)
-                if node.branch == peer_node.branch:
-                    rel.branch = node.branch
-                elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
-                    rel.branch = BranchSupportType.LOCAL
-                else:
-                    rel.branch = BranchSupportType.AWARE
+            for node_attr in node.attributes:
+                if node_attr.name in attrs_to_update:
+                    node_attr.branch = attrs_to_update[node_attr.name]
+            for node_rel in node.relationships:
+                if node_rel.name in rels_to_update:
+                    node_rel.branch = rels_to_update[node_rel.name]
 
             self.set(name=name, schema=node)
 
@@ -1329,7 +1406,6 @@ class SchemaBranch:
 
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
-        # pylint: disable=too-many-branches
 
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -1399,14 +1475,15 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def generate_weight(self) -> None:
-        for name in self.all_names:
+        for name in self.generic_names:
             node = self.get(name=name, duplicate=False)
+
             items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+
             if not items_to_update:
                 continue
 
             node = node.duplicate()
-
             current_weight = 0
             for item in node.attributes + node.relationships:
                 current_weight += 1000
@@ -1415,8 +1492,31 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
+        for name in self.node_names + self.profile_names:
+            node = self.get(name=name, duplicate=False)
+
+            items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+
+            if not items_to_update:
+                continue
+            node = node.duplicate()
+
+            generic_fields_map = self._get_generic_fields_map(node_schema=node)
+
+            current_weight = 0
+            for item in node.attributes + node.relationships:
+                current_weight += 1000
+                if not item.order_weight:
+                    if item.inherited:
+                        _, generic_field = generic_fields_map[item.name]
+                        if generic_field:
+                            item.order_weight = generic_field.order_weight
+                    if not item.order_weight:
+                        item.order_weight = current_weight
+
+            self.set(name=name, schema=node)
+
     def cleanup_inherited_elements(self) -> None:
-        # pylint: disable=too-many-branches
         for name in self.node_names:
             node = self.get_node(name=name, duplicate=False)
 
@@ -1512,7 +1612,7 @@ class SchemaBranch:
     def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
             name="children",
-            identifier="parent__child",
+            identifier=PARENT_CHILD_IDENTIFIER,
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.MANY,
@@ -1527,7 +1627,7 @@ class SchemaBranch:
     ) -> RelationshipSchema:
         return RelationshipSchema(
             name="parent",
-            identifier="parent__child",
+            identifier=PARENT_CHILD_IDENTIFIER,
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.ONE,
@@ -1606,11 +1706,10 @@ class SchemaBranch:
         if not self.has(name=InfrahubKind.PROFILE):
             # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
             #  Ideally, we would remove this and instead load CoreProfile properly within tests.
-            core_profile_schema = GenericSchema(**core_profile_schema_definition)
-            self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+            self.set(name=core_profile_schema_definition.kind, schema=core_profile_schema_definition)
 
         profile_schema_kinds = set()
-        for node_name in self.node_names + self.generic_names:
+        for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             if (
                 node.namespace in RESTRICTED_NAMESPACES
@@ -1642,7 +1741,7 @@ class SchemaBranch:
 
         if new_used_by_profile:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
-            core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+            core_profile_schema.used_by = sorted(profile_schema_kinds)
             self.set(name=InfrahubKind.PROFILE, schema=core_profile_schema)
 
         if self.has(name=InfrahubKind.NODE):
@@ -1653,7 +1752,7 @@ class SchemaBranch:
             if new_used_by_node:
                 core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
                 updated_used_by_node = set(chain(profile_schema_kinds, set(core_node_schema.used_by)))
-                core_node_schema.used_by = sorted(list(updated_used_by_node))
+                core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def manage_profile_relationships(self) -> None:
@@ -1746,3 +1845,286 @@ class SchemaBranch:
             profile.attributes.append(attr)
 
         return profile
+
+    def _get_object_template_kind(self, node_kind: str) -> str:
+        return f"Template{node_kind}"
+
+    def manage_object_template_relationships(self) -> None:
+        """Add an `object_template` relationship to all nodes that can be created from object templates.
+
+        This relationship allows to record from which template an object has been created.
+        """
+        for node_name in self.node_names + self.generic_names:
+            node = self.get(name=node_name, duplicate=False)
+
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_template
+                or node.state == HashableModelState.ABSENT
+            ):
+                continue
+
+            template_rel_settings: dict[str, Any] = {
+                "name": OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+                "identifier": "node__objecttemplate",
+                "peer": self._get_object_template_kind(node.kind),
+                "kind": RelationshipKind.TEMPLATE,
+                "cardinality": RelationshipCardinality.ONE,
+                "branch": BranchSupportType.AWARE,
+                "order_weight": 1,
+            }
+
+            # Add relationship between node and template
+            if OBJECT_TEMPLATE_RELATIONSHIP_NAME not in node.relationship_names:
+                node_schema = self.get(name=node_name, duplicate=True)
+
+                node_schema.relationships.append(RelationshipSchema(**template_rel_settings))
+                self.set(name=node_name, schema=node_schema)
+            else:
+                has_changes: bool = False
+                rel_template = node.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME)
+                for name, value in template_rel_settings.items():
+                    if getattr(rel_template, name) != value:
+                        has_changes = True
+
+                if not has_changes:
+                    continue
+
+                node_schema = self.get(name=node_name, duplicate=True)
+                rel_template = node_schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME)
+                for name, value in template_rel_settings.items():
+                    if getattr(rel_template, name) != value:
+                        setattr(rel_template, name, value)
+
+                self.set(name=node_name, schema=node_schema)
+
+    def add_relationships_to_template(self, node: NodeSchema) -> None:
+        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        if template_schema.is_generic_schema:
+            return
+
+        # Remove previous relationships to account for new ones
+        template_schema.relationships = [
+            r for r in template_schema.relationships if r.kind == RelationshipKind.TEMPLATE
+        ]
+        # Tell if the user explicitely requested this template
+        is_autogenerated_subtemplate = node.generate_template is False
+
+        for relationship in node.relationships:
+            if relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE] or relationship.kind not in [
+                RelationshipKind.COMPONENT,
+                RelationshipKind.PARENT,
+                RelationshipKind.ATTRIBUTE,
+                RelationshipKind.GENERIC,
+            ]:
+                continue
+
+            rel_template_peer = (
+                self._get_object_template_kind(node_kind=relationship.peer)
+                if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                else relationship.peer
+            )
+            template_schema.relationships.append(
+                RelationshipSchema(
+                    name=relationship.name,
+                    peer=rel_template_peer,
+                    kind=relationship.kind,
+                    optional=relationship.optional
+                    if is_autogenerated_subtemplate
+                    else relationship.kind != RelationshipKind.PARENT,
+                    cardinality=relationship.cardinality,
+                    direction=relationship.direction,
+                    branch=relationship.branch,
+                    identifier=f"template_{relationship.identifier}"
+                    if relationship.identifier
+                    else self._generate_identifier_string(template_schema.kind, rel_template_peer),
+                    min_count=relationship.min_count,
+                    max_count=relationship.max_count,
+                    label=f"{relationship.name} template".title()
+                    if relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                    else relationship.name.title(),
+                )
+            )
+
+            if relationship.kind == RelationshipKind.PARENT:
+                template_schema.human_friendly_id = [
+                    f"{relationship.name}__template_name__value"
+                ] + template_schema.human_friendly_id
+                template_schema.uniqueness_constraints[0].append(relationship.name)
+
+    def generate_object_template_from_node(
+        self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]
+    ) -> TemplateSchema | GenericSchema:
+        # Tell if the user explicitely requested this template
+        is_autogenerated_subtemplate = node.generate_template is False
+
+        core_template_schema = (
+            self.get(name=InfrahubKind.OBJECTCOMPONENTTEMPLATE, duplicate=False)
+            if is_autogenerated_subtemplate
+            else self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        )
+        core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
+        template_name_attr = AttributeSchema(
+            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        template_name_attr.branch = node.branch
+
+        template: TemplateSchema | GenericSchema
+        need_template_kinds = [n.kind for n in need_templates]
+
+        if node.is_generic_schema:
+            # When needing a template for a generic, we generate an empty shell mostly to make sure that schemas (including the GraphQL one) will
+            # look right. We don't really care about applying inheritance of fields as it was already processed and actual templates will have the
+            # correct attributes and relationships
+            template = GenericSchema(
+                name=node.kind,
+                namespace="Template",
+                label=f"Generic object template {node.label}",
+                description=f"Generic object template for generic {node.kind}",
+                generate_profile=False,
+                branch=node.branch,
+                include_in_menu=False,
+                attributes=[template_name_attr],
+            )
+
+            for used in node.used_by:
+                if used in need_template_kinds:
+                    template.used_by.append(self._get_object_template_kind(node_kind=used))
+
+            return template
+
+        template = TemplateSchema(
+            name=node.kind,
+            namespace="Template",
+            label=f"Object template {node.label}",
+            description=f"Object template for {node.kind}",
+            branch=node.branch,
+            include_in_menu=False,
+            display_labels=["template_name__value"],
+            human_friendly_id=["template_name__value"],
+            uniqueness_constraints=[["template_name__value"]],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
+            default_filter="template_name__value",
+            attributes=[template_name_attr],
+            relationships=[
+                RelationshipSchema(
+                    name="related_nodes",
+                    identifier="node__objecttemplate",
+                    peer=node.kind,
+                    kind=RelationshipKind.TEMPLATE,
+                    cardinality=RelationshipCardinality.MANY,
+                    branch=BranchSupportType.AWARE,
+                )
+            ],
+        )
+
+        for inherited in node.inherit_from:
+            if inherited in need_template_kinds:
+                template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
+
+        for node_attr in node.attributes:
+            if node_attr.unique or node_attr.read_only:
+                continue
+
+            attr = AttributeSchema(
+                optional=node_attr.optional if is_autogenerated_subtemplate else True,
+                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "inherited"]),
+            )
+            template.attributes.append(attr)
+
+        return template
+
+    def identify_required_object_templates(
+        self, node_schema: NodeSchema | GenericSchema, identified: set[NodeSchema | GenericSchema]
+    ) -> set[NodeSchema]:
+        """Identify all templates required to turn a given node into a template."""
+        if node_schema in identified or node_schema.state == HashableModelState.ABSENT:
+            return identified
+
+        identified.add(node_schema)
+
+        for relationship in node_schema.relationships:
+            if (
+                relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE]
+                or (relationship.kind == RelationshipKind.PARENT and node_schema.generate_template)
+                or relationship.kind not in [RelationshipKind.PARENT, RelationshipKind.COMPONENT]
+            ):
+                continue
+
+            peer_schema = self.get(name=relationship.peer, duplicate=False)
+            if not isinstance(peer_schema, NodeSchema | GenericSchema) or peer_schema in identified:
+                continue
+            # In a context of a generic, we won't be able to create objects out of it, so any kind of nodes implementing the generic is a valid
+            # option, we therefore need to have a template for each of those nodes
+            if isinstance(peer_schema, GenericSchema) and peer_schema.used_by:
+                if relationship.kind != RelationshipKind.PARENT or not any(
+                    u in [i.kind for i in identified] for u in peer_schema.used_by
+                ):
+                    for used_by in peer_schema.used_by:
+                        identified |= self.identify_required_object_templates(
+                            node_schema=self.get(name=used_by, duplicate=False), identified=identified
+                        )
+
+            identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
+
+        return identified
+
+    def manage_object_template_schemas(self) -> None:
+        need_templates: set[NodeSchema | GenericSchema] = set()
+        template_schema_kinds: set[str] = set()
+
+        for node_name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=node_name, duplicate=False)
+
+            # Delete old object templates if schemas were removed
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_template
+                or node.state == HashableModelState.ABSENT
+            ):
+                try:
+                    node.relationships = [r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME]
+                    self.delete(name=self._get_object_template_kind(node_kind=node.kind))
+                except SchemaNotFoundError:
+                    ...
+                continue
+
+            need_templates |= self.identify_required_object_templates(node_schema=node, identified=need_templates)
+
+        # Generate templates with their attributes
+        for node in need_templates:
+            template = self.generate_object_template_from_node(node=node, need_templates=need_templates)
+            self.set(name=template.kind, schema=template)
+            template_schema_kinds.add(template.kind)
+
+        # Go back on templates and add relationships to them
+        for node in need_templates:
+            self.add_relationships_to_template(node=node)
+
+        for previous_template in list(self.templates.keys()):
+            # Ensure that we remove previous object template schemas if a node has been renamed
+            if previous_template not in template_schema_kinds:
+                self.delete(name=previous_template)
+
+        if not template_schema_kinds:
+            return
+
+        core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        current_used_by_template = set(core_template_schema.used_by)
+        new_used_by_template = template_schema_kinds - current_used_by_template
+
+        if new_used_by_template:
+            core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=True)
+            core_template_schema.used_by = sorted(template_schema_kinds)
+            self.set(name=InfrahubKind.OBJECTTEMPLATE, schema=core_template_schema)
+
+        if self.has(name=InfrahubKind.NODE):
+            core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=False)
+            current_used_by_node = set(core_node_schema.used_by)
+            new_used_by_node = template_schema_kinds - current_used_by_node
+
+            if new_used_by_node:
+                core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
+                updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
+                core_node_schema.used_by = sorted(updated_used_by_node)
+                self.set(name=InfrahubKind.NODE, schema=core_node_schema)

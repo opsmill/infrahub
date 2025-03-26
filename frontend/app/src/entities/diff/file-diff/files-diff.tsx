@@ -4,11 +4,11 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
-import { useParams } from "react-router-dom";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { FileRepoDiff } from "./file-repo-diff";
 
@@ -65,7 +65,7 @@ export const FilesDiff = forwardRef((_, ref) => {
   }, []);
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {

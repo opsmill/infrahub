@@ -1,66 +1,62 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
+from uuid import uuid4
 
 import pydantic
 from prefect import flow, get_run_logger
-from prefect.automations import AutomationCore
-from prefect.client.orchestration import get_client
-from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.client.schemas.objects import State  # noqa: TC002
-from prefect.events.actions import RunDeployment
-from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.states import Completed, Failed
 
 from infrahub import lock
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
+from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent, BranchRebaseEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
+from infrahub.events.models import EventMeta, InfrahubEvent
+from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
-    COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
-    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     DIFF_REFRESH_ALL,
     GIT_REPOSITORIES_CREATE_BRANCH,
     IPAM_RECONCILIATION,
 )
-from infrahub.workflows.utils import add_branch_tag
-
-from .constants import AUTOMATION_NAME_CREATE, AUTOMATION_NAME_REMOVE
+from infrahub.workflows.utils import add_tags
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str) -> None:
-    service = services.service
-
+async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:  # noqa: PLR0915
     async with service.database.start_session() as db:
         log = get_run_logger()
-        await add_branch_tag(branch_name=branch)
+        await add_tags(branches=[branch])
         obj = await Branch.get_by_name(db=db, name=branch)
         base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+        initial_from_time = Timestamp(obj.get_branched_from())
         merger = BranchMerger(
             db=db,
             diff_coordinator=diff_coordinator,
@@ -69,15 +65,18 @@ async def rebase_branch(branch: str) -> None:
             source_branch=obj,
             service=service,
         )
-        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
-        if enriched_diff.get_all_conflicts():
+
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        async for _ in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        ):
+            # if there are any conflicts, raise the error
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
                 " Please review the diff for details and manually update the conflicts before rebasing."
             )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
         candidate_schema = merger.get_candidate_schema()
@@ -91,14 +90,17 @@ async def rebase_branch(branch: str) -> None:
             constraints += await merger.calculate_validations(target_schema=candidate_schema)
         if constraints:
             responses = await schema_validate_migrations(
-                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
+                message=SchemaValidateMigrationData(
+                    branch=obj, schema_branch=candidate_schema, constraints=constraints
+                ),
+                service=service,
             )
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
         schema_in_main_before = merger.destination_schema.duplicate()
-
+        migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
                 await obj.rebase(db=dbt)
@@ -129,10 +131,19 @@ async def rebase_branch(branch: str) -> None:
                         new_schema=candidate_schema,
                         previous_schema=schema_in_main_before,
                         migrations=migrations,
-                    )
+                    ),
+                    service=service,
                 )
                 for error in errors:
                     log.error(error)
+
+        default_branch_diff = await _get_diff_root(
+            diff_coordinator=diff_coordinator,
+            enriched_diff_metadata=enriched_diff_metadata,
+            diff_repository=diff_repository,
+            base_branch=base_branch,
+            target_from=initial_from_time,
+        )
 
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
@@ -144,28 +155,58 @@ async def rebase_branch(branch: str) -> None:
         )
         if ipam_node_details:
             await service.workflow.submit_workflow(
-                workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+                workflow=IPAM_RECONCILIATION,
+                context=context,
+                parameters={"branch": obj.name, "ipam_node_details": ipam_node_details},
             )
 
-    await service.workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, parameters={"branch_name": obj.name})
+    await service.workflow.submit_workflow(
+        workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name}
+    )
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
     # -------------------------------------------------------------
-    await service.event.send(event=BranchRebaseEvent(branch=obj.name, branch_id=obj.get_id()))
+    rebase_event = BranchRebasedEvent(
+        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+    )
+    events: list[InfrahubEvent] = [rebase_event]
+    changelog_collector = DiffChangelogCollector(
+        diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
+    )
+    for action, node_changelog in changelog_collector.collect_changelogs():
+        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+        mutate_event = node_event_class(
+            kind=node_changelog.node_kind,
+            node_id=node_changelog.node_id,
+            changelog=node_changelog,
+            fields=node_changelog.updated_fields,
+            meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
+        )
+        events.append(mutate_event)
+
+    for event in events:
+        await service.event.send(event)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
-async def merge_branch(branch: str) -> None:
-    service = services.service
+async def merge_branch(
+    branch: str, context: InfrahubContext, service: InfrahubServices, proposed_change_id: str | None = None
+) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
 
-        await add_branch_tag(branch_name=branch)
-        await add_branch_tag(branch_name=registry.default_branch)
+        await add_tags(branches=[branch, registry.default_branch])
 
         obj = await Branch.get_by_name(db=db, name=branch)
+        default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         component_registry = get_component_registry()
+        merge_event = BranchMergedEvent(
+            branch_name=obj.name,
+            branch_id=str(obj.get_uuid()),
+            proposed_change_id=proposed_change_id,
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+        )
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
@@ -183,13 +224,15 @@ async def merge_branch(branch: str) -> None:
                 service=service,
             )
             try:
-                await merger.merge()
+                branch_diff = await merger.merge()
             except Exception as exc:
                 log.exception("Merge failed, beginning rollback")
                 await merger.rollback()
                 raise MergeFailedError(branch_name=branch) from exc
             await merger.update_schema()
 
+        changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
+        node_events = changelog_collector.collect_changelogs()
         if merger and merger.migrations:
             errors = await schema_apply_migrations(
                 message=SchemaApplyMigrationData(
@@ -197,7 +240,8 @@ async def merge_branch(branch: str) -> None:
                     new_schema=merger.destination_schema,
                     previous_schema=merger.initial_source_schema,
                     migrations=merger.migrations,
-                )
+                ),
+                service=service,
             )
             for error in errors:
                 log.error(error)
@@ -213,13 +257,14 @@ async def merge_branch(branch: str) -> None:
         if ipam_node_details:
             await service.workflow.submit_workflow(
                 workflow=IPAM_RECONCILIATION,
+                context=context,
                 parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
             )
         # -------------------------------------------------------------
         # remove tracking ID from the diff because there is no diff after the merge
         # -------------------------------------------------------------
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
@@ -231,24 +276,46 @@ async def merge_branch(branch: str) -> None:
         message = messages.EventBranchMerge(
             source_branch=obj.name,
             target_branch=registry.default_branch,
+            context=context,
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
         )
-        await service.send(message=message)
+        await service.message_bus.send(message=message)
+
+        events: list[InfrahubEvent] = [merge_event]
+
+        for action, node_changelog in node_events:
+            meta = EventMeta.from_parent(parent=merge_event, branch=default_branch)
+            node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+            mutate_event = node_event_class(
+                kind=node_changelog.node_kind,
+                node_id=node_changelog.node_id,
+                changelog=node_changelog,
+                fields=node_changelog.updated_fields,
+                meta=meta,
+            )
+            events.append(mutate_event)
+
+        for event in events:
+            await service.event.send(event=event)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str) -> None:
-    service = services.service
-
-    await add_branch_tag(branch_name=branch)
+async def delete_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
-        event = BranchDeleteEvent(branch=branch, branch_id=obj.get_id(), sync_with_git=obj.sync_with_git)
         await obj.delete(db=db)
 
+        event = BranchDeletedEvent(
+            branch_name=branch,
+            branch_id=str(obj.uuid),
+            sync_with_git=obj.sync_with_git,
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+        )
+
         await service.workflow.submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch}
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=context, parameters={"branch_name": branch}
         )
 
         await service.event.send(event=event)
@@ -260,9 +327,8 @@ async def delete_branch(branch: str) -> None:
     description="Validate if the branch has some conflicts",
     persist_result=True,
 )
-async def validate_branch(branch: str) -> State:
-    service = services.service
-    await add_branch_tag(branch_name=branch)
+async def validate_branch(branch: str, service: InfrahubServices) -> State:
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
@@ -278,9 +344,8 @@ async def validate_branch(branch: str) -> State:
 
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
-async def create_branch(model: BranchCreateModel) -> None:
-    service = services.service
-    await add_branch_tag(model.name)
+async def create_branch(model: BranchCreateModel, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[model.name])
 
     async with service.database.start_session() as db:
         try:
@@ -290,8 +355,7 @@ async def create_branch(model: BranchCreateModel) -> None:
             pass
 
         data_dict: dict[str, Any] = dict(model)
-        if "is_isolated" in data_dict:
-            del data_dict["is_isolated"]
+        data_dict.pop("is_isolated", None)
 
         try:
             obj = Branch(**data_dict)
@@ -311,93 +375,40 @@ async def create_branch(model: BranchCreateModel) -> None:
             registry.branch[obj.name] = obj
             await service.component.refresh_schema_hash(branches=[obj.name])
 
-        event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git)
+        event = BranchCreatedEvent(
+            branch_name=obj.name,
+            branch_id=str(obj.uuid),
+            sync_with_git=obj.sync_with_git,
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+        )
         await service.event.send(event=event)
 
         if obj.sync_with_git:
             await service.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+                context=context,
                 parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
             )
 
 
-@flow(name="branch-actions-setup", flow_run_name="Setup branch action events in task-manager")
-async def branch_actions_setup() -> None:
-    log = get_run_logger()
-
-    async with get_client(sync_client=False) as client:
-        deployments = {
-            item.name: item
-            for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(
-                        any_=[COMPUTED_ATTRIBUTE_SETUP_PYTHON.name, COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name]
-                    )
-                )
-            )
-        }
-        deployment_id_computed_attribute_setup_python = deployments[COMPUTED_ATTRIBUTE_SETUP_PYTHON.name].id
-        deployment_id_computed_attribute_remove_python = deployments[COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name].id
-
-        branch_create_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_CREATE)
-
-        automation = AutomationCore(
-            name=AUTOMATION_NAME_CREATE,
-            description="Trigger actions on branch create event",
-            enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.branch.created"},
-                within=timedelta(0),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_computed_attribute_setup_python,
-                    parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "trigger_updates": False,
-                    },
-                    job_variables={},
-                ),
-            ],
+async def _get_diff_root(
+    diff_coordinator: DiffCoordinator,
+    enriched_diff_metadata: EnrichedDiffRootMetadata,
+    diff_repository: DiffRepository,
+    base_branch: Branch,
+    target_from: Timestamp,
+) -> EnrichedDiffRoot:
+    default_branch_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        base_branch=base_branch,
+        diff_branch=base_branch,
+        from_time=target_from,
+        to_time=enriched_diff_metadata.to_time,
+        name=str(uuid4()),
+    )
+    # make sure we have the actual diff with data and not just the metadata
+    if not isinstance(default_branch_diff, EnrichedDiffRoot):
+        default_branch_diff = await diff_repository.get_one(
+            diff_branch_name=base_branch.name, diff_id=default_branch_diff.uuid
         )
 
-        if branch_create_automation:
-            await client.update_automation(automation_id=branch_create_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME_CREATE} Updated")
-        else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME_CREATE} Created")
-
-        branch_remove_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_REMOVE)
-
-        automation = AutomationCore(
-            name=AUTOMATION_NAME_REMOVE,
-            description="Trigger actions on branch delete event",
-            enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.branch.deleted"},
-                within=timedelta(0),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_computed_attribute_remove_python,
-                    parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                    },
-                    job_variables={},
-                ),
-            ],
-        )
-
-        if branch_remove_automation:
-            await client.update_automation(automation_id=branch_remove_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME_REMOVE} Updated")
-        else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME_REMOVE} Created")
+    return default_branch_diff

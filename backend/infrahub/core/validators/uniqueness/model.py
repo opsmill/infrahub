@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -8,8 +8,8 @@ from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipS
 
 class QueryRelationshipAttributePath(BaseModel):
     identifier: str
-    attribute_name: Optional[str] = Field(default=None)
-    value: Optional[Any] = Field(default=None)
+    attribute_name: str | None = Field(default=None)
+    value: Any | None = Field(default=None)
 
     def __hash__(self) -> int:
         to_hash = self.identifier
@@ -22,8 +22,8 @@ class QueryRelationshipAttributePath(BaseModel):
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
-    property_name: Optional[str] = Field(default=None)
-    value: Optional[Any] = Field(default=None)
+    property_name: str | None = Field(default=None)
+    value: Any | None = Field(default=None)
 
     def __hash__(self) -> int:
         to_hash = self.attribute_name
@@ -118,8 +118,8 @@ class NonUniqueNode(BaseModel):
     non_unique_related_attributes: list[NonUniqueRelatedAttribute] = Field(default_factory=list)
 
     def get_relationship_violation(
-        self, relationship_name: str, attribute_name: Optional[str]
-    ) -> Optional[NonUniqueRelatedAttribute]:
+        self, relationship_name: str, attribute_name: str | None
+    ) -> NonUniqueRelatedAttribute | None:
         attribute_names = {attribute_name}
         if attribute_name is None:
             attribute_names.add("id")
@@ -128,16 +128,16 @@ class NonUniqueNode(BaseModel):
                 return nura
         return None
 
-    def get_attribute_violation(self, attribute_name: str) -> Optional[NonUniqueAttribute]:
+    def get_attribute_violation(self, attribute_name: str) -> NonUniqueAttribute | None:
         for nua in self.non_unique_attributes:
             if nua.attribute_name == attribute_name:
                 return nua
         return None
 
     def get_constraint_violation(
-        self, constraint_specifications: list[tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]]
-    ) -> Optional[list[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]]:
-        violations: list[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = []
+        self, constraint_specifications: list[tuple[AttributeSchema | RelationshipSchema, str | None]]
+    ) -> list[NonUniqueAttribute | NonUniqueRelatedAttribute] | None:
+        violations: list[NonUniqueAttribute | NonUniqueRelatedAttribute] = []
         for sub_schema, property_name in constraint_specifications:
             if isinstance(sub_schema, AttributeSchema):
                 attribute_violation = self.get_attribute_violation(sub_schema.name)

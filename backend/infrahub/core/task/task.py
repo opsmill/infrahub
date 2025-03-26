@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import ConfigDict, Field
 
@@ -19,10 +19,10 @@ class Task(StandardNode):
 
     title: str
     conclusion: TaskConclusion
-    account_id: Optional[str] = Field(default=None, description="The ID of the account that created this task")
+    account_id: str | None = Field(default=None, description="The ID of the account that created this task")
     created_at: str = Field(default_factory=current_timestamp, description="The time when this task was created")
     updated_at: str = Field(default_factory=current_timestamp, description="The time when this task was last updated")
-    related_node: Optional[CoreNode] = Field(default=None, description="The Infrahub node that this object refers to")
+    related_node: CoreNode | None = Field(default=None, description="The Infrahub node that this object refers to")
 
     _exclude_attrs: list[str] = ["id", "uuid", "account_id", "_query", "related_node"]
     _query: type[StandardNodeQuery] = TaskNodeCreateQuery

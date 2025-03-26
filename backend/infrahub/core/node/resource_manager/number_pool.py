@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPoolGetUsed, NumberPoolSetReserved
 from infrahub.exceptions import PoolExhaustedError
@@ -18,7 +18,7 @@ class CoreNumberPool(Node):
         db: InfrahubDatabase,
         branch: Branch,
         node: Node,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
     ) -> int:
         identifier = identifier or node.get_id()
         # Check if there is already a resource allocated with this identifier
@@ -55,7 +55,7 @@ class CoreNumberPool(Node):
         return next_number
 
 
-def find_next_free(start: int, end: int, taken: list[int | None]) -> Optional[int]:
+def find_next_free(start: int, end: int, taken: list[int | None]) -> int | None:
     used_numbers = [number for number in taken if number is not None]
     used_set = set(used_numbers)
 

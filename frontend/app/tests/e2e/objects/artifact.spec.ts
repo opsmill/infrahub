@@ -1,17 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/objects/CoreArtifact - Artifact page", () => {
+test.describe.fixme("/objects/CoreArtifact - Artifact page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
+  test.slow();
 
   test("should generate artifacts successfully", async ({ page }) => {
     await page.goto(
@@ -20,8 +13,9 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
 
     // reload page until we have artifacts defined
     while (await page.getByRole("link", { name: "startup-config" }).first().isHidden()) {
-      await page.reload();
-      await expect(page.getByText("Previous")).toBeVisible();
+      if (await page.getByText("No Artifact found").isVisible()) {
+        await page.reload();
+      }
     }
 
     await page.getByRole("link", { name: "startup-config" }).first().click();

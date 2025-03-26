@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -23,12 +21,10 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
-
 
 class BranchState:
     def __init__(self) -> None:
-        self._branch: Optional[Branch] = None
+        self._branch: Branch | None = None
 
     @property
     def branch(self) -> Branch:
@@ -419,3 +415,21 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
             registry.schema.get(name=f"Profile{CAR_KIND}", branch=self.branch1, check_branch_only=True)
         car_schema = registry.schema.get(name=CAR_KIND, branch=self.branch1, duplicate=False)
         assert "profiles" in car_schema.relationship_names
+
+    async def test_step05_merge(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step06, schema_interior_base
+    ):
+        response = await client.schema.load(schemas=[schema_step06], branch=self.branch1.name)
+        assert not response.errors
+
+        await client.branch.merge(branch_name=self.branch1.name)
+
+        updated_branch = await Branch.get_by_name(name=self.branch1.name, db=db)
+        updated_schema_default = await registry.schema.load_schema_from_db(db=db)
+        default_interiors_schema = updated_schema_default.get(name="TestingInterior", duplicate=False)
+        assert default_interiors_schema.attribute_names == ["material"]
+        assert "cars" in default_interiors_schema.relationship_names
+        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=updated_branch)
+        updated_interiors_schema = updated_schema_branch.get(name="TestingInterior", duplicate=False)
+        assert updated_interiors_schema.attribute_names == ["material"]
+        assert "cars" in updated_interiors_schema.relationship_names

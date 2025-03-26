@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -9,7 +9,7 @@ from infrahub.database import InfrahubDatabase
 class MyStdNode(StandardNode):
     attr1_str: str
     attr2_int: int
-    attr3_int: Optional[int] = None
+    attr3_int: int | None = None
     attr4_bool: bool = False
     attr5_dict: dict
 

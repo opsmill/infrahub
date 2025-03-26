@@ -23,7 +23,7 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
     assert result._meta.name == "TestVehicule"
-    assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "hfid", "id", "name"]
+    assert sorted(result._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
 async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -36,7 +36,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "TestCriticality"
-    assert sorted(list(result._meta.fields.keys())) == [
+    assert sorted(result._meta.fields.keys()) == [
         "_updated_at",
         "color",
         "description",
@@ -67,7 +67,7 @@ async def test_generate_graphql_object_with_interface(
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "TestCar"
-    assert sorted(list(result._meta.fields.keys())) == [
+    assert sorted(result._meta.fields.keys()) == [
         "_updated_at",
         "description",
         "display_label",
@@ -87,7 +87,7 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     input_type = gqlm.generate_graphql_mutation_create_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_create(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
-    assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
+    assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
 async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -99,7 +99,7 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
     input_type = gqlm.generate_graphql_mutation_update_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_update(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
-    assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
+    assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
 async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
@@ -124,10 +124,11 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
     assert issubclass(nested_edged_person, InfrahubObject)
     assert issubclass(relationship_property, graphene.ObjectType)
 
-    assert sorted(list(car._meta.fields.keys())) == [
+    assert sorted(car._meta.fields.keys()) == [
         "_updated_at",
         "color",
         "display_label",
+        "driver",
         "hfid",
         "id",
         "is_electric",
@@ -140,15 +141,16 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "transmission",
     ]
 
-    assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
+    assert sorted(edged_car._meta.fields.keys()) == ["node"]
     assert str(edged_car._meta.fields["node"].type) == "TestCar"
-    assert sorted(list(nested_edged_car._meta.fields.keys())) == ["node", "properties"]
+    assert sorted(nested_edged_car._meta.fields.keys()) == ["node", "properties"]
     assert str(nested_edged_car._meta.fields["node"].type) == "TestCar"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
-    assert sorted(list(person._meta.fields.keys())) == [
+    assert sorted(person._meta.fields.keys()) == [
         "_updated_at",
         "cars",
+        "cars_driven",
         "display_label",
         "height",
         "hfid",
@@ -158,12 +160,12 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "profiles",
         "subscriber_of_groups",
     ]
-    assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
+    assert sorted(edged_person._meta.fields.keys()) == ["node"]
     assert str(edged_person._meta.fields["node"].type) == "TestPerson"
-    assert sorted(list(nested_edged_person._meta.fields.keys())) == ["node", "properties"]
+    assert sorted(nested_edged_person._meta.fields.keys()) == ["node", "properties"]
     assert str(nested_edged_person._meta.fields["node"].type) == "TestPerson"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
-    assert sorted(list(relationship_property._meta.fields.keys())) == [
+    assert sorted(relationship_property._meta.fields.keys()) == [
         "is_protected",
         "is_visible",
         "owner",
@@ -260,7 +262,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "subscriber_of_groups__name__value",
         "subscriber_of_groups__name__values",
     ]
-    assert sorted(list(filters.keys())) == sorted(expected_filters)
+    assert sorted(filters.keys()) == sorted(expected_filters)
 
 
 @pytest.mark.parametrize(

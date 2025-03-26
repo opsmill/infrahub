@@ -43,8 +43,8 @@ generics:
         optional: false
         cardinality: one
         kind: Parent
-  - name: Choice
-    namespace: Template
+  - name: Generic
+    namespace: Choice
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
@@ -171,7 +171,7 @@ nodes:
         optional: true
         cardinality: many
   - name: DeviceType
-    namespace: Template
+    namespace: Choice
     description: "Device Type"
     label: "Device Type"
     icon: "mdi:poll"
@@ -182,7 +182,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     attributes:
       - name: part_number
         label: Part Number
@@ -251,7 +251,7 @@ nodes:
         kind: Attribute
       - name: model
         label: Model
-        peer: TemplateDeviceType
+        peer: ChoiceDeviceType
         optional: true
         cardinality: one
         kind: Attribute
@@ -310,7 +310,7 @@ nodes:
         kind: Attribute
       - name: model
         label: Model
-        peer: TemplateDeviceType
+        peer: ChoiceDeviceType
         optional: true
         cardinality: one
         kind: Attribute
@@ -349,7 +349,7 @@ nodes:
         kind: Attribute
       - name: model
         label: Model
-        peer: TemplateDeviceType
+        peer: ChoiceDeviceType
         optional: true
         cardinality: one
         kind: Attribute

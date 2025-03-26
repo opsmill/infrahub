@@ -1,7 +1,9 @@
 import importlib
-from typing import Any, Awaitable, Callable, TypeVar
+import inspect
+from typing import Any, Awaitable, TypeVar
 from uuid import UUID
 
+from prefect import Flow
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import DeploymentScheduleCreate
 from prefect.client.schemas.objects import FlowRun
@@ -33,6 +35,12 @@ class WorkflowInfo(BaseModel):
         return cls(id=flow_run.id, info=flow_run)
 
 
+class WorkflowParameter(BaseModel):
+    name: str
+    type: str
+    required: bool
+
+
 class WorkflowDefinition(BaseModel):
     name: str
     type: WorkflowType = WorkflowType.INTERNAL
@@ -43,7 +51,7 @@ class WorkflowDefinition(BaseModel):
 
     @property
     def entrypoint(self) -> str:
-        return f'backend/{self.module.replace(".", "/")}:{self.function}'
+        return f"backend/{self.module.replace('.', '/')}:{self.function}"
 
     @property
     def full_name(self) -> str:
@@ -72,9 +80,25 @@ class WorkflowDefinition(BaseModel):
         data["work_pool_name"] = work_pool.name
         return await client.create_deployment(flow_id=flow_id, **data)
 
-    def get_function(self) -> Callable[..., Awaitable[Any]]:
+    def load_function(self) -> Flow[Any, Awaitable]:
         module = importlib.import_module(self.module)
         return getattr(module, self.function)
 
-    def validate_workflow(self) -> None:
-        self.get_function()
+    def get_parameters(self) -> dict[str, WorkflowParameter]:
+        fn = self.load_function()
+        signature = inspect.signature(fn.fn)
+        required_params = fn.parameters.required
+
+        ANNOTATIONS_TO_EXCLUDE = ["InfrahubServices"]
+
+        params = {}
+        for item in signature.parameters.values():
+            # Workflow signature will return a string if 'from __future__ import annotations' is used
+            # Otherwise it will return a type object
+            annotation = item.annotation if isinstance(item.annotation, str) else item.annotation.__name__
+            if annotation in ANNOTATIONS_TO_EXCLUDE:
+                continue
+            param = WorkflowParameter(name=item.name, type=annotation, required=item.name in required_params)
+            params[item.name] = param
+
+        return params

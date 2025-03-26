@@ -26,7 +26,7 @@ class IPAddressPoolGetIdentifiers(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["addresses"] = self.addresses
 
@@ -53,7 +53,7 @@ class IPAddressPoolGetReserved(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -82,7 +82,7 @@ class IPAddressPoolSetReserved(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["address_id"] = self.address_id
         self.params["identifier"] = self.identifier
@@ -119,7 +119,7 @@ class NumberPoolGetAllocated(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["node_attribute"] = self.pool.node_attribute.value
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
@@ -166,7 +166,7 @@ class NumberPoolGetReserved(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -206,7 +206,7 @@ class NumberPoolGetUsed(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool.get_id()
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
@@ -259,7 +259,7 @@ class NumberPoolSetReserved(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["reserved"] = self.reserved
         self.params["identifier"] = self.identifier
@@ -276,6 +276,8 @@ class NumberPoolSetReserved(Query):
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })
         MERGE (value:AttributeValue { value: $reserved, is_default: false })
+        WITH value, pool
+        LIMIT 1
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(value)
         """ % {"number_pool": InfrahubKind.NUMBERPOOL}
 
@@ -298,7 +300,7 @@ class PrefixPoolGetIdentifiers(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["prefixes"] = self.prefixes
 
@@ -325,7 +327,7 @@ class PrefixPoolGetReserved(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -354,7 +356,7 @@ class PrefixPoolSetReserved(Query):
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["prefix_id"] = self.prefix_id
         self.params["identifier"] = self.identifier

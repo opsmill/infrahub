@@ -1,8 +1,8 @@
-import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
-import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/queries";
+import {
+  getRelationshipsFromApi,
+  getRelationshipsFromApiParams,
+} from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { store } from "@/shared/stores";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -10,28 +10,27 @@ export const RELATIONSHIPS_PER_PAGE = 20;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetRelationshipsParams = {
-  peer: string;
-  search?: string;
-  parentId?: string;
-};
+export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
-export type GetRelationships = (
-  params: GetRelationshipsParams & { limit?: number; offset?: number }
-) => Promise<Array<RelationshipNode>>;
+export type GetRelationships = (params: GetRelationshipsParams) => Promise<Array<RelationshipNode>>;
 
-export const getRelationships: GetRelationships = async ({ peer, offset, search, parentId }) => {
-  const currentBranchName = getCurrentBranchName();
-  const timeMachineDate = store.get(datetimeAtom);
-
+export const getRelationships: GetRelationships = async ({
+  branchName,
+  atDate,
+  limit = RELATIONSHIPS_PER_PAGE,
+  offset,
+  peer,
+  search,
+  filterQuery,
+}) => {
   const { data } = await getRelationshipsFromApi({
     peer,
-    limit: RELATIONSHIPS_PER_PAGE,
+    limit,
     offset,
     search,
-    branchName: currentBranchName,
-    atDate: timeMachineDate,
-    parent: parentId ? { name: "parent", value: parentId } : undefined,
+    branchName,
+    atDate,
+    filterQuery,
   });
 
   const relationshipsData = data[peer];

@@ -1,21 +1,20 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from invoke.tasks import task
 
 from .container_ops import (
     build_images,
-    collect_support_data,
     destroy_environment,
     display_container_status,
-    migrate_database,
     pull_images,
     restart_services,
     show_service_status,
     start_services,
     stop_services,
-    update_core_schema,
+    upgrade_infrahub,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
@@ -172,8 +171,16 @@ def status(
 
 
 @task(optional=["database"])
-def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False) -> None:
+def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False, reload: bool = False) -> None:
     """Start a local instance of Infrahub within docker compose."""
+
+    if reload:
+        # Need to use `uvicorn` instead of `gunicorn` for reload option because of this issue:
+        # https://github.com/benoitc/gunicorn/issues/2339
+        os.environ["INFRAHUB_SERVER_COMMAND"] = (
+            "uvicorn infrahub.server:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 90 --reload"
+        )
+
     start_services(context=context, database=database, namespace=NAMESPACE, wait=wait)
 
 
@@ -184,13 +191,6 @@ def stop(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 
 @task(optional=["database"])
-def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Apply the latest database migrations."""
-    migrate_database(context=context, database=database, namespace=NAMESPACE)
-    update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
-
-
-@task(optional=["database"])
-def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
-    """Collect all logs and create a support archive."""
-    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)
+def upgrade(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Upgrade Infrahub to the latest version and apply the required migrations."""
+    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE)

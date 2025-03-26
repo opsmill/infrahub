@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 
 class Error(Exception):
     HTTP_CODE: int = 500
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
-    errors: Optional[list] = None
+    errors: list | None = None
 
     def api_response(self) -> dict[str, Any]:
         """Return error response."""
@@ -43,6 +43,15 @@ class InitializationError(Error):
 class DatabaseError(Error):
     HTTP_CODE: int = 503
     DESCRIPTION = "Database unavailable"
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
+class ServiceUnavailableError(Error):
+    HTTP_CODE: int = 503
+    DESCRIPTION = "Service unavailable"
 
     def __init__(self, message: str) -> None:
         self.message = message
@@ -282,35 +291,26 @@ class MigrationError(Error):
 class ValidationError(Error):
     HTTP_CODE = 422
 
-    def __init__(self, input_value: Union[str, dict, list]) -> None:
+    def __init__(self, input_value: str | dict | list) -> None:
         self.message = ""
-        self.location = None
-        self.messages = {}
 
         if isinstance(input_value, str):
             self.message = input_value
-        elif isinstance(input_value, dict) and len(input_value) == 1:
-            self.message = list(input_value.values())[0]
-            self.location = list(input_value.keys())[0]
-        elif isinstance(input_value, dict) and len(input_value) > 1:
-            for key, value in input_value.items():
-                self.messages[key] = value
-
+        elif isinstance(input_value, dict):
+            self.message = ", ".join([f"{message} at {location}" for location, message in input_value.items()])
         elif isinstance(input_value, list):
-            for item in input_value:
-                if isinstance(item, self.__class__):
-                    self.messages[item.location] = item.message
-                elif isinstance(item, dict):
-                    for key, value in item.items():
-                        self.messages[key] = value
+            if all(isinstance(item, ValidationError) for item in input_value):
+                self.message = ", ".join([validation_error.message for validation_error in input_value])
+            if all(isinstance(item, dict) for item in input_value):
+                messages = []
+                for item in input_value:
+                    messages.append(", ".join([f"{message} at {location}" for location, message in item.items()]))
+                self.message = ", ".join(messages)
+
+        if not self.message:
+            raise ValueError("Could not build validation error message")
 
         super().__init__(self.message)
-
-    def __str__(self) -> str:
-        if self.messages:
-            return ", ".join([f"{message} at {location}" for location, message in self.messages.items()])
-
-        return f"{self.message} at {self.location or '<Undefined>'}"
 
 
 class DiffError(Error):
@@ -318,6 +318,14 @@ class DiffError(Error):
 
     def __init__(self, message: str) -> None:
         self.message = message
+
+
+class HFIDViolatedError(ValidationError):
+    matching_nodes_ids: set[str]
+
+    def __init__(self, input_value: str | dict | list, matching_nodes_ids: set[str]) -> None:
+        self.matching_nodes_ids = matching_nodes_ids
+        super().__init__(input_value)
 
 
 class DiffRangeValidationError(DiffError): ...

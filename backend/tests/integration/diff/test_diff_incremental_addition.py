@@ -11,6 +11,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -68,7 +69,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         await delorean.previous_owner.update(db=db, data={"id": doc_brown.id, "_relation__is_protected": True})  # type: ignore[attr-defined]
         await delorean.save(db=db)
 
-        bus_simulator.service.cache = RedisCache()
+        bus_simulator.service._cache = RedisCache()
 
         return {
             "doc_brown": doc_brown,
@@ -86,6 +87,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
+
+    @pytest.fixture(scope="class")
+    async def diff_repository(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffRepository:
+        component_registry = get_component_registry()
+        return await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
 
     @pytest.fixture(scope="class")
     async def data_01_remove_on_main(
@@ -189,10 +195,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         data_01_remove_on_main,
     ) -> None:
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
         assert len(enriched_diff.nodes) == 0
@@ -262,19 +272,26 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         initial_dataset,
         data_02_previous_owner_on_branch,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
+        incremental_diff = await diff_repository.get_one(
+            diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
+        )
         await self.validate_diff_data_02(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
-            from_time=incremental_diff.from_time,
+            from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4()),
+        )
+        full_diff = await diff_repository.get_one(
+            diff_branch_name=full_diff_metadata.diff_branch_name, diff_id=full_diff_metadata.uuid
         )
         await self.validate_diff_data_02(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 
@@ -344,20 +361,27 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         data_03_new_peer_on_main,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
+        )
+        incremental_diff = await diff_repository.get_one(
+            diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
         )
         await self.validate_diff_data_03(
             db=db, default_branch=default_branch, enriched_diff=incremental_diff, initial_dataset=initial_dataset
         )
-        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4()),
+        )
+        full_diff = await diff_repository.get_one(
+            diff_branch_name=full_diff_metadata.diff_branch_name, diff_id=full_diff_metadata.uuid
         )
         await self.validate_diff_data_03(
             db=db, default_branch=default_branch, enriched_diff=full_diff, initial_dataset=initial_dataset
@@ -426,18 +450,25 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         data_04_update_previous_owner_protected_on_branch,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
+        incremental_diff = await diff_repository.get_one(
+            diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
+        )
         await self.validate_diff_data_04(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4()),
+        )
+        full_diff = await diff_repository.get_one(
+            diff_branch_name=full_diff_metadata.diff_branch_name, diff_id=full_diff_metadata.uuid
         )
         await self.validate_diff_data_04(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 
@@ -500,18 +531,25 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         data_05_remove_previous_owner_on_branch,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
+        incremental_diff = await diff_repository.get_one(
+            diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
+        )
         await self.validate_diff_data_05(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4()),
+        )
+        full_diff = await diff_repository.get_one(
+            diff_branch_name=full_diff_metadata.diff_branch_name, diff_id=full_diff_metadata.uuid
         )
         await self.validate_diff_data_05(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 
@@ -570,17 +608,24 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         data_06_remove_previous_owner_on_main_again,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
+        incremental_diff = await diff_repository.get_one(
+            diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
+        )
         await self.validate_diff_data_06(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
             name=str(uuid4()),
+        )
+        full_diff = await diff_repository.get_one(
+            diff_branch_name=full_diff_metadata.diff_branch_name, diff_id=full_diff_metadata.uuid
         )
         await self.validate_diff_data_06(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)

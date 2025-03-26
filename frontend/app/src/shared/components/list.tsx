@@ -95,7 +95,7 @@ const ListItems = ({
                 variant="ghost"
                 onClick={() => onDelete(item)}
                 className="text-gray-500 hover:text-gray-800 h-4 w-4"
-                aria-label="Remove"
+                aria-label={`Remove ${item}`}
               >
                 &times;
               </Button>

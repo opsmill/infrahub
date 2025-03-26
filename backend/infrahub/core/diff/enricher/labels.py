@@ -6,6 +6,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 from ..model.path import (
     CalculatedDiffs,
@@ -16,6 +17,8 @@ from ..model.path import (
 )
 from ..payload_builder import get_display_labels
 from .interface import DiffEnricherInterface
+
+log = get_logger()
 
 PROPERTY_TYPES_WITH_LABELS = {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE}
 
@@ -191,9 +194,10 @@ class DiffLabelsEnricher(DiffEnricherInterface):
     async def enrich(
         self,
         enriched_diff_root: EnrichedDiffRoot,
-        calculated_diffs: CalculatedDiffs | None = None,
+        calculated_diffs: CalculatedDiffs | None = None,  # noqa: ARG002
         conflicts_only: bool = False,
     ) -> None:
+        log.info("Beginning display labels diff enrichment...")
         self._base_branch_name = enriched_diff_root.base_branch_name
         self._diff_branch_name = enriched_diff_root.diff_branch_name
         self._conflicts_only = conflicts_only
@@ -214,3 +218,4 @@ class DiffLabelsEnricher(DiffEnricherInterface):
             ...
 
         self._update_relationship_labels(enriched_diff=enriched_diff_root)
+        log.info("Display labels diff enrichment complete.")

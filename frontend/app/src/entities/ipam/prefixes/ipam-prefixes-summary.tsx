@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import IpamIPPrefixesSummaryDetails from "./ipam-prefixes-summary-details";
 import IpamIPPrefixesSummaryList from "./ipam-prefixes-summary-list";
 
