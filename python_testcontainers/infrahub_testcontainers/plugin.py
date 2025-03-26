@@ -131,6 +131,6 @@ def pytest_terminal_summary(
     terminalreporter.write("\n" + "\n".join(report) + "\n")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def perf_test(request: pytest.FixtureRequest) -> InfrahubPerformanceTest:
     return request.session.infrahub_performance_test
