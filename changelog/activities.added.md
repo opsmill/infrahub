@@ -1,0 +1,1 @@
+Add relationships changes details in the activities

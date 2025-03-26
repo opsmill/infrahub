@@ -8,6 +8,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
 import { EventType } from "../types";
 import { EventAttributes } from "./node-events/event-attributes";
+import { EventRelationships } from "./node-events/event-relationships";
 
 export const EventDetails = ({
   id,
@@ -31,9 +32,13 @@ export const EventDetails = ({
           </div>
         }
       />
+
       <PropertyRow title="Event" value={event} />
+
       <PropertyRow title="Branch" value={branch} />
+
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
+
       {account_id && (
         <PropertyRow
           title="Account"
@@ -48,6 +53,7 @@ export const EventDetails = ({
           }
         />
       )}
+
       {primary_node?.id && (
         <PropertyRow
           title="Primary Node"
@@ -62,6 +68,7 @@ export const EventDetails = ({
           }
         />
       )}
+
       {!!related_nodes?.length && (
         <PropertyRow
           title="Related Nodes"
@@ -83,9 +90,10 @@ export const EventDetails = ({
           }
         />
       )}
+
       {!!ancestors?.length && (
         <PropertyRow
-          title="Related Nodes"
+          title="Ancestors"
           value={
             <div className="flex flex-col items-end gap-1">
               {ancestors.map((node) => {
@@ -104,9 +112,10 @@ export const EventDetails = ({
           }
         />
       )}
+
       {!!members?.length && (
         <PropertyRow
-          title="Related Nodes"
+          title="Members"
           value={
             <div className="flex flex-col items-end gap-1">
               {members.map((node) => {
@@ -125,8 +134,16 @@ export const EventDetails = ({
           }
         />
       )}
-      {"attributes" in props && (
-        <PropertyRow title="Changes" value={<EventAttributes attributes={props.attributes} />} />
+
+      {"attributes" in props && !!props.attributes.length && (
+        <PropertyRow title="Attributes" value={<EventAttributes attributes={props.attributes} />} />
+      )}
+
+      {"relationships" in props && !!props.relationships.length && (
+        <PropertyRow
+          title="Relationships"
+          value={<EventRelationships relationships={props.relationships} />}
+        />
       )}
     </div>
   );
