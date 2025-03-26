@@ -84,7 +84,8 @@ const sidebars: SidebarsConfig = {
         'guides/object-storage',
         'guides/sso',
         'guides/check',
-
+        'guides/upgrade',
+        'guides/upgrade-enterprise',
         'guides/webhooks',
       ],
     },
