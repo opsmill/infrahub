@@ -497,10 +497,6 @@ class InfrahubMutationMixin:
         run_constraint_checks = True
 
         if "id" in dict_data:
-            # Currently support for creating a node with a given id is not supported,
-            # so this will raise an error if node id does not exist in db.
-            # Note that upserting with an `id` in the payload should not happen then, as it would mean the node already
-            # exists, in which case we should update client side instead of upsert.
             node = await NodeManager.get_one(
                 db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True
             )
@@ -520,9 +516,6 @@ class InfrahubMutationMixin:
             )
 
         if "hfid" in data:
-            # Node might already exist or not. Note that if it exists, an extra query is performed
-            # thus client should avoid specifying `hfid` as input.
-            # It is supposed to be pointless as payload already contains fields composing hfid (mandatory fields while creating).
             node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
 
         if node is not None:
