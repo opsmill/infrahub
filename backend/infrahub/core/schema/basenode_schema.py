@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
+INHERITED = "INHERITED"
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
@@ -138,8 +139,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         reversed_map_other = dict(map(reversed, other_map.items()))
 
         # Identify which elements are using the same id on both sides
-        clean_local_ids = [id for id in local_map.values() if id is not None]
-        clean_other_ids = [id for id in other_map.values() if id is not None]
+        clean_local_ids = [id for id in local_map.values() if id is not None and id != INHERITED]
+        clean_other_ids = [id for id in other_map.values() if id is not None and id != INHERITED]
         shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
 
         # Identify which elements are present on both side based on the name
@@ -267,13 +268,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_attributes_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for attr in self.attributes:
-            name_id_map[attr.name] = attr.id
+            name_id_map[attr.name] = INHERITED if attr.inherited else attr.id
         return name_id_map
 
     def get_relationship_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for rel in self.relationships:
-            name_id_map[rel.name] = rel.id
+            name_id_map[rel.name] = INHERITED if rel.inherited else rel.id
         return name_id_map
 
     @property
