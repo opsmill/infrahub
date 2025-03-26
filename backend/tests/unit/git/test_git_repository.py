@@ -120,7 +120,7 @@ async def test_new_wrong_location(git_upstream_repo_01: dict[str, str | Path], g
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(tmp_path),
-            service=await InfrahubServices.new(),
+            service=await InfrahubServices.new(client=InfrahubClient(config=Config(requester=dummy_async_request))),
         )
 
     assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
@@ -133,7 +133,7 @@ async def test_new_wrong_branch(git_upstream_repo_01: dict[str, str | Path], git
             name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
             default_branch_name="notvalid",
-            service=await InfrahubServices.new(),
+            service=await InfrahubServices.new(client=InfrahubClient(config=Config(requester=dummy_async_request))),
         )
 
     assert "isn't a valid branch" in str(exc.value)
