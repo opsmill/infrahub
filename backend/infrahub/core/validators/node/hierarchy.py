@@ -7,9 +7,7 @@ from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
 
 from ..interface import ConstraintCheckerInterface
-from ..shared import (
-    SchemaValidatorQuery,
-)
+from ..shared import SchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

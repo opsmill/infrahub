@@ -6,6 +6,7 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.node.hierarchy import NodeHierarchyChecker, NodeHierarchyUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
@@ -369,6 +370,7 @@ async def test_validator_parents_failure(
         constraint_name="node.parent.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -395,6 +397,7 @@ async def test_validator_parents_success(
         constraint_name="node.parent.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -419,6 +422,7 @@ async def test_validator_children_failure(
         constraint_name="node.children.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -445,6 +449,7 @@ async def test_validator_children_success(
         constraint_name="node.children.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)

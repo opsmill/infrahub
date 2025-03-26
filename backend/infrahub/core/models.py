@@ -182,6 +182,15 @@ class SchemaUpdateValidationResult(BaseModel):
 
         for schema_name, schema_diff in self.diff.changed.items():
             schema_node = schema.get(name=schema_name, duplicate=False)
+            if "inherit_from" in schema_diff.changed:
+                self.migrations.append(
+                    SchemaUpdateMigrationInfo(
+                        path=SchemaPath(  # type: ignore[call-arg]
+                            schema_kind=schema_name, path_type=SchemaPathType.NODE
+                        ),
+                        migration_name="node.inherit_from.update",
+                    )
+                )
 
             # Nothing to do today if we add a new attribute to a node in the schema
             # for node_field_name, _ in schema_diff.added.items():
