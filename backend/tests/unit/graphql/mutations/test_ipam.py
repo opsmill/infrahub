@@ -48,6 +48,30 @@ mutation UpdatePrefix($id: String!, $prefix: String!, $description: String!) {
 }
 """
 
+
+UPSERT_IPPREFIX_NO_ID = """
+mutation UpsertPrefix($prefix: String!, $description: String!) {
+    IpamIPPrefixUpsert(
+        data: {
+            prefix: {
+                value: $prefix
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+            description {
+                value
+            }
+        }
+    }
+}
+"""
+
 UPSERT_IPPREFIX = """
 mutation UpsertPrefix($id: String!, $prefix: String!, $description: String!) {
     IpamIPPrefixUpsert(
@@ -163,6 +187,29 @@ mutation UpdateAddress($id: String!, $address: String!, $description: String!) {
         ok
         object {
             id
+        }
+    }
+}
+"""
+
+UPSERT_IPADDRESS_NO_ID = """
+mutation UpsertAddress($address: String!, $description: String!) {
+    IpamIPAddressUpsert(
+        data: {
+            address: {
+                value: $address
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+            description {
+                value
+            }
         }
     }
 }
@@ -548,9 +595,9 @@ async def test_ipprefix_upsert(
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
         schema=gql_params.schema,
-        source=UPSERT_IPPREFIX,
+        source=UPSERT_IPPREFIX_NO_ID,
         context_value=gql_params.context,
-        variable_values={"id": "", "prefix": str(subnet), "description": ""},
+        variable_values={"prefix": str(subnet), "description": ""},
     )
 
     assert not result.errors
@@ -853,9 +900,9 @@ async def test_ipaddress_upsert(
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
         schema=gql_params.schema,
-        source=UPSERT_IPADDRESS,
+        source=UPSERT_IPADDRESS_NO_ID,
         context_value=gql_params.context,
-        variable_values={"id": "", "address": str(address), "description": ""},
+        variable_values={"address": str(address), "description": ""},
     )
 
     assert not result.errors

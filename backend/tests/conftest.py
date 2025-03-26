@@ -527,6 +527,31 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture
+async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    """
+    Person schema with no unicity constraint set except default filter.
+    """
+
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "PersonDF",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
 async def car_person_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
 ) -> SchemaBranch:
@@ -656,6 +681,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "bag", "kind": "Text", "optional": True, "unique": True},
                 ],
                 "relationships": [
                     {
@@ -763,7 +789,6 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
                 "namespace": "Test",
                 "display_labels": ["name__value"],
                 "inherit_from": ["TestPerson"],
-                "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
             },
             {
@@ -771,7 +796,6 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
                 "namespace": "Test",
                 "display_labels": ["name__value"],
                 "inherit_from": ["TestPerson"],
-                "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "model_number", "kind": "Number", "optional": False},
@@ -972,8 +996,8 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
             {
                 "name": "Car",
                 "namespace": "Test",
-                "default_filter": "name__value",
-                "uniqueness_constraints": [["name__value"]],
+                "uniqueness_constraints": [["agnostic_owner"]],
+                "human_friendly_id": ["name__value"],
                 "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},

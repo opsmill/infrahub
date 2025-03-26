@@ -3,6 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.relationship.optional import (
     RelationshipOptionalChecker,
@@ -61,6 +62,7 @@ async def test_validator(
         constraint_name="attribute.regex.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = RelationshipOptionalChecker(db=db, branch=default_branch)

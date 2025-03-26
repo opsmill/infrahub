@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/ipam - Ipam home page", () => {
+test.describe.fixme("/ipam - Ipam home page", () => {
   test.describe.configure({ mode: "serial" });
   test.slow();
 

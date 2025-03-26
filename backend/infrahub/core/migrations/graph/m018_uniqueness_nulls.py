@@ -55,13 +55,13 @@ class Migration018(InternalSchemaMigration):
             if not isinstance(schema, NodeSchema | GenericSchema):
                 continue
 
-            schema_constraint_path_groups = schema.get_unique_constraint_schema_attribute_paths(
+            uniqueness_constraint_paths = schema.get_unique_constraint_schema_attribute_paths(
                 schema_branch=schema_branch
             )
             includes_optional_attr: bool = False
 
-            for constraint_group in schema_constraint_path_groups:
-                for schema_attribute_path in constraint_group:
+            for uniqueness_constraint_path in uniqueness_constraint_paths:
+                for schema_attribute_path in uniqueness_constraint_path.attributes_paths:
                     if (
                         schema_attribute_path.attribute_schema
                         and schema_attribute_path.attribute_schema.optional is True

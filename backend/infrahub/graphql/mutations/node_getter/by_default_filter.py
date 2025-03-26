@@ -1,3 +1,5 @@
+from copy import copy
+
 from graphene import InputObjectType
 
 from infrahub.core.branch import Branch
@@ -20,20 +22,20 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
         data: InputObjectType,
         branch: Branch,
     ) -> Node | None:
-        node = None
-        default_filter_value = None
         if not node_schema.default_filter:
-            return node
-        this_datum = data
+            return None
+
+        data = copy(data)
 
         for filter_key in node_schema.default_filter.split("__"):
-            if filter_key not in this_datum:
+            if filter_key not in data:
                 break
-            this_datum = this_datum[filter_key]
-        default_filter_value = this_datum
+            data = data[filter_key]
+
+        default_filter_value = data
 
         if not default_filter_value:
-            return node
+            return None
 
         return await self.node_manager.get_one_by_default_filter(
             db=self.db,
