@@ -14,7 +14,6 @@ import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePool
 import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { NodeSchema } from "@/entities/schema/types";
-import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -109,11 +108,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         return {
           name: schemaRelationship.label || schemaRelationship.name,
           value: relationshipData && (
-            <Link
-              to={constructPath(
-                getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-              )}
-            >
+            <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
               {relationshipData?.display_label}
             </Link>
           ),

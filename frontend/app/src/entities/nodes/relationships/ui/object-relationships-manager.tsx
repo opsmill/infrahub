@@ -1,5 +1,5 @@
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -33,7 +33,7 @@ export function ObjectRelationshipsManager({
         }
       />
     );
-    return <Navigate to={getObjectDetailsUrl2(parentNodeSchema.kind as string, parentNodeId)} />;
+    return <Navigate to={getObjectDetailsUrl(parentNodeSchema.kind as string, parentNodeId)} />;
   }
 
   return (

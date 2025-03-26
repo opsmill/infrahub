@@ -10,7 +10,6 @@ import { getPermission } from "@/entities/permission/utils";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -173,11 +172,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 <>
                   {relationshipsData.node?.id ? (
                     <StyledLink
-                      to={constructPath(
-                        getObjectDetailsUrl(
-                          relationshipsData.node?.id,
-                          relationshipsData.node?.__typename
-                        )
+                      to={getObjectDetailsUrl(
+                        relationshipsData.node?.__typename,
+                        relationshipsData.node?.id
                       )}
                     >
                       {relationshipsData.node?.display_label}
@@ -323,7 +320,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.length === 0 && "-"}
                   {relationshipsData?.map(({ node, properties }: any) => (
                     <dd className="text-gray-900 underline flex items-center" key={node.id}>
-                      <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                      <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
                         {node.display_label}
                       </Link>
 

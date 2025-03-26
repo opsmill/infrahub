@@ -7,7 +7,6 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Skeleton } from "@/shared/components/skeleton";
@@ -88,9 +87,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
     limit: useIpNamespace ? 6 : 7,
   });
 
-  const url = constructPath(
-    getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
-  );
+  const url = getObjectDetailsUrl(objectDetailsData.__typename, objectDetailsData.id);
 
   return (
     <SearchAnywhereItem to={url} value={url}>

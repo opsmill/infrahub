@@ -1,6 +1,6 @@
 import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { StandardEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { ReactElement } from "react";
@@ -17,7 +17,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: StandardEvent) => R
         from repository
         <Link
           className="text-black"
-          to={getObjectDetailsUrl2("CoreRepository", props.payload?.repository_id, [
+          to={getObjectDetailsUrl("CoreRepository", props.payload?.repository_id, [
             { name: QSP.BRANCH, value: props.payload?.context?.branch?.name },
           ])}
         >
