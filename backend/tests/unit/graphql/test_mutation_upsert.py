@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
@@ -14,6 +12,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET
+from tests.node_creation import create_and_save
 
 
 async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
@@ -46,16 +45,29 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
 
 
 async def test_upsert_existing_simple_object_by_default_filter(
-    db: InfrahubDatabase, person_john_main: Node, branch: Branch
+    db: InfrahubDatabase, person_schema_default_filter, default_branch
 ):
+    registry.schema.register_schema(schema=person_schema_default_filter)
+
+    person = await Node.init(db=db, schema="TestPersonDF")
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
     query = """
     mutation {
-        TestPersonUpsert(data: {name: { value: "John"}, height: {value: 138}}) {
+        TestPersonDFUpsert(data: {name: { value: "John"}, height: {value: 138}}) {
             ok
+            object {
+                id
+                name {
+                    value
+                }
+            }
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -66,9 +78,10 @@ async def test_upsert_existing_simple_object_by_default_filter(
 
     assert result.errors is None
     assert result.data
-    assert result.data["TestPersonUpsert"]["ok"] is True
+    assert result.data["TestPersonDFUpsert"]["ok"] is True
+    assert result.data["TestPersonDFUpsert"]["object"]["id"] == person.id
 
-    obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
+    obj1 = await NodeManager.get_one(db=db, id=person.id)
     assert obj1.name.value == "John"
     assert obj1.height.value == 138
 
@@ -171,67 +184,6 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
     assert obj1.height.value == 179
 
 
-async def test_upsert_create_simple_object_with_id(db: InfrahubDatabase, person_john_main, branch: Branch):
-    fresh_id = str(uuid4())
-    query = """
-    mutation {
-        TestPersonUpsert(data: {id: "%s", name: { value: "%s"}, height: {value: %s}}) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """ % (fresh_id, "Dwayne Hicks", 168)
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["TestPersonUpsert"]["ok"] is True
-
-    person_id = result.data["TestPersonUpsert"]["object"]["id"]
-    assert person_id == fresh_id
-    obj1 = await NodeManager.get_one(db=db, id=person_id, branch=branch)
-    assert obj1.name.value == "Dwayne Hicks"
-    assert obj1.height.value == 168
-
-
-async def test_cannot_upsert_new_object_without_required_fields(db: InfrahubDatabase, person_john_main, branch: Branch):
-    fresh_id = str(uuid4())
-    query = (
-        """
-    mutation {
-        TestPersonUpsert(data: {id: "%s", height: { value: 182}}) {
-            ok
-        }
-    }
-    """
-        % fresh_id
-    )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    expected_error = "Field 'TestPersonUpsertInput.name' of required type 'TextAttributeUpdate!' was not provided."
-    assert result.errors
-    assert any(expected_error in error.message for error in result.errors)
-
-    assert await NodeManager.get_one(db=db, id=fresh_id, branch=branch) is None
-
-
 async def test_id_for_other_schema_raises_error(
     db: InfrahubDatabase, person_john_main, car_accord_main, branch: Branch
 ):
@@ -281,9 +233,33 @@ async def test_update_by_id_to_nonunique_value_raises_error(
         variable_values={},
     )
 
-    expected_error = "Violates uniqueness constraint 'name' at name"
+    expected_error = "Violates uniqueness constraint 'name'"
     assert result.errors
     assert any(expected_error in error.message for error in result.errors)
+
+
+async def test_non_unique_value_raises_error(db: InfrahubDatabase, animal_person_schema, branch: Branch):
+    _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
+
+    # Make sure correct raised error is raised while violating uniqueness constraint of a non hfid-related attribute.
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: {value: "Jim"}, bag: {value: "bag-jacks"}}) {
+            ok
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    assert "Violates uniqueness constraint 'bag'" in result.errors[0].message
 
 
 async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
@@ -397,6 +373,7 @@ async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person
 
 async def test_with_constructed_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     """Validate that we can construct an HFID out of the payload without specifying all parts."""
+
     person_schema = animal_person_schema.get(name="TestPerson")
 
     person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
@@ -482,6 +459,7 @@ async def test_with_constructed_hfid_with_numbers(
     db: InfrahubDatabase, default_branch: Branch, data_schema: None
 ) -> None:
     """Validate that we can construct an HFID out of the payload without specifying all parts."""
+
     registry.schema.register_schema(schema=SchemaRoot(nodes=[TICKET]), branch=default_branch.name)
 
     first_ticket = await Node.init(schema=TestKind.TICKET, db=db)

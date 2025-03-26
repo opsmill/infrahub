@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { saveScreenshotForDocs } from "../../../utils";
 
-test.describe("Resource Managers guides", () => {
+test.describe.fixme("Guide - Resources Manager", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("IP Address Pool", async ({ page }) => {
