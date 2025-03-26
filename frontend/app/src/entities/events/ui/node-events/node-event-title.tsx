@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
@@ -18,7 +18,7 @@ const NodeEventTitleContent = ({ primary_node, event, branch }: NodeMutatedEvent
 
   return (
     <Link
-      to={getObjectDetailsUrl2(primary_node.kind, primary_node.id, [
+      to={getObjectDetailsUrl(primary_node.kind, primary_node.id, [
         { name: QSP.BRANCH, value: branch },
       ])}
     >

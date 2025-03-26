@@ -1,7 +1,7 @@
 import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ArtifactEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { ReactNode } from "react";
@@ -10,7 +10,7 @@ const ArtifactTitleContent = (props: ArtifactEvent) => {
   return (
     <>
       <Link
-        to={getObjectDetailsUrl2(ARTIFACT_OBJECT, props.primary_node?.id, [
+        to={getObjectDetailsUrl(ARTIFACT_OBJECT, props.primary_node?.id, [
           { name: QSP.BRANCH, value: props.branch },
         ])}
         className="text-black"
@@ -19,7 +19,7 @@ const ArtifactTitleContent = (props: ArtifactEvent) => {
       </Link>
       from the definition
       <Link
-        to={getObjectDetailsUrl2(ARTIFACT_DEFINITION_OBJECT, props.artifact_definition_id, [
+        to={getObjectDetailsUrl(ARTIFACT_DEFINITION_OBJECT, props.artifact_definition_id, [
           { name: QSP.BRANCH, value: props.branch },
         ])}
         className="text-black"
