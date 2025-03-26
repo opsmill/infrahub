@@ -18,6 +18,7 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryError,
     RepositoryFileNotFoundError,
+    RepositoryInvalidBranchError,
     TransformError,
 )
 from infrahub.git import InfrahubRepository
@@ -127,7 +128,7 @@ async def test_new_wrong_location(git_upstream_repo_01: dict[str, str | Path], g
 
 
 async def test_new_wrong_branch(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path):
-    with pytest.raises(RepositoryError) as exc:
+    with pytest.raises(RepositoryInvalidBranchError) as exc:
         await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
