@@ -11,10 +11,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import get_initialized_repo
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from tests.adapters.log import FakeLogger
-from tests.adapters.message_bus import BusRecorder
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -27,6 +23,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreCheckDefinition, CoreRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 class TestCreateRepository(TestInfrahubApp):
@@ -93,6 +90,7 @@ class TestCreateRepository(TestInfrahubApp):
         client: InfrahubClient,
         stderr: str,
         expected_operational_status: RepositoryOperationalStatus,
+        service: InfrahubServices,
     ) -> None:
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
         client_repository = await client.get(kind=InfrahubKind.REPOSITORY, name__value="car-dealership")
@@ -102,16 +100,10 @@ class TestCreateRepository(TestInfrahubApp):
 
         assert repository.commit.value
 
-        bus = BusRecorder()
         infrahub_repo = await get_initialized_repo(
             repository_id=repository.id,
             name=repository.name.value,
-            service=InfrahubServices(
-                client=client,
-                message_bus=bus,
-                log=FakeLogger(),
-                workflow=WorkflowLocalExecution(),
-            ),
+            service=service,
             repository_kind=InfrahubKind.REPOSITORY,
         )
 
