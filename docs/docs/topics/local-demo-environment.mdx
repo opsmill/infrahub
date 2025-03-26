@@ -27,11 +27,13 @@ It's designed to be controlled by `invoke` using a list of predefined commands.
 
 | Container Name      | Image                                                  | Description                                            |
 | ------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
-| **database**        | neo4j:community                                        | Graph Database                                         |
-| **message-queue**   | rabbitmq:3.12-management                               | Message bus based on RabbitMQ                          |
-| **cache**           | redis:7.2                                              | Cache based on Redis, mainly used for distributed lock |
+| **database**        | neo4j:5.20.0-enterprise                                | Graph Database                                         |
+| **message-queue**   | rabbitmq:3.13.7-management                             | Message bus based on RabbitMQ                          |
+| **cache**           | redis:7.2.4                                            | Cache based on Redis, mainly used for distributed lock |
 | **infrahub-server** | Dockerfile                                             | Instance of the API server, running GraphQL            |
-| **infrahub-git**    | Dockerfile                                             | Instance of the Task worker, managing the Git Repository |
+| **task-worker**     | Dockerfile                                             | Instance of the Task worker, executing specific tasks such as managing the Git Repository |
+| **task-manager**    | Dockerfile                                             | Task orchestrator                                      |
+| **task-manger-db**  | postgres:16-alpine                                     | Task orchestrator state database                       |
 
 <ReferenceLink title="Check the architecture diagram to have more information about each component" url="./architecture" />
 
