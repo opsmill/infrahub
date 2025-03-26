@@ -1,0 +1,1 @@
+Fix creation of related nodes when instantiating a template in a branch other than the default one

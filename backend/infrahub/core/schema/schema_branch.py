@@ -56,6 +56,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
@@ -859,12 +860,13 @@ class SchemaBranch:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
 
-            # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
-            for related_schema, attrs_paths in rel_schemas_to_paths.values():
-                if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
-                    raise ValidationError(
-                        f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
-                    )
+            if config.SETTINGS.main.schema_strict_mode:
+                # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
+                for related_schema, attrs_paths in rel_schemas_to_paths.values():
+                    if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                        raise ValidationError(
+                            f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                        )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
@@ -1172,25 +1174,25 @@ class SchemaBranch:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_human_friendly_id(self) -> None:
+        """
+        For each schema node, if there is no HFID defined, set it with:
+        - The first unique attribute if existing
+        - Otherwise the first uniqueness constraint with a single attribute
+
+        Also, HFID is added to the uniqueness constraints.
+        """
         for name in self.generic_names_without_templates + self.node_names:
             node = self.get(name=name, duplicate=False)
 
-            # If human_friendly_id IS NOT defined
-            #   but some the model has some unique attribute, we generate a human_friendly_id
-            # If human_friendly_id IS defined
-            #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
             if not node.human_friendly_id:
                 if node.unique_attributes:
-                    for attr in node.unique_attributes:
-                        node = self.get(name=name, duplicate=True)
-                        node.human_friendly_id = [f"{attr.name}__value"]
-                        self.set(name=node.kind, schema=node)
-                        break
-                    continue
+                    node = self.get(name=name, duplicate=True)
+                    node.human_friendly_id = [f"{node.unique_attributes[0].name}__value"]
+                    self.set(name=node.kind, schema=node)
 
                 # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
                 # then use that attribute as the human_friendly_id
-                if node.uniqueness_constraints:
+                elif node.uniqueness_constraints:
                     for constraint_paths in node.uniqueness_constraints:
                         if len(constraint_paths) > 1:
                             continue
@@ -1207,22 +1209,15 @@ class SchemaBranch:
                             break
 
             # Add hfid to uniqueness constraint
-            if node.human_friendly_id:
-                uniqueness_constraint: list[str] = []
-                for item in node.human_friendly_id:
-                    schema_attribute_path = node.parse_schema_path(path=item, schema=self)
-                    if schema_attribute_path.is_type_attribute:
-                        uniqueness_constraint.append(item)
-                    elif schema_attribute_path.is_type_relationship:
-                        uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
-
+            hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
+            if hfid_uniqueness_constraint:
                 node = self.get(name=name, duplicate=True)
                 # Make sure there is no duplicate regarding generics values.
                 if node.uniqueness_constraints:
-                    if uniqueness_constraint not in node.uniqueness_constraints:
-                        node.uniqueness_constraints.append(uniqueness_constraint)
+                    if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(hfid_uniqueness_constraint)
                 else:
-                    node.uniqueness_constraints = [uniqueness_constraint]
+                    node.uniqueness_constraints = [hfid_uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:

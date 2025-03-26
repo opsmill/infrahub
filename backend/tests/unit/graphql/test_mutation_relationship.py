@@ -285,7 +285,7 @@ async def test_relationship_wrong_name(
     )
 
     assert result.errors
-    assert result.errors[0].message == "'notvalid' is not a valid relationship for 'TestPerson'"
+    assert result.errors[0].message == "'notvalid' is not a valid relationship for 'TestPerson' at name"
 
     # Relationship existing relationship with the wrong cardinality
     query = """
@@ -313,7 +313,7 @@ async def test_relationship_wrong_name(
     )
 
     assert result.errors
-    assert result.errors[0].message == "'primary_tag' must be a relationship of cardinality Many"
+    assert result.errors[0].message == "'primary_tag' must be a relationship of cardinality Many at name"
 
 
 async def test_relationship_wrong_node(

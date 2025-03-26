@@ -17,7 +17,6 @@ from fastapi.templating import Jinja2Templates
 from infrahub_sdk.exceptions import TimestampFormatError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.trace import Span
-from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
@@ -28,7 +27,7 @@ from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import Error
+from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
