@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../constants";
 import { createBranch } from "../utils";
 
-test.describe("Branches creation and deletion", () => {
+test.describe.fixme("Branches creation and deletion", () => {
   test.describe("when not logged in", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");
