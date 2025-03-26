@@ -1237,7 +1237,7 @@ class SchemaBranch:
             node = node.duplicate()
             changed = False
 
-            if node.hierarchy not in node.inherit_from:
+            if node.hierarchy and node.hierarchy not in node.inherit_from:
                 node.inherit_from.append(node.hierarchy)
                 changed = True
 
@@ -1255,6 +1255,23 @@ class SchemaBranch:
 
             if changed:
                 self.set(name=name, schema=node)
+
+    def _get_generic_fields_map(
+        self, node_schema: MainSchemaTypes
+    ) -> dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]]:
+        generic_fields_map: dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]] = {}
+        if isinstance(node_schema, NodeSchema) and node_schema.inherit_from:
+            for generic_kind in node_schema.inherit_from:
+                generic_schema = self.get_generic(name=generic_kind, duplicate=False)
+                for generic_attr in generic_schema.attributes:
+                    if generic_attr.name in node_schema.attribute_names:
+                        generic_fields_map[generic_attr.name] = (generic_schema, generic_attr)
+                        continue
+                for generic_rel in generic_schema.relationships:
+                    if generic_rel.name in node_schema.relationship_names:
+                        generic_fields_map[generic_rel.name] = (generic_schema, generic_rel)
+                        continue
+        return generic_fields_map
 
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
@@ -1308,7 +1325,7 @@ class SchemaBranch:
 
         # Update all generics with the list of nodes referrencing them.
         for generic_name in self.generics.keys():
-            generic = self.get(name=generic_name)
+            generic = self.get_generic(name=generic_name)
 
             if generic.kind in generics_used_by:
                 generic.used_by = sorted(generics_used_by[generic.kind])
@@ -1326,40 +1343,46 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            # Check if this node requires a change before duplicating
-            change_required = False
-            for attr in node.attributes:
-                if attr.branch is None:
-                    change_required = True
-                    break
-            if not change_required:
-                for rel in node.relationships:
-                    if rel.branch is None:
-                        change_required = True
-                        break
+            generic_fields_map = self._get_generic_fields_map(node_schema=node)
 
-            if not change_required:
+            attrs_to_update: dict[str, BranchSupportType] = {}
+            for attr in node.attributes:
+                if attr.inherited and attr.name in generic_fields_map:
+                    generic_schema, generic_attr = generic_fields_map[attr.name]
+                    if attr.branch == generic_schema.branch == generic_attr.branch != node.branch:
+                        attrs_to_update[attr.name] = node.branch
+
+                if attr.branch is None:
+                    attrs_to_update[attr.name] = node.branch
+
+            rels_to_update: dict[str, BranchSupportType] = {}
+            for rel in node.relationships:
+                if not rel.inherited and rel.branch is not None:
+                    continue
+                needs_update = rel.branch is None
+                if needs_update is False and rel.inherited and rel.name in generic_fields_map:
+                    generic_schema, generic_rel = generic_fields_map[rel.name]
+                    if rel.branch == generic_schema.branch == generic_rel.branch != node.branch:
+                        needs_update = True
+                if needs_update:
+                    peer_node = self.get(name=rel.peer, duplicate=False)
+                    if node.branch == peer_node.branch:
+                        rels_to_update[rel.name] = node.branch
+                    elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
+                        rels_to_update[rel.name] = BranchSupportType.LOCAL
+                    else:
+                        rels_to_update[rel.name] = BranchSupportType.AWARE
+
+            if not attrs_to_update and not rels_to_update:
                 continue
 
             node = node.duplicate()
-
-            for attr in node.attributes:
-                if attr.branch is not None:
-                    continue
-
-                attr.branch = node.branch
-
-            for rel in node.relationships:
-                if rel.branch is not None:
-                    continue
-
-                peer_node = self.get(name=rel.peer, duplicate=False)
-                if node.branch == peer_node.branch:
-                    rel.branch = node.branch
-                elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
-                    rel.branch = BranchSupportType.LOCAL
-                else:
-                    rel.branch = BranchSupportType.AWARE
+            for node_attr in node.attributes:
+                if node_attr.name in attrs_to_update:
+                    node_attr.branch = attrs_to_update[node_attr.name]
+            for node_rel in node.relationships:
+                if node_rel.name in rels_to_update:
+                    node_rel.branch = rels_to_update[node_rel.name]
 
             self.set(name=name, schema=node)
 
@@ -1452,19 +1475,44 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def generate_weight(self) -> None:
-        for name in self.all_names:
+        for name in self.generic_names:
             node = self.get(name=name, duplicate=False)
+
             items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+
             if not items_to_update:
                 continue
 
             node = node.duplicate()
-
             current_weight = 0
             for item in node.attributes + node.relationships:
                 current_weight += 1000
                 if not item.order_weight:
                     item.order_weight = current_weight
+
+            self.set(name=name, schema=node)
+
+        for name in self.node_names + self.profile_names:
+            node = self.get(name=name, duplicate=False)
+
+            items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+
+            if not items_to_update:
+                continue
+            node = node.duplicate()
+
+            generic_fields_map = self._get_generic_fields_map(node_schema=node)
+
+            current_weight = 0
+            for item in node.attributes + node.relationships:
+                current_weight += 1000
+                if not item.order_weight:
+                    if item.inherited:
+                        _, generic_field = generic_fields_map[item.name]
+                        if generic_field:
+                            item.order_weight = generic_field.order_weight
+                    if not item.order_weight:
+                        item.order_weight = current_weight
 
             self.set(name=name, schema=node)
 

@@ -505,6 +505,14 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                         "cardinality": "one",
                         "direction": "outbound",
                     },
+                    {
+                        "name": "driver",
+                        "label": "Commander of Car",
+                        "peer": "TestPerson",
+                        "optional": True,
+                        "cardinality": "one",
+                        "identifier": "cars_driven__driver",
+                    },
                 ],
             },
             {
@@ -518,7 +526,15 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+                "relationships": [
+                    {"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"},
+                    {
+                        "name": "cars_driven",
+                        "peer": "TestCar",
+                        "cardinality": "many",
+                        "identifier": "cars_driven__driver",
+                    },
+                ],
             },
         ],
     }

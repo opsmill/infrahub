@@ -1,5 +1,5 @@
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
@@ -45,10 +45,7 @@ const ObjectSelector = ({
   if (!currentObject) return null;
 
   return (
-    <BreadcrumbLink
-      to={getObjectDetailsUrl2(currentObject.__typename, currentObject.id)}
-      {...props}
-    >
+    <BreadcrumbLink to={getObjectDetailsUrl(currentObject.__typename, currentObject.id)} {...props}>
       {currentObject.display_label}
     </BreadcrumbLink>
   );

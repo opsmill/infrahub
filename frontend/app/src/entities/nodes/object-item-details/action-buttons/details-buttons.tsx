@@ -9,7 +9,7 @@ import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import { ModelSchema } from "@/entities/schema/types";
@@ -117,7 +117,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
         rowToDelete={objectDetailsData}
         open={!!showDeleteModal}
         close={() => setShowDeleteModal(false)}
-        onDelete={() => navigate(getObjectDetailsUrl2(schema.kind as string))}
+        onDelete={() => navigate(getObjectDetailsUrl(schema.kind as string))}
       />
     </>
   );

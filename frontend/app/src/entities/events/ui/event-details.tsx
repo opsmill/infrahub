@@ -1,7 +1,7 @@
 import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -44,7 +44,7 @@ export const EventDetails = ({
           title="Account"
           value={
             <Link
-              to={getObjectDetailsUrl2(ACCOUNT_OBJECT, account_id, [
+              to={getObjectDetailsUrl(ACCOUNT_OBJECT, account_id, [
                 { name: QSP.BRANCH, value: branch },
               ])}
             >
@@ -59,7 +59,7 @@ export const EventDetails = ({
           title="Primary Node"
           value={
             <Link
-              to={getObjectDetailsUrl2(primary_node.kind, primary_node.id, [
+              to={getObjectDetailsUrl(primary_node.kind, primary_node.id, [
                 { name: QSP.BRANCH, value: branch },
               ])}
             >
@@ -78,7 +78,7 @@ export const EventDetails = ({
                 return (
                   <Link
                     key={node.id}
-                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                    to={getObjectDetailsUrl(node.kind, node.id, [
                       { name: QSP.BRANCH, value: branch },
                     ])}
                   >
@@ -100,7 +100,7 @@ export const EventDetails = ({
                 return (
                   <Link
                     key={node.id}
-                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                    to={getObjectDetailsUrl(node.kind, node.id, [
                       { name: QSP.BRANCH, value: branch },
                     ])}
                   >
@@ -122,7 +122,7 @@ export const EventDetails = ({
                 return (
                   <Link
                     key={node.id}
-                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                    to={getObjectDetailsUrl(node.kind, node.id, [
                       { name: QSP.BRANCH, value: branch },
                     ])}
                   >

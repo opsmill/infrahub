@@ -1,4 +1,4 @@
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { TableCell } from "@/shared/components/table/table-cell";
 
@@ -14,7 +14,7 @@ export function TableIdentifierCell({ objectKind, objectId, label }: TableIdenti
       <LinkButton
         variant="ghost"
         size="sm"
-        to={getObjectDetailsUrl2(objectKind, objectId)}
+        to={getObjectDetailsUrl(objectKind, objectId)}
         className="truncate px-2.5 rounded-full text-custom-blue-700 hover:underline hover:bg-custom-blue-700/10"
       >
         {label}
