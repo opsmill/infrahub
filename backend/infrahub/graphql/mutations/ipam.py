@@ -289,12 +289,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
         async with db.start_transaction() as dbt:
-            if lock_name := cls._get_lock_name(namespace_id):
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
-                    reconciled_prefix = await cls._mutate_create_object_and_reconcile(
-                        data=data, branch=branch, db=dbt, namespace_id=namespace_id
-                    )
-            else:
+            lock_name = cls._get_lock_name(namespace_id)
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
                 reconciled_prefix = await cls._mutate_create_object_and_reconcile(
                     data=data, branch=branch, db=dbt, namespace_id=namespace_id
                 )
@@ -343,12 +339,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
 
         async with db.start_transaction() as dbt:
-            if lock_name := cls._get_lock_name(namespace_id):
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
-                    reconciled_prefix = await cls._mutate_update_object_and_reconcile(
-                        info=info, data=data, prefix=prefix, db=dbt, namespace_id=namespace_id, branch=branch
-                    )
-            else:
+            lock_name = cls._get_lock_name(namespace_id)
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
                 reconciled_prefix = await cls._mutate_update_object_and_reconcile(
                     info=info, data=data, prefix=prefix, db=dbt, namespace_id=namespace_id, branch=branch
                 )
@@ -412,12 +404,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_id = namespace_rels[0].peer_id
 
         async with graphql_context.db.start_transaction() as dbt:
-            if lock_name := cls._get_lock_name(namespace_id):
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
-                    reconciled_prefix = await cls._reconcile_prefix(
-                        branch=branch, db=dbt, prefix=prefix, namespace_id=namespace_id, is_delete=True
-                    )
-            else:
+            lock_name = cls._get_lock_name(namespace_id)
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
                 reconciled_prefix = await cls._reconcile_prefix(
                     branch=branch, db=dbt, prefix=prefix, namespace_id=namespace_id, is_delete=True
                 )
