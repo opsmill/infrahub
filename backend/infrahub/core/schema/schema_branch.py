@@ -56,6 +56,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
@@ -859,12 +860,13 @@ class SchemaBranch:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
 
-            # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
-            for related_schema, attrs_paths in rel_schemas_to_paths.values():
-                if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
-                    raise ValidationError(
-                        f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
-                    )
+            if config.SETTINGS.main.schema_strict_mode:
+                # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
+                for related_schema, attrs_paths in rel_schemas_to_paths.values():
+                    if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                        raise ValidationError(
+                            f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                        )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
