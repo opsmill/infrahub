@@ -57,7 +57,8 @@ class TestUniquenessChecker:
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
 
-        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+        schema_uniqueness_constraint_synced = registry.schema.get(name="TestCar", branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema_uniqueness_constraint_synced)
 
         assert len(grouped_data_paths) == 1
         all_data_paths = grouped_data_paths[0].get_all_data_paths()

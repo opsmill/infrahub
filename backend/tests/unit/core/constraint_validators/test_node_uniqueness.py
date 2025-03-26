@@ -69,5 +69,5 @@ async def test_hierarchical_uniqueness_constraint(
 
     ld62 = await Node.init(db=db, schema="LocationRack", branch=default_branch)
     await ld62.new(db=db, name="ld6-ldn2", parent=uk)
-    with pytest.raises(ValidationError, match=r"Violates uniqueness constraint 'parent-status' at status"):
+    with pytest.raises(ValidationError, match=r"Violates uniqueness constraint 'parent-status'"):
         await constraint.check(ld62)

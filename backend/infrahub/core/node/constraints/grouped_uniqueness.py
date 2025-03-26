@@ -9,6 +9,11 @@ from infrahub.core.schema import (
     SchemaAttributePath,
     SchemaAttributePathValue,
 )
+from infrahub.core.schema.basenode_schema import (
+    SchemaUniquenessConstraintPath,
+    UniquenessConstraintType,
+    UniquenessConstraintViolation,
+)
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
@@ -16,7 +21,7 @@ from infrahub.core.validators.uniqueness.model import (
     QueryRelationshipAttributePath,
 )
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import HFIDViolatedError, ValidationError
 
 from .interface import NodeConstraintInterface
 
@@ -39,15 +44,15 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         self,
         updated_node: Node,
         node_schema: MainSchemaTypes,
-        path_groups: list[list[SchemaAttributePath]],
+        uniqueness_constraint_paths: list[SchemaUniquenessConstraintPath],
         filters: list[str] | None = None,
     ) -> NodeUniquenessQueryRequest:
         query_request = NodeUniquenessQueryRequest(kind=node_schema.kind)
-        for path_group in path_groups:
+        for uniqueness_constraint_path in uniqueness_constraint_paths:
             include_in_query = not filters
             query_relationship_paths: set[QueryRelationshipAttributePath] = set()
             query_attribute_paths: set[QueryAttributePath] = set()
-            for attribute_path in path_group:
+            for attribute_path in uniqueness_constraint_path.attributes_paths:
                 if attribute_path.related_schema and attribute_path.relationship_schema:
                     if filters and attribute_path.relationship_schema.name in filters:
                         include_in_query = True
@@ -118,63 +123,77 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 )
         return node_value_combination
 
-    def _check_one_constraint_group(
-        self, schema_attribute_path_values: list[SchemaAttributePathValue], results_index: UniquenessQueryResultsIndex
-    ) -> None:
-        # constraint cannot be violated if this node is missing any values
-        if any(sapv.value is None for sapv in schema_attribute_path_values):
-            return
-
-        matching_node_ids = results_index.get_node_ids_for_value_group(schema_attribute_path_values)
-        if not matching_node_ids:
-            return
-        uniqueness_constraint_fields = []
-        for sapv in schema_attribute_path_values:
-            if sapv.relationship_schema:
-                uniqueness_constraint_fields.append(sapv.relationship_schema.name)
-            elif sapv.attribute_schema:
-                uniqueness_constraint_fields.append(sapv.attribute_schema.name)
-        uniqueness_constraint_string = "-".join(uniqueness_constraint_fields)
-        error_msg = f"Violates uniqueness constraint '{uniqueness_constraint_string}'"
-        errors = [ValidationError({field_name: error_msg}) for field_name in uniqueness_constraint_fields]
-        raise ValidationError(errors)
-
-    async def _check_results(
+    async def _get_violations(
         self,
         updated_node: Node,
-        path_groups: list[list[SchemaAttributePath]],
+        uniqueness_constraint_paths: list[SchemaUniquenessConstraintPath],
         query_results: Iterable[QueryResult],
-    ) -> None:
+    ) -> list[UniquenessConstraintViolation]:
         results_index = UniquenessQueryResultsIndex(
             query_results=query_results, exclude_node_ids={updated_node.get_id()}
         )
-        for path_group in path_groups:
+        violations = []
+        for uniqueness_constraint_path in uniqueness_constraint_paths:
+            # path_group = one constraint (that can contain multiple items)
             schema_attribute_path_values = await self._get_node_attribute_path_values(
-                updated_node=updated_node, path_group=path_group
-            )
-            self._check_one_constraint_group(
-                schema_attribute_path_values=schema_attribute_path_values, results_index=results_index
+                updated_node=updated_node, path_group=uniqueness_constraint_path.attributes_paths
             )
 
-    async def _check_one_schema(
+            # constraint cannot be violated if this node is missing any values
+            if any(sapv.value is None for sapv in schema_attribute_path_values):
+                continue
+
+            matching_node_ids = results_index.get_node_ids_for_value_group(schema_attribute_path_values)
+            if not matching_node_ids:
+                continue
+
+            uniqueness_constraint_fields = []
+            for sapv in schema_attribute_path_values:
+                if sapv.relationship_schema:
+                    uniqueness_constraint_fields.append(sapv.relationship_schema.name)
+                elif sapv.attribute_schema:
+                    uniqueness_constraint_fields.append(sapv.attribute_schema.name)
+
+            violations.append(
+                UniquenessConstraintViolation(
+                    nodes_ids=matching_node_ids,
+                    fields=uniqueness_constraint_fields,
+                    typ=uniqueness_constraint_path.typ,
+                )
+            )
+
+        return violations
+
+    async def _get_single_schema_violations(
         self,
         node: Node,
         node_schema: MainSchemaTypes,
         at: Timestamp | None = None,
         filters: list[str] | None = None,
-    ) -> None:
+    ) -> list[UniquenessConstraintViolation]:
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
-        path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
+
+        uniqueness_constraint_paths = node_schema.get_unique_constraint_schema_attribute_paths(
+            schema_branch=schema_branch
+        )
         query_request = await self._build_query_request(
-            updated_node=node, node_schema=node_schema, path_groups=path_groups, filters=filters
+            updated_node=node,
+            node_schema=node_schema,
+            uniqueness_constraint_paths=uniqueness_constraint_paths,
+            filters=filters,
         )
         if not query_request:
-            return
+            return []
+
         query = await NodeUniqueAttributeConstraintQuery.init(
             db=self.db, branch=self.branch, at=at, query_request=query_request, min_count_required=0
         )
         await query.execute(db=self.db)
-        await self._check_results(updated_node=node, path_groups=path_groups, query_results=query.get_results())
+        return await self._get_violations(
+            updated_node=node,
+            uniqueness_constraint_paths=uniqueness_constraint_paths,
+            query_results=query.get_results(),
+        )
 
     async def check(self, node: Node, at: Timestamp | None = None, filters: list[str] | None = None) -> None:
         def _frozen_constraints(schema: MainSchemaTypes) -> frozenset[frozenset[str]]:
@@ -195,7 +214,27 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 frozen_parent_constraints = _frozen_constraints(parent_schema)
                 if frozen_node_constraints <= frozen_parent_constraints:
                     include_node_schema = False
+
         if include_node_schema:
             schemas_to_check.append(node_schema)
+
+        violations = []
         for schema in schemas_to_check:
-            await self._check_one_schema(node=node, node_schema=schema, at=at, filters=filters)
+            schema_violations = await self._get_single_schema_violations(
+                node=node, node_schema=schema, at=at, filters=filters
+            )
+            violations.extend(schema_violations)
+
+        is_hfid_violated = any(violation.typ == UniquenessConstraintType.HFID for violation in violations)
+
+        for violation in violations:
+            if violation.typ == UniquenessConstraintType.STANDARD or (
+                violation.typ == UniquenessConstraintType.SUBSET_OF_HFID and not is_hfid_violated
+            ):
+                error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
+                raise ValidationError(error_msg)
+
+        for violation in violations:
+            if violation.typ == UniquenessConstraintType.HFID:
+                error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
+                raise HFIDViolatedError(error_msg, matching_nodes_ids=violation.nodes_ids)
