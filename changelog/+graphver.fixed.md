@@ -1,1 +1,0 @@
-Update version of Internal graph to ensure that 1.2 migrations are properly applied
