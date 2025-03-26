@@ -99,6 +99,7 @@ async def test_new_invalid_branch(
             default_branch_name="non-existent-branch",
             infrahub_branch_name="main",
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
+            service=await InfrahubServices.new(),
         )
 
 
