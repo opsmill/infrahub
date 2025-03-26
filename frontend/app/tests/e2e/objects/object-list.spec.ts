@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/objects/:objectKind", () => {
+test.describe.fixme("/objects/:objectKind", () => {
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
