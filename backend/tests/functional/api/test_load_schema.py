@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
     from tests.conftest import TestHelper
@@ -141,7 +142,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                 {
                     "name": "Generic",
                     "namespace": "Thing",
-                    "attributes": [{"kind": "Text", "name": "name", "unique": True}],
+                    "attributes": [{"kind": "Text", "name": "name"}],
                     "relationships": [
                         {
                             "cardinality": "many",
@@ -231,12 +232,14 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         generic_schema = registry.schema.get(name="ThingGeneric")
         retrieved_generic_schema = await NodeManager.get_one(db=db, id=generic_schema.get_id())
         schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
-        name_attr = None
+        name_attr: Node | None = None
         for a in schema_attrs:
             schema_attr_peer = await a.get_peer(db)
             if schema_attr_peer.name.value == "name":
                 name_attr = schema_attr_peer
                 break
+        if not name_attr:
+            raise ValueError("Cannot find 'name' attribute on ThingGeneric")
 
         schema_dict = {
             "version": "1.0",
@@ -244,11 +247,8 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                 {
                     "name": "Generic",
                     "namespace": "Thing",
-                    "attributes": [
-                        {"id": getattr(name_attr, "id"), "kind": "Text", "name": "hot_new_name", "unique": True}
-                    ],
+                    "attributes": [{"id": name_attr.id, "kind": "Text", "name": "hot_new_name"}],
                     "human_friendly_id": [],
-                    "uniqueness_constraints": [],
                     "relationships": [
                         {
                             "cardinality": "many",
@@ -280,32 +280,37 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         initial_nbr_attributes = len(node_schema.attributes)
         branch_name = extension_branch.name
 
-        node_schema = registry.schema.get(name="ThingNode", branch=branch_name)
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
         assert len(node_schema.relationships) == initial_nbr_relationships + 1
         assert len(node_schema.attributes) == initial_nbr_attributes + 1
 
         # check that the node schema on the database has the expected relationships and attributes on the branch
-        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=node_schema.get_id())
-        schema_rels = await retrieved_node_schema.relationships.get(db=db)
-        schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
-        schema_rel_names = {srp.name.value for srp in schema_rel_peers}
-        assert schema_rel_names == {"devices", "interfaces", "profiles", "member_of_groups", "subscriber_of_groups"}
-        schema_attrs = await retrieved_node_schema.attributes.get(db=db)
-        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
-        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
-        assert schema_attr_names == {"name", "description", "something"}
+        assert set(node_schema.relationship_names) == {
+            "devices",
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.local_relationship_names) == {
+            "devices",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.attribute_names) == {"name", "description", "something"}
+        assert set(node_schema.local_attribute_names) == {"description", "something"}
 
         # check that the generic schema on the database has the expected relationships and attributes on the branch
-        generic_schema = registry.schema.get(name="ThingGeneric", branch=branch_name)
-        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=generic_schema.get_id())
-        schema_rels = await retrieved_generic_schema.relationships.get(db=db)
-        schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
-        schema_rel_names = {srp.name.value for srp in schema_rel_peers}
-        assert schema_rel_names == {"interfaces", "profiles", "member_of_groups", "subscriber_of_groups"}
-        schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
-        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
-        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
-        assert schema_attr_names == {"name"}
+        generic_schema = schema_branch.get_generic(name="ThingGeneric", duplicate=False)
+        assert set(generic_schema.relationship_names) == {
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert generic_schema.attribute_names == ["name"]
 
     async def test_schema_load_endpoint_valid_generic_with_extension_updates(
         self,
@@ -322,16 +327,13 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         initial_nbr_attributes = len(node_schema.attributes)
         branch_name = extension_branch.name
 
-        node_schema = registry.schema.get(name="ThingNode", branch=branch_name)
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
         assert len(node_schema.relationships) == initial_nbr_relationships + 2
         assert len(node_schema.attributes) == initial_nbr_attributes + 2
 
         # check that the node schema on the database has the expected relationships and attributes on the branch
-        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=node_schema.get_id())
-        schema_rels = await retrieved_node_schema.relationships.get(db=db)
-        schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
-        schema_rel_names = {srp.name.value for srp in schema_rel_peers}
-        assert schema_rel_names == {
+        assert set(node_schema.relationship_names) == {
             "devices",
             "devices_new",
             "interfaces",
@@ -339,22 +341,25 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             "member_of_groups",
             "subscriber_of_groups",
         }
-        schema_attrs = await retrieved_node_schema.attributes.get(db=db)
-        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
-        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
-        assert schema_attr_names == {"name", "description", "something", "something_new"}
+        assert set(node_schema.local_relationship_names) == {
+            "devices",
+            "devices_new",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.attribute_names) == {"name", "description", "something", "something_new"}
+        assert set(node_schema.local_attribute_names) == {"description", "something", "something_new"}
 
         # check that the generic schema on the database has the expected relationships and attributes on the branch
-        generic_schema = registry.schema.get(name="ThingGeneric", branch=branch_name)
-        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=generic_schema.get_id())
-        schema_rels = await retrieved_generic_schema.relationships.get(db=db)
-        schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
-        schema_rel_names = {srp.name.value for srp in schema_rel_peers}
-        assert schema_rel_names == {"interfaces", "profiles", "member_of_groups", "subscriber_of_groups"}
-        schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
-        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
-        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
-        assert schema_attr_names == {"name"}
+        generic_schema = schema_branch.get_generic(name="ThingGeneric", duplicate=False)
+        assert set(generic_schema.relationship_names) == {
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert generic_schema.attribute_names == ["name"]
 
     async def test_schema_load_endpoint_valid_generic_with_generic_name_updates(
         self,
@@ -371,35 +376,36 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         initial_nbr_attributes = len(node_schema.attributes)
         branch_name = extension_branch.name
 
-        node_schema = registry.schema.get(name="ThingNode", branch=branch_name)
-        assert len(node_schema.relationships) == initial_nbr_relationships + 1
-        assert len(node_schema.attributes) == initial_nbr_attributes + 1
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
+        assert len(node_schema.relationships) == initial_nbr_relationships + 2
+        assert len(node_schema.attributes) == initial_nbr_attributes + 2
 
         # check that the node schema on the database has the expected relationships and attributes on the branch
-        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=node_schema.get_id())
-        schema_rels = await retrieved_node_schema.relationships.get(db=db)
-        schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
-        schema_rel_names = {srp.name.value for srp in schema_rel_peers}
-        assert schema_rel_names == {
+        assert set(node_schema.relationship_names) == {
             "devices",
             "devices_new",
-            "interfaces_new",
+            "interfaces",
             "profiles",
             "member_of_groups",
             "subscriber_of_groups",
         }
-        schema_attrs = await retrieved_node_schema.attributes.get(db=db)
-        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
-        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
-        assert schema_attr_names == {"hot new name", "description", "something", "something_new"}
+        assert set(node_schema.local_relationship_names) == {
+            "devices",
+            "devices_new",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.attribute_names) == {"hot_new_name", "description", "something", "something_new"}
+        assert set(node_schema.local_attribute_names) == {"description", "something", "something_new"}
 
         # check that the generic schema on the database has the expected relationships and attributes on the branch
-        generic_schema = registry.schema.get(name="ThingGeneric", branch=branch_name)
-        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=generic_schema.get_id())
-        schema_rels = await retrieved_generic_schema.relationships.get(db=db)
-        schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
-        schema_rel_names = {srp.name.value for srp in schema_rel_peers}
-        assert schema_rel_names == {"interfaces_new", "profiles", "member_of_groups", "subscriber_of_groups"}
-        schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
-        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
-        assert schema_attr_names == {"hot new name"}
+        generic_schema = schema_branch.get_generic(name="ThingGeneric", duplicate=False)
+        assert set(generic_schema.relationship_names) == {
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert generic_schema.attribute_names == ["hot_new_name"]
