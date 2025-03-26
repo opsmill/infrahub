@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from infrahub.core.path import GroupedDataPaths
+if TYPE_CHECKING:
+    from infrahub.core.path import GroupedDataPaths
 
-from .model import SchemaConstraintValidatorRequest
+    from .model import SchemaConstraintValidatorRequest
 
 
 class ConstraintCheckerInterface(ABC):
