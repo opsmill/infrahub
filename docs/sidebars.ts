@@ -84,6 +84,8 @@ const sidebars: SidebarsConfig = {
         'guides/check',
         'guides/managing-api-tokens',
         'guides/computed-attributes',
+        'guides/upgrade',
+        'guides/upgrade-enterprise',
         'guides/webhooks',
       ],
     },
