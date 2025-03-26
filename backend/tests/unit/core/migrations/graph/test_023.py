@@ -4,6 +4,7 @@ from infrahub_sdk.schema.main import RelationshipDirection
 
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph import Migration023
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -92,6 +93,29 @@ async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, re
     await check_number_path_between_nodes(
         db=db, node_id_1=car_suzuki.id, node_id_2=person_john.id, expected_path_number=2
     )
+
+    car_honda = await NodeManager.get_one(
+        id=car_honda.id, kind="TestCar", db=db, prefetch_relationships=True, branch=branch
+    )
+    assert car_honda.driver.get_one().peer_id == person_john.id
+    assert car_honda.owner.get_one().peer_id == person_john.id
+
+    car_suzuki = await NodeManager.get_one(
+        id=car_suzuki.id, kind="TestCar", db=db, prefetch_relationships=True, branch=branch
+    )
+    assert car_suzuki.driver.get_one().peer_id == person_john.id
+    assert car_suzuki.owner.get_one().peer_id == person_john.id
+
+    person_john = await NodeManager.get_one(
+        id=person_john.id, kind="TestPerson", db=db, prefetch_relationships=True, branch=branch
+    )
+    assert {rel.peer_id for rel in person_john.cars} == {car_honda.id, car_suzuki.id}
+
+    person_maria = await NodeManager.get_one(
+        id=person_maria.id, kind="TestPerson", db=db, prefetch_relationships=True, branch=branch
+    )
+    rels = await person_maria.cars.get_relationships(db=db)
+    assert len(rels) == 0
 
 
 async def add_extra_relationship(db, node_1_id, node_2_id, before_time, branch, rel_name):
