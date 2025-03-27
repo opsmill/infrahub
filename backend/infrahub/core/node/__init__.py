@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
+from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
@@ -24,7 +25,6 @@ from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeD
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
-from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -458,9 +458,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     ValidationError({macro: f"{macro} is missing computational_logic for macro ({attr_schema.kind})"})
                 )
                 continue
-            macro_definition = MacroDefinition(macro=attr_schema.computed_attribute.jinja2_template)
 
-            for variable in macro_definition.variables:
+            jinja_template = Jinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            for variable in jinja_template.get_variables():
                 attribute_path = schema_branch.validate_schema_path(
                     node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
                 )
@@ -487,7 +487,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     )
                     variables[variable] = attribute
 
-            content = macro_definition.render(variables=variables)
+            content = await jinja_template.render(variables=variables)
 
             generator_method_name = "_generate_attribute_default"
             if hasattr(self, f"generate_{attr_schema.name}"):

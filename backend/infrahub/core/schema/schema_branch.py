@@ -6,6 +6,8 @@ from collections import defaultdict
 from itertools import chain, combinations
 from typing import Any
 
+from infrahub_sdk.template import Jinja2Template
+from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
@@ -51,7 +53,6 @@ from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
-from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
@@ -1037,14 +1038,22 @@ class SchemaBranch:
                 | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
                 | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
             )
+
+            jinja_template = Jinja2Template(template=attribute.computed_attribute.jinja2_template)
             try:
-                macro = MacroDefinition(macro=attribute.computed_attribute.jinja2_template)
-            except ValueError as exc:
+                variables = jinja_template.get_variables()
+                jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+            except JinjaTemplateOperationViolationError as exc:
                 raise ValueError(
-                    f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template"
+                    f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template: {exc.message}"
                 ) from exc
 
-            for variable in macro.variables:
+            except JinjaTemplateError as exc:
+                raise ValueError(
+                    f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template: : {exc.message}"
+                ) from exc
+
+            for variable in variables:
                 try:
                     schema_path = self.validate_schema_path(
                         node_schema=node, path=variable, allowed_path_types=allowed_path_types
