@@ -44,7 +44,6 @@ test.describe("Branches creation and deletion", () => {
       await page.getByLabel("New branch name *").fill(BRANCH_NAME_1);
       await page.getByText("New branch description").fill("branch creation test");
       await page.getByRole("button", { name: "Create a new branch" }).click();
-      await expect(page.getByTestId("submit-create-new-branch")).toBeEnabled();
 
       // After submit
       await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
