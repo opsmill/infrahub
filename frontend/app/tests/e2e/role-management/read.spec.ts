@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe.fixme("Role management - READ", () => {
+test.describe("Role management - READ", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("should read correctly the different views", async ({ page }) => {
