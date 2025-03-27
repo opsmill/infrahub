@@ -18,6 +18,7 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryError,
     RepositoryFileNotFoundError,
+    RepositoryInvalidBranchError,
     TransformError,
 )
 from infrahub.git import InfrahubRepository
@@ -120,20 +121,20 @@ async def test_new_wrong_location(git_upstream_repo_01: dict[str, str | Path], g
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(tmp_path),
-            service=await InfrahubServices.new(),
+            service=await InfrahubServices.new(client=InfrahubClient(config=Config(requester=dummy_async_request))),
         )
 
     assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
 
 async def test_new_wrong_branch(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path):
-    with pytest.raises(RepositoryError) as exc:
+    with pytest.raises(RepositoryInvalidBranchError) as exc:
         await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
             default_branch_name="notvalid",
-            service=await InfrahubServices.new(),
+            service=await InfrahubServices.new(client=InfrahubClient(config=Config(requester=dummy_async_request))),
         )
 
     assert "isn't a valid branch" in str(exc.value)
@@ -473,6 +474,11 @@ async def test_sync_new_branch(
         method="POST",
         json=admin_response,
         match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
+    )
+    httpx_mock.add_response(
+        method="POST",
+        json=admin_response,
+        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-operational-status"},
     )
 
     repo.client = client
