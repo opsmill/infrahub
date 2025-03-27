@@ -192,9 +192,9 @@ Restoring Infrahub Enterprise consists of:
 4. Restoring the Prefect database
 
   For example, when running using docker compose:
-  
+
   `docker exec -it infrahub-task-manager-db-1 pg_restore -d prefect -U postgres --clean --create prefect.dump`
-  
+
   Then restart the task manager (Prefect server)
 
 5. Restarting Infrahub (API servers, then task workers)
