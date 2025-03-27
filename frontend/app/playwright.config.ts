@@ -21,14 +21,14 @@ export default defineConfig({
   //   ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
   //     ? 6 * 60 * 1000
   //     : 2 * 60 * 1000
-  //   : 30 * 1000,
-  timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
+  //   : 1 * 60 * 1000,
+  timeout: process.env.CI ? 2 * 60 * 1000 : 1 * 60 * 1000,
   expect: {
     timeout: process.env.CI
       ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
         ? 6 * 60 * 1000
         : 2 * 60 * 1000
-      : 30 * 1000,
+      : 1 * 60 * 1000,
     toHaveScreenshot: { maxDiffPixels: 5000 },
   },
   /* Opt out of parallel tests on CI. */
@@ -57,15 +57,15 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     // Setup project
-    {
-      name: "setup",
-      use: { ...devices["Desktop Chrome"], channel: "chromium" },
-      testMatch: /.*\.setup\.ts/,
-    },
+    // {
+    //   name: "setup",
+    //   use: { ...devices["Desktop Chrome"], channel: "chromium" },
+    //   testMatch: /.*\.setup\.ts/,
+    // },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], channel: "chromium" },
-      dependencies: ["setup"],
+      // dependencies: ["setup"],
     },
 
     // {
