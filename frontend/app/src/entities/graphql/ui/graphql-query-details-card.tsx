@@ -1,10 +1,9 @@
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { NodeSchema } from "@/entities/schema/types";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -138,7 +137,7 @@ const GraphqlQueryPropertyList = ({
             name: relationshipSchema.label || relationshipSchema.name,
             value: relationshipData?.map(({ node, properties }: any) => (
               <div key={node.id} className="flex items-center justify-between">
-                <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
                   {node?.display_label}
                 </Link>
 
@@ -167,7 +166,7 @@ const GraphqlQueryPropertyList = ({
           name: relationshipSchema.label || relationshipSchema.name,
           value: relationshipData && (
             <div className="flex items-center justify-between">
-              <Link to={getObjectDetailsUrl2(relationshipData.__typename, relationshipData.id)}>
+              <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
                 {relationshipData?.display_label}
               </Link>
 

@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { GroupDataFromAPI } from "@/entities/groups/api/types";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -48,7 +48,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
     <div className="flex justify-between items-center gap-4 p-2 bg-gray-100 rounded-md border border-gray-300 relative">
       <div className="overflow-hidden space-y-1">
         <Link
-          to={getObjectDetailsUrl2(group.__typename, group.id)}
+          to={getObjectDetailsUrl(group.__typename, group.id)}
           className="font-semibold hover:underline truncate block"
         >
           {group.display_label}
@@ -56,7 +56,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
 
         <div className="flex items-center gap-2">
           <Link
-            to={getObjectDetailsUrl2(group.__typename, group.id, [
+            to={getObjectDetailsUrl(group.__typename, group.id, [
               { name: QSP.TAB, value: "members" },
             ])}
             className="text-sm font-light hover:underline"
@@ -64,7 +64,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
             {pluralize(group.members.count, "member")}
           </Link>
 
-          <Link to={getObjectDetailsUrl2(group.__typename)}>
+          <Link to={getObjectDetailsUrl(group.__typename)}>
             <Badge variant="blue" className="hover:underline">
               {groupSchema?.label}
             </Badge>

@@ -1,4 +1,4 @@
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   FormFieldValue,
@@ -62,7 +62,7 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
         <div className="max-w-60" data-testid="source-profile-tooltip">
           <p>This value is set by a profile:</p>
           <Link
-            to={getObjectDetailsUrl2(source.kind!, source.id)}
+            to={getObjectDetailsUrl(source.kind!, source.id)}
             className="underline inline-flex items-center gap-1"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />
@@ -88,7 +88,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
         <div className="max-w-60">
           <p>This value is allocated from the pool:</p>
           <Link
-            to={getObjectDetailsUrl2(source.kind!, source.id)}
+            to={getObjectDetailsUrl(source.kind!, source.id)}
             className="underline inline-flex items-center gap-1"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />
@@ -114,7 +114,7 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
         <div className="max-w-60">
           <p>This value is from the following template:</p>
           <Link
-            to={getObjectDetailsUrl2(source.kind!, source.id)}
+            to={getObjectDetailsUrl(source.kind!, source.id)}
             className="underline inline-flex items-center gap-1"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />

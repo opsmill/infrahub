@@ -1,4 +1,4 @@
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -34,7 +34,7 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
         properties={resources.map((resource) => ({
           name: (
             <Link
-              to={getObjectDetailsUrl2(resource.kind, resource.id)}
+              to={getObjectDetailsUrl(resource.kind, resource.id)}
               className="font-semibold underline"
             >
               {resource.display_label}

@@ -1,7 +1,7 @@
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -60,7 +60,7 @@ export function IpDetailsCard({ schema, data, refetch, permission }: tIpDetailsC
           return {
             name,
             value: relationshipData ? (
-              <Link to={getObjectDetailsUrl2(relationshipData.__typename, relationshipData.id)}>
+              <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
                 {relationshipData?.display_label}
               </Link>
             ) : null,
@@ -86,7 +86,7 @@ export function IpDetailsCard({ schema, data, refetch, permission }: tIpDetailsC
                 if (!node) return null;
 
                 return (
-                  <Link key={node?.id} to={getObjectDetailsUrl2(node.__typename, node.id)}>
+                  <Link key={node?.id} to={getObjectDetailsUrl(node.__typename, node.id)}>
                     {node.display_label}
                   </Link>
                 );
