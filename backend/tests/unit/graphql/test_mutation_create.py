@@ -247,7 +247,8 @@ async def test_attr_optional_uniqueness_constraint_create(
         root_value=None,
         variable_values={},
     )
-    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Violates uniqueness constraint 'name'"
 
 
 async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
