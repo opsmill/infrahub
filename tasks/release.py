@@ -131,11 +131,13 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         # Determine the appropriate increment
         try:
             if app_version > old_app_version:
-                if int(app_version.split(".")[0]) > major:
+                if int(app_version.split(".")[0]) > int(old_app_version.split(".")[0]):
                     new_helm_version = f"{major + 1}.0.0"
-                elif int(app_version.split(".")[1]) > minor:
+                elif int(app_version.split(".")[1]) > int(old_app_version.split(".")[1]):
                     new_helm_version = f"{major}.{minor + 1}.0"
-                elif int(app_version.split(".")[2].split("a")[0]) > patch:  # For alpha, beta handling
+                elif int(app_version.split(".")[2].split("a")[0]) > int(
+                    old_app_version.split(".")[2].split("a")[0]
+                ):  # For alpha, beta handling
                     new_helm_version = f"{major}.{minor}.{patch + 1}"
         except Exception:
             # Fallback in case app_version has non-standard format for Helm comparison
@@ -154,16 +156,17 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
 
             if (
                 "prefect-server" not in values_yaml
-                or "server" not in values_yaml["prefect-server"]
-                or "image" not in values_yaml["prefect-server"]["server"]
-                or "prefectTag" not in values_yaml["prefect-server"]["server"]["image"]
-                or "repository" not in values_yaml["prefect-server"]["server"]["image"]
-                or values_yaml["prefect-server"]["server"]["image"]["repository"]
+                or "global" not in values_yaml["prefect-server"]
+                or "prefect" not in values_yaml["prefect-server"]["global"]
+                or "image" not in values_yaml["prefect-server"]["global"]["prefect"]
+                or "prefectTag" not in values_yaml["prefect-server"]["global"]["prefect"]["image"]
+                or "repository" not in values_yaml["prefect-server"]["global"]["prefect"]["image"]
+                or values_yaml["prefect-server"]["global"]["prefect"]["image"]["repository"]
                 != "registry.opsmill.io/opsmill/infrahub"
             ):
                 print(f"prefect-server image tag not found in {str(values_path)}; no updates made.")
             else:
-                values_yaml["prefect-server"]["server"]["image"]["prefectTag"] = app_version
+                values_yaml["prefect-server"]["global"]["prefect"]["image"]["prefectTag"] = app_version
                 yaml_values.dump(values_yaml, values_path)
                 print(f"{str(values_path)} updated with `prefectTag`: {app_version}")
         elif chart == "infrahub-enterprise":
