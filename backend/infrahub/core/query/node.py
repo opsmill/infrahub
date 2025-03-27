@@ -714,18 +714,22 @@ class NodeGetKindQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch = await registry.get_branch(db=db, branch=getattr(self, "branch", None))
-        branch_filter, branch_params = branch.get_query_filter_path(at=self.at)
-        self.params.update(branch_params)
         self.params["ids"] = self.ids
         query = """
 MATCH (n:Node)-[r:IS_PART_OF {status: "active"}]->(:Root)
 WHERE toString(n.uuid) IN $ids
-AND %(branch_filter)s
+        """
+        # only add the branch filter logic if a branch is included in the query parameters
+        if branch := getattr(self, "branch", None):
+            branch = await registry.get_branch(db=db, branch=branch)
+            branch_filter, branch_params = branch.get_query_filter_path(at=self.at)
+            self.params.update(branch_params)
+            query += f"AND {branch_filter}"
+        query += """
 WITH n.uuid AS node_id, n.kind AS node_kind
 ORDER BY r.from DESC
 WITH node_id, head(collect(node_kind)) AS node_kind
-        """ % {"branch_filter": branch_filter}
+        """
         self.add_to_query(query)
         self.return_labels = ["node_id", "node_kind"]
 

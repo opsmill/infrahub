@@ -46,6 +46,18 @@ async def test_node_get_kind_query_with_migrated_nodes_on_branch(
         car_accord_main.id: "TestCar",
     }
 
+    # check results without branch parameter gets latest from any branch
+    query = await NodeGetKindQuery.init(
+        db=db, ids=[person_john_main.id, person_jane_main.id, car_accord_main.id, car_yaris_main.id]
+    )
+    await query.execute(db=db)
+    assert await query.get_node_kind_map() == {
+        person_jane_main.id: "TestBeing",
+        person_john_main.id: "TestBeing",
+        car_yaris_main.id: "TestCar",
+        car_accord_main.id: "TestCar",
+    }
+
     # check results on default branch
     query = await NodeGetKindQuery.init(
         db=db,
