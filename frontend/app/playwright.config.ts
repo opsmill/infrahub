@@ -57,15 +57,15 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     // Setup project
-    // {
-    //   name: "setup",
-    //   use: { ...devices["Desktop Chrome"], channel: "chromium" },
-    //   testMatch: /.*\.setup\.ts/,
-    // },
+    {
+      name: "setup",
+      use: { ...devices["Desktop Chrome"], channel: "chromium" },
+      testMatch: /.*\.setup\.ts/,
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], channel: "chromium" },
-      // dependencies: ["setup"],
+      dependencies: ["setup"],
     },
 
     // {
