@@ -7,8 +7,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
