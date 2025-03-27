@@ -15,7 +15,8 @@ from .constants import TAG_NAMESPACE, WorkflowTag
 if TYPE_CHECKING:
     import logging
 
-    from infrahub.services import InfrahubServices
+    from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubComponent
 
 
 async def add_tags(
@@ -56,7 +57,7 @@ async def add_related_node_tag(node_id: str) -> None:
 
 
 async def wait_for_schema_to_converge(
-    branch_name: str, service: InfrahubServices, log: logging.Logger | logging.LoggerAdapter
+    branch_name: str, component: InfrahubComponent, db: InfrahubDatabase, log: logging.Logger | logging.LoggerAdapter
 ) -> None:
     has_converged = False
     branch_id = branch_name
@@ -67,7 +68,7 @@ async def wait_for_schema_to_converge(
     max_iterations = delay * 5 * 30
     iteration = 0
     while not has_converged:
-        workers = await service.component.list_workers(branch=branch_id, schema_hash=True)
+        workers = await component.list_workers(branch=branch_id, schema_hash=True)
 
         hashes = {worker.schema_hash for worker in workers if worker.active}
         if len(hashes) == 1:
@@ -79,8 +80,7 @@ async def wait_for_schema_to_converge(
             log.warning(
                 f"Schema had not converged after {delay * iteration:.2f} seconds, refreshing schema on local worker manually"
             )
-            async with service.database.start_session() as db:
-                await refresh_branches(db=db)
+            await refresh_branches(db=db)
             return
 
         iteration += 1
