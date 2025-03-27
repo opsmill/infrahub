@@ -145,6 +145,36 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         chart_yaml["appVersion"] = app_version
         chart_yaml["version"] = new_helm_version
 
+        if chart == "infrahub":
+            dependency_version = new_helm_version
+
+            yaml_values: YAML = init_yaml_obj()
+            values_path = Path(chart_repo) / "charts" / Path(chart) / "values.yaml"
+            values_yaml = yaml_values.load(values_path)
+
+            if (
+                "prefect-server" not in values_yaml
+                or "server" not in values_yaml["prefect-server"]
+                or "image" not in values_yaml["prefect-server"]["server"]
+                or "prefectTag" not in values_yaml["prefect-server"]["server"]["image"]
+                or "repository" not in values_yaml["prefect-server"]["server"]["image"]
+                or values_yaml["prefect-server"]["server"]["image"]["repository"]
+                != "registry.opsmill.io/opsmill/infrahub"
+            ):
+                print(f"prefect-server image tag not found in {str(values_path)}; no updates made.")
+            else:
+                values_yaml["prefect-server"]["server"]["image"]["prefectTag"] = app_version
+                yaml_values.dump(values_yaml, values_path)
+                print(f"{str(values_path)} updated with `prefectTag`: {app_version}")
+        elif chart == "infrahub-enterprise":
+            if "dependencies" in chart_yaml:
+                for dependency in chart_yaml["dependencies"]:
+                    if dependency["name"] == "infrahub":
+                        # Update 'infrahub' dependencies in helm chart
+                        dependency["version"] = dependency_version
+                        print(f"'infrahub' dependency update to {dependency_version} in {chart}")
+                        break
+
         yaml.dump(chart_yaml, chart_path)
 
         print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")

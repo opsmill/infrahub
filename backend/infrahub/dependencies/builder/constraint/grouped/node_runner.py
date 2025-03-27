@@ -13,9 +13,7 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
         return NodeConstraintRunner(
             db=context.db,
             branch=context.branch,
-            node_constraints=[
-                NodeGroupedUniquenessConstraintDependency.build(context=context),
-            ],
+            uniqueness_constraint=NodeGroupedUniquenessConstraintDependency.build(context=context),
             relationship_manager_constraints=[
                 RelationshipPeerKindConstraintDependency.build(context=context),
                 RelationshipCountConstraintDependency.build(context=context),

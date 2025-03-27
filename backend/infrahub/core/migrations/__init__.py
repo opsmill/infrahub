@@ -11,6 +11,7 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "node.branch.update": None,
     "node.attribute.add": NodeAttributeAddMigration,
     "node.attribute.remove": NodeAttributeRemoveMigration,
+    "node.inherit_from.update": NodeKindUpdateMigration,
     "node.name.update": NodeKindUpdateMigration,
     "node.namespace.update": NodeKindUpdateMigration,
     "node.relationship.remove": PlaceholderDummyMigration,

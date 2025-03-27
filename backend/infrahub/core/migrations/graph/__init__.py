@@ -53,6 +53,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration020,
     Migration021,
     Migration022,
+    # Migration023,  Enable this migration once it has been tested on bigger databases
 ]
 
 

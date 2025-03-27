@@ -1,0 +1,44 @@
+import hmac
+import hashlib
+import base64
+from fastapi import FastAPI, Request, HTTPException
+import uvicorn
+
+app = FastAPI()
+SHARED_KEY = b"supersecretkey"
+
+
+def verify_signature(message_id, timestamp, payload, received_signature):
+    data = f"{message_id}.{timestamp}.{payload}".encode()
+    expected_signature = base64.b64encode(
+        hmac.new(SHARED_KEY, data, hashlib.sha256).digest()
+    ).decode("utf-8")
+    return hmac.compare_digest(f"v1,{expected_signature}", received_signature)
+
+
+@app.get("/")
+async def health_check():
+    return {"status": "success", "message": "Webhook server is running"}
+
+
+@app.post("/")
+async def catch_all(request: Request):
+    headers = request.headers
+    message_id = headers.get("webhook-id")
+    timestamp = headers.get("webhook-timestamp")
+    received_signature = headers.get("webhook-signature")
+    payload = await request.json()
+
+    if not all([message_id, timestamp, received_signature, payload]):
+        raise HTTPException(
+            status_code=400, detail="Missing required headers or payload"
+        )
+
+    if not verify_signature(message_id, timestamp, payload, received_signature):
+        raise HTTPException(status_code=403, detail="Invalid webhook signature")
+
+    return {"status": "success", "message": "Webhook received and verified"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8200)

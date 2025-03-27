@@ -22,6 +22,12 @@ class InfrahubMutatedAttribute(ObjectType):
     value_previous = String(required=False)
 
 
+class InfrahubMutatedRelationship(ObjectType):
+    name = String(required=True)
+    action = DiffAction(required=True)
+    peer = Field(RelatedNode, required=True)
+
+
 class EventNodeInterface(Interface):
     id = String(required=True, description="The ID of the event.")
     event = String(required=True, description="The name of the event.")
@@ -116,6 +122,7 @@ class NodeMutatedEvent(ObjectType):
 
     payload = Field(GenericScalar, required=True)
     attributes = Field(List(of_type=NonNull(InfrahubMutatedAttribute), required=True), required=True)
+    relationships = Field(List(of_type=NonNull(InfrahubMutatedRelationship), required=True), required=True)
 
 
 class ArtifactEvent(ObjectType):

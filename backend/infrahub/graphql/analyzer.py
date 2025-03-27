@@ -258,6 +258,18 @@ class GraphQLQueryReport:
 
         return access
 
+    def fields_by_kind(self, kind: str) -> list[str]:
+        fields: list[str] = []
+        if access := self.requested_read.get(kind):
+            fields.extend(list(access.attributes))
+            fields.extend(list(access.relationships))
+
+        return fields
+
+    @cached_property
+    def top_level_kinds(self) -> list[str]:
+        return [query.infrahub_model.kind for query in self.queries if query.infrahub_model]
+
     @cached_property
     def kind_action_map(self) -> dict[str, set[MutateAction]]:
         access: dict[str, set[MutateAction]] = {}

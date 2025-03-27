@@ -4,7 +4,7 @@ import copy
 import hashlib
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any, Callable, Iterator
+from typing import Any
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
@@ -56,14 +56,12 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
-
-if TYPE_CHECKING:
-    from pydantic import ValidationInfo
 
 
 class SchemaBranch:
@@ -89,15 +87,11 @@ class SchemaBranch:
             self.templates = data.get("templates", {})
 
     @classmethod
-    def __get_validators__(cls) -> Iterator[Callable[..., Any]]:  # noqa: PLW3201
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v: Any, info: ValidationInfo) -> Self:  # noqa: ARG003
-        if isinstance(v, cls):
-            return v
-        if isinstance(v, dict):
-            return cls.from_dict_schema_object(data=v)
+    def validate(cls, data: Any) -> Self:  # noqa: ARG003
+        if isinstance(data, cls):
+            return data
+        if isinstance(data, dict):
+            return cls.from_dict_schema_object(data=data)
         raise ValueError("must be a class or a dict")
 
     @property
@@ -822,10 +816,15 @@ class SchemaBranch:
                         f"{node_schema.namespace}{node_schema.name}: default value {exc.message}"
                     ) from exc
 
-    def _is_attr_combination_unique(self, attrs_paths: list[str], uniqueness_constraints: list[list[str]]) -> bool:
+    def _is_attr_combination_unique(
+        self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None
+    ) -> bool:
         """
         Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
         """
+
+        if not uniqueness_constraints:
+            return False
 
         unique_constraint_group_sets = [set(ucg) for ucg in uniqueness_constraints]
         for i in range(1, len(attrs_paths) + 1):
@@ -861,12 +860,13 @@ class SchemaBranch:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
 
-            # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
-            for related_schema, attrs_paths in rel_schemas_to_paths.values():
-                if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
-                    raise ValidationError(
-                        f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
-                    )
+            if config.SETTINGS.main.schema_strict_mode:
+                # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
+                for related_schema, attrs_paths in rel_schemas_to_paths.values():
+                    if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                        raise ValidationError(
+                            f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                        )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
@@ -1174,25 +1174,25 @@ class SchemaBranch:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_human_friendly_id(self) -> None:
+        """
+        For each schema node, if there is no HFID defined, set it with:
+        - The first unique attribute if existing
+        - Otherwise the first uniqueness constraint with a single attribute
+
+        Also, HFID is added to the uniqueness constraints.
+        """
         for name in self.generic_names_without_templates + self.node_names:
             node = self.get(name=name, duplicate=False)
 
-            # If human_friendly_id IS NOT defined
-            #   but some the model has some unique attribute, we generate a human_friendly_id
-            # If human_friendly_id IS defined
-            #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
             if not node.human_friendly_id:
                 if node.unique_attributes:
-                    for attr in node.unique_attributes:
-                        node = self.get(name=name, duplicate=True)
-                        node.human_friendly_id = [f"{attr.name}__value"]
-                        self.set(name=node.kind, schema=node)
-                        break
-                    continue
+                    node = self.get(name=name, duplicate=True)
+                    node.human_friendly_id = [f"{node.unique_attributes[0].name}__value"]
+                    self.set(name=node.kind, schema=node)
 
                 # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
                 # then use that attribute as the human_friendly_id
-                if node.uniqueness_constraints:
+                elif node.uniqueness_constraints:
                     for constraint_paths in node.uniqueness_constraints:
                         if len(constraint_paths) > 1:
                             continue
@@ -1209,22 +1209,15 @@ class SchemaBranch:
                             break
 
             # Add hfid to uniqueness constraint
-            if node.human_friendly_id:
-                uniqueness_constraint: list[str] = []
-                for item in node.human_friendly_id:
-                    schema_attribute_path = node.parse_schema_path(path=item, schema=self)
-                    if schema_attribute_path.is_type_attribute:
-                        uniqueness_constraint.append(item)
-                    elif schema_attribute_path.is_type_relationship:
-                        uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
-
+            hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
+            if hfid_uniqueness_constraint:
                 node = self.get(name=name, duplicate=True)
                 # Make sure there is no duplicate regarding generics values.
                 if node.uniqueness_constraints:
-                    if uniqueness_constraint not in node.uniqueness_constraints:
-                        node.uniqueness_constraints.append(uniqueness_constraint)
+                    if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+                        node.uniqueness_constraints.append(hfid_uniqueness_constraint)
                 else:
-                    node.uniqueness_constraints = [uniqueness_constraint]
+                    node.uniqueness_constraints = [hfid_uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:
@@ -1244,7 +1237,7 @@ class SchemaBranch:
             node = node.duplicate()
             changed = False
 
-            if node.hierarchy not in node.inherit_from:
+            if node.hierarchy and node.hierarchy not in node.inherit_from:
                 node.inherit_from.append(node.hierarchy)
                 changed = True
 
@@ -1262,6 +1255,23 @@ class SchemaBranch:
 
             if changed:
                 self.set(name=name, schema=node)
+
+    def _get_generic_fields_map(
+        self, node_schema: MainSchemaTypes
+    ) -> dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]]:
+        generic_fields_map: dict[str, tuple[GenericSchema, AttributeSchema | RelationshipSchema]] = {}
+        if isinstance(node_schema, NodeSchema) and node_schema.inherit_from:
+            for generic_kind in node_schema.inherit_from:
+                generic_schema = self.get_generic(name=generic_kind, duplicate=False)
+                for generic_attr in generic_schema.attributes:
+                    if generic_attr.name in node_schema.attribute_names:
+                        generic_fields_map[generic_attr.name] = (generic_schema, generic_attr)
+                        continue
+                for generic_rel in generic_schema.relationships:
+                    if generic_rel.name in node_schema.relationship_names:
+                        generic_fields_map[generic_rel.name] = (generic_schema, generic_rel)
+                        continue
+        return generic_fields_map
 
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
@@ -1315,7 +1325,7 @@ class SchemaBranch:
 
         # Update all generics with the list of nodes referrencing them.
         for generic_name in self.generics.keys():
-            generic = self.get(name=generic_name)
+            generic = self.get_generic(name=generic_name)
 
             if generic.kind in generics_used_by:
                 generic.used_by = sorted(generics_used_by[generic.kind])
@@ -1333,40 +1343,46 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            # Check if this node requires a change before duplicating
-            change_required = False
-            for attr in node.attributes:
-                if attr.branch is None:
-                    change_required = True
-                    break
-            if not change_required:
-                for rel in node.relationships:
-                    if rel.branch is None:
-                        change_required = True
-                        break
+            generic_fields_map = self._get_generic_fields_map(node_schema=node)
 
-            if not change_required:
+            attrs_to_update: dict[str, BranchSupportType] = {}
+            for attr in node.attributes:
+                if attr.inherited and attr.name in generic_fields_map:
+                    generic_schema, generic_attr = generic_fields_map[attr.name]
+                    if attr.branch == generic_schema.branch == generic_attr.branch != node.branch:
+                        attrs_to_update[attr.name] = node.branch
+
+                if attr.branch is None:
+                    attrs_to_update[attr.name] = node.branch
+
+            rels_to_update: dict[str, BranchSupportType] = {}
+            for rel in node.relationships:
+                if not rel.inherited and rel.branch is not None:
+                    continue
+                needs_update = rel.branch is None
+                if needs_update is False and rel.inherited and rel.name in generic_fields_map:
+                    generic_schema, generic_rel = generic_fields_map[rel.name]
+                    if rel.branch == generic_schema.branch == generic_rel.branch != node.branch:
+                        needs_update = True
+                if needs_update:
+                    peer_node = self.get(name=rel.peer, duplicate=False)
+                    if node.branch == peer_node.branch:
+                        rels_to_update[rel.name] = node.branch
+                    elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
+                        rels_to_update[rel.name] = BranchSupportType.LOCAL
+                    else:
+                        rels_to_update[rel.name] = BranchSupportType.AWARE
+
+            if not attrs_to_update and not rels_to_update:
                 continue
 
             node = node.duplicate()
-
-            for attr in node.attributes:
-                if attr.branch is not None:
-                    continue
-
-                attr.branch = node.branch
-
-            for rel in node.relationships:
-                if rel.branch is not None:
-                    continue
-
-                peer_node = self.get(name=rel.peer, duplicate=False)
-                if node.branch == peer_node.branch:
-                    rel.branch = node.branch
-                elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
-                    rel.branch = BranchSupportType.LOCAL
-                else:
-                    rel.branch = BranchSupportType.AWARE
+            for node_attr in node.attributes:
+                if node_attr.name in attrs_to_update:
+                    node_attr.branch = attrs_to_update[node_attr.name]
+            for node_rel in node.relationships:
+                if node_rel.name in rels_to_update:
+                    node_rel.branch = rels_to_update[node_rel.name]
 
             self.set(name=name, schema=node)
 
@@ -1459,19 +1475,44 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def generate_weight(self) -> None:
-        for name in self.all_names:
+        for name in self.generic_names:
             node = self.get(name=name, duplicate=False)
+
             items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+
             if not items_to_update:
                 continue
 
             node = node.duplicate()
-
             current_weight = 0
             for item in node.attributes + node.relationships:
                 current_weight += 1000
                 if not item.order_weight:
                     item.order_weight = current_weight
+
+            self.set(name=name, schema=node)
+
+        for name in self.node_names + self.profile_names:
+            node = self.get(name=name, duplicate=False)
+
+            items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+
+            if not items_to_update:
+                continue
+            node = node.duplicate()
+
+            generic_fields_map = self._get_generic_fields_map(node_schema=node)
+
+            current_weight = 0
+            for item in node.attributes + node.relationships:
+                current_weight += 1000
+                if not item.order_weight:
+                    if item.inherited:
+                        _, generic_field = generic_fields_map[item.name]
+                        if generic_field:
+                            item.order_weight = generic_field.order_weight
+                    if not item.order_weight:
+                        item.order_weight = current_weight
 
             self.set(name=name, schema=node)
 

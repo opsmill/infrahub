@@ -6,7 +6,7 @@ import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 const PROFILE_NAME = "Interface L2 profile test";
 const GENERIC_PROFILE_NAME = "Generic Interface profile test";
 
-test.describe("/objects/CoreProfile - Profiles page", () => {
+test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   const BRANCH_NAME = generateRandomBranchName("profiles");

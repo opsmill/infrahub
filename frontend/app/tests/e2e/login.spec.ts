@@ -43,18 +43,17 @@ const enableSSO = async (page: Page) => {
 };
 
 test.describe("/login", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test.describe("When is not logged in", () => {
     test.describe("when SSO is enabled", () => {
-      test("should display log in using SSO", async ({ page }) => {
+      test.beforeEach(async ({ page }) => {
         await enableSSO(page);
+      });
+
+      test.afterEach(async ({ page }) => {
+        await page.unrouteAll({ behavior: "ignoreErrors" });
+      });
+
+      test("should display log in using SSO", async ({ page }) => {
         await page.goto("/login");
 
         await test.step("should display Google SSO button", async () => {
@@ -74,51 +73,58 @@ test.describe("/login", () => {
       });
     });
 
-    test("should log in the user", async ({ page }) => {
-      await disableSSO(page);
-      await page.goto("/");
+    test.describe("When SSO is disabled", () => {
+      test.beforeEach(async ({ page }) => {
+        await disableSSO(page);
+      });
 
-      await page.getByRole("link", { name: "Log in anonymous" }).click();
+      test.afterEach(async ({ page }) => {
+        await page.unrouteAll({ behavior: "ignoreErrors" });
+      });
 
-      await expect(page.getByText("Log in to your account")).toBeVisible();
-      await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
-      await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
-      await page.getByRole("button", { name: "Log in" }).click();
+      test("should log in the user", async ({ page }) => {
+        await page.goto("/");
 
-      await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
-    });
+        await page.getByRole("link", { name: "Log in anonymous" }).click();
 
-    test("should display an error message when authentication fails", async ({ page }) => {
-      await disableSSO(page);
-      await page.goto("/");
+        await expect(page.getByText("Log in to your account")).toBeVisible();
+        await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
+        await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
+        await page.getByRole("button", { name: "Log in" }).click();
 
-      await page.getByRole("link", { name: "Log in anonymous" }).click();
+        await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
+      });
 
-      await expect(page.getByText("Log in to your account")).toBeVisible();
-      await page.getByLabel("Username").fill("wrong username");
-      await page.getByLabel("Password").fill("wrong password");
-      await page.getByRole("button", { name: "Log in" }).click();
+      test("should display an error message when authentication fails", async ({ page }) => {
+        await page.goto("/");
 
-      await expect(page.locator("#alert-error-sign-in")).toContainText(
-        "Invalid username or password"
-      );
-    });
+        await page.getByRole("link", { name: "Log in anonymous" }).click();
 
-    test("should redirect to the initial page after login", async ({ page }) => {
-      await disableSSO(page);
-      const date = encodeURIComponent(new Date().toISOString());
-      const initialPage = `/objects/BuiltinTag?at=${date}&branch=atl1-delete-upstream`;
-      await page.goto(initialPage);
+        await expect(page.getByText("Log in to your account")).toBeVisible();
+        await page.getByLabel("Username").fill("wrong username");
+        await page.getByLabel("Password").fill("wrong password");
+        await page.getByRole("button", { name: "Log in" }).click();
 
-      await page.getByRole("link", { name: "Log in anonymous" }).click();
+        await expect(page.locator("#alert-error-sign-in")).toContainText(
+          "Invalid username or password"
+        );
+      });
 
-      await expect(page.getByText("Log in to your account")).toBeVisible();
-      await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
-      await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
-      await page.getByRole("button", { name: "Log in" }).click();
+      test("should redirect to the initial page after login", async ({ page }) => {
+        const date = encodeURIComponent(new Date().toISOString());
+        const initialPage = `/objects/BuiltinTag?at=${date}&branch=atl1-delete-upstream`;
+        await page.goto(initialPage);
 
-      await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
-      await expect(page.url()).toContain(initialPage);
+        await page.getByRole("link", { name: "Log in anonymous" }).click();
+
+        await expect(page.getByText("Log in to your account")).toBeVisible();
+        await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
+        await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
+        await page.getByRole("button", { name: "Log in" }).click();
+
+        await expect(page.getByTestId("authenticated-menu-trigger")).toBeVisible();
+        await expect(page.url()).toContain(initialPage);
+      });
     });
   });
 

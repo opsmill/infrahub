@@ -73,14 +73,6 @@ def load_component_dependency_registry():
     build_component_registry()
 
 
-@pytest.fixture(params=["main", "branch2"])
-async def branch(request, db: InfrahubDatabase, default_branch: Branch):
-    if request.param == "main":
-        return default_branch
-
-    return await create_branch(branch_name=str(request.param), db=db)
-
-
 @pytest.fixture(scope="session")
 def neo4j_factory():
     """Return a Hydration Scope from Neo4j used to generate fake

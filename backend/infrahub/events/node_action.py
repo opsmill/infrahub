@@ -2,8 +2,12 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from infrahub.core.changelog.models import NodeChangelog
-from infrahub.core.constants import MutationAction
+from infrahub.core.changelog.models import (
+    NodeChangelog,
+    RelationshipCardinalityManyChangelog,
+    RelationshipCardinalityOneChangelog,
+)
+from infrahub.core.constants import DiffAction, MutationAction
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
@@ -24,7 +28,7 @@ class NodeMutatedEvent(InfrahubEvent):
             related.append(
                 {
                     "prefect.resource.id": f"infrahub.node.{self.node_id}",
-                    "prefect.resource.role": "infrahub.node.field_update",
+                    "prefect.resource.role": "infrahub.node.attribute_update",
                     "infrahub.field.name": attribute.name,
                     "infrahub.attribute.name": attribute.name,
                     "infrahub.attribute.value": "NULL" if attribute.value is None else str(attribute.value),
@@ -37,14 +41,39 @@ class NodeMutatedEvent(InfrahubEvent):
                 }
             )
 
-        for relationship_name in self.changelog.relationships.keys():
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.node.{self.node_id}",
-                    "prefect.resource.role": "infrahub.node.field_update",
-                    "infrahub.field.name": relationship_name,
-                }
-            )
+        for relationship in self.changelog.relationships.values():
+            if isinstance(relationship, RelationshipCardinalityOneChangelog) and not relationship.is_empty:
+                if relationship.peer_id and relationship.peer_kind:
+                    related.append(
+                        self._format_relationship_resource(
+                            relationship_name=relationship.name,
+                            peer_id=relationship.peer_id,
+                            peer_kind=relationship.peer_kind,
+                            action=DiffAction.ADDED,
+                        )
+                    )
+
+                if relationship.peer_id_previous and relationship.peer_kind_previous:
+                    related.append(
+                        self._format_relationship_resource(
+                            relationship_name=relationship.name,
+                            peer_id=relationship.peer_id_previous,
+                            peer_kind=relationship.peer_kind_previous,
+                            action=DiffAction.REMOVED,
+                        )
+                    )
+
+            elif isinstance(relationship, RelationshipCardinalityManyChangelog):
+                for peer in relationship.peers:
+                    if peer.peer_status in [DiffAction.ADDED, DiffAction.REMOVED]:
+                        related.append(
+                            self._format_relationship_resource(
+                                relationship_name=relationship.name,
+                                peer_id=peer.peer_id,
+                                peer_kind=peer.peer_kind,
+                                action=peer.peer_status,
+                            )
+                        )
 
         if self.changelog.parent:
             related.append(
@@ -74,6 +103,19 @@ class NodeMutatedEvent(InfrahubEvent):
             )
 
         return related
+
+    def _format_relationship_resource(
+        self, relationship_name: str, peer_id: str, peer_kind: str, action: DiffAction
+    ) -> dict[str, str]:
+        return {
+            "prefect.resource.id": f"infrahub.node.{self.node_id}",
+            "prefect.resource.role": "infrahub.node.relationship_update",
+            "infrahub.field.name": relationship_name,
+            "infrahub.relationship.name": relationship_name,
+            "infrahub.relationship.peer_status": action.value,
+            "infrahub.relationship.peer_id": peer_id,
+            "infrahub.relationship.peer_kind": peer_kind,
+        }
 
     def get_resource(self) -> dict[str, str]:
         return {

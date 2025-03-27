@@ -1,6 +1,6 @@
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { queryClient } from "@/shared/api/rest/client";
@@ -58,7 +58,7 @@ export function ObjectActionsCell({
 
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={getObjectDetailsUrl2(objectKind, objectId)}>
+              <Link to={getObjectDetailsUrl(objectKind, objectId)}>
                 <Icon icon="mdi:arrow-expand" className="text-base" />
                 View details
               </Link>

@@ -1,7 +1,9 @@
 import { EventType } from "@/entities/events/types";
-import { EventDetails } from "@/entities/events/ui/event-card";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { InfoIcon } from "lucide-react";
+import { EventDetails } from "./event-details";
 
 export function EventDetailsPopover(props: EventType) {
   return (
@@ -10,8 +12,10 @@ export function EventDetailsPopover(props: EventType) {
         View more <InfoIcon className="size-3" />
       </PopoverTrigger>
 
-      <PopoverContent className="w-full">
-        <EventDetails {...props} />
+      <PopoverContent className="w-full max-h-64 overflow-scroll">
+        <ScrollArea scrollY>
+          <EventDetails {...props} />
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );

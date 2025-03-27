@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/api/resource-pool";
 import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/constants";
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -24,7 +24,7 @@ const ResourceAllocationDetailsPage = () => {
   const getResourcePoolAllocatedData = data[RESOURCE_POOL_ALLOCATED_KIND];
   const resourcesAllocated = getResourcePoolAllocatedData.edges.map(({ node }: any) => ({
     values: { ...node },
-    link: getObjectDetailsUrl2(node.kind, node.id, [{ name: QSP.BRANCH, value: node.branch }]),
+    link: getObjectDetailsUrl(node.kind, node.id, [{ name: QSP.BRANCH, value: node.branch }]),
   }));
   const totalOfResourcesAllocated = getResourcePoolAllocatedData.count;
 

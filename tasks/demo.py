@@ -8,13 +8,12 @@ from invoke.tasks import task
 from .container_ops import (
     destroy_environment,
     display_container_status,
-    migrate_database,
     pull_images,
     restart_services,
     show_service_status,
     start_services,
     stop_services,
-    update_core_schema,
+    upgrade_infrahub,
 )
 from .infra_ops import (
     load_infrastructure_data,
@@ -72,11 +71,10 @@ def destroy(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     destroy_environment(context=context, database=database, namespace=NAMESPACE)
 
 
-@task(optional=["database"])
-def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Apply the latest database migrations."""
-    migrate_database(context=context, database=database, namespace=NAMESPACE)
-    update_core_schema(context=context, database=database, namespace=NAMESPACE)
+@task(optional=["database"], aliases=["migrate"])
+def upgrade(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Upgrade Infrahub to the latest version and apply the required migrations."""
+    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])

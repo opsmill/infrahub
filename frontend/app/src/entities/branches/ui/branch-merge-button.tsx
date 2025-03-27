@@ -1,7 +1,7 @@
 import { TASK_OBJECT } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
-import { BRANCH_MERGE_WORKFLOW } from "@/entities/tasks/constants";
+import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -25,6 +25,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     variables: {
       branch: branch.name,
       workflow: [BRANCH_MERGE_WORKFLOW],
+      state: TASK_ONGOING_STATES,
     },
     pollInterval: 5_000,
   });

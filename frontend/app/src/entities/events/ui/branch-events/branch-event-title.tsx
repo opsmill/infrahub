@@ -1,38 +1,43 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
+import {
+  BranchCreatedEvent,
+  BranchDeletedEvent,
+  BranchMergedEvent,
+  BranchRebasedEvent,
+} from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { ReactNode } from "react";
 
-export const BRANCH_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactNode> = {
-  "infrahub.branch.created": (props) => (
-    <div className="text-gray-500">
+export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
+  "infrahub.branch.created": (props: BranchCreatedEvent) => (
+    <div className="text-gray-600">
       created the branch{" "}
       <Link to={`/branches/${props.created_branch}`} className="text-black">
         {props.created_branch ?? "-"}
       </Link>
     </div>
   ),
-  "infrahub.branch.rebased": (props) => (
-    <div className="text-gray-500">
+  "infrahub.branch.rebased": (props: BranchRebasedEvent) => (
+    <div className="text-gray-600">
       rebased the branch{" "}
       <Link to={`/branches/${props.rebased_branch}`} className="text-black">
         {props.rebased_branch ?? "-"}
       </Link>
     </div>
   ),
-  "infrahub.branch.merged": (props) => (
-    <div className="text-gray-500">
+  "infrahub.branch.merged": (props: BranchMergedEvent) => (
+    <div className="text-gray-600">
       merged the branch <span className="text-black">{props.source_branch ?? "-"}</span>
     </div>
   ),
-  "infrahub.branch.deleted": (props) => (
-    <div className="text-gray-500">
+  "infrahub.branch.deleted": (props: BranchDeletedEvent) => (
+    <div className="text-gray-600">
       deleted the branch <span className="text-black">{props.deleted_branch ?? "-"}</span>
     </div>
   ),
 };
 
-export const BranchEventTitle = (props: EventNodeInterface) => {
+export const BranchEventTitle = (props: any) => {
   const { event, account_id, branch } = props;
 
   return (
