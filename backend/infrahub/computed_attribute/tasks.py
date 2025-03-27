@@ -311,35 +311,36 @@ async def trigger_update_jinja2_computed_attributes(
 async def computed_attribute_setup_jinja2(
     service: InfrahubServices, context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
-    log = get_run_logger()
+    async with service.database.start_session() as db:
+        log = get_run_logger()
 
-    if branch_name:
-        await add_tags(branches=[branch_name])
-        await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
+        if branch_name:
+            await add_tags(branches=[branch_name])
+            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
 
-    triggers = await gather_trigger_computed_attribute_jinja2()
+        triggers = await gather_trigger_computed_attribute_jinja2()
 
-    for trigger in triggers:
-        if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
-            await service.workflow.submit_workflow(
-                workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
-                context=context,
-                parameters={
-                    "branch_name": trigger.branch,
-                    "computed_attribute_name": trigger.computed_attribute.attribute.name,
-                    "computed_attribute_kind": trigger.computed_attribute.kind,
-                },
-            )
+        for trigger in triggers:
+            if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
+                await service.workflow.submit_workflow(
+                    workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                    context=context,
+                    parameters={
+                        "branch_name": trigger.branch,
+                        "computed_attribute_name": trigger.computed_attribute.attribute.name,
+                        "computed_attribute_kind": trigger.computed_attribute.kind,
+                    },
+                )
 
-    # Configure all ComputedAttrJinja2Trigger in Prefect
-    async with get_client(sync_client=False) as prefect_client:
-        await setup_triggers(
-            client=prefect_client,
-            triggers=triggers,
-            trigger_type=TriggerType.COMPUTED_ATTR_JINJA2,
-        )  # type: ignore[misc]
+        # Configure all ComputedAttrJinja2Trigger in Prefect
+        async with get_client(sync_client=False) as prefect_client:
+            await setup_triggers(
+                client=prefect_client,
+                triggers=triggers,
+                trigger_type=TriggerType.COMPUTED_ATTR_JINJA2,
+            )  # type: ignore[misc]
 
-    log.info(f"{len(triggers)} Computed Attribute for Jinja2 automation configuration completed")
+        log.info(f"{len(triggers)} Computed Attribute for Jinja2 automation configuration completed")
 
 
 @flow(
@@ -353,45 +354,48 @@ async def computed_attribute_setup_python(
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
 ) -> None:
-    log = get_run_logger()
+    async with service.database.start_session() as db:
+        log = get_run_logger()
 
-    branch_name = branch_name or registry.default_branch
+        branch_name = branch_name or registry.default_branch
 
-    if branch_name:
-        await add_tags(branches=[branch_name])
-        await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
+        if branch_name:
+            await add_tags(branches=[branch_name])
+            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
 
-    triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=service.database)
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
 
-    for trigger in triggers_python:
-        if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
+        for trigger in triggers_python:
+            if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
+                log.info(
+                    f"Triggering update for {trigger.computed_attribute.computed_attribute.attribute.name} on {branch_name}"
+                )
+                await service.workflow.submit_workflow(
+                    workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                    context=context,
+                    parameters={
+                        "branch_name": branch_name,
+                        "computed_attribute_name": trigger.computed_attribute.computed_attribute.attribute.name,
+                        "computed_attribute_kind": trigger.computed_attribute.computed_attribute.kind,
+                    },
+                )
+
+        async with get_client(sync_client=False) as prefect_client:
+            await setup_triggers(
+                client=prefect_client,
+                triggers=triggers_python,
+                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
+            )  # type: ignore[misc]
+            log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
+
+            await setup_triggers(
+                client=prefect_client,
+                triggers=triggers_python_query,
+                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
+            )  # type: ignore[misc]
             log.info(
-                f"Triggering update for {trigger.computed_attribute.computed_attribute.attribute.name} on {branch_name}"
+                f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed"
             )
-            await service.workflow.submit_workflow(
-                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": trigger.computed_attribute.computed_attribute.attribute.name,
-                    "computed_attribute_kind": trigger.computed_attribute.computed_attribute.kind,
-                },
-            )
-
-    async with get_client(sync_client=False) as prefect_client:
-        await setup_triggers(
-            client=prefect_client,
-            triggers=triggers_python,
-            trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
-        )  # type: ignore[misc]
-        log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
-
-        await setup_triggers(
-            client=prefect_client,
-            triggers=triggers_python_query,
-            trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
-        )  # type: ignore[misc]
-        log.info(f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed")
 
 
 @flow(
