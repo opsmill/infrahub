@@ -1,1 +1,0 @@
-Fix an issue that could cause the display label to not appear for nodes that have had their kind updated
