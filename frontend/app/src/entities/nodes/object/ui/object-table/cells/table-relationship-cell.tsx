@@ -5,7 +5,7 @@ import {
   NodeRelationshipMany,
   NodeRelationshipOne,
 } from "@/entities/nodes/types";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -46,7 +46,7 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
     <LinkButton
       variant="outline"
       size="sm"
-      to={getObjectDetailsUrl2(node.__typename, node.id)}
+      to={getObjectDetailsUrl(node.__typename, node.id)}
       className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
     >
       <Icon icon={schema.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />

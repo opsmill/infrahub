@@ -92,11 +92,10 @@ class PrefectEventData(PrefectEventModel):
 
     def _return_node_mutation(self) -> dict[str, Any]:
         attributes = []
+        relationships = []
 
         for resource in self.related:
-            if resource.get("prefect.resource.role") == "infrahub.node.field_update" and resource.get(
-                "infrahub.attribute.name"
-            ):
+            if resource.role == "infrahub.node.attribute_update" and resource.get("infrahub.attribute.name"):
                 attributes.append(
                     {
                         "name": resource.get("infrahub.attribute.name", ""),
@@ -110,8 +109,19 @@ class PrefectEventData(PrefectEventModel):
                         "action": resource.get("infrahub.attribute.action", "unchanged"),
                     }
                 )
+            elif resource.role == "infrahub.node.relationship_update":
+                relationships.append(
+                    {
+                        "name": resource.get("infrahub.relationship.name"),
+                        "action": resource.get("infrahub.relationship.peer_status"),
+                        "peer": {
+                            "id": resource.get("infrahub.relationship.peer_id"),
+                            "kind": resource.get("infrahub.relationship.peer_kind"),
+                        },
+                    }
+                )
 
-        return {"attributes": attributes}
+        return {"attributes": attributes, "relationships": relationships}
 
     def _get_branch_name_from_resource(self) -> str:
         return self.resource.get("infrahub.branch.name") or ""

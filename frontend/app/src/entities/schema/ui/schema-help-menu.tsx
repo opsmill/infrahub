@@ -1,6 +1,6 @@
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import {
@@ -41,7 +41,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
         </DropdownMenuItem>
 
         <DropdownMenuItem disabled={isListViewDisabled} asChild>
-          <Link to={getObjectDetailsUrl2(schema.kind as string)} className="flex gap-2">
+          <Link to={getObjectDetailsUrl(schema.kind as string)} className="flex gap-2">
             <Icon icon="mdi:table-eye" className="text-lg text-custom-blue-700" />
             Open list view
           </Link>

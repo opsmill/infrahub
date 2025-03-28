@@ -1,0 +1,229 @@
+---
+title: Webhooks
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_reciever.txt';
+
+# Webhooks
+
+The **Webhook System** enables external notifications based on the [Events](./events.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
+
+## Configuring webhooks
+
+Infrahub support two different types of webhooks:
+
+- `Standard Webhook` sends event information to an external endpoint.
+- `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
+
+:::note
+
+Custom webhooks might be useful in situations where the endpoint needs a specific payload to be successful. A use-case that might need this would be triggering external actions in platforms like GitHub and Gitlab.
+
+:::
+
+Webhooks can be configured to trigger on specific event types, such as:
+
+- `infrahub.branch.merged`
+- `infrahub.node.updated`
+
+This allows you to tailor webhooks for specific use cases.
+
+### Configuring branch types
+
+Webhooks can also be configured to trigger based on branch types:
+
+- **Other Branches** – All branches except the default branch.
+- **Default Branch** – Only the default branch.
+- **All Branches** – Every branch.
+
+This flexibility ensures that webhooks only trigger when relevant, depending on the use case. For example, you might configure a webhook to notify an external system only when a user makes changes directly to the default branch.
+
+### Node kind
+
+Node kinds can be configured to only trigger webhooks for specific nodes. For example only send webhooks for the node kind of `InfraDevice`.
+
+:::note
+
+Node kind can only be used where `node_kind` is `True` in [Infrahub events](../reference/infrahub-events.mdx). Below are some example events that are enabled:
+
+- `infrahub.node.created`
+- `infrahub.node.updated`
+- `infrahub.node.deleted`
+- `infrahub.artifact.created`
+- `infrahub.artifact.deleted`
+- `infrahub.group.member_added`
+- `infrahub.group.member_removed`
+- `infrahub.validator.member_removed`
+
+:::
+
+### Webhook configuration details
+
+- **Description**: A description can be set to identify the webhooks purpose.
+- **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
+
+### Shared key for security
+
+A **shared key** can be configured to sign webhook requests. This key ensures the **authenticity** and **integrity** of the webhook message.
+
+When a webhook is sent:
+
+1. The sender generates a signature using the shared key.
+2. The signature is included in the request headers.
+
+The receiver then uses the same shared key to verify the signature, confirming that the message has not been tampered with and that it is from a trusted source.
+
+<details>
+  <summary>Python FastAPI Example</summary>
+  <CodeBlock language="python" title="webhook-reciever.py">{FastapiWebhookReciever}</CodeBlock>
+
+</details>
+<!-- vale off -->
+### Validating HTTPS certificates
+<!-- vale on -->
+
+When using webhooks over HTTPS, you can configure your system to validate certificates to ensure that the receiver has a valid HTTPS certificate, adding an extra layer of security.
+
+## Example payloads
+
+Here are some example payloads of some events that may be sent.
+<!-- vale off -->
+<Tabs>
+  <TabItem value="infrahub.branch.created" label="infrahub.branch.created" default>
+```json
+{
+  "data": {
+    "branch_id": "182c6a84-4af4-736b-35a6-c514e640ca8b",
+    "branch_name": "test",
+    "sync_with_git": false
+  },
+  "id": "2ece726f-8574-488c-92f7-ee9a56485b46",
+  "branch": null,
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:44:32.321142+00:00",
+  "event": "infrahub.branch.created"
+}
+```
+  </TabItem>
+  <TabItem value="infrahub.node.created" label="infrahub.node.created">
+```json
+{
+  "data": {
+    "kind": "OrganizationProvider",
+    "action": "created",
+    "fields": [
+      "name"
+    ],
+    "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
+    "changelog": {
+      "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
+      "node_kind": "OrganizationProvider",
+      "attributes": {
+        "name": {
+          "kind": "Text",
+          "name": "name",
+          "value": "Google Fibre",
+          "properties": {
+            "is_visible": {
+              "name": "is_visible",
+              "value": true,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            },
+            "is_protected": {
+              "name": "is_protected",
+              "value": false,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            }
+          },
+          "value_previous": null,
+          "value_update_status": "added"
+        },
+        "description": {
+          "kind": "Text",
+          "name": "description",
+          "value": "Google Fibre",
+          "properties": {
+            "is_visible": {
+              "name": "is_visible",
+              "value": true,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            },
+            "is_protected": {
+              "name": "is_protected",
+              "value": false,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            }
+          },
+          "value_previous": null,
+          "value_update_status": "added"
+        }
+      },
+      "display_label": "Google Fibre",
+      "relationships": {}
+    }
+  },
+  "id": "bf569ddc-2a30-4491-82f1-0689f6cdb5e1",
+  "branch": "new-provider",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:31:14.566032+00:00",
+  "event": "infrahub.node.created"
+}
+```
+  </TabItem>
+
+  <TabItem value="infrahub.node.updated" label="infrahub.node.updated">
+```json
+{
+  "data": {
+    "kind": "InfraInterfaceL3",
+    "action": "updated",
+    "fields": [
+      "description",
+      "role"
+    ],
+    "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
+    "changelog": {
+      "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
+      "node_kind": "InfraInterfaceL3",
+      "attributes": {
+        "role": {
+          "kind": "Dropdown",
+          "name": "role",
+          "value": "peering",
+          "properties": {},
+          "value_previous": "peer",
+          "value_update_status": "updated"
+        },
+        "description": {
+          "kind": "Text",
+          "name": "description",
+          "value": "Connected to IX",
+          "properties": {},
+          "value_previous": "Connected to atl1-edge2::Ethernet1",
+          "value_update_status": "updated"
+        }
+      },
+      "display_label": "Ethernet1",
+      "relationships": {}
+    }
+  },
+  "id": "67acc7ea-93b1-4175-a69b-801c869aea07",
+  "branch": "alter-interface",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:36:25.688038+00:00",
+  "event": "infrahub.node.updated"
+}
+```
+  </TabItem>
+</Tabs>
+<!-- vale on -->

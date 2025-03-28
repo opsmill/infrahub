@@ -78,11 +78,15 @@ const sidebars: SidebarsConfig = {
         'guides/python-transform',
         'guides/artifact',
         'guides/database-backup',
+        'guides/managing-api-tokens',
+        'guides/object-template',
         'guides/profiles',
         'guides/object-storage',
         'guides/sso',
         'guides/check',
-        'guides/managing-api-tokens',
+        'guides/upgrade',
+        'guides/upgrade-enterprise',
+        'guides/webhooks',
       ],
     },
     {
@@ -94,6 +98,7 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'topics/infrahub-yml',
+        'topics/auth',
         'topics/activity-log',
         'topics/architecture',
         'topics/artifact',
@@ -108,9 +113,9 @@ const sidebars: SidebarsConfig = {
         'topics/graphql',
         'topics/groups',
         'topics/hardware-requirements',
-        'topics/version-control',
         'topics/ipam',
         'topics/object-storage',
+        'topics/object-template',
         'topics/permissions-roles',
         'topics/profiles',
         'topics/proposed-change',
@@ -120,7 +125,8 @@ const sidebars: SidebarsConfig = {
         'topics/schema',
         'topics/tasks',
         'topics/transformation',
-        'topics/auth',
+        'topics/version-control',
+        'topics/webhooks',
       ],
     },
     {
@@ -254,18 +260,6 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_8',
             'release-notes/infrahub/release-0_7',
             'release-notes/infrahub/release-0_6'
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Python SDK',
-          link: {
-            type: 'generated-index',
-            slug: 'release-notes/python-sdk',
-          },
-          items: [
-            // 'release-notes/python-sdk/release-1_0-DRAFT',
-            'release-notes/python-sdk/release-0_13'
           ],
         },
       ],

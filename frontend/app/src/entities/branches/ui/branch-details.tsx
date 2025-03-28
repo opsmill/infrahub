@@ -41,6 +41,7 @@ export const BranchDetails = () => {
   const [branches, setBranches] = useAtom(branchesState);
 
   const [displayModal, setDisplayModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -48,6 +49,8 @@ export const BranchDetails = () => {
     if (!branchName) return;
 
     try {
+      setIsLoading(true);
+
       await graphqlClient.mutate({
         mutation,
         variables: {
@@ -62,9 +65,11 @@ export const BranchDetails = () => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
         toastId: "alert-success",
       });
+      setIsLoading(false);
     } catch (error) {
       console.error(error);
       toast(<Alert type={ALERT_TYPES.ERROR} message={errorMessage} />);
+      setIsLoading(false);
     }
   };
 
@@ -202,6 +207,7 @@ export const BranchDetails = () => {
           }}
           open={displayModal}
           setOpen={() => setDisplayModal(false)}
+          isLoading={isLoading}
         />
       )}
     </div>

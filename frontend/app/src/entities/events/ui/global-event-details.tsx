@@ -1,6 +1,6 @@
 import { EventType } from "@/entities/events/types";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { EventDetails } from "./event-card";
+import { EventDetails } from "./event-details";
 import { NodeEvents } from "./node-details-events";
 
 export interface GlobalEventDetailsProps {

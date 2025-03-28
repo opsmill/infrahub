@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
 
 from infrahub.core.branch import Branch
 from infrahub.core.models import SchemaUpdateConstraintInfo
@@ -9,12 +11,23 @@ from infrahub.message_bus import InfrahubResponseData
 
 
 class SchemaValidateMigrationData(BaseModel):
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True, json_encoders={SchemaBranch: SchemaBranch.to_dict_schema_object}
-    )
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     branch: Branch
     schema_branch: SchemaBranch
     constraints: list[SchemaUpdateConstraintInfo]
+
+    @model_serializer()
+    def serialize_model(self) -> dict[str, Any]:
+        return {
+            "branch": self.branch.model_dump(),
+            "schema_branch": self.schema_branch.to_dict_schema_object(),
+            "constraints": [constraint.model_dump() for constraint in self.constraints],
+        }
+
+    @field_validator("schema_branch", mode="before")
+    @classmethod
+    def validate_schema_branch(cls, value: Any) -> SchemaBranch:
+        return SchemaBranch.validate(data=value)
 
 
 class SchemaValidatorPathResponseData(InfrahubResponseData):

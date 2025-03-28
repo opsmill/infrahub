@@ -23,6 +23,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import (
+    create_branch,
     create_default_branch,
     create_global_branch,
     create_ipam_namespace,
@@ -504,6 +505,14 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                         "cardinality": "one",
                         "direction": "outbound",
                     },
+                    {
+                        "name": "driver",
+                        "label": "Commander of Car",
+                        "peer": "TestPerson",
+                        "optional": True,
+                        "cardinality": "one",
+                        "identifier": "cars_driven__driver",
+                    },
                 ],
             },
             {
@@ -517,7 +526,40 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+                "relationships": [
+                    {"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"},
+                    {
+                        "name": "cars_driven",
+                        "peer": "TestCar",
+                        "cardinality": "many",
+                        "identifier": "cars_driven__driver",
+                    },
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    """
+    Person schema with no unicity constraint set except default filter.
+    """
+
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "PersonDF",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
             },
         ],
     }
@@ -655,6 +697,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "bag", "kind": "Text", "optional": True, "unique": True},
                 ],
                 "relationships": [
                     {
@@ -762,7 +805,6 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
                 "namespace": "Test",
                 "display_labels": ["name__value"],
                 "inherit_from": ["TestPerson"],
-                "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
             },
             {
@@ -770,7 +812,6 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
                 "namespace": "Test",
                 "display_labels": ["name__value"],
                 "inherit_from": ["TestPerson"],
-                "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "model_number", "kind": "Number", "optional": False},
@@ -971,8 +1012,8 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
             {
                 "name": "Car",
                 "namespace": "Test",
-                "default_filter": "name__value",
-                "uniqueness_constraints": [["name__value"]],
+                "uniqueness_constraints": [["agnostic_owner"]],
+                "human_friendly_id": ["name__value"],
                 "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1043,3 +1084,58 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
         ],
     }
     return schema
+
+
+@pytest.fixture
+async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "uniqueness_constraints": [["name__value"], ["owner"]],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "label": "Commander of Car",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "kind": "Parent",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "uniqueness_constraints": [["name__value"]],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture(params=["main", "branch2"])
+async def branch(request, db: InfrahubDatabase, default_branch: Branch):
+    if request.param == "main":
+        return default_branch
+
+    return await create_branch(branch_name=str(request.param), db=db)

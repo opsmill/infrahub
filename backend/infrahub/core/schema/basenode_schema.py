@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
+INHERITED = "INHERITED"
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
@@ -138,8 +139,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         reversed_map_other = dict(map(reversed, other_map.items()))
 
         # Identify which elements are using the same id on both sides
-        clean_local_ids = [id for id in local_map.values() if id is not None]
-        clean_other_ids = [id for id in other_map.values() if id is not None]
+        clean_local_ids = [id for id in local_map.values() if id is not None and id != INHERITED]
+        clean_other_ids = [id for id in other_map.values() if id is not None and id != INHERITED]
         shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
 
         # Identify which elements are present on both side based on the name
@@ -267,13 +268,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_attributes_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for attr in self.attributes:
-            name_id_map[attr.name] = attr.id
+            name_id_map[attr.name] = INHERITED if attr.inherited else attr.id
         return name_id_map
 
     def get_relationship_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for rel in self.relationships:
-            name_id_map[rel.name] = rel.id
+            name_id_map[rel.name] = INHERITED if rel.inherited else rel.id
         return name_id_map
 
     @property
@@ -432,25 +433,71 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_unique_constraint_schema_attribute_paths(
         self,
         schema_branch: SchemaBranch,
-        include_unique_attributes: bool = False,
-    ) -> list[list[SchemaAttributePath]]:
-        constraint_paths_groups = []
-        if include_unique_attributes:
-            for attribute_schema in self.unique_attributes:
-                constraint_paths_groups.append(
-                    [SchemaAttributePath(attribute_schema=attribute_schema, attribute_property_name="value")]
-                )
+    ) -> list[SchemaUniquenessConstraintPath]:
+        if self.uniqueness_constraints is None:
+            return []
 
-        if not self.uniqueness_constraints:
-            return constraint_paths_groups
+        uniqueness_constraint_paths = []
 
         for uniqueness_path_group in self.uniqueness_constraints:
-            constraint_paths_group = []
-            for uniqueness_path_part in uniqueness_path_group:
-                constraint_paths_group.append(self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch))
-            if constraint_paths_group not in constraint_paths_groups:
-                constraint_paths_groups.append(constraint_paths_group)
-        return constraint_paths_groups
+            attributes_paths = [
+                self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch)
+                for uniqueness_path_part in uniqueness_path_group
+            ]
+            uniqueness_constraint_type = self.get_uniqueness_constraint_type(
+                uniqueness_constraint=set(uniqueness_path_group), schema_branch=schema_branch
+            )
+            uniqueness_constraint_path = SchemaUniquenessConstraintPath(
+                attributes_paths=attributes_paths, typ=uniqueness_constraint_type
+            )
+            uniqueness_constraint_paths.append(uniqueness_constraint_path)
+
+        return uniqueness_constraint_paths
+
+    def convert_hfid_to_uniqueness_constraint(self, schema_branch: SchemaBranch) -> list[str] | None:
+        if self.human_friendly_id is None:
+            return None
+
+        uniqueness_constraint = []
+        for item in self.human_friendly_id:
+            schema_attribute_path = self.parse_schema_path(path=item, schema=schema_branch)
+            if schema_attribute_path.is_type_attribute:
+                uniqueness_constraint.append(item)
+            elif schema_attribute_path.is_type_relationship:
+                uniqueness_constraint.append(schema_attribute_path.relationship_schema.name)
+        return uniqueness_constraint
+
+    def get_uniqueness_constraint_type(
+        self, uniqueness_constraint: set[str], schema_branch: SchemaBranch
+    ) -> UniquenessConstraintType:
+        hfid = self.convert_hfid_to_uniqueness_constraint(schema_branch=schema_branch)
+        if hfid is None:
+            return UniquenessConstraintType.STANDARD
+        hfid_set = set(hfid)
+        if uniqueness_constraint == hfid_set:
+            return UniquenessConstraintType.HFID
+        if uniqueness_constraint <= hfid_set:
+            return UniquenessConstraintType.SUBSET_OF_HFID
+        return UniquenessConstraintType.STANDARD
+
+
+@dataclass
+class SchemaUniquenessConstraintPath:
+    attributes_paths: list[SchemaAttributePath]
+    typ: UniquenessConstraintType
+
+
+class UniquenessConstraintType(Enum):
+    HFID = "HFID"
+    SUBSET_OF_HFID = "SUBSET_OF_HFID"
+    STANDARD = "STANDARD"
+
+
+@dataclass
+class UniquenessConstraintViolation:
+    nodes_ids: set[str]
+    fields: list[str]
+    typ: UniquenessConstraintType
 
 
 @dataclass

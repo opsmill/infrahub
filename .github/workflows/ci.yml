@@ -812,9 +812,9 @@ jobs:
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && invoke dev.start
         env:
-          INFRAHUB_MISC_RESPONSE_DELAY: 2
+          INFRAHUB_MISC_RESPONSE_DELAY: 1
 
       - name: Set infrahub address
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -1014,11 +1014,22 @@ jobs:
         run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
-      - name: Run benchmarks
+
+      - name: Run all benchmarks
+        if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
         uses: CodSpeedHQ/action@v3
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
-          run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
+          run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
+
+      - name: Run non-intensive benchmarks
+        if: |
+          !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
+        uses: CodSpeedHQ/action@v3
+        with:
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
+
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:

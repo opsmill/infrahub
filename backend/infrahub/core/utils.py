@@ -26,7 +26,7 @@ async def add_relationship(
     branch_name: str | None = None,
     branch_level: int | None = None,
     at: Timestamp | None = None,
-    status=RelationshipStatus.ACTIVE,
+    status: RelationshipStatus = RelationshipStatus.ACTIVE,
 ) -> Record | None:
     create_rel_query = """
     MATCH (s) WHERE %(id_func)s(s) = $src_node_id
@@ -62,7 +62,9 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
-async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Timestamp = None) -> list[Record] | None:
+async def update_relationships_to(
+    ids: list[str], db: InfrahubDatabase, to: Timestamp | None = None
+) -> list[Record] | None:
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -88,7 +90,7 @@ async def get_paths_between_nodes(
     destination_id: str,
     relationships: list[str] | None = None,
     max_length: int | None = None,
-    print_query=False,
+    print_query: bool = False,
 ) -> list[Record]:
     """Return all paths between 2 nodes."""
 
@@ -230,26 +232,26 @@ class _NewClass:
 _all_vars = set(dir(_OldClass) + dir(_NewClass))
 
 
-def props(x) -> dict[str, Any]:
+def props(x: Any) -> dict[str, Any]:
     return {key: vars(x).get(key, getattr(x, key)) for key in dir(x) if key not in _all_vars}
 
 
 class SubclassWithMeta_Meta(type):
     _meta = None
 
-    def __str__(cls):
+    def __str__(cls) -> str:
         if cls._meta:
             return cls._meta.name
         return cls.__name__
 
-    def __repr__(cls):
+    def __repr__(cls) -> str:
         return f"<{cls.__name__} meta={repr(cls._meta)}>"
 
 
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     """This class improves __init_subclass__ to receive automatically the options from meta"""
 
-    def __init_subclass__(cls, **meta_options):
+    def __init_subclass__(cls, **meta_options: dict[str, Any]) -> None:
         """This method just terminates the super() chain"""
         _Meta = getattr(cls, "Meta", None)
         _meta_props = {}
@@ -274,5 +276,5 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
                 super_class.__init_subclass_with_meta__(**options)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options) -> None:
+    def __init_subclass_with_meta__(cls, **meta_options: dict[str, Any]) -> None:
         """This method just terminates the super() chain"""

@@ -39,3 +39,4 @@ helm/charts/
 helm/Chart.lock
 
 python_testcontainers/dist/*
+python_testcontainers/infrahub_testcontainers.egg-info/*

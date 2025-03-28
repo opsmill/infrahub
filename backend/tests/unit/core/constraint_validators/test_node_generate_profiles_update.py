@@ -9,6 +9,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.node.generate_profile import NodeGenerateProfileChecker
 from infrahub.database import InfrahubDatabase
@@ -26,6 +27,7 @@ async def test_set_generate_profile_success(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -46,6 +48,7 @@ async def test_set_generate_profile_success_generics(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestAnimal"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -67,6 +70,7 @@ async def test_set_generate_profile_false_fail(db: InfrahubDatabase, default_bra
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -94,6 +98,7 @@ async def test_set_generate_profile_false_fail_generic(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestAnimal"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -123,6 +128,7 @@ async def test_set_generate_profile_false_branch_delete_profile_success(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)

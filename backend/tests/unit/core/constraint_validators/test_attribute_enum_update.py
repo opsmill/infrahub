@@ -3,6 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.enum import AttributeEnumChecker, AttributeEnumUpdateValidatorQuery
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
@@ -147,6 +148,7 @@ async def test_validator(
         constraint_name="attribute.enum.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = AttributeEnumChecker(db=db, branch=branch)

@@ -1,10 +1,12 @@
 import os
+import shutil
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 
 from testcontainers.compose import DockerCompose
+from testcontainers.core.exceptions import ContainerIsNotRunning
 from typing_extensions import Self
 
 from infrahub_testcontainers import __version__ as infrahub_version
@@ -19,9 +21,15 @@ class ContainerService:
 INFRAHUB_SERVICES: dict[str, ContainerService] = {
     "server": ContainerService(container="infrahub-server-lb", port=8000),
     "task-manager": ContainerService(container="task-manager", port=4200),
+    "database": ContainerService(container="database", port=7687),
+    "scraper": ContainerService(container="scraper", port=8428),
+    "cadvisor": ContainerService(container="cadvisor", port=8080),
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
+    "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-community",
+    "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:3.13.7-management",
+    "CACHE_DOCKER_IMAGE": "redis:7.2.4",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
@@ -54,6 +62,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
 @dataclass
 class InfrahubDockerCompose(DockerCompose):
     project_name: str | None = None
+    env_vars: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def init(cls, directory: Path | None = None, version: str | None = None) -> Self:
@@ -67,33 +76,52 @@ class InfrahubDockerCompose(DockerCompose):
         if version == "local" and infrahub_image_version:
             version = infrahub_image_version
 
-        cls.create_docker_file(directory=directory)
-        cls.create_env_file(directory=directory, version=version)
+        compose = cls(project_name=cls.generate_project_name(), context=directory)
+        compose.create_docker_file(directory=directory)
+        compose.create_env_file(directory=directory, version=version)
 
-        return cls(project_name=cls.generate_project_name(), context=directory)
+        return compose
+
+    def get_env_var(self, key: str) -> str:
+        if not self.env_vars:
+            raise ValueError("env_vars hasn't been initialized yet")
+        if key not in self.env_vars:
+            raise ValueError(f"{key} is not set in the environment variables")
+        return self.env_vars[key]
+
+    @property
+    def use_neo4j_enterprise(self) -> bool:
+        return "enterprise" in self.get_env_var("NEO4J_DOCKER_IMAGE")
+
+    @property
+    def internal_backup_dir(self) -> Path:
+        return Path(self.get_env_var("INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY"))
+
+    @property
+    def external_backup_dir(self) -> Path:
+        return Path(self.context) / Path(self.get_env_var("INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY"))
 
     @classmethod
     def generate_project_name(cls) -> str:
         project_id = str(uuid.uuid4())[:8]
         return f"infrahub-test-{project_id}"
 
-    @classmethod
-    def create_docker_file(cls, directory: Path) -> Path:
+    def create_docker_file(self, directory: Path) -> Path:
         current_directory = Path(__file__).resolve().parent
         compose_file = current_directory / "docker-compose.test.yml"
 
         test_compose_file = directory / "docker-compose.yml"
         test_compose_file.write_bytes(compose_file.read_bytes())
 
-        haproxy_config_file = current_directory / "haproxy.cfg"
+        for file in ["haproxy.cfg", "prometheus.yml"]:
+            config_file = current_directory / file
 
-        test_haproxy_config_file = directory / "haproxy.cfg"
-        test_haproxy_config_file.write_bytes(haproxy_config_file.read_bytes())
+            test_config_file = directory / file
+            test_config_file.write_bytes(config_file.read_bytes())
 
         return test_compose_file
 
-    @classmethod
-    def create_env_file(cls, directory: Path, version: str) -> Path:
+    def create_env_file(self, directory: Path, version: str) -> Path:
         env_file = directory / ".env"
 
         PROJECT_ENV_VARIABLES.update({"INFRAHUB_TESTING_IMAGE_VERSION": version})
@@ -111,7 +139,47 @@ class InfrahubDockerCompose(DockerCompose):
             for key, value in PROJECT_ENV_VARIABLES.items():
                 env_var_value = os.environ.get(key, value)
                 file.write(f"{key}={env_var_value}\n")
+                self.env_vars[key] = env_var_value
+
         return env_file.absolute()
+
+    def restart(self) -> None:
+        """
+        Restart the docker compose environment.
+
+        TODO Would be good to contribute this upstream
+        """
+        cmd = self.compose_command_property[:]
+        cmd += ["restart"]
+
+        if self.services:
+            cmd.extend(self.services)
+        self._run_command(cmd=cmd)
+
+    def start_container(self, service_name: str) -> None:
+        """
+        Starts a specific service of the docker compose environment.
+
+        TODO Would be good to contribute this upstream
+        """
+        base_cmd = self.compose_command_property or []
+
+        # pull means running a separate command before starting
+        if self.pull:
+            pull_cmd = [*base_cmd, "pull", service_name]
+            self._run_command(cmd=pull_cmd)
+
+        up_cmd = [*base_cmd, "up"]
+
+        # build means modifying the up command
+        if self.wait:
+            up_cmd.append("--wait")
+        else:
+            # we run in detached mode instead of blocking
+            up_cmd.append("--detach")
+
+        up_cmd.append(service_name)
+        self._run_command(cmd=up_cmd)
 
     # TODO would be good to the support for project_name upstream
     @cached_property
@@ -131,3 +199,69 @@ class InfrahubDockerCompose(DockerCompose):
             service_name: int(self.get_service_port(service_name=service_data.container, port=service_data.port) or 0)
             for service_name, service_data in INFRAHUB_SERVICES.items()
         }
+
+    def database_create_backup(self, backup_name: str = "neo4j_database.backup", dest_dir: Path | None = None) -> None:
+        assert self.use_neo4j_enterprise
+
+        self.exec_in_container(
+            command=[
+                "neo4j-admin",
+                "database",
+                "backup",
+                "--compress=false",
+                "--to-path",
+                str(self.internal_backup_dir),
+            ],
+            service_name="database",
+        )
+
+        if dest_dir:
+            backup_files = list(self.external_backup_dir.glob("*.backup"))
+            if not backup_files:
+                raise FileNotFoundError(f"No .backup files found in {self.external_backup_dir}")
+
+            backup_file = backup_files[0]
+            shutil.copy(
+                backup_file,
+                dest_dir / backup_name,
+            )
+
+    def database_restore_backup(self, backup_file: Path) -> None:
+        assert self.use_neo4j_enterprise
+
+        shutil.copy(
+            str(backup_file),
+            str(self.external_backup_dir / backup_file.name),
+        )
+        service_name = "database"
+
+        # Ensure the database container is running otherwise start it
+        try:
+            self.get_container(service_name=service_name)
+        except ContainerIsNotRunning:
+            self.start_container(service_name=service_name)
+
+        self.exec_in_container(
+            command=["cypher-shell", "-u", "neo4j", "-p", "admin", "STOP DATABASE neo4j;"],
+            service_name=service_name,
+        )
+
+        self.exec_in_container(
+            command=[
+                "neo4j-admin",
+                "database",
+                "restore",
+                "--overwrite-destination",
+                "--from-path",
+                str(self.internal_backup_dir / backup_file.name),
+            ],
+            service_name=service_name,
+        )
+
+        self.exec_in_container(
+            command=["cypher-shell", "-d", "system", "-u", "neo4j", "-p", "admin", "START DATABASE neo4j;"],
+            service_name=service_name,
+        )
+
+        self.stop(down=False)
+        self.start()

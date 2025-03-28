@@ -9,15 +9,7 @@ import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
 
-const regex = /^Related/; // starts with Related
-
-export const getObjectDetailsUrl = (nodeId: string, nodeType: string): string => {
-  const peerKind: string = nodeType?.replace(regex, "");
-
-  return `/objects/${peerKind}/${nodeId}`;
-};
-
-export const getObjectDetailsUrl2 = (
+export const getObjectDetailsUrl = (
   objectKind: string,
   objectId?: string,
   overrideParams?: overrideQueryParams[]

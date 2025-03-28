@@ -31,6 +31,7 @@ query(
     $has_children: Boolean
     $event_type: [String!]
     $since: DateTime
+    $primary_node__ids: [String!]
 ) {
   InfrahubEvent(
     branches: $branch,
@@ -40,6 +41,7 @@ query(
     level: $level
     has_children: $has_children
     parent__ids: $parent__ids
+    primary_node__ids: $primary_node__ids
     event_type: $event_type
     since: $since
   ) {
@@ -65,6 +67,30 @@ query(
           members {
             id
             kind
+          }
+        }
+        ... on NodeMutatedEvent {
+          branch
+          event
+          payload
+          primary_node {
+            id
+            kind
+          }
+          attributes {
+            action
+            kind
+            name
+            value
+            value_previous
+          }
+          relationships {
+            name
+            action
+            peer {
+              id
+              kind
+            }
           }
         }
       }
@@ -291,6 +317,16 @@ async def events_data(
                 context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
             ),
         ),
+        "branch1_mutated7": NodeCreatedEvent(
+            kind=group_fr.get_kind(),
+            node_id=group_fr.get_id(),
+            changelog=group_fr.node_changelog,
+            meta=EventMeta(
+                branch=branch1,
+                account_id=ACCOUNT2_ID,
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
+            ),
+        ),
         "branch2_mutated1": NodeCreatedEvent(
             kind="BuiltinTag",
             node_id=tag4.get_id(),
@@ -414,7 +450,7 @@ async def test_event_query_prefect(
     assert result_branch1.data
 
     clean_result = filter_outofscope_events(result_branch1.data, event_ids_inscope)
-    assert clean_result["InfrahubEvent"]["count"] == 8
+    assert clean_result["InfrahubEvent"]["count"] == 9
 
     result_count_branch1 = await run_query(
         db=db,
@@ -486,7 +522,7 @@ async def test_event_query_prefect(
     )
     assert branch1_account2.errors is None
     assert branch1_account2.data
-    assert branch1_account2.data["InfrahubEvent"]["count"] == 3
+    assert branch1_account2.data["InfrahubEvent"]["count"] == 4
 
     branch2_account1 = await run_query(
         db=db,
@@ -585,7 +621,7 @@ async def test_event_query_prefect(
     )
     assert created_branch1.errors is None
     assert created_branch1.data
-    assert created_branch1.data["InfrahubEvent"]["count"] == 10
+    assert created_branch1.data["InfrahubEvent"]["count"] == 11
     assert [node["node"]["event"] for node in created_branch1.data["InfrahubEvent"]["edges"]] == [
         "infrahub.node.created"
     ] * 10
@@ -627,3 +663,29 @@ async def test_event_query_prefect(
     assert events_data["branch3_mutated1"].node_id in members
     assert events_data["branch3_mutated2"].node_id in members
     assert events_data["branch1_mutated5"].node_id in ancestors
+
+    relationship_cardinality_many = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={
+            "event_type": ["infrahub.node.created"],
+            "primary_node__ids": events_data["branch1_mutated7"].node_id,
+        },
+    )
+    assert not relationship_cardinality_many.errors
+    assert relationship_cardinality_many.data
+    assert relationship_cardinality_many.data["InfrahubEvent"]["count"] == 1
+    event = relationship_cardinality_many.data["InfrahubEvent"]["edges"][0]["node"]
+    assert len(event["relationships"]) == 2
+
+    assert {
+        "name": "members",
+        "action": "ADDED",
+        "peer": {"id": events_data["branch3_mutated1"].node_id, "kind": "TestPerson"},
+    } in event["relationships"]
+    assert {
+        "name": "members",
+        "action": "ADDED",
+        "peer": {"id": events_data["branch3_mutated2"].node_id, "kind": "TestPerson"},
+    } in event["relationships"]

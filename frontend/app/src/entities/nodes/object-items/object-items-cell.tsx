@@ -3,7 +3,7 @@ import {
   RelationshipOneType,
   getDisplayValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
@@ -28,7 +28,7 @@ export const ObjectItemsCell = ({ row, attribute }: ObjectItemsCellProps) => {
     }
   }
 
-  const url = getObjectDetailsUrl2(row.__typename, row.id);
+  const url = getObjectDetailsUrl(row.__typename, row.id);
 
   return <LinkCell to={url}>{getDisplayValue(row, attribute)}</LinkCell>;
 };
@@ -52,7 +52,7 @@ export const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => 
 
   return (
     <LinkCell
-      to={getObjectDetailsUrl2(data.node.__typename, data.node.id)}
+      to={getObjectDetailsUrl(data.node.__typename, data.node.id)}
       className="hover:underline"
     >
       {data.node.display_label}
@@ -67,7 +67,7 @@ export const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) =
         if (!node) return null;
 
         return (
-          <Link key={node.id} to={getObjectDetailsUrl2(node.__typename, node.id)}>
+          <Link key={node.id} to={getObjectDetailsUrl(node.__typename, node.id)}>
             <Badge className="hover:underline hover:bg-gray-200 font-medium">
               {node.display_label}
             </Badge>

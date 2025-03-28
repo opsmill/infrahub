@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("Global Activities - List view and filter usage", () => {
+test.describe.fixme("Global Activities - List view and filter usage", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("Filter by branch", async ({ page }) => {

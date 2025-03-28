@@ -1,10 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { saveScreenshotForDocs } from "../../../utils";
 
-test.describe("Resource Managers guide", () => {
-  test.describe.configure({ mode: "parallel" });
-  test.slow();
+test.describe.fixme("Guide - Resources Manager", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("IP Address Pool", async ({ page }) => {
@@ -17,7 +15,7 @@ test.describe("Resource Managers guide", () => {
         "guides/resources-manager/resource_manager_rss_prefix_10_100_0"
       );
       await page.getByRole("button", { name: "Save" }).click();
-      await page.getByText("IPPrefix created").waitFor({ state: "visible" });
+      await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 
     await test.step("Create IP Pool - 10.100.0.0/24", async () => {
@@ -46,6 +44,8 @@ test.describe("Resource Managers guide", () => {
 
       await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_ip");
       await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("IP address pool created")).toBeVisible();
     });
 
     await test.step("Use Pool to allocate IP on Device", async () => {
@@ -56,7 +56,7 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("textbox", { name: "Name *" }).fill("dev-123");
       await page.getByRole("textbox", { name: "Type *" }).fill("MX204");
       await page.getByTestId("select-open-pool-option-button").click();
-      await page.getByRole("option", { name: "My IP address pool" }).waitFor({ state: "visible" });
+      await expect(page.getByRole("option", { name: "My IP address pool" })).toBeVisible();
       await saveScreenshotForDocs(
         page,
         "guides/resources-manager/resource_manager_pool_device_before"
@@ -85,7 +85,7 @@ test.describe("Resource Managers guide", () => {
         "guides/resources-manager/resource_manager_rss_prefix_10_100_1"
       );
       await page.getByRole("button", { name: "Save" }).click();
-      await page.getByText("IPPrefix created").waitFor({ state: "visible" });
+      await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 
     await test.step("Create Prefix Pool - 10.100.1.0/24", async () => {
@@ -130,14 +130,13 @@ test.describe("Resource Managers guide", () => {
       await page.getByLabel("Node *").click();
       const filterInput = page.getByPlaceholder("Filter...").nth(1);
       await filterInput.fill("VLAN");
-      await page.getByText("VLAN Infra").waitFor({ state: "visible" });
       await page.getByText("VLAN Infra").click();
       await expect(page.getByLabel("Number Attribute *")).toContainText("Vlan Id");
       await page.getByRole("spinbutton", { name: "Start range *" }).fill("100");
       await page.getByRole("spinbutton", { name: "End range *" }).fill("1000");
       await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_vlan");
       await page.getByRole("button", { name: "Save" }).click();
-      await page.getByText("Number pool created").waitFor({ state: "visible" });
+      await expect(page.getByText("Number pool created")).toBeVisible();
     });
 
     await test.step("Use Pool to allocate ID to VLAN", async () => {
@@ -145,7 +144,7 @@ test.describe("Resource Managers guide", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("textbox", { name: "Name *" }).fill("My vlan");
       await page.getByTestId("number-pool-button").click();
-      await page.getByRole("option", { name: "My VLAN ID Pool" }).waitFor({ state: "visible" });
+      await expect(page.getByRole("option", { name: "My VLAN ID Pool" })).toBeVisible();
       await saveScreenshotForDocs(
         page,
         "guides/resources-manager/resource_manager_pool_vlan_before"

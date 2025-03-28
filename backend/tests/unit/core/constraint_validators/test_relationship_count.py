@@ -7,6 +7,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.relationship.count import RelationshipCountChecker, RelationshipCountUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
@@ -455,6 +456,7 @@ async def test_validator(
         constraint_name="relationship.max_count.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="cars"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = RelationshipCountChecker(db=db, branch=branch)
@@ -496,6 +498,7 @@ async def test_validator_cardinality_failure(
         constraint_name="relationship.cardinality.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="cars"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = RelationshipCountChecker(db=db, branch=branch)

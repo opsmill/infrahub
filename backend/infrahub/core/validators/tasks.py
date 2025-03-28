@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
 from prefect.cache_policies import NONE
@@ -17,6 +19,9 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 from infrahub.workflows.utils import add_tags
 
 from .models.validate_migration import SchemaValidateMigrationData, SchemaValidatorPathResponseData
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 @flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations", persist_result=True)
@@ -43,6 +48,7 @@ async def schema_validate_migrations(
             constraint_name=constraint.constraint_name,
             node_schema=schema,
             schema_path=constraint.path,
+            schema_branch=message.schema_branch,
             service=service,
         )
 
@@ -62,6 +68,7 @@ async def schema_path_validate(
     constraint_name: str,
     node_schema: NodeSchema | GenericSchema,
     schema_path: SchemaPath,
+    schema_branch: SchemaBranch,
     service: InfrahubServices,
 ) -> SchemaValidatorPathResponseData:
     async with service.database.start_session() as db:
@@ -70,6 +77,7 @@ async def schema_path_validate(
             constraint_name=constraint_name,
             node_schema=node_schema,
             schema_path=schema_path,
+            schema_branch=schema_branch,
         )
 
         component_registry = get_component_registry()

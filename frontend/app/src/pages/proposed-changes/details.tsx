@@ -184,11 +184,9 @@ export function Component() {
         description={
           <div className="inline-flex gap-1 text-xs items-center">
             <Link
-              to={constructPath(
-                getObjectDetailsUrl(
-                  proposedChangesData?.created_by?.node?.id,
-                  proposedChangesData?.created_by?.node?.__typename
-                )
+              to={getObjectDetailsUrl(
+                proposedChangesData?.created_by?.node?.__typename,
+                proposedChangesData?.created_by?.node?.id
               )}
               className="font-semibold text-custom-blue-green"
             >
