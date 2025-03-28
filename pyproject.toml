@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.2.1"
+version = "1.2.2"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -136,7 +136,7 @@ exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 300 # 5 minutes
-session_timeout = 1200 # 20 minutes
+session_timeout = 1800 # 30 minutes
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",

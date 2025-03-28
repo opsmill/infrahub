@@ -8,6 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.constants import (
     AttributeDBNodeType,
     RelationshipDirection,
@@ -713,14 +714,24 @@ class NodeGetKindQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ids"] = self.ids
         query = """
-        MATCH p = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)
-        WHERE n.uuid IN $ids
+MATCH (n:Node)-[r:IS_PART_OF {status: "active"}]->(:Root)
+WHERE toString(n.uuid) IN $ids
+        """
+        # only add the branch filter logic if a branch is included in the query parameters
+        if branch := getattr(self, "branch", None):
+            branch = await registry.get_branch(db=db, branch=branch)
+            branch_filter, branch_params = branch.get_query_filter_path(at=self.at)
+            self.params.update(branch_params)
+            query += f"AND {branch_filter}"
+        query += """
+WITH n.uuid AS node_id, n.kind AS node_kind
+ORDER BY r.from DESC
+WITH node_id, head(collect(node_kind)) AS node_kind
         """
         self.add_to_query(query)
-        self.params["ids"] = self.ids
-
-        self.return_labels = ["n.uuid AS node_id", "n.kind AS node_kind"]
+        self.return_labels = ["node_id", "node_kind"]
 
     async def get_node_kind_map(self) -> dict[str, str]:
         node_kind_map: dict[str, str] = {}
