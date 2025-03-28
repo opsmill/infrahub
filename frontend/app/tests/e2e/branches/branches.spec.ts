@@ -47,7 +47,7 @@ test.describe("Branches creation and deletion", () => {
 
       // After submit
       await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
-      await expect(page).toHaveURL(new RegExp(`/.*?branch=${BRANCH_NAME_1}/`));
+      await expect(page).toHaveURL(new RegExp(`.*?branch=${BRANCH_NAME_1}`));
     });
 
     test("should display the new branch", async ({ page }) => {
