@@ -10,7 +10,7 @@ from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
 
-@pytest.mark.timeout(1000)  # Increase timeout as codspeed runs tests multiple times.
+@pytest.mark.timeout(1800)  # Increase timeout as codspeed runs tests multiple times.
 class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
     async def create_car_batch(
         self,
