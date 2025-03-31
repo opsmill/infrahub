@@ -8,7 +8,7 @@ from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m021_missing_hierarchy_merge import Migration021
+from infrahub.core.migrations.graph.m022_missing_hierarchy_backfill import Migration022
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -21,7 +21,7 @@ class TestHierarchyCorrected:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        hierarchical_location_schema_simple: SchemaRoot,
+        hierarchical_location_schema: SchemaRoot,
     ) -> None:
         # make a branch with hierarchical data
         branch_name = "branch_hierarch"
@@ -36,6 +36,9 @@ class TestHierarchyCorrected:
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
         at = Timestamp()
         await diff_merger.merge_graph(at=at)
+
+        # delete the branch
+        await branch.delete(db=db)
 
         # remove the hierarchy property on main
         query = """
@@ -83,7 +86,9 @@ SET main_e.hierarchy = NULL
         assert retrieved_ancestors_map == {}
 
         # run the migration
-        migration = Migration021()
+        default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+        await registry.schema.load_schema_to_db(db=db, schema=default_schema_branch)
+        migration = Migration022()
         await migration.execute(db=db)
         await migration.validate_migration(db=db)
 
