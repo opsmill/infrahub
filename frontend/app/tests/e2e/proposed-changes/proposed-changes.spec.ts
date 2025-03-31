@@ -3,6 +3,8 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { createBranch, deleteBranch } from "../../utils";
 
 test.describe("/proposed-changes", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -42,8 +44,6 @@ test.describe("/proposed-changes", () => {
     });
 
     test.describe("Create, edit and merge proposed change", async () => {
-      test.describe.configure({ mode: "serial" });
-
       const pcName = "pc-e2e";
       const pcNameEdit = "pc-e2e-edit";
       const pcBranchName = "main-copy-for-pc-e2e";
