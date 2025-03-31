@@ -89,9 +89,7 @@ def lint(context: Context) -> None:
 @task(optional=["database"])
 def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = (
-            f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core/migrations/graphs"
-        )
+        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")

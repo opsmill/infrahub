@@ -125,12 +125,12 @@ class GraphMigration(BaseModel):
     async def do_execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
         for migration_query in self.queries:
-            # try:
-            query = await migration_query.init(db=db)
-            await query.execute(db=db)
-            # except Exception as exc:  # pylint: disable=broad-exception-caught
-            #     result.errors.append(str(exc))
-            #     return result
+            try:
+                query = await migration_query.init(db=db)
+                await query.execute(db=db)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                result.errors.append(str(exc))
+                return result
 
         return result
 
