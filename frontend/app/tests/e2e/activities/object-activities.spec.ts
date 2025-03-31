@@ -18,7 +18,12 @@ test.describe("Object Activities - Timeline and Details", () => {
     await test.step("Navigate to InfraDevice page", async () => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-edge1" }).click();
-      await expect(page.getByTestId("activities-container").getByText("Loading...")).toBeHidden();
+
+      while (await page.getByText("No activity found for this").isVisible()) {
+        await page.reload();
+        await expect(page.getByTestId("activities-container").getByText("Loading...")).toBeHidden();
+      }
+
       await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_device");
     });
 
