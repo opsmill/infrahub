@@ -1,21 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe.fixme("/objects/CoreGroup - Generic Group Object.", () => {
+test.describe("/objects/CoreGroup - Generic Group Object.", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+  const BRANCH_NAME = generateRandomBranchName("groups");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
   });
 
   test("1. Create a new Standard Group", async ({ page }) => {
-    await page.goto("/objects/CoreGroup");
+    await page.goto(`/objects/CoreGroup?branch=${BRANCH_NAME}`);
     await expect(
       page.getByTestId("object-items").getByRole("link", { name: "arista_devices" })
     ).toBeVisible();
@@ -34,7 +37,7 @@ test.describe.fixme("/objects/CoreGroup - Generic Group Object.", () => {
   });
 
   test("2. Add members to Standard Group", async ({ page }) => {
-    await page.goto("/objects/CoreGroup");
+    await page.goto(`/objects/CoreGroup?branch=${BRANCH_NAME}`);
 
     await test.step("add members to Standard Group", async () => {
       await page
