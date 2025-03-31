@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranch } from "../../utils";
+import { createBranch, generateRandomBranchName } from "../../utils";
 
 test.describe("Branches creation and deletion", () => {
   test.describe("when not logged in", () => {
@@ -31,8 +31,8 @@ test.describe("Branches creation and deletion", () => {
     test.slow();
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    const BRANCH_NAME_1 = Math.random().toString(36).substring(2, 15);
-    const BRANCH_NAME_2 = Math.random().toString(36).substring(2, 15);
+    const BRANCH_NAME_1 = generateRandomBranchName();
+    const BRANCH_NAME_2 = generateRandomBranchName();
 
     test("should create a new branch", async ({ page }) => {
       await page.goto("/");
