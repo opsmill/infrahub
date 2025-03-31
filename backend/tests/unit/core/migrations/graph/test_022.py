@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
@@ -89,7 +89,16 @@ SET main_e.hierarchy = NULL
         default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
         await registry.schema.load_schema_to_db(db=db, schema=default_schema_branch)
         migration = Migration022()
-        await migration.execute(db=db)
+        mock_schema_manager = MagicMock(wraps=registry.schema)
+        mock_load_schema_from_db = AsyncMock(return_value=default_schema_branch)
+        mock_schema_manager.load_schema_from_db = mock_load_schema_from_db
+        real_schema_manager = registry.schema
+        try:
+            registry.schema = mock_schema_manager
+            await migration.execute(db=db)
+        finally:
+            registry.schema = real_schema_manager
+        mock_load_schema_from_db.assert_awaited_once()
         await migration.validate_migration(db=db)
 
         # validate that hierarchies are working again
