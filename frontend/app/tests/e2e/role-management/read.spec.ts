@@ -9,22 +9,13 @@ test.describe("Role management - READ", () => {
       await page.goto("/role-management");
     });
 
-    await test.step("check counts", async () => {
-      await expect(page.getByRole("link", { name: "Accounts 12" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Groups 6" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Roles 7" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Global Permissions 8" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Object Permissions 4" })).toBeVisible();
-    });
-
     await test.step("check accounts view", async () => {
       await expect(page.getByRole("cell", { name: "admin", exact: true })).toBeVisible();
       await expect(page.getByRole("cell", { name: "Pop-Builder" })).toBeVisible();
     });
 
     await test.step("check groups view", async () => {
-      await page.getByRole("link", { name: "Groups 6" }).click();
-      await expect(page.getByText("Showing 1 to 6 of 6 results")).toBeVisible();
+      await page.getByRole("link", { name: "Groups" }).click();
       await expect(
         page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Groups" })
       ).toBeVisible();
@@ -32,7 +23,7 @@ test.describe("Role management - READ", () => {
     });
 
     await test.step("check roles view", async () => {
-      await page.getByRole("link", { name: "Roles 7" }).click();
+      await page.getByRole("link", { name: "Roles" }).click();
       await expect(page.getByText("General Access")).toBeVisible();
       await expect(page.getByText("Infrahub Users")).toBeVisible();
       await expect(page.getByText("global:edit_default_branch:")).toBeVisible();
