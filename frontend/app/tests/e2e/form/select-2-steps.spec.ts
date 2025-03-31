@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranch, deleteBranch, generateRandomBranchName } from "../../utils";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI } from "../utils/graphql";
 
 const ETHERNET_NAME = "New ethernet name";
 const ETHERNET_SPEED = "1000";
@@ -14,12 +15,12 @@ test.describe("Verifies the object creation", () => {
 
   const BRANCH_NAME = generateRandomBranchName();
 
-  test.beforeAll(async ({ page }) => {
-    await createBranch(page, BRANCH_NAME);
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
   });
 
-  test.afterAll(async ({ page }) => {
-    await deleteBranch(page, BRANCH_NAME);
+  test.afterAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
   });
 
   test.beforeEach(async function ({ page }) {
