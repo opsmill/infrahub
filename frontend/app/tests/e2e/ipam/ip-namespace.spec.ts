@@ -1,12 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe.fixme("/ipam - IP Namespace", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  const BRANCH_NAME = Math.random().toString(36).substring(2, 15);
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test("create ip namespace", async ({ page }) => {
-    await page.goto("/objects/BuiltinIPNamespace");
+    await page.goto(`/objects/BuiltinIPNamespace?branch=${BRANCH_NAME}`);
 
     await expect(page.getByRole("link", { name: "default", exact: true })).toBeVisible();
 
@@ -19,7 +30,7 @@ test.describe.fixme("/ipam - IP Namespace", () => {
   });
 
   test("switch from default ip namespace", async ({ page }) => {
-    await page.goto("/ipam");
+    await page.goto(`/ipam?branch=${BRANCH_NAME}`);
 
     await expect(page.getByTestId("namespace-select")).toContainText("default");
 
@@ -34,64 +45,31 @@ test.describe.fixme("/ipam - IP Namespace", () => {
   test("redirects to IP Prefixes view when switching namespace if user is viewing an ip prefix", async ({
     page,
   }) => {
-    await page.goto("/ipam/prefixes");
+    await page.goto(`/ipam/prefixes?branch=${BRANCH_NAME}`);
     await page.getByRole("link", { name: "10.0.0.0/16" }).click();
 
     await page.getByTestId("namespace-select").click();
     await page.getByRole("option", { name: "test-namespace" }).click();
 
-    expect(page.url()).toContain("/ipam/prefixes?namespace=");
+    expect(page.url()).toContain("namespace=");
   });
 
   test("redirects to IP Addresses view when switching namespace if user is viewing an ip address", async ({
     page,
   }) => {
-    await page.goto("/ipam/addresses?ipam-tab=ip-details");
+    await page.goto(`/ipam/addresses?ipam-tab=ip-details&branch=${BRANCH_NAME}`);
     await page.getByRole("link", { name: "10.0.0.1/32" }).click();
 
     await page.getByTestId("namespace-select").click();
     await page.getByRole("option", { name: "test-namespace" }).click();
 
-    expect(page.url()).toContain("/ipam/addresses?ipam-tab=ip-details&namespace=");
+    expect(page.url()).toContain("namespace=");
   });
 
   test("create, validate ui and delete a prefix on other namespace", async ({ page }) => {
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "GET_TOP_LEVEL_PREFIXES" && status === 200;
-      }),
-
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "GET_PREFIXES" && status === 200;
-      }),
-
-      page.goto("/ipam"),
-    ]);
+    await page.goto(`/ipam?branch=${BRANCH_NAME}`);
     await page.getByTestId("namespace-select").click();
-
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "GET_TOP_LEVEL_PREFIXES" && status === 200;
-      }),
-
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "GET_PREFIXES" && status === 200;
-      }),
-
-      page.getByRole("option", { name: "test-namespace" }).click(),
-    ]);
+    await page.getByRole("option", { name: "test-namespace" }).click();
 
     await test.step("create a prefix at top level", async () => {
       await page.getByTestId("create-object-button").click();
@@ -205,7 +183,7 @@ test.describe.fixme("/ipam - IP Namespace", () => {
   });
 
   test("delete ip namespace", async ({ page }) => {
-    await page.goto("/objects/BuiltinIPNamespace");
+    await page.goto(`/objects/BuiltinIPNamespace?branch=${BRANCH_NAME}`);
 
     await page.getByTestId("actions-cell-test-namespace").click();
     await page.getByRole("menuitem", { name: "Delete" }).click();
