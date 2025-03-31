@@ -561,3 +561,47 @@ async def test_adjacent_parents_and_addresses(
         await query.execute(db=db)
         assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/29"
         assert query.get_calculated_children_uuids() == []
+
+
+async def test_root_ip_prefix_exists_reconcile(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    root_prefix_node = await Node.init(db=db, schema=prefix_schema)
+    await root_prefix_node.new(db=db, prefix="0.0.0.0/0", ip_namespace=ip_namespace)
+    await root_prefix_node.save(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.168.0.0/16")
+    )
+    await query.execute(db=db)
+    assert query.get_calculated_parent_uuid() == root_prefix_node.id
+    assert query.get_calculated_children_uuids() == []
+
+
+async def test_root_ip_prefix_added_reconcile(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    child_prefix_node = await Node.init(db=db, schema=prefix_schema)
+    await child_prefix_node.new(db=db, prefix="192.168.0.0/16", ip_namespace=ip_namespace)
+    await child_prefix_node.save(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("0.0.0.0/0")
+    )
+    await query.execute(db=db)
+    assert query.get_calculated_parent_uuid() is None
+    assert query.get_calculated_children_uuids() == [child_prefix_node.id]
