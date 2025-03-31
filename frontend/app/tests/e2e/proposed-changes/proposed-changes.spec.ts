@@ -138,7 +138,7 @@ test.describe("/proposed-changes", () => {
         );
       });
 
-      test.fixme("merged proposed change", async ({ page }) => {
+      test("merged proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
 
