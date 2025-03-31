@@ -56,6 +56,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY": "/backups",
     "INFRAHUB_TESTING_API_SERVER_COUNT": "2",
     "INFRAHUB_TESTING_TASK_WORKER_COUNT": "2",
+    "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "true",
 }
 
 
@@ -131,6 +132,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub-enterprise",
                     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
+                    "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
                     "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-enterprise",
                 }
             )
