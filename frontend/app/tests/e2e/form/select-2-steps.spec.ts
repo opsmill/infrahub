@@ -18,7 +18,7 @@ test.describe("Verifies the object creation", () => {
     });
   });
 
-  test.fixme("creates and verifies the nodes values", async ({ page }) => {
+  test("creates and verifies the nodes values", async ({ page }) => {
     await test.step("creates the object", async () => {
       await Promise.all([
         page.waitForResponse((response) => {
