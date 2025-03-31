@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranch, deleteBranch, generateRandomBranchName } from "../../utils";
 
 const ETHERNET_NAME = "New ethernet name";
 const ETHERNET_SPEED = "1000";
@@ -9,6 +10,17 @@ const ENDPOINT_NAME = "et-0/0/2";
 
 test.describe("Verifies the object creation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.describe.configure({ mode: "serial" });
+
+  const BRANCH_NAME = generateRandomBranchName();
+
+  test.beforeAll(async ({ page }) => {
+    await createBranch(page, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ page }) => {
+    await deleteBranch(page, BRANCH_NAME);
+  });
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
@@ -27,7 +39,7 @@ test.describe("Verifies the object creation", () => {
 
           return reqData?.operationName === "InfraInterfaceL3" && status === 200;
         }),
-        page.goto("/objects/InfraInterfaceL3"),
+        page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`),
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(ETHERNET_NAME);
@@ -84,7 +96,7 @@ test.describe("Verifies the object creation", () => {
   });
 
   test("verifies empty values after kind select", async ({ page }) => {
-    await page.goto("/objects/CoreGraphQLQuery");
+    await page.goto(`/objects/CoreGraphQLQuery?branch=${BRANCH_NAME}`);
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Kind").click();
     await page.getByRole("option", { name: "Repository Core", exact: true }).click();
@@ -94,7 +106,7 @@ test.describe("Verifies the object creation", () => {
 
   test("verifies values in kind and parent selects", async ({ page }) => {
     await test.step("got to the edit form", async () => {
-      await page.goto("/objects/InfraInterfaceL3");
+      await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
       await page
         .getByTestId("identifier-cell")
         .getByRole("link", { name: "dfw1-edge1, Ethernet1", exact: true })
