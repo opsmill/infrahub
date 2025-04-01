@@ -655,10 +655,7 @@ def _should_render_artifact(artifact_id: str | None, managed_branch: bool, impac
     flow_run_name="Execute Generator {model.generator_definition.definition_name} for {model.target_name}",
 )
 async def run_generator_as_check(model: RunGeneratorAsCheckModel, service: InfrahubServices) -> ValidatorConclusion:
-    if model.proposed_change:
-        await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
-    else:
-        await add_tags(branches=[model.branch_name], nodes=[model.repository_id], db_change=True)
+    await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
 
     log = get_run_logger()
 
