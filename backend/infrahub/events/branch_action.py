@@ -100,6 +100,9 @@ class BranchMergedEvent(InfrahubEvent):
 
         return related
 
+    def get_messages(self) -> list[InfrahubMessage]:
+        return [RefreshRegistryBranches()]
+
 
 class BranchRebasedEvent(InfrahubEvent):
     """Event generated when a branch has been rebased"""

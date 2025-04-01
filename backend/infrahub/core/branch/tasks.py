@@ -12,7 +12,6 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.branch.flow_models import BranchMergePostProcessModel
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -34,7 +33,6 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
-from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
@@ -275,12 +273,11 @@ async def merge_branch(
         # NOTE: we still need to convert this event and potentially pull
         #   some tasks currently executed based on the event into this workflow
         # -------------------------------------------------------------
-        model = BranchMergePostProcessModel(
-            source_branch=obj.name,
-            target_branch=registry.default_branch,
+        await service.workflow.submit_workflow(
+            workflow=BRANCH_MERGE_POST_PROCESS,
             context=context,
+            parameters={"source_branch": obj.name, "target_branch": registry.default_branch},
         )
-        await service.workflow.submit_workflow(workflow=BRANCH_MERGE_POST_PROCESS, parameters={"model": model})
 
         events: list[InfrahubEvent] = [merge_event]
 
@@ -417,33 +414,32 @@ async def _get_diff_root(
 
 @flow(
     name="branch-merge-post-process",
-    flow_run_name="Run additional tasks after merging {model.source_branch} in {model.target_branch}",
+    flow_run_name="Run additional tasks after merging {source_branch} in {target_branch}",
 )
-async def post_process_branch_merge(model: BranchMergePostProcessModel, service: InfrahubServices) -> None:
+async def post_process_branch_merge(
+    source_branch: str, target_branch: str, context: InfrahubContext, service: InfrahubServices
+) -> None:
     async with service.database.start_session() as db:
-        await add_tags(branches=[model.source_branch])
+        await add_tags(branches=[source_branch])
         log = get_run_logger()
-        log.info(f"Running additional tasks after merging {model.source_branch} within {model.target_branch}")
+        log.info(f"Running additional tasks after merging {source_branch} within {target_branch}")
 
-        events: list[InfrahubMessage] = [
-            messages.RefreshRegistryBranches(),
-        ]
         component_registry = get_component_registry()
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         # send diff update requests for every branch-tracking diff
-        branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[model.target_branch])
+        branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
 
         await service.workflow.submit_workflow(
             workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-            context=model.context,
-            parameters={"branch": model.target_branch},
+            context=context,
+            parameters={"branch": target_branch},
         )
 
         await service.workflow.submit_workflow(
             workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-            context=model.context,
-            parameters={"branch": model.target_branch},
+            context=context,
+            parameters={"branch": target_branch},
         )
 
         for diff_root in branch_diff_roots:
@@ -454,8 +450,5 @@ async def post_process_branch_merge(model: BranchMergePostProcessModel, service:
             ):
                 request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
                 await service.workflow.submit_workflow(
-                    workflow=DIFF_UPDATE, context=model.context, parameters={"model": request_diff_update_model}
+                    workflow=DIFF_UPDATE, context=context, parameters={"model": request_diff_update_model}
                 )
-
-        for event in events:
-            await service.message_bus.send(message=event)
