@@ -39,13 +39,7 @@ test.describe("Verifies the object creation", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(ETHERNET_NAME);
       await page.getByLabel("Speed *").fill(ETHERNET_SPEED);
-      const selectLocator = page
-        .locator("div:below(:text('Device *'))")
-        .first()
-        .getByTestId("select-open-option-button");
-
-      await selectLocator.scrollIntoViewIfNeeded();
-      await selectLocator.click();
+      await page.getByRole("combobox", { name: "Device", exact: true }).click();
       await page.getByText(DEVICE_NAME).click();
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: KIND }).click();
