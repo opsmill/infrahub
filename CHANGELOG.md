@@ -11,6 +11,22 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.3) - 2025-03-31
+
+### Added
+
+- Added support for Jinja2 filters from Netutils. ([#5899](https://github.com/opsmill/infrahub/issues/5899))
+
+### Fixed
+
+- Fixed menu upgrade when Non-Builtin items are attached to a Builtin menu item ([#6182](https://github.com/opsmill/infrahub/issues/6182))
+- Add a migration to backfill hierarchy data missing from the default branch after a branch is merged and then deleted. The root cause of the missing data has already been fixed. ([#6019](https://github.com/opsmill/infrahub/issues/6019))
+- Fixed broken hierarchy when renaming a kind participating to a hierarchy ([#6051](https://github.com/opsmill/infrahub/issues/6051))
+- Fixed schema migration validator to allow renaming the kind of a generic ([#6060](https://github.com/opsmill/infrahub/issues/6060))
+- Fix error in IPAM reconciliation logic to correctly assign 0.0.0.0/0 as a parent prefix ([#6172](https://github.com/opsmill/infrahub/issues/6172))
+- Ensure node level migrations are not executed on a generic
+- Fix updating a node through Upsert when payload contains existing unique attributes not part of hfid
+
 ## [Infrahub - v1.2.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.2) - 2025-03-28
 
 ### Fixed
