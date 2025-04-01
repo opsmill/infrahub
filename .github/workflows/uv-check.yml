@@ -1,15 +1,15 @@
 ---
 # yamllint disable rule:truthy rule:truthy rule:line-length
-name: "Poetry check"
+name: "uv check"
 on:
   workflow_call:
     inputs:
       directory:
         type: "string"
-        description: "Directory in which poetry check will be executed"
+        description: "Directory in which uv check will be executed"
         default: "./"
 jobs:
-  poetry_check:
+  uv_check:
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
@@ -20,10 +20,11 @@ jobs:
         uses: "actions/setup-python@v5"
         with:
           python-version: "3.12"
-      - name: "Setup environment"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
+      - name: "Validate pyproject.toml and consistency with uv.lock"
         run: |
-          pipx install poetry==1.8.5
-      - name: "Validate pyproject.toml and consistency with poetry.lock"
-        run: |
-          poetry check
+          uv lock --locked --offline
         working-directory: ${{ github.event.inputs.directory }}

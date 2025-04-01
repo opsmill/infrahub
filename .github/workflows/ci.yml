@@ -45,7 +45,7 @@ jobs:
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
-      infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
+      infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
     steps:
@@ -146,19 +146,19 @@ jobs:
         env:
           SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
 
-  infrahub-poetry-check:
+  infrahub-uv-check:
     if: |
-      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
       github.ref_name == 'stable' ||
       github.ref_name == 'develop'
     needs:
       - "files-changed"
-    uses: "./.github/workflows/poetry-check.yml"
+    uses: "./.github/workflows/uv-check.yml"
     with:
       directory: "./"
 
   infrahub-testcontainers-check:
-    if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
+    if: needs.files-changed.outputs.infrahub_uv_files == 'true'
     needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -173,19 +173,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: "Setup Python environment"
-        run: |
-          pipx install poetry==1.8.5
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
 
       - name: Compare package versions
         run: |
-          INFRAHUB_VERSION=$(poetry version --short)
+          INFRAHUB_VERSION=$(uv run pip list --format json | jq -r '.[] | select(.name=="infrahub-server").version')
           echo "Infrahub version: $INFRAHUB_VERSION"
 
           cd python_testcontainers
-          TESTCONTAINERS_VERSION=$(poetry version --short)
+          TESTCONTAINERS_VERSION=$(uv run pip list --format json | jq -r '.[] | select(.name=="infrahub-testcontainers").version')
           echo "Testcontainers version: $TESTCONTAINERS_VERSION"
 
           if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
@@ -277,14 +276,12 @@ jobs:
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: "Unit Tests"
-        run: "poetry run invoke backend.test-unit"
+        run: "uv run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -330,16 +327,14 @@ jobs:
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: "Mypy Tests"
-        run: "poetry run invoke backend.mypy"
+        run: "uv run invoke backend.mypy"
       - name: "Integration Tests"
-        run: "poetry run invoke backend.test-integration"
+        run: "uv run invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -376,16 +371,14 @@ jobs:
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: "Mypy Tests"
-        run: "poetry run invoke backend.mypy"
+        run: "uv run invoke backend.mypy"
       - name: "Functional Tests"
-        run: "poetry run invoke backend.test-functional"
+        run: "uv run invoke backend.test-functional"
       - name: "Coveralls : Functional Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -436,15 +429,13 @@ jobs:
           echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
       - name: "Build container"
         run: "inv dev.build"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: "Run tests"
         # Use tini to properly propagate cancellation signal to pytest, so that containers are properly destroyed
-        run: "exec tini -s -g -- poetry run pytest backend/tests/integration_docker/"
+        run: "exec tini -s -g -- uv run pytest backend/tests/integration_docker/"
 
   # ---------------------------------------------------
   # DISABLING Memgraph for now :(
@@ -517,16 +508,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install poetry==1.8.5
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-          pip install invoke toml
-      - name: "Install Package"
-        run: "poetry install"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: "Run validator"
-        run: "poetry run invoke backend.validate-generated"
+        run: "uv run invoke backend.validate-generated"
 
   frontend-tests:
     if: |
@@ -634,17 +621,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: "Setup Python environment"
-        run: |
-          pipx install poetry==1.8.5
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: "Setup environment"
-        run: "pip install invoke toml"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: "Validate generated documentation"
-        run: "poetry run invoke docs.validate"
+        run: "uv run invoke docs.validate"
 
   validate-documentation-style:
     if: |
@@ -1014,12 +996,10 @@ jobs:
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.11"
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
 
@@ -1028,7 +1008,7 @@ jobs:
         uses: CodSpeedHQ/action@v3
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
-          run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
+          run: "uv run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
 
       - name: Run non-intensive benchmarks
         if: |
@@ -1036,7 +1016,7 @@ jobs:
         uses: CodSpeedHQ/action@v3
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
-          run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
+          run: "uv run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:

@@ -16,9 +16,9 @@ backend_files: &backend_files
 sdk_files: &sdk_files
   - "python_sdk" # Catch updates to the submodule commit
 
-infrahub_poetry_files: &infrahub_poetry_files
+infrahub_uv_files: &infrahub_uv_files
   - "**/pyproject.toml"
-  - "**/poetry.lock"
+  - "**/uv.lock"
 
 frontend_files: &frontend_files
   - "frontend/app/**"
@@ -65,7 +65,7 @@ backend_all:
   - *backend_files
   - *ci_config
   - *development_files
-  - *infrahub_poetry_files
+  - *infrahub_uv_files
   - *sdk_files
 
 documentation_all:
