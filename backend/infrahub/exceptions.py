@@ -76,6 +76,32 @@ class RepositoryError(Error):
         super().__init__(self.message)
 
 
+class RepositoryConnectionError(RepositoryError):
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message
+            or f"Unable to clone the repository {identifier}, please check the address and the credential",
+        )
+
+
+class RepositoryCredentialsError(RepositoryError):
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message or f"Authentication failed for {identifier}, please validate the credentials.",
+        )
+
+
+class RepositoryInvalidBranchError(RepositoryError):
+    def __init__(self, identifier: str, branch_name: str, location: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message
+            or f"The branch {branch_name} isn't a valid branch for the repository {identifier} at {location}.",
+        )
+
+
 class RepositoryInvalidFileSystemError(RepositoryError):
     def __init__(
         self,
@@ -83,9 +109,11 @@ class RepositoryInvalidFileSystemError(RepositoryError):
         directory: Path,
         message: str | None = None,
     ) -> None:
-        super().__init__(identifier=identifier)
+        super().__init__(
+            identifier=identifier,
+            message=message or f"Invalid file system for {identifier}, Local directory {directory} missing.",
+        )
         self.directory = directory
-        self.message = message or f"Invalid file system for {identifier}, Local directory {directory} missing."
 
 
 class CommitNotFoundError(Error):
