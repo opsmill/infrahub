@@ -89,11 +89,9 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         client_repository = await client.create(
             kind=InfrahubKind.READONLYREPOSITORY,
             branch=branch.name,
-            data={
-                "name": "car-dealership",
-                "location": f"{git_repos_source_dir_module_scope}/car-dealership",
-                "ref": "main",
-            },
+            name="car-dealership",
+            location=f"{git_repos_source_dir_module_scope}/car-dealership",
+            ref="main",
         )
         await client_repository.save()
 
