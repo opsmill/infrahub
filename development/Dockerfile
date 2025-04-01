@@ -24,13 +24,11 @@ RUN apt-get update && \
     tee /etc/apt/sources.list.d/docker.list > /dev/null && \
     apt-get update && \
     apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
-    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - && \
+    curl -sSL https://astral.sh/uv/0.6.11/install.sh | sh - && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
-
-RUN poetry config virtualenvs.create false
 
 # ****************************************************************
 # STAGE : Frontend
@@ -97,16 +95,17 @@ COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
 
 # --------------------------------------------
 # Install Dependencies
-#   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
+#   Copy in only pyproject.toml/poetry.lock/uv.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
-COPY poetry.lock pyproject.toml /source/
-RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
-    rm -rf /root/.cache
+ENV UV_PROJECT_ENVIRONMENT="/.venv"
+COPY uv.lock pyproject.toml /source/
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-install-project
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
-RUN poetry install --no-interaction --no-ansi
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen && uv pip install -e .
 
+ENV PATH="/.venv/bin:$PATH"
 ENTRYPOINT ["tini", "-g", "--"]
