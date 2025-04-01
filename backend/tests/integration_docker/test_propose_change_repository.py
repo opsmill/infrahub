@@ -97,7 +97,7 @@ class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
 
     async def test_create_propose_change(self, client: InfrahubClient, default_branch: str) -> None:
         branch = await client.branch.create(branch_name="branch2")
-        john = client.store.get_by_hfid(key=f"{TESTING_PERSON}__John Doe", raise_when_missing=True)
+        john = client.store.get(key="John Doe", kind=TESTING_PERSON)
 
         john_branch = await client.get(kind=TESTING_PERSON, id=john.id, branch=branch.name)
         john_branch.description.value = "new description"
