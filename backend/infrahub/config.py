@@ -612,6 +612,9 @@ class SecuritySettings(BaseSettings):
     oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
     oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
     oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
+    restrict_untrusted_jinja2_filters: bool = Field(
+        default=True, description="Indicates if untrusted Jinja2 filters should be disallowd for computed attributes"
+    )
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
     sso_user_default_group: str | None = Field(
