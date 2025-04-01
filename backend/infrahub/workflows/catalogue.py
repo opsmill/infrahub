@@ -74,6 +74,14 @@ REQUEST_GENERATOR_RUN = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+RUN_GENERATOR_AS_CHECK = WorkflowDefinition(
+    name="run-generator-as-check",
+    type=WorkflowType.USER,
+    module="infrahub.proposed_change.tasks",
+    function="run_generator_as_check",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="request-generator-definition-run",
     type=WorkflowType.CORE,
@@ -468,6 +476,7 @@ workflows = [
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
+    RUN_GENERATOR_AS_CHECK,
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_VALIDATE_MIGRATION,
     TRANSFORM_JINJA2_RENDER,

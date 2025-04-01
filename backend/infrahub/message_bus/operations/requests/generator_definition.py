@@ -1,14 +1,14 @@
 from infrahub_sdk.protocols import CoreGeneratorValidator
-from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.timestamp import Timestamp
-from infrahub.message_bus import InfrahubMessage, Meta, messages
-from infrahub.message_bus.types import KVTTL
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.validators.checks_runner import run_checks_and_update_validator
+from infrahub.message_bus import messages
+from infrahub.proposed_change.models import RunGeneratorAsCheckModel
 from infrahub.services import InfrahubServices
 from infrahub.validators.tasks import start_validator
+from infrahub.workflows.catalogue import RUN_GENERATOR_AS_CHECK
 from infrahub.workflows.utils import add_tags
 
 
@@ -19,14 +19,10 @@ from infrahub.workflows.utils import add_tags
 async def check(message: messages.RequestGeneratorDefinitionCheck, service: InfrahubServices) -> None:
     log = get_run_logger()
     await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
-    events: list[InfrahubMessage] = []
 
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
     validator_name = f"Generator Validator: {message.generator_definition.definition_name}"
-    validator_execution_id = str(UUIDT())
-    check_execution_ids: list[str] = []
-
     await proposed_change.validations.fetch()
 
     previous_validator: CoreGeneratorValidator | None = None
@@ -73,6 +69,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
     requested_instances = 0
     impacted_instances = message.branch_diff.get_subscribers_ids(kind=InfrahubKind.GENERATORINSTANCE)
 
+    check_generator_run_models = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
@@ -81,49 +78,42 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             managed_branch=message.source_branch_sync_with_git,
             impacted_instances=impacted_instances,
         ):
-            check_execution_id = str(UUIDT())
-            check_execution_ids.append(check_execution_id)
             requested_instances += 1
             log.info(f"Trigger execution of {message.generator_definition.definition_name} for {member.display_label}")
-            events.append(
-                messages.CheckGeneratorRun(
-                    context=message.context,
-                    generator_definition=message.generator_definition,
-                    generator_instance=generator_instance,
-                    commit=repository.source_commit,
-                    repository_id=repository.repository_id,
-                    repository_name=repository.repository_name,
-                    repository_kind=repository.kind,
-                    branch_name=message.source_branch,
-                    query=message.generator_definition.query_name,
-                    variables=member.extract(params=message.generator_definition.parameters),
-                    target_id=member.id,
-                    target_name=member.display_label,
-                    validator_id=validator.id,
-                    proposed_change=message.proposed_change,
-                    meta=Meta(validator_execution_id=validator_execution_id, check_execution_id=check_execution_id),
-                )
+            check_generator_run_model = RunGeneratorAsCheckModel(
+                context=message.context,
+                generator_definition=message.generator_definition,
+                generator_instance=generator_instance,
+                commit=repository.source_commit,
+                repository_id=repository.repository_id,
+                repository_name=repository.repository_name,
+                repository_kind=repository.kind,
+                branch_name=message.source_branch,
+                query=message.generator_definition.query_name,
+                variables=member.extract(params=message.generator_definition.parameters),
+                target_id=member.id,
+                target_name=member.display_label,
+                validator_id=validator.id,
+                proposed_change=message.proposed_change,
             )
+            check_generator_run_models.append(check_generator_run_model)
 
-    checks_in_execution = ",".join(check_execution_ids)
-    await service.cache.set(
-        key=f"validator_execution_id:{validator_execution_id}:checks",
-        value=checks_in_execution,
-        expires=KVTTL.TWO_HOURS,
-    )
-    events.append(
-        messages.FinalizeValidatorExecution(
-            start_time=Timestamp().to_string(),
-            validator_id=validator.id,
-            validator_execution_id=validator_execution_id,
-            validator_type=InfrahubKind.GENERATORVALIDATOR,
-            context=message.context,
-            proposed_change=message.proposed_change,
+    checks_coroutines = [
+        service.workflow.execute_workflow(
+            workflow=RUN_GENERATOR_AS_CHECK,
+            parameters={"model": check_generator_run_model},
+            expected_return=ValidatorConclusion,
         )
+        for check_generator_run_model in check_generator_run_models
+    ]
+
+    await run_checks_and_update_validator(
+        checks=checks_coroutines,
+        validator=validator,
+        context=message.context,
+        service=service,
+        proposed_change_id=proposed_change.id,
     )
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.message_bus.send(message=event)
 
 
 def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
