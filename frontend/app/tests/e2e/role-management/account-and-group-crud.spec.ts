@@ -38,7 +38,7 @@ test.describe("Account management - CRUD", () => {
     });
   });
 
-  test("Should create an group ", async ({ page }) => {
+  test("Should create an group", async ({ page }) => {
     await test.step("access main view", async () => {
       await page.goto(`/role-management/groups?branch=${BRANCH_NAME}`);
     });
