@@ -48,7 +48,7 @@ def ruff(context: Context) -> None:
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"poetry run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -59,7 +59,7 @@ def mypy(context: Context) -> None:
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
-    exec_cmd = f"poetry run mypy --show-error-codes {MAIN_DIRECTORY}"
+    exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -77,7 +77,7 @@ def lint(context: Context) -> None:
 @task(optional=["database"])
 def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -87,7 +87,7 @@ def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -97,7 +97,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
@@ -107,7 +107,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 @task(optional=["database"])
 def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")

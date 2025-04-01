@@ -165,7 +165,7 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
+            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
             context.run(exec_cmd)
 
 
@@ -186,13 +186,13 @@ def _generate(context: Context) -> None:
 
 #     print(" - Generate infrahubctl CLI documentation")
 #     for cmd in app.registered_commands:
-#         exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli_commands utils docs --name "infrahubctl {cmd.name}"'
+#         exec_cmd = f'uv run typer --func {cmd.name} infrahub_sdk.ctl.cli_commands utils docs --name "infrahubctl {cmd.name}"'
 #         exec_cmd += f" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
 #         with context.cd(ESCAPED_REPO_PATH):
 #             context.run(exec_cmd)
 
 #     for cmd in app.registered_groups:
-#         exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
+#         exec_cmd = f"uv run typer infrahub_sdk.ctl.{cmd.name} utils docs"
 #         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
 #         with context.cd(ESCAPED_REPO_PATH):
 #             context.run(exec_cmd)
