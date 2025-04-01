@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.1.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.10) - 2025-04-01
+
+### Fixed
+
+- Add a migration to backfill hierarchy data missing from the default branch after a branch is merged and then deleted. The root cause of the missing data has already been fixed. ([#6019](https://github.com/opsmill/infrahub/issues/6019))
+- Fixed broken hierarchy when renaming a kind participating to a hierarchy ([#6051](https://github.com/opsmill/infrahub/issues/6051))
+- Fixed schema migration validator to allow renaming the kind of a generic ([#6060](https://github.com/opsmill/infrahub/issues/6060))
+- Ensure node level migrations are not executed on a generic
+
 ## [Infrahub - v1.1.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.9) - 2025-03-16
 
 ### Added
