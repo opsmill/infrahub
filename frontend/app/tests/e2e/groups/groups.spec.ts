@@ -3,7 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe("/objects/CoreGroup - Generic Group Object.", () => {
+test.describe("/objects/CoreGroup - Generic Group Object", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
