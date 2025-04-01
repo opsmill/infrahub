@@ -263,7 +263,7 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema
 
 
 async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
-    db: InfrahubDatabase, animal_person_schema_person_no_default_filter, branch: Branch
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
 ):
     _ = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
 
