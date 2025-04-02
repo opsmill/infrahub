@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Global Activities - List view and filter usage", () => {
+  test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
 
@@ -21,6 +22,7 @@ test.describe("Global Activities - List view and filter usage", () => {
     await page.getByRole("option", { name: "Node created" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("created").nth(1)).toBeVisible();
+    await page.getByRole("button", { name: "Event Type" }).click();
     await page.getByRole("button", { name: "Event Type" }).click();
     await page.getByRole("option", { name: "Node deleted" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
