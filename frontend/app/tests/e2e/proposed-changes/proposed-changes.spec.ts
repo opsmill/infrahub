@@ -83,7 +83,7 @@ test.describe("/proposed-changes", () => {
           // Validate the buttons are showing as intended
           await expect(page.getByRole("button", { name: "Approve" })).not.toBeDisabled();
           await expect(page.getByRole("button", { name: "Merge" })).not.toBeDisabled();
-          await expect(page.getByRole("button", { name: "Close" })).not.toBeDisabled();
+          await expect(page.getByRole("button", { name: "Close", exact: true })).not.toBeDisabled();
         });
 
         await test.step("edit proposed change reviewers", async () => {
