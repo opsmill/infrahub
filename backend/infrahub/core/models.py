@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
+GENERIC_ATTRIBUTES_TO_IGNORE = ["namespace", "name", "branch"]
+
 
 class NodeKind(BaseModel):
     namespace: str
@@ -269,6 +271,10 @@ class SchemaUpdateValidationResult(BaseModel):
     def _process_node_attributes(self, schema: MainSchemaTypes, node_field_name: str) -> None:
         field_info = schema.model_fields[node_field_name]
         field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+
+        # No need to execute a migration for generic nodes attributes because they are not stored in the database
+        if schema.is_generic_schema and node_field_name in GENERIC_ATTRIBUTES_TO_IGNORE:
+            return
 
         schema_path = SchemaPath(  # type: ignore[call-arg]
             schema_kind=schema.kind,

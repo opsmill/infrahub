@@ -220,8 +220,13 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
 
         violations = []
         for schema in schemas_to_check:
+            schema_filters = list(filters) if filters is not None else []
+            for attr_schema in schema.attributes:
+                if attr_schema.optional and attr_schema.unique and attr_schema.name not in schema_filters:
+                    schema_filters.append(attr_schema.name)
+
             schema_violations = await self._get_single_schema_violations(
-                node=node, node_schema=schema, at=at, filters=filters
+                node=node, node_schema=schema, at=at, filters=schema_filters
             )
             violations.extend(schema_violations)
 

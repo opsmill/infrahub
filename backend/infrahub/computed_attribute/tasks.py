@@ -6,6 +6,7 @@ from infrahub_sdk.protocols import (
     CoreNode,  # noqa: TC002
     CoreTransformPython,
 )
+from infrahub_sdk.template import Jinja2Template
 from prefect import flow
 from prefect.client.orchestration import get_client
 from prefect.logging import get_run_logger
@@ -16,7 +17,6 @@ from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
-from infrahub.support.macro import MacroDefinition
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 from infrahub.workflows.catalogue import (
@@ -173,15 +173,15 @@ async def update_computed_attribute_value_jinja2(
 
     await add_tags(branches=[branch_name], nodes=[obj.id], db_change=True)
 
-    macro_definition = MacroDefinition(macro=template_value)
-    my_filter = {}
-    for variable in macro_definition.variables:
+    jinja_template = Jinja2Template(template=template_value)
+    variables = {}
+    for variable in jinja_template.get_variables():
         components = variable.split("__")
         if len(components) == 2:
             property_name = components[0]
             property_value = components[1]
             attribute_property = getattr(obj, property_name)
-            my_filter[variable] = getattr(attribute_property, property_value)
+            variables[variable] = getattr(attribute_property, property_value)
         elif len(components) == 3:
             relationship_name = components[0]
             property_name = components[1]
@@ -189,11 +189,11 @@ async def update_computed_attribute_value_jinja2(
             relationship = getattr(obj, relationship_name)
             try:
                 attribute_property = getattr(relationship.peer, property_name)
-                my_filter[variable] = getattr(attribute_property, property_value)
+                variables[variable] = getattr(attribute_property, property_value)
             except ValueError:
-                my_filter[variable] = ""
+                variables[variable] = ""
 
-    value = macro_definition.render(variables=my_filter)
+    value = await jinja_template.render(variables=variables)
     existing_value = getattr(obj, attribute_name).value
     if value == existing_value:
         log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")

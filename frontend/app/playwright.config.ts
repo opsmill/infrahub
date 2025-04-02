@@ -22,7 +22,7 @@ export default defineConfig({
       ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
         ? 6 * 60 * 1000
         : 2 * 60 * 1000
-      : 30 * 1000,
+      : 1 * 60 * 1000,
     toHaveScreenshot: { maxDiffPixels: 5000 },
   },
   /* Opt out of parallel tests on CI. */

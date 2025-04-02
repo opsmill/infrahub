@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.2.2"
+version = "1.2.3"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -74,6 +74,7 @@ numpy = [
 ]
 dulwich = "^0.22.7"
 whenever = "0.7.2"
+netutils = "1.12.0"
 
 
 [tool.poetry.group.dev.dependencies]
