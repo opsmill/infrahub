@@ -409,3 +409,40 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             "subscriber_of_groups",
         }
         assert generic_schema.attribute_names == ["hot_new_name"]
+
+    async def test_remove_default_filter(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        schema_dict = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Person",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {"name": "description", "kind": "Text", "optional": True},
+                    ],
+                }
+            ],
+        }
+
+        creation = await client.schema.load(schemas=[schema_dict])
+        assert creation.schema_updated
+
+        schema = await client.schema.get(kind="TestPerson")
+        assert schema.default_filter == "name__value"
+
+        del schema_dict["nodes"][0]["default_filter"]  # type: ignore
+
+        creation = await client.schema.load(schemas=[schema_dict])
+        assert creation.schema_updated
+
+        schema = await client.schema.get(kind="TestPerson", refresh=True)
+        assert schema.default_filter is None
