@@ -1,14 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("Account management - CRUD", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
+  const BRANCH_NAME = generateRandomBranchName();
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test("Should create an account ", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management");
+      await page.goto(`/role-management?branch=${BRANCH_NAME}`);
     });
 
     await test.step("create account", async () => {
@@ -27,9 +38,9 @@ test.describe("Account management - CRUD", () => {
     });
   });
 
-  test("Should create an group ", async ({ page }) => {
+  test("Should create an group", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management/groups");
+      await page.goto(`/role-management/groups?branch=${BRANCH_NAME}`);
     });
 
     await test.step("create group", async () => {

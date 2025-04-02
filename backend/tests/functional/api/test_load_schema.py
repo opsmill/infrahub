@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
 
+from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.core.schema import core_models
 from infrahub.core.utils import count_relationships
@@ -13,8 +14,10 @@ from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.branch import BranchData
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
     from tests.conftest import TestHelper
@@ -126,3 +129,283 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         org_schema = registry.schema.get(name="TestingOrganization", branch=default_branch.name)
         assert len(org_schema.relationships) == initial_nbr_relationships + 1
+
+    @pytest.fixture(scope="class")
+    async def extension_branch(self, client: InfrahubClient) -> BranchData:
+        return await client.branch.create(branch_name="extension_branch")
+
+    @pytest.fixture(scope="class")
+    async def load_extension_schema_00(self, client: InfrahubClient) -> None:
+        start_schema_dict = {
+            "version": "1.0",
+            "generics": [
+                {
+                    "name": "Generic",
+                    "namespace": "Thing",
+                    "attributes": [{"kind": "Text", "name": "name"}],
+                    "relationships": [
+                        {
+                            "cardinality": "many",
+                            "kind": "Attribute",
+                            "name": "interfaces",
+                            "optional": True,
+                            "peer": "TestInterface",
+                        }
+                    ],
+                }
+            ],
+            "nodes": [
+                {
+                    "name": "Node",
+                    "namespace": "Thing",
+                    "inherit_from": ["ThingGeneric"],
+                    "attributes": [
+                        {"kind": "Text", "name": "description", "optional": True},
+                    ],
+                },
+            ],
+        }
+        simple = await client.schema.load(schemas=[start_schema_dict])
+        assert not simple.errors
+
+    @pytest.fixture(scope="class")
+    async def load_extension_schema_01(self, client: InfrahubClient, extension_branch: BranchData) -> None:
+        extension_schema_dict = {
+            "version": "1.0",
+            "extensions": {
+                "nodes": [
+                    {
+                        "kind": "ThingNode",
+                        "attributes": [
+                            {"kind": "Text", "name": "something", "optional": True},
+                        ],
+                        "relationships": [
+                            {
+                                "name": "devices",
+                                "peer": "InfraDevice",
+                                "kind": "Generic",
+                                "cardinality": "many",
+                                "optional": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+        }
+        extended_schema = await client.schema.load(branch=extension_branch.name, schemas=[extension_schema_dict])
+        assert not extended_schema.errors
+        assert extended_schema.schema_updated
+
+    @pytest.fixture(scope="class")
+    async def load_extension_schema_02(self, client: InfrahubClient, extension_branch: BranchData) -> None:
+        extension_schema_dict = {
+            "version": "1.0",
+            "extensions": {
+                "nodes": [
+                    {
+                        "kind": "ThingNode",
+                        "attributes": [
+                            {"kind": "Text", "name": "something_new", "optional": True},
+                        ],
+                        "relationships": [
+                            {
+                                "name": "devices_new",
+                                "peer": "InfraDevice",
+                                "identifier": "devices_new_thing",
+                                "kind": "Generic",
+                                "cardinality": "many",
+                                "optional": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+        }
+        extended_schema = await client.schema.load(branch=extension_branch.name, schemas=[extension_schema_dict])
+        assert not extended_schema.errors
+        assert extended_schema.schema_updated
+
+    @pytest.fixture(scope="class")
+    async def load_extension_schema_03(
+        self, db: InfrahubDatabase, client: InfrahubClient, extension_branch: BranchData
+    ) -> None:
+        generic_schema = registry.schema.get(name="ThingGeneric")
+        retrieved_generic_schema = await NodeManager.get_one(db=db, id=generic_schema.get_id())
+        schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
+        name_attr: Node | None = None
+        for a in schema_attrs:
+            schema_attr_peer = await a.get_peer(db)
+            if schema_attr_peer.name.value == "name":
+                name_attr = schema_attr_peer
+                break
+        if not name_attr:
+            raise ValueError("Cannot find 'name' attribute on ThingGeneric")
+
+        schema_dict = {
+            "version": "1.0",
+            "generics": [
+                {
+                    "name": "Generic",
+                    "namespace": "Thing",
+                    "attributes": [{"id": name_attr.id, "kind": "Text", "name": "hot_new_name"}],
+                    "human_friendly_id": [],
+                    "relationships": [
+                        {
+                            "cardinality": "many",
+                            "kind": "Attribute",
+                            "name": "interfaces",
+                            "optional": True,
+                            "peer": "TestInterface",
+                        }
+                    ],
+                }
+            ],
+        }
+        simple = await client.schema.load(schemas=[schema_dict], branch=extension_branch.name)
+        assert not simple.errors
+
+    async def test_schema_load_endpoint_valid_generic_with_extensions(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        load_extension_schema_00,
+        load_extension_schema_01,
+        extension_branch: BranchData,
+    ) -> None:
+        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        initial_nbr_relationships = len(node_schema.relationships)
+        initial_nbr_attributes = len(node_schema.attributes)
+        branch_name = extension_branch.name
+
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
+        assert len(node_schema.relationships) == initial_nbr_relationships + 1
+        assert len(node_schema.attributes) == initial_nbr_attributes + 1
+
+        # check that the node schema on the database has the expected relationships and attributes on the branch
+        assert set(node_schema.relationship_names) == {
+            "devices",
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.local_relationship_names) == {
+            "devices",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.attribute_names) == {"name", "description", "something"}
+        assert set(node_schema.local_attribute_names) == {"description", "something"}
+
+        # check that the generic schema on the database has the expected relationships and attributes on the branch
+        generic_schema = schema_branch.get_generic(name="ThingGeneric", duplicate=False)
+        assert set(generic_schema.relationship_names) == {
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert generic_schema.attribute_names == ["name"]
+
+    async def test_schema_load_endpoint_valid_generic_with_extension_updates(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        load_extension_schema_02,
+        extension_branch: BranchData,
+    ) -> None:
+        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        initial_nbr_relationships = len(node_schema.relationships)
+        initial_nbr_attributes = len(node_schema.attributes)
+        branch_name = extension_branch.name
+
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
+        assert len(node_schema.relationships) == initial_nbr_relationships + 2
+        assert len(node_schema.attributes) == initial_nbr_attributes + 2
+
+        # check that the node schema on the database has the expected relationships and attributes on the branch
+        assert set(node_schema.relationship_names) == {
+            "devices",
+            "devices_new",
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.local_relationship_names) == {
+            "devices",
+            "devices_new",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.attribute_names) == {"name", "description", "something", "something_new"}
+        assert set(node_schema.local_attribute_names) == {"description", "something", "something_new"}
+
+        # check that the generic schema on the database has the expected relationships and attributes on the branch
+        generic_schema = schema_branch.get_generic(name="ThingGeneric", duplicate=False)
+        assert set(generic_schema.relationship_names) == {
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert generic_schema.attribute_names == ["name"]
+
+    async def test_schema_load_endpoint_valid_generic_with_generic_name_updates(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        load_extension_schema_03,
+        extension_branch: BranchData,
+    ) -> None:
+        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        initial_nbr_relationships = len(node_schema.relationships)
+        initial_nbr_attributes = len(node_schema.attributes)
+        branch_name = extension_branch.name
+
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
+        assert len(node_schema.relationships) == initial_nbr_relationships + 2
+        assert len(node_schema.attributes) == initial_nbr_attributes + 2
+
+        # check that the node schema on the database has the expected relationships and attributes on the branch
+        assert set(node_schema.relationship_names) == {
+            "devices",
+            "devices_new",
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.local_relationship_names) == {
+            "devices",
+            "devices_new",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert set(node_schema.attribute_names) == {"hot_new_name", "description", "something", "something_new"}
+        assert set(node_schema.local_attribute_names) == {"description", "something", "something_new"}
+
+        # check that the generic schema on the database has the expected relationships and attributes on the branch
+        generic_schema = schema_branch.get_generic(name="ThingGeneric", duplicate=False)
+        assert set(generic_schema.relationship_names) == {
+            "interfaces",
+            "profiles",
+            "member_of_groups",
+            "subscriber_of_groups",
+        }
+        assert generic_schema.attribute_names == ["hot_new_name"]

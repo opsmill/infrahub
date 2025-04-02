@@ -212,30 +212,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
         )
 
-    async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
-        update_status = """
-        mutation UpdateRepositoryStatus(
-            $repo_id: String!,
-            $status: String!,
-            ) {
-            CoreGenericRepositoryUpdate(
-                data: {
-                    id: $repo_id,
-                    sync_status: { value: $status },
-                }
-            ) {
-                ok
-            }
-        }
-        """
-
-        await self.sdk.execute_graphql(
-            branch_name=branch_name,
-            query=update_status,
-            variables={"repo_id": str(self.id), "status": status.value},
-            tracker="mutation-repository-update-admin-status",
-        )
-
     @task(name="import-jinja2-tansforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)  # type: ignore[arg-type]
     async def import_jinja2_transforms(
         self,

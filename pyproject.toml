@@ -136,7 +136,7 @@ exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 300 # 5 minutes
-session_timeout = 1200 # 20 minutes
+session_timeout = 1800 # 30 minutes
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",

@@ -262,6 +262,30 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, animal_person
     assert "Violates uniqueness constraint 'bag'" in result.errors[0].message
 
 
+async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
+    db: InfrahubDatabase, animal_person_schema_person_no_default_filter, branch: Branch
+):
+    _ = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
+
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: {value: "Fred"}, bag: {value: "bag-fred"}}) {
+            ok
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+
+
 async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")

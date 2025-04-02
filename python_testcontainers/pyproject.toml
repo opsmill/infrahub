@@ -25,6 +25,9 @@ classifiers = [
 
 include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/haproxy.cfg", "infrahub_testcontainers/prometheus.yml"]
 
+[tool.setuptools.package-data]
+infrahub_testcontainers = ["docker-compose.test.yml", "haproxy.cfg", "prometheus.yml"]
+
 [tool.poetry.plugins."pytest11"]
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 

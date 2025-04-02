@@ -225,16 +225,31 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
             )
             violations.extend(schema_violations)
 
-        is_hfid_violated = any(violation.typ == UniquenessConstraintType.HFID for violation in violations)
+        hfid_violations = [violation for violation in violations if violation.typ == UniquenessConstraintType.HFID]
+        hfid_violation = hfid_violations[0] if len(hfid_violations) > 0 else None
 
-        for violation in violations:
-            if violation.typ == UniquenessConstraintType.STANDARD or (
-                violation.typ == UniquenessConstraintType.SUBSET_OF_HFID and not is_hfid_violated
-            ):
-                error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
-                raise ValidationError(error_msg)
+        # If there are both a hfid violation and another one, in case of an upsert, we still want to update the node in case other violations are:
+        # - either on subset fields of hfid, which would be necessarily violated too
+        # - or on uniqueness constraints with a matching node id being the id of the hfid violation
 
         for violation in violations:
             if violation.typ == UniquenessConstraintType.HFID:
-                error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
-                raise HFIDViolatedError(error_msg, matching_nodes_ids=violation.nodes_ids)
+                continue
+
+            if hfid_violation:
+                if violation.typ == UniquenessConstraintType.SUBSET_OF_HFID:
+                    continue
+
+                if (
+                    violation.typ == UniquenessConstraintType.STANDARD
+                    and len(violation.nodes_ids) == 1
+                    and next(iter(violation.nodes_ids)) == next(iter(hfid_violation.nodes_ids))
+                ):
+                    continue
+
+            error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
+            raise ValidationError(error_msg)
+
+        if hfid_violation:
+            error_msg = f"Violates uniqueness constraint '{'-'.join(hfid_violation.fields)}'"
+            raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)

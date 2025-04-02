@@ -492,7 +492,16 @@ async def menu_fixture_11_data() -> list[MenuItemDefinition]:
                     protected=True,
                     section=MenuSection.OBJECT,
                     order_weight=10000,
-                )
+                ),
+                MenuItemDefinition(
+                    namespace="Userdefined",
+                    name="Car",
+                    label="Car",
+                    protected=False,
+                    path="/testing/car",
+                    section=MenuSection.OBJECT,
+                    order_weight=9000,
+                ),
             ],
         ),
         MenuItemDefinition(

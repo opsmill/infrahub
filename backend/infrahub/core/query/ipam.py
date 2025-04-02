@@ -362,7 +362,7 @@ class IPPrefixReconcileQuery(Query):
         # possible prefix: highest possible prefix length for a match
         possible_prefix_map: dict[str, int] = {}
         start_prefixlen = prefixlen if is_address else prefixlen - 1
-        for max_prefix_len in range(start_prefixlen, 0, -1):
+        for max_prefix_len in range(start_prefixlen, -1, -1):
             tmp_prefix = prefix_bin_host[:max_prefix_len]
             possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
             if possible_prefix not in possible_prefix_map:

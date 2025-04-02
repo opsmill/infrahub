@@ -1,6 +1,5 @@
 import uuid
 
-import pytest
 from infrahub_sdk.schema.main import RelationshipDirection
 
 from infrahub.core import registry
@@ -12,7 +11,6 @@ from infrahub.database import InfrahubDatabase
 
 
 # redis is required as we will call `initialization` later
-@pytest.mark.skip(reason="Enable once migration has been activated")
 async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, redis):
     """
     Reproduce corrupted state where two nodes would be connected by multiple relationships while relationship

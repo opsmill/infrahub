@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
+from git import GitCommandError
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.exceptions import RepositoryError
+from infrahub.git.repository import get_initialized_repo
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -19,6 +23,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreCheckDefinition, CoreRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 class TestCreateRepository(TestInfrahubApp):
@@ -63,4 +68,50 @@ class TestCreateRepository(TestInfrahubApp):
 
         assert repository.commit.value
         assert repository.internal_status.value == "active"
+        assert repository.operational_status.value == "online"
         assert check_definition.file_path.value == "checks/car_overview.py"
+
+    @pytest.mark.parametrize(
+        "stderr,expected_operational_status",
+        [
+            ("Repository not found", RepositoryOperationalStatus.ERROR_CONNECTION),
+            ("error: pathspec", RepositoryOperationalStatus.ERROR),
+            ("SSL certificate problem", RepositoryOperationalStatus.ERROR_CONNECTION),
+            ("authentication failed for", RepositoryOperationalStatus.ERROR_CRED),
+            ("Need to specify how to reconcile", RepositoryOperationalStatus.ERROR),
+            ("fatal: could not read Username for | terminal prompts disable", RepositoryOperationalStatus.ERROR_CRED),
+        ],
+    )
+    async def test_repository_operational_status(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset: None,
+        git_repos_source_dir_module_scope: Path,
+        client: InfrahubClient,
+        stderr: str,
+        expected_operational_status: RepositoryOperationalStatus,
+        service: InfrahubServices,
+    ) -> None:
+        """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
+        client_repository = await client.get(kind=InfrahubKind.REPOSITORY, name__value="car-dealership")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+
+        assert repository.commit.value
+
+        infrahub_repo = await get_initialized_repo(
+            repository_id=repository.id,
+            name=repository.name.value,
+            service=service,
+            repository_kind=InfrahubKind.REPOSITORY,
+        )
+
+        with patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)):
+            try:
+                await infrahub_repo.fetch()
+            except RepositoryError:
+                r: CoreRepository = await NodeManager.get_one(
+                    db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+                )
+                assert r.operational_status.value == expected_operational_status.value

@@ -84,7 +84,7 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
           Cancel
         </Button>
 
-        <FormSubmit>Create a new branch</FormSubmit>
+        <FormSubmit data-testid="submit-create-new-branch">Create a new branch</FormSubmit>
       </div>
     </Form>
   );

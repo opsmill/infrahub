@@ -895,7 +895,7 @@ class TestDiffAndMerge:
             assert updated_person.height.value == main_value
         await verify_no_duplicate_paths(db=db)
 
-    async def test_hierarchy_preserver(
+    async def test_hierarchy_preserved(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,

@@ -11,6 +11,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.2) - 2025-03-28
+
+### Fixed
+
+- Fix generic schema updates to correctly propagate an updated order_weight to a downstream attribute or relationship on an inheriting schema ([#5684](https://github.com/opsmill/infrahub/issues/5684))
+- Fix operational status of repositories remaining to "Unknown" even after a synchronization ([#5755](https://github.com/opsmill/infrahub/issues/5755))
+- Fix an issue that could cause the display label to not appear for nodes that have had their kind updated
+
 ## [Infrahub - v1.2.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.1) - 2025-03-26
 
 ### Added
