@@ -7,7 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreArtifactValidator, CoreGeneratorDefinition, CoreProposedChange
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.schemas.objects import (
@@ -16,19 +19,20 @@ from prefect.client.schemas.objects import (
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import run_checks_and_update_validator
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
@@ -36,6 +40,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
@@ -49,6 +54,7 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeRunGenerators,
     RequestProposedChangeSchemaIntegrity,
     RequestProposedChangeUserTests,
+    RunGeneratorAsCheckModel,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
@@ -62,8 +68,6 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
-
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.message_bus.types import ProposedChangeRepository
@@ -644,3 +648,141 @@ def _should_render_artifact(artifact_id: str | None, managed_branch: bool, impac
     # return artifact_id in impacted_artifacts
     # Temporary workaround tracked in https://github.com/opsmill/infrahub/issues/4991
     return True
+
+
+@flow(
+    name="run-generator-as-check",
+    flow_run_name="Execute Generator {model.generator_definition.definition_name} for {model.target_name}",
+)
+async def run_generator_as_check(model: RunGeneratorAsCheckModel, service: InfrahubServices) -> ValidatorConclusion:
+    await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
+
+    log = get_run_logger()
+
+    repository = await get_initialized_repo(
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        service=service,
+        repository_kind=model.repository_kind,
+        commit=model.commit,
+    )
+
+    conclusion = ValidatorConclusion.SUCCESS
+
+    generator_definition = InfrahubGeneratorDefinitionConfig(
+        name=model.generator_definition.definition_name,
+        class_name=model.generator_definition.class_name,
+        file_path=model.generator_definition.file_path,
+        query=model.generator_definition.query_name,
+        targets=model.generator_definition.group_id,
+        convert_query_response=model.generator_definition.convert_query_response,
+    )
+
+    commit_worktree = repository.get_commit_worktree(commit=model.commit)
+
+    file_info = extract_repo_file_information(
+        full_filename=commit_worktree.directory / generator_definition.file_path,
+        repo_directory=repository.directory_root,
+        worktree_directory=commit_worktree.directory,
+    )
+    generator_instance = await _define_instance(model=model, service=service)
+
+    check_message = "Instance successfully generated"
+    try:
+        log.debug(f"repo information {file_info}")
+        log.debug(f"Root directory : {repository.directory_root}")
+        generator_class = generator_definition.load_class(
+            import_root=repository.directory_root, relative_path=file_info.relative_repo_path_dir
+        )
+
+        generator = generator_class(
+            query=generator_definition.query,
+            client=service.client,
+            branch=model.branch_name,
+            params=model.variables,
+            generator_instance=generator_instance.id,
+            convert_query_response=generator_definition.convert_query_response,
+            infrahub_node=InfrahubNode,
+        )
+        generator._init_client.request_context = model.context.to_request_context()
+        await generator.run(identifier=generator_definition.name)
+        generator_instance.status.value = GeneratorInstanceStatus.READY.value
+    except ModuleImportError as exc:
+        conclusion = ValidatorConclusion.FAILURE
+        generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
+        check_message = f"Failed to import generator: {exc.message}"
+        log.exception(check_message, exc_info=exc)
+    except Exception as exc:
+        conclusion = ValidatorConclusion.FAILURE
+        generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
+        check_message = f"Failed to execute generator: {str(exc)}"
+        log.exception(check_message, exc_info=exc)
+
+    log.info("Generator run completed, starting update")
+    await generator_instance.update(do_full_update=True)
+
+    check = None
+    existing_check = await service.client.filters(
+        kind=InfrahubKind.GENERATORCHECK, validator__ids=model.validator_id, instance__value=generator_instance.id
+    )
+    if existing_check:
+        check = existing_check[0]
+
+    if check:
+        check.created_at.value = Timestamp().to_string()
+        check.conclusion.value = conclusion.value
+        await check.save()
+    else:
+        check = await service.client.create(
+            kind=InfrahubKind.GENERATORCHECK,
+            data={
+                "name": model.target_name,
+                "origin": model.repository_id,
+                "kind": "GeneratorDefinition",
+                "validator": model.validator_id,
+                "created_at": Timestamp().to_string(),
+                "message": check_message,
+                "conclusion": conclusion.value,
+                "instance": generator_instance.id,
+            },
+        )
+        await check.save()
+
+    return conclusion
+
+
+async def _define_instance(model: RunGeneratorAsCheckModel, service: InfrahubServices) -> InfrahubNode:
+    if model.generator_instance:
+        instance = await service.client.get(
+            kind=InfrahubKind.GENERATORINSTANCE, id=model.generator_instance, branch=model.branch_name
+        )
+        instance.status.value = GeneratorInstanceStatus.PENDING.value
+        await instance.update(do_full_update=True)
+
+    else:
+        async with lock.registry.get(
+            f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
+        ):
+            instances = await service.client.filters(
+                kind=InfrahubKind.GENERATORINSTANCE,
+                definition__ids=[model.generator_definition.definition_id],
+                object__ids=[model.target_id],
+                branch=model.branch_name,
+            )
+            if instances:
+                instance = instances[0]
+                instance.status.value = GeneratorInstanceStatus.PENDING.value
+                await instance.update(do_full_update=True)
+            else:
+                instance = await service.client.create(
+                    kind=InfrahubKind.GENERATORINSTANCE,
+                    branch=model.branch_name,
+                    data={
+                        "name": f"{model.generator_definition.definition_name}: {model.target_name}",
+                        "status": GeneratorInstanceStatus.PENDING.value,
+                        "object": model.target_id,
+                        "definition": model.generator_definition.definition_id,
+                    },
+                )
+                await instance.save()
+    return instance
