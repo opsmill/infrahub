@@ -439,7 +439,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         schema = await client.schema.get(kind="TestPerson")
         assert schema.default_filter == "name__value"
 
-        del schema_dict["nodes"][0]["default_filter"]  # type: ignore
+        schema_dict["nodes"][0]["default_filter"] = ""  # type: ignore
 
         creation = await client.schema.load(schemas=[schema_dict])
         assert creation.schema_updated

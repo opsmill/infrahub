@@ -16,7 +16,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | ---- | ----------- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
 | [**children**](#children) | Attribute | Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined. | False |
-| [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) | False |
+| [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. Use an empty string to remove an existing value. (deprecated: please use human_friendly_id instead) | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**documentation**](#documentation) | Attribute | Link to a documentation associated with this object, can be internal or external. | False |
@@ -69,10 +69,10 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | default_filter |
 | **Kind** | `Text` |
-| **Description** | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) |
+| **Description** | Default filter used to search for a node in addition to its ID. Use an empty string to remove an existing value. (deprecated: please use human_friendly_id instead) |
 | **Optional**  | True |
 | **Default Value** |  |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$` |
+| **Constraints** |  Regex: `^[a-z0-9\_]*$` |
 
 ### description
 

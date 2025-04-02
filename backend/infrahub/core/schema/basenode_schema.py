@@ -11,7 +11,7 @@ from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
-from infrahub.core.models import HashableModelDiff
+from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema
 from .generated.base_node_schema import GeneratedBaseNodeSchema
@@ -479,6 +479,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if uniqueness_constraint <= hfid_set:
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
+
+    def update(self, other: HashableModel) -> Self:
+        super().update(other=other)
+
+        # Allow to specify empty string to remove an existing `default_filter`
+        if hasattr(other, "default_filter") and other.default_filter == "":  # noqa: PLC1901
+            self.default_filter = None
+
+        return self
 
 
 @dataclass

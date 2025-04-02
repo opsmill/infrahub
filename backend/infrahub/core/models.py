@@ -529,7 +529,7 @@ class HashableModel(BaseModel):
 
         return new_list
 
-    def update(self, other: Self) -> Self:
+    def update(self, other: HashableModel) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
         Currently this method works for the following type of fields
@@ -547,11 +547,7 @@ class HashableModel(BaseModel):
 
             attr_other = getattr(other, field_name)
             attr_local = getattr(self, field_name)
-            if attr_local == attr_other:
-                continue
-
-            if attr_other is None and attr_local is not None and field_name != "id":
-                setattr(self, field_name, attr_other)
+            if attr_other is None or attr_local == attr_other:
                 continue
 
             if attr_local is None or isinstance(attr_other, int | str | bool | float):
