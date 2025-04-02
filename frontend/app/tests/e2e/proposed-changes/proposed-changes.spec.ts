@@ -135,9 +135,21 @@ test.describe("/proposed-changes", () => {
         );
       });
 
-      test("merged proposed change", async ({ page }) => {
+      test("merge proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
+
+        await test.step("ensure the checks are fine", async () => {
+          await page.getByText("Checks").click();
+
+          // Reload page until we have successful checks
+          while (
+            (await page.getByText("Data Integrity").isVisible()) &&
+            (await page.getByTestId("validator-success").isHidden())
+          ) {
+            await page.reload();
+          }
+        });
 
         await test.step("merge proposed change and update UI", async () => {
           await page.getByRole("button", { name: "Merge" }).click();
