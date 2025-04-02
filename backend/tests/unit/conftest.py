@@ -1270,10 +1270,8 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-async def car_person_schema_generics(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
-) -> SchemaRoot:
-    SCHEMA: dict[str, Any] = {
+async def car_person_schema_generics_unregistered(register_core_models_schema, data_schema) -> dict[str, Any]:
+    return {
         "generics": [
             {
                 "name": "Car",
@@ -1388,7 +1386,16 @@ async def car_person_schema_generics(
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
+
+@pytest.fixture
+async def car_person_schema_generics(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+    data_schema,
+    car_person_schema_generics_unregistered,
+) -> SchemaRoot:
+    schema = SchemaRoot(**car_person_schema_generics_unregistered)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
+from infrahub.core.schema.generic_schema import GenericSchema
 
 from ..query import AttributeMigrationQuery
 from ..shared import AttributeSchemaMigration
@@ -22,8 +23,20 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        attr_name = self.migration.schema_path.field_name
+        kinds_to_ignore = []
+        if isinstance(self.migration.new_node_schema, GenericSchema) and attr_name is not None:
+            for inheriting_schema_kind in self.migration.new_node_schema.used_by:
+                node_schema = db.schema.get_node_schema(
+                    name=inheriting_schema_kind, branch=self.branch, duplicate=False
+                )
+                attr_schema = node_schema.get_attribute_or_none(name=attr_name)
+                if attr_schema and not attr_schema.inherited:
+                    kinds_to_ignore.append(inheriting_schema_kind)
+
         self.params["node_kind"] = self.migration.new_schema.kind
-        self.params["attr_name"] = self.migration.schema_path.field_name
+        self.params["kinds_to_ignore"] = kinds_to_ignore
+        self.params["attr_name"] = attr_name
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
         self.params["branch_support"] = self.migration.previous_attribute_schema.get_branch().value
@@ -60,7 +73,8 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         query = """
         // Find all the active nodes
         MATCH (node:%(node_kind)s)
-        WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
+        WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
+        AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
         CALL {
             WITH node
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
