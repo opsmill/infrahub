@@ -41,18 +41,11 @@ test.describe("Verifies the object creation", () => {
       await page.getByLabel("Speed *").fill(ETHERNET_SPEED);
       await page.getByRole("combobox", { name: "Device", exact: true }).click();
       await page.getByText(DEVICE_NAME).click();
-      await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: KIND }).click();
+      await page.getByRole("combobox", { name: "Lag", exact: true }).click();
 
       // Wait for query to load options
-      await page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
+      await expect(page.getByText("Loading...")).toBeHidden();
 
-        return reqData?.operationName === "DropdownOptions" && status === 200;
-      });
-
-      await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: ENDPOINT_NAME }).last().click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText(`${KIND} created`)).toBeVisible();
@@ -74,15 +67,14 @@ test.describe("Verifies the object creation", () => {
     await test.step("verifies the form values", async () => {
       await page.getByTestId("edit-button").click();
       await expect(page.getByLabel("Speed *")).toHaveValue(ETHERNET_SPEED);
+      await page.getByRole("combobox", { name: "Device", exact: true }).click();
+
       await expect(
-        page.locator("div:below(:text('Device *'))").getByTestId("select-value").first()
+        page.getByRole("combobox", { name: "Device", exact: true }).getByTestId("select-value")
       ).toHaveValue(DEVICE_NAME);
-      await expect(page.getByTestId("select2step-1").getByTestId("select-value")).toContainText(
-        KIND
-      );
-      await expect(page.getByTestId("select2step-2").getByTestId("select-value")).toContainText(
-        ENDPOINT_NAME
-      );
+      await expect(
+        page.getByRole("combobox", { name: "Lag", exact: true }).getByTestId("select-value")
+      ).toHaveValue(ENDPOINT_NAME);
     });
   });
 
