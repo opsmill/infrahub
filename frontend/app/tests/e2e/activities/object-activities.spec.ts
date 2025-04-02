@@ -3,7 +3,6 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("Object Activities - Timeline and Details", () => {
-  test.describe.configure({ mode: "parallel" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
 
@@ -19,6 +18,12 @@ test.describe("Object Activities - Timeline and Details", () => {
     await test.step("Navigate to InfraDevice page", async () => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-edge1" }).click();
+
+      while (await page.getByText("No activity found for this").isVisible()) {
+        await page.reload();
+        await expect(page.getByTestId("activities-container").getByText("Loading...")).toBeHidden();
+      }
+
       await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_device");
     });
 

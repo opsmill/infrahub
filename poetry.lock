@@ -2751,6 +2751,20 @@ files = [
 nicer-shell = ["ipython"]
 
 [[package]]
+name = "netutils"
+version = "1.12.0"
+description = "Common helper functions useful in network automation."
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "netutils-1.12.0-py3-none-any.whl", hash = "sha256:7cb37796ce86637814f8c899f64db2b054986b0eda719d3fcadc293d451a4db1"},
+    {file = "netutils-1.12.0.tar.gz", hash = "sha256:96a790d11921063a6a64ee79c6e8c5a5ffcd05cbee07dd2b614d98c4416cffdd"},
+]
+
+[package.extras]
+optionals = ["jsonschema (>=4.17.3,<5.0.0)", "legacycrypt (==0.3)", "napalm (>=4.0.0,<5.0.0)"]
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 description = "Node.js virtual environment builder"
@@ -6028,4 +6042,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "db624b88518986fbcb88b0d502fc9395280c409e3810b46b58f3bddfc02bd648"
+content-hash = "8a04260be59d6b669e24e4262c8bcf4bb6600456dc65809d41b4351734cbb3a2"

@@ -57,6 +57,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_API_SERVER_COUNT": "2",
     "INFRAHUB_TESTING_TASK_WORKER_COUNT": "2",
     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "true",
+    "INFRAHUB_TESTING_DOCKER_PULL": "true",
 }
 
 
@@ -172,6 +173,9 @@ class InfrahubDockerCompose(DockerCompose):
             self._run_command(cmd=pull_cmd)
 
         up_cmd = [*base_cmd, "up"]
+
+        if self.get_env_var("INFRAHUB_TESTING_DOCKER_PULL") == "false":
+            up_cmd.extend(["--pull", "never"])
 
         # build means modifying the up command
         if self.wait:
