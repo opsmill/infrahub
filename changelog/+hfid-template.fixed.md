@@ -1,0 +1,1 @@
+Fix an issue where HFID and uniqueness constraints for component templates would end up having duplicate elements after loading several schemas
