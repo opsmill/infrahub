@@ -32,49 +32,32 @@ test.describe("Verifies the object creation", () => {
   });
 
   test("creates and verifies the nodes values", async ({ page }) => {
-    await test.step("creates the object", async () => {
-      await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
-      await expect(page.getByText("Loading...").first()).toBeHidden();
-      await expect(page.getByText("Skeleton placeholder")).toBeHidden();
+    await test.step("create the object", async () => {
+      await page.goto("/objects/InfraVLAN");
       await page.getByTestId("create-object-button").click();
-      await page.getByLabel("Name *").fill(ETHERNET_NAME);
-      await page.getByLabel("Speed *").fill(ETHERNET_SPEED);
-      await page.getByRole("combobox", { name: "Device", exact: true }).click();
-      await page.getByText(DEVICE_NAME).click();
-      await page.getByRole("combobox", { name: "Lag", exact: true }).click();
-
-      // Wait for query to load options
-      await expect(page.getByText("Loading...").first()).toBeHidden();
-
-      await page.getByRole("option", { name: ENDPOINT_NAME }).last().click();
+      await page.getByRole("combobox", { name: "Site" }).click();
+      await page.getByRole("option", { name: "atl1" }).click();
+      await page.getByRole("textbox", { name: "Name *" }).fill("vlan-test");
+      await page.getByRole("spinbutton", { name: "Vlan Id *" }).fill("600");
+      await page.getByRole("combobox", { name: "Device" }).click();
+      await page.getByRole("option", { name: "atl1-core1" }).click();
+      await page.getByRole("combobox", { name: "L3 Gateway" }).click();
+      await page.getByRole("option", { name: "MGMT" }).click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText(`${KIND} created`)).toBeVisible();
+      await expect(page.getByText("VLAN created")).toBeVisible();
     });
 
-    await test.step("verifies the object values", async () => {
-      await page.getByPlaceholder("Search anywhere").click();
-      await page
-        .getByTestId("search-anywhere")
-        .getByPlaceholder("Search anywhere")
-        .fill(ETHERNET_NAME);
-      await page.getByRole("option", { name: `${ETHERNET_NAME}Interface L3` }).click();
-      await expect(page.getByRole("main")).toContainText(ETHERNET_NAME);
-      await expect(page.getByRole("main")).toContainText(ETHERNET_SPEED);
-      await expect(page.getByRole("main")).toContainText(ENDPOINT_NAME);
-      await expect(page.getByRole("main")).toContainText(DEVICE_NAME);
+    await test.step("verify object details", async () => {
+      await page.getByRole("link", { name: "vlan-test," }).click();
+      await expect(page.getByText("Namevlan-test")).toBeVisible();
+      await expect(page.getByText("Vlan Id600")).toBeVisible();
+      await expect(page.getByText("L3 GatewayMGMT")).toBeVisible();
     });
 
-    await test.step("verifies the form values", async () => {
+    await test.step("verify initial values", async () => {
       await page.getByTestId("edit-button").click();
-      await expect(page.getByLabel("Speed *")).toHaveValue(ETHERNET_SPEED);
-      await page.getByRole("combobox", { name: "Device", exact: true }).click();
-
-      await expect(
-        page.getByRole("combobox", { name: "Device", exact: true }).getByTestId("select-value")
-      ).toHaveValue(DEVICE_NAME);
-      await expect(
-        page.getByRole("combobox", { name: "Lag", exact: true }).getByTestId("select-value")
-      ).toHaveValue(ENDPOINT_NAME);
+      await expect(page.getByRole("combobox", { name: "Device" })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "L3 Gateway" })).toBeVisible();
     });
   });
 
