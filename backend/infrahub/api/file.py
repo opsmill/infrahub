@@ -10,7 +10,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import CommitNotFoundError, PropagatedFromWorkerError
-from infrahub.message_bus.messages import GitFileGet, GitFileGetResponse
+from infrahub.git.models import GitFileGet, GitFileGetResponseData
+from infrahub.workflows.catalogue import GIT_GET_FILE
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
@@ -46,7 +47,7 @@ async def get_file(
     if not commit:
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")
 
-    message = GitFileGet(
+    model = GitFileGet(
         repository_id=repo.id,
         repository_name=str(repo.name.value),
         repository_kind=repo.get_kind(),
@@ -54,9 +55,13 @@ async def get_file(
         file=file_path,
     )
 
-    response = await service.message_bus.rpc(message=message, response_class=GitFileGetResponse)
-    if response.data.http_code is not None:
-        assert response.data.error_message is not None
-        raise PropagatedFromWorkerError(message=response.data.error_message, http_code=response.data.http_code)
+    raise ValueError("Check whether we have an existing test for it")
 
-    return PlainTextResponse(content=response.data.content)
+    response = await service.workflow.execute_workflow(
+        workflow=GIT_GET_FILE, parameters={"model": model}, expected_return=GitFileGetResponseData
+    )
+    if response.http_code is not None:
+        assert response.error_message is not None
+        raise PropagatedFromWorkerError(message=response.error_message, http_code=response.http_code)
+
+    return PlainTextResponse(content=response.content)

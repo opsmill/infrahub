@@ -19,7 +19,6 @@ COMMAND_MAP = {
     "check.generator.run": check.generator.run,
     "event.branch.merge": event.branch.merge,
     "finalize.validator.execution": finalize.validator.execution,
-    "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,
     "refresh.registry.branches": refresh.registry.branches,

@@ -16,7 +16,7 @@ from infrahub import lock
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.registry import registry
-from infrahub.exceptions import CheckError, RepositoryError
+from infrahub.exceptions import CheckError, FileOutOfRepositoryError, RepositoryError, RepositoryFileNotFoundError
 from infrahub.message_bus import Meta, messages
 from infrahub.services import InfrahubServices
 from infrahub.validators.tasks import start_validator
@@ -39,6 +39,8 @@ from .models import (
     CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
+    GitFileGet,
+    GitFileGetResponseData,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
     GitRepositoryImportObjects,
@@ -888,3 +890,21 @@ async def run_user_check(model: UserCheckData, service: InfrahubServices) -> Val
         await check.save()
 
     return conclusion
+
+
+@flow(name="get-git-file", flow_run_name="Read file {model.file} from repository {model.repository_name}")
+async def get_git_file(model: GitFileGet, service: InfrahubServices) -> GitFileGetResponseData:
+    repo = await get_initialized_repo(
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        service=service,
+        repository_kind=model.repository_kind,
+        commit=model.commit,
+    )
+
+    try:
+        content = await repo.get_file(commit=model.commit, location=model.file)
+    except (FileOutOfRepositoryError, RepositoryFileNotFoundError) as e:
+        return GitFileGetResponseData(error_message=e.message, http_code=e.HTTP_CODE)
+
+    return GitFileGetResponseData(content=content)

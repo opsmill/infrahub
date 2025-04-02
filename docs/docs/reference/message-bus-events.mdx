@@ -92,29 +92,6 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 <!-- vale off -->
-### Git File
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event git.file.get
-<!-- vale on -->
-
-**Description**: Read a file from a Git repository.
-
-**Priority**: 4
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **commit** | The commit id to use to access the file | string | None |
-| **file** | The path and filename within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **repository_kind** | The kind of the repository | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Git Repository
 <!-- vale on -->
 
@@ -280,28 +257,6 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 
 ## Responses events
-
-<!-- vale off -->
-### Git File
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event git.file.get
-<!-- vale on -->
-**Priority**: 4
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **passed** | N/A | boolean | True |
-| **routing_key** | N/A | string | git.file.get |
-| **data.content** | N/A | N/A | None |
-| **data.error_message** | N/A | N/A | None |
-| **data.http_code** | N/A | N/A | None |
-| **errors** | N/A | array | None |
-| **initial_message** | Initial message in dict format, the primary goal of this field is to provide additional context when there is an error | N/A | None |
-<!-- vale on -->
 
 <!-- vale off -->
 ### Send Echo

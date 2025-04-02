@@ -202,3 +202,19 @@ class RepositoryData(BaseModel):
     )
 
     branch_info: dict[str, RepositoryBranchInfo] = Field(default_factory=dict)
+
+
+class GitFileGet(BaseModel):
+    """Read a file from a Git repository."""
+
+    commit: str = Field(..., description="The commit id to use to access the file")
+    file: str = Field(..., description="The path and filename within the repository")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
+
+
+class GitFileGetResponseData(BaseModel):
+    content: str | None = Field(default=None)  # is empty if error_message / http_code are not empty
+    error_message: str | None = Field(default=None)
+    http_code: int | None = Field(default=None)

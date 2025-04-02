@@ -421,6 +421,12 @@ TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
     function="trigger_configure_all",
 )
 
+GIT_GET_FILE = WorkflowDefinition(
+    name="get-git-file",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="get_git_file",
+)
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -440,6 +446,7 @@ workflows = [
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    GIT_GET_FILE,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
