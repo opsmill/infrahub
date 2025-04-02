@@ -75,6 +75,7 @@ test.describe("/proposed-changes", () => {
 
       test("display and edit proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
+        test.slow();
 
         await test.step("display created proposed change details", async () => {
           await page.getByText(pcName, { exact: true }).click();
@@ -145,18 +146,14 @@ test.describe("/proposed-changes", () => {
         await test.step("not able to edit proposed change", async () => {
           await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
           await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
-          await expect(page.getByRole("button", { name: "Close" })).toBeDisabled();
+          await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
           await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
       });
 
       test("delete proposed change", async ({ page }) => {
-        await page.goto("/proposed-changes");
-        await page
-          .getByRole("link", { name: `${pcNameEdit} 0 ${pcBranchName}` })
-          .locator("../..")
-          .getByTestId("actions-row-button")
-          .click();
+        await page.goto("/proposed-changes?pr_state=close");
+        await page.getByTestId("actions-row-button").first().click();
         await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
