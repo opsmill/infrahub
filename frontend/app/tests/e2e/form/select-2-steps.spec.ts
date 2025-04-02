@@ -3,12 +3,6 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-const ETHERNET_NAME = "New ethernet name";
-const ETHERNET_SPEED = "1000";
-const DEVICE_NAME = "atl1-core1";
-const KIND = "InterfaceL3";
-const ENDPOINT_NAME = "et-0/0/2";
-
 test.describe("Verifies the object creation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
