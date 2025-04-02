@@ -154,31 +154,6 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 <!-- vale off -->
-### Request Generator Definition
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.generator_definition.check
-<!-- vale on -->
-
-**Description**: Sent to trigger Generators to run for a proposed change.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **generator_definition** | The Generator Definition | N/A | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The target branch | string | None |
-| **context** | The Infrahub context | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Request Proposed Change
 <!-- vale on -->
 
