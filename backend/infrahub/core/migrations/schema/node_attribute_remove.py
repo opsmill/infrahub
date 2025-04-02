@@ -25,12 +25,12 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
 
         attr_name = self.migration.schema_path.field_name
         kinds_to_ignore = []
-        if isinstance(self.migration.new_node_schema, GenericSchema):
+        if isinstance(self.migration.new_node_schema, GenericSchema) and attr_name is not None:
             for inheriting_schema_kind in self.migration.new_node_schema.used_by:
                 node_schema = db.schema.get_node_schema(
                     name=inheriting_schema_kind, branch=self.branch, duplicate=False
                 )
-                attr_schema = node_schema.get_attribute_or_none(name=attr_name) if attr_name else None
+                attr_schema = node_schema.get_attribute_or_none(name=attr_name)
                 if attr_schema and not attr_schema.inherited:
                     kinds_to_ignore.append(inheriting_schema_kind)
 
