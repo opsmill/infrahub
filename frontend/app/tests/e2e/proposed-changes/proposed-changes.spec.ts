@@ -44,6 +44,8 @@ test.describe("/proposed-changes", () => {
     });
 
     test.describe("Create, edit and merge proposed change", async () => {
+      test.describe.configure({ mode: "serial" });
+
       const pcName = "pc-e2e";
       const pcNameEdit = "pc-e2e-edit";
       const pcBranchName = "main-copy-for-pc-e2e";
