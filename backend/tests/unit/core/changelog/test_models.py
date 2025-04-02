@@ -66,24 +66,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 },
                 kind="Number",
             ),
-            "bag": AttributeChangelog(
-                name="bag",
-                value=None,
-                value_previous=None,
-                properties={
-                    "is_protected": PropertyChangelog(
-                        name="is_protected",
-                        value=False,
-                        value_previous=None,
-                    ),
-                    "is_visible": PropertyChangelog(
-                        name="is_visible",
-                        value=True,
-                        value_previous=None,
-                    ),
-                },
-                kind="Text",
-            ),
         },
         relationships={},
     )

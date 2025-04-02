@@ -698,7 +698,6 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
-                    {"name": "bag", "kind": "Text", "optional": True, "unique": True},
                 ],
                 "relationships": [
                     {
@@ -730,6 +729,38 @@ async def animal_person_schema_person_no_default_filter(
     schema_dict = deepcopy(animal_person_schema_unregistered)
     del schema_dict["nodes"][2]["default_filter"]
     return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
+
+
+@pytest.fixture
+async def person_schema_unique_attr_non_hfid_unregistered(
+    db: InfrahubDatabase, node_group_schema, data_schema
+) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "bag", "kind": "Text", "unique": True},
+                ],
+            }
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def person_schema_unique_attr_non_hfid(
+    db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(
+        schema=person_schema_unique_attr_non_hfid_unregistered, branch=default_branch.name
+    )
 
 
 @pytest.fixture
