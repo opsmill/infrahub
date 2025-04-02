@@ -140,11 +140,12 @@ test.describe("/proposed-changes", () => {
         await page.getByText(pcNameEdit, { exact: true }).first().click();
 
         await test.step("ensure the checks are fine", async () => {
+          await expect(page.getByTestId("checks-tab").getByTestId("Loading...")).toBeHidden();
           await page.getByText("Checks").click();
 
           // Reload page until we have successful checks
           while (
-            (await page.getByText("Data Integrity").isVisible()) &&
+            (await page.getByText("Retry all").isVisible()) &&
             (await page.getByTestId("validator-success").isHidden())
           ) {
             await page.reload();
