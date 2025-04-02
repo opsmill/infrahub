@@ -1,14 +1,15 @@
 from typing import Any
 
-from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_schema import AttributeSchema
-from infrahub.core.schema.node_schema import NodeSchema
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from .shared import TestSchemaLifecycleBase
-from tests.helpers.schema import DEVICE_SCHEMA
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.node_schema import NodeSchema
 from tests.constants import TestKind
+from tests.helpers.schema import DEVICE_SCHEMA
+
+from .shared import TestSchemaLifecycleBase
 
 
 class TestSchemaLifecycleTemplateUpdate(TestSchemaLifecycleBase):
