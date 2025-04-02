@@ -34,7 +34,7 @@ test.describe("Verifies the object creation", () => {
   test("creates and verifies the nodes values", async ({ page }) => {
     await test.step("creates the object", async () => {
       await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
-      await expect(page.getByText("Loading...")).toBeHidden();
+      await expect(page.getByText("Loading...").first()).toBeHidden();
       await expect(page.getByText("Skeleton placeholder")).toBeHidden();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(ETHERNET_NAME);
@@ -44,7 +44,7 @@ test.describe("Verifies the object creation", () => {
       await page.getByRole("combobox", { name: "Lag", exact: true }).click();
 
       // Wait for query to load options
-      await expect(page.getByText("Loading...")).toBeHidden();
+      await expect(page.getByText("Loading...").first()).toBeHidden();
 
       await page.getByRole("option", { name: ENDPOINT_NAME }).last().click();
       await page.getByRole("button", { name: "Save" }).click();
