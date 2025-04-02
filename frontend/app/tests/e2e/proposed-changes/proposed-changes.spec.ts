@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranch, deleteBranch } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/proposed-changes", () => {
   test.describe.configure({ mode: "serial" });
@@ -48,18 +48,12 @@ test.describe("/proposed-changes", () => {
       const pcNameEdit = "pc-e2e-edit";
       const pcBranchName = "main-copy-for-pc-e2e";
 
-      test.beforeAll(async ({ browser }) => {
-        const page = await browser.newPage();
-        await page.goto("/proposed-changes");
-        await createBranch(page, pcBranchName);
-        await page.close();
+      test.beforeAll(async ({ request }) => {
+        await createBranchAPI(request, pcBranchName);
       });
 
-      test.afterAll(async ({ browser }) => {
-        const page = await browser.newPage();
-        await page.goto("/proposed-changes");
-        await deleteBranch(page, pcBranchName);
-        await page.close();
+      test.afterAll(async ({ request }) => {
+        await deleteBranchAPI(request, pcBranchName);
       });
 
       test("create new proposed change", async ({ page }) => {
