@@ -15,7 +15,6 @@ from infrahub.tasks.check import set_check_status
 
 COMMAND_MAP = {
     "event.branch.merge": event.branch.merge,
-    "event.worker.new_primary_api": event.worker.new_primary_api,
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,

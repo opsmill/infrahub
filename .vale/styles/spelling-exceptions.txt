@@ -89,6 +89,7 @@ namespace
 namespaces
 Nautobot
 Netbox
+Netutils
 Newsfragment
 Nornir
 npm

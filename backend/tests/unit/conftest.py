@@ -55,6 +55,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     core_models,
 )
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
@@ -1269,10 +1270,8 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-async def car_person_schema_generics(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
-) -> SchemaRoot:
-    SCHEMA: dict[str, Any] = {
+async def car_person_schema_generics_unregistered(register_core_models_schema, data_schema) -> dict[str, Any]:
+    return {
         "generics": [
             {
                 "name": "Car",
@@ -1387,7 +1386,16 @@ async def car_person_schema_generics(
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
+
+@pytest.fixture
+async def car_person_schema_generics(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+    data_schema,
+    car_person_schema_generics_unregistered,
+) -> SchemaRoot:
+    schema = SchemaRoot(**car_person_schema_generics_unregistered)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
@@ -1693,6 +1701,25 @@ async def group_group2_subscribers_main(
     await obj.save(db=db)
 
     return obj
+
+
+@pytest.fixture
+async def optional_attr_uniqueness_constraint_schema(
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+) -> NodeSchema:
+    node_schema = NodeSchema(
+        name="AttrOptionalUniquenessSchema",
+        namespace="Test",
+        branch=BranchSupportType.AWARE.value,
+        uniqueness_constraints=[["name__value"]],
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=True),
+            AttributeSchema(name="description", kind="Text", optional=True),
+        ],
+    )
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    return node_schema
 
 
 @pytest.fixture

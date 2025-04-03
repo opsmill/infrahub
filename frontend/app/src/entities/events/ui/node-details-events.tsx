@@ -54,7 +54,7 @@ export const NodeEvents = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 p-2">
+    <div className="flex flex-col gap-2 p-2" data-testid="activities-container">
       {flatData.map((activity) => (
         <EventCard key={activity.id} {...activity} />
       ))}

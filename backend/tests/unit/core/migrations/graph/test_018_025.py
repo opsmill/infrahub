@@ -3,7 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph import Migration018
+from infrahub.core.migrations.graph import Migration018, Migration025
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -55,16 +55,17 @@ async def car_invisible(db: InfrahubDatabase, default_branch: Branch, person_mai
     return car
 
 
+@pytest.mark.parametrize("migration", [Migration018(), Migration025()])
 async def test_migration_018_success(
     db: InfrahubDatabase,
     default_branch,
     car_blue,
     car_red,
     car_invisible,
+    migration,
 ):
     # check no validation errors for now
     async with db.start_session() as dbs:
-        migration = Migration018()
         execution_result = await migration.execute(db=dbs)
         assert not execution_result.errors
 
@@ -72,6 +73,7 @@ async def test_migration_018_success(
         assert not validation_result.errors
 
 
+@pytest.mark.parametrize("migration", [Migration018(), Migration025()])
 async def test_migration_018_fail(
     db: InfrahubDatabase,
     default_branch,
@@ -79,6 +81,7 @@ async def test_migration_018_fail(
     car_red,
     car_invisible,
     car_person_schema: SchemaBranch,
+    migration,
 ):
     """
     Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint
@@ -91,7 +94,6 @@ async def test_migration_018_fail(
 
     # check validation errors for two cars now
     async with db.start_session() as dbs:
-        migration = Migration018()
         execution_result = await migration.execute(db=dbs)
         assert len(execution_result.errors) == 3
         for error_str in execution_result.errors[1:]:

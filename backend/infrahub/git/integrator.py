@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import importlib
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import jinja2
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -28,6 +28,8 @@ from infrahub_sdk.schema.repository import (
     InfrahubPythonTransformConfig,
     InfrahubRepositoryConfig,
 )
+from infrahub_sdk.template import Jinja2Template
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import SchemaFile
 from prefect import flow, task
@@ -1057,14 +1059,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
+        jinja2_template = Jinja2Template(template=Path(location), template_directory=Path(commit_worktree.directory))
         try:
-            templateLoader = jinja2.FileSystemLoader(searchpath=commit_worktree.directory)
-            templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
-            template = templateEnv.get_template(location)
-            return template.render(**data)
-        except Exception as exc:
+            return await jinja2_template.render(variables=data)
+        except JinjaTemplateError as exc:
             log.error(str(exc), exc_info=True)
-            raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=location, message=exc.message
+            ) from exc
 
     @task(name="python-check-execute", task_run_name="Execute Python Check", cache_policy=NONE)  # type: ignore[arg-type]
     async def execute_python_check(

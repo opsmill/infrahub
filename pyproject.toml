@@ -74,6 +74,7 @@ numpy = [
 ]
 dulwich = "^0.22.7"
 whenever = "0.7.2"
+netutils = "1.12.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -106,7 +106,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
                     ),
                 ],
             ),
-            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template",
+            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: These operations are forbidden for string based templates: ['Call', 'Import', 'Include']",  # noqa:E501
             id="template_invalid_format",
         ),
         pytest.param(
@@ -256,6 +256,33 @@ from infrahub.core.schema.schema_branch import SchemaBranch
             ),
             "TestingPerson: Attribute 'computed' is a computed transform, it can't be mandatory",
             id="required_transform",
+        ),
+        pytest.param(
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(
+                        name="Person",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2,
+                                    jinja2_template="{{ name__value | pprint }}",
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'pprint' filter isn't allowed to be used",  # noqa:E501
+            id="template_invalid_format",
         ),
     ],
 )
