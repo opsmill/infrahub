@@ -8,7 +8,6 @@ from .proposed_change.request_proposedchange_refreshartifacts import RequestProp
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
-from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
@@ -20,7 +19,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
-    "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
     "send.echo.request": SendEchoRequest,

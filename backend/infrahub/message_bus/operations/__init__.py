@@ -21,7 +21,6 @@ COMMAND_MAP = {
     "refresh.git.fetch": git.repository.fetch,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
-    "request.generator_definition.check": requests.generator_definition.check,
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "send.echo.request": send.echo.request,

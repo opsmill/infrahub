@@ -90,6 +90,14 @@ REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+REQUEST_GENERATOR_DEFINITION_CHECK = WorkflowDefinition(
+    name="request-generator-definition-check",
+    type=WorkflowType.CORE,
+    module="infrahub.proposed_change.tasks",
+    function="request_generator_definition_check",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
     name="artifact-generate",
     type=WorkflowType.CORE,  # NOTE need to check
@@ -469,6 +477,7 @@ workflows = [
     REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
+    REQUEST_GENERATOR_DEFINITION_CHECK,
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
