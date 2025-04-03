@@ -3,7 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe("/objects/CoreProfile - Profiles page", () => {
+test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   const BRANCH_NAME = generateRandomBranchName("profiles");

@@ -992,9 +992,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
         await self._refresh_registry(db=db, branch=branch)
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
-        # TODO: this fails b/c of a bug in the NodeAttributeRemove migration
-        # captured in https://github.com/opsmill/infrahub/issues/6073
-        # assert retrieved_specific_one.generic_attr_text.value == "Alpha"
+        assert retrieved_specific_one.generic_attr_text.value == "Alpha"
         assert retrieved_specific_one.generic_attr_num.value == 1
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
