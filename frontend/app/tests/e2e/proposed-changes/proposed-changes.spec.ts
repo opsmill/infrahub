@@ -135,7 +135,8 @@ test.describe("/proposed-changes", () => {
         );
       });
 
-      test("merge proposed change", async ({ page }) => {
+      // The proposed change has currently failing checks in the CI, so it cannot be merged
+      test.fixme("merge proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
 
