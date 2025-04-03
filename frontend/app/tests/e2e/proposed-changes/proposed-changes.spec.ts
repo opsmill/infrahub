@@ -136,7 +136,7 @@ test.describe("/proposed-changes", () => {
       });
 
       // The proposed change has currently failing checks in the CI, so it cannot be merged
-      test.fixme("merge proposed change", async ({ page }) => {
+      test.fixme("merge and delete proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
 
@@ -165,15 +165,15 @@ test.describe("/proposed-changes", () => {
           await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
           await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
-      });
 
-      test("delete proposed change", async ({ page }) => {
-        await page.goto("/proposed-changes?pr_state=close");
-        await page.getByTestId("actions-row-button").first().click();
-        await page.getByTestId("delete-row-button").click();
-        await expect(page.getByTestId("modal-delete")).toBeVisible();
-        await page.getByTestId("modal-delete-confirm").click();
-        await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();
+        await test.step("delete proposed change", async () => {
+          await page.goto("/proposed-changes?pr_state=close");
+          await page.getByTestId("actions-row-button").first().click();
+          await page.getByTestId("delete-row-button").click();
+          await expect(page.getByTestId("modal-delete")).toBeVisible();
+          await page.getByTestId("modal-delete-confirm").click();
+          await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();
+        });
       });
     });
   });
