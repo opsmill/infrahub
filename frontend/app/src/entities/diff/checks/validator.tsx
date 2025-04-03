@@ -32,7 +32,11 @@ const getValidatorState = (state?: string, conclusion?: string) => {
       if (conclusion === "success") {
         return (
           <Tooltip content="Success" enabled>
-            <Icon icon={"mdi:check-circle-outline"} className="text-green-500" />
+            <Icon
+              icon={"mdi:check-circle-outline"}
+              className="text-green-500"
+              data-testid="validator-success"
+            />
           </Tooltip>
         );
       }
