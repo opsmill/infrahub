@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Global Activities - List view and filter usage", () => {
+  test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
 
@@ -53,7 +54,7 @@ test.describe("Global Activities - List view and filter usage", () => {
   test("Filter by account", async ({ page }) => {
     await page.goto("/activities");
     await page.getByRole("button", { name: "Account" }).click();
-    await page.getByRole("option", { name: "Chloe O'Brian" }).click();
+    await page.getByRole("option", { name: "Jack Bauer" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("No activities found")).toBeVisible();
   });

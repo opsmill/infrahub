@@ -1955,10 +1955,9 @@ class SchemaBranch:
                 )
             )
 
-            if relationship.kind == RelationshipKind.PARENT:
-                template_schema.human_friendly_id = [
-                    f"{relationship.name}__template_name__value"
-                ] + template_schema.human_friendly_id
+            parent_hfid = f"{relationship.name}__template_name__value"
+            if relationship.kind == RelationshipKind.PARENT and parent_hfid not in template_schema.human_friendly_id:
+                template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
     def generate_object_template_from_node(
