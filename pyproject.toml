@@ -14,6 +14,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+    "infrahub-sdk",
+    "infrahub-testcontainers",
     "neo4j>=5.28,<5.29",
     "neo4j-rust-ext>=5.28,<5.29",
     "pydantic>=2.10,<2.11",
@@ -55,7 +57,7 @@ dependencies = [
     "pyarrow>=14,<15",
     "numpy>=1.24.2,<2 ; python_version >= '3.9' and python_version < '3.12'",
     "numpy>=1.26.2,<2 ; python_version >= '3.12'",
-    "dulwich>=0.22.7,<0.23",
+    "dulwich>=0.21.4,<0.22",
     "whenever==0.7.2",
     "netutils==1.12.0",
 ]
@@ -64,6 +66,11 @@ dependencies = [
 Homepage = "https://opsmill.com"
 Repository = "https://github.com/opsmill/infrahub"
 Documentation = "https://docs.infrahub.app/"
+
+[tool.uv.sources]
+infrahub-server = { workspace = true }
+infrahub-sdk = { path = "python_sdk", editable = true }
+infrahub-testcontainers = { path = "python_testcontainers", editable = true }
 
 [project.scripts]
 infrahub = "infrahub.cli:app"
@@ -80,6 +87,7 @@ infrahubasync = "infrahub.workers.infrahub_async"
 
 [dependency-groups]
 dev = [
+    "infrahub-server",
     "yamllint",
     "mypy",
     "ipython>=8,<9",
@@ -684,3 +692,4 @@ showcontent = true
 directory = "housekeeping"
 name = "Housekeeping"
 showcontent = true
+

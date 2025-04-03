@@ -98,7 +98,7 @@ COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
 #   Copy in only pyproject.toml/poetry.lock/uv.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 ENV UV_PROJECT_ENVIRONMENT="/.venv"
-COPY uv.lock pyproject.toml /source/
+COPY uv.lock pyproject.toml python_sdk/pyproject.toml python_testcontainers/pyproject.toml /source/
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-install-project
 
 # --------------------------------------------

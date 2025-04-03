@@ -19,7 +19,7 @@ dependencies = [
     "testcontainers>=4.8,<4.9",
     "psutil",
     "pytest",
-    "httpx>=0.28.1,<0.29",
+    "httpx<0.28",
     "pydantic>=2.10.6,<3",
 ]
 
