@@ -23,6 +23,7 @@ test.describe("Global Activities - List view and filter usage", () => {
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("created").nth(1)).toBeVisible();
     await page.getByRole("button", { name: "Event Type" }).click();
+    await page.getByRole("button", { name: "Event Type" }).click();
     await page.getByRole("option", { name: "Node deleted" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("deleted").nth(1)).toBeVisible();
