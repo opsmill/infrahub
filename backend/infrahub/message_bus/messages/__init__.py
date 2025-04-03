@@ -3,11 +3,9 @@ from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from .event_branch_merge import EventBranchMerge
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
-from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
-from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
@@ -17,8 +15,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
-    "request.proposed_change.pipeline": RequestProposedChangePipeline,
-    "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
     "send.echo.request": SendEchoRequest,
 }
 

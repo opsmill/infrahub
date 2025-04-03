@@ -1,5 +1,7 @@
+from unittest.mock import ANY, call, patch
 from uuid import uuid4
 
+from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
 from infrahub.auth import AccountSession, AuthType
@@ -11,16 +13,18 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.message_bus import messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.permissions.local_backend import LocalPermissionBackend
+from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.graphql import graphql, graphql_mutation
+from tests.helpers.test_app import TestInfrahubApp
 
 CREATE_PROPOSED_CHANGE = """
 mutation ProposedChange(
@@ -127,75 +131,103 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     )
 
 
-async def test_trigger_proposed_change(
-    db: InfrahubDatabase, register_core_models_schema: None, create_test_admin: Node
-) -> None:
-    branch_name = "triggered-proposed-change"
-    source_branch = Branch(name=branch_name)
-    await source_branch.save(db=db)
+class TestTriggerProposedChange(TestInfrahubApp):
+    async def test_trigger_proposed_change(
+        self,
+        db: InfrahubDatabase,
+        create_test_admin: Node,
+        client: InfrahubClient,
+        service: InfrahubServices,
+    ) -> None:
+        source_branch = await create_branch(db=db, branch_name="triggered-proposed-change")
 
-    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-    await proposed_change.new(db=db, name="change123", destination_branch="main", source_branch=branch_name)
-    await proposed_change.save(db=db)
-    all_recorder = BusRecorder()
-    service = await InfrahubServices.new(database=db, message_bus=all_recorder)
-    account_session = AccountSession(
-        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
-    )
-    all_result = await graphql_mutation(
-        query=RUN_CHECK,
-        db=db,
-        variables={"proposed_change": proposed_change.id},
-        service=service,
-        account_session=account_session,
-    )
-    assert all_result.data
-    assert not all_result.errors
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(db=db, name="change123", destination_branch="main", source_branch=source_branch.name)
+        await proposed_change.save(db=db)
+        account_session = AccountSession(
+            authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+        )
 
-    artifact_recorder = BusRecorder()
-    service = await InfrahubServices.new(database=db, message_bus=artifact_recorder)
-    artifact_result = await graphql_mutation(
-        query=RUN_CHECK,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "check_type": "ARTIFACT"},
-        service=service,
-        account_session=account_session,
-    )
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow:
+            all_result = await graphql_mutation(
+                query=RUN_CHECK,
+                db=db,
+                variables={"proposed_change": proposed_change.id},
+                service=service,
+                account_session=account_session,
+            )
+            assert all_result.data
+            assert not all_result.errors
 
-    update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "state": "canceled"},
-        service=service,
-        account_session=account_session,
-    )
+            artifact_result = await graphql_mutation(
+                query=RUN_CHECK,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "check_type": "ARTIFACT"},
+                service=service,
+                account_session=account_session,
+            )
 
-    cancelled_recorder = BusRecorder()
-    service = await InfrahubServices.new(database=db, message_bus=cancelled_recorder)
-    canceled_result = await graphql_mutation(
-        query=RUN_CHECK,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "check_type": "DATA"},
-        service=service,
-        account_session=account_session,
-    )
+            assert artifact_result.data
+            assert not artifact_result.errors
 
-    assert len(all_recorder.messages) == 1
-    assert isinstance(all_recorder.messages[0], messages.RequestProposedChangePipeline)
-    message = all_recorder.messages[0]
-    assert message.check_type == CheckType.ALL
+            update_status = await graphql_mutation(
+                query=UPDATE_PROPOSED_CHANGE,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "state": "canceled"},
+                service=service,
+                account_session=account_session,
+            )
 
-    assert artifact_result.data
-    assert not artifact_result.errors
-    assert len(artifact_recorder.messages) == 1
-    assert isinstance(artifact_recorder.messages[0], messages.RequestProposedChangePipeline)
-    message = artifact_recorder.messages[0]
-    assert message.check_type == CheckType.ARTIFACT
+            expected_calls = [
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+                    parameters={
+                        "model": RequestProposedChangePipeline(
+                            proposed_change=proposed_change.id,
+                            source_branch=source_branch.name,
+                            source_branch_sync_with_git=source_branch.sync_with_git,
+                            destination_branch=proposed_change.destination_branch.value,
+                            check_type=CheckType.ALL,
+                        )
+                    },
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+                    parameters={
+                        "model": RequestProposedChangePipeline(
+                            proposed_change=proposed_change.id,
+                            source_branch=source_branch.name,
+                            source_branch_sync_with_git=source_branch.sync_with_git,
+                            destination_branch=proposed_change.destination_branch.value,
+                            check_type=CheckType.ARTIFACT,
+                        )
+                    },
+                    context=ANY,
+                ),
+            ]
+            mock_submit_workflow.assert_has_calls(expected_calls)
 
-    assert not update_status.errors
-    assert canceled_result.errors
-    assert "Unable to trigger check on proposed changes that aren't in the open state" in str(canceled_result.errors[0])
-    assert not cancelled_recorder.messages
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow:
+            canceled_result = await graphql_mutation(
+                query=RUN_CHECK,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "check_type": "DATA"},
+                service=service,
+                account_session=account_session,
+            )
+
+            assert not update_status.errors
+            assert canceled_result.errors
+            assert "Unable to trigger check on proposed changes that aren't in the open state" in str(
+                canceled_result.errors[0]
+            )
+
+            mock_submit_workflow.assert_not_called()
 
 
 async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core_models_schema: None):

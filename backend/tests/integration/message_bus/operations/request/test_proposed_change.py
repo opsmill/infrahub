@@ -9,11 +9,9 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
-from infrahub.message_bus import messages
-from infrahub.message_bus.operations.requests.proposed_change import pipeline
 from infrahub.message_bus.types import ProposedChangeBranchDiff
-from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
-from infrahub.proposed_change.tasks import run_generators
+from infrahub.proposed_change.models import RequestProposedChangePipeline, RequestProposedChangeRunGenerators
+from infrahub.proposed_change.tasks import run_generators, run_proposed_change_pipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -130,12 +128,11 @@ class TestProposedChange(TestInfrahubApp):
         client: InfrahubClient,
         context: InfrahubContext,
     ):
-        message = messages.RequestProposedChangePipeline(
+        model = RequestProposedChangePipeline(
             source_branch="change1",
             source_branch_sync_with_git=True,
             destination_branch="main",
             proposed_change=prepare_proposed_change,
-            context=context,
         )
         bus_pre_data_changes = BusRecorder()
         fake_log = FakeLogger()
@@ -146,7 +143,7 @@ class TestProposedChange(TestInfrahubApp):
             database=db,
             workflow=WorkflowLocalExecution(),
         )
-        await pipeline(message=message, service=service)
+        await run_proposed_change_pipeline(model=model, service=service, context=context)
 
         # Add an object to the source_branch to modify the data
         obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
@@ -157,15 +154,7 @@ class TestProposedChange(TestInfrahubApp):
         service._message_bus = bus_post_data_changes
         bus_post_data_changes.service = service
 
-        await pipeline(message=message, service=service)
-
-        assert sorted(bus_pre_data_changes.seen_routing_keys) == [
-            "request.proposed_change.refresh_artifacts",
-        ]
-
-        assert sorted(bus_post_data_changes.seen_routing_keys) == [
-            "request.proposed_change.refresh_artifacts",
-        ]
+        await run_proposed_change_pipeline(model=model, service=service, context=context)
 
     async def test_run_generators_validate_requested_jobs(
         self,
@@ -192,7 +181,3 @@ class TestProposedChange(TestInfrahubApp):
             workflow=WorkflowLocalExecution(),
         )
         await run_generators(model=model, context=context, service=service)
-
-        assert sorted(bus.seen_routing_keys) == [
-            "request.proposed_change.refresh_artifacts",
-        ]

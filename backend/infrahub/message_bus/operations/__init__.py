@@ -6,7 +6,6 @@ from infrahub.message_bus.operations import (
     event,
     git,
     refresh,
-    requests,
     send,
 )
 from infrahub.message_bus.types import MessageTTL
@@ -20,8 +19,6 @@ COMMAND_MAP = {
     "refresh.git.fetch": git.repository.fetch,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
-    "request.proposed_change.pipeline": requests.proposed_change.pipeline,
-    "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "send.echo.request": send.echo.request,
 }
 
