@@ -262,6 +262,73 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema
     assert "Violates uniqueness constraint 'bag'" in result.errors[0].message
 
 
+async def test_upsert_existing_with_enough_information_for_hfid(
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
+):
+    car_name = "Ferramboghinierati"
+    car_color_1 = "blue"
+    car_color_2 = "red"
+    fred = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
+    car = await create_and_save(db=db, schema="TestCar", name=car_name, owner=fred, color=car_color_1, branch=branch)
+    thing1 = await create_and_save(db=db, schema="TestThing", value="thing1", branch=branch)
+    thing2 = await create_and_save(db=db, schema="TestThing", value="thing2", branch=branch)
+
+    query = """
+    mutation($car_name: String!, $owner_id: String!, $color: String!) {
+        TestCarUpsert(
+            data: {
+                name: {value: $car_name},
+                owner: {id: $owner_id},
+                color: {value: $color},
+                things: [
+                    {id: "%(id1)s"}, {id: "%(id2)s"}
+                ]
+            }
+        ) {
+            ok
+            object {
+                id
+                name {value}
+                color {value}
+                owner {node {id}}
+            }
+        }
+    }
+    """ % {"id1": thing1.id, "id2": thing2.id}
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"car_name": car_name, "owner_id": fred.id, "color": car_color_2},
+    )
+    assert result.errors is None
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"car_name": car_name, "owner_id": fred.id, "color": car_color_2},
+    )
+    assert result.errors is None
+
+    assert result.data["TestCarUpsert"]["object"]["id"] == car.id
+    assert result.data["TestCarUpsert"]["object"]["color"]["value"] == car_color_2
+    assert result.data["TestCarUpsert"]["object"]["owner"]["node"]["id"] == fred.id
+
+    all_cars = await NodeManager.query(db=db, branch=branch, schema="TestCar")
+    assert len(all_cars) == 1
+    retrieved_car = await NodeManager.get_one(db=db, branch=branch, id=car.id, prefetch_relationships=True)
+    assert retrieved_car.name.value == car_name
+    assert retrieved_car.color.value == car_color_2
+    assert (await retrieved_car.owner.get_peer(db=db)).id == fred.id
+    thing_peers = await retrieved_car.things.get_peers(db=db)
+    assert set(thing_peers.keys()) == {thing1.id, thing2.id}
+
+
 async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
     db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
 ):
