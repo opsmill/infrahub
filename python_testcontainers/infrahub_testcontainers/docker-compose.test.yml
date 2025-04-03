@@ -76,7 +76,7 @@ services:
       PREFECT_UI_ENABLED: "${INFRAHUB_TESTING_PREFECT_UI_ENABLED}" # enabling UI requires permissions, run container as root to enable UI
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
     healthcheck:
-      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
