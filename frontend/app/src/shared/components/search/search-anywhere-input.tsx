@@ -15,6 +15,7 @@ export function SearchAnywhereInput({
       </div>
 
       <Command.Input
+        autoFocus
         placeholder="Search for objects, attributes, schemas, documentations ..."
         className={classNames(inputStyle, "px-9", className)}
         data-testid="search-anywhere-input"
