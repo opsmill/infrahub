@@ -23,11 +23,14 @@ class NodeConstraintRunner:
         self.uniqueness_constraint = uniqueness_constraint
         self.relationship_manager_constraints = relationship_manager_constraints
 
-    async def check(self, node: Node, field_filters: list[str] | None = None) -> None:
+    async def check(
+        self, node: Node, field_filters: list[str] | None = None, skip_uniqueness_check: bool = False
+    ) -> None:
         async with self.db.start_session() as db:
             await node.resolve_relationships(db=db)
 
-            await self.uniqueness_constraint.check(node, filters=field_filters)
+            if not skip_uniqueness_check:
+                await self.uniqueness_constraint.check(node, filters=field_filters)
 
             for relationship_name in node.get_schema().relationship_names:
                 if field_filters and relationship_name not in field_filters:
