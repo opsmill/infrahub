@@ -779,7 +779,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
                     {
                         "name": "car",
                         "peer": "TestCar",
-                        "cardinality": "many",
+                        "cardinality": "one",
                         "optional": True,
                         "identifier": "carthings",
                     }
