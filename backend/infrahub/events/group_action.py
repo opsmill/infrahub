@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import InfrahubKind, MutationAction
 
 from .constants import EVENT_NAMESPACE
 from .models import EventNode, InfrahubEvent
@@ -21,6 +21,11 @@ class GroupMutatedEvent(InfrahubEvent):
 
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
+
+        if self.kind == InfrahubKind.GRAPHQLQUERYGROUP:
+            # Temporary workaround to avoid too large payloads for the related field
+            return related
+
         related.append(
             {
                 "prefect.resource.id": self.node_id,
