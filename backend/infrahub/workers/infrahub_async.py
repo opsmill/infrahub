@@ -24,11 +24,7 @@ from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.cache.nats import NATSCache
-from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.services.adapters.message_bus.nats import NATSMessageBus
-from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
@@ -198,15 +194,13 @@ class InfrahubWorkerAsync(BaseWorker):
 
     async def _init_message_bus(self, component_type: ComponentType) -> InfrahubMessageBus:
         return config.OVERRIDE.message_bus or (
-            await NATSMessageBus.new(component_type=component_type)
-            if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
-            else await RabbitMQMessageBus.new(component_type=component_type)
+            await InfrahubMessageBus.new_from_driver(
+                component_type=component_type, driver=config.SETTINGS.broker.driver
+            )
         )
 
     async def _init_cache(self) -> InfrahubCache:
-        return config.OVERRIDE.cache or (
-            await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
-        )
+        return config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
 
     async def _init_services(self, client: InfrahubClient) -> None:
         component_type = ComponentType.GIT_AGENT
