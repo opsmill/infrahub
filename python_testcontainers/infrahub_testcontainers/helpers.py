@@ -12,7 +12,7 @@ from .container import PROJECT_ENV_VARIABLES, InfrahubDockerCompose
 class TestInfrahubDocker:
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
-        return infrahub_version
+        return os.getenv("INFRAHUB_TESTING_IMAGE_VER") or infrahub_version
 
     @staticmethod
     def execute_ctl_run(address: str, script: str) -> str:
