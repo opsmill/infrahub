@@ -363,7 +363,7 @@ class InfrahubMutationMixin:
         branch: Branch,
         db: InfrahubDatabase,
         obj: Node,
-        run_constraint_checks: bool = True,
+        skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
         """
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
@@ -378,11 +378,11 @@ class InfrahubMutationMixin:
             if lock_names:
                 async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
                     obj = await cls.mutate_update_object(
-                        db=db, info=info, data=data, branch=branch, obj=obj, run_constraint_checks=run_constraint_checks
+                        db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
                     )
             else:
                 obj = await cls.mutate_update_object(
-                    db=db, info=info, data=data, branch=branch, obj=obj, run_constraint_checks=run_constraint_checks
+                    db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
                 )
             result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
             return obj, result
@@ -396,11 +396,11 @@ class InfrahubMutationMixin:
                         data=data,
                         branch=branch,
                         obj=obj,
-                        run_constraint_checks=run_constraint_checks,
+                        skip_uniqueness_check=skip_uniqueness_check,
                     )
             else:
                 obj = await cls.mutate_update_object(
-                    db=dbt, info=info, data=data, branch=branch, obj=obj, run_constraint_checks=run_constraint_checks
+                    db=dbt, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
                 )
             result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
             return obj, result
@@ -434,7 +434,7 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         obj: Node,
-        run_constraint_checks: bool = True,
+        skip_uniqueness_check: bool = False,
     ) -> Node:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
@@ -442,8 +442,9 @@ class InfrahubMutationMixin:
         before_mutate_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
-        if run_constraint_checks:
-            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+        await node_constraint_runner.check(
+            node=obj, field_filters=fields_to_validate, skip_uniqueness_check=skip_uniqueness_check
+        )
 
         fields = list(data.keys())
         for field_to_remove in ("id", "hfid"):
@@ -494,7 +495,6 @@ class InfrahubMutationMixin:
         db = database or graphql_context.db
         dict_data = dict(data)
         node = None
-        run_constraint_checks = True
 
         if "id" in dict_data:
             node = await NodeManager.get_one(
@@ -506,7 +506,6 @@ class InfrahubMutationMixin:
                 db=db,
                 branch=branch,
                 obj=node,
-                run_constraint_checks=run_constraint_checks,
             )
             return updated_obj, mutation, False
 
@@ -525,7 +524,6 @@ class InfrahubMutationMixin:
                 db=db,
                 branch=branch,
                 obj=node,
-                run_constraint_checks=run_constraint_checks,
             )
             return updated_obj, mutation, False
 
@@ -545,7 +543,7 @@ class InfrahubMutationMixin:
                 db=db,
                 branch=branch,
                 obj=node,
-                run_constraint_checks=run_constraint_checks,
+                skip_uniqueness_check=True,
             )
             return updated_obj, mutation, False
 
