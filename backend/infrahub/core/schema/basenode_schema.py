@@ -27,6 +27,16 @@ if TYPE_CHECKING:
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 INHERITED = "INHERITED"
 
+OPTIONAL_TEXT_FIELDS = [
+    "default_filter",
+    "description",
+    "label",
+    "menu_placement",
+    "documentation",
+    "parent",
+    "children",
+]
+
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
@@ -483,9 +493,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def update(self, other: HashableModel) -> Self:
         super().update(other=other)
 
-        # Allow to specify empty string to remove an existing `default_filter`
-        if hasattr(other, "default_filter") and other.default_filter == "":  # noqa: PLC1901
-            self.default_filter = None
+        # Allow to specify empty string to remove existing fields values
+        for field_name in OPTIONAL_TEXT_FIELDS:
+            if getattr(other, field_name, None) == "":  # noqa: PLC1901
+                setattr(self, field_name, None)
 
         return self
 

@@ -8,6 +8,7 @@ from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.core.schema import core_models
+from infrahub.core.schema.basenode_schema import OPTIONAL_TEXT_FIELDS
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
@@ -410,7 +411,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         }
         assert generic_schema.attribute_names == ["hot_new_name"]
 
-    async def test_remove_default_filter(
+    async def test_remove_optional_text_field_value(
         self,
         initial_dataset: str,
         client: InfrahubClient,
@@ -420,29 +421,72 @@ class TestLoadSchemaAPI(TestInfrahubApp):
     ) -> None:
         schema_dict = {
             "version": "1.0",
-            "nodes": [
+            "generics": [
                 {
-                    "name": "Person",
+                    "name": "Location",
                     "namespace": "Test",
-                    "default_filter": "name__value",
+                    "hierarchical": True,
                     "attributes": [
                         {"name": "name", "kind": "Text", "unique": True},
                         {"name": "description", "kind": "Text", "optional": True},
                     ],
                 }
             ],
+            "nodes": [
+                {
+                    "name": "Continent",
+                    "namespace": "Test",
+                    "inherit_from": ["TestLocation"],
+                },
+                {
+                    "name": "Country",
+                    "namespace": "Test",
+                    "inherit_from": ["TestLocation"],
+                    "default_filter": "name__value",
+                    "description": "test description",
+                    "label": "MyPersonLabel",
+                    "menu_placement": "menu value",
+                    "documentation": "http://localhost",
+                    "parent": "TestContinent",
+                    "children": "TestContinent",
+                },
+            ],
         }
 
+        country_schema_node = schema_dict["nodes"][1]
+        assert country_schema_node["name"] == "Country"  # type: ignore
+        for field_name in OPTIONAL_TEXT_FIELDS:
+            assert field_name in country_schema_node
+
         creation = await client.schema.load(schemas=[schema_dict])
         assert creation.schema_updated
+        assert not creation.errors
 
-        schema = await client.schema.get(kind="TestPerson")
+        schema = await client.schema.get(kind="TestCountry", refresh=True)
         assert schema.default_filter == "name__value"
+        assert schema.description == "test description"
+        assert schema.label == "MyPersonLabel"
+        assert schema.menu_placement == "menu value"
+        assert schema.documentation == "http://localhost"
+        assert schema.parent == "TestContinent"
+        assert schema.children == "TestContinent"
 
-        schema_dict["nodes"][0]["default_filter"] = ""  # type: ignore
+        country_schema_node["default_filter"] = ""  # type: ignore
+        country_schema_node["description"] = ""  # type: ignore
+        country_schema_node["label"] = ""  # type: ignore
+        country_schema_node["menu_placement"] = ""  # type: ignore
+        country_schema_node["documentation"] = ""  # type: ignore
+        country_schema_node["parent"] = ""  # type: ignore
+        country_schema_node["children"] = ""  # type: ignore
 
         creation = await client.schema.load(schemas=[schema_dict])
         assert creation.schema_updated
 
-        schema = await client.schema.get(kind="TestPerson", refresh=True)
+        schema = await client.schema.get(kind="TestCountry", refresh=True)
         assert schema.default_filter is None
+        assert schema.description is None
+        assert schema.label == "Country"
+        assert schema.menu_placement is None
+        assert schema.documentation is None
+        assert schema.parent == "TestLocation"
+        assert schema.children == "TestLocation"

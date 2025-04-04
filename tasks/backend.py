@@ -227,7 +227,7 @@ def _generate_schemas(context: Context) -> None:
     Path(relationship_schema_output).write_text(relationship_rendered, encoding="utf-8")
 
     execute_command(context=context, command=f"ruff format {generated}")
-    execute_command(context=context, command=f"ruff check --ignore E501 --fix {generated} ")
+    execute_command(context=context, command=f"ruff check --fix {generated}")
 
 
 def _jinja2_filter_inheritance(value: dict[str, Any], sync: bool = False) -> str:

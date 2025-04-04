@@ -956,6 +956,11 @@ The default value is `state: present` and doesn't have to be provided on all ele
 
 :::
 
+### Remove existing text fields values
+
+Removing an existing value for a text field of a schema node, like `description` or `default_filter`, can be performed by specifying
+an empty string value for this field and re-loading the schema.
+
 ### Rename existing elements
 
 All elements of the schema are identified by a human readable identifier that allow schema to be reused across environment:
