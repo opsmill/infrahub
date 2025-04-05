@@ -3,16 +3,17 @@ from typing import Optional
 
 from pydantic import field_validator
 
+from pydantic import Field
 from infrahub.core.models import HashableModel
 
 HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
 
 
 class DropdownChoice(HashableModel):
-    name: str
-    description: Optional[str] = None
-    color: Optional[str] = None
-    label: Optional[str] = None
+    name: str = Field(..., description="The name of the choice, must be unique within the dropdown.")
+    description: str | None = Field(None, description="The description of the choice.")
+    color: str | None = Field(None, description="The color of the choice.")
+    label: str | None = Field(None, description="The label of the choice.")
 
     _sort_by: list[str] = ["name"]
 

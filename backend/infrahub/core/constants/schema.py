@@ -28,6 +28,11 @@ class UpdateValidationErrorType(Enum):
     VALIDATOR_NOT_AVAILABLE = "validator_not_available"
 
 
+class SchemaElementScope(Enum):
+    USER_DEFINED = "user_defined"
+    READ_ONLY = "read_only"
+    INTERNAL = "internal"
+
 class SchemaElementPathType(Flag):
     ATTR_WITH_PROP = auto()
     ATTR_NO_PROP = auto()

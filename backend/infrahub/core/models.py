@@ -3,8 +3,10 @@ from __future__ import annotations
 import hashlib
 from typing import TYPE_CHECKING, Any, Optional
 
+from enum import Enum
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.fields import FieldInfo
 from typing_extensions import Self
 
 from infrahub.core.constants import (
@@ -349,11 +351,58 @@ class HashableModelDiff(BaseModel):
     def has_diff(self) -> bool:
         return bool(len(self.added) + len(self.changed) + len(self.removed))
 
+class HashableFieldSchemaInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    description: str
+    type: str
+    choices: list[str] | None = None
+
+    @classmethod
+    def from_field_info(cls, field_name: str, field: FieldInfo) -> Self:
+        return cls(
+            name=field_name,
+            description=field.description or "",
+            type=cls._annotation_to_str(field.annotation),
+            choices=cls._get_choices(field)
+        )
+
+    @classmethod
+    def _annotation_to_str(cls, annotation: Any) -> str:
+        if not annotation:
+            return "Any"
+        if annotation in [str, int, float, bool]:
+            return annotation.__name__
+
+        if isinstance(annotation, type) and issubclass(annotation, Enum):
+                first_value = [ mbr.value for mbr in annotation.__members__.values()][0]
+                return cls._annotation_to_str(annotation=type(first_value))
+
+        annotation_str = str(annotation)
+        return annotation_str.replace("typing.", "")
+
+    @classmethod
+    def _is_enum(cls, field: FieldInfo) -> bool:
+        if not field.annotation:
+            return False
+        return isinstance(field.annotation, type) and issubclass(field.annotation, Enum)
+
+    @classmethod
+    def _get_choices(cls, field: FieldInfo) -> list[str] | None:
+        if not cls._is_enum(field):
+            return None
+        return [choice.value for choice in field.annotation.__members__.values()]
+
+class HashableModelSchemaInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    fields: list[HashableFieldSchemaInfo]
+
 
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: Optional[str] = None
+    id: str | None = None
     state: HashableModelState = HashableModelState.PRESENT
 
     _exclude_from_hash: list[str] = []
@@ -583,3 +632,11 @@ class HashableModel(BaseModel):
                     diff_result.changed[field_name] = None
 
         return diff_result
+
+    @classmethod
+    def get_schema_info(cls) -> HashableModelSchemaInfo:
+        return HashableModelSchemaInfo(
+            name=cls.__name__,
+            fields=[ HashableFieldSchemaInfo.from_field_info(field_name, field) for field_name, field in cls.model_fields.items() ]
+        )
+

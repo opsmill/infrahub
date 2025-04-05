@@ -2,7 +2,7 @@ from deepdiff import DeepDiff
 
 from infrahub.core.constants import HashableModelState
 from infrahub.core.models import HashableModel, HashableModelDiff
-
+from pydantic import Field
 
 def test_hashable_diff():
     diff1 = HashableModelDiff()
@@ -324,3 +324,15 @@ def test_update_nested_objects():
 
     assert node1.value4.value2 == node2.value4.value2
     assert sorted(node1.subs) == sorted(node2.subs)
+
+
+def test_schema_info():
+    class MySubElement(HashableModel):
+        _sort_by: list[str] = ["name"]
+        name: str
+        value1: str | None = Field(None, description="This is an optional field")
+        value2: int | None = None
+        mandatory_value: str = Field(..., description="This is a mandatory value")
+
+    schema = MySubElement.get_schema_info()
+    breakpoint()

@@ -94,7 +94,7 @@ def neo4j_factory():
     return hydration_scope._graph_hydrator
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def prefect_test_fixture():
     def _run_uvicorn_command(self) -> subprocess.Popen[Any]:
         """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""

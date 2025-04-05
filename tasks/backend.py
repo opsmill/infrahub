@@ -229,6 +229,57 @@ def _generate_schemas(context: Context) -> None:
     execute_command(context=context, command=f"ruff format {generated}")
     execute_command(context=context, command=f"ruff check --fix {generated}")
 
+@task
+def generate_schemas_sdk(context: Context) -> None:
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+    from infrahub.core.schema.definitions.internal import (
+        attribute_schema,
+        base_node_schema,
+        generic_schema,
+        node_schema,
+        relationship_schema,
+    )
+    from infrahub.core.schema.dropdown import DropdownChoice
+
+    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates/schema_sdk"), undefined=StrictUndefined)
+    generated = f"{ESCAPED_REPO_PATH}/python_sdk/infrahub_sdk/schema"
+
+
+    template = env.get_template("generate_hashable_models.j2")
+    # breakpoint()
+    rendered_tpl = template.render(models=[DropdownChoice])
+    output_file = f"{generated}/additional_models.py"
+    Path(output_file).write_text(rendered_tpl, encoding="utf-8")
+
+
+    template = env.get_template("generate_schema.j2")
+    attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema)
+    attribute_schema_output = f"{generated}/attribute_schema.py"
+    Path(attribute_schema_output).write_text(attributes_rendered, encoding="utf-8")
+
+    # base_node_rendered = template.render(schema="BaseNodeSchema", node=base_node_schema, parent="HashableModel")
+    # base_node_schema_output = f"{generated}/base_node_schema.py"
+    # Path(base_node_schema_output).write_text(base_node_rendered, encoding="utf-8")
+
+    # generic_schema_stripped = generic_schema.without_duplicates(base_node_schema)
+    # generic_rendered = template.render(schema="GenericSchema", node=generic_schema_stripped, parent="BaseNodeSchema")
+    # generic_schema_output = f"{generated}/genericnode_schema.py"
+    # Path(generic_schema_output).write_text(generic_rendered, encoding="utf-8")
+
+    # node_schema_stripped = node_schema.without_duplicates(base_node_schema)
+    # node_rendered = template.render(schema="NodeSchema", node=node_schema_stripped, parent="BaseNodeSchema")
+    # node_schema_output = f"{generated}/node_schema.py"
+    # Path(node_schema_output).write_text(node_rendered, encoding="utf-8")
+
+    # relationship_rendered = template.render(
+    #     schema="RelationshipSchema", node=relationship_schema, parent="HashableModel"
+    # )
+    # relationship_schema_output = f"{generated}/relationship_schema.py"
+    # Path(relationship_schema_output).write_text(relationship_rendered, encoding="utf-8")
+
+    # execute_command(context=context, command=f"ruff format {generated}")
+    # execute_command(context=context, command=f"ruff check --fix {generated}")
 
 def _jinja2_filter_inheritance(value: dict[str, Any], sync: bool = False) -> str:
     inherit_from: list[str] = value.get("inherit_from", [])
