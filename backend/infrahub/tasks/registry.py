@@ -61,5 +61,8 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
                 )
 
         purged_branches = await registry.purge_inactive_branches(db=db, active_branches=branches)
-        for branch_name in purged_branches:
+        purged_branches.update(
+            GraphQLSchemaManager.purge_inactive(active_branches=[branch.name for branch in branches])
+        )
+        for branch_name in sorted(purged_branches):
             log.info(f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY)
