@@ -40,9 +40,6 @@ export function ObjectTableSelectionToolbar({
         </AriaButton>
 
         <ToolbarAddToGroupAction selectedRows={selectedRows} />
-        <AriaButton className="border rounded-lg px-2 py-1 border-red-600 text-red-600 hover:bg-neutral-50">
-          Remove from group
-        </AriaButton>
       </AriaDialog>
     </AriaModal>
   );

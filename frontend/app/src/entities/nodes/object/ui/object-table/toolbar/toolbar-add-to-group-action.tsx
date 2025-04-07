@@ -39,15 +39,19 @@ function BulkAddToGroups({ selectedRows }: ToolbarAddToGroupActionProps) {
 
   return (
     <>
-      <ListBox items={selectedGroups} className="flex flex-col items-start gap-1 p-1">
-        {(group) => (
-          <AddedGroupItem
-            group={group}
-            selectedRows={selectedRows}
-            onRemove={(group) => setSelectedGroups(selectedGroups.filter((g) => g.id !== group.id))}
-          />
-        )}
-      </ListBox>
+      {selectedGroups.length > 0 && (
+        <ListBox items={selectedGroups} className="flex flex-col items-start gap-1 p-1">
+          {(group) => (
+            <AddedGroupItem
+              group={group}
+              selectedRows={selectedRows}
+              onRemove={(group) => {
+                setSelectedGroups(selectedGroups.filter((g) => g.id !== group.id));
+              }}
+            />
+          )}
+        </ListBox>
+      )}
 
       <RelationshipComboboxList
         peer="CoreGroup"
