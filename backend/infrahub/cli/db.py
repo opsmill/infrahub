@@ -3,15 +3,21 @@ from __future__ import annotations
 import importlib
 import logging
 import os
+from collections import defaultdict
+from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import typer
+import ujson
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.testing.utilities import prefect_test_harness
+from pydantic import BaseModel
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.progress import Progress
 from rich.table import Table
 
 from infrahub import config
@@ -419,3 +425,286 @@ async def update_core_schema(
         for message in migration_error_msgs:
             rprint(message)
         raise typer.Exit(1)
+
+
+class SerialVertex(BaseModel):
+    db_id: str
+    labels: list[str]
+    kind: str | None
+    uuid: str | None
+    name: str | None
+    branch_support: str | None
+
+    def __hash__(self) -> int:
+        return hash(self.db_id)
+
+    @property
+    def frozen_labels(self) -> frozenset[str]:
+        return frozenset(self.labels)
+
+
+class SerialEdge(BaseModel):
+    db_id: str
+    edge_type: str
+    start_node_id: str
+    end_node_id: str
+    properties: dict[str, str | int | None | bool]
+
+    def __hash__(self) -> int:
+        return hash(self.db_id)
+
+
+@app.command(name="selected-export")
+async def selected_export_cmd(
+    ctx: typer.Context,
+    kinds: list[str] = typer.Option([], help="Node kinds to export"),  # noqa: B008
+    uuids: list[str] = typer.Option([], help="UUIDs of nodes to export"),  # noqa: B008
+    query_limit: int = typer.Option(1000, help="Maximum batch size of export query"),  # noqa: B008
+    export_dir: Path = typer.Option(Path("infrahub-exports"), help="Path of directory to save exports"),  # noqa: B008
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Export database structure of selected nodes from the database without any actual data"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    await selected_export(db=dbdriver, kinds=kinds, uuids=uuids, export_dir=export_dir, query_limit=query_limit)
+
+    await dbdriver.close()
+
+
+async def selected_export(
+    db: InfrahubDatabase,
+    kinds: list[str],
+    uuids: list[str],
+    export_dir: Path,
+    query_limit: int = 1000,
+) -> None:
+    query = """
+// --------------
+// filter nodes
+// --------------
+MATCH (n:Node)
+WHERE ($kinds IS NULL OR size($kinds) = 0 OR any(l IN labels(n) WHERE l in $kinds))
+AND ($uuids IS NULL OR size($uuids) = 0 OR n.uuid IN $uuids)
+WITH n
+// --------------
+// pagination
+// --------------
+ORDER BY %(id_func)s(n)
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
+CALL {
+    // --------------
+    // get all the nodes and edges linked to this node up to 2 steps away, excluding IS_PART_OF
+    // --------------
+    WITH n
+    MATCH (n)-[r1]-(v1)-[r2]-(v2)
+    WHERE type(r1) <> "IS_PART_OF"
+    WITH collect([v1, v2]) AS vertex_pairs, collect([r1, r2]) AS edge_pairs
+    WITH reduce(
+        vertices = [], v_pair IN vertex_pairs |
+        CASE
+            WHEN NOT v_pair[0] IN vertices AND NOT v_pair[1] IN vertices THEN vertices + v_pair
+            WHEN NOT v_pair[0] IN vertices THEN vertices + [v_pair[0]]
+            WHEN NOT v_pair[1] IN vertices THEN vertices + [v_pair[1]]
+            ELSE vertices
+        END
+    ) AS vertices,
+    reduce(
+        edges = [], e_pair IN edge_pairs |
+        CASE
+            WHEN NOT e_pair[0] IN edges AND NOT e_pair[1] IN edges THEN edges + e_pair
+            WHEN NOT e_pair[0] IN edges THEN edges + [e_pair[0]]
+            WHEN NOT e_pair[1] IN edges THEN edges + [e_pair[1]]
+            ELSE edges
+        END
+    ) AS edges
+    RETURN vertices, edges
+}
+// --------------
+// include the root and IS_PART_OF edges
+// --------------
+OPTIONAL MATCH (n)-[root_edge:IS_PART_OF]->(root:Root)
+WITH n, vertices, edges, root, collect(root_edge) AS root_edges
+WITH vertices + [n, root] AS vertices, edges + root_edges AS edges
+// --------------
+// serialize the vertices
+// --------------
+CALL {
+    WITH vertices
+    UNWIND vertices AS vertex
+    WITH {
+        db_id: %(id_func)s(vertex),
+        kind: vertex.kind,
+        labels: labels(vertex),
+        uuid: vertex.uuid,
+        name: vertex.name,
+        branch_support: vertex.branch_support
+    } AS serial_vertex
+    RETURN collect(serial_vertex) AS serial_vertices
+}
+// --------------
+// serialize the nodes
+// --------------
+CALL {
+    WITH edges
+    UNWIND edges AS edge
+    WITH {
+        db_id: %(id_func)s(edge),
+        edge_type: type(edge),
+        start_node_id: %(id_func)s(startNode(edge)),
+        end_node_id: %(id_func)s(endNode(edge)),
+        properties: properties(edge)
+    } AS serial_edge
+    RETURN collect(serial_edge) AS serial_edges
+}
+RETURN serial_vertices, serial_edges
+    """ % {"id_func": db.get_id_function_name()}
+    timestamp_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+    has_more_data = True
+    limit = query_limit
+    offset = 0
+    all_vertices: set[SerialVertex] = set()
+    all_edges: set[SerialEdge] = set()
+    while has_more_data:
+        results = await db.execute_query(
+            query=query,
+            params={"kinds": kinds, "uuids": uuids, "limit": limit, "offset": offset},
+        )
+        has_more_data = len(results) >= limit
+        offset += limit
+
+        for result in results:
+            serial_vertices = result.get("serial_vertices")
+            all_vertices.update(SerialVertex(**serial_vertex) for serial_vertex in serial_vertices)
+            serial_edges = result.get("serial_edges")
+            all_edges.update(SerialEdge(**serial_edge) for serial_edge in serial_edges)
+
+    export_dir /= Path(f"export-{timestamp_str}")
+    if not export_dir.exists():
+        export_dir.mkdir(parents=True)
+
+    vertex_path = export_dir / Path("vertices.json")
+    vertex_path.touch(exist_ok=True)
+    with vertex_path.open(mode="w") as file:
+        for serial_vertex in all_vertices:
+            vertex_json = serial_vertex.model_dump_json()
+            file.write(f"{vertex_json}\n")
+    edge_path = export_dir / Path("edges.json")
+    edge_path.touch(exist_ok=True)
+    with edge_path.open(mode="w") as file:
+        for serial_edge in all_edges:
+            vertex_edge = serial_edge.model_dump_json()
+            file.write(f"{vertex_edge}\n")
+    rprint(f"{SUCCESS_BADGE} Export complete")
+    rprint(f"Export directory is here: {export_dir.absolute()}")
+
+
+@app.command(name="load-export", hidden=True)
+async def load_export_cmd(
+    ctx: typer.Context,
+    export_dir: Path = typer.Argument(help="Path to export directory"),
+    query_limit: int = typer.Option(1000, help="Maximum batch size of import query"),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Load an anonymized export into neo4j"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    await load_export(db=dbdriver, export_dir=export_dir, query_limit=query_limit)
+
+    await dbdriver.close()
+
+
+async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int = 1000) -> None:
+    if not export_dir.exists():
+        rprint(f"{ERROR_BADGE} {export_dir} does not exist")
+        raise typer.Exit(1)
+    if not export_dir.is_dir():
+        rprint(f"{ERROR_BADGE} {export_dir} is not a directory")
+        raise typer.Exit(1)
+    vertex_file: Path | None = None
+    edge_file: Path | None = None
+
+    for export_file in export_dir.glob("*.json"):
+        if export_file.name == "vertices.json":
+            vertex_file = export_file
+        elif export_file.name == "edges.json":
+            edge_file = export_file
+    if not vertex_file or not vertex_file.exists() or not vertex_file.is_file():
+        rprint(f"{ERROR_BADGE} File 'vertices.json' does not exist in the export directory")
+        raise typer.Exit(1)
+    if not edge_file or not edge_file.exists() or not edge_file.is_file():
+        rprint(f"{ERROR_BADGE} File 'edges.json' does not exist in the export directory")
+        raise typer.Exit(1)
+
+    rprint("Reading vertices file...", end="")
+    vertices_by_labels_map: dict[frozenset[str], set[SerialVertex]] = defaultdict(set)
+    vertices_count = 0
+    with vertex_file.open() as file:
+        while True:
+            raw_line = file.readline()
+            if not raw_line:
+                break
+            vertex_dict = ujson.loads(raw_line)
+            vertex_object = SerialVertex.model_construct(**vertex_dict)
+            vertices_by_labels_map[vertex_object.frozen_labels].add(vertex_object)
+            vertices_count += 1
+    rprint("done")
+    rprint("Reading edges file...", end="")
+    edges_by_type_map: dict[str, set[SerialEdge]] = defaultdict(set)
+    edges_count = 0
+    with edge_file.open() as file:
+        while True:
+            raw_line = file.readline()
+            if not raw_line:
+                break
+            edge_dict = ujson.loads(raw_line)
+            edge_object = SerialEdge.model_construct(**edge_dict)
+            edges_by_type_map[edge_object.edge_type].add(edge_object)
+            edges_count += 1
+    rprint("done")
+
+    with Progress() as progress:
+        vertex_task = progress.add_task("Loading vertices", total=vertices_count)
+        edges_task = progress.add_task("Loading edges", total=edges_count)
+
+        for labels_set, vertices in vertices_by_labels_map.items():
+            vertex_import_query = """
+UNWIND $vertices AS vertex
+CREATE (:%(node_labels)s {db_id: vertex.db_id, kind: vertex.kind, uuid: vertex.uuid, name: vertex.name, branch_support: vertex.branch_support})
+            """ % {"node_labels": ":".join(labels_set)}
+            vertices_list = list(vertices)
+            for v_start in range(0, len(vertices), query_limit):
+                vertex_batch = vertices_list[v_start : v_start + query_limit]
+                vertex_dicts = [v.model_dump(exclude={"labels"}) for v in vertex_batch]
+                await db.execute_query(query=vertex_import_query, params={"vertices": vertex_dicts})
+                progress.update(vertex_task, advance=len(vertex_dicts))
+
+        for edge_type, edges in edges_by_type_map.items():
+            edges_import_query = """
+UNWIND $edges AS edge
+MATCH (a) WHERE a.db_id = edge.start_node_id
+MATCH (b) WHERE b.db_id = edge.end_node_id
+CREATE (a)-[e:%(edge_type)s]->(b)
+SET e = edge.properties
+            """ % {"edge_type": edge_type}
+            edges_list = list(edges)
+            for e_start in range(0, len(edges), query_limit):
+                edge_batch = edges_list[e_start : e_start + query_limit]
+                edge_dicts = [e.model_dump(exclude={"db_id"}) for e in edge_batch]
+                await db.execute_query(query=edges_import_query, params={"edges": edge_dicts})
+                progress.update(edges_task, advance=len(edge_dicts))
+    rprint(f"{SUCCESS_BADGE} Export loaded")
