@@ -1,20 +1,20 @@
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
+import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { NodeObject } from "@/entities/nodes/types";
+import { Popover } from "@/shared/components/aria/popover";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { XIcon } from "lucide-react";
+import React, { useEffect } from "react";
 import {
-  Button,
   Button as AriaButton,
+  Button,
   DialogTrigger,
   ListBox,
   ListBoxItem,
 } from "react-aria-components";
-import { NodeObject } from "@/entities/nodes/types";
-import { Popover } from "@/shared/components/aria/popover";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import React, { useEffect } from "react";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { XIcon } from "lucide-react";
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 
 export interface ToolbarAddToGroupActionProps {
   selectedRows: Array<NodeObject>;

@@ -1,3 +1,4 @@
+import { ToolbarAddToGroupAction } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-add-to-group-action";
 import { NodeObject } from "@/entities/nodes/types";
 import { classNames } from "@/shared/utils/common";
 import { XIcon } from "lucide-react";
@@ -6,7 +7,6 @@ import {
   Dialog as AriaDialog,
   Modal as AriaModal,
 } from "react-aria-components";
-import { ToolbarAddToGroupAction } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-add-to-group-action";
 
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeObject>;

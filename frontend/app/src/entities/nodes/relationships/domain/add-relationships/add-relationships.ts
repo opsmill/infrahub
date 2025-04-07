@@ -1,6 +1,6 @@
 import {
-  addRelationshipsToApi,
   AddRelationshipsToApiParams,
+  addRelationshipsToApi,
 } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 
 export type AddRelationshipsParams = Omit<AddRelationshipsToApiParams, "relationshipIds"> & {

@@ -1,5 +1,5 @@
-import { ObjectTableSelectionToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-selection-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
+import { ObjectTableSelectionToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-selection-toolbar";
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
