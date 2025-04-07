@@ -18,6 +18,7 @@ from infrahub.core.constants import (
     DEFAULT_NAME_MIN_LENGTH,
     DEFAULT_REL_IDENTIFIER_LENGTH,
     NAME_REGEX,
+    NAME_REGEX_OR_EMPTY,
     NAMESPACE_REGEX,
     NODE_KIND_REGEX,
     NODE_NAME_REGEX,
@@ -269,7 +270,7 @@ base_node_schema = SchemaNode(
         SchemaAttribute(
             name="default_filter",
             kind="Text",
-            regex=str(NAME_REGEX),
+            regex=str(NAME_REGEX_OR_EMPTY),
             description="Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},

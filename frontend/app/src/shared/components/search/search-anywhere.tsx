@@ -27,7 +27,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
     const onSearchAnywhereShortcut = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        openDialog();
+        setIsOpen((prev) => !prev);
       }
     };
 
@@ -47,14 +47,16 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
       <SearchAnywhereTrigger isCollapsed={isCollapsed} onClick={openDialog} />
 
       <SearchAnywhereDialog>
-        <SearchAnywhereInput />
+        <Command shouldFilter={false}>
+          <SearchAnywhereInput />
 
-        <Command.List className="[&_[cmdk-group]]:mt-2">
-          <SearchAnywhereEmpty />
-          <SearchActions />
-          <SearchNodes />
-          <SearchDocs />
-        </Command.List>
+          <Command.List className="[&_[cmdk-group]]:mt-2">
+            <SearchAnywhereEmpty />
+            <SearchActions />
+            <SearchNodes />
+            <SearchDocs />
+          </Command.List>
+        </Command>
       </SearchAnywhereDialog>
     </SearchAnywhereContext>
   );

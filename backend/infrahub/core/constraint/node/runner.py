@@ -23,9 +23,14 @@ class NodeConstraintRunner:
         self.uniqueness_constraint = uniqueness_constraint
         self.relationship_manager_constraints = relationship_manager_constraints
 
-    async def check(self, node: Node, field_filters: list[str] | None = None) -> None:
+    async def check(
+        self, node: Node, field_filters: list[str] | None = None, skip_uniqueness_check: bool = False
+    ) -> None:
         async with self.db.start_session() as db:
             await node.resolve_relationships(db=db)
+
+            if not skip_uniqueness_check:
+                await self.uniqueness_constraint.check(node, filters=field_filters)
 
             for relationship_name in node.get_schema().relationship_names:
                 if field_filters and relationship_name not in field_filters:
@@ -34,7 +39,3 @@ class NodeConstraintRunner:
                 await relationship_manager.fetch_relationship_ids(db=db, force_refresh=True)
                 for relationship_constraint in self.relationship_manager_constraints:
                     await relationship_constraint.check(relm=relationship_manager, node_schema=node.get_schema())
-
-            # If HFID constraint is the only constraint violated, all other constraints need to have ran before,
-            # as it means there is an existing node that we might want to update in the case of an upsert
-            await self.uniqueness_constraint.check(node, filters=field_filters)

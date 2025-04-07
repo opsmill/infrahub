@@ -11,7 +11,7 @@ from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
-from infrahub.core.models import HashableModelDiff
+from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema
 from .generated.base_node_schema import GeneratedBaseNodeSchema
@@ -26,6 +26,16 @@ if TYPE_CHECKING:
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 INHERITED = "INHERITED"
+
+OPTIONAL_TEXT_FIELDS = [
+    "default_filter",
+    "description",
+    "label",
+    "menu_placement",
+    "documentation",
+    "parent",
+    "children",
+]
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
@@ -479,6 +489,16 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if uniqueness_constraint <= hfid_set:
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
+
+    def update(self, other: HashableModel) -> Self:
+        super().update(other=other)
+
+        # Allow to specify empty string to remove existing fields values
+        for field_name in OPTIONAL_TEXT_FIELDS:
+            if getattr(other, field_name, None) == "":  # noqa: PLC1901
+                setattr(self, field_name, None)
+
+        return self
 
 
 @dataclass

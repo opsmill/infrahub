@@ -220,5 +220,23 @@ class Registry:
             and branch.active_schema_hash.main != default_branch.active_schema_hash.main
         ]
 
+    async def purge_inactive_branches(
+        self, db: InfrahubDatabase, active_branches: list[Branch] | None = None
+    ) -> list[str]:
+        """Return a list of branches that were purged from the registry."""
+        active_branches = active_branches or await self.branch_object.get_list(db=db)
+        active_branch_names = [branch.name for branch in active_branches]
+        purged_branches: set[str] = set()
+
+        for branch_name in list(registry.branch.keys()):
+            if branch_name not in active_branch_names:
+                del registry.branch[branch_name]
+                purged_branches.add(branch_name)
+
+        purged_branches.update(self.schema.purge_inactive_branches(active_branches=active_branch_names))
+        purged_branches.update(db.purge_inactive_schemas(active_branches=active_branch_names))
+
+        return sorted(purged_branches)
+
 
 registry = Registry()

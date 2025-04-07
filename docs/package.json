@@ -36,6 +36,17 @@
     "eslint": "^8.56.0",
     "typescript": "~5.6.2"
   },
+  "overrides": {
+    "@docusaurus/core": {
+      "image-size": "1.2.1"
+    },
+    "@docusaurus/preset-classic": {
+      "image-size": "1.2.1"
+    },
+    "@easyops-cn/docusaurus-search-local": {
+      "image-size": "1.2.1"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.5%",

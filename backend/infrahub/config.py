@@ -115,10 +115,42 @@ class BrokerDriver(str, Enum):
     RabbitMQ = "rabbitmq"
     NATS = "nats"
 
+    @property
+    def driver_module_path(self) -> str:
+        match self:
+            case BrokerDriver.NATS:
+                return "infrahub.services.adapters.message_bus.nats"
+            case BrokerDriver.RabbitMQ:
+                return "infrahub.services.adapters.message_bus.rabbitmq"
+
+    @property
+    def driver_class_name(self) -> str:
+        match self:
+            case BrokerDriver.NATS:
+                return "NATSMessageBus"
+            case BrokerDriver.RabbitMQ:
+                return "RabbitMQMessageBus"
+
 
 class CacheDriver(str, Enum):
     Redis = "redis"
     NATS = "nats"
+
+    @property
+    def driver_module_path(self) -> str:
+        match self:
+            case CacheDriver.NATS:
+                return "infrahub.services.adapters.cache.nats"
+            case CacheDriver.Redis:
+                return "infrahub.services.adapters.cache.redis"
+
+    @property
+    def driver_class_name(self) -> str:
+        match self:
+            case CacheDriver.NATS:
+                return "NATSCache"
+            case CacheDriver.Redis:
+                return "RedisCache"
 
 
 class WorkflowDriver(str, Enum):

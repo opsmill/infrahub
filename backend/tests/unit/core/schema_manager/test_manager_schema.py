@@ -2204,6 +2204,62 @@ async def test_schema_manager_get(default_branch: Branch):
     assert schema11.namespace == schema.namespace
 
 
+async def test_schema_manager_purge(default_branch: Branch, reset_registry: None) -> None:
+    criticality_schema = NodeSchema(
+        name="Criticality",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    person_schema = NodeSchema(
+        name="Person",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    dog_schema = NodeSchema(
+        name="Dog",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    manager = SchemaManager()
+
+    manager.set(name="criticality_schema", schema=criticality_schema)
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="main")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch1")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch2")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch3")
+    manager.set(name="person_schema", schema=person_schema, branch="main")
+    manager.set(name="person_schema", schema=person_schema, branch="branch1")
+    manager.set(name="person_schema", schema=person_schema, branch="branch2")
+    manager.set(name="person_schema", schema=person_schema, branch="branch3")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch4")
+    manager.set(name="dog_schema", schema=dog_schema, branch="branch4")
+    assert len(manager._cache) == 3
+    assert criticality_schema.get_hash() in manager._cache
+    assert person_schema.get_hash() in manager._cache
+    assert dog_schema.get_hash() in manager._cache
+    purged = manager.purge_inactive_branches(active_branches=["main", "branch1", "branch2"])
+    assert purged == ["branch3", "branch4"]
+    assert len(manager._cache) == 2
+    assert criticality_schema.get_hash() in manager._cache
+    assert person_schema.get_hash() in manager._cache
+    assert dog_schema.get_hash() not in manager._cache
+
+
 # -----------------------------------------------------------------
 
 

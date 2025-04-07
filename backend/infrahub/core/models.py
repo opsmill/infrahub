@@ -529,7 +529,7 @@ class HashableModel(BaseModel):
 
         return new_list
 
-    def update(self, other: Self) -> Self:
+    def update(self, other: HashableModel) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
         Currently this method works for the following type of fields

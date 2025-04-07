@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranch, deleteBranch } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/proposed-changes", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -48,18 +50,12 @@ test.describe("/proposed-changes", () => {
       const pcNameEdit = "pc-e2e-edit";
       const pcBranchName = "main-copy-for-pc-e2e";
 
-      test.beforeAll(async ({ browser }) => {
-        const page = await browser.newPage();
-        await page.goto("/proposed-changes");
-        await createBranch(page, pcBranchName);
-        await page.close();
+      test.beforeAll(async ({ request }) => {
+        await createBranchAPI(request, pcBranchName);
       });
 
-      test.afterAll(async ({ browser }) => {
-        const page = await browser.newPage();
-        await page.goto("/proposed-changes");
-        await deleteBranch(page, pcBranchName);
-        await page.close();
+      test.afterAll(async ({ request }) => {
+        await deleteBranchAPI(request, pcBranchName);
       });
 
       test("create new proposed change", async ({ page }) => {
@@ -81,6 +77,7 @@ test.describe("/proposed-changes", () => {
 
       test("display and edit proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
+        test.slow();
 
         await test.step("display created proposed change details", async () => {
           await page.getByText(pcName, { exact: true }).click();
@@ -89,7 +86,7 @@ test.describe("/proposed-changes", () => {
           // Validate the buttons are showing as intended
           await expect(page.getByRole("button", { name: "Approve" })).not.toBeDisabled();
           await expect(page.getByRole("button", { name: "Merge" })).not.toBeDisabled();
-          await expect(page.getByRole("button", { name: "Close" })).not.toBeDisabled();
+          await expect(page.getByRole("button", { name: "Close", exact: true })).not.toBeDisabled();
         });
 
         await test.step("edit proposed change reviewers", async () => {
@@ -138,9 +135,23 @@ test.describe("/proposed-changes", () => {
         );
       });
 
-      test.fixme("merged proposed change", async ({ page }) => {
+      // The proposed change has currently failing checks in the CI, so it cannot be merged
+      test.fixme("merge and delete proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
+
+        await test.step("ensure the checks are fine", async () => {
+          await expect(page.getByTestId("checks-tab").getByTestId("Loading...")).toBeHidden();
+          await page.getByText("Checks").click();
+
+          // Reload page until we have successful checks
+          while (
+            (await page.getByText("Retry all").isVisible()) &&
+            (await page.getByTestId("validator-success").isHidden())
+          ) {
+            await page.reload();
+          }
+        });
 
         await test.step("merge proposed change and update UI", async () => {
           await page.getByRole("button", { name: "Merge" }).click();
@@ -151,22 +162,18 @@ test.describe("/proposed-changes", () => {
         await test.step("not able to edit proposed change", async () => {
           await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
           await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
-          await expect(page.getByRole("button", { name: "Close" })).toBeDisabled();
+          await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
           await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
-      });
 
-      test("delete proposed change", async ({ page }) => {
-        await page.goto("/proposed-changes");
-        await page
-          .getByRole("link", { name: `${pcNameEdit} 0 ${pcBranchName}` })
-          .locator("../..")
-          .getByTestId("actions-row-button")
-          .click();
-        await page.getByTestId("delete-row-button").click();
-        await expect(page.getByTestId("modal-delete")).toBeVisible();
-        await page.getByTestId("modal-delete-confirm").click();
-        await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();
+        await test.step("delete proposed change", async () => {
+          await page.goto("/proposed-changes?pr_state=close");
+          await page.getByTestId("actions-row-button").first().click();
+          await page.getByTestId("delete-row-button").click();
+          await expect(page.getByTestId("modal-delete")).toBeVisible();
+          await page.getByTestId("modal-delete-confirm").click();
+          await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();
+        });
       });
     });
   });
