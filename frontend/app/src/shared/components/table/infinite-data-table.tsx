@@ -1,4 +1,6 @@
+import { ObjectTableSelectionToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-selection-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
+import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 
@@ -11,7 +13,7 @@ export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivE
   fetchNextPage: () => void;
 }
 
-export function InfiniteDataTable<T extends object>({
+export function InfiniteDataTable<T extends NodeObject>({
   columns,
   data,
   isLoading,
@@ -26,6 +28,7 @@ export function InfiniteDataTable<T extends object>({
     data,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
+    getRowId: (row) => row.id,
   });
 
   const fetchMoreOnBottomReached = React.useCallback(
@@ -54,6 +57,8 @@ export function InfiniteDataTable<T extends object>({
     [allHeaders.length]
   );
 
+  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
+
   return (
     <div
       className="grid content-start overflow-auto"
@@ -62,6 +67,13 @@ export function InfiniteDataTable<T extends object>({
       ref={tableContainerRef}
       {...props}
     >
+      {selectedRows.length > 0 && (
+        <ObjectTableSelectionToolbar
+          selectedRows={selectedRows}
+          onClose={table.resetRowSelection}
+        />
+      )}
+
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
