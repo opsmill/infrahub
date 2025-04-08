@@ -19,7 +19,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `constraint`: Manage Database Constraints
 * `index`: Manage Database Indexes
 * `init`: Erase the content of the database and...
-* `load-export`: Load an anonymized export into neo4j
+* `load-export`: Cannot be used for backup/restore...
 * `load-test-data`: Load test data into the database from the...
 * `migrate`: Check the current format of the internal...
 * `selected-export`: Export database structure of selected...
@@ -80,7 +80,9 @@ $ infrahub db init [OPTIONS]
 
 ## `infrahub db load-export`
 
-Load an anonymized export into neo4j
+Cannot be used for backup/restore functionality.
+Loads an anonymized export into neo4j.
+Only used for analysis of output of the selected-export command.
 
 **Usage**:
 
