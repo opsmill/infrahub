@@ -1,9 +1,9 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import { ObjectTableToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<T>[];
