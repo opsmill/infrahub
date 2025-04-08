@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from ipaddress import IPv4Network
+from ipaddress import IPv4Network, IPv6Network
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core.branch.models import Branch
+from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.timestamp import Timestamp
+from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ..shared import InternalSchemaMigration, SchemaMigration
@@ -27,18 +29,26 @@ class Migration026(InternalSchemaMigration):
         return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        # load schemas from database into registry
+        initialize_lock()
+        await initialization(db=db)
+
         at = Timestamp()
         for branch in await Branch.get_list(db=db):
             prefix_0000s = await NodeManager.query(
-                db=db, schema="BuiltinIPPrefix", branch=branch, filters={"prefix__value": "0.0.0.0/0"}
+                db=db, schema="BuiltinIPPrefix", branch=branch, filters={"prefix__values": ["0.0.0.0/0", "::/0"]}
             )
             if not prefix_0000s:
                 continue
             ipam_reconciler = IpamReconciler(db=db, branch=branch)
             for prefix in prefix_0000s:
                 ip_namespace = await prefix.ip_namespace.get_peer(db=db)
+                if prefix.prefix.version == 6:
+                    ip_network: IPv6Network | IPv4Network = IPv6Network(prefix.prefix.value)
+                else:
+                    ip_network = IPv4Network(prefix.prefix.value)
                 await ipam_reconciler.reconcile(
-                    ip_value=IPv4Network("0.0.0.0/0"),
+                    ip_value=ip_network,
                     namespace=ip_namespace,
                     node_uuid=prefix.get_id(),
                     at=at,

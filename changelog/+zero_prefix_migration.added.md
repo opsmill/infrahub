@@ -1,1 +1,1 @@
-Add migration to correctly set children of 0.0.0.0/0 IP prefixes if they exist
+Add migration to correctly set children of 0.0.0.0/0 and ::/0 IP prefixes if they exist
