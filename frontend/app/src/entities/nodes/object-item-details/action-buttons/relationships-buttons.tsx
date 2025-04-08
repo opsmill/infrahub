@@ -28,6 +28,7 @@ interface RelationshipsButtonsProps {
 export function RelationshipsButtons({
   permission,
   schema: parentSchema,
+  objectDetailsData,
 }: RelationshipsButtonsProps) {
   const { objectKind, objectid } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
@@ -46,7 +47,6 @@ export function RelationshipsButtons({
   const peerRelationshipSchema = peerSchema.schema?.relationships?.find((r) => {
     return r.peer === objectKind;
   });
-  console.log("peerRelationshipSchema: ", peerRelationshipSchema);
 
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
@@ -142,6 +142,14 @@ export function RelationshipsButtons({
               setShowAddDrawer(false);
             }}
             kind={relationshipSchemaData?.peer!}
+            currentObject={{
+              device: {
+                node: {
+                  id: objectid,
+                  display_label: objectDetailsData.display_label,
+                },
+              },
+            }}
           />
         ) : (
           <DynamicForm
