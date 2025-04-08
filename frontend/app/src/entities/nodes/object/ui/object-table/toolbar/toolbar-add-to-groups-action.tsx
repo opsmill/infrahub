@@ -38,21 +38,7 @@ function BulkAddToGroups({ selectedRows }: ToolbarAddToGroupActionProps) {
   const [selectedGroups, setSelectedGroups] = React.useState<RelationshipNode[]>([]);
 
   return (
-    <>
-      {selectedGroups.length > 0 && (
-        <ListBox items={selectedGroups} className="flex flex-col items-start gap-1 p-1">
-          {(group) => (
-            <AddedGroupItem
-              group={group}
-              selectedRows={selectedRows}
-              onRemove={(group) => {
-                setSelectedGroups(selectedGroups.filter((g) => g.id !== group.id));
-              }}
-            />
-          )}
-        </ListBox>
-      )}
-
+    <div className="flex">
       <RelationshipComboboxList
         peer="CoreGroup"
         onSelect={(group) => {
@@ -61,7 +47,28 @@ function BulkAddToGroups({ selectedRows }: ToolbarAddToGroupActionProps) {
         filterItem={(node) => !selectedGroups.some((v) => v.id === node.id)}
         className="max-h-[12rem] max-w-xs"
       />
-    </>
+
+      {selectedGroups.length > 0 && (
+        <div className="border-l max-w-sm max-h-[12rem] flex flex-col">
+          <h3 className="font-medium text-xs border-b h-10 shrink-0 flex items-center p-2 text-neutral-600">
+            Selected groups
+          </h3>
+          <div className="grow overflow-auto">
+            <ListBox items={selectedGroups} className="flex flex-col items-start gap-1 p-2">
+              {(group) => (
+                <AddedGroupItem
+                  group={group}
+                  selectedRows={selectedRows}
+                  onRemove={(group) => {
+                    setSelectedGroups((prev) => prev.filter((g) => g.id !== group.id));
+                  }}
+                />
+              )}
+            </ListBox>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -86,8 +93,8 @@ function AddedGroupItem({
 
   const label = getNodeLabel(group);
   const GroupItem = ({ children }: { children: React.ReactNode }) => (
-    <ListBoxItem className="inline-flex items-center gap-1.5 px-1 py-0.5 text-sm bg-stone-100 rounded">
-      {label}
+    <ListBoxItem className="inline-flex items-center px-1 py-0.5 text-sm bg-stone-100 rounded-full overflow-hidden max-w-full">
+      <span className="truncate px-1.5">{label}</span>
       {children}
     </ListBoxItem>
   );
