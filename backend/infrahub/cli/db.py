@@ -688,6 +688,7 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
             labels = frozenset(ujson.loads(vertex_row["labels"]))
             cleaned_row = {k: v for k, v in vertex_row.items() if k != "labels" and v}
             vertices_by_labels_map[labels].append(cleaned_row)
+            # once a group of vertices meets the query_limit, save them to the database and delete them from memory
             if len(vertices_by_labels_map[labels]) >= query_limit:
                 await load_vertices(db=db, vertex_labels=list(labels), vertex_dicts=vertices_by_labels_map[labels])
                 vertices_by_labels_map[labels] = []
@@ -714,6 +715,7 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
                     edge_properties[k] = v
             edge_dict["properties"] = edge_properties
             edges_by_type_map[edge_type].append(edge_dict)
+            # once a group of edges meets the query_limit, save them to the database and delete them from memory
             if len(edges_by_type_map[edge_type]) >= query_limit:
                 await load_edges(db=db, edge_type=edge_type, edge_dicts=edges_by_type_map[edge_type])
                 edges_by_type_map[edge_type] = []
