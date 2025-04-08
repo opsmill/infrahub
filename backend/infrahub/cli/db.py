@@ -644,12 +644,7 @@ async def load_edges(
 ) -> None:
     edges_import_query = """
 UNWIND $edges AS edge
-CALL {
-    WITH edge
-    MATCH (a:ImportNode) WHERE a.db_id = toString(edge.start_node_id)
-    RETURN a
-    LIMIT 1
-}
+MATCH (a:ImportNode) WHERE a.db_id = toString(edge.start_node_id)
 MATCH (b:ImportNode) WHERE b.db_id = toString(edge.end_node_id)
 CREATE (a)-[e:%(edge_type)s]->(b)
 SET e = edge.properties
