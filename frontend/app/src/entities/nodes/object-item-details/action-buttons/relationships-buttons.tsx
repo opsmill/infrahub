@@ -74,6 +74,15 @@ export function RelationshipsButtons({
     }
   }
 
+  const handleRefetch = async () => {
+    await graphqlClient.refetchQueries({
+      include: [objectKind!, `GetObjectRelationships_${objectKind}`],
+    });
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes("objects"),
+    });
+  };
+
   const handleSubmit = async (data: any) => {
     const { relation } = data;
 
@@ -86,12 +95,7 @@ export function RelationshipsButtons({
         },
       });
 
-      await graphqlClient.refetchQueries({
-        include: [objectKind!, `GetObjectRelationships_${objectKind}`],
-      });
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+      await handleRefetch();
 
       toast(
         <Alert
@@ -135,8 +139,9 @@ export function RelationshipsButtons({
         peerRelationshipSchema?.kind === "Parent" &&
         peerRelationshipSchema.optional === false ? (
           <ObjectForm
-            onSuccess={async ({ object }) => {
-              await handleSubmit({ relation: { id: object.id } });
+            onSuccess={async () => {
+              await handleRefetch();
+              setShowAddDrawer(false);
             }}
             onCancel={() => {
               setShowAddDrawer(false);
