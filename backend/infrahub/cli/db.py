@@ -463,7 +463,7 @@ async def selected_export(
     uuids: list[str],
     export_dir: Path,
     query_limit: int = 1000,
-) -> None:
+) -> Path:
     query = """
 // --------------
 // filter nodes
@@ -598,6 +598,7 @@ RETURN vertices, edges
 
     rprint(f"{SUCCESS_BADGE} Export complete")
     rprint(f"Export directory is here: {export_dir.absolute()}")
+    return export_dir
 
 
 @app.command(name="load-export", hidden=True)
