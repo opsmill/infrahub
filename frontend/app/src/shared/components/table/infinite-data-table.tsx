@@ -3,6 +3,7 @@ import { ObjectTableToolbar } from "@/entities/nodes/object/ui/object-table/tool
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<T>[];
@@ -22,6 +23,7 @@ export function InfiniteDataTable<T extends NodeObject>({
   fetchNextPage,
   ...props
 }: InfiniteDataTableProps<T>) {
+  const { isAuthenticated } = useAuth();
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const table = useReactTable({
     columns,
@@ -30,6 +32,12 @@ export function InfiniteDataTable<T extends NodeObject>({
     manualSorting: true,
     getRowId: (row) => row.id,
   });
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      table.toggleAllRowsSelected(false);
+    }
+  }, [isAuthenticated]);
 
   const fetchMoreOnBottomReached = React.useCallback(
     (containerRefElement?: HTMLDivElement | null) => {
