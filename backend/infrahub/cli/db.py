@@ -554,13 +554,16 @@ RETURN vertices, edges
         edge_csv_writer.writeheader()
 
         while has_more_data:
+            rprint("Retrieving batch of vertices and edges...", end="")
             results = await db.execute_query(
                 query=query,
                 params={"kinds": kinds, "uuids": uuids, "limit": limit, "offset": offset},
             )
+            rprint("done. ", end="")
             has_more_data = len(results) >= limit
             offset += limit
 
+            rprint("Writing batch to export files...", end="")
             for result in results:
                 vertices = result.get("vertices")
                 for vertex in vertices:
@@ -591,6 +594,7 @@ RETURN vertices, edges
                             serial_edge[property_name] = value
                     edge_csv_writer.writerow(serial_edge)
                     all_db_ids.add(edge.element_id)
+            rprint("done.")
 
     rprint(f"{SUCCESS_BADGE} Export complete")
     rprint(f"Export directory is here: {export_dir.absolute()}")
