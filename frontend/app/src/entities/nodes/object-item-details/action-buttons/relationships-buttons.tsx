@@ -23,6 +23,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
+  objectDetailsData: any;
 }
 
 export function RelationshipsButtons({
