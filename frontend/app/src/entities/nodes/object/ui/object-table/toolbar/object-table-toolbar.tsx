@@ -1,4 +1,4 @@
-import { ToolbarAddToGroupAction } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-add-to-group-action";
+import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-add-to-groups-action";
 import { NodeObject } from "@/entities/nodes/types";
 import { classNames } from "@/shared/utils/common";
 import { XIcon } from "lucide-react";
@@ -9,10 +9,7 @@ export interface ObjectTableSelectionToolbarProps {
   onClose: () => void;
 }
 
-export function ObjectTableSelectionToolbar({
-  selectedRows,
-  onClose,
-}: ObjectTableSelectionToolbarProps) {
+export function ObjectTableToolbar({ selectedRows, onClose }: ObjectTableSelectionToolbarProps) {
   return (
     <AriaModal
       isOpen
@@ -32,7 +29,7 @@ export function ObjectTableSelectionToolbar({
         <XIcon className="size-3.5" />
       </AriaButton>
 
-      <ToolbarAddToGroupAction selectedRows={selectedRows} />
+      <ToolbarAddToGroupsAction selectedRows={selectedRows} />
     </AriaModal>
   );
 }

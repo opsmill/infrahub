@@ -20,7 +20,7 @@ export interface ToolbarAddToGroupActionProps {
   selectedRows: Array<NodeObject>;
 }
 
-export function ToolbarAddToGroupAction({ selectedRows }: ToolbarAddToGroupActionProps) {
+export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActionProps) {
   return (
     <DialogTrigger>
       <AriaButton className="border border-neutral-200 bg-white rounded-lg px-2 py-1 hover:bg-neutral-50">
@@ -104,6 +104,7 @@ function AddedGroupItem({
     <GroupItem>
       <Button
         className="cursor-pointer text-stone-400 p-0.5 hover:bg-stone-200 rounded-full"
+        aria-label={`Remove from group ${label}`}
         onPress={() => {
           removeRelationships(
             {

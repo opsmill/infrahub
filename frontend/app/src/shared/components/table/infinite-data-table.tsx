@@ -1,5 +1,5 @@
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
-import { ObjectTableSelectionToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-selection-toolbar";
+import { ObjectTableToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
@@ -68,10 +68,7 @@ export function InfiniteDataTable<T extends NodeObject>({
       {...props}
     >
       {selectedRows.length > 0 && (
-        <ObjectTableSelectionToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-        />
+        <ObjectTableToolbar selectedRows={selectedRows} onClose={table.resetRowSelection} />
       )}
 
       {allHeaders.map((header) => {
