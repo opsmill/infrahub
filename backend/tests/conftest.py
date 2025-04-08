@@ -747,7 +747,44 @@ async def person_schema_unique_attr_non_hfid_unregistered(
                     {"name": "height", "kind": "Number", "optional": True},
                     {"name": "bag", "kind": "Text", "unique": True},
                 ],
-            }
+            },
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["owner__name__value", "name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "color", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "owner", "peer": "TestPerson", "cardinality": "one", "optional": False},
+                    {
+                        "name": "things",
+                        "peer": "TestThing",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "carthings",
+                    },
+                ],
+            },
+            {
+                "name": "Thing",
+                "namespace": "Test",
+                "display_labels": ["value__value"],
+                "attributes": [
+                    {"name": "value", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "car",
+                        "peer": "TestCar",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "carthings",
+                    }
+                ],
+            },
         ],
     }
 

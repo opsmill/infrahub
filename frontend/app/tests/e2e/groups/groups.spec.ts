@@ -48,6 +48,7 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByLabel("Kind").click();
       await page.getByRole("option", { name: "Tag Builtin" }).click();
+      await expect(page.getByRole("option", { name: "Tag Builtin" })).toBeHidden();
       await page.getByLabel("Tag").click();
       await page.getByRole("option", { name: "blue" }).click();
 

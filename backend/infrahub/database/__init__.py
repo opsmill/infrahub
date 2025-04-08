@@ -205,6 +205,16 @@ class InfrahubDatabase:
     def add_schema(self, schema: SchemaBranch, name: str | None = None) -> None:
         self._schemas[name or schema.name] = schema
 
+    def purge_inactive_schemas(self, active_branches: list[str]) -> list[str]:
+        """Return non active schema branches that were purged."""
+        removed_branches: list[str] = []
+        for branch_name in list(self._schemas.keys()):
+            if branch_name not in active_branches:
+                del self._schemas[branch_name]
+                removed_branches.append(branch_name)
+
+        return removed_branches
+
     def start_session(self, read_only: bool = False, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
         session_mode = InfrahubDatabaseSessionMode.WRITE

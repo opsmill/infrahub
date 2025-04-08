@@ -11,6 +11,20 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.4) - 2025-04-04
+
+### Fixed
+
+- Fix migration to remove an attribute from a schema to correctly ignore overridden attributes from a generic schema ([#6073](https://github.com/opsmill/infrahub/issues/6073))
+- Fix an issue where HFID and uniqueness constraints for component templates would end up having duplicate elements after loading several schemas
+- Fix an issue where optional unique attributes having a NULL value could be duplicated.
+  Upgrading Infrahub to a version containing this fix will perform a check identifying such duplicates.
+  If some duplicates are found, data or schema should be fixed in order to complete the upgrade:
+  - Either the uniqueness constraint on corresponding attributes should be removed within schema.
+  - Or duplicated unique attributes values should be modified.
+- Properly clear references to old branches and schema objects from the registry when deleting branches.
+- Restrict event.related payload for CoreGraphQLQueryGroup events
+
 ## [Infrahub - v1.2.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.3) - 2025-03-31
 
 ### Added

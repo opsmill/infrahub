@@ -7,7 +7,7 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
-from infrahub.core.constants import DiffAction, MutationAction
+from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
@@ -24,6 +24,10 @@ class NodeMutatedEvent(InfrahubEvent):
 
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
+        if self.kind == InfrahubKind.GRAPHQLQUERYGROUP:
+            # Temporary workaround to avoid too large payloads for the related field
+            return related
+
         for attribute in self.changelog.attributes.values():
             related.append(
                 {

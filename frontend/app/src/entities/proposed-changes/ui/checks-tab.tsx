@@ -24,7 +24,7 @@ export const ProposedChangesChecksTab = () => {
   const validationsCount = result?.validations?.count ?? 0;
 
   return (
-    <div className="flex ml-2">
+    <div className="flex ml-2" data-testid="checks-tab">
       <Pill isLoading={loading}>{validationsCount}</Pill>
     </div>
   );

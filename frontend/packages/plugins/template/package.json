@@ -16,7 +16,7 @@
     "@module-federation/vite": "^0.2.8",
     "@originjs/vite-plugin-federation": "^1.3.5",
     "@softarc/native-federation": "^2.0.9",
-    "@softarc/native-federation-esbuild": "^2.0.9",
+    "@softarc/native-federation-esbuild": "^2.0.26",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -31,7 +31,12 @@
     "eslint-plugin-react-refresh": "^0.4.6",
     "path": "^0.12.7",
     "typescript": "^5.2.2",
-    "vite": "^5.2.0"
+    "vite": "^6.2.5"
+  },
+  "overrides": {
+    "@softarc/native-federation-esbuild": {
+      "esbuild": "^0.25.0"
+    }
   },
   "peerDependencies": {
     "react": "^18.2.0",

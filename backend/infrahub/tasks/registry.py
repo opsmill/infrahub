@@ -22,7 +22,6 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
 
     async with lock.registry.local_schema_lock():
         branches = await registry.branch_object.get_list(db=db)
-        active_branches = [branch.name for branch in branches]
         for new_branch in branches:
             if new_branch.name in registry.branch:
                 branch_registry: Branch = registry.branch[new_branch.name]
@@ -61,9 +60,6 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
                     include_types=True,
                 )
 
-        for branch_name in list(registry.branch.keys()):
-            if branch_name not in active_branches:
-                del registry.branch[branch_name]
-                log.info(
-                    f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY
-                )
+        purged_branches = await registry.purge_inactive_branches(db=db, active_branches=branches)
+        for branch_name in purged_branches:
+            log.info(f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY)
