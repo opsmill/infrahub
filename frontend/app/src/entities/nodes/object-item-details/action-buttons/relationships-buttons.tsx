@@ -135,8 +135,8 @@ export function RelationshipsButtons({
         peerRelationshipSchema?.kind === "Parent" &&
         peerRelationshipSchema.optional === false ? (
           <ObjectForm
-            onSuccess={async ({ relation }) => {
-              await handleSubmit({ relation: relation.value });
+            onSuccess={async ({ object }) => {
+              await handleSubmit({ relation: { id: object.id } });
             }}
             onCancel={() => {
               setShowAddDrawer(false);
