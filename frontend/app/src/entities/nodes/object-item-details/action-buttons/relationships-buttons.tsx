@@ -3,12 +3,14 @@ import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelation
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
+import ObjectForm from "@/shared/components/form/object-form";
 import { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
@@ -35,11 +37,16 @@ export function RelationshipsButtons({
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
-  const relationshipGeneric = parentGeneric?.relationships?.find(
-    (r) => r?.name === relationshipTab
-  );
+  const relationshipGeneric = parentGeneric?.relationships?.find((r) => {
+    return r?.name === relationshipTab;
+  });
   const relationshipSchemaData = relationshipSchema || relationshipGeneric;
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
+  const peerSchema = useSchema(relationshipSchemaData?.peer);
+  const peerRelationshipSchema = peerSchema.schema?.relationships?.find((r) => {
+    return r.peer === objectKind;
+  });
+  console.log("peerRelationshipSchema: ", peerRelationshipSchema);
 
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
@@ -124,25 +131,39 @@ export function RelationshipsButtons({
         open={showAddDrawer}
         setOpen={setShowAddDrawer}
       >
-        <DynamicForm
-          fields={[
-            {
-              name: "relation",
-              label: relationshipSchema?.label,
-              type: "relationship",
-              relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-              schema: relationshipSchemaData,
-              options,
-            },
-          ]}
-          onSubmit={async ({ relation }) => {
-            await handleSubmit({ relation: relation.value });
-          }}
-          onCancel={() => {
-            setShowAddDrawer(false);
-          }}
-          className="w-full p-4"
-        />
+        {relationshipSchemaData?.kind === "Component" &&
+        peerRelationshipSchema?.kind === "Parent" &&
+        peerRelationshipSchema.optional === false ? (
+          <ObjectForm
+            onSuccess={async ({ relation }) => {
+              await handleSubmit({ relation: relation.value });
+            }}
+            onCancel={() => {
+              setShowAddDrawer(false);
+            }}
+            kind={relationshipSchemaData?.peer!}
+          />
+        ) : (
+          <DynamicForm
+            fields={[
+              {
+                name: "relation",
+                label: relationshipSchema?.label,
+                type: "relationship",
+                relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
+                schema: relationshipSchemaData,
+                options,
+              },
+            ]}
+            onSubmit={async ({ relation }) => {
+              await handleSubmit({ relation: relation.value });
+            }}
+            onCancel={() => {
+              setShowAddDrawer(false);
+            }}
+            className="w-full p-4"
+          />
+        )}
       </SlideOver>
     </>
   );
