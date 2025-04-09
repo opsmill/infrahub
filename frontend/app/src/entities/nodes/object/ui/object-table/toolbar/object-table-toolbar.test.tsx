@@ -22,7 +22,7 @@ describe("ObjectTableToolbar Component", () => {
     );
 
     // THEN
-    await expect.element(component.getByText("2 selected")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "2 selected" })).toBeVisible();
     await expect.element(component.getByRole("button", { name: "Add to groups" })).toBeVisible();
   });
 
@@ -33,7 +33,7 @@ describe("ObjectTableToolbar Component", () => {
     );
 
     // WHEN
-    await component.getByText("2 selected").click();
+    await component.getByRole("button", { name: "2 selected" }).click();
 
     // THEN
     expect(mockOnClose).toHaveBeenCalledTimes(1);
