@@ -19,18 +19,19 @@ export const Checkbox = ({ className, children, ...props }: AriaCheckboxProps) =
     )}
     {...props}
   >
-    {composeRenderProps(children, (children, renderProps) => (
+    {composeRenderProps(children, (children, { isIndeterminate, isSelected }) => (
       <>
         <div
           className={classNames(
             "flex size-4 shrink-0 items-center justify-center rounded border border-gray-300 cursor-pointer",
             "transition-colors group-data-[focus-visible]/checkbox:outline-none group-data-[focus-visible]/checkbox:ring-2 group-data-[focus-visible]/checkbox:ring-custom-blue-600/25 group-data-[focus-visible]/checkbox:border-custom-blue-600",
-            "group-data-[disabled]/checkbox:cursor-not-allowed group-data-[disabled]/checkbox:opacity-50"
+            "group-data-[disabled]/checkbox:cursor-not-allowed group-data-[disabled]/checkbox:opacity-50",
+            isSelected && "text-white bg-custom-blue-600 border-custom-blue-600"
           )}
         >
-          {renderProps.isIndeterminate ? (
+          {isIndeterminate ? (
             <MinusIcon className="size-3" />
-          ) : renderProps.isSelected ? (
+          ) : isSelected ? (
             <CheckIcon className="size-3" />
           ) : null}
         </div>
