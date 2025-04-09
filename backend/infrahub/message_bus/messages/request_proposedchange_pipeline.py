@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import Field
 
 from infrahub.context import InfrahubContext
@@ -16,3 +18,6 @@ class RequestProposedChangePipeline(InfrahubMessage):
         default=CheckType.ALL, description="Can be used to restrict the pipeline to a specific type of job"
     )
     context: InfrahubContext = Field(..., description="The context of the task")
+    pipeline_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4, description="The unique ID of the execution of this pipeline"
+    )

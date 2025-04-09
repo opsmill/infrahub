@@ -61,7 +61,10 @@ from infrahub.workflows.catalogue import (
 )
 from infrahub.workflows.utils import add_tags
 
+from .branch_diff import get_diff_summary_cache, modified_kinds
+
 if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
     from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
@@ -253,6 +256,9 @@ async def run_generators(
         for generator in generators
     ]
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=service.cache)
+    modified_kinds_in_source = modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
+
     for generator_definition in generator_definitions:
         # Request generator definitions if the source branch that is managed in combination
         # to the Git repository containing modifications which could indicate changes to the transforms
@@ -267,7 +273,7 @@ async def run_generators(
             condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
         )
 
-        for changed_model in model.branch_diff.modified_kinds(branch=model.source_branch):
+        for changed_model in modified_kinds_in_source:
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
@@ -338,8 +344,9 @@ async def run_proposed_change_schema_integrity_check(
     schema_diff = dest_schema.diff(other=candidate_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=service.cache)
     constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
-        model=model, schema=candidate_schema
+        schema=candidate_schema, diff_summary=diff_summary
     )
     constraints_from_schema_diff = validation_result.constraints
     constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
@@ -390,10 +397,11 @@ async def run_proposed_change_schema_integrity_check(
 
 
 async def _get_proposed_change_schema_integrity_constraints(
-    model: RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
+    schema: SchemaBranch, diff_summary: list[NodeDiff]
 ) -> list[SchemaUpdateConstraintInfo]:
     node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
-    for node_diff in model.branch_diff.diff_summary:
+
+    for node_diff in diff_summary:
         node_kind = node_diff["kind"]
         if node_kind not in node_diff_field_summary_map:
             node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
