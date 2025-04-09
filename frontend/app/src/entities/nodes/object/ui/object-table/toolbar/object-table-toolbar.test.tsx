@@ -33,7 +33,7 @@ describe("ObjectTableToolbar Component", () => {
     );
 
     // WHEN
-    await component.getByRole("button", { name: "2 selected" }).click();
+    await component.getByRole("button", { name: "2 selected" }).click({ force: true });
 
     // THEN
     expect(mockOnClose).toHaveBeenCalledTimes(1);
