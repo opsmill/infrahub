@@ -109,7 +109,7 @@ class SingleRelationshipResolver:
             for key, value in kwargs.items()
             if "__" in key and value or key in ["id", "ids"]
         }
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
                 ids=[parent_id],
@@ -171,5 +171,5 @@ class SingleRelationshipResolver:
         node = await loader.load(key=peer_id)
         if not node:
             return None
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             return await node.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)
