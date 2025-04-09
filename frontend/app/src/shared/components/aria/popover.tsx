@@ -1,5 +1,7 @@
 import { classNames } from "@/shared/utils/common";
 import {
+  Dialog as AriaDialog,
+  DialogProps as AriaDialogProps,
   Popover as AriaPopover,
   PopoverProps as AriaPopoverProps,
   composeRenderProps,
@@ -22,3 +24,7 @@ export const Popover = ({ className, offset = 4, ...props }: PopoverProps) => (
     {...props}
   />
 );
+
+export function PopoverDialog({ className, ...props }: AriaDialogProps) {
+  return <AriaDialog className={classNames("p-2 outline outline-0", className)} {...props} />;
+}

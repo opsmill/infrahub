@@ -1,4 +1,4 @@
-import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-add-to-groups-action";
+import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/add-to-groups/toolbar-add-to-groups-action";
 import { NodeObject } from "@/entities/nodes/types";
 import { classNames } from "@/shared/utils/common";
 import { XIcon } from "lucide-react";

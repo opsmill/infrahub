@@ -1,15 +1,16 @@
 import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { NodeObject } from "@/entities/nodes/types";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { store } from "@/shared/stores";
 import { describe, expect, test, vi } from "vitest";
-import { render } from "../../../../../../../tests/components/render";
+import { render } from "../../../../../../../../tests/components/render";
+import { generateNodeSchema } from "../../../../../../../../tests/fake/schema";
 import { ToolbarAddToGroupsAction } from "./toolbar-add-to-groups-action";
 
 // Mock the mutations and getRelationships
 vi.mock("@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation");
-vi.mock("@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation");
 vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
 
 describe("ToolbarAddToGroupsAction Component", () => {
@@ -23,16 +24,15 @@ describe("ToolbarAddToGroupsAction Component", () => {
     { id: "group-2", display_label: "Test Group 2", __typename: "CoreGroup" },
   ];
 
+  const groupSchema = generateNodeSchema({ kind: "CoreGroup" });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
+    store.set(nodeSchemasAtom, [groupSchema]);
+
     // Setup default mocks for the hooks
     vi.mocked(useAddRelationships).mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as any);
-
-    vi.mocked(useRemoveRelationships).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);
@@ -49,14 +49,13 @@ describe("ToolbarAddToGroupsAction Component", () => {
     await component.getByRole("button", { name: "Add to groups" }).click();
 
     // THEN
-    // The combobox should be visible in the popover
     await expect.element(component.getByRole("dialog", { name: "Add to groups" })).toBeVisible();
     await expect.element(component.getByPlaceholder("Filter...")).toBeVisible();
     await expect.element(component.getByRole("option", { name: "Test Group 1" })).toBeVisible();
     await expect.element(component.getByRole("option", { name: "Test Group 2" })).toBeVisible();
   });
 
-  test("adds relationships when a group is selected", async () => {
+  test("adds a group to the selected groups panel when a group is selected", async () => {
     // GIVEN
     const mockAddRelationships = vi.fn();
     vi.mocked(useAddRelationships).mockReturnValue({
@@ -71,40 +70,26 @@ describe("ToolbarAddToGroupsAction Component", () => {
     await component.getByRole("option", { name: "Test Group 1" }).click();
 
     // THEN
-    expect(mockAddRelationships).toHaveBeenCalledWith({
-      objectId: "group-1",
-      relationshipName: "members",
-      relationshipIds: ["obj-1", "obj-2"],
-    });
-    await expect.element(component.getByRole("status")).toBeVisible();
+    await expect
+      .element(
+        component
+          .getByTestId("selected-groups-panel")
+          .getByRole("option", { name: "Test Group 1 Remove from" })
+      )
+      .toBeVisible();
   });
 
   test("removes a group when clicking the remove button", async () => {
     // GIVEN
-    const mockRemoveRelationships = vi.fn();
-    vi.mocked(useRemoveRelationships).mockReturnValue({
-      mutate: mockRemoveRelationships,
-      isPending: false,
-    } as any);
-
     const component = render(<ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />);
 
     // WHEN
     await component.getByRole("button", { name: "Add to groups" }).click();
     await component.getByRole("option", { name: "Test Group 1" }).click(); // Select the first group
-    await component.getByRole("button", { name: "Remove from group" }).click(); // Then remove it
+    await component.getByRole("button", { name: "Remove from group Test Group 1" }).click(); // Then remove it
 
     // THEN
-    expect(mockRemoveRelationships).toHaveBeenCalledWith(
-      {
-        objectId: "group-1",
-        relationshipName: "members",
-        relationshipIds: ["obj-1", "obj-2"],
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      })
-    );
+    await expect.poll(() => component.getByTestId("selected-groups-panel").query()).toBeNull();
   });
 
   test("filters out already selected groups", async () => {
@@ -116,9 +101,18 @@ describe("ToolbarAddToGroupsAction Component", () => {
     await component.getByRole("option", { name: "Test Group 1" }).click();
 
     // THEN
-    await expect.element(component.getByRole("option", { name: "Test Group 2" })).toBeVisible();
     await expect
-      .poll(() => component.getByRole("option", { name: "Test Group 1" }).query())
+      .element(
+        component.getByTestId("group-selector").getByRole("option", { name: "Test Group 2" })
+      )
+      .toBeVisible();
+    await expect
+      .poll(() =>
+        component
+          .getByTestId("group-selector")
+          .getByRole("option", { name: "Test Group 1" })
+          .query()
+      )
       .toBeNull();
   });
 });
