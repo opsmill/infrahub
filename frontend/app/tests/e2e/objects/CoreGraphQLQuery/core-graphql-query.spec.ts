@@ -17,7 +17,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await test.step("Navigate to CoreGraphQLQuery page", async () => {
       await page.goto("/objects/CoreGraphQLQuery");
       await expect(page.getByRole("heading", { name: "GraphQL Query" })).toBeVisible();
-      await expect(page.getByText("Skeleton loading...").first()).toBeHidden();
+      await expect(page.getByTestId("object-table-skeleton").first()).toBeHidden();
     });
 
     await test.step("Create a new graphql query", async () => {

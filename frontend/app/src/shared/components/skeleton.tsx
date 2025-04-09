@@ -3,15 +3,12 @@ import { HTMLAttributes } from "react";
 
 export const Skeleton = ({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <>
-      <div
-        className={classNames(
-          "animate-[pulse_1s_ease-in-out_infinite] rounded-md bg-custom-blue-700/20",
-          className
-        )}
-        {...props}
-      />
-      <span className="sr-only">Skeleton loading...</span>
-    </>
+    <div
+      className={classNames(
+        "animate-[pulse_1s_ease-in-out_infinite] rounded-md bg-custom-blue-700/20",
+        className
+      )}
+      {...props}
+    />
   );
 };

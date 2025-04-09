@@ -8,16 +8,20 @@ export interface ObjectsTableSkeletonProps {
 }
 
 export function ObjectTableSkeleton({ headerCount }: ObjectsTableSkeletonProps) {
-  return [...Array(20)].map((_, rowIndex) => (
-    <React.Fragment key={`skeleton-row-${rowIndex}`}>
-      {[...Array(headerCount)].map((_, colIndex) => (
-        <TableCell
-          key={`skeleton-${rowIndex}-${colIndex}`}
-          className={classNames(colIndex === 0 && "sticky left-0")}
-        >
-          <Skeleton className="h-4 w-full" />
-        </TableCell>
+  return (
+    <React.Fragment data-testid="object-table-skeleton">
+      {[...Array(20)].map((_, rowIndex) => (
+        <React.Fragment key={`skeleton-row-${rowIndex}`}>
+          {[...Array(headerCount)].map((_, colIndex) => (
+            <TableCell
+              key={`skeleton-${rowIndex}-${colIndex}`}
+              className={classNames(colIndex === 0 && "sticky left-0")}
+            >
+              <Skeleton className="h-4 w-full" />
+            </TableCell>
+          ))}
+        </React.Fragment>
       ))}
     </React.Fragment>
-  ));
+  );
 }
