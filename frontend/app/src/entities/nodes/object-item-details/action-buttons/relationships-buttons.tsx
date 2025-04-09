@@ -19,11 +19,12 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { AttributeType, Node, RelationshipType } from "../../getObjectItemDisplayValue";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
-  objectDetailsData: any;
+  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
 }
 
 export function RelationshipsButtons({
@@ -59,7 +60,7 @@ export function RelationshipsButtons({
 
       if (relatedSchema) {
         options.push({
-          id: relatedSchema.kind,
+          id: relatedSchema.kind!,
           name: relatedSchema.name,
         });
       }
@@ -69,7 +70,7 @@ export function RelationshipsButtons({
 
     if (relatedSchema) {
       options.push({
-        id: relatedSchema.kind,
+        id: relatedSchema.kind!,
         name: relatedSchema.label ?? relatedSchema.name,
       });
     }
@@ -151,8 +152,9 @@ export function RelationshipsButtons({
             currentObject={{
               device: {
                 node: {
-                  id: objectid,
+                  id: objectid!,
                   display_label: objectDetailsData.display_label,
+                  __typename: objectDetailsData.__typename,
                 },
               },
             }}
@@ -162,7 +164,7 @@ export function RelationshipsButtons({
             fields={[
               {
                 name: "relation",
-                label: relationshipSchema?.label,
+                label: relationshipSchema?.label!,
                 type: "relationship",
                 relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
                 schema: relationshipSchemaData,
@@ -170,7 +172,7 @@ export function RelationshipsButtons({
               },
             ]}
             onSubmit={async ({ relation }) => {
-              await handleSubmit({ relation: relation.value });
+              await handleSubmit({ relation: relation?.value });
             }}
             onCancel={() => {
               setShowAddDrawer(false);

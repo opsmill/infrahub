@@ -1,7 +1,12 @@
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import {
+  AttributeType,
+  Node,
+  ObjectAttributeValue,
+  RelationshipType,
+} from "@/entities/nodes/getObjectItemDisplayValue";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import {
   getObjectAttributes,
@@ -41,7 +46,7 @@ import RelationshipDetails from "./relationship-details-paginated";
 
 type ObjectDetailsProps = {
   schema: ModelSchema;
-  objectDetailsData: any;
+  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
   taskData?: Object;
   hideHeaders?: boolean;
   permission: Permission;
@@ -148,11 +153,11 @@ export default function ObjectItemDetails({
 
                         {objectDetailsData[attribute.name] && (
                           <MetaDetailsTooltip
-                            updatedAt={objectDetailsData[attribute.name].updated_at}
-                            source={objectDetailsData[attribute.name].source}
-                            owner={objectDetailsData[attribute.name].owner}
-                            isFromProfile={objectDetailsData[attribute.name].is_from_profile}
-                            isProtected={objectDetailsData[attribute.name].is_protected}
+                            updatedAt={objectDetailsData[attribute.name]?.updated_at}
+                            source={objectDetailsData[attribute.name]?.source}
+                            owner={objectDetailsData[attribute.name]?.owner}
+                            isFromProfile={objectDetailsData[attribute.name]?.is_from_profile}
+                            isProtected={objectDetailsData[attribute.name]?.is_protected}
                             header={
                               !attribute.read_only && (
                                 <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
@@ -182,7 +187,7 @@ export default function ObjectItemDetails({
                           />
                         )}
 
-                        {objectDetailsData[attribute.name].is_protected && (
+                        {objectDetailsData[attribute.name]?.is_protected && (
                           <LockClosedIcon className="w-4 h-4" />
                         )}
                       </>
