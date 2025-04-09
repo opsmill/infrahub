@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ipaddress import IPv4Network, IPv6Network
+import ipaddress
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core.branch.models import Branch
@@ -43,10 +43,7 @@ class Migration026(InternalSchemaMigration):
             ipam_reconciler = IpamReconciler(db=db, branch=branch)
             for prefix in prefix_0000s:
                 ip_namespace = await prefix.ip_namespace.get_peer(db=db)
-                if prefix.prefix.version == 6:
-                    ip_network: IPv6Network | IPv4Network = IPv6Network(prefix.prefix.value)
-                else:
-                    ip_network = IPv4Network(prefix.prefix.value)
+                ip_network = ipaddress.ip_network(prefix.prefix.value)
                 await ipam_reconciler.reconcile(
                     ip_value=ip_network,
                     namespace=ip_namespace,
