@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
@@ -12,9 +14,11 @@ from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.requests.proposed_change import pipeline
 from infrahub.message_bus.types import ProposedChangeBranchDiff
+from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
 from infrahub.proposed_change.tasks import run_generators
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.log import FakeLogger
@@ -141,6 +145,7 @@ class TestProposedChange(TestInfrahubApp):
         fake_log = FakeLogger()
         service = await InfrahubServices.new(
             client=client,
+            cache=await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver),
             log=fake_log,
             message_bus=bus_pre_data_changes,
             database=db,
@@ -175,22 +180,26 @@ class TestProposedChange(TestInfrahubApp):
         client: InfrahubClient,
         context: InfrahubContext,
     ):
+        pipeline_id = uuid.uuid4()
         model = RequestProposedChangeRunGenerators(
             source_branch="change1",
             source_branch_sync_with_git=True,
             destination_branch="main",
             proposed_change=prepare_proposed_change,
-            branch_diff=ProposedChangeBranchDiff(diff_summary=[], repositories=[], subscribers=[]),
+            branch_diff=ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[], subscribers=[]),
             refresh_artifacts=True,
             do_repository_checks=True,
         )
         bus = BusRecorder()
         service = await InfrahubServices.new(
             client=client,
+            cache=await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver),
             message_bus=bus,
             log=FakeLogger(),
             workflow=WorkflowLocalExecution(),
         )
+
+        await set_diff_summary_cache(pipeline_id=pipeline_id, diff_summary=[], cache=service.cache)
         await run_generators(model=model, context=context, service=service)
 
         assert sorted(bus.seen_routing_keys) == [

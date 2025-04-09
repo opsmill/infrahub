@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import IntFlag
+from typing import TYPE_CHECKING
 
 from prefect import flow, task
 from prefect.logging import get_run_logger
@@ -19,6 +20,14 @@ from infrahub.message_bus.types import (
     ProposedChangeBranchDiff,
     ProposedChangeRepository,
     ProposedChangeSubscriber,
+)
+from infrahub.proposed_change.branch_diff import (
+    get_diff_summary_cache,
+    get_modified_kinds,
+    get_modified_node_ids,
+    has_data_changes,
+    has_node_changes,
+    set_diff_summary_cache,
 )
 from infrahub.proposed_change.models import (
     RequestArtifactDefinitionCheck,
@@ -39,6 +48,9 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
 from infrahub.workflows.utils import add_tags
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
 
 
 class DefinitionSelect(IntFlag):
@@ -101,8 +113,11 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
     diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
-    branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
-    await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
+    await set_diff_summary_cache(pipeline_id=message.pipeline_id, diff_summary=diff_summary, cache=service.cache)
+    branch_diff = ProposedChangeBranchDiff(repositories=repositories, pipeline_id=message.pipeline_id)
+    await _populate_subscribers(
+        branch_diff=branch_diff, diff_summary=diff_summary, service=service, branch=message.source_branch
+    )
 
     if message.check_type is CheckType.ARTIFACT:
         events.append(
@@ -132,8 +147,8 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             parameters={"model": model_proposed_change_run_generator},
         )
 
-    if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
-        branch=message.source_branch
+    if message.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(
+        diff_summary=diff_summary, branch=message.source_branch
     ):
         model_proposed_change_data_integrity = RequestProposedChangeDataIntegrity(
             proposed_change=message.proposed_change,
@@ -162,8 +177,8 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
-        branch=message.source_branch
+    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
+        diff_summary=diff_summary, branch=message.source_branch
     ):
         await service.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
@@ -215,6 +230,9 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=message.branch_diff.pipeline_id, cache=service.cache)
+    modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=message.source_branch)
+
     for artifact_definition in artifact_definitions:
         # Request artifact definition checks if the source branch that is managed in combination
         # to the Git repository containing modifications which could indicate changes to the transforms
@@ -229,7 +247,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             condition=message.source_branch_sync_with_git and message.branch_diff.has_file_modifications,
         )
 
-        for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
+        for changed_model in modified_kinds:
             condition = False
             if (changed_model in artifact_definition.query_models) or (
                 changed_model.startswith("Profile")
@@ -589,11 +607,13 @@ async def _gather_repository_repository_diffs(
             repo.files_changed = files_changed
 
 
-async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: InfrahubServices, branch: str) -> None:
+async def _populate_subscribers(
+    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], service: InfrahubServices, branch: str
+) -> None:
     result = await service.client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,
-        variables={"members": branch_diff.modified_nodes(branch=branch)},
+        variables={"members": get_modified_node_ids(diff_summary=diff_summary, branch=branch)},
     )
 
     for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
