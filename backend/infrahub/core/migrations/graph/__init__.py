@@ -27,6 +27,7 @@ from .m022_add_generate_template_attr import Migration022
 from .m023_deduplicate_cardinality_one_relationships import Migration023
 from .m024_missing_hierarchy_backfill import Migration024
 from .m025_uniqueness_nulls import Migration025
+from .m026_0000_prefix_fix import Migration026
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -59,6 +60,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration023,
     Migration024,
     Migration025,
+    Migration026,
 ]
 
 
