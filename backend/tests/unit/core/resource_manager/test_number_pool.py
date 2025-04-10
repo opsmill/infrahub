@@ -2,6 +2,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
@@ -109,3 +112,62 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
             }
         ],
     }
+
+
+async def test_allocate_from_number_pool_for_generic(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+):
+    ticket = GenericSchema(
+        name="Ticket",
+        namespace="Testing",
+        include_in_menu=True,
+        label="Ticket",
+        human_friendly_id=["title__value", "ticket_id__value"],
+        default_filter="title__value",
+        attributes=[
+            AttributeSchema(name="title", kind="Text", optional=False),
+            AttributeSchema(name="description", kind="TextArea", optional=True),
+            AttributeSchema(name="ticket_id", kind="Number", optional=True, unique=True),
+        ],
+    )
+    speeding_ticket = NodeSchema(
+        name="SpeedingTicket",
+        namespace="Testing",
+        include_in_menu=True,
+        label="Speeding Ticket",
+        inherit_from=[TICKET.kind],
+    )
+    parking_ticket = NodeSchema(
+        name="ParkingTicket",
+        namespace="Testing",
+        include_in_menu=True,
+        label="Parking Ticket",
+        inherit_from=[TICKET.kind],
+    )
+    await load_schema(db=db, schema=SchemaRoot(generics=[ticket], nodes=[speeding_ticket, parking_ticket]))
+    await initialize_registry(db=db)
+
+    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    await np1.new(db=db, name="pool1", node=ticket.kind, node_attribute="ticket_id", start_range=1, end_range=10)
+    await np1.save(db=db)
+
+    ticket1 = await Node.init(db=db, schema=speeding_ticket.kind)
+    await ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
+    await ticket1.save(db=db)
+
+    ticket2 = await Node.init(db=db, schema=parking_ticket.kind)
+    await ticket2.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
+    await ticket2.save(db=db)
+
+    assert ticket1.ticket_id.value == 1
+    assert ticket2.ticket_id.value == 2
+
+    # If a resource is deleted the allocated number should be returned to the pool
+    await ticket2.delete(db=db)
+    recreated_ticket2 = await Node.init(db=db, schema=parking_ticket.kind)
+    await recreated_ticket2.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
+    await recreated_ticket2.save(db=db)
+    assert recreated_ticket2.ticket_id.value == 2
+
+    utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    assert utilization["edges"][0]["node"]["utilization"] == 20.0

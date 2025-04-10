@@ -19,8 +19,10 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `constraint`: Manage Database Constraints
 * `index`: Manage Database Indexes
 * `init`: Erase the content of the database and...
+* `load-export`: Cannot be used for backup/restore...
 * `load-test-data`: Load test data into the database from the...
 * `migrate`: Check the current format of the internal...
+* `selected-export`: Export database structure of selected...
 * `update-core-schema`: Check the current format of the internal...
 
 ## `infrahub db constraint`
@@ -76,6 +78,28 @@ $ infrahub db init [OPTIONS]
 * `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.
 
+## `infrahub db load-export`
+
+Cannot be used for backup/restore functionality.
+Loads an anonymized export into neo4j.
+Only used for analysis of output of the selected-export command.
+
+**Usage**:
+
+```console
+$ infrahub db load-export [OPTIONS] EXPORT_DIR [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `EXPORT_DIR`: Path to export directory  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--query-limit INTEGER`: Maximum batch size of import query  [default: 1000]
+* `--help`: Show this message and exit.
+
 ## `infrahub db load-test-data`
 
 Load test data into the database from the `test_data` directory.
@@ -109,6 +133,28 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--help`: Show this message and exit.
+
+## `infrahub db selected-export`
+
+Export database structure of selected nodes from the database without any actual data
+
+**Usage**:
+
+```console
+$ infrahub db selected-export [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--kinds TEXT`: Node kinds to export
+* `--uuids TEXT`: UUIDs of nodes to export
+* `--query-limit INTEGER`: Maximum batch size of export query  [default: 1000]
+* `--export-dir PATH`: Path of directory to save exports  [default: infrahub-exports]
 * `--help`: Show this message and exit.
 
 ## `infrahub db update-core-schema`
