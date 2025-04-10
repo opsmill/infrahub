@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import enum
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generic, Literal, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from infrahub import config
+from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.enums import generate_python_enum
 from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
@@ -21,8 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
 
-AttrParamT = TypeVar("AttrParamT", bound=AttributeParameters)
-
 
 def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
     attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
@@ -32,15 +31,9 @@ def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
     return attribute_schema_class_by_kind.get(kind, AttributeSchema)
 
 
-class AttributeSchema(GeneratedAttributeSchema, Generic[AttrParamT]):
+class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
     _enum_class: type[enum.Enum] | None = None
-
-    parameters: AttrParamT | None = Field(
-        default=None,
-        description="Extra parameters specific to this kind of attribute",
-        json_schema_extra={"update": "not_supported"},
-    )
 
     @property
     def is_attribute(self) -> bool:
@@ -183,12 +176,11 @@ class AttributeSchema(GeneratedAttributeSchema, Generic[AttrParamT]):
         )
 
 
-class TextAttributeSchema(AttributeSchema[TextAttributeParameters]):
-    kind: Literal["Text", "TextArea"]
+class TextAttributeSchema(AttributeSchema):
     parameters: TextAttributeParameters = Field(
         default_factory=TextAttributeParameters,
         description="Extra parameters specific text attributes",
-        json_schema_extra={"update": "not_supported"},
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
     @model_validator(mode="after")

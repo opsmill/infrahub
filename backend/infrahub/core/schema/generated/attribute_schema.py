@@ -113,8 +113,8 @@ class GeneratedAttributeSchema(HashableModel):
         description="Type of allowed override for the attribute.",
         json_schema_extra={"update": "allowed"},
     )
-    parameters: AttributeParameters | None = Field(
-        default=None,
+    parameters: AttributeParameters = Field(
+        default_factory=AttributeParameters,
         description="Extra parameters specific to this kind of attribute",
         json_schema_extra={"update": "validate_constraint"},
     )

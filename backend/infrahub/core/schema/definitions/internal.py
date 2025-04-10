@@ -625,6 +625,7 @@ attribute_schema = SchemaNode(
             optional=True,
             description="Extra parameters specific to this kind of attribute",
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            default_factory="AttributeParameters",
         ),
         SchemaAttribute(
             name="deprecation",
