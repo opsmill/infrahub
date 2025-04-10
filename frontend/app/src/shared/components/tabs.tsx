@@ -2,6 +2,7 @@ import { QSP } from "@/config/qsp";
 import { Pill } from "@/shared/components/display/pill";
 import { classNames } from "@/shared/utils/common";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ScrollArea } from "./ui/scroll-area";
 
 type Tab = {
   name?: string;
@@ -38,8 +39,8 @@ export const Tabs = (props: TabsProps) => {
         className
       )}
     >
-      <div className="flex-1">
-        <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
+      <ScrollArea scrollX className="flex-1">
+        <nav className="flex space-x-8 px-4" aria-label="Tabs">
           {tabs.map((tab: Tab, index: number) => {
             const Component = tab.component ? tab.component : () => null;
 
@@ -67,7 +68,8 @@ export const Tabs = (props: TabsProps) => {
             );
           })}
         </nav>
-      </div>
+      </ScrollArea>
+
       <div>{rightItems}</div>
     </div>
   );
