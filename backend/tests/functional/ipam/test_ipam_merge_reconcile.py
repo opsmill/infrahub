@@ -24,7 +24,7 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         config.SETTINGS.broker.enable = True
 
     @pytest.fixture(scope="class")
-    async def branch_1(self, db: InfrahubDatabase):
+    async def branch_1(self, db: InfrahubDatabase, default_branch):
         return await create_branch(db=db, branch_name="new_address")
 
     @pytest.fixture(scope="class")
@@ -46,6 +46,7 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         client: InfrahubClient,
         branch_1,
         new_address_1,
+        default_branch,
     ) -> None:
         success = await client.branch.merge(branch_name=branch_1.name)
         assert success is True
