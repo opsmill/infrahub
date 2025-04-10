@@ -60,9 +60,9 @@ const ObjectPageLayout = () => {
           )}
 
           <ResizablePanel>
-            <ScrollArea scrollX className="h-full">
+            <div className="overflow-auto h-full">
               <Outlet />
-            </ScrollArea>
+            </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </Content.Card>
