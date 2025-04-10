@@ -1005,9 +1005,11 @@ class SchemaBranch:
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
                 if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
-                    raise ValueError(
-                        f"{generic_schema.kind}: Attribute {attribute.name!r} computed attributes are only allowed on nodes not generics"
-                    )
+                    for inheriting_node in generic_schema.used_by:
+                        node_schema = self.get_node(name=inheriting_node, duplicate=False)
+                        self.computed_attributes.validate_generic_inheritance(
+                            node=node_schema, attribute=attribute, generic=generic_schema
+                        )
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
