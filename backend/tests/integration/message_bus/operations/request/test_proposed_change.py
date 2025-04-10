@@ -21,8 +21,10 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
+    REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+    REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
 from tests.adapters.log import FakeLogger
@@ -158,7 +160,7 @@ class TestProposedChange(TestInfrahubApp):
         ) as mock_submit_workflow:
             await run_proposed_change_pipeline(model=model, service=service, context=context)
 
-            expected_calls = [
+            expected_calls_before_data_changes = [
                 call(
                     workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
                     parameters=ANY,
@@ -170,7 +172,8 @@ class TestProposedChange(TestInfrahubApp):
                     context=ANY,
                 ),
             ]
-            mock_submit_workflow.assert_has_calls(expected_calls)
+            mock_submit_workflow.assert_has_calls(expected_calls_before_data_changes)
+            mock_submit_workflow.reset_mock()
 
             # Add an object to the source_branch to modify the data
             obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
@@ -179,7 +182,29 @@ class TestProposedChange(TestInfrahubApp):
 
             await run_proposed_change_pipeline(model=model, service=service, context=context)
 
-            mock_submit_workflow.assert_has_calls(expected_calls)
+            expected_calls_after_data_changes = [
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+            ]
+            mock_submit_workflow.assert_has_calls(expected_calls_after_data_changes)
 
     async def test_run_generators_validate_requested_jobs(
         self,
