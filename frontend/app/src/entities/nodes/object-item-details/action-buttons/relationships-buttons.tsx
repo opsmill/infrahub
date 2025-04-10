@@ -1,4 +1,5 @@
 import { QSP } from "@/config/qsp";
+import { AttributeType, Node, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelationship";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -19,7 +20,6 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { AttributeType, Node, RelationshipType } from "../../getObjectItemDisplayValue";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
