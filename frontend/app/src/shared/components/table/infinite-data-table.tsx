@@ -1,4 +1,7 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
+import { ObjectTableToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
+import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 
@@ -11,7 +14,7 @@ export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivE
   fetchNextPage: () => void;
 }
 
-export function InfiniteDataTable<T extends object>({
+export function InfiniteDataTable<T extends NodeObject>({
   columns,
   data,
   isLoading,
@@ -20,13 +23,21 @@ export function InfiniteDataTable<T extends object>({
   fetchNextPage,
   ...props
 }: InfiniteDataTableProps<T>) {
+  const { isAuthenticated } = useAuth();
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const table = useReactTable({
     columns,
     data,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
+    getRowId: (row) => row.id,
   });
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      table.toggleAllRowsSelected(false);
+    }
+  }, [isAuthenticated]);
 
   const fetchMoreOnBottomReached = React.useCallback(
     (containerRefElement?: HTMLDivElement | null) => {
@@ -54,6 +65,8 @@ export function InfiniteDataTable<T extends object>({
     [allHeaders.length]
   );
 
+  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
+
   return (
     <div
       className="grid content-start overflow-auto"
@@ -62,6 +75,10 @@ export function InfiniteDataTable<T extends object>({
       ref={tableContainerRef}
       {...props}
     >
+      {selectedRows.length > 0 && (
+        <ObjectTableToolbar selectedRows={selectedRows} onClose={table.resetRowSelection} />
+      )}
+
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),

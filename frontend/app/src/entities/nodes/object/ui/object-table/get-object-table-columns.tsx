@@ -46,6 +46,8 @@ export const getObjectTableColumns = (
             objectKind={row.original.__typename as string}
             objectId={row.original.id as string}
             label={value}
+            isSelected={row.getIsSelected()}
+            onSelectionChange={row.getToggleSelectedHandler()}
           />
         );
       },

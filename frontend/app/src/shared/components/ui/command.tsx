@@ -20,7 +20,7 @@ export const CommandInput = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     className={classNames(
-      "h-10 flex items-center border-b outline-none text-neutral-800",
+      "h-10 flex items-center border-b outline-none text-neutral-800 shrink-0",
       className
     )}
   >

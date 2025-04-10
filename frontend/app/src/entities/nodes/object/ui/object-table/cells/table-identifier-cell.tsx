@@ -1,4 +1,6 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Checkbox } from "@/shared/components/aria/checkbox";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { TableCell } from "@/shared/components/table/table-cell";
 
@@ -6,11 +8,22 @@ export interface TableIdentifierCellProps {
   objectKind: string;
   objectId: string;
   label: string;
+  isSelected?: boolean;
+  onSelectionChange?: (isSelected: boolean) => void;
 }
 
-export function TableIdentifierCell({ objectKind, objectId, label }: TableIdentifierCellProps) {
+export function TableIdentifierCell({
+  objectKind,
+  objectId,
+  label,
+  isSelected,
+  onSelectionChange,
+}: TableIdentifierCellProps) {
+  const { isAuthenticated } = useAuth();
   return (
-    <TableCell className="sticky left-0 bg-white px-1" data-testid="identifier-cell">
+    <TableCell className="sticky left-0 bg-white" data-testid="identifier-cell">
+      {isAuthenticated && <Checkbox isSelected={isSelected} onChange={onSelectionChange} />}
+
       <LinkButton
         variant="ghost"
         size="sm"

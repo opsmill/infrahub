@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelationship";
+import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
