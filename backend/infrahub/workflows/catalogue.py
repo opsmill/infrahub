@@ -190,6 +190,15 @@ BRANCH_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
+    name="branch-merge-post-process",
+    type=WorkflowType.CORE,
+    module="infrahub.core.branch.tasks",
+    function="post_process_branch_merge",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
 BRANCH_MERGE_MUTATION = WorkflowDefinition(
     name="merge-branch-mutation",
     type=WorkflowType.CORE,
@@ -431,6 +440,7 @@ workflows = [
     BRANCH_DELETE,
     BRANCH_MERGE,
     BRANCH_MERGE_MUTATION,
+    BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,

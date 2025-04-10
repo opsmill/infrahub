@@ -13,6 +13,16 @@ LOCATION = GenericSchema(
         AttributeSchema(name="name", kind="Text", unique=True, optional=False),
         AttributeSchema(name="shortname", kind="Text", unique=True, optional=False),
         AttributeSchema(name="description", kind="Text", optional=True),
+        AttributeSchema(
+            name="code",
+            kind="Text",
+            optional=False,
+            read_only=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.JINJA2,
+                jinja2_template="{{ name__value[:2] | lower }}",
+            ),
+        ),
     ],
 )
 
@@ -48,7 +58,17 @@ COUNTRY = NodeSchema(
                 kind=ComputedAttributeKind.JINJA2,
                 jinja2_template="{{ parent__shortname__value }}-{{ shortname__value }}",
             ),
-        )
+        ),
+        AttributeSchema(
+            name="code",
+            kind="Text",
+            optional=False,
+            read_only=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.JINJA2,
+                jinja2_template="{{ name__value[:3] | lower }}",
+            ),
+        ),
     ],
 )
 

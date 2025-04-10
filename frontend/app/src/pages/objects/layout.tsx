@@ -59,8 +59,10 @@ const ObjectPageLayout = () => {
             </>
           )}
 
-          <ResizablePanel className="flex flex-col">
-            <Outlet />
+          <ResizablePanel>
+            <div className="overflow-auto h-full">
+              <Outlet />
+            </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </Content.Card>

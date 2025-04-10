@@ -954,7 +954,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             source=self.id,
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=CoreCheckDefinition, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreCheckDefinition, branch=branch_name, data=create_payload)
         await obj.save()
 
         return obj
@@ -1012,7 +1012,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             source=str(self.id),
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=CoreTransformPython, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreTransformPython, branch=branch_name, data=create_payload)
         await obj.save()
         return obj
 
