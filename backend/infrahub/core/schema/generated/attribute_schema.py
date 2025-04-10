@@ -8,6 +8,7 @@ from pydantic import Field
 
 from infrahub.core.constants import AllowOverrideType, BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
+from infrahub.core.schema.attribute_parameters import AttributeParameters  # noqa: TC001
 from infrahub.core.schema.computed_attribute import ComputedAttribute  # noqa: TC001
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TC001
 
@@ -111,6 +112,11 @@ class GeneratedAttributeSchema(HashableModel):
         default=AllowOverrideType.ANY,
         description="Type of allowed override for the attribute.",
         json_schema_extra={"update": "allowed"},
+    )
+    parameters: AttributeParameters | None = Field(
+        default=None,
+        description="Extra parameters specific to this kind of attribute",
+        json_schema_extra={"update": "validate_constraint"},
     )
     deprecation: str | None = Field(
         default=None,

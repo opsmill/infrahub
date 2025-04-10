@@ -30,6 +30,7 @@ Below is the list of all available options to define an Attribute in the schema
 | [**name**](#name) | Attribute | Attribute name, must be unique within a model and must be all lowercase. | True |
 | [**optional**](#optional) | Attribute | Indicate if this attribute is mandatory or optional. | False |
 | [**order_weight**](#order_weight) | Attribute | Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first. | False |
+| [**parameters**](#parameters) | Attribute | Extra parameters specific to this kind of attribute | False |
 | [**read_only**](#read_only) | Attribute | Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object. | False |
 | [**regex**](#regex) | Attribute | Regex uses to limit the characters allowed in for the attributes. | False |
 | [**state**](#state) | Attribute | Expected state of the attribute after loading the schema | False |
@@ -233,6 +234,17 @@ extensions:
 | **Name** | order_weight |
 | **Kind** | `Number` |
 | **Description** | Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### parameters
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | parameters |
+| **Kind** | `JSON` |
+| **Description** | Extra parameters specific to this kind of attribute |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |

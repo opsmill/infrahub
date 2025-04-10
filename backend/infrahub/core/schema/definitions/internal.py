@@ -31,6 +31,7 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
+from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -616,6 +617,14 @@ attribute_schema = SchemaNode(
             default_value=AllowOverrideType.ANY,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="parameters",
+            kind="JSON",
+            internal_kind=AttributeParameters,
+            optional=True,
+            description="Extra parameters specific to this kind of attribute",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="deprecation",
