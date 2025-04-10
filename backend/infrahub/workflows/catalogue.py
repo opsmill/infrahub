@@ -337,6 +337,21 @@ GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+REQUEST_PROPOSED_CHANGE_PIPELINE = WorkflowDefinition(
+    name="proposed-changed-pipeline",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_pipeline",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS = WorkflowDefinition(
+    name="proposed-changed-refresh-artifacts",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="refresh_artifacts",
+)
+
 REQUEST_PROPOSED_CHANGE_RUN_GENERATORS = WorkflowDefinition(
     name="proposed-changed-run-generator",
     type=WorkflowType.INTERNAL,
@@ -481,6 +496,8 @@ workflows = [
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_PIPELINE,
+    REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,

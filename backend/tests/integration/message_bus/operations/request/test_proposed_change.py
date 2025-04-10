@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import ANY, call, patch
 
 import pytest
 
@@ -9,16 +10,25 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
-from infrahub.message_bus import messages
-from infrahub.message_bus.operations.requests.proposed_change import pipeline
 from infrahub.message_bus.types import ProposedChangeBranchDiff
-from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
-from infrahub.proposed_change.tasks import run_generators
+from infrahub.proposed_change.models import (
+    RequestProposedChangePipeline,
+    RequestProposedChangeRefreshArtifacts,
+    RequestProposedChangeRunGenerators,
+)
+from infrahub.proposed_change.tasks import run_generators, run_proposed_change_pipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import (
+    REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
+    REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+    REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_USER_TESTS,
+)
 from tests.adapters.log import FakeLogger
-from tests.adapters.message_bus import BusRecorder, BusSimulator
+from tests.adapters.message_bus import BusRecorder
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
@@ -130,12 +140,11 @@ class TestProposedChange(TestInfrahubApp):
         client: InfrahubClient,
         context: InfrahubContext,
     ):
-        message = messages.RequestProposedChangePipeline(
+        model = RequestProposedChangePipeline(
             source_branch="change1",
             source_branch_sync_with_git=True,
             destination_branch="main",
             proposed_change=prepare_proposed_change,
-            context=context,
         )
         bus_pre_data_changes = BusRecorder()
         fake_log = FakeLogger()
@@ -146,26 +155,56 @@ class TestProposedChange(TestInfrahubApp):
             database=db,
             workflow=WorkflowLocalExecution(),
         )
-        await pipeline(message=message, service=service)
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow:
+            await run_proposed_change_pipeline(model=model, service=service, context=context)
 
-        # Add an object to the source_branch to modify the data
-        obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
-        await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
-        await obj.save(db=db)
+            expected_calls_before_data_changes = [
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+            ]
+            mock_submit_workflow.assert_has_calls(expected_calls_before_data_changes)
+            mock_submit_workflow.reset_mock()
 
-        bus_post_data_changes = BusSimulator()
-        service._message_bus = bus_post_data_changes
-        bus_post_data_changes.service = service
+            # Add an object to the source_branch to modify the data
+            obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
+            await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
+            await obj.save(db=db)
 
-        await pipeline(message=message, service=service)
+            await run_proposed_change_pipeline(model=model, service=service, context=context)
 
-        assert sorted(bus_pre_data_changes.seen_routing_keys) == [
-            "request.proposed_change.refresh_artifacts",
-        ]
-
-        assert sorted(bus_post_data_changes.seen_routing_keys) == [
-            "request.proposed_change.refresh_artifacts",
-        ]
+            expected_calls_after_data_changes = [
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+            ]
+            mock_submit_workflow.assert_has_calls(expected_calls_after_data_changes)
 
     async def test_run_generators_validate_requested_jobs(
         self,
@@ -191,8 +230,24 @@ class TestProposedChange(TestInfrahubApp):
             log=FakeLogger(),
             workflow=WorkflowLocalExecution(),
         )
-        await run_generators(model=model, context=context, service=service)
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow:
+            await run_generators(model=model, context=context, service=service)
 
-        assert sorted(bus.seen_routing_keys) == [
-            "request.proposed_change.refresh_artifacts",
-        ]
+            expected_calls = [
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
+                    parameters={
+                        "model": RequestProposedChangeRefreshArtifacts(
+                            proposed_change=model.proposed_change,
+                            source_branch=model.source_branch,
+                            source_branch_sync_with_git=model.source_branch_sync_with_git,
+                            destination_branch=model.destination_branch,
+                            branch_diff=model.branch_diff,
+                        )
+                    },
+                    context=ANY,
+                ),
+            ]
+            mock_submit_workflow.assert_has_calls(expected_calls)

@@ -1,9 +1,21 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from infrahub.context import InfrahubContext
+from infrahub.core.constants import CheckType
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
-from infrahub.message_bus.messages.proposed_change.base_with_diff import BaseProposedChangeWithDiffMessage
+from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition, ProposedChangeBranchDiff
+
+
+class BaseProposedChangeWithDiffMessage(InfrahubMessage):
+    """Sent trigger the refresh of artifacts that are impacted by the proposed change."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
+    source_branch: str = Field(..., description="The source branch of the proposed change")
+    source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
+    destination_branch: str = Field(..., description="The destination branch of the proposed change")
+    branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")
 
 
 class RequestProposedChangeDataIntegrity(BaseProposedChangeWithDiffMessage):
@@ -43,8 +55,6 @@ class RequestArtifactDefinitionCheck(BaseModel):
     source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     destination_branch: str = Field(..., description="The target branch")
 
-    context: InfrahubContext = Field(..., description="The context of the task")
-
 
 class RunGeneratorAsCheckModel(BaseModel):
     """A check that runs a generator."""
@@ -64,7 +74,6 @@ class RunGeneratorAsCheckModel(BaseModel):
     variables: dict = Field(..., description="Input variables when running the generator")
     validator_id: str = Field(..., description="The ID of the validator")
     proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
-    context: InfrahubContext = Field(..., description="The Infrahub context")
 
 
 class RequestGeneratorDefinitionCheck(BaseModel):
@@ -78,4 +87,19 @@ class RequestGeneratorDefinitionCheck(BaseModel):
     source_branch: str = Field(..., description="The source branch")
     source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     destination_branch: str = Field(..., description="The target branch")
-    context: InfrahubContext = Field(..., description="The Infrahub context")
+
+
+class RequestProposedChangePipeline(BaseModel):
+    """Sent request the start of a pipeline connected to a proposed change."""
+
+    proposed_change: str = Field(..., description="The unique ID of the proposed change")
+    source_branch: str = Field(..., description="The source branch of the proposed change")
+    source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
+    destination_branch: str = Field(..., description="The destination branch of the proposed change")
+    check_type: CheckType = Field(
+        default=CheckType.ALL, description="Can be used to restrict the pipeline to a specific type of job"
+    )
+
+
+class RequestProposedChangeRefreshArtifacts(BaseProposedChangeWithDiffMessage):
+    """Sent trigger the refresh of artifacts that are impacted by the proposed change."""

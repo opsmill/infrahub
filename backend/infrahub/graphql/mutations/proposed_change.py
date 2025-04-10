@@ -18,10 +18,10 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
-from infrahub.message_bus import messages
 from infrahub.proposed_change.constants import ProposedChangeState
-from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE
+from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
+from ...proposed_change.models import RequestProposedChangePipeline
 from ..types.task import TaskInfo
 from .main import InfrahubMutationOptions
 
@@ -65,18 +65,18 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 )
 
         if graphql_context.service:
-            message_list = [
-                messages.RequestProposedChangePipeline(
-                    proposed_change=proposed_change.id,
-                    source_branch=source_branch.name,
-                    source_branch_sync_with_git=source_branch.sync_with_git,
-                    destination_branch=destination_branch,
-                    context=graphql_context.get_context(),
-                ),
-            ]
+            request_proposed_change_model = RequestProposedChangePipeline(
+                proposed_change=proposed_change.id,
+                source_branch=source_branch.name,
+                source_branch_sync_with_git=source_branch.sync_with_git,
+                destination_branch=destination_branch,
+            )
 
-            for message in message_list:
-                await graphql_context.service.message_bus.send(message=message)
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+                parameters={"model": request_proposed_change_model},
+                context=graphql_context.get_context(),
+            )
 
         return proposed_change, result
 
@@ -175,16 +175,19 @@ class ProposedChangeRequestRunCheck(Mutation):
         destination_branch = proposed_change.destination_branch.value
         source_branch = await _get_source_branch(db=graphql_context.db, name=proposed_change.source_branch.value)
 
-        message = messages.RequestProposedChangePipeline(
+        request_proposed_change_model = RequestProposedChangePipeline(
             proposed_change=proposed_change.id,
             source_branch=source_branch.name,
             source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
-            context=graphql_context.get_context(),
         )
         if graphql_context.service:
-            await graphql_context.service.message_bus.send(message=message)
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+                parameters={"model": request_proposed_change_model},
+                context=graphql_context.get_context(),
+            )
 
         return {"ok": True}
 
