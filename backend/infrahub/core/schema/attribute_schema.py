@@ -147,6 +147,15 @@ class AttributeSchema(GeneratedAttributeSchema):
 
         return data
 
+    def get_regex(self) -> str | None:
+        return self.regex
+
+    def get_min_length(self) -> int | None:
+        return self.min_length
+
+    def get_max_length(self) -> int | None:
+        return self.max_length
+
     async def get_query_filter(
         self,
         name: str,
@@ -195,3 +204,12 @@ class TextAttributeSchema(AttributeSchema):
             final_max_length = self.parameters.max_length or self.max_length
             self.max_length = self.parameters.max_length = final_max_length
         return self
+
+    def get_regex(self) -> str | None:
+        return self.parameters.regex
+
+    def get_min_length(self) -> int | None:
+        return self.parameters.min_length
+
+    def get_max_length(self) -> int | None:
+        return self.parameters.max_length

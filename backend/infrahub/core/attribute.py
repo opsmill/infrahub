@@ -232,7 +232,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Content of the attribute value is not valid
         """
-        if schema.regex:
+        if regex := schema.get_regex():
             if schema.kind == "List":
                 validation_values = [str(entry) for entry in value]
             else:
@@ -240,22 +240,20 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             for validation_value in validation_values:
                 try:
-                    is_valid = re.match(pattern=schema.regex, string=str(validation_value))
+                    is_valid = re.match(pattern=regex, string=str(validation_value))
                 except re.error as exc:
-                    raise ValidationError(
-                        {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
-                    ) from exc
+                    raise ValidationError({name: f"The regex defined in the schema is not valid ({regex!r})"}) from exc
 
                 if not is_valid:
-                    raise ValidationError({name: f"{validation_value} must conform with the regex: {schema.regex!r}"})
+                    raise ValidationError({name: f"{validation_value} must conform with the regex: {regex!r}"})
 
-        if schema.min_length:
-            if len(value) < schema.min_length:
-                raise ValidationError({name: f"{value} must have a minimum length of {schema.min_length!r}"})
+        if min_length := schema.get_min_length():
+            if len(value) < min_length:
+                raise ValidationError({name: f"{value} must have a minimum length of {min_length!r}"})
 
-        if schema.max_length:
-            if len(value) > schema.max_length:
-                raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
+        if max_length := schema.get_max_length():
+            if len(value) > max_length:
+                raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
 
         if schema.enum:
             try:
