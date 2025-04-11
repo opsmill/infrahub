@@ -17,11 +17,13 @@ from .relationship.peer import RelationshipPeerChecker
 from .uniqueness.checker import UniquenessChecker
 
 CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
+    "attribute.kind.update": AttributeKindChecker,
     "attribute.regex.update": AttributeRegexChecker,
     "attribute.enum.update": AttributeEnumChecker,
-    "attribute.kind.update": AttributeKindChecker,
     "attribute.min_length.update": AttributeLengthChecker,
     "attribute.max_length.update": AttributeLengthChecker,
+    "attribute.parameters.min_length.update": AttributeLengthChecker,
+    "attribute.parameters.max_length.update": AttributeLengthChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,

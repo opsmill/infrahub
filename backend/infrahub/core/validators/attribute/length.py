@@ -23,8 +23,8 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["min_length"] = self.attribute_schema.min_length
-        self.params["max_length"] = self.attribute_schema.max_length
+        self.params["min_length"] = self.attribute_schema.get_min_length()
+        self.params["max_length"] = self.attribute_schema.get_max_length()
 
         query = """
         MATCH (n:%(node_kind)s)
@@ -79,14 +79,21 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
         return "attribute.length.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in ("attribute.min_length.update", "attribute.max_length.update")
+        return request.constraint_name in (
+            "attribute.min_length.update",
+            "attribute.max_length.update",
+            "attribute.parameters.min_length.update",
+            "attribute.parameters.max_length.update",
+        )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
-        if attribute_schema.min_length is None and attribute_schema.max_length is True:
+        min_length = attribute_schema.get_min_length()
+        max_length = attribute_schema.get_max_length()
+        if min_length is None and max_length is None:
             return grouped_data_paths_list
 
         for query_class in self.query_classes:

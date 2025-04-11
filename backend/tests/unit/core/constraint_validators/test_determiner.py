@@ -159,6 +159,8 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["name", "height"]]
+        name_attr_schema = person_schema.get_attribute("name")
+        name_attr_schema.parameters.max_length = 30
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner", "color__value"]]
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
@@ -181,8 +183,18 @@ class TestConstraintDeterminer:
                 property_name="uniqueness_constraints",
             ),
         )
+        max_length_param_constraint_info = SchemaUpdateConstraintInfo(
+            constraint_name="attribute.parameters.max_length.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.ATTRIBUTE,
+                schema_kind="TestPerson",
+                field_name="name",
+                property_name="parameters.max_length",
+            ),
+        )
         constraint_info_set.add(person_uniqueness_constraint_info)
         constraint_info_set.add(car_uniqueness_constraint_info)
+        constraint_info_set.add(max_length_param_constraint_info)
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 

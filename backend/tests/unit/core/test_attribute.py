@@ -400,7 +400,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 2/ a regex is defined and a valid value is provided
-    schema.regex = "^[A-Z7-9]+$"
+    schema.parameters.regex = "^[A-Z7-9]+$"
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
     # 3/ a regex is defined and a non-valid value is provided
@@ -408,7 +408,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 4/ An invalid regex is defined
-    schema.regex = "^[A-Z7-9"
+    schema.parameters.regex = "^[A-Z7-9"
     with pytest.raises(ValidationError):
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
@@ -420,8 +420,8 @@ async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, cri
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 2/ min_length or max_length are defined and a valid value is provided
-    schema.min_length = 5
-    schema.max_length = 10
+    schema.parameters.min_length = 5
+    schema.parameters.max_length = 10
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
     # 3/ min_length or max_length are defined and a non-valid value is provided
