@@ -1223,3 +1223,277 @@ async def branch(request, db: InfrahubDatabase, default_branch: Branch):
         return default_branch
 
     return await create_branch(branch_name=str(request.param), db=db)
+
+
+@pytest.fixture
+async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_car",
+                        "peer": "TestCar",
+                        "cardinality": "one",
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "fastest_cars",
+                        "peer": "TestCar",
+                        "cardinality": "many",
+                        "identifier": "person__fastest_cars",
+                    },
+                    {
+                        "name": "bags",
+                        "peer": "TestBag",
+                        "cardinality": "many",
+                        "identifier": "person__bag",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Test",
+                "inherit_from": ["TestPersonGeneric"],
+                "relationships": [],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Test",
+                "inherit_from": ["TestPersonGeneric"],
+                "attributes": [
+                    {"name": "age", "kind": "Number"},
+                    {"name": "citizenship", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "worst_car", "peer": "TestCar", "cardinality": "one", "identifier": "person__worst_car"},
+                    {
+                        "name": "slowest_cars",
+                        "peer": "TestCar",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "person__slowest_cars",
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPersonGeneric",
+                        "cardinality": "one",
+                        "identifier": "person__fastest_cars",
+                        "optional": True,
+                    },
+                ],
+            },
+            {
+                "name": "Bag",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPersonGeneric",
+                        "cardinality": "one",
+                        "identifier": "person__bag",
+                        "optional": False,
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "my_car",
+                        "peer": "TestCar",
+                        "cardinality": "one",
+                        "identifier": "person__mandatory_owner",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Test",
+                "inherit_from": ["TestPersonGeneric"],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Test",
+                "inherit_from": ["TestPersonGeneric"],
+            },
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "mandatory_owner",
+                        "peer": "TestPersonGeneric",
+                        "cardinality": "one",
+                        "optional": False,
+                        "identifier": "person__mandatory_owner",
+                    }
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Test",
+                "human_friendly_id": ["name_agnostic__value"],
+                "attributes": [
+                    {
+                        "name": "name_agnostic",
+                        "kind": "Text",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+                "relationships": [
+                    {
+                        "name": "car_agnostic",
+                        "peer": "TestCar",
+                        "cardinality": "one",
+                        "identifier": "person__car_agnostic",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Test",
+                "inherit_from": ["TestPersonGeneric"],
+                "attributes": [
+                    {
+                        "name": "age_1_agnostic",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                    {
+                        "name": "height_1_aware",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+                # "relationships": [
+                #     {
+                #         "name": "fastest_car_agnostic",
+                #         "peer": "TestCar",
+                #         "cardinality": "one",
+                #         "identifier": "person__fastest_car_agnostic",
+                #         "branch": BranchSupportType.AGNOSTIC.value
+                #     },
+                #     {
+                #         "name": "slowest_car_aware",
+                #         "peer": "TestCar",
+                #         "cardinality": "one",
+                #         "identifier": "person__slowest_car_aware",
+                #         "branch": BranchSupportType.AWARE.value
+                #     },
+                # ],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Test",
+                "inherit_from": ["TestPersonGeneric"],
+                "attributes": [
+                    {"name": "age_2_aware", "kind": "Number", "unique": True, "branch": BranchSupportType.AWARE.value},
+                    {
+                        "name": "height_2_agnostic",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+                # "relationships": [
+                #     {
+                #         "name": "fastest_car_aware",
+                #         "peer": "TestCar",
+                #         "cardinality": "one",
+                #         "identifier": "person__fastest_car_aware",
+                #         "branch": BranchSupportType.AWARE.value
+                #     },
+                #     {
+                #         "name": "slowest_car_agnostic",
+                #         "peer": "TestCar",
+                #         "cardinality": "one",
+                #         "identifier": "person__slowest_car_aware",
+                #         "branch": BranchSupportType.AGNOSTIC.value
+                #     },
+                # ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                # "relationships": [
+                #     {
+                #         "name": "owner_agnostic",
+                #         "peer": "TestCar",
+                #         "cardinality": "one",
+                #         "identifier": "person__car_agnostic",
+                #         "branch": BranchSupportType.AGNOSTIC.value
+                #     },
+                # ],
+            },
+        ],
+    }
+
+    return schema

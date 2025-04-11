@@ -561,7 +561,7 @@ class RelationshipValidatorList:
         ValidationError: If the number of relationships is not within the min and max count.
     """
 
-    def __init__(self, *relationships: Relationship, name: str, min_count: int = 0, max_count: int = 0) -> None:
+    def __init__(self, *relationships: Relationship, name: str, min_count: int, max_count: int) -> None:
         """Initialize list for Relationship but with validation against min/max count.
 
         Args:
@@ -788,6 +788,9 @@ class RelationshipManager:
             raise LookupError("you can't count relationships before the cache has been populated.")
 
         return len(self._relationships)
+
+    def validate(self) -> None:
+        self._relationships.validate()
 
     @overload
     async def get_peer(

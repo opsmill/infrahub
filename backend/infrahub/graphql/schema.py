@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from graphene import ObjectType
 
+from ..core.node.convert_object_kind.convert_object_kind import ConvertObjectType
+from ..core.node.convert_object_kind.schema_mapping import FieldMappingTypeConversion
 from .mutations.account import (
     InfrahubAccountSelfUpdate,
     InfrahubAccountTokenCreate,
@@ -77,6 +79,8 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
 
+    FieldMappingTypeConversion = FieldMappingTypeConversion
+
 
 class InfrahubBaseMutation(ObjectType):
     InfrahubAccountTokenCreate = InfrahubAccountTokenCreate.Field()
@@ -109,3 +113,5 @@ class InfrahubBaseMutation(ObjectType):
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
     ResolveDiffConflict = ResolveDiffConflict.Field()
+
+    ConvertObjectType = ConvertObjectType.Field()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -9,12 +9,10 @@ from infrahub_sdk.utils import extract_fields
 from typing_extensions import Self
 
 from infrahub import config, lock
-from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
-from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.schema.template_schema import TemplateSchema
@@ -27,14 +25,18 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 
+from .mutation_create import (
+    create_node,
+    get_profile_ids,
+    refresh_for_profile_update,
+)
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
-    from infrahub.core.protocols import CoreObjectTemplate
-    from infrahub.core.relationship.model import RelationshipManager
+    from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
@@ -144,33 +146,6 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
-    async def _get_profile_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
-        if not hasattr(obj, "profiles"):
-            return set()
-        profile_rels = await obj.profiles.get_relationships(db=db)
-        return {pr.peer_id for pr in profile_rels}
-
-    @classmethod
-    async def _refresh_for_profile_update(
-        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: set[str] | None = None
-    ) -> Node:
-        if not hasattr(obj, "profiles"):
-            return obj
-        current_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
-        if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
-            refreshed_node = await NodeManager.get_one_by_id_or_default_filter(
-                db=db,
-                kind=cls._meta.active_schema.kind,
-                id=obj.get_id(),
-                branch=branch,
-                include_owner=True,
-                include_source=True,
-            )
-            refreshed_node._node_changelog = obj.node_changelog
-            return refreshed_node
-        return obj
-
-    @classmethod
     async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch) -> Node:
         """
         Wrapper around mutate_create_object to potentially activate locking.
@@ -184,100 +159,6 @@ class InfrahubMutationMixin:
                 return await cls.mutate_create_object(data=data, db=db, branch=branch)
 
         return await cls.mutate_create_object(data=data, db=db, branch=branch)
-
-    @classmethod
-    async def _get_template_relationship_peers(
-        cls, db: InfrahubDatabase, template: CoreObjectTemplate, relationship: RelationshipSchema
-    ) -> Mapping[str, Node]:
-        """For a given relationship on the template, fetch the related peers."""
-        template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
-        if relationship.cardinality == RelationshipCardinality.MANY:
-            return await template_relationship_manager.get_peers(db=db)
-
-        peers: dict[str, Node] = {}
-        template_relationship_peer = await template_relationship_manager.get_peer(db=db)
-        if template_relationship_peer:
-            peers[template_relationship_peer.id] = template_relationship_peer
-        return peers
-
-    @classmethod
-    async def _extract_peer_data(
-        cls,
-        db: InfrahubDatabase,
-        template_peer: Node,
-        obj_peer_schema: MainSchemaTypes,
-        parent_obj: Node,
-        current_template: CoreObjectTemplate,
-    ) -> Mapping[str, Any]:
-        obj_peer_data: dict[str, Any] = {}
-
-        for attr in template_peer.get_schema().attribute_names:
-            if attr not in obj_peer_schema.attribute_names:
-                continue
-            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value, "source": template_peer.id}
-
-        for rel in template_peer.get_schema().relationship_names:
-            rel_manager: RelationshipManager = getattr(template_peer, rel)
-            if (
-                rel_manager.schema.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
-                or rel_manager.schema.name not in obj_peer_schema.relationship_names
-            ):
-                continue
-
-            if list(await rel_manager.get_peers(db=db)) == [current_template.id]:
-                obj_peer_data[rel] = {"id": parent_obj.id}
-
-        return obj_peer_data
-
-    @classmethod
-    async def _handle_template_relationships(
-        cls,
-        db: InfrahubDatabase,
-        branch: Branch,
-        obj: Node,
-        template: CoreObjectTemplate,
-        data: InputObjectType,
-        constraint_runner: NodeConstraintRunner | None = None,
-    ) -> None:
-        if constraint_runner is None:
-            component_registry = get_component_registry()
-            constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
-
-        for relationship in obj.get_relationships(kind=RelationshipKind.COMPONENT, exclude=list(data)):
-            template_relationship_peers = await cls._get_template_relationship_peers(
-                db=db, template=template, relationship=relationship
-            )
-            if not template_relationship_peers:
-                continue
-
-            for template_relationship_peer in template_relationship_peers.values():
-                # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
-                obj_peer_schema = registry.schema.get_node_schema(
-                    name=template_relationship_peer.get_schema().kind.removeprefix("Template"),
-                    branch=branch,
-                    duplicate=False,
-                )
-                obj_peer_data = await cls._extract_peer_data(
-                    db=db,
-                    template_peer=template_relationship_peer,
-                    obj_peer_schema=obj_peer_schema,
-                    parent_obj=obj,
-                    current_template=template,
-                )
-
-                obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch)
-                await obj_peer.new(db=db, **obj_peer_data)
-                await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
-                await obj_peer.save(db=db)
-
-                await cls._handle_template_relationships(
-                    db=db,
-                    branch=branch,
-                    constraint_runner=constraint_runner,
-                    obj=obj_peer,
-                    template=template_relationship_peer,
-                    data=data,
-                )
 
     @classmethod
     async def mutate_create(
@@ -301,51 +182,17 @@ class InfrahubMutationMixin:
         db: InfrahubDatabase,
         branch: Branch,
     ) -> Node:
-        component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(
-            NodeConstraintRunner, db=db.start_session(), branch=branch
+        schema = cls._meta.active_schema
+        if isinstance(schema, GenericSchema):
+            raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
+        # TODO here indicate we should create a new session for constraint check for perf reason
+        return await create_node(
+            data=dict(data),
+            db=db,
+            branch=branch,
+            schema=schema,
+            use_session_for_constraint_checks=True,
         )
-        node_class = Node
-        if cls._meta.active_schema.kind in registry.node:
-            node_class = registry.node[cls._meta.active_schema.kind]
-
-        fields_to_validate = list(data)
-        if db.is_transaction:
-            obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
-            await obj.new(db=db, **data)
-            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-            await obj.save(db=db)
-
-            object_template = await obj.get_object_template(db=db)
-            if object_template:
-                await cls._handle_template_relationships(
-                    db=db,
-                    branch=branch,
-                    template=object_template,
-                    obj=obj,
-                    data=data,
-                )
-        else:
-            async with db.start_transaction() as dbt:
-                obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
-                await obj.new(db=dbt, **data)
-                await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-                await obj.save(db=dbt)
-
-                object_template = await obj.get_object_template(db=dbt)
-                if object_template:
-                    await cls._handle_template_relationships(
-                        db=dbt,
-                        branch=branch,
-                        template=object_template,
-                        obj=obj,
-                        data=data,
-                    )
-
-        if await cls._get_profile_ids(db=db, obj=obj):
-            obj = await cls._refresh_for_profile_update(db=db, branch=branch, obj=obj)
-
-        return obj
 
     @classmethod
     async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
@@ -439,7 +286,7 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        before_mutate_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
+        before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
         await node_constraint_runner.check(
@@ -453,8 +300,12 @@ class InfrahubMutationMixin:
 
         await obj.save(db=db, fields=fields)
 
-        obj = await cls._refresh_for_profile_update(
-            db=db, branch=branch, obj=obj, previous_profile_ids=before_mutate_profile_ids
+        obj = await refresh_for_profile_update(
+            db=db,
+            branch=branch,
+            obj=obj,
+            previous_profile_ids=before_mutate_profile_ids,
+            schema=cls._meta.active_schema,
         )
         return obj
 
