@@ -688,7 +688,7 @@ async def test_test_number_pool_creation_errors(
         root_value=None,
         variable_values={
             "name": "pool1",
-            "node": "CoreGroup",
+            "node": "ProfileTestingTicket",
             "node_attribute": "ticket_id",
             "start_range": 1,
             "end_range": 3,
