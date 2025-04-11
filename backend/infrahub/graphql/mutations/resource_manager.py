@@ -177,9 +177,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         try:
-            pool_node = registry.get_node_schema(name=data["node"].value)
-        except ValueError as exc:
-            raise ValidationError(input_value="The selected model is not a Node") from exc
+            pool_node = registry.schema.get(name=data["node"].value)
+            if not pool_node.is_generic_schema or not pool_node.is_node_schema:
+                raise ValidationError(input_value="The selected model is not a Node or a Generic")
         except SchemaNotFoundError as exc:
             exc.message = "The selected model does not exist"
             raise exc
