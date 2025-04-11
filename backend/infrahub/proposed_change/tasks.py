@@ -63,6 +63,12 @@ from infrahub.message_bus.types import (
     ProposedChangeRepository,
     ProposedChangeSubscriber,
 )
+from infrahub.proposed_change.branch_diff import (
+    get_modified_node_ids,
+    has_data_changes,
+    has_node_changes,
+    set_diff_summary_cache,
+)
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import (
     RequestArtifactDefinitionCheck,
@@ -1007,8 +1013,11 @@ async def run_proposed_change_pipeline(
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
     diff_summary = await service.client.get_diff_summary(branch=model.source_branch)
-    branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
-    await _populate_subscribers(branch_diff=branch_diff, service=service, branch=model.source_branch)
+    await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=service.cache)
+    branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
+    await _populate_subscribers(
+        branch_diff=branch_diff, diff_summary=diff_summary, service=service, branch=model.source_branch
+    )
 
     if model.check_type is CheckType.ARTIFACT:
         request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
@@ -1040,7 +1049,9 @@ async def run_proposed_change_pipeline(
             parameters={"model": model_proposed_change_run_generator},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(branch=model.source_branch):
+    if model.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(
+        diff_summary=diff_summary, branch=model.source_branch
+    ):
         model_proposed_change_data_integrity = RequestProposedChangeDataIntegrity(
             proposed_change=model.proposed_change,
             source_branch=model.source_branch,
@@ -1068,8 +1079,8 @@ async def run_proposed_change_pipeline(
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
-        branch=model.source_branch
+    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
+        diff_summary=diff_summary, branch=model.source_branch
     ):
         await service.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
@@ -1118,6 +1129,8 @@ async def refresh_artifacts(
     artifact_definitions = _parse_artifact_definitions(
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=service.cache)
+    modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for artifact_definition in artifact_definitions:
         # Request artifact definition checks if the source branch that is managed in combination
@@ -1133,7 +1146,7 @@ async def refresh_artifacts(
             condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
         )
 
-        for changed_model in model.branch_diff.modified_kinds(branch=model.source_branch):
+        for changed_model in modified_kinds:
             condition = False
             if (changed_model in artifact_definition.query_models) or (
                 changed_model.startswith("Profile")
@@ -1496,11 +1509,13 @@ async def _gather_repository_repository_diffs(
             repo.files_changed = files_changed
 
 
-async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: InfrahubServices, branch: str) -> None:
+async def _populate_subscribers(
+    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], service: InfrahubServices, branch: str
+) -> None:
     result = await service.client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,
-        variables={"members": branch_diff.modified_nodes(branch=branch)},
+        variables={"members": get_modified_node_ids(diff_summary=diff_summary, branch=branch)},
     )
 
     for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
