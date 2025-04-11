@@ -180,11 +180,17 @@ class TestTriggerProposedChange(TestInfrahubApp):
                 account_session=account_session,
             )
 
+            calls = mock_submit_workflow.call_args_list
+            assert len(calls) == 2
+            first_model = calls[0].kwargs["parameters"]["model"]
+            second_model = calls[1].kwargs["parameters"]["model"]
+
             expected_calls = [
                 call(
                     workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
                     parameters={
                         "model": RequestProposedChangePipeline(
+                            pipeline_id=first_model.pipeline_id,
                             proposed_change=proposed_change.id,
                             source_branch=source_branch.name,
                             source_branch_sync_with_git=source_branch.sync_with_git,
@@ -198,6 +204,7 @@ class TestTriggerProposedChange(TestInfrahubApp):
                     workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
                     parameters={
                         "model": RequestProposedChangePipeline(
+                            pipeline_id=second_model.pipeline_id,
                             proposed_change=proposed_change.id,
                             source_branch=source_branch.name,
                             source_branch_sync_with_git=source_branch.sync_with_git,
