@@ -1,6 +1,5 @@
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
-from .event_branch_merge import EventBranchMerge
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .refresh_git_fetch import RefreshGitFetch
@@ -9,7 +8,6 @@ from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
-    "event.branch.merge": EventBranchMerge,
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,
     "refresh.git.fetch": RefreshGitFetch,

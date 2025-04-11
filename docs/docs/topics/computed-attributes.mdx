@@ -13,7 +13,6 @@ Currently, Infrahub supports two main types of computed attributes:
 
 Computed attributes have some inherent restrictions due to system constraints and performance considerations. Keep these in mind when designing your schema:
 
-* Computed attributes **can only** be used on nodes, not generics. [FEATURE-5736](https://github.com/opsmill/infrahub/issues/5736)
 * Only `URL` and `Text` attribute kinds are supported for computed attributes.
 
 ::::
@@ -30,6 +29,7 @@ See the [guide](../guides/computed-attributes) for instructions on creating Jinj
 
 * Jinja2 computed attributes **cannot** reference relationships with cardinality `many`.
 * Only **direct** relationships can be used (i.e., a relationship of a relationship is not accessible).
+* A computed attribute can only be inherited from one generic, as the order of operations would be unclear if the same computed attribute was defined on multiple generics.
 
 ::::
 

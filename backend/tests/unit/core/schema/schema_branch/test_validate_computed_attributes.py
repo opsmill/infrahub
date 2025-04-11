@@ -24,6 +24,25 @@ from infrahub.core.schema.schema_branch import SchemaBranch
                             AttributeSchema(
                                 name="computed",
                                 kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2, jinja2_template="n/a"
+                                ),
+                            ),
+                        ],
+                    ),
+                    GenericSchema(
+                        name="Robot",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
                                 computed_attribute=ComputedAttribute(
                                     kind=ComputedAttributeKind.JINJA2, jinja2_template="n/a"
                                 ),
@@ -31,9 +50,69 @@ from infrahub.core.schema.schema_branch import SchemaBranch
                         ],
                     ),
                 ],
+                nodes=[
+                    NodeSchema(
+                        name="Cyborg",
+                        namespace="Testing",
+                        inherit_from=["TestingPerson", "TestingRobot"],
+                    ),
+                ],
             ),
-            "TestingPerson: Attribute 'computed' computed attributes are only allowed on nodes not generics",
-            id="jinja2_on_generic",
+            "TestingCyborg: 'computed' is declared as a computed attribute from multiple generics ['TestingPerson', 'TestingRobot']",
+            id="jinja2_on_multiple_generics",
+        ),
+        pytest.param(
+            SchemaRoot(
+                generics=[
+                    GenericSchema(
+                        name="Person",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                optional=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="ComputedPerson"
+                                ),
+                            ),
+                        ],
+                    ),
+                    GenericSchema(
+                        name="Robot",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                optional=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="ComputedRobot"
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+                nodes=[
+                    NodeSchema(
+                        name="Cyborg",
+                        namespace="Testing",
+                        inherit_from=["TestingPerson", "TestingRobot"],
+                    ),
+                ],
+            ),
+            "TestingCyborg: 'computed' is declared as a computed attribute from multiple generics ['TestingPerson', 'TestingRobot']",
+            id="transform_on_multiple_generics",
         ),
         pytest.param(
             SchemaRoot(
@@ -291,6 +370,6 @@ async def test_schema_computed_attribute_violations(schema_root: SchemaRoot, exp
     schema.load_schema(schema=schema_root)
 
     with pytest.raises(ValueError) as exc:
-        schema.validate_computed_attributes()
+        schema.process()
 
     assert str(exc.value) == expected_error

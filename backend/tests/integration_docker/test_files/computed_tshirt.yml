@@ -18,6 +18,22 @@ generics:
         kind: Text
         optional: true
 
+  - name: Wearable
+    namespace: Testing
+    human_friendly_id: ["name__value"]
+    include_in_menu: true
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+      - name: name_code
+        kind: Text
+        optional: false
+        read_only: true
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "WEARABLE-{{ name__value | upper }}"
+
 nodes:
   - name: Color
     namespace: Testing
@@ -45,6 +61,8 @@ nodes:
       - "name__value"
     display_labels:
       - "name__value"
+    inherit_from:
+      - TestingWearable
     attributes:
       - name: name
         kind: Text
