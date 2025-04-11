@@ -6,9 +6,31 @@ ignorecase: false
 action:
   name: replace
 swap:
-  (?i:[^/]Github): GitHub
-  (?i:gitpod): GitPod
-  (?i:[^/]Graphql): GraphQL
+  (?:ansible): Ansible
+  (?:[^"]docker): Docker
+  (?:[Dd]ockerhub): DockerHub
+  (?:[^/][Gg]ithub): GitHub
+  (?:[Gg]itlab): GitLab
+  (?:gitpod): GitPod
+  (?:grafana): Grafana
+  (?:[^/][Gg]raphql): GraphQL
+  (?:[Ii]nflux[Dd]b): InfluxDB
   infrahub(?:\s|$): Infrahub
-  (?i:Openconfig): OpenConfig
+  (?:jinja2): Jinja2
+  (?:k3s): K3s
+  (?:k8s): K8s
+  (?:kubernetes): Kubernetes
+  (?:[^/][Mm]y[Ss]ql): MySQL
+  (?:neo4j): Neo4j
+  (?:[^/][Nn]ginx): NGINX
+  (?:[Nn]odejs): Node.js
+  (?:[^/][Oo]penapi): OpenAPI
+  (?:Openconfig): OpenConfig
   opsmill(?:\s|$): OpsMill
+  (?:[Pp]ostgre[Ss]ql): PostgreSQL
+  (?:[^/]prometheus): Prometheus
+  (?:[^/-]python): Python
+  (?:[Rr]abbitmq): RabbitMQ
+  (?:[^/]terraform): Terraform
+  (?:ubuntu): Ubuntu
+  (?:[Vv]s\W?[Cc]ode): VS Code

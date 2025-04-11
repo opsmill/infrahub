@@ -29,7 +29,7 @@ export INFRAHUB_USERNAME=admin
 export INFRAHUB_PASSWORD=infrahub
 export INFRAHUB_TIMEOUT=20
 export INFRAHUB_METRICS_PORT=8001
-export INFRAHUB_DB_TYPE=neo4j # Accepts neo4j or memgraph
+export INFRAHUB_DB_TYPE=neo4j # Accepts Neo4j or Memgraph
 export INFRAHUB_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
 export INFRAHUB_STORAGE_LOCAL_PATH="${HOME}/Development/infrahub-storage"
 export INFRAHUB_API_CORS_ALLOW_ORIGINS='["http://localhost:8080"]' # Allow frontend/backend communications without CORS issues
@@ -41,7 +41,7 @@ The exported environment variables are very important and must be set before mov
 
 Infrahub uses several external services to work:
 
-* A neo4j database
+* A Neo4j database
 * A Redis in-memory store
 * A RabbitMQ message broker
 
