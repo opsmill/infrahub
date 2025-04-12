@@ -3,7 +3,6 @@ from prefect import Flow
 
 from infrahub.message_bus import RPCErrorResponse, messages
 from infrahub.message_bus.operations import (
-    event,
     git,
     refresh,
     send,
@@ -13,7 +12,6 @@ from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
 
 COMMAND_MAP = {
-    "event.branch.merge": event.branch.merge,
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,

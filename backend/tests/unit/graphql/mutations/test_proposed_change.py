@@ -180,11 +180,17 @@ class TestTriggerProposedChange(TestInfrahubApp):
                 account_session=account_session,
             )
 
+            calls = mock_submit_workflow.call_args_list
+            assert len(calls) == 2
+            first_model = calls[0].kwargs["parameters"]["model"]
+            second_model = calls[1].kwargs["parameters"]["model"]
+
             expected_calls = [
                 call(
                     workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
                     parameters={
                         "model": RequestProposedChangePipeline(
+                            pipeline_id=first_model.pipeline_id,
                             proposed_change=proposed_change.id,
                             source_branch=source_branch.name,
                             source_branch_sync_with_git=source_branch.sync_with_git,
@@ -198,6 +204,7 @@ class TestTriggerProposedChange(TestInfrahubApp):
                     workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
                     parameters={
                         "model": RequestProposedChangePipeline(
+                            pipeline_id=second_model.pipeline_id,
                             proposed_change=proposed_change.id,
                             source_branch=source_branch.name,
                             source_branch_sync_with_git=source_branch.sync_with_git,
@@ -254,61 +261,68 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     assert "A proposed change in the merged state is not allowed to be updated" in str(update_status.errors[0])
 
 
-async def test_merge_proposed_change_permission_failure(
-    db: InfrahubDatabase,
-    register_core_models_schema: None,
-    session_first_account: AccountSession,
-    session_admin: AccountSession,
-):
-    service = await InfrahubServices.new(
-        database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
-    )
-    async with get_client(sync_client=False) as client:
-        await setup_worker_pools(client=client)
-        await setup_deployments(client)
+class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
+    async def test_merge_proposed_change_permission_failure(
+        self,
+        db: InfrahubDatabase,
+        register_core_models_schema: None,
+        session_first_account: AccountSession,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+    ):
+        service = await InfrahubServices.new(
+            database=db,
+            message_bus=BusRecorder(),
+            workflow=WorkflowLocalExecution(),
+            cache=MemoryCache(),
+            client=client,
+        )
+        async with get_client(sync_client=False) as prefect_client:
+            await setup_worker_pools(client=prefect_client)
+            await setup_deployments(prefect_client)
 
-    registry.permission_backends = [LocalPermissionBackend()]
+        registry.permission_backends = [LocalPermissionBackend()]
 
-    branch_name = "merge-proposed-change-perm"
-    branch = await create_branch(branch_name=branch_name, db=db)
-    await service.cache.set(
-        key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-        value=branch.active_schema_hash.main,
-        expires=KVTTL.TWO_HOURS,
-    )
-    await service.cache.set(
-        key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-        value=Timestamp().to_string(),
-        expires=KVTTL.FIFTEEN,
-    )
-    await service.component.refresh_heartbeat()
+        branch_name = "merge-proposed-change-perm"
+        branch = await create_branch(branch_name=branch_name, db=db)
+        await service.cache.set(
+            key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+            value=branch.active_schema_hash.main,
+            expires=KVTTL.TWO_HOURS,
+        )
+        await service.cache.set(
+            key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+            value=Timestamp().to_string(),
+            expires=KVTTL.FIFTEEN,
+        )
+        await service.component.refresh_heartbeat()
 
-    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-    await proposed_change.new(
-        db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
-    )
-    await proposed_change.save(db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+        )
+        await proposed_change.save(db=db)
 
-    update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "state": "merged"},
-        account_session=session_first_account,
-        service=service,
-    )
+        update_status = await graphql_mutation(
+            query=UPDATE_PROPOSED_CHANGE,
+            db=db,
+            variables={"proposed_change": proposed_change.id, "state": "merged"},
+            account_session=session_first_account,
+            service=service,
+        )
 
-    assert update_status.errors
-    assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
+        assert update_status.errors
+        assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
 
-    update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "state": "merged"},
-        account_session=session_admin,
-        service=service,
-    )
+        update_status = await graphql_mutation(
+            query=UPDATE_PROPOSED_CHANGE,
+            db=db,
+            variables={"proposed_change": proposed_change.id, "state": "merged"},
+            account_session=session_admin,
+            service=service,
+        )
 
-    assert not update_status.errors
+        assert not update_status.errors
 
 
 async def test_create_thread(

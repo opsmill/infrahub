@@ -259,7 +259,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
             return
 
-        if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
+        if (
+            number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
+            and number_pool.node_attribute.value == attribute.name
+        ):
             try:
                 next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
             except PoolExhaustedError:

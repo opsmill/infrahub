@@ -50,7 +50,7 @@ class CoreNumberPool(Node):
             taken=taken,
         )
         if next_number is None:
-            raise PoolExhaustedError("There are no more addresses available in this pool.")
+            raise PoolExhaustedError("There are no more values available in this pool.")
 
         return next_number
 
