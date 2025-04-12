@@ -1,1 +1,0 @@
-Update component relationship form to quickly create a new object and associate it to the current node
