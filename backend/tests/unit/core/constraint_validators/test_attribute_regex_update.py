@@ -19,7 +19,7 @@ async def test_query(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -65,7 +65,7 @@ async def test_query_NULL_allowed(
 
     car_schema = registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
-    color_attr.regex = r"^#[a-z0-9]+$"
+    color_attr.parameters.regex = r"^#[a-z0-9]+$"
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color")
 
@@ -106,7 +106,7 @@ async def test_query_update_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -137,7 +137,7 @@ async def test_query_node_deleted_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -162,12 +162,12 @@ async def test_validator(
 
     person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
-        constraint_name="attribute.regex.update",
+        constraint_name="attribute.parameters.regex.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         schema_branch=SchemaBranch(cache={}),

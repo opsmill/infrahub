@@ -19,6 +19,7 @@ from .uniqueness.checker import UniquenessChecker
 CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "attribute.kind.update": AttributeKindChecker,
     "attribute.regex.update": AttributeRegexChecker,
+    "attribute.parameters.regex.update": AttributeRegexChecker,
     "attribute.enum.update": AttributeEnumChecker,
     "attribute.min_length.update": AttributeLengthChecker,
     "attribute.max_length.update": AttributeLengthChecker,
