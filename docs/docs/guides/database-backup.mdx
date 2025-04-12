@@ -34,7 +34,7 @@ python -m utilities.db_backup neo4j backup --host-network --database-url=172.28.
 python -m utilities.db_backup neo4j backup --database-backup-port=12345 /infrahub_backups
 ```
 
-In this example, I am running the backup command on the same machine that is running the Infrahub Docker containers. In this case, port `12345` must also have been set using the `NEO4J_server_backup_listen__address` environment variable in the Infrahub database container.
+In this example, I am running the backup command on the same machine that is running the Infrahub docker containers. In this case, port `12345` must also have been set using the `NEO4J_server_backup_listen__address` environment variable in the Infrahub database container.
 
 ## Restore a backup on a non-default cypher port
 
