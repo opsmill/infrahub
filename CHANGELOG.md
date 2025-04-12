@@ -23,6 +23,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ### Changed
 
 - Allowed using a generic in a number pool to group number allocation for all nodes inheriting from a given generic. ([#6080](https://github.com/opsmill/infrahub/issues/6080))
+- Allowed specifying an empty string for optional text schema attributes in order to remove existing values.
 
 ### Fixed
 
@@ -30,6 +31,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fixed the ability to override default timeout for Python transform and checks. ([#6267](https://github.com/opsmill/infrahub/issues/6267))
 - Fixed a vertical scrolling issue in hierarchical node detailed view. ([#6269](https://github.com/opsmill/infrahub/issues/6269))
 - Fixed a horizontal scrolling issue in tabs. ([#6272](https://github.com/opsmill/infrahub/issues/6272))
+- Fixed the upsert operation when updating relationships with cardinality `one` or `many` having min/max count constraints.
 
 ## [Infrahub - v1.2.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.4) - 2025-04-04
 
