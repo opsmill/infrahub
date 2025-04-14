@@ -65,7 +65,9 @@ export default {
     },
   },
   plugins: [
-    animate,
+    // disable animations in CI to avoid flaky tests.
+    // using prefers-reduced-motion and motion-safe was not working when combined with data attributes in tailwind.
+    process.env.CI ? () => {} : animate,
     function ({ addUtilities, theme }) {
       const utilities = {
         ".bg-stripes": {
