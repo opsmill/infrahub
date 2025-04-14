@@ -5,17 +5,73 @@ title: Upgrade Infrahub Community
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-The process to migrate your instance of Infrahub to the latest version may vary depending on your deployment of Infrahub.
+The process to migrate your instance of Infrahub to the latest version will vary depending on your deployment of Infrahub.
 However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
 
-Follow the instructions below for your current release version and deployment method:
+For installation instructions, please refer to our [Installation Guide](./installation).
+
+Follow the instructions below for your current release version and deployment method.
 
 :::info
 Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand.
 For detailed information, see our [Backup Guide](./database-backup).
 :::
 
-## Before 1.2 version
+## Upgrading to Infrahub 1.2 and after
+
+In version 1.2 the upgrade process has been streamlined with a unified upgrade command:
+
+<Tabs>
+  <TabItem value="docker" label="Docker" default>
+    ```bash
+    # Bring down the current environment
+    docker compose down
+
+    # Pull the new docker-compose file
+    curl https://infrahub.opsmill.io > docker-compose.yml
+
+    # Run the unified upgrade command
+    docker compose run infrahub-server infrahub upgrade
+
+    # Bring the environment back up
+    docker compose up -d
+    ```
+  </TabItem>
+  <TabItem value="helm" label="Helm">
+    ```bash
+    # Upgrade the Helm release
+    helm upgrade
+
+    # Run the unified upgrade command inside the server pod
+    kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+
+    # Restart deployments to apply changes
+    kubectl rollout restart deployment/prefect-server
+    kubectl rollout restart deployment/infrahub-infrahub-server
+    ```
+  </TabItem>
+  <TabItem value="devdemo" label="Dev/Demo">
+    ```bash
+    # Stop the current instance
+    invoke demo.stop
+
+    # Rebuild and run the unified upgrade command
+    invoke demo.build
+    invoke demo.migrate
+
+    # Restart the instance
+    invoke demo.start
+    ```
+
+    Or for a clean instance (warning: all data will be lost):
+
+    ```bash
+    invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+    ```
+  </TabItem>
+</Tabs>
+
+## Upgrading to Infrahub 1.1 and before
 
 <Tabs>
   <TabItem value="docker" label="Docker" default>
@@ -62,57 +118,3 @@ For detailed information, see our [Backup Guide](./database-backup).
     ```
   </TabItem>
 </Tabs>
-
-## Version 1.2 and after
-
-In version 1.2 the upgrade process has been streamlined with a unified upgrade command:
-
-<Tabs>
-  <TabItem value="docker" label="Docker" default>
-    ```bash
-    # Bring down the current environment
-    docker compose down
-
-    # Pull the new docker-compose file
-    curl https://infrahub.opsmill.io > docker-compose.yml
-
-    # Run the unified upgrade command
-    docker compose run infrahub-server infrahub upgrade
-
-    # Bring the environment back up
-    docker compose up -d
-    ```
-  </TabItem>
-  <TabItem value="helm" label="Helm">
-    ```bash
-    # Upgrade the Helm release
-    helm upgrade
-
-    # Run the unified upgrade command inside the server pod
-    kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
-
-    # Restart deployments to apply changes
-    kubectl rollout restart deployment/prefect-server
-    kubectl rollout restart deployment/infrahub-infrahub-server
-    ```
-  </TabItem>
-  <TabItem value="devdemo" label="Dev/Demo">
-    ```bash
-    # Stop the current instance
-    invoke demo.stop
-
-    # Rebuild and run the unified upgrade command
-    invoke demo.build
-    invoke demo.migrate
-
-    # Restart the instance
-    invoke demo.start
-    ```
-    or for a clean instance (warning: all data will be lost):
-    ```bash
-    invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
-    ```
-  </TabItem>
-</Tabs>
-
-For installation instructions, please refer to our [Installation Guide](./installation).
