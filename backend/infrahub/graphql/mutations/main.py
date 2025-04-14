@@ -497,6 +497,8 @@ class InfrahubMutationMixin:
         dict_data = dict(data)
         node = None
 
+        print(f"Upserting a {schema_name=} with {schema.human_friendly_id=} and {schema.default_filter=}")
+
         if "id" in dict_data:
             node = await NodeManager.get_one(
                 db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True

@@ -30,7 +30,7 @@ class TestUpsertWithBothHfidAndDefaulFilter(TestInfrahubApp):
 
         lastnames = ["Martin", "Dupont", "Doe"]
         for lastname in lastnames:
-            person = await client.create("TestPerson", firstname="Clement", lastname=lastname)
+            person = await client.create("TestPerson", firstname="John", lastname=lastname)
             await person.save(allow_upsert=True)
 
         persons = await client.all(kind="TestPerson")
