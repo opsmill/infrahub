@@ -610,7 +610,7 @@ async def load_export_cmd(
 ) -> None:
     """
     Cannot be used for backup/restore functionality.
-    Loads an anonymized export into neo4j.
+    Loads an anonymized export into Neo4j.
     Only used for analysis of output of the selected-export command.
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
