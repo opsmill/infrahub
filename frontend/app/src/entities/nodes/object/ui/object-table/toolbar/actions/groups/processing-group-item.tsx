@@ -1,32 +1,24 @@
-import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
+import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-item";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { NodeObject } from "@/entities/nodes/types";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { useMutation } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import React from "react";
 
-import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/add-to-groups/group-item";
-
 export interface ProcessingGroupItemProps {
   group: RelationshipNode;
-  selectedRows: NodeObject[];
+  mutationFn: (group: RelationshipNode) => Promise<void>;
   onSuccess: () => void;
 }
 
-export function ProcessingGroupItem({ group, selectedRows, onSuccess }: ProcessingGroupItemProps) {
-  const { mutate: addRelationships, isPending, error } = useAddRelationships();
+export function ProcessingGroupItem({ group, mutationFn, onSuccess }: ProcessingGroupItemProps) {
+  const { mutate, isPending, error } = useMutation({
+    mutationFn,
+    onSuccess,
+  });
 
   const handleProcessing = () => {
-    addRelationships(
-      {
-        objectId: group.id,
-        relationshipName: "members",
-        relationshipIds: selectedRows.map((row) => row.id),
-      },
-      {
-        onSuccess,
-      }
-    );
+    mutate(group);
   };
 
   React.useEffect(() => {

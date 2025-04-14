@@ -1,35 +1,15 @@
-import { ProcessingGroupsPanel } from "@/entities/nodes/object/ui/object-table/toolbar/add-to-groups/processing-groups-panel";
-import { SelectedGroupsPanel } from "@/entities/nodes/object/ui/object-table/toolbar/add-to-groups/selected-groups-panel";
-import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
+import {
+  ProcessingGroupsPanel,
+  ProcessingGroupsPanelProps,
+} from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-groups-panel";
+import { SelectedGroupsPanel } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-groups-panel";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { NodeObject } from "@/entities/nodes/types";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import React from "react";
-import { DialogTrigger } from "react-aria-components";
 
-export interface ToolbarAddToGroupActionProps {
-  selectedRows: Array<NodeObject>;
-}
+export interface BulkMutateGroupsProps extends Omit<ProcessingGroupsPanelProps, "selectedGroups"> {}
 
-export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActionProps) {
-  return (
-    <DialogTrigger>
-      <ToolbarButton>Add to groups</ToolbarButton>
-
-      <Popover placement="top start">
-        <PopoverDialog className="p-0">
-          {({ close }) => <BulkAddToGroups selectedRows={selectedRows} onSuccess={close} />}
-        </PopoverDialog>
-      </Popover>
-    </DialogTrigger>
-  );
-}
-
-export function BulkAddToGroups({
-  selectedRows,
-  onSuccess,
-}: ToolbarAddToGroupActionProps & { onSuccess: () => void }) {
+export function BulkMutateGroups({ mutationFn, onSuccess }: BulkMutateGroupsProps) {
   const [selectedGroups, setSelectedGroups] = React.useState<RelationshipNode[]>([]);
   const [isProcessing, setIsProcessing] = React.useState(false);
 
@@ -37,7 +17,7 @@ export function BulkAddToGroups({
     return (
       <ProcessingGroupsPanel
         selectedGroups={selectedGroups}
-        selectedRows={selectedRows}
+        mutationFn={mutationFn}
         onSuccess={onSuccess}
       />
     );

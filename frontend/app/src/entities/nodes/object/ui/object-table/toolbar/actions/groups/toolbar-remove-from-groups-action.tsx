@@ -1,0 +1,39 @@
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
+import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
+import { removeRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
+import { NodeObject } from "@/entities/nodes/types";
+import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { DialogTrigger } from "react-aria-components";
+
+export interface ToolBarRemoveFromGroupActionProps {
+  selectedRows: Array<NodeObject>;
+}
+
+export function ToolBarRemoveFromGroupsAction({ selectedRows }: ToolBarRemoveFromGroupActionProps) {
+  const { currentBranch } = useCurrentBranch();
+
+  return (
+    <DialogTrigger>
+      <ToolbarButton className="text-red-600 border-red-200">Remove from groups</ToolbarButton>
+
+      <Popover placement="top start">
+        <PopoverDialog className="p-0">
+          {({ close }) => (
+            <BulkMutateGroups
+              mutationFn={async (group) => {
+                await removeRelationships({
+                  objectId: group.id,
+                  relationshipName: "members",
+                  relationshipIds: selectedRows.map((row) => row.id),
+                  branchName: currentBranch.name,
+                });
+              }}
+              onSuccess={close}
+            />
+          )}
+        </PopoverDialog>
+      </Popover>
+    </DialogTrigger>
+  );
+}

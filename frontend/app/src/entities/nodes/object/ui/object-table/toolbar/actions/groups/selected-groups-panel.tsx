@@ -1,9 +1,9 @@
-import { SelectedGroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/add-to-groups/selected-group-item";
 import {
   GroupPanelBody,
   GroupPanelFooter,
   GroupPanelHeader,
-} from "@/entities/nodes/object/ui/object-table/toolbar/group-panel";
+} from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-panel";
+import { SelectedGroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-group-item";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ListBox } from "react-aria-components";
