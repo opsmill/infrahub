@@ -4,12 +4,21 @@ import {
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-groups-panel";
 import { SelectedGroupsPanel } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-groups-panel";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import {
+  RelationshipComboboxList,
+  RelationshipComboboxListProps,
+} from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import React from "react";
 
-export interface BulkMutateGroupsProps extends Omit<ProcessingGroupsPanelProps, "selectedGroups"> {}
+export interface BulkMutateGroupsProps extends Omit<ProcessingGroupsPanelProps, "selectedGroups"> {
+  groupsQueryFilter?: RelationshipComboboxListProps["filterQuery"];
+}
 
-export function BulkMutateGroups({ mutationFn, onSuccess }: BulkMutateGroupsProps) {
+export function BulkMutateGroups({
+  mutationFn,
+  onSuccess,
+  groupsQueryFilter,
+}: BulkMutateGroupsProps) {
   const [selectedGroups, setSelectedGroups] = React.useState<RelationshipNode[]>([]);
   const [isProcessing, setIsProcessing] = React.useState(false);
 
@@ -34,6 +43,7 @@ export function BulkMutateGroups({ mutationFn, onSuccess }: BulkMutateGroupsProp
         filterItem={(node) => !selectedGroups.some((v) => v.id === node.id)}
         className="max-h-[12rem] max-w-xs"
         data-testid="group-selector"
+        filterQuery={groupsQueryFilter}
       />
 
       {selectedGroups.length > 0 && (

@@ -30,6 +30,7 @@ export function ToolBarRemoveFromGroupsAction({ selectedRows }: ToolBarRemoveFro
                 });
               }}
               onSuccess={close}
+              groupsQueryFilter={{ members__ids: selectedRows.map((row) => row.id) }}
             />
           )}
         </PopoverDialog>
