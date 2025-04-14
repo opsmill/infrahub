@@ -260,7 +260,7 @@ class TestWebhookTasks(TestInfrahubApp):
             "transform_class": "WebhookTransformer",
             "transform_file": "transforms/webhook_transformer.py",
             "transform_name": "WebhookTransformer",
-            "transform_timeout": 10,
+            "transform_timeout": 5,
             "url": "https://url.mock",
             "validate_certificates": False,
             "webhook_type": "TransformWebhook",

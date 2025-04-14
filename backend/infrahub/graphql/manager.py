@@ -114,6 +114,16 @@ class GraphQLSchemaManager:
         cls._branch_details_by_name = {}
 
     @classmethod
+    def purge_inactive(cls, active_branches: list[str]) -> set[str]:
+        """Return inactive branches that were purged"""
+        inactive_branches: set[str] = set()
+        for branch_name in list(cls._branch_details_by_name):
+            if branch_name not in active_branches:
+                inactive_branches.add(branch_name)
+                del cls._branch_details_by_name[branch_name]
+        return inactive_branches
+
+    @classmethod
     def _cache_branch(
         cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str | None = None
     ) -> BranchDetails:

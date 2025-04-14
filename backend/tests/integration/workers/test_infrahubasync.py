@@ -75,7 +75,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         assert flow_after.state
         assert flow_after.state.type == StateType.COMPLETED
 
-        result = await flow_after.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
+        result = await flow_after.state.result(raise_on_failure=True)
         assert isinstance(result, DummyOutput)
         assert result.full_name == "John, Doe"
 
@@ -104,6 +104,6 @@ class TestWorker(TestWorkerInfrahubAsync):
         assert flow_after.state.type == StateType.FAILED
 
         with pytest.raises(ValidationError) as exc:
-            await flow_after.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
+            await flow_after.state.result(raise_on_failure=True)
 
         assert "validation error for DummyOutput" in str(exc.value)

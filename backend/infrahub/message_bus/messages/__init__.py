@@ -1,7 +1,6 @@
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 from .check_generator_run import CheckGeneratorRun
-from .event_branch_merge import EventBranchMerge
 from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
@@ -15,7 +14,6 @@ from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.generator.run": CheckGeneratorRun,
-    "event.branch.merge": EventBranchMerge,
     "finalize.validator.execution": FinalizeValidatorExecution,
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,

@@ -13,7 +13,11 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByText("Name *")).toBeVisible();
     await page.getByLabel("Name *").fill("number pool test");
     await page.getByLabel("Node *").click();
-    await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
+    await expect(page.getByRole("option", { name: "Interface Infra", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "Artifact Check Core", exact: true })
+    ).toBeVisible();
+    await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
     await page.getByText("Number Attribute *").click();
     await page.getByRole("option", { name: "Speed" }).click();
     await page.getByLabel("Start range *").fill("1");

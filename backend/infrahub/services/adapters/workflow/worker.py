@@ -66,7 +66,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)
 
-        return await response.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
+        return await response.state.result(raise_on_failure=True)
 
     async def submit_workflow(
         self,

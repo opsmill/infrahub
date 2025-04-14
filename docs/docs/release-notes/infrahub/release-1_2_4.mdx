@@ -1,0 +1,49 @@
+---
+title: Release 1.2.4
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.4</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>April 4th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #3</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.4](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.4)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.4
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.3 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Fixed
+
+- Fixed the migration to remove an attribute from a schema to correctly ignore overridden attributes from a generic schema. ([#6073](https://github.com/opsmill/infrahub/issues/6073))
+- Fixed an issue where HFID and uniqueness constraints for component templates would end up having duplicate elements after loading several schemas.
+- Fixed an issue where optional unique attributes having a NULL value could be duplicated.
+  Upgrading Infrahub to a version containing this fix will perform a check identifying such duplicates.
+  If some duplicates are found, data or schema should be fixed in order to complete the upgrade:
+  - Either the uniqueness constraint on corresponding attributes should be removed within schema.
+  - Or duplicated unique attributes values should be modified.
+- Properly clear references to old branches and schema objects from the registry when deleting branches.
+- Restricted event.related payload for CoreGraphQLQueryGroup events.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade
