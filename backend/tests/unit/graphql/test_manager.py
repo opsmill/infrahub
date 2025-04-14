@@ -1,4 +1,5 @@
 import inspect
+from copy import deepcopy
 
 import graphene
 import pytest
@@ -312,3 +313,33 @@ async def test_branch_caching_miss(
     manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is not manager2
+
+
+async def test_branch_purge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema: None,
+    car_person_schema_generics: None,
+) -> None:
+    default_branch.update_schema_hash()
+    purged_branch = "i-will-be-purged"
+    active_branch = "i-will-not-be-purged"
+    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+
+    GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    GraphQLSchemaManager.purge_inactive(active_branches=[default_branch.name])
+    GraphQLSchemaManager._branch_details_by_name[active_branch] = deepcopy(
+        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
+    )
+    GraphQLSchemaManager._branch_details_by_name[purged_branch] = deepcopy(
+        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
+    )
+
+    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert purged_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    purged_branches = GraphQLSchemaManager.purge_inactive(active_branches=[active_branch, default_branch.name])
+    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert purged_branch not in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert purged_branches == {purged_branch}
