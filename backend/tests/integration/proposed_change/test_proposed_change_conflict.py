@@ -270,11 +270,20 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert len(merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
         assert merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"][0]["id"] == proposed_change.id
 
-        secondary_events = await client.execute_graphql(query=QUERY_EVENT, variables={"parent__ids": merge_event_id})
-
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Johnny", kind=TestKind.PERSON)
         richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
+
+        # Use this sleep mechanism to wait for the events being fired
+        for _ in range(10):
+            secondary_events = await client.execute_graphql(
+                query=QUERY_EVENT, variables={"parent__ids": merge_event_id}
+            )
+            if secondary_events["InfrahubEvent"]["count"] >= 2:
+                break
+            await asyncio.sleep(1)
+
         assert secondary_events["InfrahubEvent"]["count"] >= 2
+
         johns_events = [
             event
             for event in secondary_events["InfrahubEvent"]["edges"]
