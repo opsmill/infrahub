@@ -10,12 +10,6 @@
   src: url(/src/assets/fonts/Inter-VariableFont_opsz\,wght.ttf);
 }
 
-@font-face {
-  font-family: "Inter";
-  src: url(/src/assets/fonts/Inter-Italic-VariableFont_opsz\,wght.ttf);
-  font-style: italic;
-}
-
 body {
   margin: 0;
   font-family: "Inter", sans-serif;
