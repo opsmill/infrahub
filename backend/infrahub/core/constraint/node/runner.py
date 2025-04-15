@@ -30,6 +30,7 @@ class NodeConstraintRunner:
             await node.resolve_relationships(db=db)
 
             if not skip_uniqueness_check:
+                self.uniqueness_constraint.db = db
                 await self.uniqueness_constraint.check(node, filters=field_filters)
 
             for relationship_name in node.get_schema().relationship_names:
@@ -38,4 +39,5 @@ class NodeConstraintRunner:
                 relationship_manager: RelationshipManager = getattr(node, relationship_name)
                 await relationship_manager.fetch_relationship_ids(db=db, force_refresh=True)
                 for relationship_constraint in self.relationship_manager_constraints:
+                    relationship_constraint.db = db
                     await relationship_constraint.check(relm=relationship_manager, node_schema=node.get_schema())
