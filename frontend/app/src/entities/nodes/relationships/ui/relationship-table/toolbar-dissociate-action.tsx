@@ -3,6 +3,7 @@ import {
   DissociateRelationshipModalProps,
   DissociateRelationshipsModal,
 } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
+import { Icon } from "@iconify-icon/react";
 import React from "react";
 
 export interface ToolBarRemoveFromGroupActionProps
@@ -19,6 +20,7 @@ export function ToolbarDissociateAction({
   return (
     <>
       <ToolbarButton variant="danger" onPress={() => setIsOpen((prev) => !prev)}>
+        <Icon icon="mdi:link-variant-remove" />
         Dissociate
       </ToolbarButton>
 
