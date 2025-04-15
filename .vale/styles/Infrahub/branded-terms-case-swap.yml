@@ -6,16 +6,17 @@ ignorecase: false
 action:
   name: replace
 swap:
-  (?:ansible): Ansible
-  (?:[^"]docker): Docker
-  (?:[Dd]ockerhub): DockerHub
-  (?:[^/][Gg]ithub): GitHub
-  (?:[Gg]itlab): GitLab
+  (?<![\.|/|#])ansible[\.!]?\s: Ansible
+  (?<![\.|/|#])docker[\.!]?\s: Docker
+  (?<![\.|/|#])[Dd]ockerhub[\.!]?\s: DockerHub
+  (?<![\.|/|#])[Gg]ithub[\.!]?\s: GitHub
+  (?<![\.|/|#])[Gg]itlab[\.!]?\s: GitLab
   (?:gitpod): GitPod
   (?:grafana): Grafana
   (?:[^/][Gg]raphql): GraphQL
   (?:[Ii]nflux[Dd]b): InfluxDB
-  infrahub(?:\s|$): Infrahub
+  (?<![\.|/|#])infrahub[\.!]?\s: Infrahub
+  (?<![\.|/|#])InfraHub[\.!]?\s: Infrahub
   (?:jinja2): Jinja2
   (?:k3s): K3s
   (?:k8s): K8s
@@ -26,10 +27,10 @@ swap:
   (?:[Nn]odejs): Node.js
   (?:[^/][Oo]penapi): OpenAPI
   (?:Openconfig): OpenConfig
-  opsmill(?:\s|$): OpsMill
+  (?<![\.|/|#])opsmill[\.!]?\s: OpsMill
   (?:[Pp]ostgre[Ss]ql): PostgreSQL
   (?:[^/]prometheus): Prometheus
-  (?:[^/-]python): Python
+  (?<![\.|/|#])python[\.!]?\s: Python
   (?:[Rr]abbitmq): RabbitMQ
   (?:[^/]terraform): Terraform
   (?:ubuntu): Ubuntu
