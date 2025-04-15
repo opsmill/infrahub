@@ -57,6 +57,9 @@ export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
 export const TASK_OBJECT = "InfrahubTask";
 
+export const STANDARD_WEBHOOK_OBJECT = "CoreStandardWebhook";
+export const CUSTOM_WEBHOOK_OBJECT = "CoreCustomWebhook";
+
 export const MENU_EXCLUDELIST = [
   "CoreChangeComment",
   "CoreChangeThread",
