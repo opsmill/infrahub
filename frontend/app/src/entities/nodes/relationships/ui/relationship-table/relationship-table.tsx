@@ -5,6 +5,7 @@ import {
   useObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
+import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import { InfiniteDataTable } from "@/shared/components/table/infinite-data-table";
 import useFilters from "@/shared/hooks/useFilters";
@@ -51,6 +52,14 @@ export function RelationshipTable({
       renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
       hasNextPage={hasNextPage}
       fetchNextPage={fetchNextPage}
+      toolbarActions={({ selectedRows }) => (
+        <ToolbarDissociateAction
+          objectId={parentId}
+          relationshipIds={selectedRows.map((row) => row.id)}
+          relationshipName={relationshipName}
+          relationshipLabel="all selected rows"
+        />
+      )}
     />
   );
 }

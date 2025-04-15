@@ -10,9 +10,14 @@ import { Modal as AriaModal } from "react-aria-components";
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeObject>;
   onClose: () => void;
+  renderMore?: (props: { selectedRows: Array<NodeObject> }) => React.ReactNode;
 }
 
-export function ObjectTableToolbar({ selectedRows, onClose }: ObjectTableSelectionToolbarProps) {
+export function ObjectTableToolbar({
+  selectedRows,
+  onClose,
+  renderMore,
+}: ObjectTableSelectionToolbarProps) {
   return (
     <AriaModal
       isOpen
@@ -33,6 +38,13 @@ export function ObjectTableToolbar({ selectedRows, onClose }: ObjectTableSelecti
 
       <ToolbarAddToGroupsAction selectedRows={selectedRows} />
       <ToolBarRemoveFromGroupsAction selectedRows={selectedRows} />
+
+      {renderMore && (
+        <>
+          <ToolbarDivider />
+          {renderMore({ selectedRows })}
+        </>
+      )}
     </AriaModal>
   );
 }
