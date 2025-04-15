@@ -35,7 +35,7 @@ To create a repository in Infrahub, you'll need to submit the following details:
 If your repository is private or if you want to setup a fully integrated Repository, you might need to setup an access token for authentication.
 
 If you use GitHub as your Git Server, see this [Guide](#github-access-token).
-If you use GitLab as your Git Server, see this [Guide](#gitlab-access-token).
+If you use Gitlab as your Git Server, see this [Guide](#gitlab-access-token).
 :::
 
 <Tabs>
@@ -268,11 +268,11 @@ You can use either :
   ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
 </details>
 
-## GitLab access token {#gitlab-access-token}
+## Gitlab access token {#gitlab-access-token}
 
-If your repository is private on GitLab, or if you want to setup a (non read-only) Repository, then we recommend to use a [project access token](https://docs.gitlab.com/user/project/settings/project_access_tokens/).
+If your repository is private on Gitlab, or if you want to setup a (non read-only) Repository, then we recommend to use a [project access token](https://docs.gitlab.com/user/project/settings/project_access_tokens/).
 
-Project access tokens are scoped to the project in GitLab.
+Project access tokens are scoped to the project in Gitlab.
 
 You should select the `read_repository` scope for the access token if you want to set up the project as a ReadOnlyRepository.
 
@@ -281,9 +281,9 @@ For a normal Repository you should select the `read_repository` and `write_repos
 The role of the access token should be set to `Developer` or a role with similar permissions.
 
 <details>
-  <summary>Generate a GitLab project access token</summary>
+  <summary>Generate a Gitlab project access token</summary>
 
-  1. Navigate to the project in GitLab
+  1. Navigate to the project in Gitlab
   2. In the project menu open **Settings > Access tokens**
   3. Create a new token by pressing the **Add new token** button
   4. Give the token a name, an optional description, and an optional expiration date
