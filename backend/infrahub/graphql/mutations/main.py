@@ -489,7 +489,8 @@ class InfrahubMutationMixin:
         we would update the node without rerunning uniqueness constraint.
         """
 
-        schema_name = cls._meta.active_schema.kind
+        schema = cls._meta.active_schema
+        schema_name = schema.kind
 
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
@@ -509,10 +510,8 @@ class InfrahubMutationMixin:
             )
             return updated_obj, mutation, False
 
-        if cls._meta.active_schema.default_filter is not None:
-            node = await node_getter_default_filter.get_node(
-                node_schema=cls._meta.active_schema, data=data, branch=branch
-            )
+        if not schema.human_friendly_id and schema.default_filter is not None:
+            node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
 
         if "hfid" in data:
             node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
