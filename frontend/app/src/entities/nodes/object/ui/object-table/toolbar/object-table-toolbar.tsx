@@ -1,10 +1,11 @@
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";
 import { ToolBarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
+import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 import { NodeObject } from "@/entities/nodes/types";
 import { classNames } from "@/shared/utils/common";
 import { XIcon } from "lucide-react";
-import { Button as AriaButton, Modal as AriaModal } from "react-aria-components";
+import { Modal as AriaModal } from "react-aria-components";
 
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeObject>;
@@ -23,13 +24,10 @@ export function ObjectTableToolbar({ selectedRows, onClose }: ObjectTableSelecti
         "flex items-center gap-1.5 outline-none"
       )}
     >
-      <AriaButton
-        onPress={onClose}
-        className="inline-flex items-center gap-1.5 hover:bg-neutral-200/80 rounded-lg px-2 py-1 text-neutral-600"
-      >
+      <ToolbarButton variant="ghost" onPress={onClose}>
         <span>{selectedRows.length} selected</span>
         <XIcon className="size-3.5" />
-      </AriaButton>
+      </ToolbarButton>
 
       <ToolbarDivider />
 
