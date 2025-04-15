@@ -64,7 +64,7 @@ services:
       - "database_logs:/logs"
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
-      test: wget http://localhost:7474 || exit 1
+      test: wget -O /dev/null http://localhost:7474 || exit 1
       interval: 2s
       timeout: 10s
       retries: 20
