@@ -10,6 +10,7 @@ TSHIRT = NodeSchema(
     label="T-shirt",
     default_filter="name__value",
     display_labels=["name__value"],
+    uniqueness_constraints=[["name__value"]],
     attributes=[
         AttributeSchema(name="name", kind="Text"),
         AttributeSchema(
