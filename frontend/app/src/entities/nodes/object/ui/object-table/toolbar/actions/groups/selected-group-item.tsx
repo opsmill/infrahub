@@ -3,7 +3,7 @@ import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { XIcon } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
-import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/add-to-groups/group-item";
+import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-item";
 
 export interface SelectedGroupItemProps {
   group: RelationshipNode;
