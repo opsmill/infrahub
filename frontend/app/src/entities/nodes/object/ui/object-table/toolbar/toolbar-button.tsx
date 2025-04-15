@@ -7,7 +7,7 @@ export function ToolbarButton({ className, ...props }: AriaButtonProps) {
     <AriaButton
       className={classNames(
         focusVisibleStyle,
-        "border border-neutral-200 bg-white rounded-lg px-2 py-1 hover:bg-neutral-50",
+        "border border-neutral-200 bg-white rounded-lg px-2 py-1 hover:bg-neutral-50 h-7",
         className
       )}
       {...props}
