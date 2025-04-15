@@ -245,7 +245,6 @@ class InfrahubDatabase:
             schemas=schemas or self._schemas.values(),
             db_manager=self.manager,
             driver=self._driver,
-            session=self._session,
             session_mode=self._session_mode,
             queries_names_to_config=self.queries_names_to_config,
             **context,
