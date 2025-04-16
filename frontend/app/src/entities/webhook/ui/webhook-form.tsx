@@ -86,7 +86,7 @@ export function WebhookForm({
       const operationType = isUpdate ? "Update" : "Create";
       const successMessage = isUpdate ? "Webhook updated" : "Webhook created";
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
-        toastId: `alert-success-ip-prefix-pool-${operationType}`,
+        toastId: `alert-success-webhook-${operationType}`,
       });
 
       if (onSuccess) {
