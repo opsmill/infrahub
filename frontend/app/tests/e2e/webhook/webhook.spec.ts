@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe.fixme("/objects/CoreWebhook", () => {
+test.describe("/objects/CoreWebhook", () => {
   test.describe("when logged in as admin account", () => {
     test.describe.configure({ mode: "serial" });
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
