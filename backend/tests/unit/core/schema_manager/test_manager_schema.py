@@ -3068,6 +3068,18 @@ async def test_manage_object_templates_with_component_relationships():
         # Optional value in component template should match original's
         assert attr.optional == template_attr.optional
 
+    # Verify the generic by checking its attributes and relationships
+    test_interface_template = schema_branch.get(name=f"Template{TestKind.INTERFACE}", duplicate=False)
+    assert test_interface_template.is_generic_schema
+    test_interface = schema_branch.get(name=TestKind.INTERFACE, duplicate=False)
+    assert test_interface.is_generic_schema
+    for attr in test_interface.attributes:
+        template_attr = test_interface_template.get_attribute(name=attr.name)
+        assert attr.optional == template_attr.optional
+    for rel in test_interface.relationships:
+        template_rel = test_interface_template.get_relationship(name=rel.name)
+        assert template_rel.peer == f"Template{rel.peer}"
+
     # Verify when a node is marked as absent
     ABSENT_VIRTUAL_INTERFACE = copy.deepcopy(DEVICE_SCHEMA)
     ABSENT_VIRTUAL_INTERFACE.get(name=TestKind.VIRTUAL_INTERFACE).state = HashableModelState.ABSENT
