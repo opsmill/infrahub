@@ -11,10 +11,11 @@ import {
 } from "../../ui/combobox";
 import { FormField, FormInput, FormMessage } from "../../ui/form";
 import { DEFAULT_FORM_FIELD_VALUE } from "../constants";
+import { FormAttributeValue, FormFieldProps } from "../type";
 import { updateFormFieldValue } from "../utils/updateFormFieldValue";
 import { LabelFormField } from "./common";
 
-export function NdoeKindSelect({ label, defaultValue, description, ...props }) {
+export function NdoeKindSelect({ label, description, rules, ...props }: FormFieldProps) {
   const nodes = useAtomValue(nodeSchemasAtom);
 
   return (
@@ -22,20 +23,22 @@ export function NdoeKindSelect({ label, defaultValue, description, ...props }) {
       render={({ field }) => {
         const [open, setOpen] = useState(false);
 
+        const fieldData: FormAttributeValue = field.value;
+        const currentValue = (fieldData?.value as string | undefined) ?? null;
+        const currentNode = nodes.find((node) => {
+          return node.kind === currentValue;
+        });
+
         return (
           <div className="flex flex-col gap-2">
-            <LabelFormField
-              label={label}
-              description={description}
-              required={props.rules.required}
-            />
+            <LabelFormField label={label} description={description} required={rules.required} />
 
             <Combobox open={open} onOpenChange={setOpen}>
               <FormInput>
                 <ComboboxTrigger>
-                  {defaultValue.value && (
+                  {currentNode && (
                     <div className="w-full flex justify-between">
-                      {defaultValue.value.label} <Badge>{defaultValue.value.namespace}</Badge>
+                      {currentNode?.label} <Badge>{currentNode?.namespace}</Badge>
                     </div>
                   )}
                 </ComboboxTrigger>
@@ -47,11 +50,11 @@ export function NdoeKindSelect({ label, defaultValue, description, ...props }) {
                     return (
                       <ComboboxItem
                         key={node.id}
-                        selectedValue={defaultValue?.kind}
+                        selectedValue={currentValue}
                         value={node.kind!}
                         keywords={[node.label as string]}
                         onSelect={() => {
-                          const newValue = node.kind === defaultValue?.kind ? null : node.kind;
+                          const newValue = node.kind === currentValue ? null : node.kind;
                           field.onChange(
                             updateFormFieldValue(newValue ?? null, DEFAULT_FORM_FIELD_VALUE)
                           );
