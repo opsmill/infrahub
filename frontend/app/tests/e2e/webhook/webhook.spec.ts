@@ -26,6 +26,9 @@ test.describe.fixme("/objects/CoreWebhook", () => {
         await page.getByLabel("Branch Scope").click();
         await page.getByRole("option", { name: "All Branches All branches" }).click();
 
+        await page.getByRole("combobox", { name: "Node Kind" }).click();
+        await page.getByRole("option", { name: "Account Core" }).click();
+
         await page.getByLabel("Description").fill("Ansible EDA Webhook Reciever");
 
         await page.getByLabel("Url *").fill("http://ansible-eda:8080");
