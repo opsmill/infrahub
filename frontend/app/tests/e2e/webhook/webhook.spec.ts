@@ -1,26 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
-import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/objects/CoreWebhook", () => {
   test.describe("when logged in as admin account", () => {
     test.describe.configure({ mode: "serial" });
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    const BRANCH_NAME = generateRandomBranchName();
-
-    test.beforeAll(async ({ request }) => {
-      await createBranchAPI(request, BRANCH_NAME);
-    });
-
-    test.afterAll(async ({ request }) => {
-      await deleteBranchAPI(request, BRANCH_NAME);
-    });
-
     test("Create a webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
-        await page.goto(`/objects/CoreWebhook?branch=${BRANCH_NAME}`);
+        await page.goto("/objects/CoreWebhook");
         await expect(page.getByTestId("object-header")).toContainText("Webhook");
         await saveScreenshotForDocs(page, "webhook_list");
       });
@@ -51,13 +40,13 @@ test.describe("/objects/CoreWebhook", () => {
         await saveScreenshotForDocs(page, "webhook_create");
 
         await page.getByRole("button", { name: "Save" }).click();
-        await expect(page.getByText("StandardWebhook created")).toBeVisible();
+        await expect(page.getByText("Webhook created")).toBeVisible();
       });
     });
 
     test("Access webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
-        await page.goto(`/objects/CoreWebhook?branch=${BRANCH_NAME}`);
+        await page.goto("/objects/CoreWebhook");
         await expect(page.getByTestId("object-header")).toContainText("Webhook");
       });
 
@@ -76,6 +65,24 @@ test.describe("/objects/CoreWebhook", () => {
         await expect(page.getByText("NameAnsible EDA")).toBeVisible();
         await expect(page.getByText("View all activities")).toBeVisible();
         await saveScreenshotForDocs(page, "webhook_detail");
+      });
+    });
+
+    test("Delete webhook", async ({ page }) => {
+      await test.step("load webhooks", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await expect(page.getByTestId("object-header")).toContainText("Webhook");
+      });
+
+      await test.step("access and delete webhook", async () => {
+        await page.getByRole("link", { name: "Ansible EDA" }).click();
+        await expect(
+          page.getByTestId("object-header").getByText("Ansible EDA", { exact: true })
+        ).toBeVisible();
+        await page.getByTestId("delete-button").click();
+        await page.getByTestId("modal-delete-confirm").click();
+        await expect(page.getByText("Object Ansible EDA deleted")).toBeVisible();
+        await page.getByText("No Standard Webhook found").click();
       });
     });
   });
