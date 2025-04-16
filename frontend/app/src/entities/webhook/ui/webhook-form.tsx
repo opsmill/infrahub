@@ -61,14 +61,14 @@ export function WebhookForm({
       const mutationString =
         isUpdate && currentObject
           ? updateObjectWithId({
-              kind: IP_PREFIX_POOL,
+              kind,
               data: stringifyWithoutQuotes({
                 id: currentObject.id,
                 ...newObject,
               }),
             })
           : createObject({
-              kind: IP_PREFIX_POOL,
+              kind,
               data: stringifyWithoutQuotes(newObject),
             });
 
