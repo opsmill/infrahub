@@ -7,6 +7,7 @@ import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
 import { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { formatRelativeTimeFromNow } from "@/shared/utils/date";
+import { NodeKindCell } from "./node-kind-cell";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
@@ -38,6 +39,10 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.TEXTAREA: {
+      if (attributeSchema.name === "node_kind") {
+        return <NodeKindCell kind={attributeData.value} />;
+      }
+
       return <span className="truncate">{attributeData.value}</span>;
     }
     case ATTRIBUTE_KIND.URL: {
