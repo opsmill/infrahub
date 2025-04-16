@@ -201,6 +201,12 @@ services:
       - "--promscrape.config=/etc/prometheus/prometheus.yml"
     ports:
       - ${INFRAHUB_TESTING_SCRAPER_PORT:-0}:8428
+    healthcheck:
+      test: wget -qO- http://127.0.0.1:8428/-/healthy
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   database_data:
