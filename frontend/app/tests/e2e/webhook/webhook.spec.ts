@@ -1,11 +1,22 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/CoreWebhook", () => {
   test.describe("when logged in as admin account", () => {
     test.describe.configure({ mode: "serial" });
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+    const BRANCH_NAME = generateRandomBranchName();
+
+    test.beforeAll(async ({ request }) => {
+      await createBranchAPI(request, BRANCH_NAME);
+    });
+
+    test.afterAll(async ({ request }) => {
+      await deleteBranchAPI(request, BRANCH_NAME);
+    });
 
     test("Create a webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
