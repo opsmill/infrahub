@@ -20,7 +20,7 @@ test.describe("/objects/CoreWebhook", () => {
 
     test("Create a webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
-        await page.goto("/objects/CoreWebhook");
+        await page.goto(`/objects/CoreWebhook?branch=${BRANCH_NAME}`);
         await expect(page.getByTestId("object-header")).toContainText("Webhook");
         await saveScreenshotForDocs(page, "webhook_list");
       });
@@ -57,7 +57,7 @@ test.describe("/objects/CoreWebhook", () => {
 
     test("Access webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
-        await page.goto("/objects/CoreWebhook");
+        await page.goto(`/objects/CoreWebhook?branch=${BRANCH_NAME}`);
         await expect(page.getByTestId("object-header")).toContainText("Webhook");
       });
 
