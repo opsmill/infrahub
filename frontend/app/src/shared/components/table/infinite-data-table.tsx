@@ -1,6 +1,9 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
-import { ObjectTableToolbar } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
+import {
+  ObjectTableSelectionToolbarProps,
+  ObjectTableToolbar,
+} from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
@@ -12,6 +15,7 @@ export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivE
   renderEmpty?: () => React.ReactNode;
   hasNextPage: boolean;
   fetchNextPage: () => void;
+  toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
 }
 
 export function InfiniteDataTable<T extends NodeObject>({
@@ -21,6 +25,7 @@ export function InfiniteDataTable<T extends NodeObject>({
   renderEmpty,
   hasNextPage,
   fetchNextPage,
+  toolbarActions,
   ...props
 }: InfiniteDataTableProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -76,7 +81,11 @@ export function InfiniteDataTable<T extends NodeObject>({
       {...props}
     >
       {selectedRows.length > 0 && (
-        <ObjectTableToolbar selectedRows={selectedRows} onClose={table.resetRowSelection} />
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={table.resetRowSelection}
+          renderMore={toolbarActions}
+        />
       )}
 
       {allHeaders.map((header) => {

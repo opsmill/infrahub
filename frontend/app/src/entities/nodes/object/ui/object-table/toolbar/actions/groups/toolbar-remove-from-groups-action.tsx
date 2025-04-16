@@ -15,7 +15,7 @@ export function ToolBarRemoveFromGroupsAction({ selectedRows }: ToolBarRemoveFro
 
   return (
     <DialogTrigger>
-      <ToolbarButton className="text-red-600 border-red-200">Remove from groups</ToolbarButton>
+      <ToolbarButton variant="danger">Remove from groups</ToolbarButton>
 
       <Popover placement="top start">
         <PopoverDialog className="p-0">
