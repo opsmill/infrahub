@@ -21,6 +21,7 @@ import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { forwardRef } from "react";
+import { NodeKindField } from "./fields/node-kind.field";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
@@ -130,6 +131,9 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       }
 
       return <RelationshipField {...props} />;
+    }
+    case "kind": {
+      return <NodeKindField {...props} />;
     }
     default: {
       warnUnexpectedType(props);
