@@ -35,30 +35,20 @@ jobs:
       matrix:
         # Etiher a literal path, or the name of a secret...
         repo:
-          - opsmill/infrahub-demo-dc-fabric
-          - INFRAHUB_ENTERPRISE_REPOSITORY
-          - INFRAHUB_CUSTOMER1_REPOSITORY
+          - "opsmill/infrahub-demo-dc-fabric"
+          - "INFRAHUB_ENTERPRISE_REPOSITORY"
+          - "INFRAHUB_CUSTOMER1_REPOSITORY"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Resolve target repo
-        id: resolve
-        run: |
-          KEY=${{ matrix.repo }}
-          if [[ "$KEY" == *"/"* ]]; then
-            echo "TARGET_REPO=$KEY" >> $GITHUB_ENV
-          else
-            # Lookup the secret whose name is in KEY
-            echo "TARGET_REPO=${{ secrets[KEY] }}" >> $GITHUB_ENV
-          fi
-  
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
-          repository: ${{ env.TARGET_REPO }}
+          # if matrix.repo contains a slash, use it literally; otherwise look up the secret named by matrix.repo
+          repository: ${{ contains(matrix.repo, '/') && matrix.repo || secrets[matrix.repo] }}
           event-type: trigger-infrahub-update
           client-payload: |
             {"version":"${{ inputs.version }}"}
