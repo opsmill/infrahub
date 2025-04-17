@@ -1300,6 +1300,9 @@ async def test_create_sub_object_template_by_hfid(
         }
       ) {
         ok
+        object {
+          id
+        }
       }
     }
     """
@@ -1318,6 +1321,13 @@ async def test_create_sub_object_template_by_hfid(
         },
     )
     assert not result.errors
+
+    node_id = result.data["TemplateTestingPhysicalInterfaceCreate"]["object"]["id"]
+    assert node_id
+
+    interface_template = await registry.manager.get_one(db=db, branch=branch, id=node_id)
+    assert interface_template
+    assert (await interface_template.device.get_peer(db=db)).id == device_template.id
 
 
 # These tests have been moved at the end of the file to avoid colliding with other and breaking them
