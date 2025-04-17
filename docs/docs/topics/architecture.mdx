@@ -160,9 +160,9 @@ Infrahub may be deployed with no single-point of failure, and horizontally scale
   helm install cache bitnami/redis --version 19.5.2 --namespace infrahub --create-namespace --values redis-values.yaml
   ```
 
-  <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
-
   <CodeBlock language="yaml" title="redis-sentinel-proxy-deploy.yaml">{import_redisSentinelDeployYaml}</CodeBlock>
+
+  <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
 
   ```bash
   kubectl apply -f redis-sentinel-proxy-deploy.yaml --namespace infrahub
