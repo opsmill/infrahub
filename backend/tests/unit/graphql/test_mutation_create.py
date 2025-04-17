@@ -1272,6 +1272,64 @@ async def test_create_without_object_template(
     assert not device_template_node
 
 
+async def test_create_sub_object_template_by_hfid(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
+):
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+
+    device_template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
+    await device_template.new(
+        db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
+    )
+    await device_template.save(db=db)
+    device_template_hfid = await device_template.get_hfid(db=db)
+
+    template = await registry.manager.get_one_by_hfid(
+        db=db, branch=branch, kind=f"Template{TestKind.INTERFACE_HOLDER}", hfid=device_template_hfid
+    )
+    assert device_template.id == template.id
+
+    query = """
+    mutation CreateTemplateInterfaceWithHFID($template_name: String!, $device_template_hfid: [String!], $name: String!, $phys_type: String!) {
+      TemplateTestingPhysicalInterfaceCreate(
+        data:{
+          template_name: {value: $template_name}
+          device: {hfid: $device_template_hfid}
+          name: {value: $name}
+          phys_type: {value: $phys_type}
+        }
+      ) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "template_name": "MX204 et-0/0/0",
+            "device_template_hfid": device_template_hfid,
+            "name": "et-0/0/0",
+            "phys_type": "QSFP28 (100GE)",
+        },
+    )
+    assert not result.errors
+
+    node_id = result.data["TemplateTestingPhysicalInterfaceCreate"]["object"]["id"]
+    assert node_id
+
+    interface_template = await registry.manager.get_one(db=db, branch=branch, id=node_id)
+    assert interface_template
+    assert (await interface_template.device.get_peer(db=db)).id == device_template.id
+
+
 # These tests have been moved at the end of the file to avoid colliding with other and breaking them
 
 

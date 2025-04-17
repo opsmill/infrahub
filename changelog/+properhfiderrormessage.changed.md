@@ -1,0 +1,1 @@
+Raise more accurate error when trying to lookup a node by HFID when the schema does not have a HFID or the number of elements does not match
