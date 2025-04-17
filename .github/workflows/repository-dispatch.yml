@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy rule:line-length
-name: Trigger Submodule update
+name: Trigger Infrahub update in other repositories
 
 on:
   workflow_dispatch:
@@ -29,16 +29,23 @@ on:
         default: ''
 
 jobs:
-  trigger-submodule:
+  repository-dispatch:
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        repo:
+          - ${{ secrets.INFRAHUB_ENTERPRISE_REPOSITORY }}
+          - opsmill/infrahub-demo-dc-fabric
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Trigger submodule update
-        run: |
-          curl -X POST \
-            -H 'Authorization: token ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}' \
-            -H 'Accept: application/vnd.github.v3+json' \
-            'https://api.github.com/repos/${{ secrets.INFRAHUB_ENTERPRISE_REPOSITORY }}/dispatches' \
-            -d '{"event_type":"trigger-submodule-update","client_payload":{"version":"${{ inputs.version }}"}}'
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          repository: ${{ matrix.repo }}
+          event-type: trigger-infrahub-update
+          client-payload: |
+            {"version":"${{ inputs.version }}"}
