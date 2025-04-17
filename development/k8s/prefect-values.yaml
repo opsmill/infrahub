@@ -2,7 +2,7 @@ global:
   prefect:
     image:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
-      prefectTag: YOUR_INFRAHUB_VERSION
+      prefectTag: 1.2.5
 
 server:
   replicaCount: 1
