@@ -1957,11 +1957,7 @@ class SchemaBranch:
             )
 
             parent_hfid = f"{relationship.name}__template_name__value"
-            if (
-                not node.is_generic_schema
-                and relationship.kind == RelationshipKind.PARENT
-                and parent_hfid not in template_schema.human_friendly_id
-            ):
+            if relationship.kind == RelationshipKind.PARENT and parent_hfid not in template_schema.human_friendly_id:
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
@@ -1994,13 +1990,15 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
+                display_labels=["template_name__value"],
+                human_friendly_id=["template_name__value"],
+                uniqueness_constraints=[["template_name__value"]],
                 attributes=[template_name_attr],
             )
 
             for used in node.used_by:
                 if used in need_template_kinds:
                     template.used_by.append(self._get_object_template_kind(node_kind=used))
-
         else:
             template = TemplateSchema(
                 name=node.kind,
