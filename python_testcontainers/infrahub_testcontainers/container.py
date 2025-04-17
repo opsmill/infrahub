@@ -269,5 +269,12 @@ class InfrahubDockerCompose(DockerCompose):
             service_name=service_name,
         )
 
+        old_services = self.services
+        self.services = ["infrahub-server", "task-worker"]
         self.stop(down=False)
-        self.start()
+        try:
+            self.start()
+        except Exception as exc:
+            stdout, stderr = self.get_logs()
+            raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
+        self.services = old_services
