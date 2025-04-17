@@ -36,6 +36,7 @@ jobs:
         repo:
           - ${{ secrets.INFRAHUB_ENTERPRISE_REPOSITORY }}
           - opsmill/infrahub-demo-dc-fabric
+          - ${{ secrets.INFRAHUB_CUSTOMER1_REPOSITORY }}
 
     steps:
       - name: Checkout code
