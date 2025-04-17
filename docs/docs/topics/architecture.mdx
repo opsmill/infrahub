@@ -162,14 +162,11 @@ Infrahub may be deployed with no single-point of failure, and horizontally scale
 
   <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
 
-  ```bash
-  kubectl apply -f redis-sentinel-proxy-svc.yaml --namespace infrahub
-  ```
-
   <CodeBlock language="yaml" title="redis-sentinel-proxy-deploy.yaml">{import_redisSentinelDeployYaml}</CodeBlock>
 
   ```bash
   kubectl apply -f redis-sentinel-proxy-deploy.yaml --namespace infrahub
+  kubectl apply -f redis-sentinel-proxy-svc.yaml --namespace infrahub
   ```
 
   <CodeBlock language="yaml" title="rabbitmq-values.yaml">{import_rabbitmqValuesYaml}</CodeBlock>
@@ -219,6 +216,11 @@ Infrahub may be deployed with no single-point of failure, and horizontally scale
 
   ```bash
   helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.2.21193831 --namespace infrahub --create-namespace --values prefect-values.yaml
+  ```
+
+  Deploy the Prefect Helm chart with a single replica initially to prevent concurrent database initialization issues. Wait for the first pod to become ready and complete database initialization. Once initialized, scale up to your desired number of replicas for high availability.
+
+  ```bash
   kubectl scale deployment/prefect-server --replicas=3 --namespace infrahub
   ```
 
