@@ -803,8 +803,21 @@ class NodeManager:
 
         hfid_str = " :: ".join(hfid)
 
-        if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
+        if not node_schema.human_friendly_id:
+            raise NodeNotFoundError(
+                branch_name=branch.name,
+                node_type=kind_str,
+                identifier=hfid_str,
+                message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' does not have a HFID defined.",
+            )
+
+        if len(node_schema.human_friendly_id) != len(hfid):
+            raise NodeNotFoundError(
+                branch_name=branch.name,
+                node_type=kind_str,
+                identifier=hfid_str,
+                message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' HFID does not contain the same number of elements as {hfid}",
+            )
 
         filters = {}
         for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
