@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -264,10 +265,47 @@ class InfrahubDockerCompose(DockerCompose):
             service_name=service_name,
         )
 
-        self.exec_in_container(
-            command=["cypher-shell", "-d", "system", "-u", "neo4j", "-p", "admin", "START DATABASE neo4j;"],
+        (restore_output, _, _) = self.exec_in_container(
+            command=[
+                "cypher-shell",
+                "--format",
+                "plain",
+                "-d",
+                "system",
+                "-u",
+                "neo4j",
+                "-p",
+                "admin",
+                "START DATABASE neo4j;",
+            ],
             service_name=service_name,
         )
+
+        for _ in range(3):
+            (stdout, _, _) = self.exec_in_container(
+                command=[
+                    "cypher-shell",
+                    "--format",
+                    "plain",
+                    "-d",
+                    "system",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "SHOW DATABASES WHERE name = 'neo4j' AND currentStatus = 'online';",
+                ],
+                service_name=service_name,
+            )
+            if stdout:
+                break
+            time.sleep(10)
+        else:
+            (debug_logs, _, _) = self.exec_in_container(
+                command=["cat", "logs/debug.log"],
+                service_name=service_name,
+            )
+            raise Exception(f"Failed to restore database:\n{restore_output}\nDebug logs:\n{debug_logs}")
 
         old_services = self.services
         self.services = ["infrahub-server", "task-worker"]
