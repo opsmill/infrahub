@@ -265,6 +265,11 @@ class InfrahubDockerCompose(DockerCompose):
             service_name=service_name,
         )
 
+        self.exec_in_container(
+            command=["chown", "-R", "neo4j:neo4j", "/data"],
+            service_name=service_name,
+        )
+
         (restore_output, _, _) = self.exec_in_container(
             command=[
                 "cypher-shell",
@@ -299,7 +304,7 @@ class InfrahubDockerCompose(DockerCompose):
             )
             if stdout:
                 break
-            time.sleep(10)
+            time.sleep(5)
         else:
             (debug_logs, _, _) = self.exec_in_container(
                 command=["cat", "logs/debug.log"],
