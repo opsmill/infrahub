@@ -33,20 +33,32 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
+        # Etiher a literal path, or the name of a secret...
         repo:
-          - ${{ secrets.INFRAHUB_ENTERPRISE_REPOSITORY }}
           - opsmill/infrahub-demo-dc-fabric
-          - ${{ secrets.INFRAHUB_CUSTOMER1_REPOSITORY }}
+          - INFRAHUB_ENTERPRISE_REPOSITORY
+          - INFRAHUB_CUSTOMER1_REPOSITORY
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Resolve target repo
+        id: resolve
+        run: |
+          KEY=${{ matrix.repo }}
+          if [[ "$KEY" == *"/"* ]]; then
+            echo "TARGET_REPO=$KEY" >> $GITHUB_ENV
+          else
+            # Lookup the secret whose name is in KEY
+            echo "TARGET_REPO=${{ secrets[KEY] }}" >> $GITHUB_ENV
+          fi
+  
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
-          repository: ${{ matrix.repo }}
+          repository: ${{ env.TARGET_REPO }}
           event-type: trigger-infrahub-update
           client-payload: |
             {"version":"${{ inputs.version }}"}
