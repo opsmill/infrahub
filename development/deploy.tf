@@ -23,6 +23,7 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
+  infrahub_version = "1.2.5"
 }
 
 ### Infrahub
@@ -32,7 +33,7 @@ resource "helm_release" "infrahub_ha" {
 
   name    = "infrahub"
   chart   = "oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise"
-  version = "3.1.7"
+  version = "3.3.5"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -41,7 +42,7 @@ resource "helm_release" "infrahub_ha" {
     <<EOT
 infrahub:
   global:
-    infrahubTag: 1.2.0rc0-ha
+    infrahubTag: ${local.infrahub_version}
   infrahubServer:
     replicas: 3
     persistence:
@@ -174,9 +175,12 @@ config:
 logInitialPassword: false
 volumes:
   data:
-    mode: "dynamic"
-    dynamic:
-      storageClassName: standard
+    mode: "defaultStorageClass"
+    defaultStorageClass:
+      accessModes:
+        - ReadWriteOnce
+      requests:
+        storage: 10Gi
 services:
   neo4j:
     enabled: false
@@ -262,7 +266,7 @@ global:
   prefect:
     image:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
-      prefectTag: 1.2.0rc0-ha
+      prefectTag: ${local.infrahub_version}
 server:
   replicaCount: 1
   command:
