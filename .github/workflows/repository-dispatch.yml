@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        # Etiher a literal path, or the name of a secret...
+        # Either a literal path, or the name of a secret...
         repo:
           - "opsmill/infrahub-demo-dc-fabric"
           - "INFRAHUB_ENTERPRISE_REPOSITORY"
