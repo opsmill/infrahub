@@ -196,11 +196,6 @@ Infrahub may be deployed with no single-point of failure, and horizontally scale
   helm install database-service neo4j/neo4j-headless-service --version 5.20.0 --namespace infrahub --values service-values.yaml
   ```
 
-  ```yaml
-  neo4j:
-    name: "infrahub"
-  ```
-
   <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
 
   ```bash
