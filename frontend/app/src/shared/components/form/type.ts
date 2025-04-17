@@ -159,12 +159,17 @@ export type DynamicSelectFieldProps = FormFieldProps & {
   items: Array<{ key: string; label: string }>;
 };
 
+export type DynamicKindFieldProps = FormFieldProps & {
+  type: "kind";
+};
+
 export type DynamicAttributeFieldProps =
   | DynamicInputFieldProps
   | DynamicNumberFieldProps
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
-  | DynamicSelectFieldProps;
+  | DynamicSelectFieldProps
+  | DynamicKindFieldProps;
 
 export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
   type: "relationship";

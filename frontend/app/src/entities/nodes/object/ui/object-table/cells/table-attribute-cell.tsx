@@ -1,6 +1,7 @@
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
+import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
@@ -38,6 +39,10 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.TEXTAREA: {
+      if (attributeSchema.name === "node_kind") {
+        return <NodeKindCell kind={attributeData.value} />;
+      }
+
       return <span className="truncate">{attributeData.value}</span>;
     }
     case ATTRIBUTE_KIND.URL: {
