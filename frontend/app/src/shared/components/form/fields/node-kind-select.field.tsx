@@ -15,7 +15,7 @@ import { FormAttributeValue, FormFieldProps } from "../type";
 import { updateFormFieldValue } from "../utils/updateFormFieldValue";
 import { LabelFormField } from "./common";
 
-export function NdoeKindSelect({ label, description, rules, ...props }: FormFieldProps) {
+export function NodeKindField({ label, description, rules, ...props }: FormFieldProps) {
   const nodes = useAtomValue(nodeSchemasAtom);
 
   return (
