@@ -1,11 +1,11 @@
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
+import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Navigate, useParams } from "react-router";
-import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
