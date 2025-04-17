@@ -1,0 +1,12 @@
+mode: distributed
+statefulset:
+  replicaCount: 3
+  drivesPerNode: 2
+auth:
+  rootUser: admin
+  rootPassword: password
+provisioning:
+  enabled: true
+  buckets:
+  - name: infrahub-data
+podAntiAffinityPreset: hard

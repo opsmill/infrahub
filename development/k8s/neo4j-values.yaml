@@ -1,0 +1,24 @@
+neo4j:
+  name: "infrahub"
+  minimumClusterSize: 3
+  resources:
+    cpu: "2"
+    memory: "4Gi"
+  password: "admin"
+  edition: "enterprise"
+  acceptLicenseAgreement: "yes"
+config:
+  dbms.security.auth_minimum_password_length: "4"
+  dbms.security.procedures.unrestricted: apoc.*
+logInitialPassword: false
+volumes:
+  data:
+    mode: "defaultStorageClass"
+    defaultStorageClass:
+      accessModes:
+      - ReadWriteOnce
+      requests:
+        storage: 10Gi
+services:
+  neo4j:
+    enabled: false
