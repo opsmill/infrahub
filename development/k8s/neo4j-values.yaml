@@ -1,3 +1,4 @@
+---
 neo4j:
   name: "infrahub"
   minimumClusterSize: 3
