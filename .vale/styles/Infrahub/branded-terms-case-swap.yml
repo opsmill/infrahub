@@ -1,4 +1,3 @@
----
 extends: substitution
 message: Use '%s' instead of '%s'
 level: error
@@ -20,6 +19,7 @@ swap:
   (?:jinja2): Jinja2
   (?:k3s): K3s
   (?:k8s): K8s
+  (?:kubectl): kubectl
   (?:kubernetes): Kubernetes
   (?:[^/][Mm]y[Ss]ql): MySQL
   (?:neo4j): Neo4j

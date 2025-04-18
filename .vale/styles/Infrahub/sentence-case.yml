@@ -1,4 +1,3 @@
----
 extends: capitalization
 message: "'%s' should use sentence case"
 level: warning
@@ -68,6 +67,7 @@ exceptions:
   - SDK
   - Single sign-on
   - SSO
+  - Terraform
   - TLS
   - Tony Stark
   - TransformPython
