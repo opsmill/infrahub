@@ -1,3 +1,4 @@
+---
 infrahub:
   global:
     infrahubTag: 1.2.5

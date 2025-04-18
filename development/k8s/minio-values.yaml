@@ -1,3 +1,4 @@
+---
 mode: distributed
 statefulset:
   replicaCount: 3
