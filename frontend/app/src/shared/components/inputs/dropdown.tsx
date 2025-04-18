@@ -153,8 +153,7 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
       <Button
         className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
         onClick={() => setOpen(!open)}
-        // TODO: Remove the condition once the Builtin namespace is correctly not editable in the schema
-        disabled={!namespace?.user_editable || namespace?.name === "Builtin"}
+        disabled={!namespace?.user_editable}
       >
         + Add option
       </Button>
