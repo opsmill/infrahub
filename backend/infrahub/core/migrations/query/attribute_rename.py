@@ -126,8 +126,7 @@ class AttributeRenameQuery(Query):
 
         add_uuid = db.render_uuid_generation(node_label="new_attr", node_attr="uuid")
         query = """
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
             RETURN node as n1, r as r1
@@ -137,8 +136,7 @@ class AttributeRenameQuery(Query):
         WITH n1 as active_node, r1 as rb
         WHERE rb.status = "active"
         // Find all the attributes that need to be updated
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $prev_attr.name })
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as r1, attr as attr1
@@ -151,8 +149,7 @@ class AttributeRenameQuery(Query):
         %(add_uuid)s
         WITH active_attr, new_attr
         MATCH (active_attr)-[]-(peer)
-        CALL {
-            WITH active_attr, peer
+        CALL (active_attr, peer) {
             MATCH (active_attr)-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN active_attr as a1, r as r1, peer as p1

@@ -36,8 +36,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         # ruff: noqa: E501
         query = """
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
             RETURN path as full_path, n as active_node
@@ -45,10 +44,8 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
             LIMIT 1
         }
         WITH full_path, active_node
-        WITH full_path, active_node
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $relationship_id })-[rrel2:IS_RELATED]-(peer:Node)
             WHERE all(
                 r in relationships(path)
@@ -68,8 +65,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
             collect([branch_level_sum, from_times, active_relationship_count, relationship_path, deepest_branch_name]) as enriched_paths,
             start_node,
             peer_node
-        CALL {
-            WITH enriched_paths, peer_node
+        CALL (enriched_paths, peer_node) {
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[3] as current_path, path_to_check[4] as branch_name, peer_node as current_peer
             ORDER BY
@@ -79,7 +75,6 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
                 path_to_check[2] DESC
             LIMIT 1
         }
-        WITH start_node, current_peer, branch_name, current_path
         WITH start_node, current_peer, branch_name, current_path
         WHERE all(r in relationships(current_path) WHERE r.status = "active")
         AND NOT any(label IN LABELS(current_peer) WHERE label IN $allowed_peer_kinds)

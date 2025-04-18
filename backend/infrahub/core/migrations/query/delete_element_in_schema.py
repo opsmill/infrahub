@@ -116,8 +116,7 @@ class DeleteElementInSchemaQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        CALL {
-            WITH attr_node
+        CALL (attr_node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(attr_node)
             WHERE %(branch_filter)s
             RETURN attr_node as n1, r as r1
@@ -130,8 +129,7 @@ class DeleteElementInSchemaQuery(Query):
 
         // Process Outbound Relationship
         MATCH (element_to_delete)-[]->(peer)
-        CALL {
-            WITH element_to_delete, peer
+        CALL (element_to_delete, peer) {
             MATCH (element_to_delete)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN element_to_delete as n1, r as rel_outband1, peer as p1
@@ -150,8 +148,7 @@ class DeleteElementInSchemaQuery(Query):
         WITH DISTINCT(element_to_delete) AS element_to_delete
         // Process Inbound Relationship
         MATCH (element_to_delete)<-[]-(peer)
-        CALL {
-            WITH element_to_delete, peer
+        CALL (element_to_delete, peer) {
             MATCH (element_to_delete)<-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN element_to_delete as n1, r as rel_inband1, peer as p1

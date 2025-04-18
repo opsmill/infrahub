@@ -478,11 +478,10 @@ WITH n
 ORDER BY %(id_func)s(n)
 SKIP toInteger($offset)
 LIMIT toInteger($limit)
-CALL {
+CALL (n) {
     // --------------
     // get all the nodes and edges linked to this node up to 2 steps away, excluding IS_PART_OF
     // --------------
-    WITH n
     MATCH (n)-[r1]-(v1)-[r2]-(v2)
     WHERE type(r1) <> "IS_PART_OF"
     WITH collect([v1, v2]) AS vertex_pairs, collect([r1, r2]) AS edge_pairs

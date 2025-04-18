@@ -75,8 +75,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         MATCH (node:%(node_kind)s)
         WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
         AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
             RETURN node as n1, r as r1
@@ -86,8 +85,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         WITH n1 as active_node, r1 as rb
         WHERE rb.status = "active"
         // Find all the attributes that need to be updated
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as r1, attr as attr1
@@ -98,8 +96,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         WHERE rb.status = "active"
         WITH active_attr
         MATCH (active_attr)-[]-(peer)
-        CALL {
-            WITH active_attr, peer
+        CALL (active_attr, peer) {
             MATCH (active_attr)-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN active_attr as a1, r as r1, peer as p1
