@@ -97,8 +97,7 @@ class DeleteNodesRelsQuery(Query):
         // - on deleted edge branch
         // - or on any branch and deleted node is agnostic
         // - or deleted node is aware and rel is agnostic
-        CALL {
-            WITH rel, deleted_edge
+        CALL (rel, deleted_edge) {
             OPTIONAL MATCH (rel)-[peer_active_edge {status: "active"}]-(peer_1)
             WHERE (peer_active_edge.branch = deleted_edge.branch OR (rel.branch_support <> $branch_agnostic AND deleted_edge.branch = $global_branch))
             AND peer_active_edge.to IS NULL
@@ -160,62 +159,52 @@ class DeleteNodesRelsQuery(Query):
         // Below CALL subqueries are called once for each rel-peer_2 pair for which we want to create a deleted edge.
         // Note that with current infrahub relationships edges design, only one of this CALL should be matched per pair.
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)-[:IS_RELATED]->(peer_2)
             MERGE (rel)-[:IS_RELATED {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)-[:IS_PROTECTED]->(peer_2)
             MERGE (rel)-[:IS_PROTECTED {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)-[:IS_VISIBLE]->(peer_2)
             MERGE (rel)-[:IS_VISIBLE {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)-[:HAS_OWNER]->(peer_2)
             MERGE (rel)-[:HAS_OWNER {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)-[:HAS_SOURCE]->(peer_2)
             MERGE (rel)-[:HAS_SOURCE {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)<-[:IS_RELATED]-(peer_2)
             MERGE (rel)<-[:IS_RELATED {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)<-[:IS_PROTECTED]-(peer_2)
             MERGE (rel)<-[:IS_PROTECTED {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)<-[:IS_VISIBLE]-(peer_2)
             MERGE (rel)<-[:IS_VISIBLE {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)<-[:HAS_OWNER]-(peer_2)
             MERGE (rel)<-[:HAS_OWNER {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
         }
 
-        CALL {
-            WITH rel, peer_2, branch, branch_level, deleted_time
+        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)<-[:HAS_SOURCE]-(peer_2)
             MERGE (rel)<-[:HAS_SOURCE {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
         }

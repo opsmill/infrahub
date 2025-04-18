@@ -80,8 +80,7 @@ class IPPrefixSubnetFetch(Query):
         // First match on IPNAMESPACE
         MATCH (ns:%(ns_label)s)
         WHERE ns.uuid = $ns_id
-        CALL {
-            WITH ns
+        CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN ns as ns1, r as r1
@@ -104,8 +103,7 @@ class IPPrefixSubnetFetch(Query):
         // ---
         // FIND ALL CHILDREN OF THESE PREFIXES
         // ---
-        CALL {
-            WITH all_prefixes
+        CALL (all_prefixes) {
             UNWIND all_prefixes as prefix
             OPTIONAL MATCH (prefix)<-[:IS_RELATED]-(ch_rel:Relationship)<-[:IS_RELATED]-(children:BuiltinIPPrefix)
             WHERE ch_rel.name = "parent__child"
@@ -171,8 +169,7 @@ class IPPrefixIPAddressFetch(Query):
         // First match on IPNAMESPACE
         MATCH (ns:%(ns_label)s)
         WHERE ns.uuid = $ns_id
-        CALL {
-            WITH ns
+        CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN ns as ns1, r as r1
@@ -271,8 +268,7 @@ class IPPrefixUtilization(Query):
         query = f"""
         MATCH (pfx:Node)
         WHERE pfx.uuid IN $ids
-        CALL {{
-            WITH pfx
+        CALL (pfx) {{
             MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
             WHERE rl.name IN [{", ".join(self.allocated_kinds_rel)}]
             AND any(l IN labels(child) WHERE l IN [{", ".join(self.allocated_kinds)}])
@@ -425,8 +421,7 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Get prefix node's current parent, if it exists
         // ------------------
-        CALL {
-            WITH ip_node
+        CALL (ip_node) {
             OPTIONAL MATCH parent_prefix_path = (ip_node)-[r1:IS_RELATED]->(:Relationship {name: "parent__child"})-[r2:IS_RELATED]->(current_parent:%(ip_prefix_kind)s)
             WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s))
             RETURN current_parent, (r1.status = "active" AND r2.status = "active") AS parent_is_active
@@ -444,8 +439,7 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Get prefix node's current prefix children, if any exist
         // ------------------
-        CALL {
-            WITH ip_node
+        CALL (ip_node) {
             OPTIONAL MATCH child_prefix_path = (ip_node)<-[r1:IS_RELATED]-(:Relationship {name: "parent__child"})<-[r2:IS_RELATED]-(current_prefix_child:%(ip_prefix_kind)s)
             WHERE all(r IN relationships(child_prefix_path) WHERE (%(branch_filter)s))
             WITH current_prefix_child, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -457,8 +451,7 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Get prefix node's current address children, if any exist
         // ------------------
-        CALL {
-            WITH ip_node
+        CALL (ip_node) {
             OPTIONAL MATCH child_address_path = (ip_node)-[r1:IS_RELATED]-(:Relationship {name: "ip_prefix__ip_address"})-[r2:IS_RELATED]-(current_address_child:%(ip_address_kind)s)
             WHERE all(r IN relationships(child_address_path) WHERE (%(branch_filter)s))
             WITH current_address_child, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -480,8 +473,7 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Identify the correct parent, if any, for the prefix node
         // ------------------
-        CALL {
-            WITH ip_namespace
+        CALL (ip_namespace) {
             OPTIONAL MATCH parent_path = (ip_namespace)-[pr1:IS_RELATED {status: "active"}]-(ns_rel:Relationship {name: "ip_namespace__ip_prefix"})
             -[pr2:IS_RELATED {status: "active"}]-(maybe_new_parent:%(ip_prefix_kind)s)
             -[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
@@ -517,9 +509,8 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Identify the correct children, if any, for the prefix node
         // ------------------
-        CALL {
+        CALL (ip_namespace, ip_node) {
             // Get ALL possible children for the prefix node
-            WITH ip_namespace, ip_node
             OPTIONAL MATCH child_path = (
                  (ip_namespace)-[r1:IS_RELATED]
                  -(ns_rel:Relationship)-[r2:IS_RELATED]
@@ -558,12 +549,11 @@ class IPPrefixReconcileQuery(Query):
         WITH ip_namespace, ip_node, current_parent, current_children, new_parent, collect([maybe_new_child, latest_mnc_attribute]) AS maybe_children_ips
         WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_children_ips, range(0, size(maybe_children_ips) - 1) AS child_indices
         UNWIND child_indices as ind
-        CALL {
+        CALL (ind, maybe_children_ips) {
             // ------------------
             // Filter all possible children to remove those that have a more-specific parent
             // among the list of all possible children
             // ------------------
-            WITH ind, maybe_children_ips
             WITH ind, maybe_children_ips AS ips
             RETURN REDUCE(
                 has_more_specific_parent = FALSE, potential_parent IN ips |

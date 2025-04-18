@@ -158,12 +158,11 @@ class NodeUniqueAttributeConstraintQuery(Query):
         # ruff: noqa: E501
         query = """
         // get attributes for node and its relationships
-        CALL {
+        CALL () {
             %(select_subqueries_str)s
         }
-        CALL {
-            WITH potential_path
-            WITH potential_path  // workaround for neo4j not allowing WHERE in a WITH of a subquery
+        CALL (potential_path) {
+            WITH potential_path // workaround for neo4j not allowing WHERE in a WITH of a subquery
             // only the branches and times we care about
             WHERE all(
                 r IN relationships(potential_path) WHERE (
@@ -183,8 +182,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             start_node,
             rel_identifier,
             potential_attr
-        CALL {
-            WITH enriched_paths
+        CALL (enriched_paths) {
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[0] as current_path, path_to_check[4] as latest_value
             ORDER BY
@@ -194,16 +192,14 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 path_to_check[3] DESC
             LIMIT 1
         }
-        CALL {
+        CALL (current_path) {
             // only active paths
-            WITH current_path
             WITH current_path  // workaround for neo4j not allowing WHERE in a WITH of a subquery
             WHERE all(r IN relationships(current_path) WHERE r.status = "active")
             RETURN current_path as active_path
         }
-        CALL {
+        CALL (active_path) {
             // get deepest branch name
-            WITH active_path
             UNWIND %(branch_name_and_level)s as branch_name_and_level
             RETURN branch_name_and_level[0] as branch_name
             ORDER BY branch_name_and_level[1] DESC

@@ -98,8 +98,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
         // --------------------------------
         MATCH (git_repo)-[:HAS_ATTRIBUTE]-(git_attr_name:Attribute)-[:HAS_VALUE]->(git_name_value:AttributeValue)
         WHERE git_attr_name.name = "name"
-        CALL {
-            WITH git_repo
+        CALL (git_repo) {
             MATCH path1 = (git_repo)-[r1:HAS_ATTRIBUTE]-(git_attr_name2:Attribute)-[r2:HAS_VALUE]->(git_name_value2:AttributeValue)
             WHERE git_attr_name2.name = "name"
               AND all(r IN relationships(path1) WHERE %(filters)s)
@@ -204,8 +203,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
         WHERE a.name in ["username", "password"]
             AND av.value = "NULL"
             AND all(r IN relationships(path) WHERE %(filters)s AND r.status = "active")
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(filters)s
             RETURN node as n1, r as r1
