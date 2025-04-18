@@ -1,3 +1,4 @@
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import Content from "@/shared/components/layout/content";
 import { Card } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
@@ -123,27 +124,34 @@ const HelperCard = ({
   docLabel,
 }: HelperCardProps) => {
   return (
-    <Card className="border flex flex-col hover:shadow-md transition-shadow duration-300 h-46 w-80">
+    <Card className="border border-gray-200 flex flex-col hover:shadow-md transition-shadow duration-300 w-80">
       <h3 className="font-semibold flex items-center gap-1 mb-1">
         <Icon icon={icon} /> {title}
       </h3>
-      <p className="mb-6 text-gray-500 text-sm flex-grow">{description}</p>
+      <p className="mb-6 text-gray-500 text-sm grow">{description}</p>
 
       <div className="flex justify-end gap-2">
         {docTo && (
-          <Link to={docTo} target="_blank">
-            <button className="text-xs font-semibold bg-custom-white border p-2 rounded flex items-center gap-1 border-custom-blue-700 text-custom-blue-700">
-              {docLabel} <Icon icon="mdi:open-in-new" />
-            </button>
-          </Link>
+          <LinkButton
+            size="sm"
+            variant="outline"
+            to={docTo}
+            target="_blank"
+            className="text-xs font-semibold gap-1 border-custom-blue-700 text-custom-blue-700"
+          >
+            {docLabel} <Icon icon="mdi:open-in-new" />
+          </LinkButton>
         )}
 
         {goto && (
-          <Link to={goto}>
-            <button className="text-xs font-semibold bg-custom-white border p-2 rounded">
-              {gotoLabel}
-            </button>
-          </Link>
+          <LinkButton
+            size="sm"
+            variant="outline"
+            to={goto}
+            className="text-xs font-semibold shadow-none"
+          >
+            {gotoLabel}
+          </LinkButton>
         )}
       </div>
     </Card>

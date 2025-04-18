@@ -147,7 +147,7 @@ export function GeneratorTargetSelectionForm({
         </Button>
       </div>
 
-      <div className="rounded border p-2">
+      <div className="rounded-sm border border-gray-200 p-2">
         {selectedTargetNodes.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {selectedTargetNodes.map((node) => {
@@ -178,7 +178,7 @@ export function GeneratorTargetSelectionForm({
 
       <RelationshipComboboxList
         autoFocus
-        className="rounded border"
+        className="rounded-sm border"
         peer="CoreNode"
         onSelect={handleSelect}
         filterQuery={{

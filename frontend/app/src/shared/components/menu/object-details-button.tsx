@@ -34,18 +34,14 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
 
       <DropdownMenuContent align="end" className="z-10">
         <DropdownMenuItem className="p-0">
-          <CopyToClipboard size={"default"} className="flex-grow justify-start gap-2 p-2" text={id}>
+          <CopyToClipboard size={"default"} className="grow justify-start gap-2 p-2" text={id}>
             Copy ID
           </CopyToClipboard>
         </DropdownMenuItem>
 
         {hfid && hfid !== "null" && (
           <DropdownMenuItem className="p-0">
-            <CopyToClipboard
-              size={"default"}
-              className="flex-grow justify-start gap-2 p-2"
-              text={hfid}
-            >
+            <CopyToClipboard size={"default"} className="grow justify-start gap-2 p-2" text={hfid}>
               Copy HFID
             </CopyToClipboard>
           </DropdownMenuItem>

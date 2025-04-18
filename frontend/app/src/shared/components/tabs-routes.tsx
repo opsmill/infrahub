@@ -19,7 +19,7 @@ function Tab({ to, label, isLoading, error, count }: TabProps) {
     <Link
       to={to}
       className={classNames(
-        "flex items-center whitespace-nowrap border-b-2 py-2 px-4 text-sm font-medium cursor-pointer",
+        "flex items-center whitespace-nowrap border-b-2 border-gray-200 py-2 px-4 text-sm font-medium cursor-pointer",
         match
           ? "border-custom-blue-500 text-custom-blue-600 bg-custom-blue-600/10"
           : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -45,12 +45,7 @@ export function Tabs(props: TabsProps) {
   const { tabs, rightItems, className } = props;
 
   return (
-    <div
-      className={classNames(
-        "bg-custom-white flex items-center border-b border-gray-200",
-        className
-      )}
-    >
+    <div className={classNames("bg-white flex items-center border-b border-gray-200", className)}>
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex" aria-label="Tabs">

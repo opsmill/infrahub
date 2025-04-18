@@ -48,8 +48,8 @@ export function RelationshipActionsCell({
 
   return (
     <Popover open={showPropertiesModal} onOpenChange={setShowPropertiesModal}>
-      <TableCell className="sticky right-0 border-l size-10 items-center justify-center bg-white -ml-px">
-        <div className="absolute -left-4 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-gray-300/30 pointer-events-none" />
+      <TableCell className="sticky right-0 border-l border-gray-200 size-10 items-center justify-center bg-white -ml-px">
+        <div className="absolute -left-4 top-0 bottom-0 w-4 bg-linear-to-r from-transparent to-gray-300/30 pointer-events-none" />
         <DropdownMenu>
           <PopoverAnchor>
             <DropdownMenuTrigger asChild>

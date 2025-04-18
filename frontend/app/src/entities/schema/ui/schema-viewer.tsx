@@ -78,7 +78,7 @@ export const SchemaViewer = ({
     <section
       style={style}
       className={classNames(
-        "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
+        "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-white rounded-md",
         className
       )}
       data-testid="schema-viewer"
@@ -112,7 +112,7 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
       {schema.icon && (
         <Icon
           icon={schema.icon}
-          className="text-xl p-2 self-start rounded text-custom-blue-600 border border-custom-blue-100"
+          className="text-xl p-2 self-start rounded-sm text-custom-blue-600 border border-custom-blue-100"
         />
       )}
 
@@ -160,7 +160,7 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
 
 const Properties = ({ schema }: { schema: ModelSchema }) => {
   return (
-    <div className="p-2 divide-y">
+    <div className="p-2 divide-y divide-gray-200">
       <div>
         <PropertyRow title="ID" value={schema.id} />
         <PropertyRow title="Namespace" value={schema.namespace} />

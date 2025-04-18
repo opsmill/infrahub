@@ -65,7 +65,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
             leaveTo="opacity-0"
           >
             <div
-              className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
+              className="fixed inset-0 bg-black/40 transition-opacity"
               data-cy="side-panel-background"
               data-testid="side-panel-background"
             />
@@ -85,10 +85,10 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
                   leaveTo="translate-x-full"
                 >
                   <Dialog.Panel
-                    className={`bg-custom-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
+                    className={`bg-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
                     data-testid="side-panel-container"
                   >
-                    <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
+                    <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b border-gray-200">
                       <div className="w-full">
                         <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
                       </div>

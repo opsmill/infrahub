@@ -132,9 +132,11 @@ export default function ObjectItemDetails({
       {!qspTab && (
         <div className="flex flex-col xl:items-start xl:grid xl:grid-cols-3 gap-2 p-2">
           <Card className="md:col-span-2 p-0 grow overflow-x-hidden">
-            <CardWithBorder.Title className="border-b">Details</CardWithBorder.Title>
+            <CardWithBorder.Title className="border-b border-gray-200">
+              Details
+            </CardWithBorder.Title>
 
-            <div className="divide-y">
+            <div className="divide-y divide-gray-200">
               {attributes.map((attribute) => {
                 if (!objectDetailsData[attribute.name]) {
                   return null;
@@ -160,7 +162,7 @@ export default function ObjectItemDetails({
                             isProtected={objectDetailsData[attribute.name]?.is_protected}
                             header={
                               !attribute.read_only && (
-                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
                                   <div className="font-semibold">{attribute.label}</div>
                                   <ButtonWithTooltip
                                     disabled={!permission.update.isAllowed}
@@ -220,7 +222,9 @@ export default function ObjectItemDetails({
           </Card>
 
           <Card className="p-0 overflow-x-hidden">
-            <CardWithBorder.Title className="border-b">Activities</CardWithBorder.Title>
+            <CardWithBorder.Title className="border-b border-gray-200">
+              Activities
+            </CardWithBorder.Title>
             <NodeEvents objectId={objectid} objectKind={objectKind} />
           </Card>
         </div>
@@ -240,7 +244,7 @@ export default function ObjectItemDetails({
 
       {qspTab && qspTab === TASK_TAB && qspTaskId && (
         <div>
-          <div className="flex bg-custom-white text-sm">
+          <div className="flex bg-white text-sm">
             <Link
               to={constructPath(pathname, [
                 { name: QSP.TAB, value: TASK_TAB },

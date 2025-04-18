@@ -49,12 +49,12 @@ export function PermissionCombobox({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-none has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+            "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
             "cursor-pointer",
             className
           )}
         >
-          <div className="flex-grow flex flex-wrap gap-2">
+          <div className="grow flex flex-wrap gap-2">
             {value?.map((node) => (
               <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
                 {node.identifier.value}
@@ -78,7 +78,7 @@ export function PermissionCombobox({
 
           <button
             type="button"
-            className="text-gray-600 outline-none w-3.5 h-3.5"
+            className="text-gray-600 outline-hidden w-3.5 h-3.5"
             onClick={() => setOpen(!open)}
             {...props}
           >

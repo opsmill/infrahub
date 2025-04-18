@@ -117,7 +117,7 @@ const RepositoryForm = ({
 };
 
 const FormGroup = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("shadow-sm space-y-4", className)} {...props} />;
+  return <Card className={classNames("shadow-xs space-y-4", className)} {...props} />;
 };
 
 export default RepositoryForm;

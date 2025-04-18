@@ -47,7 +47,7 @@ export const MarkdownEditorHeader: FC<EditorHeaderProps> = ({
   editLabel,
   previewLabel,
 }) => (
-  <div className="border-b flex justify-between overflow-auto">
+  <div className="border-b border-gray-200 flex justify-between overflow-auto">
     <Button onClick={onPreviewToggle} className="bg-white border-none rounded-none rounded-tl-md">
       {previewMode ? (editLabel ?? "Continue editing") : (previewLabel ?? "Preview")}
     </Button>

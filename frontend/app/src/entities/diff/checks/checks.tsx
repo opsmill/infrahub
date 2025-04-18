@@ -26,7 +26,7 @@ export const Checks = forwardRef((_, ref) => {
   }
 
   return (
-    <div className="text-sm bg-stone-100 flex-grow">
+    <div className="text-sm bg-stone-100 grow">
       <ChecksSummary isLoading={loading} validators={validators} refetch={refetch} />
 
       <div className="p-4 pt-0 space-y-2">

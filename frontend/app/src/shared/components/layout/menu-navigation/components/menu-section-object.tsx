@@ -50,7 +50,7 @@ const RecursiveObjectMenuItem: React.FC<{
       <DropdownMenuAccordionTrigger
         className={classNames(
           menuNavigationItemStyle,
-          "font-bold py-1 data-[state=open]:bg-transparent data-[state=open]:text-inherit data-[state=open]:data-[highlighted]:bg-neutral-100"
+          "font-bold py-1 data-[state=open]:bg-transparent data-[state=open]:text-inherit data-[state=open]:data-highlighted:bg-neutral-100"
         )}
         iconClassName="hover:bg-neutral-200"
       >

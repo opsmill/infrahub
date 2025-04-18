@@ -29,7 +29,7 @@ export const ContentTitle = ({
   return (
     <header
       className={classNames(
-        "min-h-[4rem] bg-custom-white flex items-center px-4 border-b",
+        "min-h-[4rem] bg-white flex items-center px-4 border-b border-gray-200",
         className
       )}
       {...props}
@@ -74,7 +74,7 @@ export const ContentCardTitle = ({
   ...props
 }: ContentCardTitleProps) => {
   return (
-    <header className={classNames("flex p-5 border-b", className)} {...props}>
+    <header className={classNames("flex p-5 border-b border-gray-200", className)} {...props}>
       <div className="flex flex-col gap-0.5 overflow-hidden">
         {title && (
           <div className="font-bold text-xl flex items-center gap-2">

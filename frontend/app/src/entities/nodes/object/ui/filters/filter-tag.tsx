@@ -15,7 +15,7 @@ export function FilterTag({ label, value, ...props }: FilterTagProps) {
       className={classNames(
         focusVisibleStyle,
         "group text-gray-600 text-sm whitespace-nowrap bg-neutral-100 rounded-full inline-flex items-center gap-1.5 px-1 border border-gray-300 cursor-pointer",
-        "data-[hovered]:bg-gray-100 data-[hovered]:border-custom-blue-700"
+        "data-hovered:bg-gray-100 data-hovered:border-custom-blue-700"
       )}
       textValue={`${label} contains ${value}`}
       {...props}

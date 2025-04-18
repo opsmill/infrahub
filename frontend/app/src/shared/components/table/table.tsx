@@ -58,7 +58,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
           </tr>
         </thead>
 
-        <tbody className="bg-custom-white text-left">
+        <tbody className="bg-white text-left">
           {rows.map((row, index: number) => (
             <tr
               key={index}

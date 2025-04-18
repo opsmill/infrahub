@@ -91,7 +91,7 @@ export const Check = ({ id }: tCheckProps) => {
 
   if (error) {
     return (
-      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
+      <div className={"flex flex-col rounded-md p-2 bg-white border-l-4"}>
         <ErrorScreen message="Something went wrong when fetching the check details" />
       </div>
     );
@@ -131,7 +131,7 @@ export const Check = ({ id }: tCheckProps) => {
         <div className="flex flex-1 flex-col">
           <div className="flex items-center">
             {loading ? (
-              <Skeleton className="h-3 w-3 mr-2 rounded" />
+              <Skeleton className="h-3 w-3 mr-2 rounded-sm" />
             ) : (
               getCheckIcon(conclusion?.value)
             )}

@@ -76,7 +76,7 @@ export default function ObjectItemMetaEdit(props: Props) {
   }
 
   return (
-    <div className="flex-1 bg-custom-white flex">
+    <div className="flex-1 bg-white flex">
       <DynamicForm
         fields={[
           {

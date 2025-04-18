@@ -23,7 +23,7 @@ interface ResourcePoolSelectorProps extends HTMLAttributes<HTMLDivElement> {
 const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelectorProps) => {
   return (
     <Card className={className} {...props}>
-      <CardWithBorder.Title className="bg-custom-white border-b">
+      <CardWithBorder.Title className="bg-white border-b border-gray-200">
         Resources <Badge>{resources.length}</Badge>
       </CardWithBorder.Title>
 

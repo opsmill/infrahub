@@ -52,9 +52,9 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
               {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
             </div>
           }
-          className="bg-gray-100 border rounded-md"
+          className="bg-gray-100 border border-gray-200 rounded-md"
         >
-          <div className="bg-custom-white divide-y border-t">
+          <div className="bg-white divide-y border-t border-gray-200 divide-gray-200">
             <div className="grid grid-cols-3 pl-8">
               <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}

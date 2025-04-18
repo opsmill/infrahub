@@ -116,7 +116,7 @@ export const Alert = (props: AlertProps) => {
   return (
     <div className={classNames("rounded-m p-4", alertClasses.container)}>
       <div className="flex items-center">
-        <div className="flex-shrink-0 flex items-start">{getIcon()}</div>
+        <div className="shrink-0 flex items-start">{getIcon()}</div>
         <div className="ml-3">
           {details ? <Accordion title={alertMessage}>{alertDetails}</Accordion> : alertMessage}
         </div>
@@ -125,7 +125,7 @@ export const Alert = (props: AlertProps) => {
             <button
               type="button"
               className={classNames(
-                "inline-flex rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2",
+                "inline-flex rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2",
                 alertClasses?.button
               )}
               onClick={handleDismiss}
