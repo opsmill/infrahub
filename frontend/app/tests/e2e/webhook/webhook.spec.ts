@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../../../tests/constants";
-import { saveScreenshotForDocs } from "../../../../tests/utils";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/objects/CoreWebhook", () => {
   test.describe("when logged in as admin account", () => {

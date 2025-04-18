@@ -35,6 +35,7 @@
     "tests/unit/components",
     "tests/unit/utils",
     "tests/unit/data",
-    "tests/integrations/tests"
+    "tests/integrations/tests",
+    "tests/e2e/webhook/webhook.spec.ts"
   ]
 }
