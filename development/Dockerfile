@@ -36,6 +36,8 @@ RUN poetry config virtualenvs.create false
 # STAGE : Frontend
 # ****************************************************************
 FROM docker.io/node:20-slim AS frontend
+ARG CI_ARG
+ENV CI=$CI_ARG
 
 RUN mkdir /source
 

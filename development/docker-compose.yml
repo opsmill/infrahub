@@ -113,6 +113,8 @@ services:
     profiles: [demo, dev]
     build:
       context: ../
+      args:
+        CI_ARG: ${CI:-0}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
