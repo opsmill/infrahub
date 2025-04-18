@@ -1,3 +1,4 @@
+---
 extends: capitalization
 message: "'%s' should use sentence case"
 level: warning
