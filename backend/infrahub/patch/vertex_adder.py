@@ -1,0 +1,57 @@
+from collections import defaultdict
+from dataclasses import asdict
+
+from infrahub.core.query import QueryType
+from infrahub.database import InfrahubDatabase
+
+from .models import VertexToAdd
+
+
+class PatchPlanVertexAdder:
+    def __init__(self, db: InfrahubDatabase, batch_size_limit: int = 1000) -> None:
+        self.db = db
+        self.batch_size_limit = batch_size_limit
+
+    async def _run_add_query(self, labels: list[str], vertices_to_add: list[VertexToAdd]) -> dict[str, str]:
+        labels_str = ":".join(labels)
+        all_prop_keys: set[str] = set()
+        for v_to_add in vertices_to_add:
+            all_prop_keys |= set(v_to_add.after_props.keys())
+
+        cypher_variable_map = "{" + ",".join([f"{p}: vertex_to_add.after_props.{p}" for p in all_prop_keys]) + "}"
+        serial_vertices_to_add: list[dict[str, str | int | bool]] = [asdict(v) for v in vertices_to_add]
+        query = """
+UNWIND $vertices_to_add AS vertex_to_add
+MERGE (v:%(labels)s %(cypher_variable_map)s)
+RETURN vertex_to_add.identifier AS abstract_id, elementId(v) AS db_id
+        """ % {"labels": labels_str, "cypher_variable_map": cypher_variable_map}
+        results, _ = await self.db.execute_query_with_metadata(
+            query=query, params={"vertices_to_add": serial_vertices_to_add}, type=QueryType.WRITE
+        )
+        abstract_to_concrete_id_map: dict[str, str] = {}
+        for result in results:
+            abstract_id = result.get("abstract_id")
+            concrete_id = result.get("db_id")
+            abstract_to_concrete_id_map[abstract_id] = concrete_id
+        return abstract_to_concrete_id_map
+
+    async def execute(self, vertices_to_add: list[VertexToAdd]) -> dict[str, str]:
+        vertices_map_queue: dict[frozenset[str], list[VertexToAdd]] = defaultdict(list)
+        abstract_to_concrete_id_map: dict[str, str] = {}
+        for vertex_to_add in vertices_to_add:
+            frozen_labels = frozenset(vertex_to_add.labels)
+            vertices_map_queue[frozen_labels].append(vertex_to_add)
+            if len(vertices_map_queue[frozen_labels]) > self.batch_size_limit:
+                abstract_to_concrete_id_map.update(
+                    await self._run_add_query(
+                        labels=list(frozen_labels),
+                        vertices_to_add=vertices_map_queue[frozen_labels],
+                    )
+                )
+                vertices_map_queue[frozen_labels] = []
+
+        for frozen_labels, vertices_group in vertices_map_queue.items():
+            abstract_to_concrete_id_map.update(
+                await self._run_add_query(labels=list(frozen_labels), vertices_to_add=vertices_group)
+            )
+        return abstract_to_concrete_id_map
