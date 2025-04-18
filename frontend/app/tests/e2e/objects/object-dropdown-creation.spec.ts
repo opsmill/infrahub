@@ -58,6 +58,6 @@ test.describe("object dropdown creation", () => {
     await page.getByRole("combobox", { name: "Select an object type" }).click();
     await page.getByRole("option", { name: "Custom Webhook Core" }).click();
     await page.getByRole("combobox", { name: "Branch Scope" }).click();
-    expect(await page.getByTestId("add-option-button")).toBeDisabled();
+    expect(await page.getByTestId("add-option-button")).toBeHidden();
   });
 });
