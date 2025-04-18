@@ -48,8 +48,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
-          memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
+          cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT:-0.0}
+          memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT:-0}
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
     restart: unless-stopped
     environment:
