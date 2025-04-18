@@ -11,6 +11,24 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.6) - 2025-04-18
+
+### Added
+
+- Add generics to node selection in number pool form
+- Enable node select in the webhook form to quickly choose the node kind
+
+### Changed
+
+- Raise more accurate error when trying to lookup a node by HFID when the schema does not have a HFID or the number of elements does not match
+
+### Fixed
+
+- Clear GraphQL schema manager cache when deleting branches to release memory. ([#6021](https://github.com/opsmill/infrahub/issues/6021))
+- Add attributes and relationships to generic templates to ensure proper GraphQL schema generation ([#6287](https://github.com/opsmill/infrahub/issues/6287))
+- Fix node lookup by its HFID with a generic template kind ([#6301](https://github.com/opsmill/infrahub/issues/6301))
+- Disable option creation for restricted namespaces in dropdown and enum
+
 ## [Infrahub - v1.2.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.5) - 2025-04-11
 
 ### Added

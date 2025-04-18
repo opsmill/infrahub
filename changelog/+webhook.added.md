@@ -1,1 +1,0 @@
-Enable node select in the webhook form to quickly choose the node kind
