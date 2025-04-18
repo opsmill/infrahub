@@ -1,0 +1,1 @@
+Disable dropdown option creation for restricted namespaces
