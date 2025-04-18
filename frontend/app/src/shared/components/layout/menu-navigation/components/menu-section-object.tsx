@@ -24,7 +24,7 @@ export interface MenuSectionObjectsProps {
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
-    return <Icon icon={item.icon} className="text-md m-1 min-h-4 min-w-4" />;
+    return <Icon icon={item.icon} className="text-md m-1 size-4" />;
   }
   return <ObjectAvatar name={item.label} />;
 };

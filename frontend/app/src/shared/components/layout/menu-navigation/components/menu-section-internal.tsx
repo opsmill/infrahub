@@ -26,7 +26,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
     return (
       <DropdownMenuItem asChild>
         <Link to={constructPath(item.path)}>
-          <Icon icon={item.icon} className="min-w-4" />
+          <Icon icon={item.icon} className="size-4" />
           {item.label}
         </Link>
       </DropdownMenuItem>
@@ -36,7 +36,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
-        <Icon icon={item.icon} className="min-w-4" />
+        <Icon icon={item.icon} className="size-4" />
         {item.label}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
@@ -56,7 +56,7 @@ const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
 
 const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} className={classNames(menuNavigationItemStyle, "h-10")}>
-    <Icon icon={item.icon} className="min-w-4" />
+    <Icon icon={item.icon} className="size-4" />
     <span className="text-sm truncate">{item.label}</span>
     <Icon
       icon="mdi:arrow-top-right"
@@ -77,7 +77,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
       <CollapsedButton tooltipContent={item.label} icon={item.icon} />
     ) : (
       <>
-        <Icon icon={item.icon} className="min-w-4" />
+        <Icon icon={item.icon} className="size-4" />
         <span className="text-sm truncate">{item.label}</span>
         <Icon
           icon="mdi:dots-vertical"

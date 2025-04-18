@@ -15,7 +15,7 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0",
   },
-  plugins: [react(), tailwindcss(), svgr(), tsconfigPaths()],
+  plugins: [tailwindcss(), react(), svgr(), tsconfigPaths()],
   test: {
     browser: {
       enabled: true,
