@@ -207,12 +207,11 @@ class NodeCreateAllQuery(NodeQuery):
         attrs_query = """
         WITH distinct n
         UNWIND $attrs AS attr
-        CALL {
-            WITH n, attr
+        CALL (n, attr) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
-            WITH n, attr, av, a
+            WITH av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
@@ -232,13 +231,12 @@ class NodeCreateAllQuery(NodeQuery):
         attrs_iphost_query = """
         WITH distinct n
         UNWIND $attrs_iphost AS attr_iphost
-        CALL {
-            WITH n, attr_iphost
+        CALL (n, attr_iphost) {
             WITH n, attr_iphost AS attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPHost { %(iphost_prop)s })
-            WITH n, attr, av, a
+            WITH attr, av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
@@ -259,13 +257,12 @@ class NodeCreateAllQuery(NodeQuery):
         attrs_ipnetwork_query = """
         WITH distinct n
         UNWIND $attrs_ipnetwork AS attr_ipnetwork
-        CALL {
-            WITH n, attr_ipnetwork
+        CALL (n, attr_ipnetwork) {
             WITH n, attr_ipnetwork AS attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPNetwork { %(ipnetwork_prop)s })
-            WITH n, attr, av, a
+            WITH attr, av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
@@ -286,8 +283,7 @@ class NodeCreateAllQuery(NodeQuery):
         rels_bidir_query = """
         WITH distinct n
         UNWIND $rels_bidir AS rel
-        CALL {
-            WITH n, rel
+        CALL (n, rel) {
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -310,8 +306,7 @@ class NodeCreateAllQuery(NodeQuery):
         rels_out_query = """
         WITH distinct n
         UNWIND $rels_out AS rel_out
-        CALL {
-            WITH n, rel_out
+        CALL (n, rel_out) {
             WITH n, rel_out as rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
@@ -335,8 +330,7 @@ class NodeCreateAllQuery(NodeQuery):
         rels_in_query = """
         WITH distinct n
         UNWIND $rels_in AS rel_in
-        CALL {
-            WITH n, rel_in
+        CALL (n, rel_in) {
             WITH n, rel_in AS rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
@@ -520,8 +514,7 @@ class NodeListGetAttributeQuery(Query):
         self.add_to_query(query)
 
         query = """
-        CALL {
-            WITH n, a
+        CALL (n, a) {
             MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1, a as a1
@@ -533,8 +526,7 @@ class NodeListGetAttributeQuery(Query):
         WITH n, r1, a
         MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
         WHERE %(branch_filter)s
-        CALL {
-            WITH a, av
+        CALL (a, av) {
             MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
             WHERE %(branch_filter)s
             RETURN a as a1, r as r2, av as av1
@@ -849,8 +841,7 @@ class NodeListGetInfoQuery(Query):
         query = """
         MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
         WHERE n.uuid IN $ids
-        CALL {
-            WITH root, n
+        CALL (root, n) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1
@@ -1046,8 +1037,7 @@ class NodeGetListQuery(Query):
         if not self.branch.is_default:
             topquery = """
             MATCH (n:%(node_kind)s)
-            CALL {
-                WITH n
+            CALL (n) {
                 MATCH (root:Root)<-[r:IS_PART_OF]-(n)
                 WHERE %(branch_filter)s
                 RETURN r
@@ -1152,7 +1142,7 @@ class NodeGetListQuery(Query):
             )
 
             filter_params.update(subquery_params)
-            filter_query.append("CALL {")
+            filter_query.append("CALL (n) {")
             filter_query.append(subquery)
             filter_query.append("}")
             filter_query.append(f"WITH {with_str}")
@@ -1201,7 +1191,7 @@ class NodeGetListQuery(Query):
             with_str = ", ".join(self._get_tracked_variables())
 
             sort_params.update(subquery_params)
-            sort_query.append("CALL {")
+            sort_query.append("CALL (n) {")
             sort_query.append(subquery)
             sort_query.append("}")
             sort_query.append(f"WITH {with_str}")
@@ -1215,8 +1205,7 @@ class NodeGetListQuery(Query):
         froms_str = db.render_list_comprehension(items="relationships(profile_path)", item_name="from")
         profiles_per_node_query = (
             """
-            CALL {
-                WITH n
+            CALL (n) {
                 OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(maybe_profile_n:Node)-[:IS_PART_OF]->(:Root)
                 WHERE profile_r.name = "node__profile"
                 AND all(r in relationships(profile_path) WHERE %(branch_filter)s)
@@ -1234,8 +1223,7 @@ class NodeGetListQuery(Query):
             WITH %(with_str)s, CASE
                 WHEN ordered_is_actives[0] = True THEN maybe_profile_n ELSE NULL
             END AS profile_n
-            CALL {
-                WITH profile_n
+            CALL (profile_n) {
                 OPTIONAL MATCH profile_priority_path = (profile_n)-[pr1:HAS_ATTRIBUTE]->(a:Attribute)-[pr2:HAS_VALUE]->(av:AttributeValue)
                 WHERE a.name = "profile_priority"
                 AND all(r in relationships(profile_priority_path) WHERE %(branch_filter)s and r.status = "active")
@@ -1276,7 +1264,7 @@ class NodeGetListQuery(Query):
             self._track_variable(profile_attr.profile_value_query_variable)
             with_str = ", ".join(self._get_tracked_variables())
 
-            attributes_queries.append("CALL {")
+            attributes_queries.append("CALL (profile_n) {")
             attributes_queries.append(subquery)
             attributes_queries.append("}")
             attributes_queries.append(f"WITH {with_str}")
@@ -1457,8 +1445,7 @@ class NodeGetHierarchyQuery(Query):
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
         WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
         WITH n, collect(last(nodes(path))) AS peers_with_duplicates
-        CALL {
-            WITH peers_with_duplicates
+        CALL (peers_with_duplicates) {
             UNWIND peers_with_duplicates AS pwd
             RETURN DISTINCT pwd AS peer
         }
@@ -1466,8 +1453,7 @@ class NodeGetHierarchyQuery(Query):
 
         if not self.branch.is_default:
             query += """
-        CALL {
-            WITH n, peer
+        CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
@@ -1532,7 +1518,7 @@ class NodeGetHierarchyQuery(Query):
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
 
-            self.add_subquery(subquery=subquery, with_clause=with_str)
+            self.add_subquery(subquery=subquery, node_alias="peer", with_clause=with_str)
 
         # ----------------------------------------------------------------------------
         # ORDER Results
@@ -1560,7 +1546,7 @@ class NodeGetHierarchyQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                self.add_subquery(subquery=subquery)
+                self.add_subquery(subquery=subquery, node_alias="peer")
 
                 order_cnt += 1
         else:

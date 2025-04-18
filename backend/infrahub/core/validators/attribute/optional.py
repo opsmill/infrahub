@@ -27,8 +27,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
         query = """
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)

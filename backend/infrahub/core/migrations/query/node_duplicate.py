@@ -133,8 +133,7 @@ class NodeDuplicateQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
             RETURN node as n1, r as r1
@@ -147,8 +146,7 @@ class NodeDuplicateQuery(Query):
         WITH active_node, new_node
         // Process Outbound Relationship
         MATCH (active_node)-[]->(peer)
-        CALL {
-            WITH active_node, peer
+        CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_outband1, peer as p1
@@ -167,8 +165,7 @@ class NodeDuplicateQuery(Query):
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
         MATCH (active_node)<-[]-(peer)
-        CALL {
-            WITH active_node, peer
+        CALL (active_node, peer) {
             MATCH (active_node)<-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_inband1, peer as p1

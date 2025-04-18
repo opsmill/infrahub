@@ -63,8 +63,7 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         query = """
         // Find all the active nodes
         MATCH (node:%(node_kind)s)
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
             RETURN node as n1, r as r1
@@ -96,8 +95,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         // Process Inbound Relationship
         WITH active_node
         MATCH (active_node)<-[]-(peer)
-        CALL {
-            WITH active_node, peer
+        CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_inband1, peer as p1
@@ -142,8 +140,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         // Process Outbound Relationship
         WITH active_node
         MATCH (active_node)-[]->(peer)
-        CALL {
-            WITH active_node, peer
+        CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_outband1, peer as p1
