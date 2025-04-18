@@ -3,33 +3,31 @@ global:
     image:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
       prefectTag: 1.2.5
-
 server:
   replicaCount: 1
   command:
-  - /usr/bin/tini
-  - -g
-  - --
+    - /usr/bin/tini
+    - -g
+    - --
   args:
-  - uvicorn
-  - --host
-  - "0.0.0.0"
-  - --port
-  - "4200"
-  - --factory
-  - infrahub.prefect_server.app:create_infrahub_prefect
+    - uvicorn
+    - --host
+    - "0.0.0.0"
+    - --port
+    - "4200"
+    - --factory
+    - infrahub.prefect_server.app:create_infrahub_prefect
   env:
-  - name: PREFECT_UI_SERVE_BASE
-    value: /
-  - name: PREFECT_MESSAGING_BROKER
-    value: prefect_redis.messaging
-  - name: PREFECT_MESSAGING_CACHE
-    value: prefect_redis.messaging
-  - name: PREFECT_REDIS_MESSAGING_HOST
-    value: redis-sentinel-proxy
-  - name: PREFECT_REDIS_MESSAGING_DB
-    value: "1"
-
+    - name: PREFECT_UI_SERVE_BASE
+      value: /
+    - name: PREFECT_MESSAGING_BROKER
+      value: prefect_redis.messaging
+    - name: PREFECT_MESSAGING_CACHE
+      value: prefect_redis.messaging
+    - name: PREFECT_REDIS_MESSAGING_HOST
+      value: redis-sentinel-proxy
+    - name: PREFECT_REDIS_MESSAGING_DB
+      value: "1"
 secret:
   create: true
   name: ""
@@ -38,9 +36,7 @@ secret:
   host: "taskmanagerdb-rw"
   port: "5432"
   database: "prefect"
-
 serviceAccount:
   create: false
-
 postgresql:
   enabled: false

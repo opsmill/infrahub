@@ -18,20 +18,20 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app.kubernetes.io/name: redis-sentinel-proxy
-            topologyKey: kubernetes.io/hostname
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: redis-sentinel-proxy
+              topologyKey: kubernetes.io/hostname
       containers:
-      - name: redis-sentinel-proxy
-        image: patrickdk/redis-sentinel-proxy:v1.2
-        args:
-        - "-master"
-        - "mymaster"
-        - "-listen"
-        - ":6379"
-        - "-sentinel"
-        - "cache:26379"
-        ports:
-        - containerPort: 6379
-          name: redis
+        - name: redis-sentinel-proxy
+          image: patrickdk/redis-sentinel-proxy:v1.2
+          args:
+            - "-master"
+            - "mymaster"
+            - "-listen"
+            - ":6379"
+            - "-sentinel"
+            - "cache:26379"
+          ports:
+            - containerPort: 6379
+              name: redis

@@ -8,8 +8,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 6379
-    targetPort: redis
-    name: cache-ha
+    - port: 6379
+      targetPort: redis
+      name: cache-ha
   selector:
     app.kubernetes.io/name: redis-sentinel-proxy
