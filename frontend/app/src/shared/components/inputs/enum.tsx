@@ -92,13 +92,14 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
 
   return (
     <div className="p-2 pt-0">
-      <Button
-        className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-        onClick={() => setOpen(!open)}
-        disabled={!namespace?.user_editable}
-      >
-        + Add option
-      </Button>
+      {namespace?.user_editable && (
+        <Button
+          className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          onClick={() => setOpen(!open)}
+        >
+          + Add option
+        </Button>
+      )}
 
       <SlideOver
         title={
