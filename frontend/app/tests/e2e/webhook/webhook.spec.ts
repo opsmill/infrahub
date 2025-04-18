@@ -57,6 +57,9 @@ test.describe("/objects/CoreWebhook", () => {
           .getByRole("link", { name: "Ansible EDA", exact: true })
           .click();
 
+        await expect(page.getByText("Activities", { exact: true })).toBeVisible();
+        await expect(page.getByText("Loading...")).toBeHidden();
+
         while (await page.getByText("No activity found for this").isVisible()) {
           await page.reload();
           await expect(page.getByText("Activities", { exact: true })).toBeVisible();
