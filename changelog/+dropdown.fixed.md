@@ -1,1 +1,1 @@
-Disable dropdown option creation for restricted namespaces
+Disable option creation for restricted namespaces in dropdown and enum
