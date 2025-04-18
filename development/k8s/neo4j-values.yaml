@@ -16,7 +16,7 @@ volumes:
     mode: "defaultStorageClass"
     defaultStorageClass:
       accessModes:
-      - ReadWriteOnce
+        - ReadWriteOnce
       requests:
         storage: 10Gi
 services:

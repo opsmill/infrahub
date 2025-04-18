@@ -15,14 +15,12 @@ infrahub:
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
         INFRAHUB_WORKFLOW_PORT: 4200
         PREFECT_API_URL: "http://prefect-server:4200/api"
-
         INFRAHUB_STORAGE_DRIVER: s3
         AWS_ACCESS_KEY_ID: admin
         AWS_SECRET_ACCESS_KEY: password
         AWS_S3_BUCKET_NAME: infrahub-data
         AWS_S3_ENDPOINT_URL: objectstore-minio:9000
         AWS_S3_USE_SSL: "false"
-
         INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
         INFRAHUB_DB_TYPE: neo4j
         INFRAHUB_LOG_LEVEL: INFO
@@ -33,10 +31,10 @@ infrahub:
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              service: infrahub-server
-          topologyKey: kubernetes.io/hostname
+          - labelSelector:
+              matchLabels:
+                service: infrahub-server
+            topologyKey: kubernetes.io/hostname
   infrahubTaskWorker:
     replicas: 3
     infrahubTaskWorker:
@@ -49,14 +47,12 @@ infrahub:
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
         INFRAHUB_WORKFLOW_PORT: 4200
         PREFECT_API_URL: "http://prefect-server:4200/api"
-
         INFRAHUB_STORAGE_DRIVER: s3
         AWS_ACCESS_KEY_ID: admin
         AWS_SECRET_ACCESS_KEY: password
         AWS_S3_BUCKET_NAME: infrahub-data
         AWS_S3_ENDPOINT_URL: objectstore-minio:9000
         AWS_S3_USE_SSL: "false"
-
         INFRAHUB_DB_TYPE: neo4j
         INFRAHUB_LOG_LEVEL: DEBUG
         INFRAHUB_PRODUCTION: "false"
@@ -68,10 +64,10 @@ infrahub:
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              service: infrahub-task-worker
-          topologyKey: kubernetes.io/hostname
+          - labelSelector:
+              matchLabels:
+                service: infrahub-task-worker
+            topologyKey: kubernetes.io/hostname
   redis:
     enabled: false
   neo4j:

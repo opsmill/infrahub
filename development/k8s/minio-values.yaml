@@ -8,5 +8,5 @@ auth:
 provisioning:
   enabled: true
   buckets:
-  - name: infrahub-data
+    - name: infrahub-data
 podAntiAffinityPreset: hard
