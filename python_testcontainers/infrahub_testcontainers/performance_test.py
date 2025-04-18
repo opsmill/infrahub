@@ -158,9 +158,12 @@ class InfrahubPerformanceTest:
             "kind": PERFORMANCE_TEST_KIND,
             "payload_format": PERFORMANCE_TEST_VERSION,
             "data": data,
-            "checksum": hashlib.sha256(json.dumps(data).encode()).hexdigest(),
+            "checksum": hashlib.sha256(json.dumps(data, separators=(",", ":")).encode()).hexdigest(),
         }
 
         with httpx.Client() as client:
-            response = client.post(self.results_url, json=payload)
-            response.raise_for_status()
+            try:
+                response = client.post(self.results_url, json=payload)
+                response.raise_for_status()
+            except Exception as exc:
+                print(exc)
