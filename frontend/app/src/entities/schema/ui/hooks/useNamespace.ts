@@ -1,5 +1,5 @@
 import { Namespace } from "@/entities/schema/types";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { namespacesAtom } from "../../stores/schema.atom";
 
 export const useNamespace = (namespace: string | null | undefined): Namespace | undefined => {
