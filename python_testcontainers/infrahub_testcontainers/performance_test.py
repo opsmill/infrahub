@@ -100,7 +100,7 @@ class InfrahubPerformanceTest:
         return self
 
     def fetch_metrics(self) -> None:
-        with httpx.Client() as client:
+        with httpx.Client(timeout=30.0) as client:
             # Get Infrahub metrics
             response = client.post(
                 url=self.scraper_endpoint,
