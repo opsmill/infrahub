@@ -23,7 +23,7 @@ class VertexToUpdate:
 @dataclass
 class VertexToDelete:
     db_id: str
-    labels: str
+    labels: list[str]
     before_props: dict[str, str | int | bool]
 
 
@@ -33,6 +33,7 @@ class EdgeToAdd:
     to_id: str
     edge_type: str
     after_props: dict[str, str | int | bool]
+    identifier: str = field(default_factory=str_uuid)
 
 
 @dataclass
@@ -61,3 +62,6 @@ class PatchPlan:
     edges_to_update: list[EdgeToUpdate] = field(default_factory=list)
     edges_to_delete: list[EdgeToDelete] = field(default_factory=list)
     added_node_db_id_map: dict[str, str] = field(default_factory=dict)
+
+    def get_database_id_for_added_element(self, abstract_id: str) -> str:
+        return self.added_node_db_id_map.get(abstract_id, abstract_id)

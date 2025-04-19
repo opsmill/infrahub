@@ -13,6 +13,7 @@ class PatchPlanReader:
         edges_to_add = self._read_edges_to_add(patch_plan_directory=patch_plan_directory)
         edges_to_delete = self._read_edges_to_delete(patch_plan_directory=patch_plan_directory)
         edges_to_update = self._read_edges_to_update(patch_plan_directory=patch_plan_directory)
+        added_node_db_id_map = self._read_added_node_db_id_map(patch_plan_directory=patch_plan_directory)
 
         return PatchPlan(
             name="none",
@@ -22,6 +23,7 @@ class PatchPlanReader:
             edges_to_add=edges_to_add,
             edges_to_delete=edges_to_delete,
             edges_to_update=edges_to_update,
+            added_node_db_id_map=added_node_db_id_map or {},
         )
 
     def _read_file_lines(self, patch_file: Path) -> Generator[str | None, None, None]:
@@ -77,3 +79,10 @@ class PatchPlanReader:
             if raw_line:
                 edges_to_update.append(EdgeToUpdate(**json.loads(raw_line)))
         return edges_to_update
+
+    def _read_added_node_db_id_map(self, patch_plan_directory: Path) -> dict[str, str] | None:
+        file = patch_plan_directory / Path("added_db_ids.json")
+        if not file.exists():
+            return None
+        added_db_id_json = file.read_text()
+        return json.loads(added_db_id_json)
