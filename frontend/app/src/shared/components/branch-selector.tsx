@@ -53,7 +53,7 @@ export default function BranchSelector() {
           className="h-8 w-[205px] border-neutral-200 rounded-lg p-0 shadow-none"
           data-testid="branch-selector-trigger"
         >
-          <div className="inline-flex items-center gap-1.5 px-3 flex-grow border-r h-full truncate">
+          <div className="inline-flex items-center gap-1.5 px-3 grow border-r border-gray-200 h-full truncate">
             <Icon icon="mdi:source-branch" />
             <span className="truncate">{currentBranch.name}</span>
           </div>
@@ -109,7 +109,7 @@ function BranchSelect({
         <div className="flex gap-2 mb-2">
           <CommandInput
             autoFocus
-            className="bg-neutral-100 text-neutral-800 rounded-lg border-none h-8 flex-grow"
+            className="bg-neutral-100 text-neutral-800 rounded-lg border-none h-8 grow"
             placeholder="Search"
             data-testid="branch-search-input"
           />
@@ -161,7 +161,9 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
 
         <div className="ml-auto inline-flex items-center gap-1">
           {branch.is_default && (
-            <span className="rounded border text-gray-400 px-1.5 text-xs">default</span>
+            <span className="rounded-sm border border-gray-200 text-gray-400 px-1.5 text-xs">
+              default
+            </span>
           )}
           {branch.sync_with_git && (
             <Icon icon="mdi:source-branch-sync" className="text-sm text-gray-400" />

@@ -32,7 +32,7 @@ export const AccordionStyled = ({
     title={
       <h4>
         <div className="flex items-center justify-between">
-          <div className="text-sm flex-grow">
+          <div className="text-sm grow">
             {title} {kind && <Badge>{kind}</Badge>}
           </div>
 
@@ -47,10 +47,12 @@ export const AccordionStyled = ({
         {description && <p className="text-xs text-gray-600 font-normal">{description}</p>}
       </h4>
     }
-    className="bg-custom-white shadow p-3 rounded"
+    className="bg-white shadow-sm p-3 rounded-sm"
     {...props}
   >
-    <article className="divide-y px-2 mt-3 bg-gray-100 rounded">{children}</article>
+    <article className="divide-y divide-gray-200 px-2 mt-3 bg-gray-100 rounded-sm">
+      {children}
+    </article>
   </Accordion>
 );
 
@@ -100,7 +102,7 @@ export const PropertyRow = ({
   return (
     <dl className="flex justify-between items-start gap-4 text-sm p-2 py-3">
       <dt>{title}</dt>
-      <dd className="flex-grow shrink font-medium text-end flex justify-end">{formatValue()}</dd>
+      <dd className="grow shrink font-medium text-end flex justify-end">{formatValue()}</dd>
     </dl>
   );
 };
@@ -109,7 +111,7 @@ export const TabStyled = ({ className, ...props }: TabProps) => (
   <Tab
     className={({ isSelected }) =>
       classNames(
-        "px-4 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
+        "px-4 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100",
         isSelected ? "border-b-2 border-b-custom-blue-600 font-semibold" : "cursor-pointer",
         className
       )
@@ -122,7 +124,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
   return (
     <TabPanel
       className={classNames(
-        "space-y-2 p-2 bg-gray-100 flex-grow min-h-0 overflow-auto outline-none",
+        "space-y-2 p-2 bg-gray-100 grow min-h-0 overflow-auto outline-hidden",
         focusVisibleStyle,
         className
       )}

@@ -36,7 +36,7 @@ export default function Modal({ open, setOpen, children, closeLabel }: iProps) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-40 transition-opacity" />
+          <div className="fixed inset-0 bg-black/40 transition-opacity" />
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
@@ -51,11 +51,11 @@ export default function Modal({ open, setOpen, children, closeLabel }: iProps) {
               leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
             >
               <Dialog.Panel
-                className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all my-8 w-full max-w-lg"
+                className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all my-8 w-full max-w-lg"
                 data-cy="modal-delete"
                 data-testid="modal-delete"
               >
-                <div className="bg-custom-white px-4 pt-5 p-6 pb-4">{children}</div>
+                <div className="bg-white px-4 pt-5 p-6 pb-4">{children}</div>
 
                 <div className="bg-gray-50 px-4 py-3 flex flex-row-reverse">
                   <Button onClick={() => setOpen(false)} ref={closeButtonRef}>

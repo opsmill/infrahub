@@ -45,7 +45,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   )(schemas);
 
   return (
-    <section className={classNames("space-y-2 p-4 bg-custom-white", className)}>
+    <section className={classNames("space-y-2 p-4 bg-white", className)}>
       <SearchInput
         className="mb-4"
         placeholder="Search schema"
@@ -56,7 +56,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
       {Object.entries(schemasPerNamespace).map(([namespace, schemas]) => {
         return (
           <Accordion key={namespace} title={namespace} defaultOpen>
-            <div className="divide-y px-4">
+            <div className="divide-y divide-gray-200 px-4">
               {schemas.map((schema) => {
                 const isSelected =
                   selectedKind && schema.kind && selectedKind.includes(schema.kind);
@@ -69,8 +69,8 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                     key={schema.kind}
                     className={`
                       h-24 overflow-hidden pl-9 pr-2 cursor-pointer flex items-center relative hover:bg-gray-100 mix-blend-multiply
-                      hover:rounded
-                        ${isSelected ? "shadow-lg ring-1 ring-custom-blue-600 rounded" : ""}
+                      hover:rounded-sm
+                        ${isSelected ? "shadow-lg ring-1 ring-custom-blue-600 rounded-sm" : ""}
                     `}
                     onClick={() => setKind([schema.kind!])}
                   >
@@ -79,7 +79,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                         <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />
                       </div>
                     )}
-                    <div className="flex-grow">
+                    <div className="grow">
                       <h2 className="flex justify-between items-start">
                         <div className="flex items-center gap-1">
                           <Badge variant="blue" className="self-baseline">

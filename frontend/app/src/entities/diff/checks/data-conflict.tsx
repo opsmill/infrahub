@@ -52,7 +52,7 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
 
       <Link to={url}>
         <DiffRow
-          className="group pl-0 rounded overflow-hidden hover:bg-yellow-100 transition-all"
+          className="group pl-0 rounded-sm overflow-hidden hover:bg-yellow-100 transition-all"
           iconClassName="left-4"
           hasConflicts
           title={

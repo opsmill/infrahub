@@ -43,7 +43,7 @@ const PropertiesPopover = ({
         header={
           !hideHeader &&
           !attributeSchema.read_only && (
-            <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+            <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
               <div className="font-semibold">{attributeSchema.label}</div>
 
               <ButtonWithTooltip

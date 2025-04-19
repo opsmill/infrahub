@@ -84,7 +84,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
   return (
     <div className="h-[calc(100vh-14rem)] overflow-hidden flex flex-col">
-      <header className="flex items-center px-4 py-2 border-b gap-2">
+      <header className="flex items-center px-4 py-2 border-b border-gray-200 gap-2">
         <ProposedChangeDiffFilter branch={branch} filters={filters} />
         <span className="text-xs inline-flex gap-1 ml-auto">
           Updated <DateDisplay date={firstPageNodes?.to_time} />
@@ -93,8 +93,8 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
         <DiffRebaseButton branchName={branch} />
       </header>
 
-      <div className="flex-grow grid grid-cols-4 overflow-hidden">
-        <nav className="p-4 col-span-1 overflow-auto border-r">
+      <div className="grow grid grid-cols-4 overflow-hidden">
+        <nav className="p-4 col-span-1 overflow-auto border-r border-gray-200">
           <DiffTree nodes={nodes} className="w-full" />
         </nav>
 

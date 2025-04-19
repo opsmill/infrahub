@@ -24,7 +24,7 @@ export const AccordionTrigger = React.forwardRef<
     >
       {children}
 
-      <div className={classNames("flex ml-auto rounded p-1", iconClassName)}>
+      <div className={classNames("flex ml-auto rounded-sm p-1", iconClassName)}>
         <Icon
           icon="mdi:chevron-right"
           className="text-xl shrink-0 transition-transform duration-200"

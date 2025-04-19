@@ -44,9 +44,9 @@ export const MenuItem = ({ children, className, ...props }: AriaMenuItemProps) =
       textValue={props.textValue || (typeof children === "string" ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         classNames(
-          "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+          "relative flex cursor-default select-none items-center gap-2 rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors",
           disabledStyle,
-          "data-[focused]:bg-gray-100",
+          "data-focused:bg-gray-100",
           className
         )
       )}

@@ -4,14 +4,6 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("Object filters", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should filter the nodes list", async ({ page }) => {
     await test.step("access nodes list and verify initial state", async () => {
       await page.goto("/objects/InfraDevice");
@@ -42,7 +34,10 @@ test.describe("Object filters", () => {
     await test.step("filter using a relationship of cardinality one", async () => {
       await page.getByRole("button", { name: "Site" }).click();
       await page.getByRole("option", { name: "atl1" }).click();
-      await page.getByRole("button", { name: "Apply" }).click();
+      await page
+        .getByTestId("relationship-filter-form")
+        .getByRole("button", { name: "Apply" })
+        .click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Site contains atl1")

@@ -72,7 +72,7 @@ export const Pagination = (props: tPaginationType) => {
   return (
     <div
       className={classNames(
-        "sticky bottom-0 flex items-center justify-between bg-custom-white p-2",
+        "sticky bottom-0 flex items-center justify-between bg-white p-2",
         className
       )}
     >

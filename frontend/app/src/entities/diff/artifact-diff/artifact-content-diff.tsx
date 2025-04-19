@@ -323,10 +323,7 @@ export const ArtifactContentDiff = (props: any) => {
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div
-            key={index}
-            className="bg-custom-white p-4 border border-custom-blue-500 rounded-md m-2"
-          >
+          <div key={index} className="bg-white p-4 border border-custom-blue-500 rounded-md m-2">
             {comment.message}
           </div>
         )),

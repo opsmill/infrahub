@@ -53,7 +53,7 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
         </div>
       }
     >
-      <div className="divide-y border-t">
+      <div className="divide-y border-t border-gray-200 divide-gray-200">
         {relationship.elements.map((element, index: number) => (
           <DiffNodeRelationshipElement key={index} element={element} status={status} />
         ))}
