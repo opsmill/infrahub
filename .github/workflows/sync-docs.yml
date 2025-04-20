@@ -37,7 +37,7 @@ jobs:
           rm -rf target-repo/.vale/*
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
-          rm -rf target-repo/development/k8s/*
+          rm -rf target-repo/development/*
           cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
