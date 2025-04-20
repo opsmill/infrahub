@@ -10,6 +10,7 @@ on:
       - '.vale/**'
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
+      - 'development/k8s/**'
   pull_request:
     branches:
       - stable
@@ -36,9 +37,11 @@ jobs:
           rm -rf target-repo/.vale/*
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
+          rm -rf target-repo/development/k8s/*
           cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
+          cp -r source-repo/development/k8s/* target-repo/development/k8s/
 
           sed -i "/docsSidebar/,/\],/ s/'readme',/'introduction\/readme',/" target-repo/docs/sidebars.ts
           mkdir target-repo/docs/docs/introduction
