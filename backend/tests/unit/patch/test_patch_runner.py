@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -27,6 +28,7 @@ from infrahub.patch.runner import (
 from infrahub.patch.vertex_adder import PatchPlanVertexAdder
 from infrahub.patch.vertex_deleter import PatchPlanVertexDeleter
 from infrahub.patch.vertex_updater import PatchPlanVertexUpdater
+from tests.db_snapshot import DbSnapshot, DbSnapshotter
 
 EDGE_TYPE = "TESTING_EDGE"
 VERTEX_LABELS = ["Vertex", "For", "Testing"]
@@ -88,6 +90,12 @@ class TestingPatch(PatchQuery):
 
 class TestPatchRunner:
     @pytest.fixture(scope="class")
+    def temporary_directory_path(self) -> Generator[Path, None, None]:
+        temporary_directory = tempfile.TemporaryDirectory()
+        yield Path(temporary_directory.name)
+        temporary_directory.cleanup()
+
+    @pytest.fixture(scope="class")
     async def initial_data(self, db: InfrahubDatabase) -> dict[str, str]:
         delete_all_query = """MATCH (v) DETACH DELETE v"""
         await db.execute_query(query=delete_all_query)
@@ -146,7 +154,14 @@ RETURN e
         results = await db.execute_query(query=query, params={"from_id": from_id, "to_id": to_id})
         return [r.get("e") for r in results]
 
-    async def test_apply_patch(self, db: InfrahubDatabase, initial_data: dict[str, str]) -> None:
+    async def _take_snapshot(self, db: InfrahubDatabase) -> DbSnapshot:
+        snapshotter = DbSnapshotter(db=db)
+        return await snapshotter.snapshot()
+
+    async def test_apply_patch(
+        self, db: InfrahubDatabase, initial_data: dict[str, str], temporary_directory_path: Path
+    ) -> None:
+        # create the testing patch
         testing_patch = TestingPatch(db=db)
         testing_patch.set_vertex_to_update(
             VertexToUpdate(db_id=initial_data["v4"], before_props={"value": 4}, after_props={"after_value": "4"})
@@ -181,13 +196,16 @@ RETURN e
                 )
             ]
         )
+
+        # take a snapshot of the database before applying the patch
+        before_snapshot = await self._take_snapshot(db=db)
+
         patch_runner = self.get_patch_runner(db=db)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_dir_path = Path(temp_dir)
-            patch_plan_dir = await patch_runner.prepare_plan(patch_query=testing_patch, directory=temp_dir_path)
-            await patch_runner.apply(patch_plan_directory=patch_plan_dir)
-            # twice to test idempotence
-            patch_plan = await patch_runner.apply(patch_plan_directory=patch_plan_dir)
+        temp_dir_path = temporary_directory_path
+        patch_plan_dir = await patch_runner.prepare_plan(patch_query=testing_patch, directory=temp_dir_path)
+        await patch_runner.apply(patch_plan_directory=patch_plan_dir)
+        # twice to test idempotence
+        patch_plan = await patch_runner.apply(patch_plan_directory=patch_plan_dir)
 
         # test vertex added
         vertices = await self._get_testing_vertices(db=db)
@@ -245,3 +263,14 @@ RETURN e
         # test edge deleted
         v3_v4_edges = await self._get_testing_edges(db=db, from_id=v3_db_id, to_id=v4_db_id)
         assert len(v3_v4_edges) == 0
+
+        # test reverting the patch
+        await patch_runner.revert(patch_plan_directory=patch_plan_dir)
+        # twice to test idempotence
+        await patch_runner.revert(patch_plan_directory=patch_plan_dir)
+
+        # take a new snapshot
+        reverted_snapshot = await self._take_snapshot(db=db)
+
+        # compare to old snapshot
+        assert hash(before_snapshot) == hash(reverted_snapshot)
