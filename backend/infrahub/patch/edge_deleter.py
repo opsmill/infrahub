@@ -12,9 +12,9 @@ class PatchPlanEdgeDeleter:
     async def _run_delete_query(self, ids_to_delete: list[str]) -> None:
         query = """
 MATCH ()-[e]-()
-WHERE elementId(e) IN $ids_to_delete
+WHERE %(id_func_name)s(e) IN $ids_to_delete
 DELETE e
-        """
+        """ % {"id_func_name": self.db.get_id_function_name()}
         await self.db.execute_query_with_metadata(
             query=query, params={"ids_to_delete": ids_to_delete}, type=QueryType.WRITE
         )

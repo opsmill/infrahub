@@ -15,9 +15,9 @@ class PatchPlanVertexUpdater:
         query = """
 UNWIND $vertices_to_update AS vertex_to_update
 MATCH (n)
-WHERE elementId(n) = vertex_to_update.db_id
+WHERE %(id_func_name)s(n) = vertex_to_update.db_id
 SET n = vertex_to_update.after_props
-        """
+        """ % {"id_func_name": self.db.get_id_function_name()}
         await self.db.execute_query_with_metadata(
             query=query, params={"vertices_to_update": [asdict(v) for v in vertices_to_update]}, type=QueryType.WRITE
         )

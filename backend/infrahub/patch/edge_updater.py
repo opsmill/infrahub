@@ -15,9 +15,9 @@ class PatchPlanEdgeUpdater:
         query = """
 UNWIND $edges_to_update AS edge_to_update
 MATCH ()-[e]-()
-WHERE elementId(e) = edge_to_update.db_id
+WHERE %(id_func_name)s(e) = edge_to_update.db_id
 SET e = edge_to_update.after_props
-        """
+        """ % {"id_func_name": self.db.get_id_function_name()}
         await self.db.execute_query_with_metadata(
             query=query, params={"edges_to_update": [asdict(e) for e in edges_to_update]}, type=QueryType.WRITE
         )

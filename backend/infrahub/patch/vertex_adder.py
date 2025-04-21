@@ -23,8 +23,12 @@ class PatchPlanVertexAdder:
         query = """
 UNWIND $vertices_to_add AS vertex_to_add
 MERGE (v:%(labels)s %(cypher_variable_map)s)
-RETURN vertex_to_add.identifier AS abstract_id, elementId(v) AS db_id
-        """ % {"labels": labels_str, "cypher_variable_map": cypher_variable_map}
+RETURN vertex_to_add.identifier AS abstract_id, %(id_func_name)s(v) AS db_id
+        """ % {
+            "labels": labels_str,
+            "cypher_variable_map": cypher_variable_map,
+            "id_func_name": self.db.get_id_function_name(),
+        }
         results, _ = await self.db.execute_query_with_metadata(
             query=query, params={"vertices_to_add": serial_vertices_to_add}, type=QueryType.WRITE
         )

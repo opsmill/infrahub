@@ -12,9 +12,9 @@ class PatchPlanVertexDeleter:
     async def _run_delete_query(self, ids_to_delete: list[str]) -> None:
         query = """
 MATCH (n)
-WHERE elementId(n) IN $ids_to_delete
+WHERE %(id_func_name)s(n) IN $ids_to_delete
 DETACH DELETE n
-        """
+        """ % {"id_func_name": self.db.get_id_function_name()}
         await self.db.execute_query_with_metadata(
             query=query, params={"ids_to_delete": ids_to_delete}, type=QueryType.WRITE
         )

@@ -20,11 +20,15 @@ class PatchPlanEdgeAdder:
         cypher_variable_map = "{" + ",".join([f"{p}: edge_to_add.after_props.{p}" for p in all_prop_keys]) + "}"
         query = """
 UNWIND $edges_to_add AS edge_to_add
-MATCH (a) WHERE elementId(a) = edge_to_add.from_id
-MATCH (b) WHERE elementId(b) = edge_to_add.to_id
+MATCH (a) WHERE %(id_func_name)s(a) = edge_to_add.from_id
+MATCH (b) WHERE %(id_func_name)s(b) = edge_to_add.to_id
 MERGE (a)-[e:%(edge_type)s %(cypher_variable_map)s]->(b)
-RETURN edge_to_add.identifier AS abstract_id, elementId(e) AS db_id
-        """ % {"edge_type": edge_type, "cypher_variable_map": cypher_variable_map}
+RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
+        """ % {
+            "edge_type": edge_type,
+            "cypher_variable_map": cypher_variable_map,
+            "id_func_name": self.db.get_id_function_name(),
+        }
         edges_to_add_dicts = [asdict(v) for v in edges_to_add]
         results, _ = await self.db.execute_query_with_metadata(
             query=query, params={"edges_to_add": edges_to_add_dicts}, type=QueryType.WRITE
