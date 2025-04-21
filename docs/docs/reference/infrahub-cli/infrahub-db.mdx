@@ -177,7 +177,7 @@ $ infrahub db patch apply [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
 
 ### `infrahub db patch plan`
 
-Create a plan for a given patch and save it in the plans_dir to be applied/reverted
+Create a plan for a given patch and save it in the patch plans directory to be applied/reverted
 
 **Usage**:
 
@@ -192,7 +192,7 @@ $ infrahub db patch plan [OPTIONS] PATCH_PATH [CONFIG_FILE]
 
 **Options**:
 
-* `--plans-dir PATH`: Path to patch plans directory  [default: infrahub-patches]
+* `--patch-plans-dir PATH`: Path to patch plans directory  [default: infrahub-patches]
 * `--help`: Show this message and exit.
 
 ### `infrahub db patch revert`

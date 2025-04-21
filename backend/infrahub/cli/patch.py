@@ -57,10 +57,10 @@ async def plan_patch_cmd(
     patch_path: str = typer.Argument(
         help="Path to the file containing the PatchQuery instance to run. Use Python-style dot paths, such as infrahub.cli.patch.queries.base"
     ),
-    plans_dir: Path = typer.Option(Path("infrahub-patches"), help="Path to patch plans directory"),  # noqa: B008
+    patch_plans_dir: Path = typer.Option(Path("infrahub-patches"), help="Path to patch plans directory"),  # noqa: B008
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Create a plan for a given patch and save it in the plans_dir to be applied/reverted"""
+    """Create a plan for a given patch and save it in the patch plans directory to be applied/reverted"""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -82,7 +82,7 @@ async def plan_patch_cmd(
 
     patch_query_instance = patch_query_class(db=db)
     patch_runner = get_patch_runner(db=db)
-    patch_plan_dir = await patch_runner.prepare_plan(patch_query_instance, directory=Path(plans_dir))
+    patch_plan_dir = await patch_runner.prepare_plan(patch_query_instance, directory=Path(patch_plans_dir))
     rprint(f"{SUCCESS_BADGE} Patch plan created at {patch_plan_dir}")
 
     await db.close()
