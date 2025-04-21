@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .constants import PatchPlanFilename
 from .models import EdgeToAdd, EdgeToDelete, EdgeToUpdate, PatchPlan, VertexToAdd, VertexToDelete, VertexToUpdate
 
 
@@ -40,7 +41,7 @@ class PatchPlanWriter:
         return patch_plan_directory
 
     def write_added_db_id_map(self, patch_plan_directory: Path, db_id_map: dict[str, str]) -> None:
-        file = patch_plan_directory / Path("added_db_ids.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.ADDED_DB_IDS)
         file.touch(exist_ok=True)
         with file.open(mode="w") as f:
             f.write(json.dumps(db_id_map) + "\n")
@@ -55,25 +56,25 @@ class PatchPlanWriter:
                 f.write(self._dataclass_to_json_line(obj))
 
     def _write_vertices_to_add(self, patch_plan_directory: Path, vertices_to_add: list[VertexToAdd]) -> None:
-        file = patch_plan_directory / Path("vertices_to_add.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_ADD)
         self._write_to_file(file_path=file, objects=vertices_to_add)
 
     def _write_vertices_to_delete(self, patch_plan_directory: Path, vertices_to_delete: list[VertexToDelete]) -> None:
-        file = patch_plan_directory / Path("vertices_to_delete.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_DELETE)
         self._write_to_file(file_path=file, objects=vertices_to_delete)
 
     def _write_vertices_to_update(self, patch_plan_directory: Path, vertices_to_update: list[VertexToUpdate]) -> None:
-        file = patch_plan_directory / Path("vertices_to_update.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_UPDATE)
         self._write_to_file(file_path=file, objects=vertices_to_update)
 
     def _write_edges_to_add(self, patch_plan_directory: Path, edges_to_add: list[EdgeToAdd]) -> None:
-        file = patch_plan_directory / Path("edges_to_add.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_ADD)
         self._write_to_file(file_path=file, objects=edges_to_add)
 
     def _write_edges_to_delete(self, patch_plan_directory: Path, edges_to_delete: list[EdgeToDelete]) -> None:
-        file = patch_plan_directory / Path("edges_to_delete.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_DELETE)
         self._write_to_file(file_path=file, objects=edges_to_delete)
 
     def _write_edges_to_update(self, patch_plan_directory: Path, edges_to_update: list[EdgeToUpdate]) -> None:
-        file = patch_plan_directory / Path("edges_to_update.json")
+        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_UPDATE)
         self._write_to_file(file_path=file, objects=edges_to_update)

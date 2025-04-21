@@ -72,7 +72,7 @@ async def plan_patch_cmd(
             patch_query_class = cls
             break
     if patch_query_class is None:
-        rprint(f"{ERROR_BADGE} No subclass of infrahub.cli.patch.queries.base.PatchQuery found in {patch_path}")
+        rprint(f"{ERROR_BADGE} No subclass of infrahub.patch.queries.base.PatchQuery found in {patch_path}")
         raise typer.Exit(1)
 
     config.load_and_exit(config_file_name=config_file)
