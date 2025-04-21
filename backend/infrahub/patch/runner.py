@@ -75,6 +75,7 @@ class PatchRunner:
         return patch_plan
 
     async def revert(self, patch_plan_directory: Path) -> None:
+        """Invert the PatchPlan to create the complement of every added/updated/deleted element and undo them"""
         patch_plan = self.plan_reader.read(patch_plan_directory)
         vertices_to_delete = []
         for vertex_add_to_revert in patch_plan.vertices_to_add:
