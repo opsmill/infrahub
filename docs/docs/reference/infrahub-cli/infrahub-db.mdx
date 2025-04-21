@@ -22,6 +22,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `load-export`: Cannot be used for backup/restore...
 * `load-test-data`: Load test data into the database from the...
 * `migrate`: Check the current format of the internal...
+* `patch`: Commands for planning, applying, and...
 * `selected-export`: Export database structure of selected...
 * `update-core-schema`: Check the current format of the internal...
 
@@ -133,6 +134,84 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--help`: Show this message and exit.
+
+## `infrahub db patch`
+
+Commands for planning, applying, and reverting database patches
+
+**Usage**:
+
+```console
+$ infrahub db patch [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `apply`: Apply a given patch plan
+* `plan`: Create a plan for a given patch and save...
+* `revert`: Revert a given patch plan
+
+### `infrahub db patch apply`
+
+Apply a given patch plan
+
+**Usage**:
+
+```console
+$ infrahub db patch apply [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `PATCH_PLAN_DIR`: Path to the directory containing a patch plan  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+### `infrahub db patch plan`
+
+Create a plan for a given patch and save it in the plans_dir to be applied/reverted
+
+**Usage**:
+
+```console
+$ infrahub db patch plan [OPTIONS] PATCH_PATH [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `PATCH_PATH`: Path to the file containing the PatchQuery instance to run. Use Python-style dot paths, such as infrahub.cli.patch.queries.base  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--plans-dir PATH`: Path to patch plans directory  [default: infrahub-patches]
+* `--help`: Show this message and exit.
+
+### `infrahub db patch revert`
+
+Revert a given patch plan
+
+**Usage**:
+
+```console
+$ infrahub db patch revert [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `PATCH_PLAN_DIR`: Path to the directory containing a patch plan  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
 * `--help`: Show this message and exit.
 
 ## `infrahub db selected-export`
