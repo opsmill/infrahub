@@ -77,7 +77,7 @@ const CheckConnectivityModal = ({
     <>
       <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
         <div className="fixed inset-0 flex w-screen items-center justify-center bg-gray-600/25">
-          <Dialog.Panel className="bg-white p-4 border rounded-lg max-w-lg space-y-4">
+          <Dialog.Panel className="bg-white p-4 border border-gray-200 rounded-lg max-w-lg space-y-4">
             <Dialog.Title className="font-semibold text-lg">
               Check{loading && "ing"} repository connectivity
             </Dialog.Title>
@@ -98,7 +98,7 @@ const CheckConnectivityModal = ({
 
             <Dialog open={called && !loading} onClose={handleClose}>
               <div className="fixed inset-0 flex w-screen items-center justify-center">
-                <Dialog.Panel className="bg-white p-4 border rounded-lg max-w-lg space-y-4">
+                <Dialog.Panel className="bg-white p-4 border border-gray-200 rounded-lg max-w-lg space-y-4">
                   <Dialog.Title className="font-semibold text-lg">
                     Connection {isConnectivityOk ? "Successful" : "Failed"}
                   </Dialog.Title>

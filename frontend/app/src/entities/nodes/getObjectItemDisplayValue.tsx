@@ -136,19 +136,6 @@ export const getDisplayValue = (
   return textValue;
 };
 
-export const getObjectItemDisplayValue = (
-  row: any,
-  attribute: any,
-  schemaKindName?: iSchemaKindNameMap,
-  schemaKindLabel?: iSchemaKindNameMap
-) => {
-  return (
-    <div className="flex items-center min-w-7 min-h-7">
-      {getDisplayValue(row, attribute, schemaKindName, schemaKindLabel)}
-    </div>
-  );
-};
-
 export type FieldSchema = AttributeSchema | RelationshipSchema;
 
 export type AttributeType =

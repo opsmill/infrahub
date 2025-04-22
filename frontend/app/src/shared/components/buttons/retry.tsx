@@ -30,7 +30,7 @@ export const Retry = (props: tRetryProps) => {
       className={classNames(
         "flex justify-center items-center p-1 rounded-full cursor-pointer",
         isLoading ? "animate-spin" : "",
-        isLoading || isDisabled ? "!cursor-not-allowed" : ""
+        isLoading || isDisabled ? "cursor-not-allowed!" : ""
       )}
       onClick={handleClick}
     >

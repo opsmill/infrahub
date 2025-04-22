@@ -158,7 +158,7 @@ const IpamIPPrefixDetails = forwardRef((_, ref) => {
   }
 
   return (
-    <div className="flex flex-col flex-grow">
+    <div className="flex flex-col grow">
       <div className="flex items-center mb-2">
         {parent?.prefix?.value && (
           <>

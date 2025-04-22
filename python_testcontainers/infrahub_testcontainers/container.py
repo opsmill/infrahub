@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -265,9 +266,58 @@ class InfrahubDockerCompose(DockerCompose):
         )
 
         self.exec_in_container(
-            command=["cypher-shell", "-d", "system", "-u", "neo4j", "-p", "admin", "START DATABASE neo4j;"],
+            command=["chown", "-R", "neo4j:neo4j", "/data"],
             service_name=service_name,
         )
 
+        (restore_output, _, _) = self.exec_in_container(
+            command=[
+                "cypher-shell",
+                "--format",
+                "plain",
+                "-d",
+                "system",
+                "-u",
+                "neo4j",
+                "-p",
+                "admin",
+                "START DATABASE neo4j;",
+            ],
+            service_name=service_name,
+        )
+
+        for _ in range(3):
+            (stdout, _, _) = self.exec_in_container(
+                command=[
+                    "cypher-shell",
+                    "--format",
+                    "plain",
+                    "-d",
+                    "system",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "SHOW DATABASES WHERE name = 'neo4j' AND currentStatus = 'online';",
+                ],
+                service_name=service_name,
+            )
+            if stdout:
+                break
+            time.sleep(5)
+        else:
+            (debug_logs, _, _) = self.exec_in_container(
+                command=["cat", "logs/debug.log"],
+                service_name=service_name,
+            )
+            raise Exception(f"Failed to restore database:\n{restore_output}\nDebug logs:\n{debug_logs}")
+
+        old_services = self.services
+        self.services = ["infrahub-server", "task-worker"]
         self.stop(down=False)
-        self.start()
+        try:
+            self.start()
+        except Exception as exc:
+            stdout, stderr = self.get_logs()
+            raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
+        self.services = old_services

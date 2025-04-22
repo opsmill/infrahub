@@ -22,7 +22,7 @@ export const PopoverContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         className={classNames(
-          "z-10 rounded-md border p-2 bg-custom-white shadow-xl outline-none text-sm max-w-[100vw]",
+          "z-10 rounded-md border border-gray-200 p-2 bg-white shadow-xl outline-hidden text-sm max-w-[100vw]",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -43,7 +43,7 @@ export const PopoverTabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={classNames(
-      "inline-flex items-center justify-center px-2 border-b w-full",
+      "inline-flex items-center justify-center px-2 border-b border-gray-200 w-full",
       className
     )}
     {...props}
@@ -58,9 +58,9 @@ export const PopoverTabsTrigger = React.forwardRef<
     ref={ref}
     className={classNames(
       "inline-flex items-center justify-center whitespace-nowrap rounded-t-md px-3 py-1.5 text-sm font-medium transition-all bg-white",
-      "outline-none",
+      "outline-hidden",
       "disabled:pointer-events-none disabled:opacity-50",
-      "data-[state=active]:border-x data-[state=active]:border-t data-[state=active]:-mb-px",
+      "data-[state=active]:border-x data-[state=active]:border-t data-[state=active]:-mb-px border-gray-200",
       className
     )}
     {...props}
@@ -74,7 +74,7 @@ export const PopoverTabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     tabIndex={-1}
-    className={classNames("outline-none", className)}
+    className={classNames("outline-hidden", className)}
     {...props}
   />
 ));

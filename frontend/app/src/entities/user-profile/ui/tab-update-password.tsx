@@ -2,7 +2,6 @@ import { UPDATE_ACCOUNT_PASSWORD } from "@/entities/user-profile/api/updateAccou
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import Content from "@/shared/components/layout/content";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
@@ -27,7 +26,7 @@ export default function TabUpdatePassword() {
   };
 
   return (
-    <Content className="p-2">
+    <main className="p-2">
       <Card className="m-auto w-full max-w-md">
         <h3 className="leading-6 font-semibold mb-4">Update your password</h3>
 
@@ -68,6 +67,6 @@ export default function TabUpdatePassword() {
           <FormSubmit>Update password</FormSubmit>
         </Form>
       </Card>
-    </Content>
+    </main>
   );
 }

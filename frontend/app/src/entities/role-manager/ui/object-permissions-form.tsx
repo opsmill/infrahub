@@ -134,7 +134,7 @@ export const ObjectPermissionForm = ({
   }
 
   return (
-    <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
+    <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <NameSelect />
 

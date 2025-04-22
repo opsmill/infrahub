@@ -68,6 +68,7 @@ exceptions:
   - SDK
   - Single sign-on
   - SSO
+  - Terraform
   - TLS
   - Tony Stark
   - TransformPython

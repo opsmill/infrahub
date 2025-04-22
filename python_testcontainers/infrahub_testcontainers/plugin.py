@@ -125,7 +125,7 @@ def pytest_terminal_summary(
     performance_test = terminalreporter._session.infrahub_performance_test
 
     report = [
-        f"{measurement.name}: {measurement.value} {measurement.unit.value}"
+        f"{measurement.name} ({measurement.context}): {measurement.value} {measurement.unit.value}"
         for measurement in performance_test.measurements
     ]
     terminalreporter.write("\n" + "\n".join(report) + "\n")

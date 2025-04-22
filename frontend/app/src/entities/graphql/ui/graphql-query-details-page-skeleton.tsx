@@ -9,8 +9,8 @@ const GraphQLQueryDetailsPageSkeleton = () => {
       </div>
 
       <section className="flex flex-wrap lg:flex-nowrap items-start gap-4 p-4">
-        <Skeleton className="w-full max-w-screen-md h-screen" />
-        <Skeleton className="flex-grow h-[400px]" />
+        <Skeleton className="w-full max-w-(--breakpoint-md) h-screen" />
+        <Skeleton className="grow h-[400px]" />
       </section>
     </div>
   );

@@ -9,7 +9,7 @@ export function SearchAnywhereGroup({
   return (
     <Command.Group
       className={classNames(
-        "bg-custom-white rounded-lg border p-2",
+        "bg-white rounded-lg border border-gray-200 p-2",
         "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-neutral-600",
         className
       )}

@@ -23,7 +23,7 @@ export const EventDetails = ({
   ...props
 }: EventType) => {
   return (
-    <div className="divide-y">
+    <div className="divide-y divide-gray-200">
       <PropertyRow
         title="ID"
         value={

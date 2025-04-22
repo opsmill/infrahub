@@ -3,6 +3,16 @@ title: Architecture
 ---
 import CodeBlock from '@theme/CodeBlock';
 import import_deployTf from '!!raw-loader!../../../development/deploy.tf';
+import import_infrahubValuesYaml from '!!raw-loader!../../../development/k8s/infrahub-values.yaml';
+import import_minioValuesYaml from '!!raw-loader!../../../development/k8s/minio-values.yaml';
+import import_neo4jValuesYaml from '!!raw-loader!../../../development/k8s/neo4j-values.yaml';
+import import_prefectValuesYaml from '!!raw-loader!../../../development/k8s/prefect-values.yaml';
+import import_rabbitmqValuesYaml from '!!raw-loader!../../../development/k8s/rabbitmq-values.yaml';
+import import_redisSentinelDeployYaml from '!!raw-loader!../../../development/k8s/redis-sentinel-proxy-deploy.yaml';
+import import_redisSentinelSvcYaml from '!!raw-loader!../../../development/k8s/redis-sentinel-proxy-svc.yaml';
+import import_redisValuesYaml from '!!raw-loader!../../../development/k8s/redis-values.yaml';
+import import_serviceValuesYaml from '!!raw-loader!../../../development/k8s/service-values.yaml';
+import import_taskmanagerdbYaml from '!!raw-loader!../../../development/k8s/taskmanagerdb.yaml';
 
 # Infrahub architecture
 
@@ -130,7 +140,94 @@ Infrahub may be deployed with no single-point of failure, and horizontally scale
 
 ![Infrahub Architecture](../media/high_level_architecture_ha.excalidraw.svg)
 
+### Using Terraform
+
 <details>
-  <summary>An example of HA deployment using Terraform on a 3-nodes Kubernetes cluster</summary>
+  <summary>An example of an all-in-one HA deployment using Terraform on a 3-nodes Kubernetes cluster</summary>
   <CodeBlock language="hcl" title="deploy.tf">{import_deployTf}</CodeBlock>
+</details>
+
+### Using Helm
+
+<details>
+  <summary>The same example but without Terraform, just Helm and kubectl</summary>
+
+  <CodeBlock language="yaml" title="redis-values.yaml">{import_redisValuesYaml}</CodeBlock>
+
+  ```bash
+  helm repo add bitnami https://charts.bitnami.com/bitnami
+  helm repo update
+  helm install cache bitnami/redis --version 19.5.2 --namespace infrahub --create-namespace --values redis-values.yaml
+  ```
+
+  <CodeBlock language="yaml" title="redis-sentinel-proxy-deploy.yaml">{import_redisSentinelDeployYaml}</CodeBlock>
+
+  <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
+
+  ```bash
+  kubectl apply -f redis-sentinel-proxy-deploy.yaml --namespace infrahub
+  kubectl apply -f redis-sentinel-proxy-svc.yaml --namespace infrahub
+  ```
+
+  <CodeBlock language="yaml" title="rabbitmq-values.yaml">{import_rabbitmqValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install messagequeue oci://registry-1.docker.io/bitnamicharts/rabbitmq --version 14.4.1 --namespace infrahub --create-namespace --values rabbitmq-values.yaml
+  ```
+
+  <CodeBlock language="yaml" title="neo4j-values.yaml">{import_neo4jValuesYaml}</CodeBlock>
+
+  ```bash
+  helm repo add neo4j https://helm.neo4j.com/neo4j/
+  helm repo update
+  helm install database-0 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-1 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-2 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  ```
+
+  Once all instances are running, install the headless service
+
+  <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install database-service neo4j/neo4j-headless-service --version 5.20.0 --namespace infrahub --values service-values.yaml
+  ```
+
+  <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install objectstore oci://registry-1.docker.io/bitnamicharts/minio --version 15.0.5 --namespace infrahub --create-namespace --values minio-values.yaml
+  ```
+
+  ```bash
+  helm repo add cnpg https://cloudnative-pg.github.io/charts
+  helm repo update
+  helm install cnpg cnpg/cloudnative-pg --version 0.23.2 --namespace infrahub --create-namespace
+  kubectl create secret generic prefect-user --namespace infrahub --from-literal=username=prefect --from-literal=password=prefect
+  ```
+
+  <CodeBlock language="yaml" title="taskmanagerdb.yaml">{import_taskmanagerdbYaml}</CodeBlock>
+
+  ```bash
+  kubectl apply -f taskmanagerdb.yaml --namespace infrahub
+  ```
+
+  <CodeBlock language="yaml" title="prefect-values.yaml">{import_prefectValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.2.21193831 --namespace infrahub --create-namespace --values prefect-values.yaml
+  ```
+
+  Deploy the Prefect Helm chart with a single replica initially to prevent concurrent database initialization issues. Wait for the first pod to become ready and complete database initialization. Once initialized, scale up to your desired number of replicas for high availability.
+
+  ```bash
+  kubectl scale deployment/prefect-server --replicas=3 --namespace infrahub
+  ```
+
+  <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.3.5 --namespace infrahub --create-namespace --values infrahub-values.yaml
+  ```
+
 </details>
