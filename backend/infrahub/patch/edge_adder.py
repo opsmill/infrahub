@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import asdict
+from typing import AsyncGenerator
 
 from infrahub.core.query import QueryType
 from infrahub.database import InfrahubDatabase
@@ -22,7 +23,7 @@ class PatchPlanEdgeAdder:
 UNWIND $edges_to_add AS edge_to_add
 MATCH (a) WHERE %(id_func_name)s(a) = edge_to_add.from_id
 MATCH (b) WHERE %(id_func_name)s(b) = edge_to_add.to_id
-MERGE (a)-[e:%(edge_type)s %(cypher_variable_map)s]->(b)
+CREATE (a)-[e:%(edge_type)s %(cypher_variable_map)s]->(b)
 RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
         """ % {
             "edge_type": edge_type,
@@ -43,20 +44,16 @@ RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
     async def execute(
         self,
         edges_to_add: list[EdgeToAdd],
-    ) -> dict[str, str]:
+    ) -> AsyncGenerator[dict[str, str], None]:
         edges_map_queue: dict[str, list[EdgeToAdd]] = defaultdict(list)
-        abstract_to_concrete_id_map: dict[str, str] = {}
         for edge_to_add in edges_to_add:
             edges_map_queue[edge_to_add.edge_type].append(edge_to_add)
             if len(edges_map_queue[edge_to_add.edge_type]) > self.batch_size_limit:
-                abstract_to_concrete_id_map.update(
-                    await self._run_add_query(
-                        edge_type=edge_to_add.edge_type,
-                        edges_to_add=edges_map_queue[edge_to_add.edge_type],
-                    )
+                yield await self._run_add_query(
+                    edge_type=edge_to_add.edge_type,
+                    edges_to_add=edges_map_queue[edge_to_add.edge_type],
                 )
                 edges_map_queue[edge_to_add.edge_type] = []
 
         for edge_type, edges_group in edges_map_queue.items():
-            abstract_to_concrete_id_map.update(await self._run_add_query(edge_type=edge_type, edges_to_add=edges_group))
-        return abstract_to_concrete_id_map
+            yield await self._run_add_query(edge_type=edge_type, edges_to_add=edges_group)

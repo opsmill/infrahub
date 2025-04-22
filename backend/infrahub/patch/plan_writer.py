@@ -41,10 +41,16 @@ class PatchPlanWriter:
         return patch_plan_directory
 
     def write_added_db_id_map(self, patch_plan_directory: Path, db_id_map: dict[str, str]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.ADDED_DB_IDS)
+        file = patch_plan_directory / Path(PatchPlanFilename.ADDED_DB_IDS.value)
         file.touch(exist_ok=True)
         with file.open(mode="w") as f:
             f.write(json.dumps(db_id_map) + "\n")
+
+    def write_deleted_db_ids(self, patch_plan_directory: Path, deleted_ids: set[str]) -> None:
+        file = patch_plan_directory / Path(PatchPlanFilename.DELETED_DB_IDS.value)
+        file.touch(exist_ok=True)
+        with file.open(mode="w") as f:
+            f.write(json.dumps(list(deleted_ids)) + "\n")
 
     def _dataclass_to_json_line(self, dataclass_instance: Any) -> str:
         return json.dumps(asdict(dataclass_instance)) + "\n"
@@ -56,25 +62,25 @@ class PatchPlanWriter:
                 f.write(self._dataclass_to_json_line(obj))
 
     def _write_vertices_to_add(self, patch_plan_directory: Path, vertices_to_add: list[VertexToAdd]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_ADD)
+        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_ADD.value)
         self._write_to_file(file_path=file, objects=vertices_to_add)
 
     def _write_vertices_to_delete(self, patch_plan_directory: Path, vertices_to_delete: list[VertexToDelete]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_DELETE)
+        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_DELETE.value)
         self._write_to_file(file_path=file, objects=vertices_to_delete)
 
     def _write_vertices_to_update(self, patch_plan_directory: Path, vertices_to_update: list[VertexToUpdate]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_UPDATE)
+        file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_UPDATE.value)
         self._write_to_file(file_path=file, objects=vertices_to_update)
 
     def _write_edges_to_add(self, patch_plan_directory: Path, edges_to_add: list[EdgeToAdd]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_ADD)
+        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_ADD.value)
         self._write_to_file(file_path=file, objects=edges_to_add)
 
     def _write_edges_to_delete(self, patch_plan_directory: Path, edges_to_delete: list[EdgeToDelete]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_DELETE)
+        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_DELETE.value)
         self._write_to_file(file_path=file, objects=edges_to_delete)
 
     def _write_edges_to_update(self, patch_plan_directory: Path, edges_to_update: list[EdgeToUpdate]) -> None:
-        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_UPDATE)
+        file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_UPDATE.value)
         self._write_to_file(file_path=file, objects=edges_to_update)
