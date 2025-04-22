@@ -1,3 +1,4 @@
+import { DataConflict } from "@/entities/diff/checks/data-conflict";
 import { DiffNodeProperty } from "@/entities/diff/node-diff/node-property";
 import { DiffThread } from "@/entities/diff/node-diff/thread";
 import { DiffAttribute, DiffStatus } from "@/entities/diff/node-diff/types";
@@ -39,7 +40,7 @@ export const DiffNodeAttribute = ({
       left={previousValue}
       right={newValue}
     >
-      <div className="divide-y border-t">
+      <div className="divide-y border-t border-gray-200 divide-gray-200">
         {attribute.conflict && <DataConflict conflict={attribute.conflict} />}
 
         {attribute.properties.map((property, index: number) => (

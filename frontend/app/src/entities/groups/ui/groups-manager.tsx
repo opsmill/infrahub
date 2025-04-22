@@ -86,7 +86,7 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
     <div className={classNames("h-full flex flex-col gap-2", className)}>
       <div className="flex gap-2">
         <SearchInput
-          containerClassName="flex-grow"
+          containerClassName="grow"
           className="h-9"
           onChange={(e) => setQuery(e.target.value)}
           placeholder="filter groups..."
@@ -115,7 +115,7 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
       <ObjectGroupsList
         objectId={objectId}
         groups={filteredVisibleGroups}
-        className="flex-grow overflow-auto"
+        className="grow overflow-auto"
       />
     </div>
   );

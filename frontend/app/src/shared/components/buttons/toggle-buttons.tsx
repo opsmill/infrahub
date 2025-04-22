@@ -15,7 +15,7 @@ interface TabsProps extends ButtonProps {
 export const ToggleButtons = ({ tabs, ...props }: TabsProps) => {
   return (
     <div className="flex items-center">
-      <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 overflow-hidden">
+      <div className="isolate inline-flex rounded-md shadow-xs border border-gray-300 overflow-hidden">
         {tabs.map((tab: Tab) => (
           <Button
             key={tab.label}

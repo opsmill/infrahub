@@ -47,8 +47,8 @@ export const DropdownMenuItem = forwardRef<
       "rounded-lg px-2 py-1.5",
       "text-neutral-800 text-sm",
       "relative flex items-center gap-1.5",
-      "cursor-pointer outline-none focus:bg-neutral-100",
-      "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
+      "cursor-pointer outline-hidden focus:bg-neutral-100",
+      "data-disabled:pointer-events-none data-disabled:opacity-40",
       className
     )}
     {...props}
@@ -75,7 +75,7 @@ export const DropdownMenuSubTrigger = forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      "flex gap-1.5 cursor-default select-none items-center rounded-lg p-2 text-sm outline-none focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "flex gap-1.5 cursor-default select-none items-center rounded-lg p-2 text-sm outline-hidden focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
       className
     )}
     {...props}

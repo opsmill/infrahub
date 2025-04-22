@@ -8,7 +8,7 @@ import { Link } from "react-router";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (
-    <Card className="flex-grow p-0 overflow-x-hidden">
+    <Card className="grow p-0 overflow-x-hidden">
       <CardWithBorder.Title className="flex gap-2 items-center rounded-t">
         <h3 className="mr-auto">Query</h3>
 

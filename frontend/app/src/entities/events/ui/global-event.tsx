@@ -46,7 +46,7 @@ export const Event = (props: EventType) => {
     <div
       className={classNames(
         "grid grid-cols-8 relative gap-2 p-2",
-        "rounded-md shadow-sm transition-all border bg-gray-50"
+        "rounded-md shadow-xs transition-all border border-gray-200 bg-gray-50"
       )}
     >
       <div className="flex items-center text-xs font-medium text-gray-500 whitespace-nowrap">

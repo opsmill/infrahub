@@ -23,7 +23,7 @@ export const CodeViewerLimiter = ({
         {children}
 
         {!showAllLines && (
-          <div className="h-40 w-full bg-gradient-to-t from-white to-50% absolute bottom-0 z-20 pointer-events-none" />
+          <div className="h-40 w-full bg-linear-to-t from-white to-50% absolute bottom-0 z-20 pointer-events-none" />
         )}
       </div>
 

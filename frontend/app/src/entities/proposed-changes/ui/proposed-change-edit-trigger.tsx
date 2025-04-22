@@ -46,7 +46,7 @@ export const ProposedChangeEditTrigger = ({
         title={
           <div className="space-y-2">
             <div className="flex justify-between overflow-hidden">
-              <div className="flex-grow text-sm flex items-center gap-2 whitespace-nowrap truncate">
+              <div className="grow text-sm flex items-center gap-2 whitespace-nowrap truncate">
                 <span>Proposed changes</span>
                 <Icon icon="mdi:chevron-right" />
                 <span className="truncate">{proposedChangesDetails?.display_label}</span>

@@ -191,7 +191,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         owner={relationshipsData.properties.owner}
                         isProtected={relationshipsData.properties.is_protected}
                         header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
                             <div className="font-semibold">{relationshipSchema.label}</div>
 
                             <ButtonWithTooltip
@@ -231,7 +231,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           )}
 
           {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
-            <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+            <div className="flex-1 shadow-xs ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
               <table className="table-auto border-spacing-0 w-full" cellPadding="0">
                 <thead className="bg-gray-50 text-left border-b border-gray-300">
                   <tr>
@@ -245,7 +245,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   </tr>
                 </thead>
 
-                <tbody className="bg-custom-white">
+                <tbody className="bg-white">
                   {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
@@ -266,7 +266,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             owner={properties.owner}
                             isProtected={properties.is_protected}
                             header={
-                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
                                 <div className="font-semibold">{relationshipSchema.label}</div>
                               </div>
                             }

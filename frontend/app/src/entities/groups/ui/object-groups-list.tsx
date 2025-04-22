@@ -105,7 +105,7 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="flex-shrink-0 hover:bg-gray-200"
+          className="shrink-0 hover:bg-gray-200"
           onClick={() => setShowDeleteModal(true)}
           data-testid="leave-group-button"
         >

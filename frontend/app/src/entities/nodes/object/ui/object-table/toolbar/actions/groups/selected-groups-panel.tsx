@@ -21,7 +21,7 @@ export function SelectedGroupsPanel({
 }: SelectedGroupsPanelProps) {
   return (
     <div
-      className="border-l min-w-[15rem] max-w-sm max-h-[12rem] flex flex-col"
+      className="border-l border-gray-200 min-w-[15rem] max-w-sm max-h-[12rem] flex flex-col"
       data-testid="selected-groups-panel"
     >
       <GroupPanelHeader>Selected groups</GroupPanelHeader>

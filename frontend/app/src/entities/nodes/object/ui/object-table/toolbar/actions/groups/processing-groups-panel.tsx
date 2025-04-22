@@ -26,7 +26,7 @@ export function ProcessingGroupsPanel({
 
   return (
     <div
-      className="border-l min-w-[15rem] max-w-sm max-h-[12rem] flex flex-col"
+      className="min-w-[15rem] max-w-sm max-h-[12rem] flex flex-col"
       data-testid="processing-groups-panel"
     >
       <GroupPanelHeader>

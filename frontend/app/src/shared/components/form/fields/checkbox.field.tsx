@@ -46,7 +46,7 @@ const CheckboxField = ({
               />
             </FormInput>
 
-            <div className="flex-grow">
+            <div className="grow">
               <LabelFormField
                 label={label}
                 unique={unique}

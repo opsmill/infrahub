@@ -87,7 +87,7 @@ export const RelationshipInput = React.forwardRef<
         {...props}
         className={classNames(
           inputStyle,
-          "has-[>:last-child:focus-visible]:outline-none has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
+          "has-[>:last-child:focus-visible]:outline-hidden has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
           "cursor-pointer",
           className
         )}
@@ -145,7 +145,7 @@ export const RelationshipInput = React.forwardRef<
                     setOpen(false);
                   }}
                 >
-                  <span className="truncate flex-grow">{option.display_label}</span>
+                  <span className="truncate grow">{option.display_label}</span>
 
                   {option.badge && <Badge className="mr-2">{option.badge}</Badge>}
                 </ComboboxItem>

@@ -1,5 +1,6 @@
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
 import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -83,6 +84,7 @@ interface EnumAddActionProps {
 }
 
 export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, addOption }) => {
+  const namespace = useNamespace(schema?.namespace);
   const [open, setOpen] = useState(false);
   const [addEnum] = useMutation(ENUM_ADD_MUTATION);
 
@@ -90,12 +92,14 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
 
   return (
     <div className="p-2 pt-0">
-      <Button
-        className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-        onClick={() => setOpen(!open)}
-      >
-        + Add option
-      </Button>
+      {namespace?.user_editable && (
+        <Button
+          className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          onClick={() => setOpen(!open)}
+        >
+          + Add option
+        </Button>
+      )}
 
       <SlideOver
         title={

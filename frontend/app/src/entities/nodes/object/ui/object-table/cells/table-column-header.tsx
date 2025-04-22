@@ -40,7 +40,7 @@ export function TableColumnHeader({ schema, columnSchema, ...props }: TableColum
       </PopoverTrigger>
 
       <PopoverContent className="p-0 relative rounded-tl-none" align="start">
-        <div className="absolute font-semibold -top-[1.8rem] bg-white border px-2 py-1 rounded-t-md border-b-0 -left-px">
+        <div className="absolute font-semibold -top-[1.8rem] bg-white border border-gray-200 px-2 py-1 rounded-t-md border-b-0 -left-px">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
         {"peer" in columnSchema ? (

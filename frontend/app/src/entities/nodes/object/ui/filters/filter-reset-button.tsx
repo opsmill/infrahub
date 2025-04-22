@@ -16,7 +16,7 @@ export const FilterResetButton = () => {
       className={classNames(
         focusVisibleStyle,
         "text-neutral-800 whitespace-nowrap rounded-full inline-flex items-center px-2 py-0.5 text-sm border border-transparent",
-        "data-[hovered]:bg-gray-100"
+        "data-hovered:bg-gray-100"
       )}
       onPress={handleResetFilters}
     >

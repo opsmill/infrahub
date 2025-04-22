@@ -85,13 +85,13 @@ export function Component() {
           </div>
 
           <InfiniteScroll hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
-            <div className="flex flex-col flex-grow gap-2 p-2">
+            <div className="flex flex-col grow gap-2 p-2">
               {data.pages.map((page) =>
                 page.map((activity) => <Event key={activity?.id} {...activity} />)
               )}
 
               {isFetchingNextPage && (
-                <div className="flex justify-center flex-grow">
+                <div className="flex justify-center grow">
                   <Spinner />
                 </div>
               )}
@@ -114,7 +114,7 @@ function FiltersSection({ hasFilters }: { hasFilters: boolean }) {
 
 function EmptyActivitiesView({ hasFilters }: { hasFilters: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center flex-grow p-8 text-gray-500">
+    <div className="flex flex-col items-center justify-center grow p-8 text-gray-500">
       <p className="text-lg font-medium mb-2">No activities found</p>
       <p className="text-sm text-center">
         {hasFilters

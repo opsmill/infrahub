@@ -6,6 +6,7 @@ import { AccountMenu } from "@/shared/components/account-menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
 import { SearchAnywhere } from "@/shared/components/search/search-anywhere";
+import { Card } from "@/shared/components/ui/card";
 import { Divider } from "@/shared/components/ui/divider";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
@@ -19,12 +20,10 @@ export default function Sidebar() {
   const booleanCollapsed = collapsed === "true";
 
   return (
-    <nav
+    <Card
       data-collapsed={booleanCollapsed}
       className={classNames(
-        "flex flex-col shrink-0",
-        "relative",
-        "w-[256px] border rounded-lg p-3 bg-white",
+        "flex flex-col shrink-0 w-[256px] relative",
         "group/sidebar transition-all",
         booleanCollapsed && "w-auto px-2 items-center"
       )}
@@ -67,6 +66,6 @@ export default function Sidebar() {
       <MenuNavigation isCollapsed={booleanCollapsed} />
 
       <AccountMenu />
-    </nav>
+    </Card>
   );
 }

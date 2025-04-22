@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy rule:line-length
-name: Handle Submodule Trigger
+name: Update Infrahub Python SDK Submodule
 
 on:
   repository_dispatch:
@@ -14,23 +14,24 @@ jobs:
         branch-name:
           - stable
           - develop
+
     runs-on: ubuntu-22.04
+    concurrency:
+      group: update-infrahub-${{ github.event.client_payload.version }}-${{ matrix.branch-name }}
+      cancel-in-progress: false
+
+    env:
+      SUBMODULE_PATH: python_sdk
+      SDK_VERSION: ${{ github.event.client_payload.version }}
+      BRANCH_NAME: ${{ matrix.branch-name}}-${SUBMODULE_PATH}-${SDK_VERSION}
+
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: "${{ matrix.branch-name }}"
           submodules: recursive
-
-      - name: Set branch name
-        id: set-branch-name
-        run: |
-          SUBMODULE_PATH="python_sdk"
-          SDK_VERSION="${{ github.event.client_payload.version }}"
-          BRANCH_NAME="${{ matrix.branch-name}}-${SUBMODULE_PATH}-${SDK_VERSION}"
-          echo "SUBMODULE_PATH=$SUBMODULE_PATH" >> $GITHUB_ENV
-          echo "SDK_VERSION=$SDK_VERSION" >> $GITHUB_ENV
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Use the version from the client payload to update the submodule
         run: |
