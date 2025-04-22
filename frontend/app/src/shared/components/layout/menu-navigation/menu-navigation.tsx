@@ -16,7 +16,7 @@ export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   if (isPending) return <Spinner className="grow mx-auto p-4" />;
   if (error) return <ErrorScreen message="Something went wrong when fetching the menu" />;
 
-  if (!menu?.sections) return <div className="flex-grow" />;
+  if (!menu?.sections) return <div className="grow" />;
 
   return (
     <>

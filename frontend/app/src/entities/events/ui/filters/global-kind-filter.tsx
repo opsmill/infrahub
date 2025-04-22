@@ -67,7 +67,7 @@ export function GlobalKindFilter({ label, name, fieldSchema, ...props }: FilterT
         </PopoverTrigger>
 
         <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-[1.8rem] bg-white border px-2 py-1 rounded-t-md border-b-0 -left-px">
+          <div className="absolute -top-[1.8rem] bg-white border border-gray-200 px-2 py-1 rounded-t-md border-b-0 -left-px">
             Filter by
             <span className="ml-1 font-semibold">{label}</span>
           </div>

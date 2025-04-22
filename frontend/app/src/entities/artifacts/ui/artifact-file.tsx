@@ -83,14 +83,14 @@ function FileContent({
     }
     case "image/svg+xml": {
       return (
-        <Svg value={fileContent} className="border shadow border-neutral-700 rounded-lg grow" />
+        <Svg value={fileContent} className="border shadow-sm border-neutral-700 rounded-lg grow" />
       );
     }
     default: {
       return (
         <ScrollArea
           scrollX
-          className="border shadow border-neutral-700 rounded-lg grow"
+          className="border shadow-sm border-neutral-700 rounded-lg grow"
           scrollBarClassName="bg-transparent"
         >
           <CodeViewer language={config.language} customStyle={{ margin: 0 }}>

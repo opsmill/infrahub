@@ -17,7 +17,7 @@ export function ArtifactDetailsMenu({ id, hfid, checksum, storageId }: ArtifactD
         <DropdownMenuItem className="p-0">
           <CopyToClipboard
             size={"default"}
-            className="flex-grow justify-start gap-2 p-2"
+            className="grow justify-start gap-2 p-2"
             text={checksum}
           >
             Copy Checksum
@@ -29,7 +29,7 @@ export function ArtifactDetailsMenu({ id, hfid, checksum, storageId }: ArtifactD
         <DropdownMenuItem className="p-0">
           <CopyToClipboard
             size={"default"}
-            className="flex-grow justify-start gap-2 p-2"
+            className="grow justify-start gap-2 p-2"
             text={storageId}
           >
             Copy Storage ID

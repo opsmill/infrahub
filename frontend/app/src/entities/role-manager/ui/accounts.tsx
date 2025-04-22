@@ -134,14 +134,14 @@ function Accounts() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b">
+        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
           <SearchInput
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search accounts"
             className="border-none focus-visible:ring-0"
-            containerClassName="flex-grow"
+            containerClassName="grow"
           />
 
           <Button

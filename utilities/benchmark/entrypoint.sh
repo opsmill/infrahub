@@ -27,12 +27,14 @@ echo ""
 echo "Benchmark results:"
 echo ""
 
+echo "CPU: $(yq .SystemInformation.Manufacturer results_cpu.yml) $(yq .SystemInformation.Processor results_cpu.yml)"
+
 [ $TOTAL_RAM -lt $RAM_LIMIT ] && echo -n $RED || echo -n $GREEN
 echo -n "Memory: ${TOTAL_RAM} MB - Required: ${RAM_LIMIT} MB "
 [ $TOTAL_RAM -lt $RAM_LIMIT ] && echo ": KO" || echo ": OK"
 
 [ $SINGLETHREAD_PERF -lt $SINGLETHREAD_PERF_LIMIT ] && echo -n $RED || echo -n $GREEN
-echo -n "CPU Perf: ${SINGLETHREAD_PERF} - Required: ${SINGLETHREAD_PERF_LIMIT} "
+echo -n "CPU Single Core Perf: ${SINGLETHREAD_PERF} - Required: ${SINGLETHREAD_PERF_LIMIT} "
 [ $SINGLETHREAD_PERF -lt $SINGLETHREAD_PERF_LIMIT ] && echo ": KO" || echo ": OK"
 
 [ $READ_IOPS -lt $READ_IOPS_LIMIT ] && echo -n $RED || echo -n $GREEN

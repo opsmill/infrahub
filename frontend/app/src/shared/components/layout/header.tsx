@@ -2,10 +2,11 @@ import { TaskStatus } from "@/entities/tasks/ui/task-status";
 import BranchSelector from "@/shared/components/branch-selector";
 import BreadcrumbNavigation from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-navigation";
 import { TimeFrameSelector } from "@/shared/components/time-selector";
+import { Card } from "@/shared/components/ui/card";
 
 export default function Header() {
   return (
-    <header className="p-3 flex items-center gap-2 border bg-white rounded-lg">
+    <Card className="flex items-center gap-2">
       <TimeFrameSelector />
 
       <BranchSelector />
@@ -15,6 +16,6 @@ export default function Header() {
       </div>
 
       <TaskStatus />
-    </header>
+    </Card>
   );
 }

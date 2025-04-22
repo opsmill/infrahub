@@ -1,5 +1,6 @@
 import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
 import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -143,17 +144,21 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
   field,
   addOption,
 }) => {
+  const namespace = useNamespace(schema.namespace);
   const [open, setOpen] = useState(false);
   const [addDropdownItem] = useMutation(DROPDOWN_ADD_MUTATION);
 
   return (
     <div className="p-2 pt-0">
-      <Button
-        className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-        onClick={() => setOpen(!open)}
-      >
-        + Add option
-      </Button>
+      {namespace?.user_editable && (
+        <Button
+          className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          onClick={() => setOpen(!open)}
+          data-testid="add-option-button"
+        >
+          + Add option
+        </Button>
+      )}
 
       <SlideOver
         title={

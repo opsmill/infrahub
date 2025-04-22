@@ -151,7 +151,7 @@ function IpamRouter() {
     <>
       <Tabs tabs={tabs} qsp={IPAM_QSP.TAB} rightItems={rightitems} />
 
-      <div className="p-3 flex flex-grow overflow-auto" data-testid="ipam-main-content">
+      <div className="p-3 flex grow overflow-auto" data-testid="ipam-main-content">
         {renderContent()}
       </div>
 

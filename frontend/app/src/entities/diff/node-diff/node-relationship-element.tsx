@@ -30,7 +30,7 @@ export const DiffNodeRelationshipElement = ({ element, status }: DiffNodeElement
       right={element.status === "ADDED" && element.peer_label}
       left={element.status === "REMOVED" && element.peer_label}
     >
-      <div className="divide-y border-t">
+      <div className="divide-y border-t border-gray-200 divide-gray-200">
         {element.properties
           .filter((property) => property.status !== "UNCHANGED")
           .map((property, index) => (

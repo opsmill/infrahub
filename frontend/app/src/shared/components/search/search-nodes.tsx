@@ -96,7 +96,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         className="text-lg px-2 py-0.5 text-custom-blue-700"
       />
 
-      <div className="flex-grow text-sm overflow-auto">
+      <div className="grow text-sm overflow-auto">
         <div className="flex justify-between">
           <span className="mr-1 font-semibold text-custom-blue-800">
             {objectDetailsData?.display_label}
@@ -158,7 +158,10 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           return <Icon icon={value.value ? "mdi:check" : "mdi:remove"} className="text-sm" />;
         case ATTRIBUTE_KIND.COLOR:
           return (
-            <div className="h-4 w-4 rounded mt-0.5" style={{ background: value.value as string }} />
+            <div
+              className="h-4 w-4 rounded-sm mt-0.5"
+              style={{ background: value.value as string }}
+            />
           );
         case ATTRIBUTE_KIND.DATETIME: {
           const date = typeof value.value === "string" ? new Date(value.value) : new Date();
@@ -170,7 +173,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent truncate"
+              className="px-1.5 rounded-sm text-gray-700 font-medium text-center border border-transparent truncate"
               style={{ background: `${color}40` }}
             >
               {value.label}
@@ -195,9 +198,9 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
 export const SearchResultNodeSkeleton = () => {
   return (
     <Command.Item disabled className="flex py-2 w-full">
-      <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
+      <Skeleton className="h-6 w-6 rounded-sm mx-1 mr-2" />
 
-      <div className="space-y-2 flex-grow">
+      <div className="space-y-2 grow">
         <div className="flex space-x-2">
           <Skeleton className="h-3 w-40" />
           <Skeleton className="h-3 w-20" />

@@ -45,7 +45,7 @@ export const Diff = () => {
 
   return (
     <div>
-      <div className="bg-custom-white p-2">
+      <div className="bg-white p-2">
         <DateDiffForm />
       </div>
 

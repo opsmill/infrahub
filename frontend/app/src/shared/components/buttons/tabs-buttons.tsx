@@ -21,8 +21,8 @@ export const TabsButtons = (props: TabsProps) => {
   const [qspTab, setQspTab] = useQueryParam(qsp ?? QSP.TAB, StringParam);
 
   return (
-    <div className="bg-custom-white flex items-center">
-      <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 overflow-hidden">
+    <div className="bg-white flex items-center">
+      <div className="isolate inline-flex rounded-md shadow-xs border border-gray-300 overflow-hidden">
         {tabs.map((tab: Tab, index: number) => (
           <Button
             key={tab.name}

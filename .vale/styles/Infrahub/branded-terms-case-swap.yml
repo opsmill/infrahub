@@ -19,10 +19,10 @@ swap:
   (?<![\.|/|#])InfraHub[\.!]?\s: Infrahub
   (?:jinja2): Jinja2
   (?:k3s): K3s
-  (?:k8s): K8s
+  (?<![\.|/|#])k8s[\.!]?\s: K8s
   (?:kubernetes): Kubernetes
   (?:[^/][Mm]y[Ss]ql): MySQL
-  (?:neo4j): Neo4j
+  (?<![\.|/|#])neo4j[\.!]?\s: Neo4j
   (?:[^/][Nn]ginx): NGINX
   (?:[Nn]odejs): Node.js
   (?:[^/][Oo]penapi): OpenAPI
@@ -31,7 +31,7 @@ swap:
   (?:[Pp]ostgre[Ss]ql): PostgreSQL
   (?:[^/]prometheus): Prometheus
   (?<![\.|/|#])python[\.!]?\s: Python
-  (?:[Rr]abbitmq): RabbitMQ
+  (?<![\.|/|#])[Rr]abbitmq[\.!]?\s: RabbitMQ
   (?:[^/]terraform): Terraform
   (?:ubuntu): Ubuntu
   (?:[Vv]s\W?[Cc]ode): VS Code

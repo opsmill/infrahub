@@ -15,7 +15,7 @@ export default function ErrorScreen({ className, message, icon, hideIcon }: tNoD
   return (
     <div className={classNames("flex flex-col flex-1 items-center justify-center p-8", className)}>
       {!hideIcon && (
-        <div className="bg-custom-white rounded-full text-red-300">
+        <div className="bg-white rounded-full text-red-300">
           {icon || <Icon icon={"mdi:warning-circle-outline"} className="text-3xl" />}
         </div>
       )}

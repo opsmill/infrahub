@@ -1,18 +1,27 @@
-@import "./Alert.css";
-@import "./DiffView.css";
+@import "./Alert.css" layer(base);
+@import "./DiffView.css" layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@config '../../../tailwind.config.js';
 
 @font-face {
-  font-family: "Inter";
-  src: url(/src/assets/fonts/Inter-VariableFont_opsz\,wght.ttf);
+  font-family: InterVariable;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/src/assets/fonts/InterVariable.woff2) format("woff2");
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 body {
   margin: 0;
-  font-family: "Inter", sans-serif;
+  font-family: InterVariable, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

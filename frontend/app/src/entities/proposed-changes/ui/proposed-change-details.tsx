@@ -141,7 +141,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   ];
 
   return (
-    <div className="bg-stone-50 p-2.5 flex flex-col flex-grow gap-2.5">
+    <div className="bg-stone-50 p-2.5 flex flex-col grow gap-2.5">
       {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
