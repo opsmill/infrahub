@@ -13,7 +13,6 @@ jobs:
       matrix:
         branch-name:
           - stable
-          - develop
 
     runs-on: ubuntu-22.04
     concurrency:
