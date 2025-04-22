@@ -113,23 +113,9 @@ class PatchRunner:
                 patch_plan_directory=patch_plan_directory, deleted_ids=patch_plan.deleted_db_ids
             )
 
-    async def revert(self, patch_plan_directory: Path) -> None:
+    async def revert(self, patch_plan_directory: Path) -> PatchPlan:
         """Invert the PatchPlan to create the complement of every added/updated/deleted element and undo them"""
         patch_plan = self.plan_reader.read(patch_plan_directory)
-        await self._revert_added_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
-        await self._revert_deleted_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
-        vertices_to_update = []
-        for vertex_update_to_revert in patch_plan.vertices_to_update:
-            vertices_to_update.append(
-                VertexToUpdate(
-                    db_id=vertex_update_to_revert.db_id,
-                    before_props=vertex_update_to_revert.after_props,
-                    after_props=vertex_update_to_revert.before_props,
-                )
-            )
-        if vertices_to_update:
-            await self.vertex_updater.execute(vertices_to_update=vertices_to_update)
-
         await self._revert_added_edges(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         await self._revert_deleted_edges(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         edges_to_update = []
@@ -143,6 +129,21 @@ class PatchRunner:
             )
         if edges_to_update:
             await self.edge_updater.execute(edges_to_update=edges_to_update)
+
+        await self._revert_added_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
+        await self._revert_deleted_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
+        vertices_to_update = []
+        for vertex_update_to_revert in patch_plan.vertices_to_update:
+            vertices_to_update.append(
+                VertexToUpdate(
+                    db_id=vertex_update_to_revert.db_id,
+                    before_props=vertex_update_to_revert.after_props,
+                    after_props=vertex_update_to_revert.before_props,
+                )
+            )
+        if vertices_to_update:
+            await self.vertex_updater.execute(vertices_to_update=vertices_to_update)
+        return patch_plan
 
     async def _revert_added_vertices(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
         vertices_to_delete = []

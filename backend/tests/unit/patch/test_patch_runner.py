@@ -376,7 +376,10 @@ RETURN e
         assert len(v3_v4_edges) == 0
 
         # test reverting the patch
-        await patch_runner.revert(patch_plan_directory=patch_plan_dir)
+        reverted_patch_plan = await patch_runner.revert(patch_plan_directory=patch_plan_dir)
+        # ensure the successful revert accurately tracked its progress when deleting the added elements
+        assert not reverted_patch_plan.added_element_db_id_map
+        assert not reverted_patch_plan.deleted_db_ids
         # twice to test idempotence
         await patch_runner.revert(patch_plan_directory=patch_plan_dir)
 
