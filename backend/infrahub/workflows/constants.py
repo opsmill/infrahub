@@ -21,7 +21,7 @@ class WorkflowTag(InfrahubStringEnum):
     def render(self, identifier: str | None = None) -> str:
         if identifier is None:
             return f"{TAG_NAMESPACE}/{self.value}"
-        rendered_value = str(self.value).format(identifier=identifier)
+        rendered_value = str(self.value).format(identifier=identifier.lower())
         return f"{TAG_NAMESPACE}/{rendered_value}"
 
 

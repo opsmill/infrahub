@@ -71,7 +71,7 @@ class WorkflowDefinition(BaseModel):
         tags: list[str] = []
         if self.type != WorkflowType.INTERNAL:
             tags.append(TAG_NAMESPACE)
-        tags.append(WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value))
+        tags.append(WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.name))
         tags += [tag.render() for tag in self.tags]
         return tags
 

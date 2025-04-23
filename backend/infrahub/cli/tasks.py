@@ -7,6 +7,7 @@ from prefect.client.orchestration import get_client
 from infrahub import config
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
+from infrahub.workflows.constants import WorkerType, WorkflowType
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
 
@@ -43,7 +44,12 @@ async def execute(
     async with get_client(sync_client=False) as client:
         worker = WorkflowWorkerExecution()
         await DUMMY_FLOW.save(
-            client=client, work_pool=WorkerPoolDefinition(name="infrahub-worker", worker_type="infrahubasync")
+            client=client,
+            work_pool=WorkerPoolDefinition(
+                name="infrahub-worker",
+                workflow_type=WorkflowType.INTERNAL | WorkflowType.CORE | WorkflowType.USER,
+                worker_type=WorkerType.INFRAHUB_ASYNC,
+            ),
         )
 
         result = await worker.execute_workflow(
