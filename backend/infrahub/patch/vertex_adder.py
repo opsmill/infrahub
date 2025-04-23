@@ -25,14 +25,20 @@ RETURN vertex_to_add.identifier AS abstract_id, %(id_func_name)s(v) AS db_id
             "labels": labels_str,
             "id_func_name": self.db.get_id_function_name(),
         }
-        results = await self.db.execute_query(
-            query=query, params={"vertices_to_add": serial_vertices_to_add}, type=QueryType.WRITE
-        )
-        abstract_to_concrete_id_map: dict[str, str] = {}
-        for result in results:
-            abstract_id = result.get("abstract_id")
-            concrete_id = result.get("db_id")
-            abstract_to_concrete_id_map[abstract_id] = concrete_id
+        # use transaction to make sure we record the results before committing them
+        try:
+            txn_db = self.db.start_transaction()
+            async with txn_db as txn:
+                results = await txn.execute_query(
+                    query=query, params={"vertices_to_add": serial_vertices_to_add}, type=QueryType.WRITE
+                )
+                abstract_to_concrete_id_map: dict[str, str] = {}
+                for result in results:
+                    abstract_id = result.get("abstract_id")
+                    concrete_id = result.get("db_id")
+                    abstract_to_concrete_id_map[abstract_id] = concrete_id
+        finally:
+            await txn_db.close()
         return abstract_to_concrete_id_map
 
     async def execute(self, vertices_to_add: list[VertexToAdd]) -> AsyncGenerator[dict[str, str], None]:
