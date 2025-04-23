@@ -1,10 +1,12 @@
+from enum import Flag, auto
+
 from infrahub.utils import InfrahubStringEnum
 
 
-class WorkflowType(InfrahubStringEnum):
-    INTERNAL = "internal"
-    CORE = "core"
-    USER = "user"
+class WorkflowType(Flag):
+    INTERNAL = auto()
+    CORE = auto()
+    USER = auto()
 
 
 TAG_NAMESPACE = "infrahub.app"

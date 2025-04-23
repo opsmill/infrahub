@@ -1,10 +1,7 @@
 import random
 
 from .constants import WorkflowTag, WorkflowType
-from .models import WorkerPoolDefinition, WorkflowDefinition
-
-INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
-
+from .models import WorkflowDefinition
 
 ACTION_ADD_NODE_TO_GROUP = WorkflowDefinition(
     name="action-add-node-to-group",
@@ -529,7 +526,13 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
 )
 
 
-worker_pools = [INFRAHUB_WORKER_POOL]
+VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
+    name="validate-schema-number-pools",
+    type=WorkflowType.CORE,
+    module="infrahub.pools.tasks",
+    function="validate_schema_number_pools",
+)
+
 
 workflows = [
     ACTION_ADD_NODE_TO_GROUP,

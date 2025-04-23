@@ -25,6 +25,8 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.workflows.constants import WorkflowType
+from infrahub.workflows.models import WorkerPoolDefinition
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -387,6 +389,22 @@ class WorkflowSettings(BaseSettings):
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
+    worker_type: str = Field(
+        default="process", description="Type of worker to run for the execution of user specific tasks"
+    )
+    work_pools: list[WorkerPoolDefinition] = Field(
+        default=[
+            WorkerPoolDefinition(
+                name="infrahub-worker",
+                workflow_type=WorkflowType.INTERNAL | WorkflowType.CORE | WorkflowType.USER,
+                description="Default Pool for internal tasks",
+            )
+        ],
+        description="Definitions of work pools used to process tasks",
+    )
+    workflow_routing: dict[WorkflowType, WorkerPoolDefinition] = Field(
+        default_factory=dict, description="Define how workflows are assigned between work pools"
+    )
 
     @property
     def api_endpoint(self) -> str:
@@ -396,6 +414,14 @@ class WorkflowSettings(BaseSettings):
             url += f":{self.port}"
         url += "/api"
         return url
+
+    @model_validator(mode="after")
+    def setup_task_routing(self) -> Self:
+        for work_pool in self.work_pools:
+            for workflow_type in list(work_pool.workflow_type):
+                self.workflow_routing[workflow_type] = work_pool
+
+        return self
 
 
 class ApiSettings(BaseSettings):
