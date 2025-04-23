@@ -4,7 +4,7 @@ from prefect.client.orchestration import PrefectClient
 from infrahub.workflows.constants import WorkflowType
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
-from tests.helpers.test_worker import TestWorkerInfrahubAsync, TestWorkerProcess
+from tests.helpers.test_worker import TestWorkerInfrahubAsync
 
 
 @pytest.fixture(scope="module")

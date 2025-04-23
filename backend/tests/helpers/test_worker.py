@@ -95,11 +95,9 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         return PrefectClient(api=prefect_server)
 
     @pytest.fixture(scope="class")
-    async def work_pool(self, prefect_client: PrefectClient) -> WorkPool:
+    async def work_pool(self, infrahubasync_worker: WorkerPoolDefinition, prefect_client: PrefectClient) -> WorkPool:
         wp = WorkPoolCreate(
-            name=INFRAHUB_WORKER_POOL.name,
-            type=InfrahubWorkerAsync.type,
-            description=INFRAHUB_WORKER_POOL.name,
+            name=infrahubasync_worker.name, type=InfrahubWorkerAsync.type, description=infrahubasync_worker.name
         )
         return await prefect_client.create_work_pool(work_pool=wp, overwrite=True)
 
@@ -108,9 +106,11 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         await setup_blocks()
 
     @pytest.fixture(scope="class")
-    async def dummy_flows_deployment(self, work_pool: WorkerPoolDefinition, prefect_client: PrefectClient) -> None:
+    async def dummy_flows_deployment(
+        self, work_pool: WorkerPoolDefinition, infrahubasync_worker: WorkerPoolDefinition, prefect_client: PrefectClient
+    ) -> None:
         for flow in [DUMMY_FLOW, DUMMY_FLOW_BROKEN]:
-            await flow.save(client=prefect_client, work_pool=INFRAHUB_WORKER_POOL)
+            await flow.save(client=prefect_client, work_pool=infrahubasync_worker)
 
     @pytest.fixture(scope="class")
     async def prefect_worker(
