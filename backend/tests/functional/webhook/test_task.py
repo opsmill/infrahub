@@ -8,6 +8,7 @@ from infrahub_sdk.protocols import CoreStandardWebhook
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.actions import RunDeployment
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.webhook.models import EventContext, WebhookTriggerDefinition
@@ -18,7 +19,7 @@ from infrahub.webhook.tasks import (
     delete_webhook_automation,
     webhook_process,
 )
-from infrahub.workflows.catalogue import WEBHOOK_PROCESS, worker_pools
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.adapters.http import MemoryHTTP
 from tests.constants import TestKind
@@ -104,7 +105,7 @@ class TestWebhookTasks(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def webhook_deployment(self, db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
         await setup_worker_pools(client=prefect_client)
-        await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=worker_pools[0])
+        await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=config.SETTINGS.workflow.work_pools[0])
 
     @pytest.fixture(scope="class")
     async def webhook1(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:

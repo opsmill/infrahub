@@ -11,19 +11,25 @@ from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
 from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
 from prefect.workers.base import BaseWorkerResult
+from prefect.workers.process import ProcessWorker
 
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN
-from infrahub.workers.infrahub_async import (
-    InfrahubWorkerAsync,
-)
-from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
+from infrahub.workers.infrahub_async import InfrahubWorkerAsync
+from infrahub.workflows.constants import WorkflowType
 from infrahub.workflows.initialization import setup_blocks
 from infrahub.workflows.models import WorkerPoolDefinition
-from tests.helpers.constants import (
-    PORT_PREFECT,
-)
+from tests.helpers.constants import PORT_PREFECT
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.utils import start_prefect_server_container
+
+
+@pytest.fixture(scope="module")
+def infrahubasync_worker() -> WorkerPoolDefinition:
+    return WorkerPoolDefinition(
+        name="infrahub-worker",
+        workflow_type=WorkflowType.INTERNAL | WorkflowType.CORE | WorkflowType.USER,
+        description="Default Pool for internal tasks",
+    )
 
 
 class TestWorkerInfrahubAsync(TestInfrahubApp):

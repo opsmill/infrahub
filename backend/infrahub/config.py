@@ -397,6 +397,7 @@ class WorkflowSettings(BaseSettings):
             WorkerPoolDefinition(
                 name="infrahub-worker",
                 workflow_type=WorkflowType.INTERNAL | WorkflowType.CORE | WorkflowType.USER,
+                worker_type=WorkerType.INFRAHUB_ASYNC,
                 description="Default Pool for internal tasks",
             )
         ],
