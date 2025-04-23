@@ -120,41 +120,38 @@ class PatchRunner:
         await self._revert_deleted_edges(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         await self._revert_added_edges(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         await self._revert_added_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
-        vertices_to_update = []
-        for vertex_update_to_revert in patch_plan.vertices_to_update:
-            vertices_to_update.append(
-                VertexToUpdate(
-                    db_id=vertex_update_to_revert.db_id,
-                    before_props=vertex_update_to_revert.after_props,
-                    after_props=vertex_update_to_revert.before_props,
-                )
+        vertices_to_update = [
+            VertexToUpdate(
+                db_id=vertex_update_to_revert.db_id,
+                before_props=vertex_update_to_revert.after_props,
+                after_props=vertex_update_to_revert.before_props,
             )
+            for vertex_update_to_revert in patch_plan.vertices_to_update
+        ]
         if vertices_to_update:
             await self.vertex_updater.execute(vertices_to_update=vertices_to_update)
 
-        edges_to_update = []
-        for edge_update_to_revert in patch_plan.edges_to_update:
-            edges_to_update.append(
-                EdgeToUpdate(
-                    db_id=edge_update_to_revert.db_id,
-                    before_props=edge_update_to_revert.after_props,
-                    after_props=edge_update_to_revert.before_props,
-                )
+        edges_to_update = [
+            EdgeToUpdate(
+                db_id=edge_update_to_revert.db_id,
+                before_props=edge_update_to_revert.after_props,
+                after_props=edge_update_to_revert.before_props,
             )
+            for edge_update_to_revert in patch_plan.edges_to_update
+        ]
         if edges_to_update:
             await self.edge_updater.execute(edges_to_update=edges_to_update)
         return patch_plan
 
     async def _revert_added_vertices(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
-        vertices_to_delete = []
-        for vertex_add_to_revert in patch_plan.added_vertices:
-            vertices_to_delete.append(
-                VertexToDelete(
-                    db_id=patch_plan.get_database_id_for_added_element(abstract_id=vertex_add_to_revert.identifier),
-                    labels=vertex_add_to_revert.labels,
-                    before_props=vertex_add_to_revert.after_props,
-                )
+        vertices_to_delete = [
+            VertexToDelete(
+                db_id=patch_plan.get_database_id_for_added_element(abstract_id=vertex_add_to_revert.identifier),
+                labels=vertex_add_to_revert.labels,
+                before_props=vertex_add_to_revert.after_props,
             )
+            for vertex_add_to_revert in patch_plan.added_vertices
+        ]
         if not vertices_to_delete:
             return
         all_deleted_ids: set[str] = set()
@@ -169,15 +166,14 @@ class PatchRunner:
                 )
 
     async def _revert_deleted_vertices(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
-        vertices_to_add = []
-        for vertex_delete_to_revert in patch_plan.deleted_vertices:
-            vertices_to_add.append(
-                VertexToAdd(
-                    labels=vertex_delete_to_revert.labels,
-                    after_props=vertex_delete_to_revert.before_props,
-                    identifier=vertex_delete_to_revert.db_id,
-                )
+        vertices_to_add = [
+            VertexToAdd(
+                labels=vertex_delete_to_revert.labels,
+                after_props=vertex_delete_to_revert.before_props,
+                identifier=vertex_delete_to_revert.db_id,
             )
+            for vertex_delete_to_revert in patch_plan.deleted_vertices
+        ]
         if not vertices_to_add:
             return
 
@@ -193,17 +189,16 @@ class PatchRunner:
                 )
 
     async def _revert_added_edges(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
-        edges_to_delete = []
-        for edge_add_to_revert in patch_plan.added_edges:
-            edges_to_delete.append(
-                EdgeToDelete(
-                    db_id=patch_plan.get_database_id_for_added_element(abstract_id=edge_add_to_revert.identifier),
-                    from_id=edge_add_to_revert.from_id,
-                    to_id=edge_add_to_revert.to_id,
-                    edge_type=edge_add_to_revert.edge_type,
-                    before_props=edge_add_to_revert.after_props,
-                )
+        edges_to_delete = [
+            EdgeToDelete(
+                db_id=patch_plan.get_database_id_for_added_element(abstract_id=edge_add_to_revert.identifier),
+                from_id=edge_add_to_revert.from_id,
+                to_id=edge_add_to_revert.to_id,
+                edge_type=edge_add_to_revert.edge_type,
+                before_props=edge_add_to_revert.after_props,
             )
+            for edge_add_to_revert in patch_plan.added_edges
+        ]
         if not edges_to_delete:
             return
         all_deleted_ids: set[str] = set()
@@ -218,17 +213,16 @@ class PatchRunner:
                 )
 
     async def _revert_deleted_edges(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
-        edges_to_add = []
-        for edge_delete_to_revert in patch_plan.deleted_edges:
-            edges_to_add.append(
-                EdgeToAdd(
-                    identifier=edge_delete_to_revert.db_id,
-                    from_id=edge_delete_to_revert.from_id,
-                    to_id=edge_delete_to_revert.to_id,
-                    edge_type=edge_delete_to_revert.edge_type,
-                    after_props=edge_delete_to_revert.before_props,
-                )
+        edges_to_add = [
+            EdgeToAdd(
+                identifier=edge_delete_to_revert.db_id,
+                from_id=edge_delete_to_revert.from_id,
+                to_id=edge_delete_to_revert.to_id,
+                edge_type=edge_delete_to_revert.edge_type,
+                after_props=edge_delete_to_revert.before_props,
             )
+            for edge_delete_to_revert in patch_plan.deleted_edges
+        ]
         if not edges_to_add:
             return
 

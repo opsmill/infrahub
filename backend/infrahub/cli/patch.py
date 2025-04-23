@@ -36,11 +36,9 @@ patch_app = AsyncTyper(help="Commands for planning, applying, and reverting data
 
 
 def get_patch_runner(db: InfrahubDatabase) -> PatchRunner:
-    plan_writer = PatchPlanWriter()
-    plan_reader = PatchPlanReader()
     return PatchRunner(
-        plan_writer=plan_writer,
-        plan_reader=plan_reader,
+        plan_writer=PatchPlanWriter(),
+        plan_reader=PatchPlanReader(),
         edge_db_id_translator=PatchPlanEdgeDbIdTranslator(),
         vertex_adder=PatchPlanVertexAdder(db=db),
         vertex_deleter=PatchPlanVertexDeleter(db=db),
@@ -58,6 +56,7 @@ async def plan_patch_cmd(
         help="Path to the file containing the PatchQuery instance to run. Use Python-style dot paths, such as infrahub.cli.patch.queries.base"
     ),
     patch_plans_dir: Path = typer.Option(Path("infrahub-patches"), help="Path to patch plans directory"),  # noqa: B008
+    apply: bool = typer.Option(False, help="Apply the patch immediately after creating it"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Create a plan for a given patch and save it in the patch plans directory to be applied/reverted"""
@@ -67,25 +66,37 @@ async def plan_patch_cmd(
 
     patch_module = importlib.import_module(patch_path)
     patch_query_class = None
+    patch_query_class_count = 0
     for _, cls in inspect.getmembers(patch_module, inspect.isclass):
         if issubclass(cls, PatchQuery) and cls is not PatchQuery:
             patch_query_class = cls
-            break
+            patch_query_class_count += 1
+
+    patch_query_path = f"{PatchQuery.__module__}.{PatchQuery.__name__}"
     if patch_query_class is None:
-        rprint(f"{ERROR_BADGE} No subclass of infrahub.patch.queries.base.PatchQuery found in {patch_path}")
+        rprint(f"{ERROR_BADGE} No subclass of {patch_query_path} found in {patch_path}")
+        raise typer.Exit(1)
+    if patch_query_class_count > 1:
+        rprint(
+            f"{ERROR_BADGE} Multiple subclasses of {patch_query_path} found in {patch_path}. Please only define one per file."
+        )
         raise typer.Exit(1)
 
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    db = await context.init_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
 
-    patch_query_instance = patch_query_class(db=db)
-    patch_runner = get_patch_runner(db=db)
-    patch_plan_dir = await patch_runner.prepare_plan(patch_query_instance, directory=Path(patch_plans_dir))
-    rprint(f"{SUCCESS_BADGE} Patch plan created at {patch_plan_dir}")
+    patch_query_instance = patch_query_class(db=dbdriver)
+    async with dbdriver.start_session() as db:
+        patch_runner = get_patch_runner(db=db)
+        patch_plan_dir = await patch_runner.prepare_plan(patch_query_instance, directory=Path(patch_plans_dir))
+        rprint(f"{SUCCESS_BADGE} Patch plan created at {patch_plan_dir}")
+        if apply:
+            await patch_runner.apply(patch_plan_directory=patch_plan_dir)
+            rprint(f"{SUCCESS_BADGE} Patch plan successfully applied")
 
-    await db.close()
+    await dbdriver.close()
 
 
 @patch_app.command(name="apply")

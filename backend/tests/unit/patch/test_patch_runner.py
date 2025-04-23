@@ -258,11 +258,9 @@ RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3
             return broken_edge_deleter_patch_runner
 
     def get_patch_runner(self, db: InfrahubDatabase) -> PatchRunner:
-        plan_writer = PatchPlanWriter()
-        plan_reader = PatchPlanReader()
         return PatchRunner(
-            plan_writer=plan_writer,
-            plan_reader=plan_reader,
+            plan_writer=PatchPlanWriter(),
+            plan_reader=PatchPlanReader(),
             edge_db_id_translator=PatchPlanEdgeDbIdTranslator(),
             vertex_adder=PatchPlanVertexAdder(db=db, batch_size_limit=1),
             vertex_deleter=PatchPlanVertexDeleter(db=db, batch_size_limit=1),

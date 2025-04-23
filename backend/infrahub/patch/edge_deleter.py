@@ -29,6 +29,5 @@ RETURN %(id_func_name)s(e) AS deleted_id
 
     async def execute(self, edges_to_delete: list[EdgeToDelete]) -> AsyncGenerator[set[str], None]:
         for i in range(0, len(edges_to_delete), self.batch_size_limit):
-            edges_slice = edges_to_delete[i : i + self.batch_size_limit]
-            ids_to_delete = [e.db_id for e in edges_slice]
+            ids_to_delete = [e.db_id for e in edges_to_delete[i : i + self.batch_size_limit]]
             yield await self._run_delete_query(ids_to_delete=ids_to_delete)

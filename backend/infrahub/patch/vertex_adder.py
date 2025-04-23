@@ -15,19 +15,14 @@ class PatchPlanVertexAdder:
 
     async def _run_add_query(self, labels: list[str], vertices_to_add: list[VertexToAdd]) -> dict[str, str]:
         labels_str = ":".join(labels)
-        all_prop_keys: set[str] = set()
-        for v_to_add in vertices_to_add:
-            all_prop_keys |= set(v_to_add.after_props.keys())
-
-        cypher_variable_map = "{" + ",".join([f"{p}: vertex_to_add.after_props.{p}" for p in all_prop_keys]) + "}"
         serial_vertices_to_add: list[dict[str, str | int | bool]] = [asdict(v) for v in vertices_to_add]
         query = """
 UNWIND $vertices_to_add AS vertex_to_add
-CREATE (v:%(labels)s %(cypher_variable_map)s)
+CREATE (v:%(labels)s)
+SET v = vertex_to_add.after_props
 RETURN vertex_to_add.identifier AS abstract_id, %(id_func_name)s(v) AS db_id
         """ % {
             "labels": labels_str,
-            "cypher_variable_map": cypher_variable_map,
             "id_func_name": self.db.get_id_function_name(),
         }
         results = await self.db.execute_query(
@@ -41,6 +36,10 @@ RETURN vertex_to_add.identifier AS abstract_id, %(id_func_name)s(v) AS db_id
         return abstract_to_concrete_id_map
 
     async def execute(self, vertices_to_add: list[VertexToAdd]) -> AsyncGenerator[dict[str, str], None]:
+        """
+        Create vertices_to_add on the database.
+        Returns a generator that yields dictionaries mapping VertexToAdd.identifier to the database-level ID of the newly created vertex.
+        """
         vertices_map_queue: dict[frozenset[str], list[VertexToAdd]] = defaultdict(list)
         for vertex_to_add in vertices_to_add:
             frozen_labels = frozenset(vertex_to_add.labels)

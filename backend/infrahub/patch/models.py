@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+PropertyPrimitives = str | bool | int | float | None
+
 
 def str_uuid() -> str:
     return str(uuid4())
@@ -9,22 +11,22 @@ def str_uuid() -> str:
 @dataclass
 class VertexToAdd:
     labels: list[str]
-    after_props: dict[str, str | int | bool | None]
+    after_props: dict[str, PropertyPrimitives]
     identifier: str = field(default_factory=str_uuid)
 
 
 @dataclass
 class VertexToUpdate:
     db_id: str
-    before_props: dict[str, str | int | bool | None]
-    after_props: dict[str, str | int | bool | None]
+    before_props: dict[str, PropertyPrimitives]
+    after_props: dict[str, PropertyPrimitives]
 
 
 @dataclass
 class VertexToDelete:
     db_id: str
     labels: list[str]
-    before_props: dict[str, str | int | bool | None]
+    before_props: dict[str, PropertyPrimitives]
 
 
 @dataclass
@@ -32,15 +34,15 @@ class EdgeToAdd:
     from_id: str
     to_id: str
     edge_type: str
-    after_props: dict[str, str | int | bool | None]
+    after_props: dict[str, PropertyPrimitives]
     identifier: str = field(default_factory=str_uuid)
 
 
 @dataclass
 class EdgeToUpdate:
     db_id: str
-    before_props: dict[str, str | int | bool | None]
-    after_props: dict[str, str | int | bool | None]
+    before_props: dict[str, PropertyPrimitives]
+    after_props: dict[str, PropertyPrimitives]
 
 
 @dataclass
@@ -49,7 +51,7 @@ class EdgeToDelete:
     from_id: str
     to_id: str
     edge_type: str
-    before_props: dict[str, str | int | bool | None]
+    before_props: dict[str, PropertyPrimitives]
 
 
 @dataclass

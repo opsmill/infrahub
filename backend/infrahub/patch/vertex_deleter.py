@@ -29,6 +29,5 @@ RETURN %(id_func_name)s(n) AS deleted_id
 
     async def execute(self, vertices_to_delete: list[VertexToDelete]) -> AsyncGenerator[set[str], None]:
         for i in range(0, len(vertices_to_delete), self.batch_size_limit):
-            vertices_slice = vertices_to_delete[i : i + self.batch_size_limit]
-            ids_to_delete = [v.db_id for v in vertices_slice]
+            ids_to_delete = [v.db_id for v in vertices_to_delete[i : i + self.batch_size_limit]]
             yield await self._run_delete_query(ids_to_delete=ids_to_delete)

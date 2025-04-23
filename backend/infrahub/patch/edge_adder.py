@@ -14,20 +14,15 @@ class PatchPlanEdgeAdder:
         self.batch_size_limit = batch_size_limit
 
     async def _run_add_query(self, edge_type: str, edges_to_add: list[EdgeToAdd]) -> dict[str, str]:
-        all_prop_keys: set[str] = set()
-        for e_to_add in edges_to_add:
-            all_prop_keys |= set(e_to_add.after_props.keys())
-
-        cypher_variable_map = "{" + ",".join([f"{p}: edge_to_add.after_props.{p}" for p in all_prop_keys]) + "}"
         query = """
 UNWIND $edges_to_add AS edge_to_add
 MATCH (a) WHERE %(id_func_name)s(a) = edge_to_add.from_id
 MATCH (b) WHERE %(id_func_name)s(b) = edge_to_add.to_id
-CREATE (a)-[e:%(edge_type)s %(cypher_variable_map)s]->(b)
+CREATE (a)-[e:%(edge_type)s]->(b)
+SET e = edge_to_add.after_props
 RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
         """ % {
             "edge_type": edge_type,
-            "cypher_variable_map": cypher_variable_map,
             "id_func_name": self.db.get_id_function_name(),
         }
         edges_to_add_dicts = [asdict(v) for v in edges_to_add]
@@ -45,6 +40,10 @@ RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
         self,
         edges_to_add: list[EdgeToAdd],
     ) -> AsyncGenerator[dict[str, str], None]:
+        """
+        Create edges_to_add on the database.
+        Returns a generator that yields dictionaries mapping EdgeToAdd.identifier to the database-level ID of the newly created edge.
+        """
         edges_map_queue: dict[str, list[EdgeToAdd]] = defaultdict(list)
         for edge_to_add in edges_to_add:
             edges_map_queue[edge_to_add.edge_type].append(edge_to_add)

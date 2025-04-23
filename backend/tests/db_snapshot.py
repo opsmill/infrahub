@@ -23,7 +23,7 @@ class DbEdge:
     db_id: str
     from_db_id: str
     to_db_id: str
-    edge_type: set
+    edge_type: str
     properties: dict[str, Any]
 
     def __hash__(self) -> int:
