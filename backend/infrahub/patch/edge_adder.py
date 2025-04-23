@@ -31,7 +31,7 @@ RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
             "id_func_name": self.db.get_id_function_name(),
         }
         edges_to_add_dicts = [asdict(v) for v in edges_to_add]
-        results, _ = await self.db.execute_query_with_metadata(
+        results = await self.db.execute_query(
             query=query, params={"edges_to_add": edges_to_add_dicts}, type=QueryType.WRITE
         )
         abstract_to_concrete_id_map: dict[str, str] = {}

@@ -30,7 +30,7 @@ RETURN vertex_to_add.identifier AS abstract_id, %(id_func_name)s(v) AS db_id
             "cypher_variable_map": cypher_variable_map,
             "id_func_name": self.db.get_id_function_name(),
         }
-        results, _ = await self.db.execute_query_with_metadata(
+        results = await self.db.execute_query(
             query=query, params={"vertices_to_add": serial_vertices_to_add}, type=QueryType.WRITE
         )
         abstract_to_concrete_id_map: dict[str, str] = {}
