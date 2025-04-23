@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub import config
 from infrahub.workflows import catalogue
-from infrahub.workflows.catalogue import worker_pools, workflows
+from infrahub.workflows.catalogue import workflows
 
 if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
@@ -37,7 +38,7 @@ def test_workflow_definition_flow_names() -> None:
 def test_workflows_sorted() -> None:
     workflow_names = sorted(name for name in dir(catalogue) if name.isupper())
     ordered_workflows = [getattr(catalogue, name) for name in workflow_names]
-    for worker_pool in worker_pools:
+    for worker_pool in config.SETTINGS.workflow.work_pools:
         if worker_pool in ordered_workflows:
             ordered_workflows.remove(worker_pool)
     assert ordered_workflows == workflows, "The list of workflows isn't sorted alphabetically"
