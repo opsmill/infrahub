@@ -526,14 +526,6 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
 )
 
 
-VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
-    name="validate-schema-number-pools",
-    type=WorkflowType.CORE,
-    module="infrahub.pools.tasks",
-    function="validate_schema_number_pools",
-)
-
-
 workflows = [
     ACTION_ADD_NODE_TO_GROUP,
     ACTION_RUN_GENERATOR,
