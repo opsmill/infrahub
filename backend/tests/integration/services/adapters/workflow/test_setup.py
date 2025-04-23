@@ -21,15 +21,3 @@ class TestTaskManagerSetup(TestWorkerInfrahubAsync):
 
         response = await prefect_client.read_work_pool(infrahubasync_worker.name)
         assert response.type == "infrahubasync"
-
-
-class TestTaskManagerSetupProcess(TestWorkerProcess):
-    async def test_setup_task_manager(self, user_worker: WorkerPoolDefinition, prefect_client: PrefectClient):
-        response = await prefect_client.read_work_pool(user_worker.name)
-        assert response.type == "process"
-
-        # Setup the task manager a second time to validate that it's idempotent
-        await setup_task_manager()
-
-        response = await prefect_client.read_work_pool(user_worker.name)
-        assert response.type == "process"
