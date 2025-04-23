@@ -11,7 +11,6 @@ from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
 from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
 from prefect.workers.base import BaseWorkerResult
-from prefect.workers.process import ProcessWorker
 
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN
 from infrahub.workers.infrahub_async import InfrahubWorkerAsync
