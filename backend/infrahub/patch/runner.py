@@ -117,7 +117,10 @@ class PatchRunner:
         """Invert the PatchPlan to create the complement of every added/updated/deleted element and undo them"""
         patch_plan = self.plan_reader.read(patch_plan_directory)
         await self._revert_deleted_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
-        await self._revert_deleted_edges(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
+        await self._revert_deleted_edges(
+            patch_plan=patch_plan,
+            patch_plan_directory=patch_plan_directory,
+        )
         await self._revert_added_edges(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         await self._revert_added_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         vertices_to_update = [
@@ -141,6 +144,11 @@ class PatchRunner:
         ]
         if edges_to_update:
             await self.edge_updater.execute(edges_to_update=edges_to_update)
+        if patch_plan.reverted_deleted_db_id_map:
+            patch_plan.reverted_deleted_db_id_map = {}
+            self.plan_writer.write_reverted_deleted_db_id_map(
+                patch_plan_directory=patch_plan_directory, db_id_map=patch_plan.reverted_deleted_db_id_map
+            )
         return patch_plan
 
     async def _revert_added_vertices(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
@@ -177,15 +185,19 @@ class PatchRunner:
         if not vertices_to_add:
             return
 
-        undeleted_ids: set[str] = set()
+        deleted_to_undeleted_db_id_map: dict[str, str] = {}
         try:
             async for added_db_id_map in self.vertex_adder.execute(vertices_to_add=vertices_to_add):
-                undeleted_ids |= set(added_db_id_map.keys())
+                deleted_to_undeleted_db_id_map.update(added_db_id_map)
         finally:
-            if undeleted_ids:
-                patch_plan.drop_deleted_db_ids(db_ids_to_drop=undeleted_ids)
+            if deleted_to_undeleted_db_id_map:
+                patch_plan.drop_deleted_db_ids(db_ids_to_drop=set(deleted_to_undeleted_db_id_map.keys()))
                 self.plan_writer.write_deleted_db_ids(
                     patch_plan_directory=patch_plan_directory, deleted_ids=patch_plan.deleted_db_ids
+                )
+                patch_plan.reverted_deleted_db_id_map.update(deleted_to_undeleted_db_id_map)
+                self.plan_writer.write_reverted_deleted_db_id_map(
+                    patch_plan_directory=patch_plan_directory, db_id_map=patch_plan.reverted_deleted_db_id_map
                 )
 
     async def _revert_added_edges(self, patch_plan: PatchPlan, patch_plan_directory: Path) -> None:
@@ -216,8 +228,12 @@ class PatchRunner:
         edges_to_add = [
             EdgeToAdd(
                 identifier=edge_delete_to_revert.db_id,
-                from_id=edge_delete_to_revert.from_id,
-                to_id=edge_delete_to_revert.to_id,
+                from_id=patch_plan.reverted_deleted_db_id_map.get(
+                    edge_delete_to_revert.from_id, edge_delete_to_revert.from_id
+                ),
+                to_id=patch_plan.reverted_deleted_db_id_map.get(
+                    edge_delete_to_revert.to_id, edge_delete_to_revert.to_id
+                ),
                 edge_type=edge_delete_to_revert.edge_type,
                 after_props=edge_delete_to_revert.before_props,
             )

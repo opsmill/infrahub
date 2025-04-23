@@ -16,6 +16,7 @@ class PatchPlanReader:
         edges_to_update = self._read_edges_to_update(patch_plan_directory=patch_plan_directory)
         added_node_db_id_map = self._read_added_node_db_id_map(patch_plan_directory=patch_plan_directory)
         deleted_db_ids = self._read_deleted_db_ids(patch_plan_directory=patch_plan_directory)
+        reverted_deleted_db_id_map = self._read_reverted_deleted_db_id_map(patch_plan_directory=patch_plan_directory)
 
         return PatchPlan(
             name="none",
@@ -27,6 +28,7 @@ class PatchPlanReader:
             edges_to_update=edges_to_update,
             added_element_db_id_map=added_node_db_id_map or {},
             deleted_db_ids=deleted_db_ids or set(),
+            reverted_deleted_db_id_map=reverted_deleted_db_id_map or {},
         )
 
     def _read_file_lines(self, patch_file: Path) -> Generator[str | None, None, None]:
@@ -96,3 +98,10 @@ class PatchPlanReader:
             return None
         deleted_db_ids_json = file.read_text()
         return set(json.loads(deleted_db_ids_json))
+
+    def _read_reverted_deleted_db_id_map(self, patch_plan_directory: Path) -> dict[str, str] | None:
+        file = patch_plan_directory / Path(PatchPlanFilename.REVERTED_DELETED_DB_IDS.value)
+        if not file.exists():
+            return None
+        reverted_deleted_db_id_json = file.read_text()
+        return json.loads(reverted_deleted_db_id_json)

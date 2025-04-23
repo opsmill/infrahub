@@ -121,12 +121,15 @@ CREATE (v2)-[e2:%(edge_type)s]->(v3)
 SET e2 = {from: v2.value, to: v3.value}
 CREATE (v3)-[e3:%(edge_type)s]->(v4)
 SET e3 = {from: v3.value, to: v4.value}
-RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3
+CREATE (v4)-[e4:%(edge_type)s]->(v5)
+SET e4 = {from: v4.value, to: v5.value}
+RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3, e4
         """ % {"edge_type": EDGE_TYPE, "v_labels": ":".join(VERTEX_LABELS)}
         results = await db.execute_query(query=create_query)
         result = results[0]
         return {
-            v_name: result.get(v_name).element_id for v_name in ["v1", "v2", "v3", "v4", "v5", "v6", "e1", "e2", "e3"]
+            v_name: result.get(v_name).element_id
+            for v_name in ["v1", "v2", "v3", "v4", "v5", "v6", "e1", "e2", "e3", "e4"]
         }
 
     @pytest.fixture
@@ -166,7 +169,14 @@ RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3
                     to_id=initial_data["v4"],
                     edge_type=EDGE_TYPE,
                     before_props={"from": 3, "to": 4},
-                )
+                ),
+                EdgeToDelete(
+                    db_id=initial_data["e4"],
+                    from_id=initial_data["v4"],
+                    to_id=initial_data["v5"],
+                    edge_type=EDGE_TYPE,
+                    before_props={"from": 4, "to": 5},
+                ),
             ]
         )
         return testing_patch
@@ -378,6 +388,7 @@ RETURN e
         # ensure the successful revert accurately tracked its progress when deleting the added elements
         assert not reverted_patch_plan.added_element_db_id_map
         assert not reverted_patch_plan.deleted_db_ids
+        assert not reverted_patch_plan.reverted_deleted_db_id_map
         # twice to test idempotence
         await patch_runner.revert(patch_plan_directory=patch_plan_dir)
 

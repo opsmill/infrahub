@@ -65,6 +65,7 @@ class PatchPlan:
     edges_to_delete: list[EdgeToDelete] = field(default_factory=list)
     added_element_db_id_map: dict[str, str] = field(default_factory=dict)
     deleted_db_ids: set[str] = field(default_factory=set)
+    reverted_deleted_db_id_map: dict[str, str] = field(default_factory=dict)
 
     def get_database_id_for_added_element(self, abstract_id: str) -> str:
         return self.added_element_db_id_map.get(abstract_id, abstract_id)

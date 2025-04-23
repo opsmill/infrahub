@@ -52,6 +52,12 @@ class PatchPlanWriter:
         with file.open(mode="w") as f:
             f.write(json.dumps(list(deleted_ids)) + "\n")
 
+    def write_reverted_deleted_db_id_map(self, patch_plan_directory: Path, db_id_map: dict[str, str]) -> None:
+        file = patch_plan_directory / Path(PatchPlanFilename.REVERTED_DELETED_DB_IDS.value)
+        file.touch(exist_ok=True)
+        with file.open(mode="w") as f:
+            f.write(json.dumps(db_id_map) + "\n")
+
     def _dataclass_to_json_line(self, dataclass_instance: Any) -> str:
         return json.dumps(asdict(dataclass_instance)) + "\n"
 

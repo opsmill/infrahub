@@ -37,22 +37,12 @@ class DbEdge:
 
 @dataclass
 class DbSnapshot:
-    node_map: dict[str, DbNode]
-    edge_map: dict[str, DbEdge]
+    node_map: dict[int, DbNode]
+    edge_map: dict[int, DbEdge]
 
     def __hash__(self) -> int:
-        summed_node_hash = 0
-        node_hashes_by_db_id: dict[str, int] = {}
-        for n in self.node_map.values():
-            n_hash = hash(n)
-            summed_node_hash += n_hash
-            node_hashes_by_db_id[n.db_id] = n_hash
-        summed_edge_hash = 0
-        for edge in self.edge_map.values():
-            edge_hash = hash(edge)
-            from_node_hash = node_hashes_by_db_id[edge.from_db_id]
-            to_node_hash = node_hashes_by_db_id[edge.to_db_id]
-            summed_edge_hash += hash(f"{from_node_hash}:{edge_hash}:{to_node_hash}")
+        summed_node_hash = sum(self.node_map.keys())
+        summed_edge_hash = sum(self.edge_map.keys())
         return hash(f"{summed_node_hash}:{summed_edge_hash}")
 
 
@@ -64,22 +54,32 @@ class DbSnapshotter:
         node_query = """MATCH (n) RETURN n"""
         results = await self.db.execute_query(query=node_query)
         node_map = {}
+        node_hashes_by_db_id: dict[str, int] = {}
         for result in results:
             n = result.get("n")
             db_node = DbNode(db_id=n.element_id, labels=n.labels, properties=dict(n.items()))
-            node_map[db_node.db_id] = db_node
+            node_hash = hash(db_node)
+            node_map[node_hash] = db_node
+            node_hashes_by_db_id[db_node.db_id] = node_hash
         edge_query = """MATCH (a)-[e]->(b) RETURN a, e, b"""
         results = await self.db.execute_query(query=edge_query)
         edge_map = {}
         for result in results:
             from_n = result.get("a")
+            from_n_db_id = from_n.element_id
+            from_n_hash = node_hashes_by_db_id[from_n_db_id]
             to_n = result.get("b")
+            to_n_db_id = to_n.element_id
+            to_n_hash = node_hashes_by_db_id[to_n_db_id]
             edge = result.get("e")
-            edge_map[edge.element_id] = DbEdge(
+            db_edge = DbEdge(
                 db_id=edge.element_id,
-                from_db_id=from_n.element_id,
-                to_db_id=to_n.element_id,
+                from_db_id=from_n_db_id,
+                to_db_id=to_n_db_id,
                 edge_type=edge.type,
                 properties=(dict(edge.items())),
             )
+            edge_only_hash = hash(db_edge)
+            full_edge_hash = hash(f"{from_n_hash}:{edge_only_hash}:{to_n_hash}")
+            edge_map[full_edge_hash] = db_edge
         return DbSnapshot(node_map=node_map, edge_map=edge_map)
