@@ -10,6 +10,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput, DummyOutput
 from infrahub.workers.infrahub_async import InfrahubWorkerAsync
+from tests.helpers.test_worker import TestWorkerInfrahubAsync
 
 
 class TestWorkflowExecution(TestWorkerInfrahubAsync):
