@@ -20,6 +20,8 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_models_dir
+from infrahub.workflows.constants import WorkflowType
+from infrahub.workflows.models import WorkerPoolDefinition
 from tests.helpers.file_repo import FileRepo
 
 
@@ -135,3 +137,19 @@ def prefect_test_fixture():
 def prefect_test(prefect_test_fixture):
     with disable_run_logger():
         yield
+
+
+@pytest.fixture(scope="session")
+def infrahubasync_worker() -> WorkerPoolDefinition:
+    return WorkerPoolDefinition(
+        name="infrahub-worker",
+        workflow_type=WorkflowType.INTERNAL | WorkflowType.CORE | WorkflowType.USER,
+        description="Default Pool for internal tasks",
+    )
+
+
+@pytest.fixture(scope="session")
+def user_worker() -> WorkerPoolDefinition:
+    return WorkerPoolDefinition(
+        name="user-task-worker", workflow_type=WorkflowType.USER, description="Default Pool for user tasks"
+    )

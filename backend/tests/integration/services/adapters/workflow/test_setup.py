@@ -1,27 +1,8 @@
-import pytest
 from prefect.client.orchestration import PrefectClient
 
-from infrahub.workflows.constants import WorkflowType
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
-from tests.helpers.test_worker import TestWorkerInfrahubAsync
-
-
-@pytest.fixture(scope="module")
-def infrahubasync_worker() -> WorkerPoolDefinition:
-    return WorkerPoolDefinition(
-        name="infrahub-worker",
-        workflow_type=WorkflowType.INTERNAL | WorkflowType.CORE | WorkflowType.USER,
-        description="Default Pool for internal tasks",
-    )
-
-
-@pytest.fixture(scope="module")
-def user_worker() -> WorkerPoolDefinition:
-    return WorkerPoolDefinition(
-        name="user-task-worker", workflow_type=WorkflowType.USER, description="Default Pool for user tasks"
-    )
-
+from tests.helpers.test_worker import TestWorkerInfrahubAsync, TestWorkerProcess
 
 # @pytest.fixture
 # async def prefect_server(redis, prefect):

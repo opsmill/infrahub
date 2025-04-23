@@ -22,7 +22,7 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.utils import start_prefect_server_container
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def infrahubasync_worker() -> WorkerPoolDefinition:
     return WorkerPoolDefinition(
         name="infrahub-worker",
