@@ -25,7 +25,7 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
-from infrahub.workflows.constants import WorkflowType
+from infrahub.workflows.constants import WorkerType, WorkflowType
 from infrahub.workflows.models import WorkerPoolDefinition
 
 if TYPE_CHECKING:
@@ -379,7 +379,7 @@ class WorkflowSettings(BaseSettings):
     port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
-    default_worker_type: str = "infrahubasync"
+    default_worker_type: str = WorkerType.INFRAHUB_ASYNC
     extra_loggers: list[str] = Field(
         default_factory=list, description="A list of additional logger that will be captured during task execution."
     )

@@ -23,3 +23,8 @@ class WorkflowTag(InfrahubStringEnum):
             return f"{TAG_NAMESPACE}/{self.value}"
         rendered_value = str(self.value).format(identifier=identifier)
         return f"{TAG_NAMESPACE}/{rendered_value}"
+
+
+class WorkerType(InfrahubStringEnum):
+    INFRAHUB_ASYNC = "infrahubasync"
+    PROCESS = "process"
