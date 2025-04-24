@@ -12,7 +12,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.convert_object_kind.schema_mapping import raise_if_unidirectional_relationships
 from infrahub.core.relationship import RelationshipManager
+from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.mutations.mutation_create import create_node
 
@@ -50,6 +52,12 @@ async def convert_object_type(
     node: Node, target_kind: str, mapping: dict[str, InputForDestField], branch: Branch, db: InfrahubDatabase
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error."""
+
+    node_schema = node.get_schema()
+    if not isinstance(node_schema, NodeSchema):
+        raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")
+
+    raise_if_unidirectional_relationships(node_schema)
 
     async with db.start_transaction() as dbt:  # noqa: PLR1702
         data = {}

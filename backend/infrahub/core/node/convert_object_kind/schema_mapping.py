@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.schema import NodeSchema
 
 # None key means field is mandatory and no matching input field was found (and should be filled by user)
 
@@ -20,9 +21,17 @@ class SchemaMappingValue(BaseModel):
 SchemaMapping = dict[str, SchemaMappingValue]
 
 
+def raise_if_unidirectional_relationships(node_schema: NodeSchema) -> None:
+    if node_schema.unidirectional_relationships:
+        # Ideally, we would prevent from converting only if any of these unidirectional relationships exist.
+        raise ValueError("Schema node targeted by unidirectional relationships can not be converted")
+
+
 def get_schema_mapping(source_kind: str, target_kind: str, branch: str) -> SchemaMapping:
     source_schema = registry.get_node_schema(name=source_kind, branch=branch)
     target_schema = registry.get_node_schema(name=target_kind, branch=branch)
+
+    raise_if_unidirectional_relationships(source_schema)
 
     target_field_to_source_field = {}
     for target_attr in target_schema.attributes:

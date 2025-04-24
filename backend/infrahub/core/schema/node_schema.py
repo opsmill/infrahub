@@ -121,6 +121,13 @@ class NodeSchema(GeneratedNodeSchema):
                 item_idx = existing_inherited_relationships[relationship.name]
                 self.relationships[item_idx].update_from_generic(other=new_relationship)
 
+        # Let's assume for now that there is no case where unidirectional rels are inherited with the same identifier
+        # so we can simply inherit all, and add the new ones
+        # but there will still be this
+        for unidirectional_relationship_id in interface.unidirectional_relationships:
+            if unidirectional_relationship_id not in self.unidirectional_relationships:
+                self.unidirectional_relationships.append(unidirectional_relationship_id)
+
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:
         if not self.hierarchy:
             raise ValueError("The node is not part of a hierarchy")

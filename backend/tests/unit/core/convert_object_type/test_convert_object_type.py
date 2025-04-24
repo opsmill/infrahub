@@ -73,6 +73,21 @@ class TestConvertObjectType(TestInfrahubApp):
             relationship_cardinality=RelationshipCardinality.MANY,
         )
 
+    def test_raise_on_unidirectional_relationships(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schema_conversion_unidirectional_relationships,
+        default_branch,
+    ):
+        registry.schema.register_schema(
+            schema=SchemaRoot(**schema_conversion_unidirectional_relationships), branch=default_branch.name
+        )
+        with pytest.raises(
+            ValueError, match="Schema node targeted by unidirectional relationships can not be converted"
+        ):
+            get_schema_mapping(source_kind="TestPerson1", target_kind="TestPerson2", branch=default_branch.name)
+
     async def test_convert_object_type(
         self, db: InfrahubDatabase, client: InfrahubClient, register_schemas_conversion, branch
     ) -> None:

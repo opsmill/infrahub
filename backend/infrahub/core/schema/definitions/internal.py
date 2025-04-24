@@ -365,6 +365,15 @@ base_node_schema = SchemaNode(
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
+        SchemaAttribute(
+            name="unidirectional_relationships",
+            kind="List",
+            internal_kind=str,
+            description="List of incoming unidirectional relationship schemas.",
+            default_factory="list",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
     ],
     relationships=[],
 )

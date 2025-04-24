@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from infrahub.core.schema.basenode_schema import BaseNodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa
 
 
 class GeneratedNodeSchema(BaseNodeSchema):

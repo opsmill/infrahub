@@ -180,6 +180,7 @@ class SchemaManager(NodeManager):
         branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
+        print("before processing")
         schema_branch.process()
         return schema_branch
 

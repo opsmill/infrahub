@@ -499,10 +499,11 @@ class HashableModel(BaseModel):
         local_sub_items = HashableModel._organize_sub_items(items=attr_local, shared_ids=shared_real_ids)
         other_sub_items = HashableModel._organize_sub_items(items=attr_other, shared_ids=shared_real_ids)
 
-        new_list = []
-
         if len(local_sub_items) != len(attr_local) or len(other_sub_items) != len(attr_other):
-            raise ValueError(f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id")
+            raise ValueError(
+                f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id; "
+                f"{len(local_sub_items)=} {len(attr_local)=} {len(other_sub_items)=} {len(attr_other)=}"
+            )
 
         if duplicates(list(local_sub_items.keys())) or duplicates(list(other_sub_items.keys())):
             raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")

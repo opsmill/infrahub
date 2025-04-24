@@ -503,6 +503,13 @@ class SchemaBranch:
         self.process_default_values()
         self.process_deprecations()
         self.process_cardinality_counts()
+        # TODO think in which order we want to process that. Ie when going through each node, we want to add
+        #  unidirectional relationships, but we need of relationships of every node having been already added
+        #  to children nodes. So maybe we need to add these unidirectional relationships only once we have processed everything
+        #  Also maybe we deal relationship inheritance based on name instead of identifier because if
+        #  a relationship is overriden, name will the same but not identifier. And there can't be duplicated relationship
+        #  name anyway for a single node (would have raised before).
+        self.add_unidirectional_relationships()
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
@@ -2135,3 +2142,16 @@ class SchemaBranch:
                 updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
                 core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
+
+    def add_unidirectional_relationships(self) -> None:
+        for node_name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=node_name, duplicate=False)
+            for relationship in node.relationships:
+                peer_schema = self.get(name=relationship.peer, duplicate=True)
+                if isinstance(peer_schema, (GenericSchema, NodeSchema)) and all(
+                    relationship.identifier != peer_rel.identifier for peer_rel in peer_schema.relationships
+                ):
+                    if relationship.identifier not in peer_schema.unidirectional_relationships:
+                        peer_schema.unidirectional_relationships.append(relationship.identifier)
+
+                self.set(name=peer_schema.kind, schema=peer_schema)
