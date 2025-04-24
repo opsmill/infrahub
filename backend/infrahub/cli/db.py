@@ -54,12 +54,14 @@ from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
+from .patch import patch_app
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
     from infrahub.database import InfrahubDatabase
 
 app = AsyncTyper()
+app.add_typer(patch_app, name="patch")
 
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
