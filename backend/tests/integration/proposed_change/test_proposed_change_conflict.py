@@ -228,6 +228,10 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             validator for validator in peers.values() if validator.label.value == "Artifact Validator: Ownership report"
         ][0]
         assert ownership_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+        converted_owner_artifacts = [
+            validator for validator in peers.values() if validator.label.value == "Artifact Validator: converted-owner"
+        ][0]
+        assert converted_owner_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         description_check = [
             validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
         ][0]
@@ -333,8 +337,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             query=QUERY_EVENT,
             variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.passed"]},
         )
-        assert validator_started_events["InfrahubEvent"]["count"] == 9
-        assert validator_passed_events["InfrahubEvent"]["count"] == 9
+        assert validator_started_events["InfrahubEvent"]["count"] == 10
+        assert validator_passed_events["InfrahubEvent"]["count"] == 10
         started_validators = [
             event["node"]["primary_node"]["kind"] for event in validator_started_events["InfrahubEvent"]["edges"]
         ]
@@ -346,6 +350,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             "CoreArtifactValidator",
             "CoreArtifactValidator",
             "CoreArtifactValidator",
+            "CoreArtifactValidator",
             "CoreGeneratorValidator",
             "CoreGeneratorValidator",
             "CoreRepositoryValidator",
@@ -353,6 +358,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             "CoreUserValidator",
         ]
         assert sorted(passed_validators) == [
+            "CoreArtifactValidator",
             "CoreArtifactValidator",
             "CoreArtifactValidator",
             "CoreArtifactValidator",
