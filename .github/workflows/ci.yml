@@ -409,6 +409,7 @@ jobs:
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      NEO4J_DOCKER_IMAGE: "neo4j:2025.03.0-community"
       PYTEST_XDIST_WORKER_COUNT: 1
     steps:
       - name: "Check out repository code"
