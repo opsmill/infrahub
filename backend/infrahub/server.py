@@ -23,7 +23,7 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
-from infrahub.core.graph.index import node_indexes, rel_indexes
+from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
@@ -58,6 +58,8 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
     # Initialize database Driver and load local registry
     database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    if config.SETTINGS.experimental_features.value_db_index:
+        node_indexes.append(attr_value_index)
     database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     build_component_registry()
