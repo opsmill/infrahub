@@ -8,6 +8,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata, NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
@@ -282,13 +283,17 @@ class TestDiffCoordinator:
         assert no_changes_diff_metadata.from_time == diff_with_data.from_time
         assert no_changes_diff_metadata.to_time > diff_with_data.to_time
 
+        expected_previous_node_specifiers = NodeFieldSpecifierMap()
+        expected_previous_node_specifiers.add_entry(
+            node_uuid=person_john_main.id, kind=person_john_main.get_kind(), field_name="height"
+        )
         wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_awaited_once_with(
             base_branch=default_branch,
             diff_branch=branch,
             from_time=diff_with_data.to_time,
             to_time=no_changes_diff_metadata.to_time,
             include_unchanged=True,
-            previous_node_specifiers={person_john_main.id: {"height"}},
+            previous_node_specifiers=expected_previous_node_specifiers,
         )
         wrapped_diff_coordinator.diff_repo.get_one.assert_not_awaited()
         wrapped_diff_coordinator.diff_repo.save.assert_awaited_once()

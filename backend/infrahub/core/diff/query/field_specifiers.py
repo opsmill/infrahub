@@ -18,20 +18,21 @@ class EnrichedDiffFieldSpecifiersQuery(Query):
 CALL {
     MATCH (root:DiffRoot {uuid: $diff_id})-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_ATTRIBUTE]->(attr:DiffAttribute)
     WHERE (root.is_merged IS NULL OR root.is_merged <> TRUE)
-    RETURN node.uuid AS node_uuid, attr.name AS field_name
+    RETURN node.uuid AS node_uuid, node.kind AS node_kind, attr.name AS field_name
     UNION
     MATCH (root:DiffRoot {uuid: $diff_id})-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(rel:DiffRelationship)
     WHERE (root.is_merged IS NULL OR root.is_merged <> TRUE)
-    RETURN node.uuid AS node_uuid, rel.identifier AS field_name
+    RETURN node.uuid AS node_uuid, node.kind AS node_kind, rel.identifier AS field_name
 }
         """
         self.add_to_query(query=query)
-        self.return_labels = ["node_uuid", "field_name"]
-        self.order_by = ["node_uuid", "field_name"]
+        self.return_labels = ["node_uuid", "node_kind", "field_name"]
+        self.order_by = ["node_uuid", "node_kind", "field_name"]
 
-    def get_node_field_specifier_tuples(self) -> Generator[tuple[str, str], None, None]:
+    def get_node_field_specifier_tuples(self) -> Generator[tuple[str, str, str], None, None]:
         for result in self.get_results():
             node_uuid = result.get_as_str("node_uuid")
+            node_kind = result.get_as_str("node_kind")
             field_name = result.get_as_str("field_name")
-            if node_uuid and field_name:
-                yield (node_uuid, field_name)
+            if node_uuid and node_kind and field_name:
+                yield (node_uuid, node_kind, field_name)

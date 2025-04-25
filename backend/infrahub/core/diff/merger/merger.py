@@ -54,24 +54,26 @@ class DiffMerger:
         log.info(f"Diff {latest_diff.uuid} retrieved")
         batch_num = 0
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
-            log.info(f"Merging batch of nodes #{batch_num}")
-            merge_query = await DiffMergeQuery.init(
-                db=self.db,
-                branch=self.source_branch,
-                at=at,
-                target_branch=self.destination_branch,
-                node_diff_dicts=node_diff_dicts,
-            )
-            await merge_query.execute(db=self.db)
-            log.info(f"Merging batch of properties #{batch_num}")
-            merge_properties_query = await DiffMergePropertiesQuery.init(
-                db=self.db,
-                branch=self.source_branch,
-                at=at,
-                target_branch=self.destination_branch,
-                property_diff_dicts=property_diff_dicts,
-            )
-            await merge_properties_query.execute(db=self.db)
+            if node_diff_dicts:
+                log.info(f"Merging batch of nodes #{batch_num}")
+                merge_query = await DiffMergeQuery.init(
+                    db=self.db,
+                    branch=self.source_branch,
+                    at=at,
+                    target_branch=self.destination_branch,
+                    node_diff_dicts=node_diff_dicts,
+                )
+                await merge_query.execute(db=self.db)
+            if property_diff_dicts:
+                log.info(f"Merging batch of properties #{batch_num}")
+                merge_properties_query = await DiffMergePropertiesQuery.init(
+                    db=self.db,
+                    branch=self.source_branch,
+                    at=at,
+                    target_branch=self.destination_branch,
+                    property_diff_dicts=property_diff_dicts,
+                )
+                await merge_properties_query.execute(db=self.db)
             log.info(f"Batch #{batch_num} merged")
             batch_num += 1
 

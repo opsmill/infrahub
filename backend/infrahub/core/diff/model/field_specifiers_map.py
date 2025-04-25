@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+
+class NodeFieldSpecifierMap:
+    def __init__(self) -> None:
+        # {uuid: {kind: {field_name, ...}}}
+        self._map: dict[str, dict[str, set[str]]] = {}
+
+    def __len__(self) -> int:
+        return len(self._map)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, NodeFieldSpecifierMap):
+            return False
+        return self._map == other._map
+
+    def __sub__(self, other: NodeFieldSpecifierMap) -> NodeFieldSpecifierMap:
+        subtracted = NodeFieldSpecifierMap()
+        for node_uuid, node_dict in self._map.items():
+            if node_uuid not in other._map:
+                subtracted._map[node_uuid] = {**node_dict}
+                continue
+            subtracted_node_map = {}
+            for kind, field_names in node_dict.items():
+                subtracted_field_names = field_names - other._map[node_uuid].get(kind, set())
+                if not subtracted_field_names:
+                    continue
+                subtracted_node_map[kind] = subtracted_field_names
+            if not subtracted_node_map:
+                continue
+            subtracted._map[node_uuid] = subtracted_node_map
+        return subtracted
+
+    def add_entry(self, node_uuid: str, kind: str, field_name: str) -> None:
+        if node_uuid not in self._map:
+            self._map[node_uuid] = {}
+        if kind not in self._map[node_uuid]:
+            self._map[node_uuid][kind] = set()
+        self._map[node_uuid][kind].add(field_name)
+
+    def has_entry(self, node_uuid: str, kind: str, field_name: str) -> bool:
+        return field_name in self._map.get(node_uuid, {}).get(kind, set())
+
+    def get_uuid_kind_map(self) -> dict[str, list[str]]:
+        return {node_uuid: list(node_dict.keys()) for node_uuid, node_dict in self._map.items()}
+
+    def to_serial_dict(self) -> dict[str, dict[str, list[str]]]:
+        serial: dict[str, dict[str, list[str]]] = {}
+        for node_uuid, node_dict in self._map.items():
+            serial[node_uuid] = {}
+            for kind, field_names_set in node_dict.items():
+                serial[node_uuid][kind] = list(field_names_set)
+        return serial
