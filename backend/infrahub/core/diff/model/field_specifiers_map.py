@@ -9,6 +9,16 @@ class NodeFieldSpecifierMap:
     def __len__(self) -> int:
         return len(self._map)
 
+    def __hash__(self) -> int:
+        full_node_hash_sum = 0
+        for node_uuid, node_dict in self._map.items():
+            node_kinds_hash_sum = 0
+            for kind, field_names in node_dict.items():
+                fields_hash = hash(frozenset(field_names))
+                node_kinds_hash_sum += hash(f"{hash(kind)}:{fields_hash}")
+            full_node_hash_sum += hash(f"{node_uuid}:{node_kinds_hash_sum}")
+        return hash(full_node_hash_sum)
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, NodeFieldSpecifierMap):
             return False
