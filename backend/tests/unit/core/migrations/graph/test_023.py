@@ -76,6 +76,10 @@ async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, re
     )
 
     migration = Migration023()
+    # Avoid error during initialization: uninitialize indexes so that the migration script doesn't try to add indexes
+    # Otherwise index manager tries to open a new transaction using an old InfrahubDatabase reference (it's not using the Migration transaction)
+    # That makes the db initialization phase fail early
+    db.manager.index.initialized = False
     await migration.execute(db=db)
     await migration.validate_migration(db=db)
 
