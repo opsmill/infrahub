@@ -1,13 +1,10 @@
-import { TASK_OBJECT } from "@/config/constants";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { NetworkStatus } from "@apollo/client";
 
 export interface ObjectDetailsProps {
   objectId: string;
@@ -16,27 +13,15 @@ export interface ObjectDetailsProps {
 }
 
 export function ObjectDetails({ objectSchema, objectId, permission }: ObjectDetailsProps) {
-  const { data, networkStatus, error } = useObjectDetails(objectSchema, objectId);
+  const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (isPending) {
     return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
   }
 
-  if (!permission.view.isAllowed) {
-    return <UnauthorizedScreen message={permission.view.message} />;
-  }
-
   if (error) {
-    if (error.networkError?.statusCode === 403) {
-      const { message } = error.networkError?.result?.errors?.[0] ?? {};
-
-      return <UnauthorizedScreen message={message} />;
-    }
-
-    return <ErrorScreen message="Something went wrong when fetching the object details." />;
+    return <ErrorScreen message={error.message} />;
   }
-
-  const objectDetailsData = objectSchema && data && data[objectSchema.kind!]?.edges[0]?.node;
 
   if (!objectDetailsData) {
     return (
@@ -51,7 +36,6 @@ export function ObjectDetails({ objectSchema, objectId, permission }: ObjectDeta
       schema={objectSchema}
       objectDetailsData={objectDetailsData}
       permission={permission}
-      taskData={data[TASK_OBJECT]}
     />
   );
 }

@@ -1,12 +1,7 @@
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import {
-  AttributeType,
-  Node,
-  ObjectAttributeValue,
-  RelationshipType,
-} from "@/entities/nodes/getObjectItemDisplayValue";
+import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import {
   getObjectAttributes,
@@ -17,9 +12,12 @@ import {
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import { NodeObject } from "@/entities/nodes/types";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -31,6 +29,7 @@ import SlideOver from "@/shared/components/display/slide-over";
 import { Tabs } from "@/shared/components/tabs";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -46,8 +45,7 @@ import RelationshipDetails from "./relationship-details-paginated";
 
 type ObjectDetailsProps = {
   schema: ModelSchema;
-  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
-  taskData?: Object;
+  objectDetailsData: NodeObject;
   hideHeaders?: boolean;
   permission: Permission;
 };
@@ -56,7 +54,6 @@ export default function ObjectItemDetails({
   schema,
   objectDetailsData,
   permission,
-  taskData,
   hideHeaders,
 }: ObjectDetailsProps) {
   const location = useLocation();
@@ -70,6 +67,12 @@ export default function ObjectItemDetails({
   const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [genericList] = useAtom(genericSchemasAtom);
+  const isTaskTarget = !isGenericSchema(schema) && !!schema.inherit_from?.includes(TASK_TARGET);
+  const {
+    isPending: isPendingTaskCount,
+    error: errorTaskCount,
+    data: taskCount,
+  } = useGetTaskCount({ nodeId: objectDetailsData.id }, { enabled: isTaskTarget });
 
   const refetchRef = useRef(null);
 
@@ -94,15 +97,16 @@ export default function ObjectItemDetails({
 
   const tabs = [
     {
-      label: schema?.label,
-      name: schema?.name,
+      label: schema.label,
+      name: schema.name,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
     // Includes the task tab only for specific nodes,
-    schema?.inherit_from?.includes(TASK_TARGET) && {
+    isTaskTarget && {
       label: "Tasks",
       name: TASK_TAB,
-      count: taskData?.count ?? 0,
+      count: taskCount,
+      component: isPendingTaskCount || errorTaskCount ? Spinner : undefined,
       onClick: () => {
         setQspTab(TASK_TAB);
         setQspTaskId(undefined);

@@ -1,0 +1,32 @@
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { GetObjectParams, getObject } from "@/entities/nodes/object/domain/get-object";
+import { ContextParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+export function getObjectQueryOptions(params: GetObjectParams) {
+  return queryOptions({
+    queryKey: [
+      params.branchName,
+      params.atDate,
+      "objects",
+      params.objectSchema.kind,
+      params.objectId,
+    ],
+    queryFn: () => getObject(params),
+  });
+}
+
+export function useGetObject(params: Omit<GetObjectParams, keyof ContextParams>) {
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
+  return useQuery(
+    getObjectQueryOptions({
+      ...params,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    })
+  );
+}

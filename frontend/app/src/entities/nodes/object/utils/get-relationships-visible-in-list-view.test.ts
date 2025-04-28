@@ -1,6 +1,6 @@
 import { RelationshipSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
-import { getRelationshipsVisibleInListView } from "./get-relationships-visible-in-list";
+import { getRelationshipsVisibleInListView } from "./get-relationships-visible-in-list-view";
 
 describe("getRelationshipsVisibleInListView", () => {
   it("should return only relationships that should be visible in list view", () => {
