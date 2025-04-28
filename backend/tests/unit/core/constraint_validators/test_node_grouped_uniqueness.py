@@ -201,6 +201,172 @@ class TestNodeGroupedUniquenessConstraint:
 
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
 
+    async def test_uniqueness_constraint_single_element_constraints(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics_simple
+    ):
+        p1 = await Node.init(db=db, schema="TestPerson")
+        await p1.new(db=db, name="John", height=180)
+        await p1.save(db=db)
+        p2 = await Node.init(db=db, schema="TestPerson")
+        await p2.new(db=db, name="Jane", height=170)
+        await p2.save(db=db)
+        p3 = await Node.init(db=db, schema="TestPerson")
+        await p3.new(db=db, name="Jake", height=175)
+        await p3.save(db=db)
+        c1 = await Node.init(db=db, schema="TestElectricCar")
+        await c1.new(db=db, name="volt", nbr_seats=4, nbr_engine=4, owner=p1, previous_owner=p2, color="#111111")
+        await c1.save(db=db)
+        c2 = await Node.init(db=db, schema="TestElectricCar")
+        await c2.new(db=db, name="bolt", nbr_seats=5, nbr_engine=2, owner=p2, previous_owner=p1, color="#222222")
+        await c2.save(db=db)
+
+        # TestPerson attribute constraints
+        p_test = await Node.init(db=db, schema="TestPerson")
+        await p_test.new(db=db, name="Jerm", height=172)
+        p_test.get_schema().uniqueness_constraints = [["name"], ["height"]]
+        await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+        p_test.height.value = 170
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'height'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+        p_test.height.value = 172
+
+        p_test.name.value = p1.name.value
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+
+        # TestElectricCar attribute constraints
+        c_test = await Node.init(db=db, schema="TestElectricCar")
+        await c_test.new(db=db, name="colt", nbr_seats=6, nbr_engine=3, owner=p3, color="#333333")
+        c_test.get_schema().uniqueness_constraints = [["nbr_seats"], ["color"], ["owner"], ["previous_owner"]]
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+
+        c_test.nbr_seats.value = 4
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'nbr_seats'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.nbr_seats.value = 6
+
+        c_test.color.value = "#111111"
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'color'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.color.value = "#333333"
+
+        # TestElectricCar relationship constraints
+        await c_test.owner.update(db=db, data=p1)
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'owner'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        await c_test.owner.update(db=db, data=p3)
+
+        await c_test.previous_owner.update(db=db, data=p2)
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'previous_owner'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        await c_test.previous_owner.update(db=db, data=p3)
+
+    async def test_uniqueness_constraint_multi_element_constraints(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics_simple
+    ):
+        p1 = await Node.init(db=db, schema="TestPerson")
+        await p1.new(db=db, name="John", height=180)
+        await p1.save(db=db)
+        p2 = await Node.init(db=db, schema="TestPerson")
+        await p2.new(db=db, name="Jane", height=170)
+        await p2.save(db=db)
+        p3 = await Node.init(db=db, schema="TestPerson")
+        await p3.new(db=db, name="Jake", height=175)
+        await p3.save(db=db)
+        c1 = await Node.init(db=db, schema="TestElectricCar")
+        await c1.new(db=db, name="volt", nbr_seats=1, nbr_engine=2, owner=p1, previous_owner=p2, color="#111111")
+        await c1.save(db=db)
+        c2 = await Node.init(db=db, schema="TestElectricCar")
+        await c2.new(db=db, name="bolt", nbr_seats=2, nbr_engine=3, owner=p2, previous_owner=p3, color="#222222")
+        await c2.save(db=db)
+        c3 = await Node.init(db=db, schema="TestElectricCar")
+        await c3.new(db=db, name="colt", nbr_seats=3, nbr_engine=4, owner=p3, previous_owner=p1, color="#333333")
+        await c3.save(db=db)
+
+        # TestPerson attribute constraints
+        p_test = await Node.init(db=db, schema="TestPerson")
+        await p_test.new(db=db, name="Jerm", height=172)
+        p_test.get_schema().uniqueness_constraints = [["name", "height"]]
+        await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+        p_test.height.value = p1.height.value
+        await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+        p_test.name.value = p2.name.value
+        await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+        p_test.name.value = p1.name.value
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name-height'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=p_test)
+
+        # TestElectricCar relationship constraints
+        c_test = await Node.init(db=db, schema="TestElectricCar")
+        c_test_name = "jolt"
+        c_test_nbr_seats = 4
+        c_test_nbr_engine = 5
+        c_test_owner = p3
+        c_test_previous_owner = p3
+        c_test_color = "#aaaaaa"
+        await c_test.new(
+            db=db,
+            name=c_test_name,
+            nbr_seats=c_test_nbr_seats,
+            nbr_engine=c_test_nbr_engine,
+            owner=c_test_owner,
+            previous_owner=c_test_previous_owner,
+            color=c_test_color,
+        )
+        c_test.get_schema().uniqueness_constraints = [
+            ["nbr_seats", "color"],  # 1
+            ["nbr_seats", "owner"],  # 2
+            ["owner", "previous_owner"],  # 3
+            ["previous_owner", "color"],  # 4
+        ]
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+
+        # test constraint 1 nbr_seats-color
+        c_test.nbr_seats.value = c1.nbr_seats.value
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.color.value = c3.color.value
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.color.value = c1.color.value
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'nbr_seats-color'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.nbr_seats.value = c_test_nbr_seats
+        c_test.color.value = c_test_color
+
+        # test constraint 2 nbr_seats-owner
+        c_test.nbr_seats.value = c1.nbr_seats.value
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c3_owner = await c3.owner.get_peer(db=db)
+        await c_test.owner.update(db=db, data=c3_owner)
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.nbr_seats.value = c3.nbr_seats.value
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'nbr_seats-owner'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.nbr_seats.value = c_test_nbr_seats
+        await c_test.owner.update(db=db, data=c_test_owner)
+
+        # test constraint 3 owner-previous_owner
+        c1_owner = await c1.owner.get_peer(db=db)
+        await c_test.owner.update(db=db, data=c1_owner)
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c2_previous_owner = await c2.previous_owner.get_peer(db=db)
+        await c_test.previous_owner.update(db=db, data=c2_previous_owner)
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c1_previous_owner = await c1.previous_owner.get_peer(db=db)
+        await c_test.previous_owner.update(db=db, data=c1_previous_owner)
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'owner-previous_owner'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        await c_test.owner.update(db=db, data=c_test_owner)
+        await c_test.previous_owner.update(db=db, data=c_test_previous_owner)
+
+        # test constraint 4 previous_owner-color
+        await c_test.previous_owner.update(db=db, data=c1_previous_owner)
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        c_test.color.value = c2.color.value
+        await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+        await c_test.previous_owner.update(db=db, data=c2_previous_owner)
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'previous_owner-color'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=c_test)
+
     @pytest.mark.parametrize(
         ["node_constraints", "parent_constraints", "node_query_should_run"],
         [
