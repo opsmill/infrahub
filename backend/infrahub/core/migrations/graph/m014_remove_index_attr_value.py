@@ -29,13 +29,12 @@ class Migration014(GraphMigration):
         if db.db_type != DatabaseType.NEO4J:
             return result
 
-        async with db.start_transaction() as ts:
-            try:
-                ts.manager.index.init(nodes=[INDEX_TO_DELETE], rels=[])
-                await ts.manager.index.drop()
-            except Exception as exc:
-                result.errors.append(str(exc))
-                return result
+        try:
+            db.manager.index.init(nodes=[INDEX_TO_DELETE], rels=[])
+            await db.manager.index.drop()
+        except Exception as exc:
+            result.errors.append(str(exc))
+            return result
 
         return result
 
