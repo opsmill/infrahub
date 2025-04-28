@@ -180,7 +180,6 @@ class SchemaManager(NodeManager):
         branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
-        print("before processing")
         schema_branch.process()
         return schema_branch
 
@@ -314,6 +313,7 @@ class SchemaManager(NodeManager):
 
         # Save back the node with the newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+        print(f"setting node {new_node.kind=} with {new_node.id=} on {branch.name=}")
         return new_node
 
     async def update_node_in_db(

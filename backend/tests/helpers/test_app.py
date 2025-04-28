@@ -101,6 +101,7 @@ class TestInfrahubApp(TestInfrahub):
         schema = SchemaRoot(**core_models)
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
+        await registry.schema.update_schema_branch(schema=schema_branch, db=db, branch=default_branch.name)
         await default_branch.save(db=db)
         return schema_branch
 

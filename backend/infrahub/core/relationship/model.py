@@ -561,7 +561,7 @@ class RelationshipValidatorList:
         ValidationError: If the number of relationships is not within the min and max count.
     """
 
-    def __init__(self, *relationships: Relationship, name: str, min_count: int, max_count: int) -> None:
+    def __init__(self, *relationships: Relationship, name: str, min_count: int = 0, max_count: int = 0) -> None:
         """Initialize list for Relationship but with validation against min/max count.
 
         Args:

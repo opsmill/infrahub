@@ -215,7 +215,6 @@ def _generate_schemas(context: Context) -> None:
     generic_schema_output = f"{generated}/genericnode_schema.py"
     Path(generic_schema_output).write_text(generic_rendered, encoding="utf-8")
 
-    # TODO how to make import of RelationshipSchema here?
     node_schema_stripped = node_schema.without_duplicates(base_node_schema)
     node_rendered = template.render(schema="NodeSchema", node=node_schema_stripped, parent="BaseNodeSchema")
     node_schema_output = f"{generated}/node_schema.py"

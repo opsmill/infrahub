@@ -4,16 +4,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField, convert_object_type
+from infrahub.core.convert_object_type.schema_mapping import SchemaMappingValue, get_schema_mapping
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.convert_object_kind.convert_object_kind import (
-    InputDataForDestField,
-    InputForDestField,
-    convert_object_type,
-)
-from infrahub.core.node.convert_object_kind.schema_mapping import SchemaMappingValue, get_schema_mapping
-from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from tests.helpers.test_app import TestInfrahubApp
 from tests.node_creation import create_and_save
@@ -21,98 +15,84 @@ from tests.node_creation import create_and_save
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.core.branch import Branch
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
-@pytest.fixture
-async def register_schemas_conversion(db: InfrahubDatabase, default_branch: Branch, schemas_conversion) -> SchemaBranch:
-    schema_root = SchemaRoot(**schemas_conversion)
-    return registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
-
-
 class TestConvertObjectType(TestInfrahubApp):
-    def test_schema_conversion_mapping(
-        self, db: InfrahubDatabase, client: InfrahubClient, register_schemas_conversion, branch
+    async def test_schema_conversion_mapping(
+        self, db: InfrahubDatabase, client: InfrahubClient, branch, schemas_conversion
     ):
-        mapping = get_schema_mapping(source_kind="TestPerson1", target_kind="TestPerson2", branch=branch.name)
+        res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
+        assert len(res.errors) == 0, res.errors
+
+        mapping = get_schema_mapping(source_kind="TestconvPerson1", target_kind="TestconvPerson2", branch=branch.name)
         assert len(mapping) == 12
-        assert mapping["name"] == SchemaMappingValue(source_field_name="name", is_mandatory=None)
-        assert mapping["height"] == SchemaMappingValue(source_field_name="height", is_mandatory=None)
+        assert mapping["name"] == SchemaMappingValue(source_field_name="name", is_mandatory=True)
+        assert mapping["height"] == SchemaMappingValue(source_field_name="height", is_mandatory=False)
         assert mapping["age"] == SchemaMappingValue(source_field_name=None, is_mandatory=True)
         assert mapping["citizenship"] == SchemaMappingValue(source_field_name=None, is_mandatory=False)
 
         assert mapping["favorite_car"] == SchemaMappingValue(
-            source_field_name="favorite_car", relationship_cardinality=RelationshipCardinality.ONE
+            source_field_name="favorite_car", relationship_cardinality=RelationshipCardinality.ONE, is_mandatory=False
         )
         assert mapping["worst_car"] == SchemaMappingValue(
             is_mandatory=False, relationship_cardinality=RelationshipCardinality.ONE
         )
         assert mapping["fastest_cars"] == SchemaMappingValue(
-            source_field_name="fastest_cars", relationship_cardinality=RelationshipCardinality.MANY
+            source_field_name="fastest_cars", relationship_cardinality=RelationshipCardinality.MANY, is_mandatory=False
         )
         assert mapping["slowest_cars"] == SchemaMappingValue(
             is_mandatory=False, relationship_cardinality=RelationshipCardinality.MANY
         )
         assert mapping["bags"] == SchemaMappingValue(
-            source_field_name="bags", relationship_cardinality=RelationshipCardinality.MANY
+            source_field_name="bags", relationship_cardinality=RelationshipCardinality.MANY, is_mandatory=False
         )
 
         # Not entirely sure how these ones should be mapped UI side,
         assert mapping["member_of_groups"] == SchemaMappingValue(
             source_field_name="member_of_groups",
             relationship_cardinality=RelationshipCardinality.MANY,
+            is_mandatory=False,
         )
         assert mapping["subscriber_of_groups"] == SchemaMappingValue(
             source_field_name="subscriber_of_groups",
             relationship_cardinality=RelationshipCardinality.MANY,
+            is_mandatory=False,
         )
         assert mapping["profiles"] == SchemaMappingValue(
-            source_field_name="profiles",
-            relationship_cardinality=RelationshipCardinality.MANY,
+            source_field_name="profiles", relationship_cardinality=RelationshipCardinality.MANY, is_mandatory=False
         )
 
-    def test_raise_on_unidirectional_relationships(
+    async def test_raise_on_unidirectional_relationships(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         schema_conversion_unidirectional_relationships,
         default_branch,
     ):
-        registry.schema.register_schema(
-            schema=SchemaRoot(**schema_conversion_unidirectional_relationships), branch=default_branch.name
+        res = await client.schema.load(
+            schemas=[schema_conversion_unidirectional_relationships], branch=default_branch.name
         )
+        assert len(res.errors) == 0, res.errors
+
         with pytest.raises(
             ValueError, match="Schema node targeted by unidirectional relationships can not be converted"
         ):
-            get_schema_mapping(source_kind="TestPerson1", target_kind="TestPerson2", branch=default_branch.name)
+            get_schema_mapping(source_kind="TestudPerson1", target_kind="TestudPerson2", branch=default_branch.name)
 
     async def test_convert_object_type(
-        self, db: InfrahubDatabase, client: InfrahubClient, register_schemas_conversion, branch
+        self, db: InfrahubDatabase, client: InfrahubClient, schemas_conversion, branch
     ) -> None:
-        # TODO e2e test with interface L2 / L3 schemas.
-        # create L2
-        # convert to L3
-        # make sure L2 deleted, L3 created, attributes matches
-        # do it in a unit way first. Test multiple cases in unit
-        # then we'll do and e2e test with the API.
-        # models_path = "/Users/lucas/infrahub/models/base"
-        # schema_data = SchemaFile.load_from_disk(paths=[Path(models_path)])
-        # response = await client.schema.load(schemas=[item.content for item in schema_data])
-        # assert len(response.errors) == 0, response.errors
+        res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
+        assert len(res.errors) == 0, res.errors
 
-        # TODO special mutate_create like repos?
-
-        # TODO branch agnostic / aware?
-
-        car_1 = await create_and_save(db=db, schema="TestCar", name="car_1", branch=branch)
-        car_2 = await create_and_save(db=db, schema="TestCar", name="car_2", branch=branch)
-        car_3 = await create_and_save(db=db, schema="TestCar", name="car_3", branch=branch)
+        car_1 = await create_and_save(db=db, schema="TestconvCar", name="car_1", branch=branch)
+        car_2 = await create_and_save(db=db, schema="TestconvCar", name="car_2", branch=branch)
+        car_3 = await create_and_save(db=db, schema="TestconvCar", name="car_3", branch=branch)
 
         jack_1 = await create_and_save(
             db=db,
-            schema="TestPerson1",
+            schema="TestconvPerson1",
             name=f"Jack-{branch.name}",
             height=170,
             favorite_car=car_1,
@@ -123,11 +103,11 @@ class TestConvertObjectType(TestInfrahubApp):
         # Bag `owner` is a mandatory relationship. Deleting the owner without cascade delete will temporary
         # put this relationship in an invalid state as bag would have no owner, but then creating the new person
         # node with this bag will fix it.
-        bag = await create_and_save(db=db, schema="TestBag", name="bag-1", owner=jack_1, branch=branch)
+        bag = await create_and_save(db=db, schema="TestconvBag", name="bag-1", owner=jack_1, branch=branch)
 
         # Refresh jack_1 now that we added a bag
         jack_1 = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=jack_1.id, kind="TestPerson1", prefetch_relationships=True, branch=branch
+            db=db, id=jack_1.id, kind="TestconvPerson1", prefetch_relationships=True, branch=branch
         )
 
         mapping = {
@@ -142,14 +122,16 @@ class TestConvertObjectType(TestInfrahubApp):
         }
 
         jack_2 = await convert_object_type(
-            node=jack_1, target_kind="TestPerson2", mapping=mapping, db=db, branch=branch
+            node=jack_1, target_kind="TestconvPerson2", mapping=mapping, db=db, branch=branch
         )
 
         with pytest.raises(NodeNotFoundError):
-            await NodeManager.get_one_by_id_or_default_filter(db=db, id=jack_1.id, kind="TestPerson1", branch=branch)
+            await NodeManager.get_one_by_id_or_default_filter(
+                db=db, id=jack_1.id, kind="TestconvPerson1", branch=branch
+            )
 
         jack_2 = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=jack_2.id, kind="TestPerson2", prefetch_relationships=True, branch=branch
+            db=db, id=jack_2.id, kind="TestconvPerson2", prefetch_relationships=True, branch=branch
         )
         assert jack_2 is not None
         assert jack_2.name.value == jack_1.name.value
@@ -167,7 +149,7 @@ class TestConvertObjectType(TestInfrahubApp):
         )
         assert sorted([node.id for _, node in (await jack_2.bags.get_peers(db=db)).items()]) == sorted([bag.id])
 
-        # Make sure node retrieval
+        # Make sure retrieving nodes works
         for node in [car_1, car_2, car_3, bag]:
             await NodeManager.get_one_by_id_or_default_filter(
                 db=db, id=node.id, kind=node.get_kind(), prefetch_relationships=True, branch=branch
@@ -177,26 +159,23 @@ class TestConvertObjectType(TestInfrahubApp):
         self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_mandatory_owner, default_branch
     ) -> None:
         # Add a mandatory relationship between TestPerson1 and TestCar, that would no longer exist after converting a TestPerson1 to a TestPerson2.
-        # TODO also test when rel is defined only on TestPerson1 side
-
-        registry.schema.register_schema(
-            schema=SchemaRoot(**schema_conversion_mandatory_owner), branch=default_branch.name
-        )
+        res = await client.schema.load(schemas=[schema_conversion_mandatory_owner], branch=default_branch.name)
+        assert len(res.errors) == 0, res.errors
 
         jack_1 = await create_and_save(
             db=db,
-            schema="TestPerson1",
+            schema="TestmoPerson1",
             name=f"Jack-{default_branch.name}",
             branch=default_branch,
         )
 
         car_1 = await create_and_save(
-            db=db, schema="TestCar", name="car_1", branch=default_branch, mandatory_owner=jack_1
+            db=db, schema="TestmoCar", name="car_1", branch=default_branch, mandatory_owner=jack_1
         )
 
         # Refresh jack_1 now that we added a bag
         jack_1 = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=jack_1.id, kind="TestPerson1", prefetch_relationships=True, branch=default_branch
+            db=db, id=jack_1.id, kind="TestmoPerson1", prefetch_relationships=True, branch=default_branch
         )
 
         mapping = {
@@ -205,7 +184,7 @@ class TestConvertObjectType(TestInfrahubApp):
 
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at mandatory_owner"):
             await convert_object_type(
-                node=jack_1, target_kind="TestPerson2", mapping=mapping, db=db, branch=default_branch
+                node=jack_1, target_kind="TestmoPerson2", mapping=mapping, db=db, branch=default_branch
             )
 
         # And make sure it works when setting a new owner to the car
@@ -213,18 +192,19 @@ class TestConvertObjectType(TestInfrahubApp):
             "name": InputForDestField(source_field="name"),
             "my_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
         }
-        await convert_object_type(node=jack_1, target_kind="TestPerson2", mapping=mapping, db=db, branch=default_branch)
+        await convert_object_type(
+            node=jack_1, target_kind="TestmoPerson2", mapping=mapping, db=db, branch=default_branch
+        )
 
     async def test_agnostic_attributes(
         self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_aware_agnostic, default_branch
     ) -> None:
-        registry.schema.register_schema(
-            schema=SchemaRoot(**schema_conversion_aware_agnostic), branch=default_branch.name
-        )
+        res = await client.schema.load(schemas=[schema_conversion_aware_agnostic], branch=default_branch.name)
+        assert len(res.errors) == 0, res.errors
 
         jack_1 = await create_and_save(
             db=db,
-            schema="TestPerson1",
+            schema="TestbsPerson1",
             name_agnostic=f"Jack-{default_branch.name}",
             age_1_agnostic=25,
             height_1_aware=180,
@@ -238,7 +218,7 @@ class TestConvertObjectType(TestInfrahubApp):
         }
 
         jack_2 = await convert_object_type(
-            node=jack_1, target_kind="TestPerson2", mapping=mapping, db=db, branch=default_branch
+            node=jack_1, target_kind="TestbsPerson2", mapping=mapping, db=db, branch=default_branch
         )
 
         assert jack_2 is not None

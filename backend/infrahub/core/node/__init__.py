@@ -895,3 +895,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             for relationship in self.get_schema().relationships
             if relationship.name not in exclude and relationship.kind == kind
         ]
+
+
+# Below functions look like methods (accessing private members) but are defined as functions as methods names
+# `Node` class become reserved keywords.
+
+
+def validate_node_relationships(node: Node) -> None:
+    for name in node._relationships:
+        relm: RelationshipManager = getattr(node, name)
+        relm.validate()

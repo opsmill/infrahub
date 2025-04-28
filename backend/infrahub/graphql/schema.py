@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from graphene import ObjectType
 
-from ..core.node.convert_object_kind.convert_object_kind import ConvertObjectType
-from ..core.node.convert_object_kind.schema_mapping import FieldMappingTypeConversion
 from .mutations.account import (
     InfrahubAccountSelfUpdate,
     InfrahubAccountTokenCreate,
@@ -18,6 +16,7 @@ from .mutations.branch import (
     BranchValidate,
 )
 from .mutations.computed_attribute import UpdateComputedAttribute
+from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
@@ -50,6 +49,7 @@ from .queries import (
     InfrahubStatus,
     Relationship,
 )
+from .queries.convert_object_type_mapping import FieldMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
 from .queries.task import Task, TaskBranchStatus

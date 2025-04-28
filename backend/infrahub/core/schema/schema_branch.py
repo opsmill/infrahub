@@ -503,12 +503,6 @@ class SchemaBranch:
         self.process_default_values()
         self.process_deprecations()
         self.process_cardinality_counts()
-        # TODO think in which order we want to process that. Ie when going through each node, we want to add
-        #  unidirectional relationships, but we need of relationships of every node having been already added
-        #  to children nodes. So maybe we need to add these unidirectional relationships only once we have processed everything
-        #  Also maybe we deal relationship inheritance based on name instead of identifier because if
-        #  a relationship is overriden, name will the same but not identifier. And there can't be duplicated relationship
-        #  name anyway for a single node (would have raised before).
         self.add_unidirectional_relationships()
         self.process_inheritance()
         self.process_hierarchy()
@@ -2144,6 +2138,14 @@ class SchemaBranch:
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def add_unidirectional_relationships(self) -> None:
+        # First reset all unidirectional_relationships
+        for node_name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=node_name, duplicate=True)
+            node.unidirectional_relationships = []
+            self.set(name=node.kind, schema=node)
+
+        # Then for each node, add unidirectional relationship to their peers if they do not have a matching
+        # relationship with the same identifier.
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             for relationship in node.relationships:

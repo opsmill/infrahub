@@ -147,6 +147,12 @@ async def create_node(
     schema: NonGenericSchemaTypes,
     use_session_for_constraint_checks: bool,
 ) -> Node:
+    """
+    Create a node in the database if constraint checks succeed.
+    Set use_session_for_constraint_checks=True enhances performances, but can't be used if a transaction is already
+    ongoing.
+    """
+
     component_registry = get_component_registry()
     db_constraint_check = db.start_session() if use_session_for_constraint_checks else db
     node_constraint_runner = await component_registry.get_component(

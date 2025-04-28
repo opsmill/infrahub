@@ -1232,7 +1232,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
         "generics": [
             {
                 "name": "PersonGeneric",
-                "namespace": "Test",
+                "namespace": "Testconv",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1241,19 +1241,19 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
                 "relationships": [
                     {
                         "name": "favorite_car",
-                        "peer": "TestCar",
+                        "peer": "TestconvCar",
                         "cardinality": "one",
                         "identifier": "person__favorite_car",
                     },
                     {
                         "name": "fastest_cars",
-                        "peer": "TestCar",
+                        "peer": "TestconvCar",
                         "cardinality": "many",
                         "identifier": "person__fastest_cars",
                     },
                     {
                         "name": "bags",
-                        "peer": "TestBag",
+                        "peer": "TestconvBag",
                         "cardinality": "many",
                         "identifier": "person__bag",
                     },
@@ -1263,23 +1263,28 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
         "nodes": [
             {
                 "name": "Person1",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testconv",
+                "inherit_from": ["TestconvPersonGeneric"],
                 "relationships": [],
             },
             {
                 "name": "Person2",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testconv",
+                "inherit_from": ["TestconvPersonGeneric"],
                 "attributes": [
                     {"name": "age", "kind": "Number"},
                     {"name": "citizenship", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "worst_car", "peer": "TestCar", "cardinality": "one", "identifier": "person__worst_car"},
+                    {
+                        "name": "worst_car",
+                        "peer": "TestconvCar",
+                        "cardinality": "one",
+                        "identifier": "person__worst_car",
+                    },
                     {
                         "name": "slowest_cars",
-                        "peer": "TestCar",
+                        "peer": "TestconvCar",
                         "cardinality": "many",
                         "optional": True,
                         "identifier": "person__slowest_cars",
@@ -1288,7 +1293,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
             },
             {
                 "name": "Car",
-                "namespace": "Test",
+                "namespace": "Testconv",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1296,7 +1301,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
                 "relationships": [
                     {
                         "name": "owner",
-                        "peer": "TestPersonGeneric",
+                        "peer": "TestconvPersonGeneric",
                         "cardinality": "one",
                         "identifier": "person__fastest_cars",
                         "optional": True,
@@ -1305,7 +1310,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
             },
             {
                 "name": "Bag",
-                "namespace": "Test",
+                "namespace": "Testconv",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1313,7 +1318,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
                 "relationships": [
                     {
                         "name": "owner",
-                        "peer": "TestPersonGeneric",
+                        "peer": "TestconvPersonGeneric",
                         "cardinality": "one",
                         "identifier": "person__bag",
                         "optional": False,
@@ -1333,7 +1338,7 @@ async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_sch
         "generics": [
             {
                 "name": "PersonGeneric",
-                "namespace": "Test",
+                "namespace": "Testmo",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1341,7 +1346,7 @@ async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_sch
                 "relationships": [
                     {
                         "name": "my_car",
-                        "peer": "TestCar",
+                        "peer": "TestmoCar",
                         "cardinality": "one",
                         "identifier": "person__mandatory_owner",
                     },
@@ -1351,17 +1356,17 @@ async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_sch
         "nodes": [
             {
                 "name": "Person1",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testmo",
+                "inherit_from": ["TestmoPersonGeneric"],
             },
             {
                 "name": "Person2",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testmo",
+                "inherit_from": ["TestmoPersonGeneric"],
             },
             {
                 "name": "Car",
-                "namespace": "Test",
+                "namespace": "Testmo",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1369,7 +1374,7 @@ async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_sch
                 "relationships": [
                     {
                         "name": "mandatory_owner",
-                        "peer": "TestPersonGeneric",
+                        "peer": "TestmoPersonGeneric",
                         "cardinality": "one",
                         "optional": False,
                         "identifier": "person__mandatory_owner",
@@ -1389,7 +1394,7 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
         "generics": [
             {
                 "name": "PersonGeneric",
-                "namespace": "Test",
+                "namespace": "Testbs",
                 "human_friendly_id": ["name_agnostic__value"],
                 "attributes": [
                     {
@@ -1404,8 +1409,8 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
         "nodes": [
             {
                 "name": "Person1",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testbs",
+                "inherit_from": ["TestbsPersonGeneric"],
                 "attributes": [
                     {
                         "name": "age_1_agnostic",
@@ -1423,8 +1428,8 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
             },
             {
                 "name": "Person2",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testbs",
+                "inherit_from": ["TestbsPersonGeneric"],
                 "attributes": [
                     {"name": "age_2_aware", "kind": "Number", "unique": True, "branch": BranchSupportType.AWARE.value},
                     {
@@ -1437,7 +1442,7 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
             },
             {
                 "name": "Car",
-                "namespace": "Test",
+                "namespace": "Testbs",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1456,7 +1461,7 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
         "generics": [
             {
                 "name": "PersonGeneric",
-                "namespace": "Test",
+                "namespace": "Testud",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {
@@ -1470,17 +1475,17 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
         "nodes": [
             {
                 "name": "Person1",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testud",
+                "inherit_from": ["TestudPersonGeneric"],
             },
             {
                 "name": "Person2",
-                "namespace": "Test",
-                "inherit_from": ["TestPersonGeneric"],
+                "namespace": "Testud",
+                "inherit_from": ["TestudPersonGeneric"],
             },
             {
                 "name": "Car",
-                "namespace": "Test",
+                "namespace": "Testud",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1488,7 +1493,7 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
                 "relationships": [
                     {
                         "name": "unidirectional_car",
-                        "peer": "TestPersonGeneric",
+                        "peer": "TestudPersonGeneric",
                         "cardinality": "one",
                     },
                 ],
