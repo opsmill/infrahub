@@ -367,9 +367,11 @@ class IPPrefixReconcileQuery(Query):
             possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
             if possible_prefix not in possible_prefix_map:
                 possible_prefix_map[possible_prefix] = max_prefix_len
-        self.params["possible_prefix_and_length_list"] = [
-            [possible_prefix, max_length] for possible_prefix, max_length in possible_prefix_map.items()
-        ]
+        self.params["possible_prefix_and_length_list"] = []
+        self.params["possible_prefix_list"] = []
+        for possible_prefix, max_length in possible_prefix_map.items():
+            self.params["possible_prefix_and_length_list"].append([possible_prefix, max_length])
+            self.params["possible_prefix_list"].append(possible_prefix)
 
         namespace_query = """
         // ------------------
@@ -386,8 +388,7 @@ class IPPrefixReconcileQuery(Query):
             // ------------------
             // Get IP Prefix node by UUID
             // ------------------
-            MATCH (ip_node {uuid: $node_uuid})
-            WHERE "%(ip_kind)s" IN labels(ip_node)
+            MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})
             """ % {
                 "ip_kind": InfrahubKind.IPADDRESS
                 if isinstance(self.ip_value, IPAddressType)
@@ -487,6 +488,7 @@ class IPPrefixReconcileQuery(Query):
             -[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
             WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
             AND av.version = $ip_version
+            AND av.binary_address IN $possible_prefix_list
             AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
             WITH
                 maybe_new_parent,
