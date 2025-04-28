@@ -182,7 +182,7 @@ Backing Infrahub Enterprise up consists of:
   You can use standard PostgreSQL tools like pg_dump
   For example, when running using Docker compose:
 
-`docker exec -it infrahub-task-manager-db-1 pg_dump -Fc -d prefect -U postgres > prefect.dump`
+`docker exec infrahub-task-manager-db-1 pg_dump -Fc -d prefect -U postgres > prefect.dump`
 
 Restoring Infrahub Enterprise consists of:
 
@@ -193,7 +193,7 @@ Restoring Infrahub Enterprise consists of:
 
   For example, when running using Docker Compose:
 
-  `docker exec -it infrahub-task-manager-db-1 pg_restore -d prefect -U postgres --clean --create prefect.dump`
+  `docker exec infrahub-task-manager-db-1 pg_restore -d prefect -U postgres --clean --create prefect.dump`
 
   Then restart the task manager (Prefect server)
 
