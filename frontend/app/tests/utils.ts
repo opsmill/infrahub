@@ -25,5 +25,5 @@ export const deleteBranch = async (page: Page, branchName: string) => {
 };
 
 export const generateRandomBranchName = (prefix?: string) => {
-  return `${prefix}${Math.random().toString(36).substring(2, 15)}`;
+  return `${prefix ?? ""}${Math.random().toString(36).substring(2, 15)}`;
 };
