@@ -6,14 +6,19 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 export interface RequireObjectPermissionsProps {
   objectKind: string;
+  loadingClassName?: string;
   children?: React.ReactNode | ((params: { permission: Permission }) => React.ReactNode);
 }
 
-export function RequireObjectPermissions({ objectKind, children }: RequireObjectPermissionsProps) {
+export function RequireObjectPermissions({
+  objectKind,
+  children,
+  loadingClassName,
+}: RequireObjectPermissionsProps) {
   const { isPending, error, data: permission } = useGetObjectPermissions(objectKind);
 
   if (isPending) {
-    return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
+    return <LoadingIndicator className={loadingClassName} />;
   }
 
   if (error) {

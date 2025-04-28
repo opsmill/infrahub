@@ -20,7 +20,10 @@ export function ObjectDetailsPage() {
   }
 
   return (
-    <RequireObjectPermissions objectKind={schema.kind as string}>
+    <RequireObjectPermissions
+      objectKind={schema.kind as string}
+      loadingClassName="h-[calc(100vh-10.5rem)]"
+    >
       {({ permission }) => {
         if (objectKind === GRAPHQL_QUERY_OBJECT) {
           return (
