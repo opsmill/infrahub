@@ -92,10 +92,6 @@ SET main_e.hierarchy = NULL
         default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
         await registry.schema.load_schema_to_db(db=db, schema=default_schema_branch)
         migration = Migration024()
-        # Avoid error during initialization: uninitialize indexes so that the migration script doesn't try to add indexes
-        # Otherwise index manager tries to open a new transaction using an old InfrahubDatabase reference (it's not using the Migration transaction)
-        # That makes the db initialization phase fail early
-        db.manager.index.initialized = False
         mock_schema_manager = MagicMock(wraps=registry.schema)
         mock_load_schema_from_db = AsyncMock(return_value=default_schema_branch)
         mock_schema_manager.load_schema_from_db = mock_load_schema_from_db
