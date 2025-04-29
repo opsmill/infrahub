@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from infrahub.database import Neo4jRuntime
+from infrahub.constants.database import Neo4jRuntime
 from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
 
 

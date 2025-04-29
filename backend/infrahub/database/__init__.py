@@ -26,13 +26,13 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config, lock
+from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .constants import DatabaseType, Neo4jRuntime
 from .memgraph import DatabaseManagerMemgraph
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 from .neo4j import DatabaseManagerNeo4j

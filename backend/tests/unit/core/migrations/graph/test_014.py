@@ -1,8 +1,8 @@
+from infrahub.constants.database import IndexType
 from infrahub.core.migrations.graph.m014_remove_index_attr_value import (
     Migration014,
 )
 from infrahub.database import DatabaseType, InfrahubDatabase
-from infrahub.database.constants import IndexType
 from infrahub.database.index import IndexItem
 
 
