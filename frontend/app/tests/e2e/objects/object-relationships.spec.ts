@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
   test.describe.configure({ mode: "serial" });
