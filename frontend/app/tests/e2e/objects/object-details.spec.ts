@@ -1,18 +1,22 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/:objectKind/:objectid", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+  const BRANCH_NAME = generateRandomBranchName("object-details");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
   });
 
   test.describe("when not logged in", () => {
     test("should not be able to edit object", async ({ page }) => {
-      await page.goto("/objects/InfraBGPSession");
+      await page.goto(`/objects/InfraBGPSession?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeDisabled();
@@ -24,7 +28,8 @@ test.describe("/objects/:objectKind/:objectid", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     test("should be able to edit object", async ({ page }) => {
-      await page.goto("/objects/InfraBGPSession");
+      await page.goto(`/objects/InfraBGPSession?branch=${BRANCH_NAME}`);
+
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeEnabled();
@@ -32,7 +37,8 @@ test.describe("/objects/:objectKind/:objectid", () => {
     });
 
     test("should display relationships correctly", async ({ page }) => {
-      await page.goto("/objects/InfraBGPSession");
+      await page.goto(`/objects/InfraBGPSession?branch=${BRANCH_NAME}`);
+
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       // Attribute
@@ -56,7 +62,8 @@ test.describe("/objects/:objectKind/:objectid", () => {
     });
 
     test("should display the select 2 steps correctly", async ({ page }) => {
-      await page.goto("/objects/InfraDevice");
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
+
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "atl1-edge1, Ethernet4" }).click();

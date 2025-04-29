@@ -3,7 +3,6 @@ import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 export interface ObjectDetailsProps {
@@ -21,14 +20,6 @@ export function ObjectDetails({ objectSchema, objectId, permission }: ObjectDeta
 
   if (error) {
     return <ErrorScreen message={error.message} />;
-  }
-
-  if (!objectDetailsData) {
-    return (
-      <div className="flex column justify-center">
-        <NoDataFound message={`No ${objectSchema.label} found with ID: ${objectId}`} />
-      </div>
-    );
   }
 
   return (

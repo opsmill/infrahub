@@ -6,18 +6,22 @@ import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-it
 import {
   getObjectAttributes,
   getObjectRelationships,
-  getObjectTabs,
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import {
+  ObjectDetailsTab,
+  ObjectTaskTab,
+  RelationshipTab,
+} from "@/entities/nodes/object/ui/object-tabs";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { NodeObject } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import { queryClient } from "@/shared/api/rest/client";
@@ -25,15 +29,12 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
-import { Tabs } from "@/shared/components/tabs";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
+import { useAtom, useAtomValue } from "jotai";
 import { useRef } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -59,19 +60,14 @@ export default function ObjectItemDetails({
   const { objectKind, objectid } = useParams();
   const { pathname } = location;
 
-  const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [genericList] = useAtom(genericSchemasAtom);
   const isTaskTarget = !isGenericSchema(schema) && !!schema.inherit_from?.includes(TASK_TARGET);
-  const {
-    isPending: isPendingTaskCount,
-    error: errorTaskCount,
-    data: taskCount,
-  } = useGetTaskCount({ nodeId: objectDetailsData.id }, { enabled: isTaskTarget });
 
   const refetchRef = useRef(null);
 
@@ -94,25 +90,6 @@ export default function ObjectItemDetails({
       : `${schema.label} details`
   );
 
-  const tabs = [
-    {
-      label: schema.label,
-      name: schema.name,
-    },
-    ...getObjectTabs(relationshipsTabs, objectDetailsData),
-    // Includes the task tab only for specific nodes,
-    isTaskTarget && {
-      label: "Tasks",
-      name: TASK_TAB,
-      count: taskCount,
-      component: isPendingTaskCount || errorTaskCount ? Spinner : undefined,
-      onClick: () => {
-        setQspTab(TASK_TAB);
-        setQspTaskId(undefined);
-      },
-    },
-  ].filter(Boolean);
-
   if (!objectDetailsData) {
     return null;
   }
@@ -120,16 +97,34 @@ export default function ObjectItemDetails({
   return (
     <>
       {!hideHeaders && (
-        <Tabs
-          tabs={tabs}
-          rightItems={
-            <ActionButtons
-              schema={schema}
-              objectDetailsData={objectDetailsData}
-              permission={permission}
-            />
-          }
-        />
+        <header className="flex items-center border-b border-gray-200 px-2">
+          <div className="grow flex gap-8 px-4">
+            <ObjectDetailsTab
+              isActive={!qspTab}
+              to={getObjectDetailsUrl(objectKind as string, objectid)}
+            >
+              {schema.label}
+            </ObjectDetailsTab>
+
+            {relationshipsTabs.map((tab) => {
+              return (
+                <RelationshipTab
+                  key={tab.name}
+                  objectKind={objectKind as string}
+                  objectId={objectDetailsData.id}
+                  relationshipSchema={tab as RelationshipSchema}
+                />
+              );
+            })}
+
+            {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id as string} />}
+          </div>
+          <ActionButtons
+            schema={schema}
+            objectDetailsData={objectDetailsData}
+            permission={permission}
+          />
+        </header>
       )}
 
       {!qspTab && (
