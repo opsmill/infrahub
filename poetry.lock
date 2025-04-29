@@ -3553,13 +3553,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.3.4"
+version = "3.3.7"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 files = [
-    {file = "prefect-3.3.4-py3-none-any.whl", hash = "sha256:9cbbc0c6732af75fd50f4127b8c9990e82729053226228bf084cd98ad3fb4c96"},
-    {file = "prefect-3.3.4.tar.gz", hash = "sha256:8a2e40a947a8d9ab12637a00d8f62a1a145ebf8d8a2274ab9ffa650e9e10f744"},
+    {file = "prefect-3.3.7-py3-none-any.whl", hash = "sha256:6de738a3ac381cc985bd2def750dfc71908e2b79c98c364489bbe06620281b07"},
+    {file = "prefect-3.3.7.tar.gz", hash = "sha256:7623341410f4321ff8be0e429a6a202192386dab680a5bf3c88068c14bbc3399"},
 ]
 
 [package.dependencies]
@@ -3597,7 +3597,7 @@ prometheus-client = ">=0.20.0"
 pydantic = ">=2.9,<2.10.0 || >2.10.0,<3.0.0"
 pydantic-core = ">=2.12.0,<3.0.0"
 pydantic-extra-types = ">=2.8.2,<3.0.0"
-pydantic-settings = ">2.2.1"
+pydantic-settings = ">2.2.1,<2.9.0 || >2.9.0,<3.0.0"
 python-dateutil = ">=2.8.2,<3.0.0"
 python-slugify = ">=5.0,<9.0"
 python-socks = {version = ">=2.5.3,<3.0", extras = ["asyncio"]}
@@ -6042,4 +6042,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "9ef6bbc43b6a2c56f401cfd956d0976c2db91ac72bc8637fdffeb09d824bd9f6"
+content-hash = "0c4a872c691816ac14d05c63a94e0b58690fe8ecdc894b2c96a9c5d83996916b"
