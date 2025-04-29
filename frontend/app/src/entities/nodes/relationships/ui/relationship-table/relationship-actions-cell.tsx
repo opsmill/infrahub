@@ -41,10 +41,15 @@ export function RelationshipActionsCell({
   const [showPropertiesModal, setShowPropertiesModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDissociateModal, setShowDissociateModal] = useState(false);
-  const { schema } = useSchema(relationshipKind);
+  const { schema: parentSchema } = useSchema(parentKind);
+  const relationship = parentSchema?.relationships?.find((relationship) => {
+    return relationship.name === relationshipName;
+  });
+  const { schema: relationshipSchema } = useSchema(relationshipKind);
   const isEditAllowed = permission.update.isAllowed;
 
-  if (!schema) return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
+  if (!relationshipSchema)
+    return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
 
   return (
     <Popover open={showPropertiesModal} onOpenChange={setShowPropertiesModal}>
@@ -82,17 +87,19 @@ export function RelationshipActionsCell({
               </div>
             </Tooltip>
 
-            <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isEditAllowed}
-                  onClick={() => isEditAllowed && setShowDissociateModal(true)}
-                >
-                  <Icon icon="mdi:link-variant-remove" className="text-base" />
-                  Dissociate
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            {relationship?.optional && (
+              <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
+                <div>
+                  <DropdownMenuItem
+                    disabled={!isEditAllowed}
+                    onClick={() => isEditAllowed && setShowDissociateModal(true)}
+                  >
+                    <Icon icon="mdi:link-variant-remove" className="text-base" />
+                    Dissociate
+                  </DropdownMenuItem>
+                </div>
+              </Tooltip>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
