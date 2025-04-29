@@ -1,7 +1,7 @@
 import { AttributeSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
 import { generateAttributeSchema } from "../../../../../tests/fake/schema";
-import { getAttributesVisibleInListView } from "./get-attributes-visible-in-list";
+import { getAttributesVisibleInListView } from "./get-attributes-visible-in-list-view";
 
 describe("getAttributesVisibleInListView", () => {
   it("should return only attributes that should be visible in list view", () => {

@@ -1,0 +1,53 @@
+---
+title: Release 1.2.7
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.7</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>April 28th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #7</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.7](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.7)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.7
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.6 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Security
+
+- Update the `h11` package to 0.16.0.
+
+### Fixed
+
+- Mutating a backend node with extra attributes now logs an error instead of raising an error. It also fixes an issue
+  preventing a corrupted node mutation. ([#6349](https://github.com/opsmill/infrahub/issues/6349))
+- Improved the performance of computed attributes when updating a large number of objects at once. Replaced client.filter call in Jinja2 based computed attributes. ([#6351](https://github.com/opsmill/infrahub/issues/6351))
+- Improved the IPAM allocation performance by leveraging database indexes (+10% improvement).
+
+### Housekeeping
+
+- Updated the Python `certifi` package to 2025.1.31.
+- Updated Infrahub SDK to version 1.11.1.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade

@@ -129,4 +129,4 @@ jobs:
     uses: ./.github/workflows/repository-dispatch.yml
     secrets: inherit
     with:
-      version: ${{ github.ref_name }}
+      version: ${{ needs.check_release.outputs.version }}

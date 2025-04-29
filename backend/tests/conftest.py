@@ -23,6 +23,7 @@ from infrahub.config import load_and_exit
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
+from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -117,6 +118,10 @@ async def db(
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
     driver = InfrahubDatabase(driver=await get_db(retry=5))
+    if config.SETTINGS.experimental_features.value_db_index:
+        node_indexes.append(attr_value_index)
+    driver.manager.index.init(nodes=node_indexes, rels=rel_indexes)
+    await driver.manager.index.add()
 
     yield driver
 

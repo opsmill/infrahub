@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.graphql import Query
 from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
 from infrahub.core import registry
+from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.schema import AttributeSchema, NodeSchema  # noqa: TC001
 from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
     ComputedAttributeTarget,
     ComputedAttributeTriggerNode,
@@ -309,3 +312,80 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         )
 
         return definition
+
+
+class ComputedAttrJinja2GraphQLResponse(BaseModel):
+    node_id: str
+    computed_attribute_value: str | None
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+
+class ComputedAttrJinja2GraphQL(BaseModel):
+    node_schema: NodeSchema = Field(..., description="The node kind where the computed attribute is defined")
+    attribute_schema: AttributeSchema = Field(..., description="The computed attribute")
+    variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
+
+    def render_graphql_query(self, query_filter: str, filter_id: str) -> str:
+        query_fields = self.query_fields
+        query_fields["id"] = None
+        query_fields[self.attribute_schema.name] = {"value": None}
+        query = Query(
+            name="ComputedAttributeFilter",
+            query={
+                self.node_schema.kind: {
+                    "@filters": {query_filter: filter_id},
+                    "edges": {"node": query_fields},
+                }
+            },
+        )
+
+        return query.render()
+
+    @property
+    def query_fields(self) -> dict[str, Any]:
+        output: dict[str, Any] = {}
+        for variable in self.variables:
+            field_name, remainder = variable.split("__", maxsplit=1)
+            if field_name in self.node_schema.attribute_names:
+                output[field_name] = {remainder: None}
+            elif field_name in self.node_schema.relationship_names:
+                related_attribute, related_value = remainder.split("__", maxsplit=1)
+                relationship = self.node_schema.get_relationship(name=field_name)
+                if relationship.cardinality == RelationshipCardinality.ONE:
+                    if field_name not in output:
+                        output[field_name] = {"node": {}}
+                    output[field_name]["node"][related_attribute] = {related_value: None}
+        return output
+
+    def parse_response(self, response: dict[str, Any]) -> list[ComputedAttrJinja2GraphQLResponse]:
+        rendered_response: list[ComputedAttrJinja2GraphQLResponse] = []
+        if kind_payload := response.get(self.node_schema.kind):
+            edges = kind_payload.get("edges", [])
+            for node in edges:
+                if node_response := self.to_node_response(node_dict=node):
+                    rendered_response.append(node_response)
+        return rendered_response
+
+    def to_node_response(self, node_dict: dict[str, Any]) -> ComputedAttrJinja2GraphQLResponse | None:
+        if node := node_dict.get("node"):
+            node_id = node.get("id")
+        else:
+            return None
+
+        computed_attribute = node.get(self.attribute_schema.name, {}).get("value")
+        response = ComputedAttrJinja2GraphQLResponse(node_id=node_id, computed_attribute_value=computed_attribute)
+        for variable in self.variables:
+            field_name, remainder = variable.split("__", maxsplit=1)
+            response.variables[variable] = None
+            if field_content := node.get(field_name):
+                if field_name in self.node_schema.attribute_names:
+                    response.variables[variable] = field_content.get(remainder)
+                elif field_name in self.node_schema.relationship_names:
+                    relationship = self.node_schema.get_relationship(name=field_name)
+                    if relationship.cardinality == RelationshipCardinality.ONE:
+                        related_attribute, related_value = remainder.split("__", maxsplit=1)
+                        node_content = field_content.get("node") or {}
+                        related_attribute_content = node_content.get(related_attribute) or {}
+                        response.variables[variable] = related_attribute_content.get(related_value)
+
+        return response

@@ -150,7 +150,7 @@ export const FormSubmit = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const isLoading = formState.isSubmitting || formState.isValidating;
 
     return (
-      <Button ref={ref} disabled={isLoading} {...props} type="submit" data-cy="submit-form">
+      <Button ref={ref} disabled={isLoading} {...props} type="submit">
         <span className={classNames(isLoading && "invisible")}>{children}</span>
         {isLoading && <Spinner className="absolute" />}
       </Button>

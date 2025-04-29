@@ -139,10 +139,14 @@ async def test_node_init_mandatory_field_null(db: InfrahubDatabase, default_bran
 async def test_node_init_invalid_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     obj = await Node.init(db=db, schema=criticality_schema)
 
-    with pytest.raises(ValidationError) as exc:
-        await obj.new(db=db, name="low", level=4, notvalid=False)
+    await obj.new(db=db, name="low", level=4, notvalid=False)
+    await obj.save(db=db)
 
-    assert "not a valid input" in str(exc.value)
+    node = await NodeManager.get_one(db=db, id=obj.id)
+
+    assert node.name.value == "low"
+    assert node.level.value == 4
+    assert not hasattr(node, "notvalid")
 
 
 async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema):

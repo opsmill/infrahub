@@ -11,13 +11,13 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   let dateBeforeTest: Date;
 
   test("1. Create a new organization", async ({ page }) => {
-    dateBeforeTest = new Date();
-
     await page.goto("/");
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
     await page.getByRole("menuitem", { name: "Tenant" }).click();
     await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
+
+    dateBeforeTest = new Date();
 
     await test.step("fill and submit form for new organization", async () => {
       await page.getByTestId("create-object-button").click();

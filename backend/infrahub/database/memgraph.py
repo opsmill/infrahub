@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .constants import EntityType, IndexType
+from infrahub.constants.database import EntityType, IndexType
+
 from .index import IndexInfo, IndexItem, IndexManagerBase
 from .manager import DatabaseManager
 

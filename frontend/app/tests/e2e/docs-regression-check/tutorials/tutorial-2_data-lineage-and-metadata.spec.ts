@@ -35,6 +35,8 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await saveScreenshotForDocs(page, "tutorial_4_metadata_edit");
       await page.getByRole("button", { name: "Save" }).click();
 
+      await expect(page.getByText("Metadata updated")).toBeVisible();
+
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
 
       await expect(page.getByText("Is protectedTrue")).toBeVisible();

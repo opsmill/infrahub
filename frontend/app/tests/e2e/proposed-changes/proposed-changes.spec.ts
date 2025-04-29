@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/proposed-changes", () => {
@@ -46,9 +47,9 @@ test.describe("/proposed-changes", () => {
     test.describe("Create, edit and merge proposed change", async () => {
       test.describe.configure({ mode: "serial" });
 
-      const pcName = "pc-e2e";
-      const pcNameEdit = "pc-e2e-edit";
-      const pcBranchName = "main-copy-for-pc-e2e";
+      const pcName = generateRandomBranchName("pc-e2e");
+      const pcNameEdit = generateRandomBranchName("pc-e2e-edit");
+      const pcBranchName = generateRandomBranchName("main-copy-for-pc-e2e");
 
       test.beforeAll(async ({ request }) => {
         await createBranchAPI(request, pcBranchName);
