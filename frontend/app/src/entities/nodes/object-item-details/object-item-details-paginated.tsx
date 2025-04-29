@@ -219,7 +219,7 @@ export default function ObjectItemDetails({
             </div>
           </Card>
 
-          <Card className="p-0 overflow-x-hidden">
+          <Card className="p-0 overflow-x-hidden" data-testid="activities-panel">
             <CardWithBorder.Title className="border-b border-gray-200">
               Activities
             </CardWithBorder.Title>
