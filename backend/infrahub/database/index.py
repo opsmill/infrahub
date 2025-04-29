@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from .constants import EntityType, IndexType  # noqa: TC001
+from infrahub.constants.database import EntityType, IndexType  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase

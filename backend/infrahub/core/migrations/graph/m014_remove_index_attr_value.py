@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
+from infrahub.constants.database import IndexType
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.database import DatabaseType
-from infrahub.database.constants import IndexType
 from infrahub.database.index import IndexItem
 
 from ..shared import GraphMigration
