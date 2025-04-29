@@ -1,4 +1,5 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { BranchContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
 const TASK_COUNT = gql`
@@ -10,11 +11,18 @@ const TASK_COUNT = gql`
   }
 `;
 
-export function getTaskCountFromApi(nodeIds: string[]) {
+export interface GetTaskCountFromApiParams extends BranchContextParams {
+  nodeIds: Array<string>;
+}
+
+export function getTaskCountFromApi({ nodeIds, branchName }: GetTaskCountFromApiParams) {
   return graphqlClient.query({
     query: TASK_COUNT,
     variables: {
       nodeIds,
+    },
+    context: {
+      branch: branchName,
     },
   });
 }

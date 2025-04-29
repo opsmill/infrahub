@@ -20,7 +20,6 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -284,9 +283,10 @@ export default function ObjectItemDetails({
       >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => {
-            graphqlClient.refetchQueries({ include: [schema.kind!, "GET_EVENTS"] });
-            queryClient.invalidateQueries({ queryKey: ["events", [objectid]] });
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey.includes("objects"),
+            });
           }}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
