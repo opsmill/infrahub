@@ -2,7 +2,7 @@ import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
-import { NodeSchema } from "@/entities/schema/types";
+import { ModelSchema } from "@/entities/schema/types";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
@@ -16,7 +16,7 @@ import { Icon } from "@iconify-icon/react";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
-  schema: NodeSchema;
+  schema: ModelSchema;
   refetch: () => Promise<unknown>;
   permission: Permission;
 };
