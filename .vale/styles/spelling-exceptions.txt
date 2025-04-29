@@ -9,6 +9,7 @@ artifact_name
 async
 Authentik
 boolean
+certifi
 check_definitions
 class_name
 CloudFormation

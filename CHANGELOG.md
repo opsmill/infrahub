@@ -11,23 +11,41 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.7) - 2025-04-28
+
+### Security
+
+- Update the `h11` package to 0.16.0.
+
+### Fixed
+
+- Mutating a backend node with extra attributes now logs an error instead of raising an error. It also fixes an issue
+  preventing a corrupted node mutation. ([#6349](https://github.com/opsmill/infrahub/issues/6349))
+- Improved the performance of computed attributes when updating a large number of objects at once. Replaced client.filter call in Jinja2 based computed attributes. ([#6351](https://github.com/opsmill/infrahub/issues/6351))
+- Improved the IPAM allocation performance by leveraging database indexes (+10% improvement).
+
+### Housekeeping
+
+- Updated the Python `certifi` package to 2025.1.31.
+- Updated Infrahub SDK to version 1.11.1.
+
 ## [Infrahub - v1.2.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.6) - 2025-04-18
 
 ### Added
 
-- Add generics to node selection in number pool form
-- Enable node select in the webhook form to quickly choose the node kind
+- Added generics to node selection in number pool form.
+- Enabled node select in the webhook form to quickly choose the node kind.
 
 ### Changed
 
-- Raise more accurate error when trying to lookup a node by HFID when the schema does not have a HFID or the number of elements does not match
+- Raised a more accurate error when trying to lookup a node by HFID, specifically when the schema does not have an HFID or the number of elements does not match.
 
 ### Fixed
 
-- Clear GraphQL schema manager cache when deleting branches to release memory. ([#6021](https://github.com/opsmill/infrahub/issues/6021))
-- Add attributes and relationships to generic templates to ensure proper GraphQL schema generation ([#6287](https://github.com/opsmill/infrahub/issues/6287))
-- Fix node lookup by its HFID with a generic template kind ([#6301](https://github.com/opsmill/infrahub/issues/6301))
-- Disable option creation for restricted namespaces in dropdown and enum
+- Cleared GraphQL schema manager cache when deleting branches to release memory. ([#6021](https://github.com/opsmill/infrahub/issues/6021))
+- Added attributes and relationships to generic templates to ensure proper GraphQL schema generation. ([#6287](https://github.com/opsmill/infrahub/issues/6287))
+- Fixed node lookup by its HFID with a generic template kind. ([#6301](https://github.com/opsmill/infrahub/issues/6301))
+- Disabled option creation for restricted namespaces in dropdown and enum.
 
 ## [Infrahub - v1.2.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.5) - 2025-04-11
 

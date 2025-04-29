@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.protocols import (
-    CoreNode,  # noqa: TC002
-    CoreTransformPython,
-)
+from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
 from prefect import flow
 from prefect.client.orchestration import get_client
@@ -28,9 +25,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
-from .models import (
-    PythonTransformTarget,
-)
+from .models import ComputedAttrJinja2GraphQL, ComputedAttrJinja2GraphQLResponse, PythonTransformTarget
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -167,49 +162,33 @@ async def trigger_update_python_computed_attributes(
     flow_run_name="Update value for computed attribute {attribute_name}",
 )
 async def update_computed_attribute_value_jinja2(
-    branch_name: str, obj: CoreNode, attribute_name: str, template_value: str, service: InfrahubServices
+    branch_name: str,
+    obj: ComputedAttrJinja2GraphQLResponse,
+    node_kind: str,
+    attribute_name: str,
+    template: Jinja2Template,
+    service: InfrahubServices,
 ) -> None:
     log = get_run_logger()
 
-    await add_tags(branches=[branch_name], nodes=[obj.id], db_change=True)
+    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
 
-    jinja_template = Jinja2Template(template=template_value)
-    variables = {}
-    for variable in jinja_template.get_variables():
-        components = variable.split("__")
-        if len(components) == 2:
-            property_name = components[0]
-            property_value = components[1]
-            attribute_property = getattr(obj, property_name)
-            variables[variable] = getattr(attribute_property, property_value)
-        elif len(components) == 3:
-            relationship_name = components[0]
-            property_name = components[1]
-            property_value = components[2]
-            relationship = getattr(obj, relationship_name)
-            try:
-                attribute_property = getattr(relationship.peer, property_name)
-                variables[variable] = getattr(attribute_property, property_value)
-            except ValueError:
-                variables[variable] = ""
-
-    value = await jinja_template.render(variables=variables)
-    existing_value = getattr(obj, attribute_name).value
-    if value == existing_value:
+    value = await template.render(variables=obj.variables)
+    if value == obj.computed_attribute_value:
         log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
         return
 
     await service.client.execute_graphql(
         query=UPDATE_ATTRIBUTE,
         variables={
-            "id": obj.id,
-            "kind": obj.get_kind(),
+            "id": obj.node_id,
+            "kind": node_kind,
             "attribute": attribute_name,
             "value": value,
         },
         branch_name=branch_name,
     )
-    log.info(f"Updating computed attribute {obj.get_kind()}.{attribute_name}='{value}' ({obj.id})")
+    log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
 
 
 @flow(
@@ -235,32 +214,33 @@ async def process_jinja2(
         branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
     )
     schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
-    await service.client.schema.all(branch=branch_name, refresh=True, schema_hash=schema_branch.get_hash())
-
+    node_schema = schema_branch.get_node(name=computed_attribute_kind, duplicate=False)
     computed_macros = [
         attrib
         for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
     for computed_macro in computed_macros:
-        found: list[CoreNode] = []
-        for id_filter in computed_macro.node_filters:
-            filters = {id_filter: object_id}
-            nodes: list[CoreNode] = await service.client.filters(
-                kind=computed_macro.kind,
-                branch=branch_name,
-                prefetch_relationships=True,
-                populate_store=True,
-                **filters,
-            )
-            found.extend(nodes)
-
-        if not found:
-            log.debug("No nodes found that requires updates")
-
+        found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
             template_string = computed_macro.attribute.computed_attribute.jinja2_template
+
+        jinja_template = Jinja2Template(template=template_string)
+        variables = jinja_template.get_variables()
+
+        attribute_graphql = ComputedAttrJinja2GraphQL(
+            node_schema=node_schema, attribute_schema=computed_macro.attribute, variables=variables
+        )
+
+        for id_filter in computed_macro.node_filters:
+            query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
+            response = await service.client.execute_graphql(query=query, branch_name=branch_name)
+            output = attribute_graphql.parse_response(response=response)
+            found.extend(output)
+
+        if not found:
+            log.debug("No nodes found that requires updates")
 
         batch = await service.client.create_batch()
         for node in found:
@@ -268,8 +248,9 @@ async def process_jinja2(
                 task=update_computed_attribute_value_jinja2,
                 branch_name=branch_name,
                 obj=node,
+                node_kind=node_schema.kind,
                 attribute_name=computed_macro.attribute.name,
-                template_value=template_string,
+                template=jinja_template,
                 service=service,
             )
 

@@ -29,6 +29,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
+from ...log import get_logger
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
@@ -52,6 +53,8 @@ SchemaProtocol = TypeVar("SchemaProtocol")
 #  - Select Node : Status, Role, Manufacturer etc ..
 #  -
 # ---------------------------------------------------------------------------------------
+
+log = get_logger()
 
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
@@ -348,7 +351,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             fields.pop("updated_at")
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
-                errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
+                log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         # Backfill fields with the ones from the template if there's one
         await self.handle_object_template(fields=fields, db=db, errors=errors)

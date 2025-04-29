@@ -14,7 +14,7 @@ import { CopyToClipboard } from "../buttons/copy-to-clipboard";
 
 export interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;
-  hfid?: string;
+  hfid?: string | null;
   className?: string;
 }
 

@@ -4,9 +4,9 @@ import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cell
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";

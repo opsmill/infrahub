@@ -2,11 +2,21 @@
 title: Artifact
 ---
 
-import ReactPlayer from 'react-player/youtube'
+import VideoPlayer from '../../src/components/VideoPlayer';
 
 # Artifact
 
-An artifact is the result of a [Transformation](./transformation.mdx) for a specific context and/or object. It can be either plain text or JSON format.
+An artifact is the result of a [Transformation](./transformation.mdx) for a specific context and/or object.
+
+The following MIME types or formats are supported and will be rendered properly in Infrahub's web interface:
+
+- application/json
+- application/yaml
+- application/xml
+- text/plain
+- text/markdown
+- text/csv
+- image/svg+xml
 
 :::success Examples
 
@@ -26,7 +36,7 @@ While it's always possible to generate [Transformations](./transformation.mdx) o
 While the content of an artifact can change, its identifier will remain the same over time.
 
 <center>
-  <ReactPlayer url='https://www.youtube.com/watch?v=ASGMKZVLCbY' light />
+  <VideoPlayer url='https://www.youtube.com/watch?v=ASGMKZVLCbY' light />
 </center>
 
 ## High level design

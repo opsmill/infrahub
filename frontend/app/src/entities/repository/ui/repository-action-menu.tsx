@@ -5,6 +5,7 @@ import {
   REIMPORT_LAST_COMMIT,
 } from "@/entities/repository/api/actions";
 import { useMutation } from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
@@ -139,7 +140,7 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
     variables: {
       repositoryId,
     },
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
       if (data?.InfrahubRepositoryProcess?.ok) {
         toast(
           <Alert
@@ -147,6 +148,9 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
             message='Reimport of last commit started. You can view its status on the "Tasks" tab.'
           />
         );
+        await queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey.includes("objects"),
+        });
       }
     },
   });
