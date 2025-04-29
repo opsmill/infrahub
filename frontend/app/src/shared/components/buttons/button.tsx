@@ -109,7 +109,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       onClick={handleClick}
       disabled={isLoading ? true : propsToPass.disabled}
     >
-      {isLoading ? <Spinner className="mr-2" /> : children}
+      {isLoading ? <Spinner className="mx-2" /> : children}
     </button>
   );
 });
