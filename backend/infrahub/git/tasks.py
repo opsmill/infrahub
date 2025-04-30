@@ -666,7 +666,7 @@ async def trigger_user_checks(
 
 @flow(
     name="git-repository-trigger-internal-checks",
-    flow_run_name="Running repository checks for repository {model.repository_name}",
+    flow_run_name="Running repository checks for repository {model.repository}",
 )
 async def trigger_internal_checks(
     model: TriggerRepositoryInternalChecks, service: InfrahubServices, context: InfrahubContext
