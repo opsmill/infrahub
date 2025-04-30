@@ -30,6 +30,7 @@ python_sdk/dist/*
 
 # Test reports
 **/*.csv
+!backend/tests/unit/patch/**/*.csv
 
 # Generated files
 generated/

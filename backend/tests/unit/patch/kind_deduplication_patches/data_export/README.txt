@@ -1,0 +1,1 @@
+taken on Infrahub 1.2.7 using the infrahub db selected-export command after reproducing the bad data
