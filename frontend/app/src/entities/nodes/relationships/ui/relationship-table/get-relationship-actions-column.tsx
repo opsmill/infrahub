@@ -9,6 +9,7 @@ export type GetRelationshipActionsColumnParams = {
   parentKind: string;
   relationshipName: string;
   permission: Permission;
+  count: number;
 };
 
 export function getRelationshipActionsColumn({
@@ -16,6 +17,7 @@ export function getRelationshipActionsColumn({
   parentKind,
   relationshipName,
   permission,
+  count,
 }: GetRelationshipActionsColumnParams): ColumnDef<NodeObject> {
   return {
     id: "actions",
@@ -30,6 +32,7 @@ export function getRelationshipActionsColumn({
           relationshipKind={row.original.__typename as string}
           relationshipLabel={row.getValue("id") as string}
           relationshipId={row.original.id as string}
+          count={count}
         />
       );
     },
