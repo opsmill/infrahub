@@ -412,7 +412,7 @@ async def update_core_schema(
             update_db=True,
         )
         default_branch.update_schema_hash()
-        rprint("The Core Schema has been updated")
+        rprint("The Core Schema has been updated, make sure to rebase any open non default branches after the upgrade")
         if debug:
             rprint(f"New schema hash: {default_branch.active_schema_hash.main}")
         await default_branch.save(db=dbt)
