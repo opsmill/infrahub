@@ -1492,9 +1492,10 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
                 ],
                 "relationships": [
                     {
-                        "name": "unidirectional_car",
+                        "name": "unidirectional_owner",
                         "peer": "TestudPersonGeneric",
                         "cardinality": "one",
+                        "optional": False,
                     },
                 ],
             },

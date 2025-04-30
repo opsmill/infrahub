@@ -34,7 +34,6 @@ Below is the list of all available options to define a Node in the schema
 | [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
 | [**parent**](#parent) | Attribute | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. | False |
 | [**state**](#state) | Attribute | Expected state of the node/generic after loading the schema | False |
-| [**unidirectional_relationships**](#unidirectional_relationships) | Attribute | List of incoming unidirectional relationship schemas. | False |
 | [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
 | [**attributes**](#attributes) | Relationship | List of supported Attributes for the Node. | False |
 | [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
@@ -262,17 +261,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** | present |
 | **Constraints** |  |
 | **Accepted Values** | `present` `absent`  |
-
-### unidirectional_relationships
-
-| Key | Value |
-| ---- | --------------- |
-| **Name** | unidirectional_relationships |
-| **Kind** | `List` |
-| **Description** | List of incoming unidirectional relationship schemas. |
-| **Optional**  | True |
-| **Default Value** |  |
-| **Constraints** |  |
 
 ### uniqueness_constraints
 

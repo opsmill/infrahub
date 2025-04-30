@@ -57,7 +57,6 @@ def start_prefect_server_container(
     container.start()
 
     mapped_port = get_exposed_port(container, PORT_PREFECT)
-
     # As our entrypoint doesn't print out any logs on startup we can't "wait for logs"
     wait_for_prefect(port=mapped_port)
     request.addfinalizer(cleanup)

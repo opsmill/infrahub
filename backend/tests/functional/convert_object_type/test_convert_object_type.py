@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
 
-class TestConvertObjectType(TestInfrahubApp):
+class TestGetConversionSchemaMapping(TestInfrahubApp):
     async def test_get_fields_mapping(self, client: InfrahubClient, schemas_conversion) -> None:
         response = await client.schema.load(schemas=[schemas_conversion])
         assert len(response.errors) == 0, response.errors
@@ -34,6 +34,8 @@ class TestConvertObjectType(TestInfrahubApp):
         print(f"{response=}")
         # TODO load result and assert values are ok
 
+
+class TestConvertObjectType(TestInfrahubApp):
     async def test_convert_object_type(self, client: InfrahubClient, schemas_conversion) -> None:
         response = await client.schema.load(schemas=[schemas_conversion])
         assert len(response.errors) == 0, response.errors

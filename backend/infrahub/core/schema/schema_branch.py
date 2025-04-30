@@ -503,7 +503,6 @@ class SchemaBranch:
         self.process_default_values()
         self.process_deprecations()
         self.process_cardinality_counts()
-        self.add_unidirectional_relationships()
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
@@ -2136,24 +2135,3 @@ class SchemaBranch:
                 updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
                 core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
-
-    def add_unidirectional_relationships(self) -> None:
-        # First reset all unidirectional_relationships
-        for node_name in self.node_names + self.generic_names_without_templates:
-            node = self.get(name=node_name, duplicate=True)
-            node.unidirectional_relationships = []
-            self.set(name=node.kind, schema=node)
-
-        # Then for each node, add unidirectional relationship to their peers if they do not have a matching
-        # relationship with the same identifier.
-        for node_name in self.node_names + self.generic_names_without_templates:
-            node = self.get(name=node_name, duplicate=False)
-            for relationship in node.relationships:
-                peer_schema = self.get(name=relationship.peer, duplicate=True)
-                if isinstance(peer_schema, (GenericSchema, NodeSchema)) and all(
-                    relationship.identifier != peer_rel.identifier for peer_rel in peer_schema.relationships
-                ):
-                    if relationship.identifier not in peer_schema.unidirectional_relationships:
-                        peer_schema.unidirectional_relationships.append(relationship.identifier)
-
-                self.set(name=peer_schema.kind, schema=peer_schema)

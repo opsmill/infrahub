@@ -48,7 +48,6 @@ class TestConvertObjectType(TestInfrahubApp):
             source_field_name="bags", relationship_cardinality=RelationshipCardinality.MANY, is_mandatory=False
         )
 
-        # Not entirely sure how these ones should be mapped UI side,
         assert mapping["member_of_groups"] == SchemaMappingValue(
             source_field_name="member_of_groups",
             relationship_cardinality=RelationshipCardinality.MANY,
@@ -62,23 +61,6 @@ class TestConvertObjectType(TestInfrahubApp):
         assert mapping["profiles"] == SchemaMappingValue(
             source_field_name="profiles", relationship_cardinality=RelationshipCardinality.MANY, is_mandatory=False
         )
-
-    async def test_raise_on_unidirectional_relationships(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        schema_conversion_unidirectional_relationships,
-        default_branch,
-    ):
-        res = await client.schema.load(
-            schemas=[schema_conversion_unidirectional_relationships], branch=default_branch.name
-        )
-        assert len(res.errors) == 0, res.errors
-
-        with pytest.raises(
-            ValueError, match="Schema node targeted by unidirectional relationships can not be converted"
-        ):
-            get_schema_mapping(source_kind="TestudPerson1", target_kind="TestudPerson2", branch=default_branch.name)
 
     async def test_convert_object_type(
         self, db: InfrahubDatabase, client: InfrahubClient, schemas_conversion, branch
@@ -195,6 +177,44 @@ class TestConvertObjectType(TestInfrahubApp):
         await convert_object_type(
             node=jack_1, target_kind="TestmoPerson2", mapping=mapping, db=db, branch=default_branch
         )
+
+    async def test_raise_on_break_mandatory_unidirectional_relationship(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schema_conversion_unidirectional_relationships,
+        default_branch,
+    ) -> None:
+        # Add a mandatory relationship between TestPerson1 and TestCar, that would no longer exist after converting a TestPerson1 to a TestPerson2.
+        res = await client.schema.load(
+            schemas=[schema_conversion_unidirectional_relationships], branch=default_branch.name
+        )
+        assert len(res.errors) == 0, res.errors
+
+        jack_1 = await create_and_save(
+            db=db,
+            schema="TestudPerson1",
+            name=f"Jack-{default_branch.name}",
+            branch=default_branch,
+        )
+
+        _ = await create_and_save(
+            db=db, schema="TestudCar", name="car_1", branch=default_branch, unidirectional_owner=jack_1
+        )
+
+        # Refresh jack_1 now that we added a car
+        jack_1 = await NodeManager.get_one_by_id_or_default_filter(
+            db=db, id=jack_1.id, kind="TestmoPerson1", prefetch_relationships=True, branch=default_branch
+        )
+
+        mapping = {
+            "name": InputForDestField(source_field="name"),
+        }
+
+        with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at unidirectional_owner"):
+            await convert_object_type(
+                node=jack_1, target_kind="TestudPerson2", mapping=mapping, db=db, branch=default_branch
+            )
 
     async def test_agnostic_attributes(
         self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_aware_agnostic, default_branch

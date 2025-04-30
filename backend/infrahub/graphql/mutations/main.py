@@ -185,7 +185,6 @@ class InfrahubMutationMixin:
         schema = cls._meta.active_schema
         if isinstance(schema, GenericSchema):
             raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
-        # TODO here indicate we should create a new session for constraint check for perf reason
         return await create_node(
             data=dict(data),
             db=db,

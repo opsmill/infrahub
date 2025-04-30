@@ -6,9 +6,8 @@ from infrahub.core import registry
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.convert_object_type.schema_mapping import raise_if_unidirectional_relationships
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node, validate_node_relationships
+from infrahub.core.node import GetPeersIds, Node, validate_node_relationships
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
@@ -26,7 +25,7 @@ class InputForDestField(BaseModel):  # Only one of these fields can be not None
     data: InputDataForDestField | None = None
 
 
-async def get_all_peers_ids(node: Node, db: InfrahubDatabase) -> list[str]:
+async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase) -> list[str]:
     all_peers: list[Node] = []
     for name in node._relationships:
         relm: RelationshipManager = getattr(node, name)
@@ -68,25 +67,41 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, InputForD
     return data
 
 
+async def get_unidirectional_rels_peers_ids(node: Node, branch: Branch, db: InfrahubDatabase) -> list[str]:
+    """
+    Returns peers ids of nodes connected to input `node` through an incoming unidirectional relationship.
+    """
+
+    out_rels_identifier = [rel.identifier for rel in node.get_schema().relationships]
+    delete_query = await GetPeersIds.init(
+        db=db, node_id=node.id, branch=branch, exclude_identifiers=out_rels_identifier
+    )
+    await delete_query.execute(db=db)
+    uuids = [row.data["uuid"] for row in delete_query.results]  # type: ignore
+    return uuids
+
+
 async def convert_object_type(
     node: Node, target_kind: str, mapping: dict[str, InputForDestField], branch: Branch, db: InfrahubDatabase
 ) -> Node:
-    """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error."""
+    """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
+    An extra check is performed on input node peers relationships to make sure they are still valid."""
 
     node_schema = node.get_schema()
     if not isinstance(node_schema, NodeSchema):
         raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")
 
-    raise_if_unidirectional_relationships(node_schema)
-
     async with db.start_transaction() as dbt:  # noqa: PLR1702
-        data_new_node = await build_data_new_node(dbt, mapping, node)
-        deleted_node_peer_ids = await get_all_peers_ids(node=node, db=dbt)
+        deleted_node_out_rels_peer_ids = await get_out_rels_peers_ids(node=node, db=dbt)
+        deleted_node_unidir_rels_peer_ids = await get_unidirectional_rels_peers_ids(node=node, db=dbt, branch=branch)
+
         deleted_nodes = await NodeManager.delete(db=dbt, branch=branch, nodes=[node], cascade_delete=False)
         if len(deleted_nodes) != 1:
             raise ValueError(f"Deleted {len(deleted_nodes)} nodes instead of 1")
 
         target_schema = registry.get_node_schema(name=target_kind, branch=branch)
+
+        data_new_node = await build_data_new_node(dbt, mapping, node)
         node_created = await create_node(
             data=data_new_node,
             db=dbt,
@@ -96,7 +111,9 @@ async def convert_object_type(
         )
 
         # Make sure relationships with constraints are not broken by retrieving them
-        for peer_id in deleted_node_peer_ids:
+        # When performance matters here, it would be more efficient to retrieve only relationships
+        # that we want to verify.
+        for peer_id in deleted_node_out_rels_peer_ids + deleted_node_unidir_rels_peer_ids:
             peer = await NodeManager.get_one(id=peer_id, db=dbt, prefetch_relationships=True, branch=branch)
             if peer is None:
                 raise ValueError(f"Peer {peer_id} not found after deleting node {node.id}")

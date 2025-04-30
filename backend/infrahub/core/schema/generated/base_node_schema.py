@@ -104,8 +104,3 @@ class GeneratedBaseNodeSchema(HashableModel):
     relationships: list[RelationshipSchema] = Field(
         default_factory=list, description="Node Relationships", json_schema_extra={"update": "not_applicable"}
     )
-    unidirectional_relationships: list[str] = Field(
-        default_factory=list,
-        description="List of incoming unidirectional relationship schemas.",
-        json_schema_extra={"update": "not_applicable"},
-    )
