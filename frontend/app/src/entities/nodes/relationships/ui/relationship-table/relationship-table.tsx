@@ -40,7 +40,7 @@ export function RelationshipTable({
         parentKind,
         relationshipName,
         permission: PERMISSION_ALLOW_ALL,
-        count: flatData.length,
+        relationshipsCount: flatData.length,
       }),
     ];
   }, [relationshipSchema.hash, flatData.length]);

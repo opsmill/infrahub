@@ -27,7 +27,7 @@ export interface ActionsCellProps {
   relationshipKind: string;
   relationshipLabel: string;
   relationshipName: string;
-  count: number;
+  relationshipsCount: number;
 }
 
 export function RelationshipActionsCell({
@@ -38,7 +38,7 @@ export function RelationshipActionsCell({
   relationshipLabel,
   relationshipKind,
   relationshipName,
-  count,
+  relationshipsCount,
 }: ActionsCellProps) {
   const [showPropertiesModal, setShowPropertiesModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -51,9 +51,10 @@ export function RelationshipActionsCell({
     return relationship.name === relationshipName;
   });
   const isEditAllowed = permission.update.isAllowed;
-  const isDissociateAllowed = relationship?.optional || count > (relationship?.min_count ?? 1);
+  const isDissociateAllowed =
+    relationship?.optional || relationshipsCount > (relationship?.min_count ?? 1);
 
-  if (!relationshipSchema)
+  if (!relationshipSchema || !parentSchema)
     return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
 
   return (
@@ -122,7 +123,7 @@ export function RelationshipActionsCell({
         <SlideOver
           title={
             <SlideOverTitle
-              schema={schema}
+              schema={parentSchema}
               currentObjectLabel={relationshipLabel}
               title={`Edit ${relationshipLabel}`}
             />
