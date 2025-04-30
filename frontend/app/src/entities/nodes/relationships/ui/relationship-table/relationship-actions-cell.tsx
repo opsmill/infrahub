@@ -45,16 +45,27 @@ export function RelationshipActionsCell({
   const [showDissociateModal, setShowDissociateModal] = useState(false);
 
   const { schema: parentSchema } = useSchema(parentKind);
-  const { schema: relationshipSchema } = useSchema(relationshipKind);
+  const { schema: peerSchema } = useSchema(relationshipKind);
 
-  const relationship = parentSchema?.relationships?.find((relationship) => {
+  const parentRelationship = parentSchema?.relationships?.find((relationship) => {
     return relationship.name === relationshipName;
   });
+
+  const peerRelationship = peerSchema?.relationships?.find((relationship) => {
+    return (
+      relationship.peer === parentKind && relationship.direction === parentRelationship?.direction
+    );
+  });
+
   const isEditAllowed = permission.update.isAllowed;
   const isDissociateAllowed =
-    relationship?.optional || relationshipsCount > (relationship?.min_count ?? 1);
+    parentRelationship?.direction === "bidirectional"
+      ? // If bidirectionnal, check from the peer point of view
+        parentRelationship?.optional && peerRelationship?.optional
+      : // Check if it's optionnal or there is enough peers
+        parentRelationship?.optional || relationshipsCount > (parentRelationship?.min_count ?? 1);
 
-  if (!relationshipSchema || !parentSchema)
+  if (!peerSchema || !parentSchema)
     return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
 
   return (
