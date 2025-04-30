@@ -1,0 +1,1 @@
+Enable HCL syntax highlighting for artifacts
