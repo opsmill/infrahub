@@ -4,11 +4,9 @@ import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
-  // Avoid checking as non-admin + updating as admin at the same time
   test.describe.configure({ mode: "serial" });
   test.slow();
-
-  const BRANCH_NAME = generateRandomBranchName();
+  const BRANCH_NAME = generateRandomBranchName("object-relationships");
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
@@ -38,7 +36,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await expect(page.getByTestId("manage-groups")).toBeDisabled();
         await expect(page.getByTestId("delete-button")).toBeDisabled();
 
-        await page.getByText("Devices10").click();
+        await page.getByRole("link", { name: "Devices 10" }).click();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
       });
     });
@@ -52,7 +50,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto(`/objects/InfraPlatform?branch=${BRANCH_NAME}`);
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
-        await page.getByText("Devices10").click();
+        await page.getByRole("link", { name: "Devices 10" }).click();
       });
 
       await test.step("Delete the relationship", async () => {
@@ -69,7 +67,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Verify deletion of relationship", async () => {
         await expect(page.getByText("Association with atl1-leaf1")).toBeVisible();
         await expect(page.getByRole("link", { name: "atl1-leaf1" })).toBeHidden();
-        await expect(page.getByLabel("Tabs")).toContainText("Devices9");
+        await expect(page.getByRole("link", { name: "Devices 9" })).toBeVisible();
       });
     });
 
@@ -77,7 +75,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto(`/objects/InfraPlatform?branch=${BRANCH_NAME}`);
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
-        await page.getByText("Devices9").click();
+        await page.getByRole("link", { name: "Devices 9" }).click();
       });
 
       await test.step("Add a new relationship", async () => {
@@ -89,7 +87,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
 
       await test.step("Verify new relationship addition", async () => {
         await expect(page.getByText("Association with InfraDevice added")).toBeVisible();
-        await expect(page.getByLabel("Tabs")).toContainText("Devices10");
+        await expect(page.getByRole("link", { name: "Devices 10" })).toBeVisible();
         await expect(page.getByRole("link", { name: "atl1-leaf1" })).toBeVisible();
       });
     });
@@ -153,7 +151,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
     await test.step("Navigate to relationship tab of an object", async () => {
       await page.goto(`/objects/InfraPlatform?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
-      await page.getByText("Devices10").click();
+      await page.getByRole("link", { name: "Devices 10" }).click();
     });
     await page.getByRole("link", { name: "atl1", exact: true }).first().click();
     await expect(page.getByText("Nameatl1")).toBeVisible();

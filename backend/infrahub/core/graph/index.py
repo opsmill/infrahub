@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from infrahub.database.constants import IndexType
+from infrahub.constants.database import IndexType
 from infrahub.database.index import IndexItem
 
 node_indexes: list[IndexItem] = [

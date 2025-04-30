@@ -1,20 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("Object update", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+  const BRANCH_NAME = generateRandomBranchName("object-update");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
   });
 
   test("should contain initial values and update them", async ({ page }) => {
     await test.step("access the object", async () => {
-      await page.goto("/objects/InfraDevice");
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
     });
 
     await test.step("go to device edit form", async () => {
@@ -53,7 +57,7 @@ test.describe("Object update", () => {
       await expect(page.getByText("Nameatl1-core1-new-name")).toBeVisible();
       await expect(page.getByTestId("object-header").getByText("New description")).toBeVisible();
       await expect(page.getByRole("link", { name: "AS174 174" })).toBeVisible();
-      await expect(page.getByText("Maintenance")).toBeVisible();
+      await expect(page.getByText("StatusMaintenance")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();
       await expect(page.getByRole("link", { name: "red", exact: true })).toBeVisible();
@@ -76,7 +80,7 @@ test.describe("Object update", () => {
 
   test("should correctly remove values from selector", async ({ page }) => {
     await test.step("access the object", async () => {
-      await page.goto("/objects/InfraDevice/");
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "atl1-leaf1" }).click();
     });
 

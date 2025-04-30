@@ -23,7 +23,7 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
-from infrahub.database.constants import DatabaseType
+from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 
 if TYPE_CHECKING:
