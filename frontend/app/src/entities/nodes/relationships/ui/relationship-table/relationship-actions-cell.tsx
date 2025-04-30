@@ -27,6 +27,7 @@ export interface ActionsCellProps {
   relationshipKind: string;
   relationshipLabel: string;
   relationshipName: string;
+  count: number;
 }
 
 export function RelationshipActionsCell({
@@ -37,16 +38,20 @@ export function RelationshipActionsCell({
   relationshipLabel,
   relationshipKind,
   relationshipName,
+  count,
 }: ActionsCellProps) {
   const [showPropertiesModal, setShowPropertiesModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDissociateModal, setShowDissociateModal] = useState(false);
+
   const { schema: parentSchema } = useSchema(parentKind);
+  const { schema: relationshipSchema } = useSchema(relationshipKind);
+
   const relationship = parentSchema?.relationships?.find((relationship) => {
     return relationship.name === relationshipName;
   });
-  const { schema: relationshipSchema } = useSchema(relationshipKind);
   const isEditAllowed = permission.update.isAllowed;
+  const isDissociateAllowed = relationship?.optional || count > (relationship?.min_count ?? 1);
 
   if (!relationshipSchema)
     return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
@@ -87,7 +92,7 @@ export function RelationshipActionsCell({
               </div>
             </Tooltip>
 
-            {relationship?.optional && (
+            {isDissociateAllowed && (
               <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
                 <div>
                   <DropdownMenuItem
