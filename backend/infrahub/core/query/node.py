@@ -663,12 +663,8 @@ class NodeListGetRelationshipsQuery(Query):
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH (n)-[:IS_RELATED]-(rel:Relationship)-[:IS_RELATED]-(peer)
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        WITH DISTINCT n, peer
-        ORDER BY n.uuid, peer.uuid
         CALL {
-            WITH n, peer
+            WITH n
             MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
             WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
             AND n.uuid <> peer.uuid
@@ -693,7 +689,7 @@ class NodeListGetRelationshipsQuery(Query):
             }
             RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "inbound" as direction
             UNION
-            WITH n, peer
+            WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
             WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
             AND n.uuid <> peer.uuid
@@ -718,7 +714,7 @@ class NodeListGetRelationshipsQuery(Query):
             }
             RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "outbound" as direction
             UNION
-            WITH n, peer
+            WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
             WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
             AND n.uuid <> peer.uuid
