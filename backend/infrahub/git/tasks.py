@@ -339,10 +339,12 @@ async def generate_request_artifact_definition(
         )
     transform_location = ""
 
+    convert_query_response = False
     if transform.typename == InfrahubKind.TRANSFORMJINJA2:
         transform_location = transform.template_path.value
     elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
+        convert_query_response = transform.convert_query_response.value
 
     for relationship in group.members.peers:
         member = relationship.peer
@@ -368,6 +370,7 @@ async def generate_request_artifact_definition(
             target_name=member.display_label,
             target_kind=member.get_kind(),
             timeout=transform.timeout.value,
+            convert_query_response=convert_query_response,
             context=context,
         )
 

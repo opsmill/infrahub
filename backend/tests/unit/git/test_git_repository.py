@@ -604,6 +604,7 @@ async def test_execute_python_transform_w_data(
         commit=commit_main,
         location="transform01.py::Transform01",
         client=client,
+        convert_query_response=False,
     )
 
     assert result == expected_data
@@ -621,7 +622,11 @@ async def test_execute_python_transform_w_query(
     expected_data = {"MOCK": []}
 
     result = await repo.execute_python_transform(
-        branch_name="main", commit=commit_main, location="transform01.py::Transform01", client=client
+        branch_name="main",
+        commit=commit_main,
+        location="transform01.py::Transform01",
+        client=client,
+        convert_query_response=False,
     )
 
     assert result == expected_data
@@ -773,7 +778,11 @@ async def test_execute_python_transform_file_missing(
 
     with pytest.raises(RepositoryFileNotFoundError):
         await repo.execute_python_transform(
-            branch_name="main", commit=commit_main, location="transform99.py::Transform01", client=client
+            branch_name="main",
+            commit=commit_main,
+            location="transform99.py::Transform01",
+            client=client,
+            convert_query_response=False,
         )
 
 

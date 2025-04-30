@@ -88,6 +88,7 @@ async def transform_python(
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
         timeout=transform.timeout.value,
+        convert_query_response=transform.convert_query_response.value or False,
         data=data,
     )
 

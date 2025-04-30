@@ -113,6 +113,7 @@ async def process_transform(
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
             client=service.client,
+            convert_query_response=transform.convert_query_response.value,
         )  # type: ignore[misc]
 
         await service.client.execute_graphql(

@@ -30,6 +30,7 @@ async def transform_python(message: TransformPythonData, service: InfrahubServic
         location=message.transform_location,
         data=message.data,
         client=service.client,
+        convert_query_response=message.convert_query_response,
     )  # type: ignore[misc]
 
     return transformed_data
