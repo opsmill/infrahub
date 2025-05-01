@@ -385,6 +385,48 @@ async def test_query_NodeListGetRelationshipsQuery_hierarchical(
     )
     assert parent_peer_ids == {europe_id}
 
+    # check with inbound only filter
+    query = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=node_ids,
+        branch=default_branch,
+        outbound_identifiers=[],
+        inbound_identifiers=["parent__child"],
+        bidirectional_identifiers=[],
+    )
+    await query.execute(db=db)
+    grouped_peer_nodes = query.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(paris_id)
+    child_peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=paris_id, rel_name="parent__child", direction=RelationshipDirection.INBOUND
+    )
+    assert child_peer_ids == {paris_r1_id, paris_r2_id}
+    parent_peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=paris_id, rel_name="parent__child", direction=RelationshipDirection.OUTBOUND
+    )
+    assert not parent_peer_ids
+
+    # check with outbound only filter
+    query = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=node_ids,
+        branch=default_branch,
+        outbound_identifiers=["parent__child"],
+        inbound_identifiers=[],
+        bidirectional_identifiers=[],
+    )
+    await query.execute(db=db)
+    grouped_peer_nodes = query.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(paris_id)
+    child_peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=paris_id, rel_name="parent__child", direction=RelationshipDirection.INBOUND
+    )
+    assert not child_peer_ids
+    parent_peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=paris_id, rel_name="parent__child", direction=RelationshipDirection.OUTBOUND
+    )
+    assert parent_peer_ids == {europe_id}
+
 
 async def test_query_NodeDeleteQuery(
     db: InfrahubDatabase,

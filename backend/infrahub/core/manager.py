@@ -1229,20 +1229,31 @@ class NodeManager:
         if not prefetch_relationships and not fields:
             return
         cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]] | None = None
-        all_identifiers: list[str] | None = None
+        outbound_identifiers: set[str] | None = None
+        inbound_identifiers: set[str] | None = None
+        bidirectional_identifiers: set[str] | None = None
         if not prefetch_relationships:
             cardinality_one_identifiers_by_kind = _get_cardinality_one_identifiers_by_kind(
                 nodes=nodes_by_id.values(), fields=fields or {}
             )
-            all_identifiers_set: set[str] = set()
+            outbound_identifiers = set()
+            inbound_identifiers = set()
+            bidirectional_identifiers = set()
             for identifier_direction_map in cardinality_one_identifiers_by_kind.values():
-                all_identifiers_set.update(identifier_direction_map.keys())
-            all_identifiers = list(all_identifiers_set)
+                for identifier, direction in identifier_direction_map.items():
+                    if direction is RelationshipDirection.OUTBOUND:
+                        outbound_identifiers.add(identifier)
+                    elif direction is RelationshipDirection.INBOUND:
+                        inbound_identifiers.add(identifier)
+                    elif direction is RelationshipDirection.BIDIR:
+                        bidirectional_identifiers.add(identifier)
 
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
-            relationship_identifiers=all_identifiers,
+            outbound_identifiers=None if outbound_identifiers is None else list(outbound_identifiers),
+            inbound_identifiers=None if inbound_identifiers is None else list(inbound_identifiers),
+            bidirectional_identifiers=None if bidirectional_identifiers is None else list(bidirectional_identifiers),
             branch=branch,
             at=at,
             branch_agnostic=branch_agnostic,
