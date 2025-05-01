@@ -5,6 +5,7 @@ from neo4j.exceptions import TransientError
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.diff.query.drop_nodes import EnrichedDiffDropNodesQuery
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
 from infrahub.core.diff.query.summary_counts_enricher import (
     DiffFieldsSummaryCountsEnricherQuery,
@@ -26,6 +27,7 @@ from ..model.path import (
     EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
+    NodeIdentifier,
     TimeRange,
     TrackingId,
 )
@@ -274,6 +276,12 @@ class DiffRepository:
                 )
                 await single_node_query.execute(db=self.db)
 
+    async def _drop_nodes(self, diff_root: EnrichedDiffRoot, node_identifiers: list[NodeIdentifier]) -> None:
+        drop_node_query = await EnrichedDiffDropNodesQuery.init(
+            db=self.db, enriched_diff_uuid=diff_root.uuid, node_identifiers=node_identifiers
+        )
+        await drop_node_query.execute(db=self.db)
+
     @retry_db_transaction(name="enriched_diff_hierarchy_update")
     async def _run_hierarchy_links_update_query(self, diff_root_uuid: str, diff_nodes: list[EnrichedDiffNode]) -> None:
         log.info(f"Updating diff hierarchy links, num_nodes={len(diff_nodes)}")
@@ -321,7 +329,12 @@ class DiffRepository:
                 node_uuids=node_uuids,
             )
 
-    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+    async def save(
+        self,
+        enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata,
+        do_summary_counts: bool = True,
+        node_identifiers_to_drop: list[NodeIdentifier] | None = None,
+    ) -> None:
         # metadata-only update
         if not isinstance(enriched_diffs, EnrichedDiffs):
             await self._save_root_metadata(enriched_diffs=enriched_diffs)
@@ -336,6 +349,8 @@ class DiffRepository:
             await self._save_node_batch(node_create_batch=node_create_batch)
             count_nodes_remaining -= len(node_create_batch)
             log.info(f"Batch saved. {count_nodes_remaining=}")
+        if node_identifiers_to_drop:
+            await self._drop_nodes(diff_root=enriched_diffs.diff_branch_diff, node_identifiers=node_identifiers_to_drop)
         await self._update_hierarchy_links(enriched_diffs=enriched_diffs)
         if do_summary_counts:
             await self._update_summary_counts(diff_root=enriched_diffs.diff_branch_diff)

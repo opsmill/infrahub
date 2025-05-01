@@ -82,6 +82,15 @@ def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
 
 
 @dataclass
+class NodeIdentifier:
+    uuid: str
+    kind: str
+
+    def __hash__(self) -> int:
+        return hash(f"{self.uuid}:{self.kind}")
+
+
+@dataclass
 class NodeDiffFieldSummary:
     kind: str
     attribute_names: set[str] = field(default_factory=set)
@@ -649,6 +658,14 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
     @property
     def branch_node_uuids(self) -> set[str]:
         return {n.uuid for n in self.diff_branch_diff.nodes}
+
+    @property
+    def base_node_identifiers(self) -> set[NodeIdentifier]:
+        return {NodeIdentifier(uuid=n.uuid, kind=n.kind) for n in self.base_branch_diff.nodes}
+
+    @property
+    def branch_node_identifiers(self) -> set[NodeIdentifier]:
+        return {NodeIdentifier(uuid=n.uuid, kind=n.kind) for n in self.diff_branch_diff.nodes}
 
 
 @dataclass

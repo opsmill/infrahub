@@ -79,6 +79,46 @@ class TestDiffCoordinator:
                 assert prop_diff.conflict is None
                 assert prop_diff.new_value is None
 
+    async def test_node_added_diff_updated_node_removed(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ):
+        branch = await create_branch(db=db, branch_name="branch")
+        branch_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+        await branch_person.new(db=db, name="Ray", height=180)
+        await branch_person.save(db=db)
+        branch_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        branch_john.height.value += 1
+        await branch_john.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
+
+        assert diff.base_branch_name == default_branch.name
+        assert diff.diff_branch_name == branch.name
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+        assert set(nodes_by_id.keys()) == {branch_person.id, person_john_main.id}
+        branch_node_diff = nodes_by_id[branch_person.id]
+        assert branch_node_diff.action is DiffAction.ADDED
+        branch_john_diff = nodes_by_id[person_john_main.id]
+        assert branch_john_diff.action is DiffAction.UPDATED
+
+        fresh_branch_person = await NodeManager.get_one(db=db, branch=branch, id=branch_person.id)
+        await fresh_branch_person.delete(db=db)
+
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
+        assert diff.base_branch_name == default_branch.name
+        assert diff.diff_branch_name == branch.name
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+        assert set(nodes_by_id.keys()) == {person_john_main.id}
+
     async def test_overlapping_diffs(self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node):
         branch = await create_branch(db=db, branch_name="branch")
         component_registry = get_component_registry()
