@@ -580,7 +580,7 @@ class DiffQueryParser:
                 == (RelationshipStatus.DELETED, RelationshipStatus.ACTIVE)
             )
         ):
-            diff_node.kind = database_path.node_kind
+            diff_node.identifier.kind = database_path.node_kind
             diff_node.db_id = database_path.node_db_id
             diff_node.from_time = database_path.node_changed_at
             diff_node.status = database_path.node_status

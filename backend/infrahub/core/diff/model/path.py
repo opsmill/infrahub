@@ -686,7 +686,6 @@ class DiffNode:
     action: DiffAction
     attributes: list[DiffAttribute] = field(default_factory=list)
     relationships: list[DiffRelationship] = field(default_factory=list)
-    # is_kind_migration: bool = field(default=False)
 
     @property
     def uuid(self) -> str:
