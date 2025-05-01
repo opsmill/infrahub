@@ -26,7 +26,17 @@ class EnrichedDiffDropNodesQuery(Query):
         MATCH (d_root)-[:DIFF_HAS_NODE]->(dn:DiffNode)
         WHERE dn.uuid IN $node_uuids
         AND dn.kind IN $node_identifiers_map[dn.uuid]
+        OPTIONAL MATCH (dn)-[:DIFF_HAS_ATTRIBUTE]-(da:DiffAttribute)
+        OPTIONAL MATCH (da)-[*]->(diff_thing)
+        DETACH DELETE diff_thing
+        DETACH DELETE da
+        WITH dn
+        OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship)
+        OPTIONAL MATCH (dr)-[:DIFF_HAS_ELEMENT]->(dre:DiffRelationshipElement)
+        OPTIONAL MATCH (dre)-[*]->(diff_thing)
+        DETACH DELETE diff_thing
+        DETACH DELETE dre
+        DETACH DELETE dr
         DETACH DELETE dn
         """
-        # TODO: this query needs to also delete attrs/rels/properties downstream from the DiffNode being deleted
         self.add_to_query(query=query)
