@@ -1,1 +1,0 @@
-Improve performance when retrieving nodes that have thousands of relationships
