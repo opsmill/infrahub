@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import asyncio
+import time
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
-from prefect import flow
+from prefect import State, flow
 from prefect.client.orchestration import get_client
+from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
+from prefect.client.schemas.objects import StateType
 from prefect.logging import get_run_logger
+from prefect.states import Completed, Failed
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
@@ -17,6 +22,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
@@ -28,6 +34,8 @@ from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_com
 from .models import ComputedAttrJinja2GraphQL, ComputedAttrJinja2GraphQLResponse, PythonTransformTarget
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from infrahub.core.schema.computed_attribute import ComputedAttribute
 
 UPDATE_ATTRIBUTE = """
@@ -44,6 +52,35 @@ mutation UpdateAttribute(
   }
 }
 """
+
+
+async def wait_until_flow_runs_are_completed(
+    flow_run_ids: list[UUID], interval: int = 2, timeout: int | None = 3600
+) -> list[UUID]:
+    pending_flow_run_ids: list[UUID] = flow_run_ids
+    failed_flow_run_ids: list[UUID] = []
+
+    ACTIVE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING, StateType.SCHEDULED]
+    FAILED_FLOW_RUN_STATES = [StateType.FAILED, StateType.CANCELLED, StateType.CRASHED]
+
+    start_time = time.time()
+
+    async with get_client(sync_client=False) as prefect_client:
+        while pending_flow_run_ids:
+            flow_runs = await prefect_client.read_flow_runs(
+                flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=pending_flow_run_ids))
+            )
+            pending_flow_run_ids = [
+                flow_run.id for flow_run in flow_runs if flow_run.state_type in ACTIVE_FLOW_RUN_STATES
+            ]
+            failed_flow_run_ids.extend(
+                [flow_run.id for flow_run in flow_runs if flow_run.state_type in FAILED_FLOW_RUN_STATES]
+            )
+            await asyncio.sleep(interval)
+            if timeout and time.time() - start_time > timeout:
+                raise TimeoutError(f"Timeout of {timeout} seconds reached while waiting for flow runs to complete")
+
+        return failed_flow_run_ids
 
 
 @flow(
@@ -162,7 +199,7 @@ async def trigger_update_python_computed_attributes(
     name="process_computed_attribute_value_jinja2",
     flow_run_name="Update value for computed attribute {attribute_name}",
 )
-async def update_computed_attribute_value_jinja2(
+async def computed_attribute_jinja2_update_value(
     branch_name: str,
     obj: ComputedAttrJinja2GraphQLResponse,
     node_kind: str,
@@ -205,7 +242,7 @@ async def process_jinja2(
     context: InfrahubContext,  # noqa: ARG001
     service: InfrahubServices,
     updated_fields: list[str] | None = None,
-) -> None:
+) -> State[Any]:
     log = get_run_logger()
 
     await add_tags(branches=[branch_name])
@@ -221,6 +258,9 @@ async def process_jinja2(
         for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
+
+    tasks: dict[UUID, str] = {}
+
     for computed_macro in computed_macros:
         found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
@@ -243,19 +283,33 @@ async def process_jinja2(
         if not found:
             log.debug("No nodes found that requires updates")
 
-        batch = await service.client.create_batch()
+        # Create all the tasks in Prefect, for now creating the task one by one to not overload the prefect server
         for node in found:
-            batch.add(
-                task=update_computed_attribute_value_jinja2,
-                branch_name=branch_name,
-                obj=node,
-                node_kind=node_schema.kind,
-                attribute_name=computed_macro.attribute.name,
-                template=jinja_template,
-                service=service,
+            task = await service.workflow.submit_workflow(
+                workflow=COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+                parameters={
+                    "branch_name": branch_name,
+                    "obj": node,
+                    "node_kind": node_schema.kind,
+                    "attribute_name": computed_macro.attribute.name,
+                    "template": jinja_template,
+                },
+                context=context,
             )
+            tasks[task.id] = node.node_id
 
-        _ = [response async for _, response in batch.execute()]
+    # Wait for all tasks to complete and report on the overall success or failure of the task
+    # Calculate a timeout based on the number of nodes to update
+    timeout = len(found) * 3 if len(found) > 50 else len(found) * 10
+    failed_flow_run_ids = await wait_until_flow_runs_are_completed(list(tasks.keys()), interval=2, timeout=timeout)
+    failed_nodes: list[str] = [tasks[flow_run_id] for flow_run_id in failed_flow_run_ids]
+
+    if failed_flow_run_ids:
+        return Failed(
+            message=f"Failed to update computed attribute {computed_attribute_kind}.{computed_attribute_name} on {branch_name}: {failed_nodes}"
+        )
+
+    return Completed(message=f"Successfully updated {len(found)} computed attributes")
 
 
 @flow(
