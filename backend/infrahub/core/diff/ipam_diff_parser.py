@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters, IncExclActionFilterOptions, IncExclFilterOptions
 from infrahub.core.ipam.kinds_getter import IpamKindsGetter
 from infrahub.core.ipam.model import IpamNodeDetails
 from infrahub.core.manager import NodeManager
@@ -48,10 +49,10 @@ class IpamDiffParser:
             base_branch_name=target_branch_name,
             diff_branch_names=[source_branch_name],
             tracking_id=BranchTrackingId(name=source_branch_name),
-            filters={
-                "kind": {"includes": list(ip_address_kinds | ip_prefix_kinds)},
-                "status": {"excludes": {DiffAction.UNCHANGED}},
-            },
+            filters=EnrichedDiffQueryFilters(
+                kind=IncExclFilterOptions(includes=list(ip_address_kinds | ip_prefix_kinds)),
+                status=IncExclActionFilterOptions(excludes={DiffAction.UNCHANGED}),
+            ),
         )
         changed_node_details: list[ChangedIpamNodeDetails] = []
         for diff in enriched_diffs:

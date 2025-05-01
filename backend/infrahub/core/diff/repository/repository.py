@@ -110,7 +110,7 @@ class DiffRepository:
         diff_branch_names: list[str],
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
-        filters: dict | None = None,
+        filters: EnrichedDiffQueryFilters | None = None,
         include_parents: bool = True,
         limit: int | None = None,
         offset: int | None = None,
@@ -182,11 +182,11 @@ class DiffRepository:
     async def hydrate_diff_pair(
         self,
         enriched_diffs_metadata: EnrichedDiffsMetadata,
-        node_uuids: Iterable[str] | None = None,
+        node_identifiers: Iterable[NodeIdentifier] | None = None,
     ) -> EnrichedDiffs:
-        filters = None
-        if node_uuids:
-            filters = {"ids": list(node_uuids) if node_uuids is not None else None}
+        filters = EnrichedDiffQueryFilters()
+        if node_identifiers:
+            filters.identifiers = list(node_identifiers)
         hydrated_base_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.base_branch_name,
             diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
@@ -209,7 +209,7 @@ class DiffRepository:
         diff_branch_name: str,
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
-        filters: dict | None = None,
+        filters: EnrichedDiffQueryFilters | None = None,
         include_parents: bool = True,
     ) -> EnrichedDiffRoot:
         enriched_diffs = await self.get(

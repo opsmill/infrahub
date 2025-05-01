@@ -507,6 +507,7 @@ class DiffCoordinator:
 
         node_identifiers_to_drop: set[NodeIdentifier] = set()
         if isinstance(previous_diff_pair, EnrichedDiffs):
+            # nodes that were updated and that no longer exist on this diff have been removed
             node_identifiers_to_drop = updated_node_identifiers - previous_diff_pair.branch_node_identifiers
 
         return previous_diff_pair, node_identifiers_to_drop
@@ -529,16 +530,18 @@ class DiffCoordinator:
             earlier.diff_branch_diff.to_time = later.diff_branch_diff.to_time
             return earlier
 
-        # TODO: use NodeIdentifiers here
-        node_uuids = [ni.uuid for ni in node_identifiers]
         # hydrate the diffs to combine, if necessary
         if not isinstance(earlier, EnrichedDiffs):
             log.info("Hydrating earlier diff...")
-            earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier, node_uuids=node_uuids)
+            earlier = await self.diff_repo.hydrate_diff_pair(
+                enriched_diffs_metadata=earlier, node_identifiers=node_identifiers
+            )
             log.info("Earlier diff hydrated.")
         if not isinstance(later, EnrichedDiffs):
             log.info("Hydrating later diff...")
-            later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later, node_uuids=node_uuids)
+            later = await self.diff_repo.hydrate_diff_pair(
+                enriched_diffs_metadata=later, node_identifiers=node_identifiers
+            )
             log.info("Later diff hydrated.")
 
         return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)
