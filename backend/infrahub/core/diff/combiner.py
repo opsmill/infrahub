@@ -384,8 +384,7 @@ class DiffCombiner:
             ):
                 combined_nodes.add(
                     EnrichedDiffNode(
-                        uuid=node_pair.later.uuid,
-                        kind=node_pair.later.kind,
+                        identifier=node_pair.later.identifier,
                         label=node_pair.later.label,
                         changed_at=node_pair.later.changed_at or node_pair.earlier.changed_at,
                         action=combined_action,

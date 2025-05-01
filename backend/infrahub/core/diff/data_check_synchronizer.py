@@ -117,7 +117,7 @@ class DiffDataCheckSynchronizer:
     def _update_diff_conflicts(self, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
         for updated_node in updated_diff.nodes:
             try:
-                retrieved_node = retrieved_diff.get_node(node_uuid=updated_node.uuid)
+                retrieved_node = retrieved_diff.get_node(node_identifier=updated_node.identifier)
             except ValueError:
                 retrieved_node = None
             if not retrieved_node:

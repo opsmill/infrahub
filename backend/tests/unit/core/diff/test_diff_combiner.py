@@ -165,8 +165,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         self.expected_combined.nodes = {
             EnrichedDiffNode(
-                uuid=diff_node_2.uuid,
-                kind=diff_node_2.kind,
+                identifier=diff_node_2.identifier,
                 label=diff_node_2.label,
                 changed_at=diff_node_2.changed_at,
                 action=expected_action,
@@ -336,8 +335,7 @@ class TestDiffCombiner:
         )
         expected_nodes = {
             EnrichedDiffNode(
-                uuid=later_node_1.uuid,
-                kind=later_node_1.kind,
+                identifier=later_node_1.identifier,
                 label=later_node_1.label,
                 changed_at=later_node_1.changed_at,
                 action=DiffAction.ADDED,
@@ -345,8 +343,7 @@ class TestDiffCombiner:
                 attributes={attr_earlier_only, attr_later_only, expected_added_combined_attr},
             ),
             EnrichedDiffNode(
-                uuid=later_node_2.uuid,
-                kind=later_node_2.kind,
+                identifier=later_node_2.identifier,
                 label=later_node_2.label,
                 changed_at=later_node_2.changed_at,
                 action=DiffAction.UPDATED,
@@ -460,8 +457,7 @@ class TestDiffCombiner:
             relationships={expected_relationship_element},
         )
         expected_node = EnrichedDiffNode(
-            uuid=later_node.uuid,
-            kind="TestCar",
+            identifier=later_node.identifier,
             label=later_node.label,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
@@ -629,8 +625,7 @@ class TestDiffCombiner:
             relationships={expected_added_element, expected_removed_element, expected_updated_element},
         )
         expected_node = EnrichedDiffNode(
-            uuid=node_1.uuid,
-            kind="TestPerson",
+            identifier=node_2.identifier,
             label=node_2.label,
             changed_at=node_2.changed_at,
             action=DiffAction.UPDATED,
@@ -695,8 +690,7 @@ class TestDiffCombiner:
             nodes={later_parent_node},
         )
         expected_node = EnrichedDiffNode(
-            uuid=later_node.uuid,
-            kind="TestCar",
+            identifier=later_node.identifier,
             label=later_node.label,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
@@ -865,8 +859,7 @@ class TestDiffCombiner:
             nodes={expected_parent_node},
         )
         expected_child_node = EnrichedDiffNode(
-            uuid=child_node_uuid,
-            kind=child_node_2.kind,
+            identifier=child_node_2.identifier,
             label=child_node_2.label,
             changed_at=child_node_2.changed_at,
             action=DiffAction.UPDATED,
@@ -938,8 +931,7 @@ class TestDiffCombiner:
             nodes={expected_parent_2},
         )
         expected_child_node = EnrichedDiffNode(
-            uuid=child_node_uuid,
-            kind=child_node_2.kind,
+            identifier=child_node_2.identifier,
             label=child_node_2.label,
             changed_at=child_node_2.changed_at,
             action=DiffAction.UPDATED,
@@ -1098,8 +1090,7 @@ class TestDiffCombiner:
             relationships={expected_relationship_element},
         )
         expected_node = EnrichedDiffNode(
-            uuid=later_node.uuid,
-            kind="TestCar",
+            identifier=later_node.identifier,
             label=later_node.label,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
@@ -1200,9 +1191,9 @@ class TestDiffCombiner:
 
         self.expected_combined.uuid = combined.uuid
         self.expected_combined.partner_uuid = combined.partner_uuid
+        assert node_2.identifier.uuid == node_1.uuid
         expected_node = EnrichedDiffNode(
-            uuid=node_1.uuid,
-            kind="TestPerson",
+            identifier=node_2.identifier,
             label=node_2.label,
             changed_at=node_2.changed_at,
             action=DiffAction.UPDATED,
