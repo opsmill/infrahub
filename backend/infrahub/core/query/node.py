@@ -649,14 +649,25 @@ class NodeListGetRelationshipsQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    def __init__(self, ids: list[str], relationship_identifiers: list[str] | None = None, **kwargs):
+    def __init__(
+        self,
+        ids: list[str],
+        outbound_identifiers: list[str] | None = None,
+        inbound_identifiers: list[str] | None = None,
+        bidirectional_identifiers: list[str] | None = None,
+        **kwargs,
+    ):
         self.ids = ids
-        self.relationship_identifiers = relationship_identifiers
+        self.outbound_identifiers = outbound_identifiers
+        self.inbound_identifiers = inbound_identifiers
+        self.bidirectional_identifiers = bidirectional_identifiers
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["relationship_identifiers"] = self.relationship_identifiers
+        self.params["outbound_identifiers"] = self.outbound_identifiers
+        self.params["inbound_identifiers"] = self.inbound_identifiers
+        self.params["bidirectional_identifiers"] = self.bidirectional_identifiers
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
@@ -666,7 +677,7 @@ class NodeListGetRelationshipsQuery(Query):
         CALL {
             WITH n
             MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
-            WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+            WHERE ($inbound_identifiers IS NULL OR rel.name in $inbound_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
             CALL {
@@ -691,7 +702,7 @@ class NodeListGetRelationshipsQuery(Query):
             UNION
             WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
-            WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+            WHERE ($outbound_identifiers IS NULL OR rel.name in $outbound_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
             CALL {
@@ -716,7 +727,7 @@ class NodeListGetRelationshipsQuery(Query):
             UNION
             WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
-            WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+            WHERE ($bidirectional_identifiers IS NULL OR rel.name in $bidirectional_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
             CALL {
