@@ -212,8 +212,6 @@ async def merge_branch(
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
-            # await update_diff(model=RequestDiffUpdate(branch_name=obj.name))
-
             diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
             diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
