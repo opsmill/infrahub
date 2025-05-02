@@ -389,9 +389,6 @@ class WorkflowSettings(BaseSettings):
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
-    worker_type: str = Field(
-        default="process", description="Type of worker to run for the execution of user specific tasks"
-    )
     work_pools: list[WorkerPoolDefinition] = Field(
         default=[
             WorkerPoolDefinition(
