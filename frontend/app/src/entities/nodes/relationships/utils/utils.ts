@@ -28,5 +28,6 @@ export function getDissociateAction({
     return parentRelationship?.optional && peerRelationship?.optional;
   }
 
+  // Check if it's optionnal or there is enough peers
   return parentRelationship?.optional || relationshipsCount > (parentRelationship?.min_count ?? 1);
 }
