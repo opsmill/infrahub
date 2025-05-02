@@ -23,7 +23,7 @@ export function getDissociateAction({
     );
   });
 
-  // If bidirectional, check from the peer point of view
+  // If bidirectional (if it's not defined then it's the default value), check from the peer point of view
   if (
     (!parentRelationship?.direction || parentRelationship?.direction === "bidirectional") &&
     peerRelationship
