@@ -1,6 +1,7 @@
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
+import { getDissociateAction } from "@/entities/nodes/relationships/utils";
 import { Permission } from "@/entities/permission/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { queryClient } from "@/shared/api/rest/client";
@@ -18,7 +19,6 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/p
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { getDissociateAction } from "../../utils/utils";
 
 export interface ActionsCellProps {
   parentId: string;
