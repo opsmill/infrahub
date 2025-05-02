@@ -1,1 +1,1 @@
-Enable dissociate action only for optional relationships
+Enable dissociate action only if possible for relationships of cardinality many
