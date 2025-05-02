@@ -51,13 +51,14 @@ class NodeFieldSpecifierMap:
     def has_entry(self, node_uuid: str, kind: str, field_name: str) -> bool:
         return field_name in self._map.get(node_uuid, {}).get(kind, set())
 
-    def get_uuid_kind_map(self) -> dict[str, list[str]]:
-        return {node_uuid: list(node_dict.keys()) for node_uuid, node_dict in self._map.items()}
+    def get_uuids_list(self) -> list[str]:
+        return list(self._map.keys())
 
-    def to_serial_dict(self) -> dict[str, dict[str, list[str]]]:
-        serial: dict[str, dict[str, list[str]]] = {}
+    def get_uuid_field_names_map(self) -> dict[str, list[str]]:
+        uuid_field_names_map: dict[str, list[str]] = {}
         for node_uuid, node_dict in self._map.items():
-            serial[node_uuid] = {}
-            for kind, field_names_set in node_dict.items():
-                serial[node_uuid][kind] = list(field_names_set)
-        return serial
+            field_names_set: set[str] = set()
+            for field_names in node_dict.values():
+                field_names_set |= field_names
+            uuid_field_names_map[node_uuid] = list(field_names_set)
+        return uuid_field_names_map

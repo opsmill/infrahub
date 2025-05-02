@@ -232,10 +232,10 @@ class DiffNodePathsQuery(DiffCalculationQuery):
         self.params.update(params_dict)
         self.params.update(
             {
-                "new_node_ids_map": self.new_node_field_specifiers.get_uuid_kind_map()
+                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
                 if self.new_node_field_specifiers
                 else None,
-                "current_node_ids_map": self.current_node_field_specifiers.get_uuid_kind_map()
+                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
                 if self.current_node_field_specifiers
                 else None,
             }
@@ -246,14 +246,14 @@ class DiffNodePathsQuery(DiffCalculationQuery):
 // -------------------------------------
 MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
 WHERE (
-    ($new_node_ids_map IS NOT NULL AND $new_node_ids_map[p.uuid] IS NOT NULL AND p.kind IN $new_node_ids_map[p.uuid])
-    OR ($current_node_ids_map IS NOT NULL AND $current_node_ids_map[p.uuid] IS NOT NULL AND p.kind IN $current_node_ids_map[p.uuid])
-    OR ($new_node_ids_map IS NULL AND $current_node_ids_map IS NULL)
+    ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
+    OR ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
+    OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
 )
 AND p.branch_support = $branch_aware
 AND (
     (
-        ($new_node_ids_map IS NOT NULL AND $new_node_ids_map[p.uuid] IS NOT NULL AND p.kind IN $new_node_ids_map[p.uuid])
+        ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
         AND (
             ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($branch_from_time <= diff_rel.to < $to_time)
@@ -261,8 +261,8 @@ AND (
     )
     OR (
         (
-            ($current_node_ids_map IS NOT NULL AND $current_node_ids_map[p.uuid] IS NOT NULL AND p.kind IN $current_node_ids_map[p.uuid])
-            OR ($current_node_ids_map IS NULL AND $new_node_ids_map IS NULL)
+            ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
+            OR ($current_node_ids_list IS NULL AND $new_node_ids_list IS NULL)
         )
         AND (
             ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
@@ -274,7 +274,7 @@ AND (
 // Limit the number of nodes
 // -------------------------------------
 WITH p, q, diff_rel, CASE
-    WHEN $new_node_ids_map IS NOT NULL AND $new_node_ids_map[p.uuid] IS NOT NULL AND p.kind IN $new_node_ids_map[p.uuid] THEN $branch_from_time
+    WHEN $new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
 ORDER BY p.uuid DESC
@@ -372,10 +372,16 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
 
         self.params.update(
             {
-                "current_node_field_specifiers_map": self.current_node_field_specifiers.to_serial_dict()
+                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
+                if self.current_node_field_specifiers
+                else None,
+                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
+                if self.new_node_field_specifiers
+                else None,
+                "current_node_field_specifiers_map": self.current_node_field_specifiers.get_uuid_field_names_map()
                 if self.current_node_field_specifiers is not None
                 else None,
-                "new_node_field_specifiers_map": self.new_node_field_specifiers.to_serial_dict()
+                "new_node_field_specifiers_map": self.new_node_field_specifiers.get_uuid_field_names_map()
                 if self.new_node_field_specifiers is not None
                 else None,
             }
@@ -396,18 +402,16 @@ AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_
 // node ID and field name filtering first pass
 AND (
     (
-        $current_node_field_specifiers_map IS NOT NULL
-        AND $current_node_field_specifiers_map[p.uuid] IS NOT NULL
-        AND $current_node_field_specifiers_map[p.uuid][p.kind] IS NOT NULL
-        AND q.name IN $current_node_field_specifiers_map[p.uuid][p.kind]
+        $current_node_ids_list IS NOT NULL
+        AND p.uuid IN $current_node_ids_list
+        AND q.name IN $current_node_field_specifiers_map[p.uuid]
     ) OR (
-        $new_node_field_specifiers_map IS NOT NULL
-        AND $new_node_field_specifiers_map[p.uuid] IS NOT NULL
-        AND $new_node_field_specifiers_map[p.uuid][p.kind] IS NOT NULL
-        AND q.name IN $new_node_field_specifiers_map[p.uuid][p.kind]
+        $new_node_ids_list IS NOT NULL
+        AND p.uuid IN $new_node_ids_list
+        AND q.name IN $new_node_field_specifiers_map[p.uuid]
     ) OR (
-        $current_node_field_specifiers_map IS NULL
-        AND $new_node_field_specifiers_map IS NULL
+        $new_node_ids_list IS NULL
+        AND $current_node_ids_list IS NULL
     )
 )
 // node ID and field name filtering second pass
@@ -416,11 +420,11 @@ AND (
     (
         (
             (
-                $current_node_field_specifiers_map IS NOT NULL
-                AND $current_node_field_specifiers_map[p.uuid][p.kind] IS NOT NULL
-                AND q.name IN $current_node_field_specifiers_map[p.uuid][p.kind]
+                $current_node_ids_list IS NOT NULL
+                AND p.uuid IN $current_node_ids_list
+                AND q.name IN $current_node_field_specifiers_map[p.uuid]
             )
-            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
+            OR ($current_node_ids_list IS NULL AND $new_node_ids_list IS NULL)
         )
         AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
         AND (
@@ -431,9 +435,9 @@ AND (
     // time-based filters for new nodes
     OR (
         (
-            $new_node_field_specifiers_map IS NOT NULL
-            AND $new_node_field_specifiers_map[p.uuid][p.kind] IS NOT NULL
-            AND q.name IN $new_node_field_specifiers_map[p.uuid][p.kind]
+            $new_node_ids_list IS NOT NULL
+            AND p.uuid IN $new_node_ids_list
+            AND q.name IN $new_node_field_specifiers_map[p.uuid]
         )
         AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
         AND (
@@ -461,9 +465,9 @@ WITH one_result[0] AS root, one_result[1] AS r_root, one_result[2] AS p, one_res
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q, has_more_data, CASE
     WHEN
-        $new_node_field_specifiers_map IS NOT NULL
-        AND $new_node_field_specifiers_map[p.uuid][p.kind] IS NOT NULL
-        AND q.name IN $new_node_field_specifiers_map[p.uuid][p.kind]
+        $new_node_ids_list IS NOT NULL
+        AND p.uuid IN $new_node_ids_list
+        AND q.name IN $new_node_field_specifiers_map[p.uuid]
     THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
@@ -564,10 +568,16 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 
         self.params.update(
             {
-                "current_node_field_specifiers_map": self.current_node_field_specifiers.to_serial_dict()
+                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
+                if self.current_node_field_specifiers
+                else None,
+                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
+                if self.new_node_field_specifiers
+                else None,
+                "current_node_field_specifiers_map": self.current_node_field_specifiers.get_uuid_field_names_map()
                 if self.current_node_field_specifiers is not None
                 else None,
-                "new_node_field_specifiers_map": self.new_node_field_specifiers.to_serial_dict()
+                "new_node_field_specifiers_map": self.new_node_field_specifiers.get_uuid_field_names_map()
                 if self.new_node_field_specifiers is not None
                 else None,
             }
@@ -585,18 +595,16 @@ AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass
 AND (
     (
-        $current_node_field_specifiers_map IS NOT NULL
-        AND $current_node_field_specifiers_map[n.uuid] IS NOT NULL
-        AND $current_node_field_specifiers_map[n.uuid][n.kind] IS NOT NULL
-        AND p.name IN $current_node_field_specifiers_map[n.uuid][n.kind]
+        $current_node_ids_list IS NOT NULL
+        AND n.uuid IN $current_node_ids_list
+        AND p.name IN $current_node_field_specifiers_map[n.uuid]
     ) OR (
-        $new_node_field_specifiers_map IS NOT NULL
-        AND $new_node_field_specifiers_map[n.uuid] IS NOT NULL
-        AND $new_node_field_specifiers_map[n.uuid][n.kind] IS NOT NULL
-        AND p.name IN $new_node_field_specifiers_map[n.uuid][n.kind]
+        $new_node_ids_list IS NOT NULL
+        AND n.uuid IN $new_node_ids_list
+        AND p.name IN $new_node_field_specifiers_map[n.uuid]
     ) OR (
-        $current_node_field_specifiers_map IS NULL
-        AND $new_node_field_specifiers_map IS NULL
+        $new_node_ids_list IS NULL
+        AND $current_node_ids_list IS NULL
     )
 )
 // node ID and field name filtering second pass
@@ -605,11 +613,11 @@ AND (
     (
         (
             (
-                $current_node_field_specifiers_map IS NOT NULL
-                AND $current_node_field_specifiers_map[n.uuid][n.kind] IS NOT NULL
-                AND p.name IN $current_node_field_specifiers_map[n.uuid][n.kind]
+                $current_node_ids_list IS NOT NULL
+                AND n.uuid IN $current_node_ids_list
+                AND p.name IN $current_node_field_specifiers_map[n.uuid]
             )
-            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
+            OR ($current_node_ids_list IS NULL AND $new_node_ids_list IS NULL)
         )
         AND (
             ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
@@ -624,9 +632,9 @@ AND (
     // time-based filters for new nodes
     OR (
         (
-            $new_node_field_specifiers_map IS NOT NULL
-            AND $new_node_field_specifiers_map[n.uuid][n.kind] IS NOT NULL
-            AND p.name IN $new_node_field_specifiers_map[n.uuid][n.kind]
+            $new_node_ids_list IS NOT NULL
+            AND n.uuid IN $new_node_ids_list
+            AND p.name IN $new_node_field_specifiers_map[n.uuid]
         )
         AND (
             ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
@@ -683,9 +691,9 @@ WITH one_result[0] AS diff_rel_path, one_result[1] AS r_root, one_result[2] AS n
 // -------------------------------------
 WITH diff_rel_path, r_root, n, r_node, p, diff_rel, has_more_data, CASE
     WHEN
-        $new_node_field_specifiers_map IS NOT NULL
-        AND $new_node_field_specifiers_map[n.uuid][n.kind] IS NOT NULL
-        AND p.name IN $new_node_field_specifiers_map[n.uuid][n.kind]
+        $new_node_ids_list IS NOT NULL
+        AND n.uuid IN $new_node_ids_list
+        AND p.name IN $new_node_field_specifiers_map[n.uuid]
     THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
