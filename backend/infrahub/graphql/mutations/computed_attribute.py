@@ -71,7 +71,11 @@ class UpdateComputedAttribute(Mutation):
 
         if not (
             target_node := await NodeManager.get_one(
-                db=graphql_context.db, kind=node_schema.kind, id=str(data.id), branch=graphql_context.branch
+                db=graphql_context.db,
+                kind=node_schema.kind,
+                id=str(data.id),
+                branch=graphql_context.branch,
+                fields={target_attribute.name: None},
             )
         ):
             raise NodeNotFoundError(
