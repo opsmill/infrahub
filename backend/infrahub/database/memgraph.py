@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from infrahub.constants.database import EntityType, IndexType
 
 from .index import IndexInfo, IndexItem, IndexManagerBase
-from .manager import DatabaseManager
-
-if TYPE_CHECKING:
-    from . import InfrahubDatabase
 
 
 class IndexNodeMemgraph(IndexItem):
@@ -52,9 +46,3 @@ class IndexManagerMemgraph(IndexManagerBase):
             )
 
         return results
-
-
-class DatabaseManagerMemgraph(DatabaseManager):
-    def __init__(self, db: InfrahubDatabase) -> None:
-        super().__init__(db=db)
-        self.index = IndexManagerMemgraph(db=db)
