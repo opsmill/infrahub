@@ -3101,8 +3101,9 @@ async def test_calculate_with_migrated_kind_node(
     car_schema.name = "NewCar"
     car_schema.namespace = "Test2"
     assert car_schema.kind == "Test2NewCar"
-    owner_rel_schema = car_schema.get_relationship(name="owner")
     registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
+
+    # TODO: test change before migration
 
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
@@ -3112,14 +3113,19 @@ async def test_calculate_with_migrated_kind_node(
     execution_result = await migration.execute(db=db, branch=branch)
     assert not execution_result.errors
 
+    # attribute change after migration
+    new_branch_camry_color = "#112233"
+    new_main_camry_color = "#332211"
+    migrated_car_camry = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    migrated_car_camry.color.value = new_branch_camry_color
+    await migrated_car_camry.save(db=db)
+    main_car_camry = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
+    main_car_camry.color.value = new_main_camry_color
+    await main_car_camry.save(db=db)
+    # TODO: relationship change after migration
+
     diff_calculator = DiffCalculator(db=db)
     node_specifier_map = NodeFieldSpecifierMap()
-    node_specifier_map.add_entry(
-        node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name=owner_rel_schema.get_identifier()
-    )
-    node_specifier_map.add_entry(
-        node_uuid=car_camry_main.id, kind=car_camry_main.get_kind(), field_name=owner_rel_schema.get_identifier()
-    )
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -3130,12 +3136,127 @@ async def test_calculate_with_migrated_kind_node(
         include_unchanged=True,
     )
 
+    base_diff = calculated_diffs.base_branch_diff
+    assert len(base_diff.nodes) == 2
+    nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in base_diff.nodes}
+    assert set(nodes_by_id_and_kind.keys()) == {
+        (car_camry_main.id, "TestCar"),
+        (car_accord_main.id, "TestCar"),
+    }
+    # validate that accord is unchanged on main
+    accord_base_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
+    assert accord_base_diff.action is DiffAction.UNCHANGED
+    attr_diffs_by_name = {a.name: a for a in accord_base_diff.attributes}
+    assert set(attr_diffs_by_name.keys()) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    for attr_diff in accord_base_diff.attributes:
+        assert attr_diff.action is DiffAction.UNCHANGED
+        props_by_type = {p.property_type: p for p in attr_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.HAS_VALUE,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for prop_type, prop_value in [
+            (DatabaseEdgeType.HAS_VALUE, getattr(car_accord_main, attr_diff.name).value),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ]:
+            prop_diff = props_by_type[prop_type]
+            assert prop_diff.action is DiffAction.UNCHANGED
+            assert prop_diff.previous_value == (prop_value if prop_value is not None else "NULL")
+            assert prop_diff.new_value == (prop_value if prop_value is not None else "NULL")
+    rel_diffs_by_name = {r.name: r for r in accord_base_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"owner"}
+    owner_rel_diff = rel_diffs_by_name["owner"]
+    assert owner_rel_diff.action is DiffAction.UNCHANGED
+    elements_by_peer_id = {e.peer_id: e for e in owner_rel_diff.relationships}
+    assert set(elements_by_peer_id) == {person_john_main.id}
+    john_element = elements_by_peer_id[person_john_main.id]
+    assert john_element.action is DiffAction.UNCHANGED
+    props_by_type = {p.property_type: p for p in john_element.properties}
+    assert set(props_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for property_type, prop_value in (
+        (DatabaseEdgeType.IS_RELATED, person_john_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        property_diff = props_by_type[property_type]
+        assert property_diff.action is DiffAction.UNCHANGED
+        assert property_diff.previous_value == prop_value
+        assert property_diff.new_value == prop_value
+
+    # validate that camry has a color change on main
+    camry_base_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
+    assert camry_base_diff.action is DiffAction.UPDATED
+    attr_diffs_by_name = {a.name: a for a in camry_base_diff.attributes}
+    assert set(attr_diffs_by_name.keys()) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    for attr_diff in camry_base_diff.attributes:
+        if attr_diff.name == "color":
+            assert attr_diff.action is DiffAction.UPDATED
+        else:
+            assert attr_diff.action is DiffAction.UNCHANGED
+        props_by_type = {p.property_type: p for p in attr_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.HAS_VALUE,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for prop_type, prop_value in [
+            (DatabaseEdgeType.HAS_VALUE, getattr(car_camry_main, attr_diff.name).value),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ]:
+            prop_diff = props_by_type[prop_type]
+            if prop_type is DatabaseEdgeType.HAS_VALUE and attr_diff.name == "color":
+                prop_action = DiffAction.UPDATED
+                new_prop_value = new_main_camry_color
+            else:
+                prop_action = DiffAction.UNCHANGED
+                new_prop_value = prop_value
+            assert prop_diff.action is prop_action
+            assert prop_diff.previous_value == (prop_value if prop_value is not None else "NULL")
+            assert prop_diff.new_value == (new_prop_value if new_prop_value is not None else "NULL")
+    rel_diffs_by_name = {r.name: r for r in camry_base_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"owner"}
+    owner_rel_diff = rel_diffs_by_name["owner"]
+    assert owner_rel_diff.action is DiffAction.UNCHANGED
+    elements_by_peer_id = {e.peer_id: e for e in owner_rel_diff.relationships}
+    assert set(elements_by_peer_id) == {person_jane_main.id}
+    jane_element = elements_by_peer_id[person_jane_main.id]
+    assert jane_element.action is DiffAction.UNCHANGED
+    props_by_type = {p.property_type: p for p in jane_element.properties}
+    assert set(props_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for property_type, prop_value in (
+        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        property_diff = props_by_type[property_type]
+        assert property_diff.action is DiffAction.UNCHANGED
+        assert property_diff.previous_value == prop_value
+        assert property_diff.new_value == prop_value
+
     branch_diff = calculated_diffs.diff_branch_diff
-    assert len(branch_diff.nodes) == 2
-    nodes_by_id = {n.uuid: n for n in branch_diff.nodes}
-    assert set(nodes_by_id.keys()) == {branch_car.id, person_jane_main.id}
+    assert len(branch_diff.nodes) == 6
+    nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in branch_diff.nodes}
+    assert set(nodes_by_id_and_kind.keys()) == {
+        (branch_car.id, "Test2NewCar"),
+        (person_jane_main.id, person_jane_main.get_kind()),
+        (car_accord_main.id, "TestCar"),
+        (car_accord_main.id, "Test2NewCar"),
+        (car_camry_main.id, "TestCar"),
+        (car_camry_main.id, "Test2NewCar"),
+    }
     # validate relationship on person is correct
-    jane_diff = nodes_by_id[person_jane_main.id]
+    jane_diff = nodes_by_id_and_kind[person_jane_main.id, person_jane_main.get_kind()]
     assert jane_diff.action is DiffAction.UPDATED
     assert len(jane_diff.attributes) == 0
     rels_by_name = {r.name: r for r in jane_diff.relationships}
@@ -3157,8 +3278,103 @@ async def test_calculate_with_migrated_kind_node(
         assert property_diff.new_value == value
         assert property_diff.previous_value is None
 
-    base_diff = calculated_diffs.base_branch_diff
-    assert len(base_diff.nodes) == 0
+    # test car that was migrated on the branch
+    branch_car_diff = nodes_by_id_and_kind[branch_car.id, "Test2NewCar"]
+    assert branch_car_diff.action is DiffAction.ADDED
+    attr_diffs_by_name = {a.name: a for a in branch_car_diff.attributes}
+    assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    for attr_name, expected_value in [
+        ("name", "nova"),
+        ("nbr_seats", 2),
+        ("is_electric", False),
+        ("color", "#444444"),
+        ("transmission", "NULL"),
+    ]:
+        attr_diff = attr_diffs_by_name[attr_name]
+        assert attr_diff.action is DiffAction.ADDED
+        props_by_type = {p.property_type: p for p in attr_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.HAS_VALUE,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for prop_type, prop_value in [
+            (DatabaseEdgeType.HAS_VALUE, expected_value),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ]:
+            prop_diff = props_by_type[prop_type]
+            assert prop_diff.action is DiffAction.ADDED
+            assert prop_diff.previous_value is None
+            assert prop_diff.new_value == prop_value
+    rel_diffs_by_name = {r.name: r for r in branch_car_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"owner"}
+    rel_diff = rel_diffs_by_name["owner"]
+    assert rel_diff.action is DiffAction.ADDED
+    elements_by_peer_id = {e.peer_id: e for e in rel_diff.relationships}
+    assert set(elements_by_peer_id.keys()) == {person_jane_main.id}
+    added_element = elements_by_peer_id[person_jane_main.id]
+    assert added_element.action is DiffAction.ADDED
+    properties_by_type = {p.property_type: p for p in added_element.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_PROTECTED,
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+    }
+    for prop_type, new_value in (
+        (DatabaseEdgeType.IS_PROTECTED, False),
+        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+    ):
+        diff_prop = properties_by_type[prop_type]
+        assert diff_prop.action is DiffAction.ADDED
+        assert diff_prop.previous_value is None
+        assert diff_prop.new_value == new_value
+
+    old_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
+    new_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "Test2NewCar"]
+    old_accord_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
+    new_accord_diff = nodes_by_id_and_kind[car_accord_main.id, "Test2NewCar"]
+
+    for car_diff, expected_action in (
+        (old_camry_diff, DiffAction.REMOVED),
+        (old_accord_diff, DiffAction.REMOVED),
+        (new_accord_diff, DiffAction.ADDED),
+    ):
+        assert car_diff.action is expected_action
+        attr_diffs_by_name = {a.name: a for a in branch_car_diff.attributes}
+        assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+        for attr_diff in car_diff.attributes:
+            assert attr_diff.action is expected_action
+            assert not attr_diff.properties
+        rel_diffs_by_name = {r.name: r for r in car_diff.relationships}
+        assert set(rel_diffs_by_name.keys()) == {"owner"}
+        rel_diff = rel_diffs_by_name["owner"]
+        assert rel_diff.action is expected_action
+        assert not rel_diff.relationships
+
+    # validate new camry that was updated on branch before migration
+    assert new_camry_diff.action is expected_action
+    attr_diffs_by_name = {a.name: a for a in branch_car_diff.attributes}
+    assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    for attr_diff in new_camry_diff.attributes:
+        assert attr_diff.action is expected_action
+        if attr_diff.name == "color":
+            props_by_type = {p.property_type: p for p in attr_diff.properties}
+            assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+            value_diff_prop = props_by_type[DatabaseEdgeType.HAS_VALUE]
+            assert value_diff_prop.action is DiffAction.UPDATED
+            assert value_diff_prop.previous_value == car_camry_main.color.value
+            assert value_diff_prop.new_value == new_branch_camry_color
+        else:
+            assert not attr_diff.properties
+    rel_diffs_by_name = {r.name: r for r in new_camry_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"owner"}
+    rel_diff = rel_diffs_by_name["owner"]
+    assert rel_diff.action is expected_action
+    assert not rel_diff.relationships
+
+    # TODO: test follow-up update to migrated node
 
 
 async def test_calculate_with_migrated_attr_name(

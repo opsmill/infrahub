@@ -277,7 +277,7 @@ WITH p, q, diff_rel, CASE
     WHEN $new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
-ORDER BY p.uuid DESC
+ORDER BY %(id_func)s(p) DESC
 SKIP $offset
 LIMIT $limit
 // -------------------------------------
@@ -301,10 +301,20 @@ CALL {
 WITH p, q, diff_rel, row_from_time, has_more_data, intra_branch_update
 WHERE intra_branch_update = FALSE
 // -------------------------------------
+// Check if this node is part of a node kind update b/c they need special filtering later
+// -------------------------------------
+CALL {
+    WITH p
+    OPTIONAL MATCH (migrated_kind_p:Node)-[is_part_of:IS_PART_OF {branch: $branch_name}]->(:Root)
+    WHERE migrated_kind_p.uuid = p.uuid
+    AND %(id_func)s(migrated_kind_p) <> %(id_func)s(p)
+    RETURN migrated_kind_p IS NOT NULL AS is_node_migrated_kind
+}
+// -------------------------------------
 // Get every path on this branch under each node
 // -------------------------------------
 CALL {
-    WITH p, q, diff_rel, row_from_time
+    WITH p, q, diff_rel, row_from_time, is_node_migrated_kind
     OPTIONAL MATCH path = (
         (q)<-[top_diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
     )
@@ -314,15 +324,23 @@ CALL {
     AND node.branch_support IN [$branch_aware, $branch_agnostic]
     AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-    AND ALL(
-        r in [r_node, r_prop]
-        WHERE r.from < $to_time AND r.branch = top_diff_rel.branch
-    )
     AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
-    AND top_diff_rel.status = r_node.status
-    AND top_diff_rel.status = r_prop.status
+    AND r_node.from < $to_time
+    AND r_node.branch = top_diff_rel.branch
+    AND r_node.status = top_diff_rel.status
+    AND r_prop.from < $to_time
+    AND (
+        (r_prop.branch = top_diff_rel.branch AND r_prop.status = top_diff_rel.status)
+        // extra special case for nodes with a migrated kind for when an edge on a branch can be above an edge on main
+        OR (
+            is_node_migrated_kind AND
+            r_prop.status = "active"
+            AND r_prop.branch = $base_branch_name
+            AND top_diff_rel.branch <> r_prop.branch
+        )
+    )
     // ------------------------
     // special handling for nodes that had their kind updated,
     // the migration leaves two nodes with the same UUID linked to the same Relationship

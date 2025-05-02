@@ -754,6 +754,14 @@ class DatabasePath:
         }
 
     @property
+    def all_branches(self) -> tuple[str, str, str]:
+        return (
+            self.path_to_node.get("branch"),
+            self.path_to_attribute.get("branch"),
+            self.path_to_property.get("branch"),
+        )
+
+    @property
     def deepest_branch(self) -> str:
         deepest_edge = max(
             (self.path_to_node, self.path_to_attribute, self.path_to_property),

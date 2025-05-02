@@ -163,6 +163,8 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
     uuid: str
     name: str
     from_time: Timestamp
+    status: RelationshipStatus
+    last_changed_at: Timestamp
     properties_by_type: dict[DatabaseEdgeType, DiffPropertyIntermediate] = field(default_factory=dict)
 
     def track_database_path(self, database_path: DatabasePath) -> None:
@@ -177,7 +179,13 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
             if include_unchanged or diff_prop.action is not DiffAction.UNCHANGED:
                 properties.append(diff_prop)
         action, changed_at = self.get_action_and_timestamp(from_time=self.from_time)
-        if not properties or all(p.action is DiffAction.UNCHANGED for p in properties):
+        if not properties:
+            changed_at = self.last_changed_at
+            if self.last_changed_at < self.from_time:
+                action = DiffAction.UNCHANGED
+            else:
+                action = DiffAction.ADDED if self.status is RelationshipStatus.ACTIVE else DiffAction.REMOVED
+        elif all(p.action is DiffAction.UNCHANGED for p in properties):
             action = DiffAction.UNCHANGED
         return DiffAttribute(
             uuid=self.uuid, name=self.name, changed_at=changed_at, action=action, properties=properties
@@ -319,6 +327,8 @@ class DiffRelationshipIntermediate:
     identifier: str
     cardinality: RelationshipCardinality
     from_time: Timestamp
+    last_changed_at: Timestamp
+    status: RelationshipStatus
     properties_by_db_id: dict[str, set[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
@@ -372,11 +382,20 @@ class DiffRelationshipIntermediate:
             sr.get_final_single_relationship(from_time=self.from_time, include_unchanged=include_unchanged)
             for sr in self._single_relationship_list
         ]
-        last_changed_relationship = max(single_relationships, key=lambda r: r.changed_at)
-        last_changed_at = last_changed_relationship.changed_at
-        action = DiffAction.UPDATED
-        if last_changed_at < self.from_time or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
-            action = DiffAction.UNCHANGED
+        if single_relationships:
+            last_changed_relationship = max(single_relationships, key=lambda r: r.changed_at)
+            last_changed_at = last_changed_relationship.changed_at
+            action = DiffAction.UPDATED
+            if last_changed_at < self.from_time or all(
+                sr.action is DiffAction.UNCHANGED for sr in single_relationships
+            ):
+                action = DiffAction.UNCHANGED
+        else:
+            last_changed_at = self.last_changed_at
+            if self.last_changed_at < self.from_time:
+                action = DiffAction.UNCHANGED
+            else:
+                action = DiffAction.ADDED if self.status is RelationshipStatus.ACTIVE else DiffAction.REMOVED
         # bubble up action, excluding UNCHANGED
         if self.cardinality is RelationshipCardinality.ONE:
             actions = {sr.action for sr in single_relationships if sr.action is not DiffAction.UNCHANGED}
@@ -548,7 +567,24 @@ class DiffQueryParser:
 
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
-        self._update_attribute_level(database_path=database_path, diff_node=diff_node)
+        is_node_kind_migration = self._is_node_kind_migration(database_path=database_path)
+        self._update_attribute_level(
+            database_path=database_path, diff_node=diff_node, is_node_kind_migration=is_node_kind_migration
+        )
+
+    def _is_node_kind_migration(self, database_path: DatabasePath) -> bool:
+        """
+        If the changes for this path are on the diff branch at the node and attribute/relationship
+        levels and on the base branch at the property level, then this must be part of a node kind
+        or inheritance update
+        """
+        if self.base_branch_name != self.diff_branch_name and database_path.all_branches == (
+            self.diff_branch_name,
+            self.diff_branch_name,
+            self.base_branch_name,
+        ):
+            return True
+        return False
 
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
@@ -572,18 +608,18 @@ class DiffQueryParser:
             )
         diff_node = diff_root.nodes_by_identifier[identifier]
         # special handling for nodes that have their kind updated, which results in 2 nodes with the same uuid
-        if diff_node.db_id != database_path.node_db_id and (
-            database_path.node_changed_at > diff_node.from_time
-            or (
-                database_path.node_changed_at >= diff_node.from_time
-                and (diff_node.status, database_path.node_status)
-                == (RelationshipStatus.DELETED, RelationshipStatus.ACTIVE)
-            )
-        ):
-            diff_node.identifier.kind = database_path.node_kind
-            diff_node.db_id = database_path.node_db_id
-            diff_node.from_time = database_path.node_changed_at
-            diff_node.status = database_path.node_status
+        # if diff_node.db_id != database_path.node_db_id and (
+        #     database_path.node_changed_at > diff_node.from_time
+        #     or (
+        #         database_path.node_changed_at >= diff_node.from_time
+        #         and (diff_node.status, database_path.node_status)
+        #         == (RelationshipStatus.DELETED, RelationshipStatus.ACTIVE)
+        #     )
+        # ):
+        #     diff_node.kind = database_path.node_kind
+        #     diff_node.db_id = database_path.node_db_id
+        #     diff_node.from_time = database_path.node_changed_at
+        #     diff_node.status = database_path.node_status
         diff_node.track_database_path(database_path=database_path)
         return diff_node
 
@@ -604,10 +640,14 @@ class DiffQueryParser:
                     return rel_schema
         return None
 
-    def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
+    def _update_attribute_level(
+        self, database_path: DatabasePath, diff_node: DiffNodeIntermediate, is_node_kind_migration: bool = False
+    ) -> None:
+        """If is_node_kind_migration, then we can skip updating the property level"""
         if "Attribute" in database_path.attribute_node.labels:
             diff_attribute = self._get_diff_attribute(database_path=database_path, diff_node=diff_node)
-            self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
+            if not is_node_kind_migration:
+                self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
             return
         relationship_schema = self._get_relationship_schema(database_path=database_path)
         if not relationship_schema:
@@ -615,9 +655,10 @@ class DiffQueryParser:
         diff_relationship = self._get_diff_relationship(
             diff_node=diff_node, relationship_schema=relationship_schema, database_path=database_path
         )
-        diff_relationship.add_path(
-            database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
-        )
+        if not is_node_kind_migration:
+            diff_relationship.add_path(
+                database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
+            )
 
     def _get_diff_attribute(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate
@@ -635,9 +676,12 @@ class DiffQueryParser:
             diff_node.attributes_by_name[attribute_name] = DiffAttributeIntermediate(
                 uuid=database_path.attribute_id,
                 name=attribute_name,
+                last_changed_at=database_path.attribute_changed_at,
+                status=database_path.attribute_status,
                 from_time=from_time,
             )
         diff_attribute = diff_node.attributes_by_name[attribute_name]
+        diff_attribute.last_changed_at = max(diff_attribute.last_changed_at, database_path.attribute_changed_at)
         diff_attribute.track_database_path(database_path=database_path)
         return diff_attribute
 
@@ -681,11 +725,14 @@ class DiffQueryParser:
                 name=relationship_schema.name,
                 cardinality=relationship_schema.cardinality,
                 identifier=relationship_schema.get_identifier(),
+                last_changed_at=database_path.attribute_changed_at,
+                status=database_path.attribute_status,
                 from_time=from_time,
             )
             diff_node.relationships_by_identifier[relationship_schema.name, relationship_schema.get_identifier()] = (
                 diff_relationship
             )
+        diff_relationship.last_changed_at = max(diff_relationship.last_changed_at, database_path.attribute_changed_at)
         return diff_relationship
 
     def _apply_base_branch_previous_values(self) -> None:
@@ -697,8 +744,10 @@ class DiffQueryParser:
             branch_diff_root = self._diff_root_by_branch.get(branch)
             if not branch_diff_root:
                 continue
+            base_diff_nodes_by_uuid = {n.uuid: n for n in base_diff_root.nodes_by_identifier.values()}
             for identifier, diff_node in branch_diff_root.nodes_by_identifier.items():
-                base_diff_node = base_diff_root.nodes_by_identifier.get(identifier)
+                # changes on a base branch node with a given UUID should apply to all diff branch nodes with that UUID
+                base_diff_node = base_diff_nodes_by_uuid.get(identifier.uuid)
                 if not base_diff_node:
                     continue
                 self._apply_attribute_previous_values(diff_node=diff_node, base_diff_node=base_diff_node)
