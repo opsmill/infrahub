@@ -24,7 +24,7 @@ export function getDissociateAction({
   });
 
   // If bidirectional, check from the peer point of view
-  if (parentRelationship?.direction === "bidirectional" && peerRelationship) {
+  if (parentRelationship?.direction === "bidirectional") {
     return parentRelationship?.optional && peerRelationship?.optional;
   }
 
