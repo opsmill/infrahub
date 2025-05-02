@@ -18,6 +18,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/p
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+import { getDissociateAction } from "../../utils/utils";
 
 export interface ActionsCellProps {
   parentId: string;
@@ -47,23 +48,15 @@ export function RelationshipActionsCell({
   const { schema: parentSchema } = useSchema(parentKind);
   const { schema: peerSchema } = useSchema(relationshipKind);
 
-  const parentRelationship = parentSchema?.relationships?.find((relationship) => {
-    return relationship.name === relationshipName;
-  });
-
-  const peerRelationship = peerSchema?.relationships?.find((relationship) => {
-    return (
-      relationship.peer === parentKind && relationship.direction === parentRelationship?.direction
-    );
-  });
-
   const isEditAllowed = permission.update.isAllowed;
-  const isDissociateAllowed =
-    parentRelationship?.direction === "bidirectional"
-      ? // If bidirectionnal, check from the peer point of view
-        parentRelationship?.optional && peerRelationship?.optional
-      : // Check if it's optionnal or there is enough peers
-        parentRelationship?.optional || relationshipsCount > (parentRelationship?.min_count ?? 1);
+
+  const isDissociateAllowed = getDissociateAction({
+    parentKind,
+    relationshipName,
+    parentSchema,
+    peerSchema,
+    relationshipsCount,
+  });
 
   if (!peerSchema || !parentSchema)
     return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
