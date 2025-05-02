@@ -9,7 +9,6 @@ from .builder.constraint.schema.attribute_regex import SchemaAttributeRegexConst
 from .builder.constraint.schema.attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
 from .builder.constraint.schema.relationship_optional import SchemaRelationshipOptionalConstraintDependency
 from .builder.constraint.schema.uniqueness import SchemaUniquenessConstraintDependency
-from .builder.database.index_manager import IndexManagerDependency
 from .builder.diff.calculator import DiffCalculatorDependency
 from .builder.diff.combiner import DiffCombinerDependency
 from .builder.diff.conflict_transferer import DiffConflictTransfererDependency
@@ -52,7 +51,6 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(DiffCoordinatorDependency)
     component_registry.track_dependency(DiffDataCheckSynchronizerDependency)
     component_registry.track_dependency(DiffMergerDependency)
-    component_registry.track_dependency(IndexManagerDependency)
     return component_registry
 
 
