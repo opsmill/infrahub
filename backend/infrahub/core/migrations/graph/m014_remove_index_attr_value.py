@@ -7,6 +7,7 @@ from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.database import DatabaseType
 from infrahub.database.index import IndexItem
+from infrahub.database.neo4j import IndexManagerNeo4j
 
 from ..shared import GraphMigration
 
@@ -30,8 +31,9 @@ class Migration014(GraphMigration):
             return result
 
         try:
-            db.manager.index.init(nodes=[INDEX_TO_DELETE], rels=[])
-            await db.manager.index.drop()
+            index_manager = IndexManagerNeo4j(db=db)
+            index_manager.init(nodes=[INDEX_TO_DELETE], rels=[])
+            await index_manager.drop()
         except Exception as exc:
             result.errors.append(str(exc))
             return result

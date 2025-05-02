@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from infrahub.constants.database import EntityType, IndexType
 from infrahub.core.query import QueryType
 
 from .index import IndexInfo, IndexItem, IndexManagerBase
-from .manager import DatabaseManager
-
-if TYPE_CHECKING:
-    from . import InfrahubDatabase
 
 
 class IndexRelNeo4j(IndexItem):
@@ -68,9 +62,3 @@ class IndexManagerNeo4j(IndexManagerBase):
             )
 
         return results
-
-
-class DatabaseManagerNeo4j(DatabaseManager):
-    def __init__(self, db: InfrahubDatabase) -> None:
-        super().__init__(db=db)
-        self.index = IndexManagerNeo4j(db=db)
