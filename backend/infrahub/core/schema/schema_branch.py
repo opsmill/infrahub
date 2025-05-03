@@ -1301,7 +1301,7 @@ class SchemaBranch:
         jinja_template = Jinja2Template(template=node.display_label)
         try:
             variables = jinja_template.get_variables()
-            jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+            jinja_template.validate_template(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
         except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
             raise ValueError(
                 f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
@@ -1358,7 +1358,7 @@ class SchemaBranch:
             jinja_template = Jinja2Template(template=attribute.computed_attribute.jinja2_template)
             try:
                 variables = jinja_template.get_variables()
-                jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+                jinja_template.validate_template(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
             except JinjaTemplateOperationViolationError as exc:
                 raise ValueError(
                     f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template: {exc.message}"
