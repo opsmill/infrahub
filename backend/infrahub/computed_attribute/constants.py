@@ -7,4 +7,6 @@ QUERY_AUTOMATION_NAME_PREFIX = "Computed-attribute-query"
 PROCESS_AUTOMATION_NAME = "{prefix}::{scope}::{identifier}"
 QUERY_AUTOMATION_NAME = QUERY_AUTOMATION_NAME_PREFIX + "::{scope}::{identifier}"
 
+JINJA2_THRESHOLD_LOCAL_EXECUTION = 5
+
 VALID_KINDS = ["Text", "URL"]

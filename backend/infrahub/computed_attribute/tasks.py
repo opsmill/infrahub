@@ -31,6 +31,7 @@ from infrahub.workflows.catalogue import (
 )
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
+from .constants import JINJA2_THRESHOLD_LOCAL_EXECUTION
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -84,7 +85,8 @@ async def wait_until_flow_runs_are_completed(
             failed_flow_run_ids.extend(
                 [flow_run.id for flow_run in flow_runs if flow_run.state_type in FAILED_FLOW_RUN_STATES]
             )
-            await asyncio.sleep(interval)
+            if pending_flow_run_ids:
+                await asyncio.sleep(interval)
             if timeout and time.time() - start_time > timeout:
                 raise TimeoutError(f"Timeout of {timeout} seconds reached while waiting for flow runs to complete")
 
@@ -275,8 +277,10 @@ async def process_jinja2(
     ]
 
     tasks: dict[UUID, str] = {}
+    nbr_nodes_updated = 0
 
     for computed_macro in computed_macros:
+        log.info(f"Processing computed attribute for {computed_macro.kind}::{computed_macro.attribute.name}")
         found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
@@ -302,35 +306,64 @@ async def process_jinja2(
             found.extend(output)
 
         if not found:
-            log.debug("No nodes found that requires updates")
+            log.info(f"No nodes found that requires updates for {computed_macro.kind}::{computed_macro.attribute.name}")
+            continue
 
-        # Create all the tasks in Prefect, for now creating the task one by one to not overload the prefect server
-        for node in found:
-            task = await get_workflow().submit_workflow(
-                workflow=COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
-                parameters={
-                    "branch_name": branch_name,
-                    "obj": node,
-                    "node_kind": node_schema.kind,
-                    "attribute_name": computed_macro.attribute.name,
-                    "template": jinja_template,
-                },
-                context=context,
-            )
-            tasks[task.id] = node.node_id
+        nbr_nodes_updated += len(found)
 
-    # Wait for all tasks to complete and report on the overall success or failure of the task
-    # Calculate a timeout based on the number of nodes to update
-    timeout = len(found) * 3 if len(found) > 50 else len(found) * 10
-    failed_flow_run_ids = await wait_until_flow_runs_are_completed(list(tasks.keys()), interval=2, timeout=timeout)
-    failed_nodes: list[str] = [tasks[flow_run_id] for flow_run_id in failed_flow_run_ids]
-
-    if failed_flow_run_ids:
-        return Failed(
-            message=f"Failed to update computed attribute {computed_attribute_kind}.{computed_attribute_name} on {branch_name}: {failed_nodes}"
+        # Check the number of task to execute
+        # - if we have less than JINJA2_THRESHOLD_LOCAL_EXECUTION, it's best to execute them locally with a batch
+        # - if we have more than JINJA2_THRESHOLD_LOCAL_EXECUTION, we'll schedule them to be executed across workers
+        processing = "remotely" if len(found) >= JINJA2_THRESHOLD_LOCAL_EXECUTION else "locally"
+        log.info(
+            f"Found {len(found)} nodes that requires updates for {computed_macro.kind}::{computed_macro.attribute.name}, processing {processing}"
         )
 
-    return Completed(message=f"Successfully updated {len(found)} computed attributes")
+        if processing == "remotely":
+            for node in found:
+                # Ideally we should use a batch here but it wouldn't be possible to track which node is associated with a given task
+                task = await get_workflow().submit_workflow(
+                    workflow=COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+                    parameters={
+                        "branch_name": branch_name,
+                        "obj": node.model_dump(),  # Not sure why, but without this, the variables are not serialized to the worker
+                        "node_kind": node_schema.kind,
+                        "attribute_name": computed_macro.attribute.name,
+                        "template": jinja_template,
+                    },
+                    context=context,
+                )
+                tasks[task.id] = node.node_id
+        else:
+            batch = await client.create_batch()
+            for node in found:
+                batch.add(
+                    task=computed_attribute_jinja2_update_value,
+                    branch_name=branch_name,
+                    obj=node,
+                    node_kind=node_schema.kind,
+                    attribute_name=computed_macro.attribute.name,
+                    template=jinja_template,
+                )
+            _ = [response async for _, response in batch.execute()]
+
+    if tasks:
+        # Wait for all tasks to complete and report on the overall success or failure of the task
+        # Calculate a timeout based on the number of nodes to update
+        timeout = len(tasks) * 3 if len(tasks) > 50 else len(tasks) * 10
+        failed_flow_run_ids = await wait_until_flow_runs_are_completed(list(tasks.keys()), interval=2, timeout=timeout)
+        failed_nodes: list[str] = [tasks[flow_run_id] for flow_run_id in failed_flow_run_ids]
+
+        if failed_flow_run_ids:
+            return Failed(
+                message=f"Failed to update computed attribute {computed_attribute_kind}.{computed_attribute_name} on {branch_name}: {failed_nodes}"
+            )
+
+    message = "Nothing to update"
+    if nbr_nodes_updated:
+        message = f"Successfully updated {nbr_nodes_updated} computed attributes"
+
+    return Completed(message=message)
 
 
 @flow(

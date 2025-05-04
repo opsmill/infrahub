@@ -9,7 +9,7 @@ from infrahub.computed_attribute.constants import (
     QUERY_AUTOMATION_NAME,
     QUERY_AUTOMATION_NAME_PREFIX,
 )
-from infrahub.computed_attribute.models import ComputedAttributeAutomations
+from infrahub.computed_attribute.models import ComputedAttributeAutomations, ComputedAttrJinja2GraphQLResponse
 
 
 def generate_automation(
@@ -64,3 +64,17 @@ async def test_load_from_prefect() -> None:
     query_obj = ComputedAttributeAutomations.from_prefect(automations=automations, prefix=QUERY_AUTOMATION_NAME_PREFIX)
     assert not query_obj.has(identifier="AAAAA", scope="default")
     assert query_obj.has(identifier="CCCCC", scope="default")
+
+
+def test_jinja2_graphql_response_serialize():
+    item = ComputedAttrJinja2GraphQLResponse(
+        node_id="12345", computed_attribute_value="value", variables={"name__value": 1234}
+    )
+    assert item.model_dump() == {
+        "node_id": "12345",
+        "computed_attribute_value": "value",
+        "variables": {"name__value": 1234},
+    }
+
+    parameters = {"node": item}
+    assert dict(parameters) == {"node": item}
