@@ -71,7 +71,5 @@ async def setup_task_manager() -> None:
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
         await setup_triggers(
-            client=client,
-            triggers=builtin_triggers,
-            trigger_type=TriggerType.BUILTIN,
+            client=client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN, force_update=True
         )
