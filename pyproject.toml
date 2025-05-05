@@ -63,7 +63,7 @@ nats-py = "^2.7.2"
 netaddr = "1.3.0"
 authlib = "1.3.2"
 aiodataloader = "0.4.0"
-
+fast-depends = "^2.4.12"
 
 # Dependencies specific to the SDK
 rich = "^13"
@@ -75,7 +75,6 @@ numpy = [
 dulwich = "^0.22.7"
 whenever = "0.7.2"
 netutils = "1.12.0"
-
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
