@@ -5,8 +5,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from prefect.events.actions import RunDeployment
+from prefect.events.schemas.automations import (
+    Automation,  # noqa: TC002
+    Posture,
+)
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
-from prefect.events.schemas.automations import Posture
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
@@ -17,6 +20,13 @@ from .constants import NAME_SEPARATOR
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+
+class TriggerSetupReport(BaseModel):
+    created: list[TriggerDefinition] = Field(default_factory=list)
+    updated: list[TriggerDefinition] = Field(default_factory=list)
+    deleted: list[Automation] = Field(default_factory=list)
+    unchanged: list[TriggerDefinition] = Field(default_factory=list)
 
 
 class TriggerType(str, Enum):
