@@ -8,14 +8,16 @@ const RELATIONSHIP_KIND_VISIBLE_IN_TAB: Array<RelationshipKind> = [
   "Template",
 ];
 
+export function isRelationshipVisibleInTab(relationshipSchema: RelationshipSchema): boolean {
+  if (relationshipSchema.cardinality === "one") {
+    return false;
+  }
+
+  return RELATIONSHIP_KIND_VISIBLE_IN_TAB.includes(relationshipSchema.kind);
+}
+
 export function getRelationshipsVisibleInTab(
   relationships: RelationshipSchema[]
 ): RelationshipSchema[] {
-  return relationships.filter((relationship): boolean => {
-    if (relationship.cardinality === "one") {
-      return false;
-    }
-
-    return RELATIONSHIP_KIND_VISIBLE_IN_TAB.includes(relationship.kind);
-  });
+  return relationships.filter(isRelationshipVisibleInTab);
 }
