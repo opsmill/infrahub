@@ -211,17 +211,11 @@ class TransformWebhook(Webhook):
         repo: InfrahubReadOnlyRepository | InfrahubRepository
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(
-                id=self.repository_id,
-                name=self.repository_name,
-                client=service.client,
-                service=service,
+                id=self.repository_id, name=self.repository_name, client=service.client
             )
         else:
             repo = await InfrahubRepository.init(
-                id=self.repository_id,
-                name=self.repository_name,
-                client=service.client,
-                service=service,
+                id=self.repository_id, name=self.repository_name, client=service.client
             )
 
         branch = context.branch or repo.default_branch

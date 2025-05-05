@@ -273,9 +273,9 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     log = get_run_logger()
     repo = await get_initialized_repo(
+        client=service.client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
@@ -477,9 +477,9 @@ async def merge_git_repository(model: GitRepositoryMerge, service: InfrahubServi
 async def import_objects_from_git_repository(model: GitRepositoryImportObjects, service: InfrahubServices) -> None:
     await add_branch_tag(model.infrahub_branch_name)
     repo = await get_initialized_repo(
+        client=service.client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
@@ -495,9 +495,9 @@ async def git_repository_diff_names_only(
     model: GitDiffNamesOnly, service: InfrahubServices
 ) -> GitDiffNamesOnlyResponse:
     repo = await get_initialized_repo(
+        client=service.client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
     )
     files_changed: list[str] = []
@@ -756,7 +756,12 @@ async def run_check_merge_conflicts(
     validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=model.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=model.repository_id, name=model.repository_name, service=service)
+    repo = await get_initialized_repo(
+        client=service.client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=InfrahubKind.REPOSITORY,
+    )
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=model.source_branch, dest_branch=model.target_branch)
 
@@ -830,8 +835,12 @@ async def run_user_check(model: UserCheckData, service: InfrahubServices) -> Val
     validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=model.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(
-        id=model.repository_id, name=model.repository_name, commit=model.commit, service=service
+    repo = await get_initialized_repo(
+        client=service.client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        commit=model.commit,
     )
     conclusion = ValidatorConclusion.FAILURE
     severity = "critical"

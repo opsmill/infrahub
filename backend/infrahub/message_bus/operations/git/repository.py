@@ -1,7 +1,7 @@
 from prefect import flow
 
 from infrahub.exceptions import RepositoryError
-from infrahub.git.repository import InfrahubRepository, get_initialized_repo, initialize_repo
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -37,21 +37,12 @@ async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) ->
         log.info("Ignoring git fetch request originating from self", worker=WORKER_IDENTITY)
         return
 
-    try:
-        repo = await get_initialized_repo(
-            repository_id=message.repository_id,
-            name=message.repository_name,
-            service=service,
-            repository_kind=message.repository_kind,
-        )
-    except RepositoryError:
-        repo = await initialize_repo(
-            location=message.location,
-            repository_id=message.repository_id,
-            name=message.repository_name,
-            service=service,
-            repository_kind=message.repository_kind,
-        )
+    repo = await get_initialized_repo(
+        client=service.client,
+        repository_id=message.repository_id,
+        name=message.repository_name,
+        repository_kind=message.repository_kind,
+    )
 
     await repo.fetch()
     await repo.pull(

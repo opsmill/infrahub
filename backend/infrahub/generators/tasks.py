@@ -37,9 +37,9 @@ async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
 
     repository = await get_initialized_repo(
+        client=service.client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
