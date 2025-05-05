@@ -1,7 +1,7 @@
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
-import { getDissociateAction } from "@/entities/nodes/relationships/utils";
+import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
 import { Permission } from "@/entities/permission/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { queryClient } from "@/shared/api/rest/client";
@@ -50,8 +50,7 @@ export function RelationshipActionsCell({
 
   const isEditAllowed = permission.update.isAllowed;
 
-  const isDissociateAllowed = getDissociateAction({
-    parentKind,
+  const isDissociateAllowed = canDissociateRelationship({
     relationshipName,
     parentSchema,
     peerSchema,

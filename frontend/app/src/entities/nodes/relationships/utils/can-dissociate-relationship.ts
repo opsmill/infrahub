@@ -1,13 +1,11 @@
 import { NodeSchema } from "@/entities/schema/types";
 
-export function getDissociateAction({
-  parentKind,
+export function canDissociateRelationship({
   relationshipName,
   parentSchema,
   peerSchema,
   relationshipsCount,
 }: {
-  parentKind: string;
   relationshipName: string;
   parentSchema: NodeSchema | null;
   peerSchema: NodeSchema | null;
@@ -19,7 +17,8 @@ export function getDissociateAction({
 
   const peerRelationship = peerSchema?.relationships?.find((relationship) => {
     return (
-      relationship.peer === parentKind && relationship.direction === parentRelationship?.direction
+      relationship.peer === parentSchema?.kind &&
+      relationship.direction === parentRelationship?.direction
     );
   });
 
@@ -32,5 +31,7 @@ export function getDissociateAction({
   }
 
   // Check if it's optionnal or there is enough peers
-  return parentRelationship?.optional || relationshipsCount > (parentRelationship?.min_count ?? 1);
+  return (
+    !!parentRelationship?.optional || relationshipsCount > (parentRelationship?.min_count ?? 1)
+  );
 }
