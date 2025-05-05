@@ -11,6 +11,22 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.8) - 2025-05-01
+
+### Added
+
+- Added support for "convert_query_response" for Python transforms. The feature works the same was as with Generators. Note any non default branch will need to be rebased after this upgrade. ([#6383](https://github.com/opsmill/infrahub/issues/6383))
+- Enable HCL syntax highlighting for artifacts
+
+### Fixed
+
+- Improve performance when retrieving nodes that have thousands of relationships
+- Improve performance of git credential helper
+
+### Housekeeping
+
+- Background performance improvements due to Prefect 3.3.7 upgrade
+
 ## [Infrahub - v1.2.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.7) - 2025-04-28
 
 ### Security

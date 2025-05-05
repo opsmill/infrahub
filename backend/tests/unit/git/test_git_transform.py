@@ -101,6 +101,7 @@ async def test_transform_python_success(
         transform_location="unit/transforms/multiplier.py::Multiplier",
         timeout=10,
         data={"multiplier": 2, "key": "abc", "answer": 21},
+        convert_query_response=False,
     )
 
     response = await transform_python(message=message, service=init_service)

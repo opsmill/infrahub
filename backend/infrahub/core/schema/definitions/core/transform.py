@@ -92,5 +92,6 @@ core_transform_python = NodeSchema(
     attributes=[
         Attr(name="file_path", kind="Text"),
         Attr(name="class_name", kind="Text"),
+        Attr(name="convert_query_response", kind="Boolean", optional=True, default_value=False),
     ],
 )

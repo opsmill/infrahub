@@ -38,6 +38,8 @@ class TestTransforms(TestInfrahubApp):
             TestingPerson(name__value: $name) {
                 edges {
                     node {
+                        id
+                        __typename
                         name {
                             value
                         }
@@ -47,6 +49,8 @@ class TestTransforms(TestInfrahubApp):
                         cars {
                             edges {
                                 node {
+                                    id
+                                    __typename
                                     name {
                                         value
                                     }
@@ -124,3 +128,26 @@ class TestTransforms(TestInfrahubApp):
 
         response = await client._get(url=f"{client.address}/api/transform/python/test-python-transform?name=John")
         assert response.json() == {"name": "John"}
+
+    async def test_convert_query_response_transform_python(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
+    ):
+        repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
+        queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+
+        t2 = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+        await t2.new(
+            db=db,
+            name="test-convert-python-transform",
+            query=str(queries[0].id),
+            repository=str(repositories[0].id),
+            class_name="ConvertedPersonWith",
+            file_path="transforms/converted_person_with_cars.py",
+            convert_query_response=True,
+        )
+        await t2.save(db=db)
+
+        response = await client._get(
+            url=f"{client.address}/api/transform/python/test-convert-python-transform?name=John"
+        )
+        assert response.json() == {"name": "John", "age": 25}

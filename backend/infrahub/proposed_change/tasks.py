@@ -607,6 +607,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
                 content_type=model.artifact_definition.content_type,
                 transform_type=model.artifact_definition.transform_kind,
                 transform_location=model.artifact_definition.transform_location,
+                convert_query_response=model.artifact_definition.convert_query_response,
                 repository_id=repository.repository_id,
                 repository_name=repository.repository_name,
                 repository_kind=repository.kind,
