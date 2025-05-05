@@ -19,5 +19,7 @@ export function isRelationshipVisibleInTab(relationshipSchema: RelationshipSchem
 export function getRelationshipsVisibleInTab(
   relationships: RelationshipSchema[]
 ): RelationshipSchema[] {
-  return relationships.filter(isRelationshipVisibleInTab);
+  return relationships
+    .filter(isRelationshipVisibleInTab)
+    .sort((a, b) => (a.order_weight ?? 0) - (b.order_weight ?? 0));
 }

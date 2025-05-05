@@ -113,4 +113,56 @@ describe("getRelationshipsVisibleInTab", () => {
     // THEN
     expect(result).toEqual([]);
   });
+
+  it("should sort relationships by order_weight", () => {
+    // GIVEN
+    const templateRel = generateRelationshipSchema({
+      kind: "Template",
+      cardinality: "many",
+      order_weight: 0,
+    });
+    const componentRel = generateRelationshipSchema({
+      kind: "Component",
+      cardinality: "many",
+      order_weight: 1,
+    });
+    const genericRel = generateRelationshipSchema({
+      kind: "Generic",
+      cardinality: "many",
+      order_weight: 2,
+    });
+    const relationships = [genericRel, componentRel, templateRel];
+
+    // WHEN
+    const result = getRelationshipsVisibleInTab(relationships);
+
+    // THEN
+    expect(result).toEqual([templateRel, componentRel, genericRel]);
+  });
+
+  it("should handle undefined order_weight as 0", () => {
+    // GIVEN
+    const templateRel = generateRelationshipSchema({
+      kind: "Template",
+      cardinality: "many",
+      order_weight: -1,
+    });
+    const componentRel = generateRelationshipSchema({
+      kind: "Component",
+      cardinality: "many",
+      order_weight: undefined,
+    });
+    const genericRel = generateRelationshipSchema({
+      kind: "Generic",
+      cardinality: "many",
+      order_weight: 1,
+    });
+    const relationships = [genericRel, componentRel, templateRel];
+
+    // WHEN
+    const result = getRelationshipsVisibleInTab(relationships);
+
+    // THEN
+    expect(result).toEqual([templateRel, componentRel, genericRel]);
+  });
 });
