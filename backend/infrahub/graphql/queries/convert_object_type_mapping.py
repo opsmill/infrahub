@@ -1,6 +1,5 @@
-import json
-
-from graphene import Field, JSONString, ObjectType, String
+from graphene import Field, ObjectType, String
+from graphene.types.generic import GenericScalar
 from graphql import GraphQLResolveInfo
 
 from infrahub.core import registry
@@ -9,7 +8,7 @@ from infrahub.core.convert_object_type.schema_mapping import get_schema_mapping
 
 class FieldsMapping(ObjectType):
     # TODO use GenericScalar instead?
-    mapping = JSONString(required=True)
+    mapping = GenericScalar(required=True)
 
 
 async def fields_mapping_type_conversion_resolver(
@@ -23,11 +22,13 @@ async def fields_mapping_type_conversion_resolver(
     target_schema = registry.get_node_schema(name=target_kind, branch=branch)
 
     mapping = get_schema_mapping(source_schema=source_schema, target_schema=target_schema)
+    # mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
+    # return {"mapping": json.dumps(mapping_dict)}
     mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
-    return {"mapping": json.dumps(mapping_dict)}
+    return {"mapping": mapping_dict}
 
 
-FieldMappingTypeConversion = Field(
+FieldsMappingTypeConversion = Field(
     FieldsMapping,
     source_kind=String(),
     target_kind=String(),

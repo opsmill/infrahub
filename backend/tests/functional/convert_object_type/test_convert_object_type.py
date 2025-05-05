@@ -16,7 +16,7 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
         assert len(response.errors) == 0, response.errors
 
         query = """ query($source_kind: String!, $target_kind: String!, $branch: String!) {
-                FieldMappingTypeConversion(source_kind: $source_kind, target_kind: $target_kind, branch: $branch) {
+                FieldsMappingTypeConversion(source_kind: $source_kind, target_kind: $target_kind, branch: $branch) {
                     mapping
                 }
             }
@@ -31,8 +31,48 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
             },
         )
 
-        print(f"{response=}")
-        # TODO load result and assert values are ok
+        assert response == {
+            "FieldsMappingTypeConversion": {
+                "mapping": {
+                    "citizenship": {"is_mandatory": False, "source_field_name": None, "relationship_cardinality": None},
+                    "age": {"is_mandatory": True, "source_field_name": None, "relationship_cardinality": None},
+                    "name": {"is_mandatory": True, "source_field_name": "name", "relationship_cardinality": None},
+                    "height": {"is_mandatory": False, "source_field_name": "height", "relationship_cardinality": None},
+                    "subscriber_of_groups": {
+                        "is_mandatory": False,
+                        "source_field_name": "subscriber_of_groups",
+                        "relationship_cardinality": "many",
+                    },
+                    "slowest_cars": {
+                        "is_mandatory": False,
+                        "source_field_name": None,
+                        "relationship_cardinality": "many",
+                    },
+                    "member_of_groups": {
+                        "is_mandatory": False,
+                        "source_field_name": "member_of_groups",
+                        "relationship_cardinality": "many",
+                    },
+                    "profiles": {
+                        "is_mandatory": False,
+                        "source_field_name": "profiles",
+                        "relationship_cardinality": "many",
+                    },
+                    "worst_car": {"is_mandatory": False, "source_field_name": None, "relationship_cardinality": "one"},
+                    "favorite_car": {
+                        "is_mandatory": False,
+                        "source_field_name": "favorite_car",
+                        "relationship_cardinality": "one",
+                    },
+                    "fastest_cars": {
+                        "is_mandatory": False,
+                        "source_field_name": "fastest_cars",
+                        "relationship_cardinality": "many",
+                    },
+                    "bags": {"is_mandatory": False, "source_field_name": "bags", "relationship_cardinality": "many"},
+                }
+            }
+        }
 
 
 class TestConvertObjectType(TestInfrahubApp):
@@ -92,6 +132,4 @@ class TestConvertObjectType(TestInfrahubApp):
                 "target_kind": "TestconvPerson2",
             },
         )
-
-        print(f"{response=}")
-        # TODO assert response...
+        assert response["ConvertObjectType"]["ok"] is True

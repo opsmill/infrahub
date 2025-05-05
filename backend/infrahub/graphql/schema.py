@@ -49,7 +49,7 @@ from .queries import (
     InfrahubStatus,
     Relationship,
 )
-from .queries.convert_object_type_mapping import FieldMappingTypeConversion
+from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
 from .queries.task import Task, TaskBranchStatus
@@ -79,7 +79,7 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
 
-    FieldMappingTypeConversion = FieldMappingTypeConversion
+    FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
 
 class InfrahubBaseMutation(ObjectType):
