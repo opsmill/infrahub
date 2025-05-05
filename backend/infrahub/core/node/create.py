@@ -153,7 +153,9 @@ async def create_node(
     """
 
     component_registry = get_component_registry()
-    node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+    node_constraint_runner = await component_registry.get_component(
+        NodeConstraintRunner, db=db.start_session() if not db.is_transaction else db, branch=branch
+    )
     node_class = Node
     if schema.kind in registry.node:
         node_class = registry.node[schema.kind]
