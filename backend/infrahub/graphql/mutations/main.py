@@ -190,7 +190,6 @@ class InfrahubMutationMixin:
             db=db,
             branch=branch,
             schema=schema,
-            use_session_for_constraint_checks=True,
         )
 
     @classmethod

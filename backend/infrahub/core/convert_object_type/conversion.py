@@ -111,7 +111,6 @@ async def convert_object_type(
             db=dbt,
             branch=branch,
             schema=target_schema,
-            use_session_for_constraint_checks=False,
         )
 
         # Make sure relationships with constraints are not broken by retrieving them

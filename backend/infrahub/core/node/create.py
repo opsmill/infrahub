@@ -145,7 +145,6 @@ async def create_node(
     db: InfrahubDatabase,
     branch: Branch,
     schema: NonGenericSchemaTypes,
-    use_session_for_constraint_checks: bool,
 ) -> Node:
     """
     Create a node in the database if constraint checks succeed.
@@ -154,10 +153,7 @@ async def create_node(
     """
 
     component_registry = get_component_registry()
-    db_constraint_check = db.start_session() if use_session_for_constraint_checks else db
-    node_constraint_runner = await component_registry.get_component(
-        NodeConstraintRunner, db=db_constraint_check, branch=branch
-    )
+    node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
     node_class = Node
     if schema.kind in registry.node:
         node_class = registry.node[schema.kind]
