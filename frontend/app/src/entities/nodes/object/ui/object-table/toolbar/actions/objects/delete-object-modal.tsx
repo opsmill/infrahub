@@ -1,4 +1,4 @@
-import { useDeleteObject } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useDeleteObjects } from "@/entities/nodes/object/domain/delete-objects.mutation";
 import { NodeObject } from "@/entities/nodes/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import ModalDelete from "@/shared/components/modals/modal-delete";
@@ -13,17 +13,20 @@ export interface DeleteObjectModalProps {
 }
 
 export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObjectModalProps) {
-  const { mutate, isPending } = useDeleteObject();
+  const { mutate, isPending } = useDeleteObjects();
 
   const handleRemoveObjects = async () => {
-    await Promise.all(
-      selectedRows.map(({ id, __typename }) => {
-        return mutate({
-          objectId: id,
-          objectKind: __typename,
-        });
-      })
-    );
+    const objectIds = selectedRows.map(({ id }) => {
+      return id;
+    });
+
+    const objectKind = selectedRows[0]?.__typename;
+
+    const res = await mutate({
+      objectIds,
+      objectKind,
+    });
+    console.log("res: ", res);
 
     await graphqlClient.reFetchObservableQueries();
 
