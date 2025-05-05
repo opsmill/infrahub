@@ -117,6 +117,7 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         deleted_ok = await client.branch.delete(branch_name=branch2.name)
         assert deleted_ok
 
+        # Make sure owner has been correctly deleted
         query = """
         MATCH (n: Node)
         WHERE n.uuid = $node_uuid
@@ -124,4 +125,15 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         """
 
         results = await db.execute_query(query=query, params={"node_uuid": owner.id})
+        assert len(results) == 0
+
+        # Make sure all nodes are connected to root
+
+        query = """
+        MATCH (n: Node)
+        WHERE NOT exists((n)-[:IS_PART_OF]-(:Root))
+        RETURN n
+        """
+
+        results = await db.execute_query(query=query)
         assert len(results) == 0

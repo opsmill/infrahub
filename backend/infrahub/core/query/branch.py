@@ -56,16 +56,24 @@ class DeleteBranchRelationshipsQuery(Query):
         WHERE r1.branch = $branch_name
         DELETE r1
 
-        WITH DISTINCT s, d
+        WITH collect(DISTINCT s) + collect(DISTINCT d) AS nodes
+
+        // Collect node IDs for filtering
+        WITH nodes, [n in nodes | n.uuid] as nodes_uuids
+
         // Also delete agnostic relationships that would not have been deleted above
-        MATCH (s2)-[r2]-(d2)
-        WHERE "Node" in labels(s2) AND NOT exists((s2)-[:IS_PART_OF]-(:Root))
+        MATCH (s2: Node)-[r2]-(d2)
+        WHERE NOT exists((s2)-[:IS_PART_OF]-(:Root))
+        AND s2.uuid IN nodes_uuids
         DELETE r2
 
-        WITH collect(DISTINCT s) + collect(DISTINCT d) + collect(DISTINCT s2) + collect(DISTINCT d2) AS nodes
+        WITH nodes, collect(DISTINCT s2) + collect(DISTINCT d2) as additional_nodes
+
+        WITH nodes + additional_nodes as nodes
 
         // Delete nodes that are no longer connected to any other nodes
         UNWIND nodes AS n
+        WITH DISTINCT n
         MATCH (n)
         WHERE NOT exists((n)--())
         DELETE n
