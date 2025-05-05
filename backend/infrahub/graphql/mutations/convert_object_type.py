@@ -5,6 +5,7 @@ from graphene import Boolean, InputObjectType, JSONString, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.utils import extract_fields
 
+from infrahub.core import registry
 from infrahub.core.convert_object_type.conversion import InputForDestField, convert_object_type
 from infrahub.core.manager import NodeManager
 
@@ -45,9 +46,10 @@ class ConvertObjectType(Mutation):
         node_to_convert = await NodeManager.get_one(
             id=str(data.node_id), db=graphql_context.db, branch=str(data.branch)
         )
+        target_schema = registry.get_node_schema(name=str(data.target_kind), branch=data.branch)
         new_node = await convert_object_type(
             node=node_to_convert,
-            target_kind=str(data.target_kind),
+            target_schema=target_schema,
             mapping=fields_mapping,
             branch=graphql_context.branch,
             db=graphql_context.db,

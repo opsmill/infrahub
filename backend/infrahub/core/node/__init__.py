@@ -37,7 +37,6 @@ from infrahub.types import ATTRIBUTE_TYPES
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
 from ...log import get_logger
-from ..query import Query, QueryType
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
@@ -897,46 +896,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if relationship.name not in exclude and relationship.kind == kind
         ]
 
-
-# Below functions look like methods (accessing private members) but are defined as functions as methods names
-# `Node` class become reserved keywords.
-
-
-def validate_node_relationships(node: Node) -> None:
-    for name in node._relationships:
-        relm: RelationshipManager = getattr(node, name)
-        relm.validate()
-
-
-class GetPeersIds(Query):
-    """
-    Return all peers ids connected to input node. Some peers can be excluded using `exclude_identifiers`.
-    """
-
-    name = "get_peers_ids"
-    type: QueryType = QueryType.READ
-    insert_return = False
-
-    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs):
-        self.node_id = node_id
-        self.exclude_identifiers = exclude_identifiers
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["source_id"] = kwargs["node_id"]
-        self.params["branch"] = self.branch.name
-        self.params["exclude_identifiers"] = self.exclude_identifiers
-
-        active_rel_filter, rel_params = self.branch.get_query_filter_path(
-            at=self.at, variable_name="e1", branch_agnostic=self.branch_agnostic
-        )
-        self.params.update(rel_params)
-
-        query = """
-            MATCH (node:Node { uuid: $source_id })-[e1:IS_RELATED]-(rl:Relationship)-[e2:IS_RELATED]-(peer:Node)
-            WHERE %(active_rel_filter)s AND peer.uuid <> node.uuid AND NOT (rl.name IN $exclude_identifiers)
-            WITH DISTINCT(peer.uuid) as uuid
-            RETURN uuid
-        """ % {"active_rel_filter": active_rel_filter}
-
-        self.add_to_query(query)
+    def validate_relationships(self) -> None:
+        for name in self._relationships:
+            relm: RelationshipManager = getattr(self, name)
+            relm.validate()

@@ -3,6 +3,7 @@ import json
 from graphene import Field, JSONString, ObjectType, String
 from graphql import GraphQLResolveInfo
 
+from infrahub.core import registry
 from infrahub.core.convert_object_type.schema_mapping import get_schema_mapping
 
 
@@ -18,7 +19,10 @@ async def fields_mapping_type_conversion_resolver(
     target_kind: str,
     branch: str,
 ) -> dict:
-    mapping = get_schema_mapping(source_kind=source_kind, target_kind=target_kind, branch=branch)
+    source_schema = registry.get_node_schema(name=source_kind, branch=branch)
+    target_schema = registry.get_node_schema(name=target_kind, branch=branch)
+
+    mapping = get_schema_mapping(source_schema=source_schema, target_schema=target_schema)
     mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
     return {"mapping": json.dumps(mapping_dict)}
 

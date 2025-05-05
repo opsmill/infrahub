@@ -12,6 +12,11 @@ from infrahub import config, lock
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.create import (
+    create_node,
+    get_profile_ids,
+    refresh_for_profile_update,
+)
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
@@ -25,11 +30,6 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 
-from .mutation_create import (
-    create_node,
-    get_profile_ids,
-    refresh_for_profile_update,
-)
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:

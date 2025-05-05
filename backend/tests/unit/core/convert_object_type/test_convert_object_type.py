@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField, convert_object_type
 from infrahub.core.convert_object_type.schema_mapping import SchemaMappingValue, get_schema_mapping
@@ -25,7 +26,9 @@ class TestConvertObjectType(TestInfrahubApp):
         res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
-        mapping = get_schema_mapping(source_kind="TestconvPerson1", target_kind="TestconvPerson2", branch=branch.name)
+        source_schema = registry.get_node_schema(name="TestconvPerson1", branch=branch)
+        target_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
+        mapping = get_schema_mapping(source_schema=source_schema, target_schema=target_schema)
         assert len(mapping) == 12
         assert mapping["name"] == SchemaMappingValue(source_field_name="name", is_mandatory=True)
         assert mapping["height"] == SchemaMappingValue(source_field_name="height", is_mandatory=False)
@@ -103,8 +106,9 @@ class TestConvertObjectType(TestInfrahubApp):
             "bags": InputForDestField(source_field="bags"),
         }
 
+        person_2_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
         jack_2 = await convert_object_type(
-            node=jack_1, target_kind="TestconvPerson2", mapping=mapping, db=db, branch=branch
+            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch
         )
 
         with pytest.raises(NodeNotFoundError):
@@ -164,9 +168,10 @@ class TestConvertObjectType(TestInfrahubApp):
             "name": InputForDestField(source_field="name"),
         }
 
+        person_2_schema = registry.get_node_schema(name="TestmoPerson2", branch=default_branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at mandatory_owner"):
             await convert_object_type(
-                node=jack_1, target_kind="TestmoPerson2", mapping=mapping, db=db, branch=default_branch
+                node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
             )
 
         # And make sure it works when setting a new owner to the car
@@ -175,7 +180,7 @@ class TestConvertObjectType(TestInfrahubApp):
             "my_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
         }
         await convert_object_type(
-            node=jack_1, target_kind="TestmoPerson2", mapping=mapping, db=db, branch=default_branch
+            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
         )
 
     async def test_raise_on_break_mandatory_unidirectional_relationship(
@@ -211,9 +216,10 @@ class TestConvertObjectType(TestInfrahubApp):
             "name": InputForDestField(source_field="name"),
         }
 
+        person_2_schema = registry.get_node_schema(name="TestudPerson2", branch=default_branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at unidirectional_owner"):
             await convert_object_type(
-                node=jack_1, target_kind="TestudPerson2", mapping=mapping, db=db, branch=default_branch
+                node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
             )
 
     async def test_agnostic_attributes(
@@ -237,8 +243,9 @@ class TestConvertObjectType(TestInfrahubApp):
             "height_2_agnostic": InputForDestField(source_field="height_1_aware"),
         }
 
+        person_2_schema = registry.get_node_schema(name="TestbsPerson2", branch=default_branch)
         jack_2 = await convert_object_type(
-            node=jack_1, target_kind="TestbsPerson2", mapping=mapping, db=db, branch=default_branch
+            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
         )
 
         assert jack_2 is not None

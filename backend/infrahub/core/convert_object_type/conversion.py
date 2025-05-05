@@ -2,16 +2,16 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from infrahub.core import registry
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import GetPeersIds, Node, validate_node_relationships
+from infrahub.core.node import Node
+from infrahub.core.node.create import create_node
+from infrahub.core.query.relationship import GetAllPeersIds
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.mutations.mutation_create import create_node
 
 
 class InputDataForDestField(BaseModel):  # Only one of these fields can be not None
@@ -19,10 +19,26 @@ class InputDataForDestField(BaseModel):  # Only one of these fields can be not N
     peer_id: str | None = None
     peers_ids: list[str] | None = None
 
+    @property
+    def value(self) -> Any:
+        fields = [self.attribute_value, self.peer_id, self.peers_ids]
+        set_fields = [f for f in fields if f is not None]
+        if len(set_fields) != 1:
+            raise ValueError("Exactly one of attribute_value, peer_id, or peers_ids must be set")
+        return set_fields[0]
+
 
 class InputForDestField(BaseModel):  # Only one of these fields can be not None
     source_field: str | None = None
     data: InputDataForDestField | None = None
+
+    @property
+    def value(self) -> Any:
+        if self.source_field is not None and self.data is not None:
+            raise ValueError("Only one of source_field or data can be set")
+        if self.source_field is None and self.data is None:
+            raise ValueError("Either source_field or data must be set")
+        return self.source_field if self.source_field is not None else self.data
 
 
 async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase) -> list[str]:
@@ -40,30 +56,23 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, InputForD
 
     data = {}
     for dest_field_name, input_for_dest_field in mapping.items():
-        if input_for_dest_field.source_field is not None:
-            item = getattr(node, input_for_dest_field.source_field)
+        value = input_for_dest_field.value
+        if isinstance(value, str):  # source_field
+            item = getattr(node, value)
             if isinstance(item, BaseAttribute):
                 data[dest_field_name] = item.value
             elif isinstance(item, RelationshipManager):
                 if item.schema.cardinality == RelationshipCardinality.ONE:
                     peer = await item.get_peer(db=db)
-                    if peer is None:
-                        raise ValueError(f"Unable to find peer of {item=}")
-                    data[dest_field_name] = {"id": peer.id}
+                    if peer is not None:
+                        data[dest_field_name] = {"id": peer.id}
+                    # else, relationship is optional, and if the target relationship is mandatory an error will be raised during creation
                 elif item.schema.cardinality == RelationshipCardinality.MANY:
                     data[dest_field_name] = [{"id": peer.id} for _, peer in (await item.get_peers(db=db)).items()]
                 else:
                     raise ValueError(f"Unknown cardinality {item.schema.cardinality=}")
-        else:
-            assert input_for_dest_field.data is not None, f"{input_for_dest_field=}"
-            if input_for_dest_field.data.attribute_value is not None:
-                data[dest_field_name] = input_for_dest_field.data.attribute_value
-            elif input_for_dest_field.data.peer_id is not None:
-                data[dest_field_name] = input_for_dest_field.data.peer_id
-            elif input_for_dest_field.data.peers_ids is not None:
-                data[dest_field_name] = input_for_dest_field.data.peers_ids
-            else:
-                raise ValueError(f"No filled value for destination field {dest_field_name=}")
+        else:  # user input data
+            data[dest_field_name] = value.value
     return data
 
 
@@ -73,16 +82,13 @@ async def get_unidirectional_rels_peers_ids(node: Node, branch: Branch, db: Infr
     """
 
     out_rels_identifier = [rel.identifier for rel in node.get_schema().relationships]
-    delete_query = await GetPeersIds.init(
-        db=db, node_id=node.id, branch=branch, exclude_identifiers=out_rels_identifier
-    )
-    await delete_query.execute(db=db)
-    uuids = [row.data["uuid"] for row in delete_query.results]  # type: ignore
-    return uuids
+    query = await GetAllPeersIds.init(db=db, node_id=node.id, branch=branch, exclude_identifiers=out_rels_identifier)
+    await query.execute(db=db)
+    return query.get_peers_uuids()
 
 
 async def convert_object_type(
-    node: Node, target_kind: str, mapping: dict[str, InputForDestField], branch: Branch, db: InfrahubDatabase
+    node: Node, target_schema: NodeSchema, mapping: dict[str, InputForDestField], branch: Branch, db: InfrahubDatabase
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
     An extra check is performed on input node peers relationships to make sure they are still valid."""
@@ -99,8 +105,6 @@ async def convert_object_type(
         if len(deleted_nodes) != 1:
             raise ValueError(f"Deleted {len(deleted_nodes)} nodes instead of 1")
 
-        target_schema = registry.get_node_schema(name=target_kind, branch=branch)
-
         data_new_node = await build_data_new_node(dbt, mapping, node)
         node_created = await create_node(
             data=data_new_node,
@@ -111,13 +115,9 @@ async def convert_object_type(
         )
 
         # Make sure relationships with constraints are not broken by retrieving them
-        # When performance matters here, it would be more efficient to retrieve only relationships
-        # that we want to verify.
-        for peer_id in deleted_node_out_rels_peer_ids + deleted_node_unidir_rels_peer_ids:
-            peer = await NodeManager.get_one(id=peer_id, db=dbt, prefetch_relationships=True, branch=branch)
-            if peer is None:
-                raise ValueError(f"Peer {peer_id} not found after deleting node {node.id}")
-
-            validate_node_relationships(node=peer)
+        peers_ids = deleted_node_out_rels_peer_ids + deleted_node_unidir_rels_peer_ids
+        peers = await NodeManager.get_many(ids=peers_ids, db=dbt, prefetch_relationships=True, branch=branch)
+        for peer in peers.values():
+            peer.validate_relationships()
 
         return node_created
