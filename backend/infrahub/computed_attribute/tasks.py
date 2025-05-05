@@ -96,9 +96,9 @@ async def process_transform(
         )
 
         repo = await get_initialized_repo(
+            client=service.client,
             repository_id=transform.repository.peer.id,
             name=transform.repository.peer.name.value,
-            service=service,
             repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
         )  # type: ignore[misc]
