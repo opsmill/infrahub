@@ -26,7 +26,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
     return (
       <span className="flex items-center flex-wrap">
         <Tooltip enabled content={getDateDisplay(date)}>
-          <span className="text-xs font-normal">{format(dateData, "MMM d")}</span>
+          <span className="text-xs font-normal">{format(dateData, "MMM d yyyy")}</span>
         </Tooltip>
       </span>
     );
