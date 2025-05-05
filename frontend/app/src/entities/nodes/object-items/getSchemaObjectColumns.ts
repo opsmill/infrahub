@@ -2,7 +2,6 @@ import {
   attributesKindForDetailsViewExclude,
   relationshipsForDetailsView,
   relationshipsForListView,
-  relationshipsForTabs,
 } from "@/config/constants";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import { AttributeKind, ModelSchema } from "@/entities/schema/types";
@@ -72,26 +71,6 @@ export const getObjectRelationships = ({
       isRelationship: true,
       paginated: relationship.cardinality === "many",
       ...relationship,
-    }));
-
-  return relationships;
-};
-
-export const getTabs = (schema?: ModelSchema) => {
-  if (!schema) {
-    return [];
-  }
-
-  // Relationship kind to show in LIST VIEW - Attribute, Parent
-  const relationships = (schema.relationships || [])
-    .filter(
-      (relationship) =>
-        relationship.cardinality &&
-        relationshipsForTabs[relationship.cardinality].includes(relationship.kind)
-    )
-    .map((relationship) => ({
-      label: relationship.label,
-      name: relationship.name,
     }));
 
   return relationships;

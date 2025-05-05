@@ -1,7 +1,9 @@
 import importlib
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from infrahub import config, lock
+from infrahub.constants.database import DatabaseType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -13,6 +15,7 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
+from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
@@ -25,12 +28,17 @@ from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
+from infrahub.database.memgraph import IndexManagerMemgraph
+from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
+
+if TYPE_CHECKING:
+    from infrahub.database.index import IndexManagerBase
 
 log = get_logger()
 
@@ -115,7 +123,19 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.permission_backends = initialize_permission_backends()
 
 
-async def initialization(db: InfrahubDatabase) -> None:
+async def add_indexes(db: InfrahubDatabase) -> None:
+    if db.db_type is DatabaseType.MEMGRAPH:
+        index_manager: IndexManagerBase = IndexManagerMemgraph(db=db)
+    index_manager = IndexManagerNeo4j(db=db)
+
+    if config.SETTINGS.experimental_features.value_db_index:
+        node_indexes.append(attr_value_index)
+    index_manager.init(nodes=node_indexes, rels=rel_indexes)
+    log.debug("Loading database indexes ..")
+    await index_manager.add()
+
+
+async def initialization(db: InfrahubDatabase, add_database_indexes: bool = False) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
         await session.run(query="SET DATABASE SETTING 'log.level' TO 'INFO'")
@@ -129,12 +149,8 @@ async def initialization(db: InfrahubDatabase) -> None:
         log.debug("Checking Root Node")
         await initialize_registry(db=db, initialize=True)
 
-        # Add Indexes to the database
-        if db.manager.index.initialized:
-            log.debug("Loading database indexes ..")
-            await db.manager.index.add()
-        else:
-            log.warning("The database index manager hasn't been initialized.")
+        if add_database_indexes:
+            await add_indexes(db=db)
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry

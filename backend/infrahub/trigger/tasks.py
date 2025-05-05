@@ -31,7 +31,4 @@ async def trigger_configure_all(service: InfrahubServices) -> None:
         )
 
         async with get_client(sync_client=False) as prefect_client:
-            await setup_triggers(
-                client=prefect_client,
-                triggers=triggers,
-            )
+            await setup_triggers(client=prefect_client, triggers=triggers, force_update=True)

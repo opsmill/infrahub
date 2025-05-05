@@ -33,9 +33,7 @@ from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .memgraph import DatabaseManagerMemgraph
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
-from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -157,11 +155,6 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
-
-        if self.db_type == DatabaseType.NEO4J:
-            self.manager = DatabaseManagerNeo4j(db=self)
-        elif self.db_type == DatabaseType.MEMGRAPH:
-            self.manager = DatabaseManagerMemgraph(db=self)
 
     def __del__(self) -> None:
         if not self._session or not self._is_session_local or self._session.closed():
