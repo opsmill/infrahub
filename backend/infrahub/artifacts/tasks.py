@@ -3,7 +3,7 @@ from prefect import flow
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
-from infrahub.git import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.git.repository import get_initialized_repo
 from infrahub.services import InfrahubServices
 from infrahub.tasks.artifact import define_artifact
 from infrahub.workflows.utils import add_tags
