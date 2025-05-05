@@ -28,6 +28,7 @@ from .m023_deduplicate_cardinality_one_relationships import Migration023
 from .m024_missing_hierarchy_backfill import Migration024
 from .m025_uniqueness_nulls import Migration025
 from .m026_0000_prefix_fix import Migration026
+from .m027_delete_isolated_nodes import Migration027
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -61,6 +62,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration024,
     Migration025,
     Migration026,
+    Migration027,
 ]
 
 
