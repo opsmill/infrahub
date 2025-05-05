@@ -1,0 +1,1 @@
+Update dates format to show year, and fix consistency between list and details views
