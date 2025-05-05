@@ -204,6 +204,7 @@ class TransformWebhook(Webhook):
     transform_class: str = Field(...)
     transform_file: str = Field(...)
     transform_timeout: int = Field(...)
+    convert_query_response: bool = Field(...)
 
     async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
         repo: InfrahubReadOnlyRepository | InfrahubRepository
@@ -229,6 +230,7 @@ class TransformWebhook(Webhook):
             branch_name=branch,
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",
+            convert_query_response=self.convert_query_response,
             data={"data": data, **context.model_dump()},
             client=service.client,
         )  # type: ignore[misc]
@@ -247,4 +249,5 @@ class TransformWebhook(Webhook):
             transform_class=transform.class_name.value,
             transform_file=transform.file_path.value,
             transform_timeout=transform.timeout.value,
+            convert_query_response=transform.convert_query_response.value or False,
         )

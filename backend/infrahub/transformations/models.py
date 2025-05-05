@@ -11,6 +11,9 @@ class TransformPythonData(BaseModel):
     branch: str = Field(..., description="The branch to target")
     transform_location: str = Field(..., description="Location of the transform within the repository")
     commit: str = Field(..., description="The commit id to use when generating the artifact")
+    convert_query_response: bool = Field(
+        ..., description="Define if the GraphQL query respose should be converted into InfrahubNode objects"
+    )
     timeout: int = Field(..., description="The timeout value to use when generating the artifact")
 
 

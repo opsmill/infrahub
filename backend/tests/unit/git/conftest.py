@@ -1226,6 +1226,15 @@ async def transformation_data_01() -> dict:
             "is_visible": True,
             "is_protected": False,
         },
+        "convert_query_response": {
+            "id": "e53b4f75-3f2d-4aed-98dd-1d6f049b87f4",
+            "__typename": "Boolean",
+            "value": False,
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
         "__typename": "CoreTransformPython",
         "display_label": "transform01",
     }

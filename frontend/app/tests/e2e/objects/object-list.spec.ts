@@ -16,7 +16,7 @@ test.describe.fixme("/objects/:objectKind", () => {
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
       await expect(
-        page.getByText("Standard Tag object to attached to other objects to provide some context.")
+        page.getByText("Standard Tag object to attach to other objects to provide some context.")
       ).toBeVisible();
       await expect(page.getByTestId("create-object-button")).toBeDisabled();
       await page.getByTestId("actions-cell-blue").click();
