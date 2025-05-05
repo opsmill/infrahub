@@ -11,7 +11,6 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -209,11 +208,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     ref: str | None = Field(None, description="Ref to track on the external repository")
 
     @classmethod
-    async def new(cls, service: InfrahubServices, **kwargs: Any) -> InfrahubReadOnlyRepository:
+    async def new(cls, **kwargs: Any) -> InfrahubReadOnlyRepository:
         if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
             raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
 
-        self = cls(service=service, **kwargs)
+        self = cls(**kwargs)
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
         log.info("Created new repository locally.", repository=self.name)
         return self
