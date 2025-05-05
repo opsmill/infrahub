@@ -50,6 +50,7 @@ from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.log import get_logger
+from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -223,7 +224,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             raise error
 
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
-        await self.service.event.send(
+        event_service = await get_event_service()
+        await event_service.send(
             CommitUpdatedEvent(
                 commit=commit,
                 repository_name=self.name,
@@ -1427,7 +1429,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             storage_id_previous=previous_storage_id,
         )
 
-        await self.service.event.send(event=event)
+        event_service = await get_event_service()
+        await event_service.send(event=event)
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
 
