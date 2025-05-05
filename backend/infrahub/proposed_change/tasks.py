@@ -554,9 +554,9 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, 
     for repository in model.branch_diff.repositories:
         if model.source_branch_sync_with_git:
             repo = await get_initialized_repo(
+                client=service.client,
                 repository_id=repository.repository_id,
                 name=repository.repository_name,
-                service=service,
                 repository_kind=repository.kind,
             )
             commit = repo.get_commit_value(proposed_change.source_branch.value)
@@ -706,9 +706,9 @@ async def run_generator_as_check(
     log = get_run_logger()
 
     repository = await get_initialized_repo(
+        client=service.client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )

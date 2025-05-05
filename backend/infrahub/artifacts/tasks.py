@@ -14,21 +14,13 @@ async def create(model: CheckArtifactCreate, service: InfrahubServices) -> Valid
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     validator = await service.client.get(kind=InfrahubKind.ARTIFACTVALIDATOR, id=model.validator_id, include=["checks"])
 
-    repo: InfrahubReadOnlyRepository | InfrahubRepository
-    if InfrahubKind.READONLYREPOSITORY:
-        repo = await InfrahubReadOnlyRepository.init(
-            id=model.repository_id,
-            name=model.repository_name,
-            client=service.client,
-            service=service,
-        )
-    else:
-        repo = await InfrahubRepository.init(
-            id=model.repository_id,
-            name=model.repository_name,
-            client=service.client,
-            service=service,
-        )
+    repo = await get_initialized_repo(
+        client=service.client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=model.repository_kind,
+        commit=model.commit,
+    )
 
     artifact, artifact_created = await define_artifact(model=model, service=service)
 

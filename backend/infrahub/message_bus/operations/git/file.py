@@ -15,9 +15,9 @@ async def get(message: messages.GitFileGet, service: InfrahubServices) -> None:
     log.info("Collecting file from repository", repository=message.repository_name, file=message.file)
 
     repo = await get_initialized_repo(
+        client=service.client,
         repository_id=message.repository_id,
         name=message.repository_name,
-        service=service,
         repository_kind=message.repository_kind,
         commit=message.commit,
     )

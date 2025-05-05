@@ -319,11 +319,7 @@ class TestGetMissingFile(TestInfrahubApp):
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id,
-            name=git_repo_car_dealership.name,
-            location=git_repo_car_dealership.path,
-            client=client,
-            service=await InfrahubServices.new(database=db),
+            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
         )
 
         commit = repo.get_commit_value(branch_name="main")
