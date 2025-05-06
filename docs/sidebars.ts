@@ -29,6 +29,15 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Getting Started',
+      link: { type: 'doc', id: 'getting-started/overview' },
+      items: [
+        'getting-started/overview',
+        'getting-started/quick-start',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Tutorials',
       link: {
         type: 'generated-index',
