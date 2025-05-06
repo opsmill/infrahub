@@ -16,17 +16,13 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
   const { mutate, isPending } = useDeleteObjects();
 
   const handleRemoveObjects = async () => {
-    const objectIds = selectedRows.map(({ id }) => {
-      return id;
+    const objects = selectedRows.map(({ id, __typename }) => {
+      return { id, kind: __typename };
     });
 
-    const objectKind = selectedRows[0]?.__typename;
-
-    const res = await mutate({
-      objectIds,
-      objectKind,
+    await mutate({
+      objects,
     });
-    console.log("res: ", res);
 
     await graphqlClient.reFetchObservableQueries();
 

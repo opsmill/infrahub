@@ -1,29 +1,24 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { DeleteObjectsParams } from "@/entities/nodes/object/api/delete-objects-from-api";
 import { queryClient } from "@/shared/api/rest/client";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useMutation } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { deleteObjects } from "./delete-objects";
 
-export interface DeleteObjectsParams {
-  objectKind: string;
-  objectIds: Array<string>;
-}
-
 export function useDeleteObjects() {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useMutation({
-    mutationFn: async ({ objectKind, objectIds }: DeleteObjectsParams) => {
+    mutationFn: async ({ objects }: DeleteObjectsParams) => {
       await deleteObjects({
-        objectKind,
-        objectIds,
+        objects,
         branchName: currentBranch.name,
         atDate: timeMachineDate,
       });
 
-      return { objectKind, objectIds };
+      return { objects };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
