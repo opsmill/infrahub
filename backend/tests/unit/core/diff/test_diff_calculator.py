@@ -3600,28 +3600,36 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         assert rel_diff.action is expected_action
         assert not rel_diff.relationships
 
-    # update attribute after migration and first diff calculated
+    # update attributes and relationship after migration and first diff calculated
     final_branch_camry_name = "ultra camry"
     final_branch_camry_color = "#445566"
+    final_branch_camry_owner_id = person_alfred_main.id
     final_main_camry_name = "main ultra camry"
     final_main_camry_color = "#665544"
+    final_main_camry_owner_id = person_albert_main.id
     migrated_branch_camry = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
     migrated_branch_camry.name.value = final_branch_camry_name
     migrated_branch_camry.color.value = final_branch_camry_color
+    await migrated_branch_camry.owner.update(db=db, data=final_branch_camry_owner_id)
     await migrated_branch_camry.save(db=db)
     main_camry = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
     main_camry.name.value = final_main_camry_name
     main_camry.color.value = final_main_camry_color
+    await main_camry.owner.update(db=db, data=final_main_camry_owner_id)
     await main_camry.save(db=db)
-    # TODO: update relationship after migration and first diff
 
     # calculate the diff again after these updates
+    owner_rel_schema = main_camry.get_schema().get_relationship("owner")
     node_specifier_map = NodeFieldSpecifierMap()
-    for field_name in ["color", "name"]:
+    for field_name in ["color", "name", owner_rel_schema.get_identifier()]:
         node_specifier_map.add_entry(
             node_uuid=car_camry_main.id, kind=migrated_branch_camry.get_kind(), field_name=field_name
         )
         node_specifier_map.add_entry(node_uuid=car_camry_main.id, kind=car_camry_main.get_kind(), field_name=field_name)
+    for owner_id in [final_main_camry_owner_id, final_branch_camry_owner_id]:
+        node_specifier_map.add_entry(
+            node_uuid=owner_id, kind="TestPerson", field_name=owner_rel_schema.get_identifier()
+        )
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -3633,11 +3641,16 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     )
 
     # check post-migration update on main correctly captured
+    # check attrs and rels on updated, migrated car
     base_diff = calculated_diffs.base_branch_diff
-    assert len(base_diff.nodes) == 1
+    assert len(base_diff.nodes) == 3
     nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in base_diff.nodes}
-    assert set(nodes_by_id_and_kind.keys()) == {(car_camry_main.id, car_camry_main.get_kind())}
-    main_camry_diff = base_diff.nodes[0]
+    assert set(nodes_by_id_and_kind.keys()) == {
+        (car_camry_main.id, car_camry_main.get_kind()),
+        (final_main_camry_owner_id, "TestPerson"),
+        (new_main_camry_owner_id, "TestPerson"),
+    }
+    main_camry_diff = nodes_by_id_and_kind[car_camry_main.id, car_camry_main.get_kind()]
     attr_diffs_by_name = {a.name: a for a in main_camry_diff.attributes}
     assert set(attr_diffs_by_name.keys()) == {"color", "name"}
     for attr_name, new_value, previous_value in (
@@ -3652,14 +3665,48 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         assert prop_diff.action is DiffAction.UPDATED
         assert prop_diff.previous_value == previous_value
         assert prop_diff.new_value == new_value
-    assert not main_camry_diff.relationships
+    rel_diffs_by_name = {r.name: r for r in main_camry_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"owner"}
+    owner_rel_diff = rel_diffs_by_name["owner"]
+    assert owner_rel_diff.action is DiffAction.UPDATED
+    peer_id_and_action = {(e.peer_id, e.action) for e in owner_rel_diff.relationships}
+    assert peer_id_and_action == {
+        (new_main_camry_owner_id, DiffAction.REMOVED),
+        (final_main_camry_owner_id, DiffAction.ADDED),
+    }
+
+    # check rel on new migrated car owner
+    new_owner_diff = nodes_by_id_and_kind[final_main_camry_owner_id, "TestPerson"]
+    assert new_owner_diff.action is DiffAction.UPDATED
+    assert not new_owner_diff.attributes
+    rel_diffs_by_name = {r.name: r for r in new_owner_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"cars"}
+    cars_rel_diff = rel_diffs_by_name["cars"]
+    assert cars_rel_diff.action is DiffAction.UPDATED
+    peer_id_and_action = {(e.peer_id, e.action) for e in cars_rel_diff.relationships}
+    assert peer_id_and_action == {(car_camry_main.id, DiffAction.ADDED)}
+
+    # check rel on previous migrated car owner
+    previous_owner_diff = nodes_by_id_and_kind[new_main_camry_owner_id, "TestPerson"]
+    assert previous_owner_diff.action is DiffAction.UPDATED
+    assert not previous_owner_diff.attributes
+    rel_diffs_by_name = {r.name: r for r in previous_owner_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"cars"}
+    cars_rel_diff = rel_diffs_by_name["cars"]
+    assert cars_rel_diff.action is DiffAction.UPDATED
+    peer_id_and_action = {(e.peer_id, e.action) for e in cars_rel_diff.relationships}
+    assert peer_id_and_action == {(car_camry_main.id, DiffAction.REMOVED)}
 
     # check post-migration update on branch correctly captured
     branch_diff = calculated_diffs.diff_branch_diff
-    assert len(branch_diff.nodes) == 1
+    assert len(branch_diff.nodes) == 3
     nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in branch_diff.nodes}
-    assert set(nodes_by_id_and_kind.keys()) == {(car_camry_main.id, migrated_branch_camry.get_kind())}
-    branch_camry_diff = branch_diff.nodes[0]
+    assert set(nodes_by_id_and_kind.keys()) == {
+        (car_camry_main.id, migrated_branch_camry.get_kind()),
+        (final_branch_camry_owner_id, "TestPerson"),
+        (new_branch_camry_owner_id, "TestPerson"),
+    }
+    branch_camry_diff = nodes_by_id_and_kind[(car_camry_main.id, migrated_branch_camry.get_kind())]
     attr_diffs_by_name = {a.name: a for a in branch_camry_diff.attributes}
     assert set(attr_diffs_by_name.keys()) == {"color", "name"}
     for attr_name, new_value, previous_value in (
@@ -3674,7 +3721,37 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         assert prop_diff.action is DiffAction.UPDATED
         assert prop_diff.previous_value == previous_value
         assert prop_diff.new_value == new_value
-    assert not branch_camry_diff.relationships
+    rel_diffs_by_name = {r.name: r for r in branch_camry_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"owner"}
+    owner_rel_diff = rel_diffs_by_name["owner"]
+    assert owner_rel_diff.action is DiffAction.UPDATED
+    peer_id_and_action = {(e.peer_id, e.action) for e in owner_rel_diff.relationships}
+    assert peer_id_and_action == {
+        (new_branch_camry_owner_id, DiffAction.REMOVED),
+        (final_branch_camry_owner_id, DiffAction.ADDED),
+    }
+
+    # check rel on new migrated car owner
+    new_owner_diff = nodes_by_id_and_kind[final_branch_camry_owner_id, "TestPerson"]
+    assert new_owner_diff.action is DiffAction.UPDATED
+    assert not new_owner_diff.attributes
+    rel_diffs_by_name = {r.name: r for r in new_owner_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"cars"}
+    cars_rel_diff = rel_diffs_by_name["cars"]
+    assert cars_rel_diff.action is DiffAction.UPDATED
+    peer_id_and_action = {(e.peer_id, e.action) for e in cars_rel_diff.relationships}
+    assert peer_id_and_action == {(car_camry_main.id, DiffAction.ADDED)}
+
+    # check rel on previous migrated car owner
+    previous_owner_diff = nodes_by_id_and_kind[new_branch_camry_owner_id, "TestPerson"]
+    assert previous_owner_diff.action is DiffAction.UPDATED
+    assert not previous_owner_diff.attributes
+    rel_diffs_by_name = {r.name: r for r in previous_owner_diff.relationships}
+    assert set(rel_diffs_by_name.keys()) == {"cars"}
+    cars_rel_diff = rel_diffs_by_name["cars"]
+    assert cars_rel_diff.action is DiffAction.UPDATED
+    peer_id_and_action = {(e.peer_id, e.action) for e in cars_rel_diff.relationships}
+    assert peer_id_and_action == {(car_camry_main.id, DiffAction.REMOVED)}
 
 
 async def test_calculate_with_migrated_attr_name(
