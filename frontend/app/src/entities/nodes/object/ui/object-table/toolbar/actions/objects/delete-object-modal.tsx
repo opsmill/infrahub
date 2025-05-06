@@ -39,10 +39,10 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
     <ModalDelete
       title="Delete"
       description={
-        <p>
+        <>
           Are you sure you want to delete{" "}
           <strong>{pluralize(selectedRows.length, "object")}</strong> ?
-        </p>
+        </>
       }
       open={open}
       setOpen={setOpen}
