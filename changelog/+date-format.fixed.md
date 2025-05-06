@@ -1,1 +1,1 @@
-Update dates format to show year, and fix consistency between list and details views
+Update date formatting to include the year for dates before the current year, and ensure consistency between the list and detail views.
