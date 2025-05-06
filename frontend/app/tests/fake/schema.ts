@@ -15,7 +15,7 @@ export const generateNodeSchema = (
     state: "present",
     name: "Tag",
     namespace: "Builtin",
-    description: "Standard Tag object to attached to other objects to provide some context.",
+    description: "Standard Tag object to attach to other objects to provide some context.",
     label: "Tag",
     branch: "aware",
     default_filter: "name__value",

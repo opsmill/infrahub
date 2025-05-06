@@ -1,6 +1,4 @@
-from infrahub.core.constants import (
-    BranchSupportType,
-)
+from infrahub.core.constants import BranchSupportType
 
 from ...attribute_schema import AttributeSchema as Attr
 from ...node_schema import NodeSchema
@@ -8,7 +6,7 @@ from ...node_schema import NodeSchema
 builtin_tag = NodeSchema(
     name="Tag",
     namespace="Builtin",
-    description="Standard Tag object to attached to other objects to provide some context.",
+    description="Standard Tag object to attach to other objects to provide some context.",
     include_in_menu=True,
     icon="mdi:tag-multiple",
     label="Tag",
