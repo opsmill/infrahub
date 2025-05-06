@@ -24,6 +24,8 @@ from infrahub.dependencies.registry import get_component_registry
 from tests.unit.conftest import _build_hierarchical_location_data
 from tests.unit.core.test_utils import verify_all_linked_edges_deleted
 
+from .get_one_node import get_one_diff_node
+
 
 async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
     """Verify that no duplicate paths exist at the database level"""
@@ -376,7 +378,7 @@ class TestDiffAndMerge:
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        node = enriched_diff.get_node(node_uuid=person_jane_main.id)
+        node = get_one_diff_node(diff_root=enriched_diff, node_uuid=person_jane_main.id)
         assert node.action is DiffAction.UPDATED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
@@ -407,9 +409,9 @@ class TestDiffAndMerge:
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        car_node = enriched_diff.get_node(node_uuid=branch_car.id)
+        car_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=branch_car.id)
         assert car_node.action is DiffAction.ADDED
-        person_node = enriched_diff.get_node(node_uuid=person_jane_main.id)
+        person_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=person_jane_main.id)
         assert person_node.action is DiffAction.UPDATED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
@@ -448,9 +450,9 @@ class TestDiffAndMerge:
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        dog_node = enriched_diff.get_node(node_uuid=dog_main.id)
+        dog_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=dog_main.id)
         assert dog_node.action is DiffAction.UPDATED
-        friend_node = enriched_diff.get_node(node_uuid=friend_main.id)
+        friend_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=friend_main.id)
         assert friend_node.action is DiffAction.UPDATED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
@@ -486,11 +488,11 @@ class TestDiffAndMerge:
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        diff_person = enriched_diff.get_node(node_uuid=person.id)
+        diff_person = get_one_diff_node(diff_root=enriched_diff, node_uuid=person.id)
         assert diff_person.action is DiffAction.ADDED
         # validate car is not in the diff
-        with pytest.raises(ValueError, match=rf"No node {car.id}"):
-            enriched_diff.get_node(node_uuid=car.id)
+        with pytest.raises(ValueError, match=r"No nodes found"):
+            get_one_diff_node(diff_root=enriched_diff, node_uuid=car.id)
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=Timestamp())
@@ -557,9 +559,9 @@ class TestDiffAndMerge:
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        diff_person = enriched_diff.get_node(node_uuid=person.id)
+        diff_person = get_one_diff_node(diff_root=enriched_diff, node_uuid=person.id)
         assert diff_person.action is DiffAction.UPDATED
-        diff_car = enriched_diff.get_node(node_uuid=car.id)
+        diff_car = get_one_diff_node(diff_root=enriched_diff, node_uuid=car.id)
         assert diff_car.action is DiffAction.ADDED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
@@ -698,7 +700,7 @@ class TestDiffAndMerge:
         conflicts_map = enriched_diff.get_all_conflicts()
         # check the conflict
         assert len(conflicts_map) == 1
-        conflict_node = enriched_diff.get_node(node_uuid=car_main.id)
+        conflict_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=car_main.id)
         assert conflict_node.conflict
         assert conflict_node.conflict.base_branch_action is DiffAction.UPDATED
         assert conflict_node.conflict.diff_branch_action is DiffAction.REMOVED
@@ -765,7 +767,7 @@ class TestDiffAndMerge:
         conflicts_map = enriched_diff.get_all_conflicts()
         # check the conflict
         assert len(conflicts_map) == 1
-        conflict_node = enriched_diff.get_node(node_uuid=car_branch.id)
+        conflict_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=car_branch.id)
         assert conflict_node.conflict
         assert conflict_node.conflict.base_branch_action is DiffAction.REMOVED
         assert conflict_node.conflict.diff_branch_action is DiffAction.UPDATED

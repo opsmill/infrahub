@@ -9,6 +9,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
+from .model.field_specifiers_map import NodeFieldSpecifierMap
 from .model.path import (
     BranchTrackingId,
     EnrichedDiffRoot,
@@ -44,7 +45,7 @@ class EnrichedDiffRequest:
     from_time: Timestamp
     to_time: Timestamp
     tracking_id: TrackingId
-    node_field_specifiers: dict[str, set[str]] = field(default_factory=dict)
+    node_field_specifiers: NodeFieldSpecifierMap = field(default_factory=NodeFieldSpecifierMap)
 
     def __repr__(self) -> str:
         return (

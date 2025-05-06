@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import AsyncGenerator, Generator, Iterable
 
 from neo4j.exceptions import TransientError
@@ -17,6 +16,7 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
 from infrahub.log import get_logger
 
+from ..model.field_specifiers_map import NodeFieldSpecifierMap
 from ..model.path import (
     ConflictSelection,
     EnrichedDiffConflict,
@@ -516,21 +516,25 @@ class DiffRepository:
         await query.execute(db=self.db)
         return query.get_num_changes_by_branch()
 
-    async def get_node_field_specifiers(self, diff_id: str) -> dict[str, set[str]]:
+    async def get_node_field_specifiers(self, diff_id: str) -> NodeFieldSpecifierMap:
         limit = config.SETTINGS.database.query_size_limit
         offset = 0
-        specifiers: dict[str, set[str]] = defaultdict(set)
+        specifiers_map = NodeFieldSpecifierMap()
         while True:
             query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id, offset=offset, limit=limit)
             await query.execute(db=self.db)
             has_data = False
             for field_specifier_tuple in query.get_node_field_specifier_tuples():
-                specifiers[field_specifier_tuple[0]].add(field_specifier_tuple[1])
+                specifiers_map.add_entry(
+                    node_uuid=field_specifier_tuple[0],
+                    kind=field_specifier_tuple[1],
+                    field_name=field_specifier_tuple[2],
+                )
                 has_data = True
             if not has_data:
                 break
             offset += limit
-        return specifiers
+        return specifiers_map
 
     async def add_summary_counts(
         self,

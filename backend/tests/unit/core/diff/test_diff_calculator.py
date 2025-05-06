@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality, SchemaPathType
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
+from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.relationship_duplicate import RelationshipDuplicateQuery, SchemaRelationshipInfo
@@ -1629,12 +1630,14 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
     branch_after_change = Timestamp()
 
     diff_calculator = DiffCalculator(db=db)
+    node_field_specifiers = NodeFieldSpecifierMap()
+    node_field_specifiers.add_entry(node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="name")
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={alfred_main.id: {"name"}},
+        previous_node_specifiers=node_field_specifiers,
         include_unchanged=True,
     )
 
@@ -1682,12 +1685,14 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     branch_after_change = Timestamp()
 
     diff_calculator = DiffCalculator(db=db)
+    node_field_specifiers = NodeFieldSpecifierMap()
+    node_field_specifiers.add_entry(node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="name")
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={alfred_main.id: {"name"}},
+        previous_node_specifiers=node_field_specifiers,
         include_unchanged=True,
     )
 
@@ -1816,16 +1821,15 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     branch_after_change = Timestamp()
 
     diff_calculator = DiffCalculator(db=db)
-
+    node_field_specifiers = NodeFieldSpecifierMap()
+    node_field_specifiers.add_entry(node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="name")
+    node_field_specifiers.add_entry(node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name="color")
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={
-            car_accord_main.id: {"color"},
-            person_alfred_main.id: {"name"},
-        },
+        previous_node_specifiers=node_field_specifiers,
         include_unchanged=True,
     )
 
@@ -2774,16 +2778,15 @@ async def test_diff_unchanged_included_when_not_first_diff(
     await alfred_main.save(db=db)
 
     diff_calculator = DiffCalculator(db=db)
-
+    node_field_specifiers = NodeFieldSpecifierMap()
+    node_field_specifiers.add_entry(node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="name")
+    node_field_specifiers.add_entry(node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name="color")
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={
-            car_accord_main.id: {"color"},
-            person_alfred_main.id: {"name"},
-        },
+        previous_node_specifiers=node_field_specifiers,
         include_unchanged=True,
     )
 
@@ -3056,15 +3059,16 @@ async def test_diff_relationship_property_update_on_main(
     owner_rel_schema = car_schema.get_relationship(name="owner")
 
     diff_calculator = DiffCalculator(db=db)
-
+    node_field_specifiers = NodeFieldSpecifierMap()
+    node_field_specifiers.add_entry(
+        node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name=owner_rel_schema.get_identifier()
+    )
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={
-            car_accord_main.id: {owner_rel_schema.get_identifier()},
-        },
+        previous_node_specifiers=node_field_specifiers,
         include_unchanged=True,
     )
 
@@ -3109,16 +3113,20 @@ async def test_calculate_with_migrated_kind_node(
     assert not execution_result.errors
 
     diff_calculator = DiffCalculator(db=db)
+    node_specifier_map = NodeFieldSpecifierMap()
+    node_specifier_map.add_entry(
+        node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name=owner_rel_schema.get_identifier()
+    )
+    node_specifier_map.add_entry(
+        node_uuid=car_camry_main.id, kind=car_camry_main.get_kind(), field_name=owner_rel_schema.get_identifier()
+    )
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=Timestamp(branch.get_branched_from()),
         to_time=Timestamp(),
-        previous_node_specifiers={
-            car_accord_main.id: {owner_rel_schema.get_identifier()},
-            car_camry_main.id: {owner_rel_schema.get_identifier()},
-        },
+        previous_node_specifiers=node_specifier_map,
         include_unchanged=True,
     )
 
