@@ -128,12 +128,13 @@ CALL {
     // add base branch paths before branched_from, if they exist
     // -------------------------------------
     WITH n, attr_rel, r_node, r_prop
+    // 'base_n' instead of 'n' here to get previous value for node with a migrated kind/inheritance
     OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF {branch: $base_branch_name}]
-        -(n)-[base_r_node {branch: $base_branch_name}]
+        -(base_n {uuid: n.uuid})-[base_r_node {branch: $base_branch_name}]
         -(attr_rel)-[base_r_prop {branch: $base_branch_name}]->(base_prop)
     WHERE type(base_r_node) = type(r_node)
     AND type(base_r_prop) = type(r_prop)
-    AND [%(id_func)s(n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
+    AND [%(id_func)s(base_n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
     AND all(
         r in relationships(latest_base_path)
         WHERE r.from < $branch_from_time
@@ -143,7 +144,7 @@ CALL {
     // the migration leaves two nodes with the same UUID linked to the same Relationship
     // ------------------------
     AND (
-        n.uuid IS NULL OR base_prop.uuid IS NULL OR n.uuid <> base_prop.uuid
+        base_n.uuid IS NULL OR base_prop.uuid IS NULL OR base_n.uuid <> base_prop.uuid
         OR type(base_r_node) <> "IS_RELATED" OR type(base_r_prop) <> "IS_RELATED"
     )
     WITH latest_base_path, base_r_root, base_r_node, base_r_prop
@@ -735,7 +736,7 @@ CALL {
     CALL {
         WITH n, row_from_time
         OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
-        WHERE row_from_time <= r_root_deleted.from < $to_time
+        WHERE r_root_deleted.from < $to_time
         WITH r_root_deleted
         ORDER BY r_root_deleted.status DESC
         LIMIT 1
