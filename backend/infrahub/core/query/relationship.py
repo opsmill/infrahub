@@ -237,41 +237,57 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["is_protected"] = self.rel.is_protected
         self.params["is_visible"] = self.rel.is_visible
 
-        if self.branch.is_default:
-            query_match = """
+        source_branch = self.source.get_branch_based_on_support_type()
+        if source_branch.is_global or source_branch.is_default:
+            source_query_match = """
             MATCH (s:Node { uuid: $source_id })
-            WHERE NOT exists((s)-[:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root))
-            MATCH (d:Node { uuid: $destination_id })
-            WHERE NOT exists((d)-[:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root))
+            WHERE NOT exists((s)-[:IS_PART_OF {status: "deleted", branch: $source_branch}]->(:Root))
             """
+            self.params["source_branch"] = source_branch.name
         else:
-            node_filter, filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
-            query_match = """
+            source_filter, source_filter_params = source_branch.get_query_filter_path(
+                at=self.at, variable_name="r", params_prefix="src_"
+            )
+            source_query_match = """
             MATCH (s:Node { uuid: $source_id })
             CALL {
                 WITH s
                 MATCH (s)-[r:IS_PART_OF]->(:Root)
-                WHERE %(node_filter)s
-                RETURN r.status = "active" AS is_active
+                WHERE %(source_filter)s
+                RETURN r.status = "active" AS s_is_active
                 ORDER BY r.from DESC
                 LIMIT 1
             }
-            WITH s, is_active WHERE is_active = TRUE
-            WITH s
+            WITH s WHERE s_is_active = TRUE
+            """ % {"source_filter": source_filter}
+            self.params.update(source_filter_params)
+        self.add_to_query(source_query_match)
+
+        destination_branch = self.destination.get_branch_based_on_support_type()
+        if destination_branch.is_global or destination_branch.is_default:
+            destination_query_match = """
+            MATCH (d:Node { uuid: $destination_id })
+            WHERE NOT exists((d)-[:IS_PART_OF {status: "deleted", branch: $destination_branch}]->(:Root))
+            """
+            self.params["destination_branch"] = destination_branch.name
+        else:
+            destination_filter, destination_filter_params = destination_branch.get_query_filter_path(
+                at=self.at, variable_name="r", params_prefix="dst_"
+            )
+            destination_query_match = """
             MATCH (d:Node { uuid: $destination_id })
             CALL {
                 WITH d
                 MATCH (d)-[r:IS_PART_OF]->(:Root)
-                WHERE %(node_filter)s
-                RETURN r.status = "active" AS is_active
+                WHERE %(destination_filter)s
+                RETURN r.status = "active" AS d_is_active
                 ORDER BY r.from DESC
                 LIMIT 1
             }
-            WITH s, d, is_active WHERE is_active = TRUE
-            """ % {"node_filter": node_filter}
-            self.params.update(filter_params)
-
-        self.add_to_query(query_match)
+            WITH s, d WHERE d_is_active = TRUE
+            """ % {"destination_filter": destination_filter}
+            self.params.update(destination_filter_params)
+        self.add_to_query(destination_query_match)
 
         self.query_add_all_node_property_match()
 

@@ -295,6 +295,7 @@ class Branch(StandardNode):
         is_isolated: bool = True,
         branch_agnostic: bool = False,
         variable_name: str = "r",
+        params_prefix: str = "",
     ) -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -306,30 +307,28 @@ class Branch(StandardNode):
 
             There is a currently an assumption that the relationship in the path will be named 'r'
         """
-
+        pp = params_prefix
         params: dict[str, Any] = {}
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = (
-                f"{variable_name}.from <= $time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= $time1)"
-            )
-            params["time1"] = at_str
+            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            params[f"{pp}time1"] = at_str
             return filter_str, params
 
         branches_times = self.get_branches_and_times_to_query_global(at=at_str, is_isolated=is_isolated)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            params[f"branch{idx}"] = list(branch_name)
-            params[f"time{idx}"] = time_to_query
+            params[f"{pp}branch{idx}"] = list(branch_name)
+            params[f"{pp}time{idx}"] = time_to_query
 
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to >= $time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"
