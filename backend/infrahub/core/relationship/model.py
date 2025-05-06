@@ -789,6 +789,9 @@ class RelationshipManager:
 
         return len(self._relationships)
 
+    def validate(self) -> None:
+        self._relationships.validate()
+
     @overload
     async def get_peer(
         self,
