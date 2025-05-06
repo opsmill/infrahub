@@ -22,7 +22,6 @@ import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
-import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import { Link } from "@/shared/components/ui/link";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
@@ -61,7 +60,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "TextArea") {
-    return <MarkdownViewer markdownText={row[attribute?.name]?.value} />;
+    return <MarkdownRender markdownText={row[attribute?.name]?.value} />;
   }
 
   if (attribute?.kind === "JSON") {
