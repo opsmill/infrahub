@@ -1405,7 +1405,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -1438,6 +1438,10 @@ class NodeGetHierarchyQuery(Query):
             UNWIND peers_with_duplicates AS pwd
             RETURN DISTINCT pwd AS peer
         }
+        """ % {"filter": filter_str, "branch_filter": branch_filter}
+
+        if not self.branch.is_default:
+            query += """
         CALL {
             WITH n, peer
             MATCH path = (n)%(filter)s(peer)
@@ -1448,10 +1452,14 @@ class NodeGetHierarchyQuery(Query):
             LIMIT 1
         }
         WITH peer1 as peer, is_active
-        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        else:
+            query += """
+        WITH peer
+            """
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"]
+        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
@@ -1461,7 +1469,8 @@ class NodeGetHierarchyQuery(Query):
             if clean_filters.get("id", None):
                 self.params["peer_ids"].append(clean_filters.get("id"))
 
-        self.add_to_query("WHERE " + " AND ".join(where_clause))
+        if where_clause:
+            self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
