@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField
@@ -98,7 +97,7 @@ class TestConvertObjectType(TestInfrahubApp):
         await jack_1.save()
 
         query = """
-            mutation($node_id: String!, $target_kind: String!, $branch: String!, $fields_mapping: JSONString!) {
+            mutation($node_id: String!, $target_kind: String!, $branch: String!, $fields_mapping: GenericScalar!) {
                 ConvertObjectType(data: {
                         node_id: $node_id,
                         target_kind: $target_kind,
@@ -106,6 +105,7 @@ class TestConvertObjectType(TestInfrahubApp):
                         fields_mapping: $fields_mapping
                     }) {
                         ok
+                        node
                 }
             }
         """
@@ -128,8 +128,13 @@ class TestConvertObjectType(TestInfrahubApp):
             variables={
                 "branch": "main",
                 "node_id": str(jack_1.id),
-                "fields_mapping": json.dumps(mapping_dict),
+                "fields_mapping": mapping_dict,
                 "target_kind": "TestconvPerson2",
             },
         )
         assert response["ConvertObjectType"]["ok"] is True
+        res_node = response["ConvertObjectType"]["node"]
+        assert res_node["__kind__"] == "TestconvPerson2"
+        assert res_node["age"]["value"] == 25
+        assert res_node["name"]["value"] == "Jack"
+        assert res_node["height"]["value"] == 170

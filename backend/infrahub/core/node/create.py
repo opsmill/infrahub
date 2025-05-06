@@ -140,17 +140,39 @@ async def refresh_for_profile_update(
     return obj
 
 
+async def _do_create_node(
+    node_class: type[Node],
+    db: InfrahubDatabase,
+    data: dict,
+    schema: NonGenericSchemaTypes,
+    fields_to_validate: list,
+    branch: Branch,
+    node_constraint_runner: NodeConstraintRunner,
+) -> Node:
+    obj = await node_class.init(db=db, schema=schema, branch=branch)
+    await obj.new(db=db, **data)
+    await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+    await obj.save(db=db)
+
+    object_template = await obj.get_object_template(db=db)
+    if object_template:
+        await handle_template_relationships(
+            db=db,
+            branch=branch,
+            template=object_template,
+            obj=obj,
+            fields=fields_to_validate,
+        )
+    return obj
+
+
 async def create_node(
     data: dict,
     db: InfrahubDatabase,
     branch: Branch,
     schema: NonGenericSchemaTypes,
 ) -> Node:
-    """
-    Create a node in the database if constraint checks succeed.
-    Set use_session_for_constraint_checks=True enhances performances, but can't be used if a transaction is already
-    ongoing.
-    """
+    """Create a node in the database if constraint checks succeed."""
 
     component_registry = get_component_registry()
     node_constraint_runner = await component_registry.get_component(
@@ -162,36 +184,26 @@ async def create_node(
 
     fields_to_validate = list(data)
     if db.is_transaction:
-        obj = await node_class.init(db=db, schema=schema, branch=branch)
-        await obj.new(db=db, **data)
-        await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-        await obj.save(db=db)
-
-        object_template = await obj.get_object_template(db=db)
-        if object_template:
-            await handle_template_relationships(
-                db=db,
-                branch=branch,
-                template=object_template,
-                obj=obj,
-                fields=fields_to_validate,
-            )
+        obj = await _do_create_node(
+            node_class=node_class,
+            node_constraint_runner=node_constraint_runner,
+            db=db,
+            schema=schema,
+            branch=branch,
+            fields_to_validate=fields_to_validate,
+            data=data,
+        )
     else:
         async with db.start_transaction() as dbt:
-            obj = await node_class.init(db=dbt, schema=schema, branch=branch)
-            await obj.new(db=dbt, **data)
-            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-            await obj.save(db=dbt)
-
-            object_template = await obj.get_object_template(db=dbt)
-            if object_template:
-                await handle_template_relationships(
-                    db=dbt,
-                    branch=branch,
-                    template=object_template,
-                    obj=obj,
-                    fields=fields_to_validate,
-                )
+            obj = await _do_create_node(
+                node_class=node_class,
+                node_constraint_runner=node_constraint_runner,
+                db=dbt,
+                schema=schema,
+                branch=branch,
+                fields_to_validate=fields_to_validate,
+                data=data,
+            )
 
     if await get_profile_ids(db=db, obj=obj):
         obj = await refresh_for_profile_update(db=db, branch=branch, schema=schema, obj=obj)

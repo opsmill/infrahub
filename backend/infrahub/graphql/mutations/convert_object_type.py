@@ -1,9 +1,8 @@
-import ast
 from typing import TYPE_CHECKING, Any, Self
 
-from graphene import Boolean, InputObjectType, JSONString, Mutation, String
+from graphene import Boolean, InputObjectType, Mutation, String
+from graphene.types.generic import GenericScalar
 from graphql import GraphQLResolveInfo
-from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
 from infrahub.core.convert_object_type.conversion import InputForDestField, convert_object_type
@@ -16,8 +15,7 @@ if TYPE_CHECKING:
 class ConvertObjectTypeInput(InputObjectType):
     node_id = String(required=True)
     target_kind = String(required=True)
-    # TODO use GenericScalar instead?
-    fields_mapping = JSONString(required=True)  # keys are destination attributes/relationships names.
+    fields_mapping = GenericScalar(required=True)  # keys are destination attributes/relationships names.
     branch = String(required=True)
 
 
@@ -26,7 +24,7 @@ class ConvertObjectType(Mutation):
         data = ConvertObjectTypeInput(required=True)
 
     ok = Boolean()
-    # TODO Return created node as json?
+    node = GenericScalar()
 
     @classmethod
     async def mutate(
@@ -35,12 +33,15 @@ class ConvertObjectType(Mutation):
         info: GraphQLResolveInfo,
         data: ConvertObjectTypeInput,
     ) -> Self:
+        """Convert an input node to a given compatible kind."""
+
         graphql_context: GraphqlContext = info.context
-        # json.loads doesn't work here as it seems double quotes become single quotes when deserializing server side
-        mapping = ast.literal_eval(str(data.fields_mapping))
 
         fields_mapping: dict[str, InputForDestField] = {}
-        for field, input_for_dest_field_str in mapping.items():
+        if not isinstance(data.fields_mapping, dict):
+            raise ValueError(f"Expected `fields_mapping` to be a `dict`, got {type(fields_mapping)}")
+
+        for field, input_for_dest_field_str in data.fields_mapping.items():
             fields_mapping[field] = InputForDestField(**input_for_dest_field_str)
 
         node_to_convert = await NodeManager.get_one(
@@ -55,8 +56,7 @@ class ConvertObjectType(Mutation):
             db=graphql_context.db,
         )
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
-        result: dict[str, Any] = {"ok": True}
-        if "object" in fields:
-            result["object"] = await new_node.to_graphql(db=graphql_context.db, fields=fields.get("object", {}))
+        dict_node = await new_node.to_graphql(db=graphql_context.db, fields={})
+        result: dict[str, Any] = {"ok": True, "node": dict_node}
+
         return cls(**result)

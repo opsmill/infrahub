@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class TestConvertObjectType(TestInfrahubApp):
+class TestSchemaConversionMapping(TestInfrahubApp):
     async def test_schema_conversion_mapping(
         self, db: InfrahubDatabase, client: InfrahubClient, branch, schemas_conversion
     ):
@@ -65,6 +65,8 @@ class TestConvertObjectType(TestInfrahubApp):
             source_field_name="profiles", relationship_cardinality=RelationshipCardinality.MANY, is_mandatory=False
         )
 
+
+class TestConvertObjectType(TestInfrahubApp):
     async def test_convert_object_type(
         self, db: InfrahubDatabase, client: InfrahubClient, schemas_conversion, branch
     ) -> None:

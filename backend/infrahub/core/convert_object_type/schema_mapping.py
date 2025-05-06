@@ -16,9 +16,10 @@ SchemaMapping = dict[str, SchemaMappingValue]
 def get_schema_mapping(source_schema: NodeSchema, target_schema: NodeSchema) -> SchemaMapping:
     """
     Return fields mapping meant to be used for converting a node from `source_kind` to `target_kind`.
-    For any field of the target kind, field of the source kind with identical name and type will be matched.
+    For any field of the target kind, field of the source kind will be matched if:
+    - It's an attribute with identical name and type.
+    - It's a relationship with identical peer kind and cardinality.
     If there is no match, the mapping will only indicate whether the field is mandatory or not.
-    Same apply for relationships.
     """
 
     target_field_to_source_field = {}
