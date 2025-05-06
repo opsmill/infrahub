@@ -23,7 +23,7 @@ async def test_build_subquery_filter_attribute_text(
 
     expected_query = """
     WITH n
-    MATCH path = (n)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
+    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
     WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH
         n,
@@ -61,7 +61,7 @@ async def test_build_subquery_filter_attribute_int(
 
     expected_query = """
     WITH n
-    MATCH path = (n)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter2_value })
+    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter2_value })
     WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH
         n,
@@ -99,7 +99,7 @@ async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_
     # ruff: noqa: E501
     expected_query = """
     WITH n
-    MATCH path = (n)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
+    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
     WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH
         n,
@@ -141,7 +141,7 @@ async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, defa
     # ruff: noqa: E501
     expected_query = """
     WITH n
-    MATCH path = (n)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)
+    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)
     WHERE peer.uuid IN $filter1_peer_ids AND all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH
         n,
@@ -177,7 +177,7 @@ async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_b
 
     expected_query = """
     WITH n
-    OPTIONAL MATCH path = (n)-[:IS_RELATED]->(:Relationship { name: $order1_rel_name })-[:IS_RELATED]->(:Node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $order1_name })-[:HAS_VALUE]-(last:AttributeValue)
+    OPTIONAL MATCH path = (n:Node {uuid: n.uuid})-[:IS_RELATED]->(:Relationship { name: $order1_rel_name })-[:IS_RELATED]->(:Node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $order1_name })-[:HAS_VALUE]-(last:AttributeValue)
     WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH last, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level, %(froms_var)s AS froms, all(r IN relationships(path) WHERE r.status = "active") AS is_active
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
@@ -209,7 +209,7 @@ async def test_build_subquery_filter_attribute_multiple_values(
 
     expected_query = """
     WITH n
-    MATCH path = (n)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue)
+    MATCH path = (n:Node {uuid: n.uuid})-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue)
     WHERE av.value IN $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH
         n,
@@ -249,7 +249,7 @@ async def test_build_subquery_filter_relationship_multiple_values(
     # ruff: noqa: E501
     expected_query = """
     WITH n
-    MATCH path = (n)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue)
+    MATCH path = (n:Node {uuid: n.uuid})-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av:AttributeValue)
     WHERE av.value IN $filter1_value AND all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH
         n,
