@@ -16,6 +16,13 @@ export function canDissociateRelationship({
   });
 
   const peerRelationship = peerSchema?.relationships?.find((relationship) => {
+    if (parentSchema?.inherit_from?.length) {
+      return (
+        parentSchema.inherit_from.includes(relationship.peer) &&
+        relationship.direction === parentRelationship?.direction
+      );
+    }
+
     return (
       relationship.peer === parentSchema?.kind &&
       relationship.direction === parentRelationship?.direction
