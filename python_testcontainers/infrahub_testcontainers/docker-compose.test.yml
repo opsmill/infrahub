@@ -64,7 +64,7 @@ services:
       - "database_logs:/logs"
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
-      test: wget http://localhost:7474 || exit 1
+      test: wget -O /dev/null http://localhost:7474 || exit 1
       interval: 2s
       timeout: 10s
       retries: 20
@@ -130,6 +130,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_PROTOCOL: ${INFRAHUB_TRACE_EXPORTER_PROTOCOL:-grpc}
       INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
       INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
+      INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_TESTING_SCHEMA_STRICT_MODE}
       OTEL_RESOURCE_ATTRIBUTES:
     depends_on:
       database:
@@ -177,6 +178,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_PROTOCOL: ${INFRAHUB_TRACE_EXPORTER_PROTOCOL:-grpc}
       INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
       INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
+      INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_TESTING_SCHEMA_STRICT_MODE}
       OTEL_RESOURCE_ATTRIBUTES:
     depends_on:
       - infrahub-server

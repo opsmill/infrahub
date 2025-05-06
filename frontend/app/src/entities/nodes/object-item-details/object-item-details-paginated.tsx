@@ -6,13 +6,13 @@ import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-it
 import {
   getObjectAttributes,
   getObjectRelationships,
-  getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import {
   ObjectDetailsTab,
   ObjectTaskTab,
   RelationshipTab,
 } from "@/entities/nodes/object/ui/object-tabs";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
@@ -82,7 +82,7 @@ export default function ObjectItemDetails({
 
   const attributes = getObjectAttributes({ schema: schema });
   const relationships = getObjectRelationships({ schema: schema });
-  const relationshipsTabs = getTabs(schema);
+  const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
     objectDetailsData?.display_label

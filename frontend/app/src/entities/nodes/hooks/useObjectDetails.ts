@@ -1,9 +1,7 @@
 import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
-import {
-  getSchemaObjectColumns,
-  getTabs,
-} from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { getPermission } from "@/entities/permission/utils";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
@@ -16,7 +14,7 @@ export const useObjectDetails = (schema: ModelSchema, objectId: string) => {
   const generics = useAtomValue(genericSchemasAtom);
   const profileGenericSchema = generics.find((s) => s.kind === PROFILE_KIND);
 
-  const relationshipsTabs = getTabs(schema);
+  const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
   const columns = getSchemaObjectColumns({ schema });
 
   const isProfileSchema = schema?.namespace === "Profile";
