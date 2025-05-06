@@ -5,10 +5,12 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.query.relationship import (
     RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
@@ -149,12 +151,15 @@ async def test_query_RelationshipCreateQuery(
     )
     await query.execute(db=db)
 
-    # We should have 2 paths between t1 and p1
-    # First for the relationship, Second via the branch
+    # We should have 1 path between t1 and p1
     paths = await get_paths_between_nodes(
-        db=db, source_id=tag_blue_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
     )
-    assert len(paths) == 2
+    assert len(paths) == 1
 
 
 async def test_query_RelationshipCreateQuery_w_node_property(
@@ -188,6 +193,57 @@ async def test_query_RelationshipCreateQuery_w_node_property(
         max_length=2,
     )
     assert len(paths) == 1
+
+
+async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+):
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    person_schema = schema.get(name="TestPerson")
+    person_schema.name = "GreatPerson"
+    new_person_kind = "TestGreatPerson"
+    assert person_schema.kind == new_person_kind
+    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    rel_schema = person_schema.get_relationship("tags")
+    migrated_person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
+    query = await RelationshipCreateQuery.init(
+        db=db,
+        source=migrated_person_jack,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=Relationship,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+
+    # We should have 1 path between tag_blue and migrated_person_jack
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=migrated_person_jack.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 1
+
+    # We should have 0 path between tag_blue and person_jack_main
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 0
 
 
 async def test_query_RelationshipDeleteQuery(

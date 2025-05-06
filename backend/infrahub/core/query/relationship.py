@@ -237,10 +237,40 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["is_protected"] = self.rel.is_protected
         self.params["is_visible"] = self.rel.is_visible
 
-        query_match = """
-        MATCH (s:Node { uuid: $source_id })
-        MATCH (d:Node { uuid: $destination_id })
-        """
+        if self.branch.is_default:
+            query_match = """
+            MATCH (s:Node { uuid: $source_id })
+            WHERE NOT exists((s)-[:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root))
+            MATCH (d:Node { uuid: $destination_id })
+            WHERE NOT exists((d)-[:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root))
+            """
+        else:
+            node_filter, filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
+            query_match = """
+            MATCH (s:Node { uuid: $source_id })
+            CALL {
+                WITH s
+                MATCH (s)-[r:IS_PART_OF]->(:Root)
+                WHERE %(node_filter)s
+                RETURN r.status = "active" AS is_active
+                ORDER BY r.from DESC
+                LIMIT 1
+            }
+            WITH s, is_active WHERE is_active = TRUE
+            WITH s
+            MATCH (d:Node { uuid: $destination_id })
+            CALL {
+                WITH d
+                MATCH (d)-[r:IS_PART_OF]->(:Root)
+                WHERE %(node_filter)s
+                RETURN r.status = "active" AS is_active
+                ORDER BY r.from DESC
+                LIMIT 1
+            }
+            WITH s, d, is_active WHERE is_active = TRUE
+            """ % {"node_filter": node_filter}
+            self.params.update(filter_params)
+
         self.add_to_query(query_match)
 
         self.query_add_all_node_property_match()
