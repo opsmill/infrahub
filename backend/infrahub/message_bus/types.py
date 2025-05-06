@@ -96,6 +96,9 @@ class ProposedChangeArtifactDefinition(BaseModel):
     class_name: str = Field(default="")
     content_type: str
     file_path: str = Field(default="")
+    convert_query_response: bool = Field(
+        default=False, description="Convert query response to InfrahubNode objects for Python based transforms"
+    )
     timeout: int
 
     @property

@@ -649,51 +649,118 @@ class NodeListGetRelationshipsQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    def __init__(self, ids: list[str], relationship_identifiers: list[str] | None = None, **kwargs):
+    def __init__(
+        self,
+        ids: list[str],
+        outbound_identifiers: list[str] | None = None,
+        inbound_identifiers: list[str] | None = None,
+        bidirectional_identifiers: list[str] | None = None,
+        **kwargs,
+    ):
         self.ids = ids
-        self.relationship_identifiers = relationship_identifiers
+        self.outbound_identifiers = outbound_identifiers
+        self.inbound_identifiers = inbound_identifiers
+        self.bidirectional_identifiers = bidirectional_identifiers
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["relationship_identifiers"] = self.relationship_identifiers
+        self.params["outbound_identifiers"] = self.outbound_identifiers
+        self.params["inbound_identifiers"] = self.inbound_identifiers
+        self.params["bidirectional_identifiers"] = self.bidirectional_identifiers
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        AND all(r IN relationships(paths_in) WHERE (%(filters)s))
-        AND n.uuid <> peer.uuid
-        RETURN n, rel, peer, r1, r2, "inbound" as direction
-        UNION
-        MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        AND all(r IN relationships(paths_out) WHERE (%(filters)s))
-        AND n.uuid <> peer.uuid
-        RETURN n, rel, peer, r1, r2, "outbound" as direction
-        UNION
-        MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
-        AND n.uuid <> peer.uuid
-        RETURN n, rel, peer, r1, r2, "bidirectional" as direction
+        CALL {
+            WITH n
+            MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
+            WHERE ($inbound_identifiers IS NULL OR rel.name in $inbound_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL {
+                WITH n, rel, peer
+                MATCH (n)<-[r:IS_RELATED]-(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)<-[r:IS_RELATED]-(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "inbound" as direction
+            UNION
+            WITH n
+            MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
+            WHERE ($outbound_identifiers IS NULL OR rel.name in $outbound_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL {
+                WITH n, rel, peer
+                MATCH (n)-[r:IS_RELATED]->(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)-[r:IS_RELATED]->(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "outbound" as direction
+            UNION
+            WITH n
+            MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
+            WHERE ($bidirectional_identifiers IS NULL OR rel.name in $bidirectional_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL {
+                WITH n, rel, peer
+                MATCH (n)-[r:IS_RELATED]->(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)<-[r:IS_RELATED]-(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "bidirectional" as direction
+        }
+        RETURN DISTINCT n_uuid, rel_name, peer_uuid, direction
         """ % {"filters": rels_filter}
-
         self.add_to_query(query)
-
-        self.return_labels = ["n", "rel", "peer", "r1", "r2", "direction"]
+        self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
 
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
         gpn = GroupedPeerNodes()
-        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
-            node_id = result.get("n").get("uuid")
-            rel_name = result.get("rel").get("name")
-            peer_id = result.get("peer").get("uuid")
+        for result in self.get_results():
+            node_id = result.get("n_uuid")
+            rel_name = result.get("rel_name")
+            peer_id = result.get("peer_uuid")
             direction = str(result.get("direction"))
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,

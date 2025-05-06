@@ -113,6 +113,7 @@ async def process_transform(
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
             client=service.client,
+            convert_query_response=transform.convert_query_response.value,
         )  # type: ignore[misc]
 
         await service.client.execute_graphql(
@@ -301,15 +302,24 @@ async def computed_attribute_setup_jinja2(
 
         triggers = await gather_trigger_computed_attribute_jinja2()
 
-        for trigger in triggers:
-            if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
+        # Since we can have multiple trigger per NodeKind
+        # we need to extract the list of unique node that should be processed
+        # also
+        # Because the automation in Prefect doesn't capture all information about the computed attribute
+        # we can't tell right now if a given computed attribute has changed and need to be updated
+        unique_nodes: set[tuple[str, str, str]] = {
+            (trigger.branch, trigger.computed_attribute.kind, trigger.computed_attribute.attribute.name)
+            for trigger in triggers
+        }
+        for branch, kind, attribute_name in unique_nodes:
+            if event_name != BranchDeletedEvent.event_name and branch == branch_name:
                 await service.workflow.submit_workflow(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
-                        "branch_name": trigger.branch,
-                        "computed_attribute_name": trigger.computed_attribute.attribute.name,
-                        "computed_attribute_kind": trigger.computed_attribute.kind,
+                        "branch_name": branch,
+                        "computed_attribute_name": attribute_name,
+                        "computed_attribute_kind": kind,
                     },
                 )
 
@@ -319,6 +329,7 @@ async def computed_attribute_setup_jinja2(
                 client=prefect_client,
                 triggers=triggers,
                 trigger_type=TriggerType.COMPUTED_ATTR_JINJA2,
+                force_update=False,
             )  # type: ignore[misc]
 
         log.info(f"{len(triggers)} Computed Attribute for Jinja2 automation configuration completed")
@@ -346,18 +357,29 @@ async def computed_attribute_setup_python(
 
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
 
-        for trigger in triggers_python:
-            if event_name != BranchDeletedEvent.event_name and trigger.branch == branch_name:
-                log.info(
-                    f"Triggering update for {trigger.computed_attribute.computed_attribute.attribute.name} on {branch_name}"
-                )
+        # Since we can have multiple trigger per NodeKind
+        # we need to extract the list of unique node that should be processed
+        # also
+        # Because the automation in Prefect doesn't capture all information about the computed attribute
+        # we can't tell right now if a given computed attribute has changed and need to be updated
+        unique_nodes: set[tuple[str, str, str]] = {
+            (
+                trigger.branch,
+                trigger.computed_attribute.computed_attribute.kind,
+                trigger.computed_attribute.computed_attribute.attribute.name,
+            )
+            for trigger in triggers_python
+        }
+        for branch, kind, attribute_name in unique_nodes:
+            if event_name != BranchDeletedEvent.event_name and branch == branch_name:
+                log.info(f"Triggering update for {kind}.{attribute_name} on {branch}")
                 await service.workflow.submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
                         "branch_name": branch_name,
-                        "computed_attribute_name": trigger.computed_attribute.computed_attribute.attribute.name,
-                        "computed_attribute_kind": trigger.computed_attribute.computed_attribute.kind,
+                        "computed_attribute_name": attribute_name,
+                        "computed_attribute_kind": kind,
                     },
                 )
 

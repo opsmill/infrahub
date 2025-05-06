@@ -681,7 +681,7 @@
         {
             "name": "Tag",
             "namespace": "Builtin",
-            "description": "Standard Tag object to attached to other objects to provide some context.",
+            "description": "Standard Tag object to attach to other objects to provide some context.",
             "default_filter": "name__value",
             "order_by": [
                 "name__value"
@@ -3031,6 +3031,23 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 7000
+                },
+                {
+                    "name": "convert_query_response",
+                    "kind": "Boolean",
+                    "namespace": "Attribute",
+                    "label": null,
+                    "description": null,
+                    "default_value": false,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": true,
+                    "order_weight": 8000
                 }
             ],
             "relationships": [

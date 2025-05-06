@@ -478,6 +478,7 @@ class CoreTransformJinja2(CoreTransformation):
 class CoreTransformPython(CoreTransformation):
     file_path: String
     class_name: String
+    convert_query_response: BooleanOptional
 
 
 class CoreUserValidator(CoreValidator):
