@@ -1,8 +1,8 @@
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { store } from "@/shared/stores";
 import { describe, expect, it } from "vitest";
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import { canDissociateRelationship } from "./can-dissociate-relationship";
-import { store } from "@/shared/stores";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 describe("canDissociateRelationship", () => {
   it("should return false if relationship not found in parent schema", () => {

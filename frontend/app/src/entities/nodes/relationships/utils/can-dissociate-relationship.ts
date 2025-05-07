@@ -1,5 +1,5 @@
-import { ModelSchema } from "@/entities/schema/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
+import { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export function canDissociateRelationship({
