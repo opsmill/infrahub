@@ -1,213 +1,221 @@
+import { describe, expect, it } from "vitest";
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import { canDissociateRelationship } from "./can-dissociate-relationship";
 
-describe("Dissociate action", () => {
-  it("should be enabled from relationship schema", () => {
+describe("canDissociateRelationship", () => {
+  it("should return false when relationship not found in parent schema", () => {
+    // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
       name: "Node",
-      relationships: [
-        generateRelationshipSchema({
-          cardinality: "many",
-          name: "relationshipName",
-          peer: "TestPeer",
-        }),
-      ],
+      relationships: [],
     });
-
     const peerSchema = generateNodeSchema({
       kind: "Test",
       name: "Peer",
-      relationships: [
-        generateRelationshipSchema({
-          cardinality: "many",
-        }),
-      ],
+      relationships: [],
     });
 
-    const isDissociateAllowed = canDissociateRelationship({
-      relationshipName: "relationshipName",
+    // WHEN
+    const result = canDissociateRelationship({
+      relationshipName: "nonexistent",
       parentSchema,
       peerSchema,
       relationshipsCount: 0,
     });
 
-    expect(isDissociateAllowed).to.eq(true);
+    // THEN
+    expect(result).toBe(false);
   });
 
-  it("should be enabled from peers min count", () => {
+  it("should return true when both relationships are optional", () => {
+    // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
       name: "Node",
       relationships: [
         generateRelationshipSchema({
-          cardinality: "many",
-          name: "relationshipName",
-          peer: "TestPeer",
+          name: "test",
+          peer: "Peer",
+          optional: true,
         }),
       ],
     });
-
     const peerSchema = generateNodeSchema({
       kind: "Test",
       name: "Peer",
       relationships: [
         generateRelationshipSchema({
-          cardinality: "many",
-          optional: false,
-          peer: "TestNode",
-          min_count: 2,
+          name: "test",
+          peer: "Node",
+          optional: true,
         }),
       ],
     });
 
-    const isDissociateAllowed = canDissociateRelationship({
-      relationshipName: "relationshipName",
-      parentSchema,
-      peerSchema,
-      relationshipsCount: 3,
-    });
-
-    expect(isDissociateAllowed).to.eq(true);
-  });
-
-  it("should be enabled from peers global count", () => {
-    const parentSchema = generateNodeSchema({
-      kind: "Test",
-      name: "Node",
-      relationships: [
-        generateRelationshipSchema({
-          cardinality: "many",
-          name: "relationshipName",
-          peer: "TestPeer",
-        }),
-      ],
-    });
-
-    const peerSchema = generateNodeSchema({
-      kind: "Test",
-      name: "Peer",
-      relationships: [
-        generateRelationshipSchema({
-          cardinality: "many",
-          optional: false,
-          peer: "TestNode",
-        }),
-      ],
-    });
-
-    const isDissociateAllowed = canDissociateRelationship({
-      relationshipName: "relationshipName",
-      parentSchema,
-      peerSchema,
-      relationshipsCount: 3,
-    });
-    expect(isDissociateAllowed).to.eq(true);
-  });
-
-  it("should be disabled from relationship schema", () => {
-    const parentSchema = generateNodeSchema({
-      kind: "Test",
-      name: "Node",
-      relationships: [
-        generateRelationshipSchema({
-          cardinality: "many",
-          name: "relationshipName",
-          peer: "TestPeer",
-          optional: false,
-        }),
-      ],
-    });
-
-    const peerSchema = generateNodeSchema({
-      kind: "Test",
-      name: "Peer",
-      relationships: [
-        generateRelationshipSchema({
-          cardinality: "many",
-          optional: false,
-          peer: "TestNode",
-        }),
-      ],
-    });
-
-    const isDissociateAllowed = canDissociateRelationship({
-      relationshipName: "relationshipName",
+    // WHEN
+    const result = canDissociateRelationship({
+      relationshipName: "test",
       parentSchema,
       peerSchema,
       relationshipsCount: 0,
     });
-    expect(isDissociateAllowed).to.eq(false);
+
+    // THEN
+    expect(result).toBe(true);
   });
 
-  it("should be disabled from peers min count", () => {
+  it("should handle when peer relationships is a generic", () => {
+    // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
       name: "Node",
+      inherit_from: ["BasePeer"],
       relationships: [
         generateRelationshipSchema({
-          cardinality: "many",
-          name: "relationshipName",
-          peer: "TestPeer",
+          name: "test",
+          peer: "Peer",
           optional: false,
-          min_count: 2,
         }),
       ],
     });
-
     const peerSchema = generateNodeSchema({
       kind: "Test",
       name: "Peer",
       relationships: [
         generateRelationshipSchema({
-          cardinality: "many",
-          optional: false,
-          peer: "TestNode",
+          name: "test",
+          peer: "BasePeer",
+          optional: true,
         }),
       ],
     });
 
-    const isDissociateAllowed = canDissociateRelationship({
-      relationshipName: "relationshipName",
+    // WHEN
+    const result = canDissociateRelationship({
+      relationshipName: "test",
       parentSchema,
       peerSchema,
       relationshipsCount: 2,
     });
-    expect(isDissociateAllowed).to.eq(false);
+
+    // THEN
+    expect(result).toBe(true);
   });
 
-  it("should be disabled from peers global count", () => {
+  it("should respect min_count when relationship is not optional", () => {
+    // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
       name: "Node",
       relationships: [
         generateRelationshipSchema({
-          cardinality: "many",
-          name: "relationshipName",
-          peer: "TestPeer",
+          name: "test",
+          peer: "Peer",
           optional: false,
+          min_count: 2,
         }),
       ],
     });
-
     const peerSchema = generateNodeSchema({
       kind: "Test",
       name: "Peer",
       relationships: [
         generateRelationshipSchema({
-          cardinality: "many",
+          name: "test",
+          peer: "Node",
+          optional: true,
+        }),
+      ],
+    });
+    // WHEN
+    const resultWithCountSmaller = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 1,
+    });
+    const resultWithCountBigger = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 3,
+    });
+
+    // THEN
+    expect(resultWithCountSmaller).toBe(false);
+    expect(resultWithCountBigger).toBe(true);
+  });
+
+  it("should handle when there is no relationship peer to parent", () => {
+    // GIVEN
+    const parentSchema = generateNodeSchema({
+      kind: "Test",
+      name: "Node",
+      relationships: [
+        generateRelationshipSchema({
+          name: "test",
+          peer: "Peer",
           optional: false,
-          peer: "TestNode",
+          min_count: 1,
+        }),
+      ],
+    });
+    const peerSchema = generateNodeSchema({
+      kind: "Test",
+      name: "Peer",
+      relationships: [],
+    });
+
+    // WHEN
+    const result = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 1,
+    });
+
+    // THEN
+    expect(result).toBe(false);
+  });
+
+  it("should handle different relationship directions", () => {
+    // GIVEN
+    const parentSchema = generateNodeSchema({
+      kind: "Test",
+      name: "Node",
+      relationships: [
+        generateRelationshipSchema({
+          name: "test",
+          peer: "Peer",
+          direction: "outbound",
+          optional: false,
+          min_count: 1,
+        }),
+      ],
+    });
+    const peerSchema = generateNodeSchema({
+      kind: "Test",
+      name: "Peer",
+      relationships: [
+        generateRelationshipSchema({
+          name: "test",
+          peer: "Node",
+          direction: "inbound",
+          optional: true,
         }),
       ],
     });
 
-    const isDissociateAllowed = canDissociateRelationship({
-      relationshipName: "relationshipName",
+    // WHEN
+    const result = canDissociateRelationship({
+      relationshipName: "test",
       parentSchema,
       peerSchema,
-      relationshipsCount: 0,
+      relationshipsCount: 1,
     });
-    expect(isDissociateAllowed).to.eq(false);
+
+    // THEN
+    expect(result).toEqual(false);
   });
 });
