@@ -3706,7 +3706,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         (final_branch_camry_owner_id, "TestPerson"),
         (new_branch_camry_owner_id, "TestPerson"),
     }
-    branch_camry_diff = nodes_by_id_and_kind[(car_camry_main.id, migrated_branch_camry.get_kind())]
+    branch_camry_diff = nodes_by_id_and_kind[car_camry_main.id, migrated_branch_camry.get_kind()]
     attr_diffs_by_name = {a.name: a for a in branch_camry_diff.attributes}
     assert set(attr_diffs_by_name.keys()) == {"color", "name"}
     for attr_name, new_value, previous_value in (

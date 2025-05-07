@@ -73,29 +73,26 @@ class RelationshipPeerData:
     source_id: UUID
     """UUID of the Source Node."""
 
+    source_db_id: str
+    """Internal DB ID of the Source Node."""
+
     source_kind: str
     """Kind of the Source Node."""
-
-    source_labels: frozenset[str]
-    """Labels of the Source Node."""
 
     peer_id: UUID
     """UUID of the Peer Node."""
 
+    peer_db_id: str
+    """Internal DB ID of the Peer Node."""
+
     peer_kind: str
     """Kind of the Peer Node."""
-
-    peer_labels: frozenset[str]
-    """Labels of the Peer Node."""
 
     properties: dict[str, FlagPropertyData | NodePropertyData]
     """UUID of the Relationship Node."""
 
     rel_node_id: UUID | None = None
     """UUID of the Relationship Node."""
-
-    peer_db_id: str | None = None
-    """Internal DB ID of the Peer Node."""
 
     rel_node_db_id: str | None = None
     """Internal DB ID of the Relationship Node."""
@@ -811,11 +808,11 @@ class RelationshipGetPeerQuery(Query):
             peer_node = result.get_node("peer")
             data = RelationshipPeerData(
                 source_id=source_node.get("uuid"),
+                source_db_id=source_node.element_id,
                 source_kind=source_node.get("kind"),
-                source_labels=source_node.labels,
                 peer_id=peer_node.get("uuid"),
+                peer_db_id=peer_node.element_id,
                 peer_kind=peer_node.get("kind"),
-                peer_labels=peer_node.labels,
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=rels[0]["from"],

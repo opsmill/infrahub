@@ -1,5 +1,3 @@
-import json
-
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 
@@ -147,7 +145,7 @@ class EnrichedDiffDeserializer:
                     parent_identifier = NodeIdentifier(
                         uuid=parent.get("uuid"),
                         kind=parent.get("kind"),
-                        labels=frozenset(json.loads(parent.get("db_labels"))),
+                        db_id=parent.get("db_id"),
                     )
                     parent_request = ParentNodeAddRequest(
                         node_identifier=current_node_identifier,
@@ -201,8 +199,8 @@ class EnrichedDiffDeserializer:
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:
         node_uuid = str(node_node.get("uuid"))
         node_kind = str(node_node.get("kind"))
-        node_db_labels = frozenset(json.loads(node_node.get("db_labels")))
-        node_identifier = NodeIdentifier(uuid=node_uuid, kind=node_kind, labels=node_db_labels)
+        node_db_id = node_node.get("db_id")
+        node_identifier = NodeIdentifier(uuid=node_uuid, kind=node_kind, db_id=node_db_id)
         node_key = (enriched_root.uuid, node_identifier)
         if node_key in self._diff_node_map:
             return self._diff_node_map[node_key]

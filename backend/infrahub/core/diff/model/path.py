@@ -87,13 +87,13 @@ class NodeIdentifier:
 
     uuid: str
     kind: str
-    labels: frozenset[str]
+    db_id: str
 
     def __hash__(self) -> int:
-        return hash(f"{self.uuid}:{self.kind}:{hash(self.labels)}")
+        return hash(f"{self.uuid}:{self.kind}:{self.db_id}")
 
     def __str__(self) -> str:
-        return f"{self.kind} '{self.uuid}' ({','.join(self.labels)})"
+        return f"{self.kind} '{self.uuid}' ({self.db_id})"
 
 
 @dataclass

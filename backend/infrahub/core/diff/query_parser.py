@@ -594,7 +594,7 @@ class DiffQueryParser:
 
     def _get_diff_node(self, database_path: DatabasePath, diff_root: DiffRootIntermediate) -> DiffNodeIntermediate:
         identifier = NodeIdentifier(
-            uuid=database_path.node_id, kind=database_path.node_kind, labels=database_path.node_labels
+            uuid=database_path.node_id, kind=database_path.node_kind, db_id=database_path.node_db_id
         )
         if identifier not in diff_root.nodes_by_identifier:
             diff_root.nodes_by_identifier[identifier] = DiffNodeIntermediate(
@@ -607,19 +607,6 @@ class DiffQueryParser:
                 else None,
             )
         diff_node = diff_root.nodes_by_identifier[identifier]
-        # special handling for nodes that have their kind updated, which results in 2 nodes with the same uuid
-        # if diff_node.db_id != database_path.node_db_id and (
-        #     database_path.node_changed_at > diff_node.from_time
-        #     or (
-        #         database_path.node_changed_at >= diff_node.from_time
-        #         and (diff_node.status, database_path.node_status)
-        #         == (RelationshipStatus.DELETED, RelationshipStatus.ACTIVE)
-        #     )
-        # ):
-        #     diff_node.kind = database_path.node_kind
-        #     diff_node.db_id = database_path.node_db_id
-        #     diff_node.from_time = database_path.node_changed_at
-        #     diff_node.status = database_path.node_status
         diff_node.track_database_path(database_path=database_path)
         return diff_node
 
