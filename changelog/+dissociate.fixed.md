@@ -1,1 +1,1 @@
-Enable dissociate action only if possible for relationships of cardinality many
+Display "dissociate" action only if possible on relationships table's row actions

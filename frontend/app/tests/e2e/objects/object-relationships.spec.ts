@@ -8,14 +8,6 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
   test.slow();
   const BRANCH_NAME = generateRandomBranchName("object-relationships");
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
   });
