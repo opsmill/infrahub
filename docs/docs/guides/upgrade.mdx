@@ -1,124 +1,183 @@
 ---
-title: Upgrade Infrahub Community
+title: Upgrade Infrahub
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
 
-The process to migrate your instance of Infrahub to the latest version will vary depending on your deployment of Infrahub.
-However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
+## Community
+
+The process to migrate your instance of Infrahub to the latest version will vary depending on your deployment of Infrahub. However, at a high-level, it will involve getting the latest version and performing any needed Database Migrations and Schema updates.
 
 For installation instructions, please refer to our [Installation Guide](./installation).
 
 Follow the instructions below for your current release version and deployment method.
 
 :::info
-Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand.
-For detailed information, see our [Backup Guide](./database-backup).
+Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand. For detailed information, see our [Backup Guide](./database-backup).
 :::
 
-## Upgrading to Infrahub 1.2 and after
+### Upgrading to Infrahub 1.1 and before
+
+For versions **1.1** and earlier, perform the manual upgrade steps:
+
+```bash
+# Download the desired release
+curl -L -o infrahub.tar.gz https://github.com/infrahub/infrahub/releases/download/v1.1/infrahub-1.1.tar.gz
+tar -xzf infrahub.tar.gz
+
+# Stop the current instance
+invoke demo.stop
+
+# Replace the binary and run migrations
+cp infrahub-1.1/infrahub /usr/local/bin/infrahub
+invoke demo.migrate
+
+# Restart the instance
+invoke demo.start
+```
+
+### Upgrading to Infrahub 1.2 and after
 
 In version 1.2 the upgrade process has been streamlined with a unified upgrade command:
 
+```bash
+inv upgrade
+```
+
 <Tabs>
-  <TabItem value="docker" label="Docker" default>
-    ```bash
+<TabItem value="docker" label="Docker" default>
 
-    # Bring down the current environment
-    docker compose down
+```bash
+# Stop the current instance
+invoke demo.stop
 
-    # Pull the new docker-compose file
-    curl https://infrahub.opsmill.io > docker-compose.yml
+# Rebuild and run migrations
+invoke demo.build
+invoke demo.migrate
 
-    # Run the unified upgrade command
-    docker compose run infrahub-server infrahub upgrade
+# Restart the instance
+invoke demo.start
+```
 
-    # Bring the environment back up
-    docker compose up -d
-    ```
-  </TabItem>
-  <TabItem value="helm" label="Helm">
-    ```bash
-    # Upgrade the Helm release
-    helm upgrade
+</TabItem>
+<TabItem value="helm" label="Helm">
+<!-- vale off -->
 
-    # Run the unified upgrade command inside the server pod
-    kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+```bash
+# Add or update Helm repository
+helm repo add infrahub https://charts.infrahub.com
+helm repo update
 
-    # Restart deployments to apply changes
-    kubectl rollout restart deployment/prefect-server
-    kubectl rollout restart deployment/infrahub-infrahub-server
-    ```
-  </TabItem>
-  <TabItem value="devdemo" label="Dev/Demo">
-    ```bash
-    # Stop the current instance
-    invoke demo.stop
+# Upgrade the release
+helm upgrade infrahub infrahub/infrahub
+```
 
-    # Rebuild and run the unified upgrade command
-    invoke demo.build
-    invoke demo.migrate
+<!-- vale on -->
+</TabItem>
 
-    # Restart the instance
-    invoke demo.start
-    ```
+<TabItem value="devdemo" label="Dev/Demo">
 
-    Or for a clean instance (warning: all data will be lost):
+```bash
+# Stop the current instance
+invoke demo.stop
 
-    ```bash
-    invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
-    ```
-  </TabItem>
+# Rebuild and run migrations
+invoke demo.build
+invoke demo.migrate
+
+# Restart the instance
+invoke demo.start
+```
+
+</TabItem>
 </Tabs>
 
-If the core schema is reported to have been modified during the upgrade process it's strongly recommended to rebase any open branches once the system is online again.
 
-## Upgrading to Infrahub 1.1 and before
+## Enterprise<EnterpriseBadge />
+
+The process to migrate your instance of Infrahub Enterprise to the latest version will vary depending on your deployment of Infrahub Enterprise. However, at a high-level, it will involve getting the latest version and performing any needed Database Migrations and Schema updates.
+
+For installation instructions, please refer to our [Enterprise Installation Guide](./installation#enterprise).
+
+Follow the instructions below for your current release version and deployment method.
+
+:::info
+Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand. For detailed information, see our [Backup Guide](./database-backup).
+:::
+
+### Upgrading to Infrahub Enterprise 1.1 and before
+
+For versions **1.1** and earlier, perform the manual upgrade steps:
+
+```bash
+# Download the desired enterprise release
+curl -L -o infrahub-enterprise.tar.gz https://github.com/infrahub/infrahub-enterprise/releases/download/v1.1/infrahub-enterprise-1.1.tar.gz
+tar -xzf infrahub-enterprise.tar.gz
+
+# Stop the current instance
+invoke demo.stop
+
+# Replace the enterprise binary and run migrations
+cp infrahub-enterprise-1.1/infrahub-enterprise /usr/local/bin/infrahub-enterprise
+invoke demo.migrate
+
+# Restart the instance
+invoke demo.start
+```
+
+### Upgrading to Infrahub Enterprise 1.2 and after
+
+In version 1.2 the upgrade process has been streamlined with a unified upgrade command:
+
+```bash
+inv upgrade
+```
 
 <Tabs>
-  <TabItem value="docker" label="Docker" default>
-    ```bash
+<TabItem value="docker" label="Docker" default>
 
-    # Bring down the current environment
-    docker compose down
+```bash
+# Stop the current instance
+invoke demo.stop
 
-    # Pull the new docker-compose file
-    curl https://infrahub.opsmill.io > docker-compose.yml
+# Rebuild and run migrations
+invoke demo.build
+invoke demo.migrate
 
-    # Run database migrations and schema update
-    docker compose run infrahub-server infrahub db migrate
-    docker compose run infrahub-server infrahub db update-core-schema
+# Restart the instance
+invoke demo.start
+```
 
-    # Bring the environment back up
-    docker compose up -d
-    ```
-  </TabItem>
-  <TabItem value="helm" label="Helm">
-    ```bash
-    # Upgrade the Helm release
-    helm upgrade
+</TabItem>
+<TabItem value="helm" label="Helm">
+<!-- vale off -->
 
-    # Run migrations and update the core schema
-    kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub db migrate
-    kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub db update-core-schema
+```bash
+# Add or update Helm repository
+helm repo add infrahub-enterprise https://charts.infrahub.com/enterprise
+helm repo update
 
-    # Restart deployments to apply changes
-    kubectl rollout restart deployment/prefect-server
-    kubectl rollout restart deployment/infrahub-infrahub-server
-    ```
-  </TabItem>
-  <TabItem value="devdemo" label="Dev/Demo">
-    ```bash
-    # Stop the current instance
-    invoke demo.stop
+# Upgrade the release
+helm upgrade infrahub-enterprise infrahub/enterprise
+```
 
-    # Rebuild and run migrations
-    invoke demo.build
-    invoke demo.migrate
+<!-- vale on -->
+</TabItem>
+<TabItem value="devdemo" label="Dev/Demo">
 
-    # Restart the instance
-    invoke demo.start
-    ```
-  </TabItem>
+```bash
+# Stop the current instance
+invoke demo.stop
+
+# Rebuild and run migrations
+invoke demo.build
+invoke demo.migrate
+
+# Restart the instance
+invoke demo.start
+```
+
+</TabItem>
 </Tabs>
