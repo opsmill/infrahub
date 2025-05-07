@@ -1,1 +1,0 @@
-Update date formatting to include the year for dates before the current year, and ensure consistency between the list and detail views.
