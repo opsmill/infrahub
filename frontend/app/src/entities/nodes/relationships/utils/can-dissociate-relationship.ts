@@ -29,16 +29,22 @@ export function canDissociateRelationship({
     );
   });
 
-  // If bidirectional (if it's not defined then it's the default value), check from the peer point of view
-  if (
-    (!parentRelationship?.direction || parentRelationship?.direction === "bidirectional") &&
-    peerRelationship
-  ) {
-    return parentRelationship?.optional && peerRelationship?.optional;
+  const minCount = parentRelationship?.min_count ?? 1;
+  const isOptional = !!parentRelationship?.optional;
+  const hasEnoughPeers = relationshipsCount > minCount;
+
+  if (peerRelationship) {
+    const isPeerOptional = !!peerRelationship?.optional;
+
+    // Both relationships are optional
+    if (isOptional && isPeerOptional) return true;
+
+    // Relationship is mandatory but there is enough peers
+    if (hasEnoughPeers) return true;
+
+    return false;
   }
 
-  // Check if it's optionnal or there is enough peers
-  return (
-    !!parentRelationship?.optional || relationshipsCount > (parentRelationship?.min_count ?? 1)
-  );
+  // It's optional or there is enough peers
+  return isOptional || hasEnoughPeers;
 }
