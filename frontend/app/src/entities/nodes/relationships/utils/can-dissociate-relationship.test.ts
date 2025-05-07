@@ -65,7 +65,7 @@ describe("canDissociateRelationship", () => {
     expect(result).toBe(true);
   });
 
-  it("should handle when peer relationships is a generic", () => {
+  it("should handle when peer relationship is a generic", () => {
     // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
@@ -103,7 +103,46 @@ describe("canDissociateRelationship", () => {
     expect(result).toBe(true);
   });
 
-  it("should respect min_count when relationship is not optional", () => {
+  it("should handle when there is no relationship peer to parent", () => {
+    // GIVEN
+    const parentSchema = generateNodeSchema({
+      kind: "Test",
+      name: "Node",
+      relationships: [
+        generateRelationshipSchema({
+          name: "test",
+          peer: "Peer",
+          optional: false,
+          min_count: 2,
+        }),
+      ],
+    });
+    const peerSchema = generateNodeSchema({
+      kind: "Test",
+      name: "Peer",
+      relationships: [],
+    });
+
+    // WHEN
+    const resultWithCountTooSmall = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 1,
+    });
+    const resultWithBiggerCount = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 3,
+    });
+
+    // THEN
+    expect(resultWithCountTooSmall).toBe(false);
+    expect(resultWithBiggerCount).toBe(true);
+  });
+
+  it("should respect min_count when relationship is required", () => {
     // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
@@ -135,6 +174,12 @@ describe("canDissociateRelationship", () => {
       peerSchema,
       relationshipsCount: 1,
     });
+    const resultWithCountEqualToMinCount = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 2,
+    });
     const resultWithCountBigger = canDissociateRelationship({
       relationshipName: "test",
       parentSchema,
@@ -144,10 +189,11 @@ describe("canDissociateRelationship", () => {
 
     // THEN
     expect(resultWithCountSmaller).toBe(false);
+    expect(resultWithCountEqualToMinCount).toBe(false);
     expect(resultWithCountBigger).toBe(true);
   });
 
-  it("should handle when there is no relationship peer to parent", () => {
+  it("should handle when min_count is 0 and relationship is required", () => {
     // GIVEN
     const parentSchema = generateNodeSchema({
       kind: "Test",
@@ -157,7 +203,7 @@ describe("canDissociateRelationship", () => {
           name: "test",
           peer: "Peer",
           optional: false,
-          min_count: 1,
+          min_count: 0,
         }),
       ],
     });
@@ -168,15 +214,29 @@ describe("canDissociateRelationship", () => {
     });
 
     // WHEN
-    const result = canDissociateRelationship({
+    const resultWithCount0 = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 0,
+    });
+    const resultWithCount1 = canDissociateRelationship({
       relationshipName: "test",
       parentSchema,
       peerSchema,
       relationshipsCount: 1,
     });
+    const resultWithCount2 = canDissociateRelationship({
+      relationshipName: "test",
+      parentSchema,
+      peerSchema,
+      relationshipsCount: 2,
+    });
 
     // THEN
-    expect(result).toBe(false);
+    expect(resultWithCount0).toBe(false);
+    expect(resultWithCount1).toBe(false);
+    expect(resultWithCount2).toBe(true);
   });
 
   it("should handle different relationship directions", () => {

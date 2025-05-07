@@ -26,7 +26,7 @@ export function canDissociateRelationship({
     return relationship.peer === parentSchema.kind && isSameDirection;
   });
 
-  const minCount = parentToPeerRelationship.min_count ?? 1;
+  const minCount = parentToPeerRelationship.min_count || 1;
   const isOptional = parentToPeerRelationship.optional;
   const hasEnoughPeers = relationshipsCount > minCount;
 
