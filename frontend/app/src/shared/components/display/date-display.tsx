@@ -24,7 +24,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
   const distanceFromNow = differenceInDays(new Date(), dateData);
 
   if (distanceFromNow > 7) {
-    const dateFormat = isInPreviousYear(dateData) ? "MMM d yyyy" : "MMM d";
+    const dateFormat = isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM";
 
     return (
       <span className="flex items-center flex-wrap">
