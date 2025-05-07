@@ -46,17 +46,15 @@ export function RelationshipActionsCell({
   const [showDissociateModal, setShowDissociateModal] = useState(false);
 
   const { schema: parentSchema } = useSchema(parentKind);
-  const { schema: peerSchema } = useSchema(relationshipKind);
 
-  if (!peerSchema || !parentSchema) {
+  if (!parentSchema) {
     return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
   }
 
   const isEditAllowed = permission.update.isAllowed;
   const isDissociateAllowed = canDissociateRelationship({
-    relationshipName,
     parentSchema,
-    peerSchema,
+    relationshipName,
     relationshipsCount,
   });
 
