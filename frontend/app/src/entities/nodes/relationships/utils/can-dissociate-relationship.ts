@@ -1,4 +1,4 @@
-import { NodeSchema } from "@/entities/schema/types";
+import { ModelSchema } from "@/entities/schema/types";
 
 export function canDissociateRelationship({
   relationshipName,
@@ -7,44 +7,37 @@ export function canDissociateRelationship({
   relationshipsCount,
 }: {
   relationshipName: string;
-  parentSchema: NodeSchema | null;
-  peerSchema: NodeSchema | null;
+  parentSchema: ModelSchema;
+  peerSchema: ModelSchema;
   relationshipsCount: number;
 }) {
-  const parentRelationship = parentSchema?.relationships?.find((relationship) => {
+  const parentToPeerRelationship = parentSchema.relationships?.find((relationship) => {
     return relationship.name === relationshipName;
   });
+  if (!parentToPeerRelationship) return false;
 
-  const peerRelationship = peerSchema?.relationships?.find((relationship) => {
-    if (parentSchema?.inherit_from?.length) {
-      return (
-        parentSchema.inherit_from.includes(relationship.peer) &&
-        relationship.direction === parentRelationship?.direction
-      );
+  const peerToParentRelationship = peerSchema.relationships?.find((relationship) => {
+    const isSameDirection = relationship.direction === parentToPeerRelationship.direction;
+
+    if ("inherit_from" in parentSchema) {
+      return parentSchema.inherit_from?.includes(relationship.peer) && isSameDirection;
     }
 
-    return (
-      relationship.peer === parentSchema?.kind &&
-      relationship.direction === parentRelationship?.direction
-    );
+    return relationship.peer === parentSchema.kind && isSameDirection;
   });
 
-  const minCount = parentRelationship?.min_count ?? 1;
-  const isOptional = !!parentRelationship?.optional;
+  const minCount = parentToPeerRelationship?.min_count ?? 1;
+  const isOptional = parentToPeerRelationship?.optional;
   const hasEnoughPeers = relationshipsCount > minCount;
 
-  if (peerRelationship) {
-    const isPeerOptional = !!peerRelationship?.optional;
-
-    // Both relationships are optional
-    if (isOptional && isPeerOptional) return true;
-
-    // Relationship is mandatory but there is enough peers
-    if (hasEnoughPeers) return true;
-
-    return false;
+  if (!peerToParentRelationship) {
+    return isOptional || hasEnoughPeers;
   }
 
-  // It's optional or there is enough peers
-  return isOptional || hasEnoughPeers;
+  const isPeerOptional = peerToParentRelationship.optional;
+  if (isOptional && isPeerOptional) {
+    return true;
+  }
+
+  return hasEnoughPeers;
 }
