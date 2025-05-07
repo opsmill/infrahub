@@ -11,21 +11,40 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.9) - 2025-05-07
+
+### Added
+
+- Added the `INFRAHUB_TESTING_SCHEMA_STRICT_MODE` environment variable to allow users to control `INFRAHUB_SCHEMA_STRICT_MODE` when using `infrahub-testcontainers`.
+- Improved the performance of the core database class used throughout the backend by factoring out the classes used for creating and removing indexes.
+
+### Changed
+
+- Sped up computed attribute mutation by changing the node query to only request the required attributes from the database. This change will provide performance improvements for the background processing of computed attributes. ([#6403](https://github.com/opsmill/infrahub/issues/6403))
+
+### Fixed
+
+- Deleting a branch now correctly deletes nodes with agnostic relationships. This typically fixes an issue after deleting a branch where an object had been created on this branch through a ResourceManager ([#5463](https://github.com/opsmill/infrahub/issues/5463))
+- Fixed `textarea` values display in the object details view. ([#6400](https://github.com/opsmill/infrahub/issues/6400))
+- Added inherited kinds of a node as templates to fix GraphQL schema when inheritance is involved. ([#6415](https://github.com/opsmill/infrahub/issues/6415))
+- Fixed an issue with computed attribute that would trigger multiple updates after a schema change if the attribute reference multiple kind of nodes.
+- Updated the date formatting to include the year for dates before the current year, and ensure consistency between the list and detail views.
+
 ## [Infrahub - v1.2.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.8) - 2025-05-01
 
 ### Added
 
 - Added support for "convert_query_response" for Python transforms. The feature works the same was as with Generators. Note any non default branch will need to be rebased after this upgrade. ([#6383](https://github.com/opsmill/infrahub/issues/6383))
-- Enable HCL syntax highlighting for artifacts
+- Enabled HCL syntax highlighting for artifacts.
 
 ### Fixed
 
-- Improve performance when retrieving nodes that have thousands of relationships
-- Improve performance of git credential helper
+- Improved performance when retrieving nodes that have thousands of relationships.
+- Improved performance of the Git credential helper.
 
 ### Housekeeping
 
-- Background performance improvements due to Prefect 3.3.7 upgrade
+- Background performance improvements due to Prefect 3.3.7 upgrade.
 
 ## [Infrahub - v1.2.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.7) - 2025-04-28
 
