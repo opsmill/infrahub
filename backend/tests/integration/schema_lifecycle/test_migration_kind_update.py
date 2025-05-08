@@ -231,9 +231,9 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
             db=db, branch=branch_one, id=initial_dataset["specific_one"].id
         )
         assert retrieved_specific_one.get_kind() == SPECIFIC_ONE_KIND_UPDATED
-        assert retrieved_specific_one.generic_attr_text.value == specific_one_update_01.generic_attr_text.value
+        assert retrieved_specific_one.generic_attr_text.value == specific_one_update_01.generic_attr_text.value  # type: ignore[attr-defined]
         retrieved_things_rels = await retrieved_specific_one.things.get_relationships(db=db)
-        updated_things_rels = await specific_one_update_01.things.get_relationships(db=db)
+        updated_things_rels = await specific_one_update_01.things.get_relationships(db=db)  # type: ignore[attr-defined]
         assert len(retrieved_things_rels) == 1
         assert len(updated_things_rels) == 1
         assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
@@ -259,9 +259,9 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
             db=db, branch=branch_one, id=initial_dataset["specific_one"].id
         )
         assert retrieved_specific_one.get_kind() == SPECIFIC_ONE_KIND_UPDATED
-        assert retrieved_specific_one.generic_attr_text.value == specific_one_update_02.generic_attr_text.value
+        assert retrieved_specific_one.generic_attr_text.value == specific_one_update_02.generic_attr_text.value  # type: ignore[attr-defined]
         retrieved_things_rels = await retrieved_specific_one.things.get_relationships(db=db)
-        updated_things_rels = await specific_one_update_02.things.get_relationships(db=db)
+        updated_things_rels = await specific_one_update_02.things.get_relationships(db=db)  # type: ignore[attr-defined]
         assert len(retrieved_things_rels) == 1
         assert len(updated_things_rels) == 1
         assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
