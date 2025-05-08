@@ -27,6 +27,7 @@ jobs:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           path: target-repo
 
+      # FIXME: There is some readme.mdx file in the target repo that is not being removed
       - name: Sync folders
         run: |
           rm -rf target-repo/.vale/*

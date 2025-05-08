@@ -12,7 +12,16 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
  */
 const sidebars: SidebarsConfig = {
   docsSidebar: [
-    'readme',
+    "introduction",
+    {
+      type: 'category',
+      label: 'Getting Started',
+      collapsed: false,
+      items: [
+        'getting-started/overview',
+        'getting-started/quick-start',
+      ],
+    },
     {
       type: 'category',
       label: 'Infrahub Overview',
@@ -25,15 +34,6 @@ const sidebars: SidebarsConfig = {
         'overview/versioning',
         'overview/generators',
         'overview/integrations',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Getting Started',
-      link: { type: 'doc', id: 'getting-started/overview' },
-      items: [
-        'getting-started/overview',
-        'getting-started/quick-start',
       ],
     },
     {
