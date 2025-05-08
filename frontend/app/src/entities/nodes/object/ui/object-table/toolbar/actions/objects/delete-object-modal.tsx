@@ -13,22 +13,34 @@ export interface DeleteObjectModalProps {
 }
 
 export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObjectModalProps) {
-  const { mutate, isPending } = useDeleteObjects();
+  const { mutate, isPending } = useDeleteObjects({
+    context: {
+      processErrorMessage: (message: string) => {
+        const regex = new RegExp(/Cannot delete \w* \'(\w|-)*\'\./g);
+        const matches = message.match(regex);
+
+        toast(<Alert type={ALERT_TYPES.ERROR} message={matches[0]} />);
+
+        graphqlClient.reFetchObservableQueries();
+      },
+    },
+    onSuccess: () => {
+      graphqlClient.reFetchObservableQueries();
+
+      setOpen(false);
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Objects deleted!"} />);
+    },
+  });
 
   const handleRemoveObjects = async () => {
     const objects = selectedRows.map(({ id, __typename }) => {
       return { id, kind: __typename };
     });
 
-    await mutate({
+    mutate({
       objects,
     });
-
-    await graphqlClient.reFetchObservableQueries();
-
-    setOpen(false);
-
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Objects deleted!"} />);
   };
 
   return (

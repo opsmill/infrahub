@@ -40,12 +40,14 @@ export function deleteObjectsFromApi({
   objects,
   branchName,
   atDate,
+  context,
 }: ContextParams & DeleteObjectsParams) {
   return graphqlClient.mutate({
     mutation: gql(getDeleteObjectsQuery(objects)),
     context: {
       branch: branchName,
       date: atDate,
+      ...context,
     },
   });
 }
