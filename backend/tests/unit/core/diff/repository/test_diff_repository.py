@@ -282,14 +282,20 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
             )
 
-        parent_node = EnrichedNodeFactory.build()
+        parent_node = EnrichedNodeFactory.build(
+            is_node_kind_migration=False,
+        )
         middle_parent_rel = EnrichedRelationshipGroupFactory.build(nodes={parent_node})
         other_middle_rels = {EnrichedRelationshipGroupFactory.build() for _ in range(2)}
-        middle_node = EnrichedNodeFactory.build(relationships={middle_parent_rel} | other_middle_rels)
+        middle_node = EnrichedNodeFactory.build(
+            is_node_kind_migration=False, relationships={middle_parent_rel} | other_middle_rels
+        )
         leaf_middle_rel = EnrichedRelationshipGroupFactory.build(nodes={middle_node})
         other_leaf_rels = {EnrichedRelationshipGroupFactory.build() for _ in range(2)}
-        leaf_node = EnrichedNodeFactory.build(relationships={leaf_middle_rel} | other_leaf_rels)
-        other_nodes = {EnrichedNodeFactory.build() for _ in range(2)}
+        leaf_node = EnrichedNodeFactory.build(
+            is_node_kind_migration=False, relationships={leaf_middle_rel} | other_leaf_rels
+        )
+        other_nodes = {EnrichedNodeFactory.build(is_node_kind_migration=False) for _ in range(2)}
         this_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name="diff",

@@ -95,7 +95,7 @@ SET
     diff_node.label = node_map.node_properties.label,
     diff_node.changed_at = node_map.node_properties.changed_at,
     diff_node.action = node_map.node_properties.action,
-    diff_node.is_node_kind_migration = node_map.node_properties.is_node_kind_migration
+    diff_node.is_node_kind_migration = node_map.node_properties.is_node_kind_migration,
     diff_node.path_identifier = node_map.node_properties.path_identifier
 WITH root_uuid, node_map, diff_node, has_node_conflict
 CALL {
@@ -404,6 +404,7 @@ FOREACH (i in CASE WHEN has_property_conflict = TRUE THEN [1] ELSE [] END |
                 "uuid": enriched_node.uuid,
                 "kind": enriched_node.kind,
                 "db_id": enriched_node.identifier.db_id,
+                "is_node_kind_migration": enriched_node.is_node_kind_migration,
                 "label": enriched_node.label,
                 "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
                 "action": enriched_node.action.value,
