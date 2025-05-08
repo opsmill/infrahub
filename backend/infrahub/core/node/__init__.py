@@ -22,7 +22,14 @@ from infrahub.core.constants import (
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
+from infrahub.core.schema import (
+    AttributeSchema,
+    NodeSchema,
+    NonGenericSchemaTypes,
+    ProfileSchema,
+    RelationshipSchema,
+    TemplateSchema,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
@@ -66,7 +73,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> NodeSchema | ProfileSchema | TemplateSchema:
+    def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
 
     def get_kind(self) -> str:
@@ -872,7 +879,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
 
-    async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
+    async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
         return await object_template.get_peer(db=db) if object_template is not None else None
 
@@ -888,3 +895,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             for relationship in self.get_schema().relationships
             if relationship.name not in exclude and relationship.kind == kind
         ]
+
+    def validate_relationships(self) -> None:
+        for name in self._relationships:
+            relm: RelationshipManager = getattr(self, name)
+            relm.validate()

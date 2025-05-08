@@ -119,10 +119,9 @@ class DiffCalculationQuery(DiffQuery):
 
     previous_base_path_query = """
 WITH DISTINCT diff_path AS diff_path, has_more_data
-CALL {
-    WITH diff_path
-    WITH diff_path, nodes(diff_path) AS d_nodes, relationships(diff_path) AS d_rels
-    WITH diff_path, d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
+CALL (diff_path) {
+    WITH nodes(diff_path) AS d_nodes, relationships(diff_path) AS d_rels
+    WITH d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
     // -------------------------------------
     // add base branch paths before branched_from, if they exist
     // -------------------------------------
@@ -155,10 +154,9 @@ CALL {
 WITH diff_path, latest_base_path, has_more_data
 UNWIND [diff_path, latest_base_path] AS penultimate_path
 WITH DISTINCT penultimate_path, has_more_data
-CALL {
-    WITH penultimate_path
-    WITH penultimate_path, nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
-    WITH penultimate_path, d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
+CALL (penultimate_path) {
+    WITH nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
+    WITH d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
     // -------------------------------------
     // Add peer-side of any relationships to get the peer's ID
     // -------------------------------------
@@ -289,8 +287,7 @@ WITH one_result[0] AS p, one_result[1] AS q, one_result[2] AS diff_rel, one_resu
 // -------------------------------------
 // Exclude nodes added then removed on branch within timeframe
 // -------------------------------------
-CALL {
-    WITH p, q, row_from_time
+CALL (p, q, row_from_time) {
     OPTIONAL MATCH (q)<-[is_part_of:IS_PART_OF {branch: $branch_name}]-(p)
     WHERE row_from_time <= is_part_of.from < $to_time
     WITH DISTINCT is_part_of.status AS rel_status
@@ -302,8 +299,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each node
 // -------------------------------------
-CALL {
-    WITH p, q, diff_rel, row_from_time
+CALL (p, q, diff_rel, row_from_time) {
     OPTIONAL MATCH path = (
         (q)<-[top_diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
     )
@@ -330,12 +326,11 @@ CALL {
         p.uuid IS NULL OR prop.uuid IS NULL OR p.uuid <> prop.uuid
         OR type(r_node) <> "IS_RELATED" OR type(r_prop) <> "IS_RELATED"
     )
-    WITH path, p, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
+    WITH path, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
     // -------------------------------------
     // Exclude attributes/relationships added then removed on branch within timeframe
     // -------------------------------------
-    CALL {
-        WITH p, rel_type, node, row_from_time
+    CALL (p, rel_type, node, row_from_time) {
         OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(node)
         WHERE row_from_time <= rel_to_check.from < $to_time
         AND type(rel_to_check) = rel_type
@@ -461,8 +456,7 @@ END AS row_from_time
 // Exclude attributes/relationship under nodes deleted on this branch in the timeframe
 // because those were all handled above at the node level
 // -------------------------------------
-CALL {
-    WITH root, p, row_from_time
+CALL (root, p, row_from_time) {
     OPTIONAL MATCH (root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(p)
     WHERE row_from_time <= r_root_deleted.from < $to_time
     WITH r_root_deleted
@@ -476,8 +470,7 @@ WHERE node_deleted = FALSE
 // Exclude relationships added and deleted within the timeframe
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q, has_more_data, row_from_time, type(diff_rel) AS rel_type
-CALL {
-    WITH p, rel_type, q, row_from_time
+CALL (p, rel_type, q, row_from_time) {
     OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(q)
     WHERE row_from_time <= rel_to_check.from < $to_time
     AND type(rel_to_check) = rel_type
@@ -490,8 +483,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each attribute/relationship
 // -------------------------------------
-CALL {
-    WITH root, r_root, p, diff_rel, q
+CALL (root, r_root, p, diff_rel, q) {
     OPTIONAL MATCH path = (
         (root:Root)<-[mid_r_root:IS_PART_OF]-(p)-[mid_diff_rel]-(q)-[r_prop]-(prop)
     )
@@ -526,8 +518,7 @@ CALL {
 // Exclude properties added and deleted within the timeframe
 // -------------------------------------
 WITH q, nodes(latest_prop_path)[3] AS prop, type(relationships(latest_prop_path)[2]) AS rel_type, latest_prop_path, has_more_data, row_from_time
-CALL {
-    WITH q, rel_type, prop, row_from_time
+CALL (q, rel_type, prop, row_from_time) {
     OPTIONAL MATCH (q)-[rel_to_check {branch: $branch_name}]-(prop)
     WHERE row_from_time <= rel_to_check.from < $to_time
     AND type(rel_to_check) = rel_type
@@ -681,14 +672,12 @@ ORDER BY
     r_node.from DESC,
     r_root.from DESC
 WITH n, p, row_from_time, diff_rel, diff_rel_path, has_more_data
-CALL {
+CALL (n, p, row_from_time){
     // -------------------------------------
     // Exclude properties under nodes and attributes/relationships deleted
     // on this branch in the timeframe because those were all handled above
     // -------------------------------------
-    WITH n, p, row_from_time
-    CALL {
-        WITH n, row_from_time
+    CALL (n, row_from_time) {
         OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
         WHERE row_from_time <= r_root_deleted.from < $to_time
         WITH r_root_deleted
@@ -696,9 +685,8 @@ CALL {
         LIMIT 1
         RETURN COALESCE(r_root_deleted.status = "deleted", FALSE) AS node_deleted
     }
-    WITH n, p, row_from_time, node_deleted
-    CALL {
-        WITH n, p, row_from_time
+    WITH node_deleted
+    CALL (n, p, row_from_time) {
         OPTIONAL MATCH (n)-[r_node_deleted {branch: $branch_name}]-(p)
         WHERE row_from_time <= r_node_deleted.from < $to_time
         AND type(r_node_deleted) IN ["HAS_ATTRIBUTE", "IS_RELATED"]

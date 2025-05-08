@@ -28,7 +28,6 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
-    "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-community",
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:3.13.7-management",
     "CACHE_DOCKER_IMAGE": "redis:7.2.4",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",

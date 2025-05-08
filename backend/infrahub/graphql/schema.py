@@ -16,6 +16,7 @@ from .mutations.branch import (
     BranchValidate,
 )
 from .mutations.computed_attribute import UpdateComputedAttribute
+from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
@@ -48,6 +49,7 @@ from .queries import (
     InfrahubStatus,
     Relationship,
 )
+from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
 from .queries.task import Task, TaskBranchStatus
@@ -76,6 +78,8 @@ class InfrahubBaseQuery(ObjectType):
     IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
+
+    FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
 
 class InfrahubBaseMutation(ObjectType):
@@ -109,3 +113,5 @@ class InfrahubBaseMutation(ObjectType):
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
     ResolveDiffConflict = ResolveDiffConflict.Field()
+
+    ConvertObjectType = ConvertObjectType.Field()

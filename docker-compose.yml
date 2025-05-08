@@ -159,7 +159,7 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.03.0-community}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}

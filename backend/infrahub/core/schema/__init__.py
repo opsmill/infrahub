@@ -21,7 +21,8 @@ from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
 from .template_schema import TemplateSchema
 
-MainSchemaTypes: TypeAlias = NodeSchema | GenericSchema | ProfileSchema | TemplateSchema
+NonGenericSchemaTypes: TypeAlias = NodeSchema | ProfileSchema | TemplateSchema
+MainSchemaTypes: TypeAlias = NonGenericSchemaTypes | GenericSchema
 
 
 # -----------------------------------------------------

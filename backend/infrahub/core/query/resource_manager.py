@@ -220,8 +220,7 @@ class NumberPoolGetUsed(Query):
 
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })
-        CALL {
-            WITH pool
+        CALL (pool) {
             MATCH (pool)-[res:IS_RESERVED]->(av:AttributeValue)<-[hv:HAS_VALUE]-(attr:Attribute)
             WHERE
                 attr.name = $attribute_name

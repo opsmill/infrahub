@@ -424,8 +424,8 @@ class Query(ABC):
         else:
             self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
-    def add_subquery(self, subquery: str, with_clause: str | None = None) -> None:
-        self.add_to_query("CALL {")
+    def add_subquery(self, subquery: str, node_alias: str, with_clause: str | None = None) -> None:
+        self.add_to_query(f"CALL ({node_alias}) {{")
         self.add_to_query(subquery)
         self.add_to_query("}")
         if with_clause:

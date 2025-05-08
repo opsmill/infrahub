@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import copy
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
@@ -1339,22 +1340,24 @@ class NodeManager:
         nodes: list[Node],
         branch: Branch | str | None = None,
         at: Timestamp | str | None = None,
+        cascade_delete: bool = True,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
-        node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
-        ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
-        node_ids = {node.get_id() for node in nodes}
-        missing_ids_to_delete = ids_to_delete - node_ids
-        if missing_ids_to_delete:
-            node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
-            nodes += list(node_map.values())
-        deleted_nodes = []
-        for node in nodes:
-            await node.delete(db=db, at=at)
-            deleted_nodes.append(node)
+        nodes_to_delete = copy(nodes)
+        if cascade_delete:
+            node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
+            ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
+            node_ids = {node.get_id() for node in nodes}
+            missing_ids_to_delete = ids_to_delete - node_ids
+            if missing_ids_to_delete:
+                node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
+                nodes_to_delete += list(node_map.values())
 
-        return deleted_nodes
+        for node in nodes_to_delete:
+            await node.delete(db=db, at=at)
+
+        return nodes_to_delete
 
 
 def _get_cardinality_one_identifiers_by_kind(
