@@ -63,6 +63,7 @@ async def test_diff_attribute_branch_update(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -81,6 +82,7 @@ async def test_diff_attribute_branch_update(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -123,6 +125,7 @@ async def test_attribute_property_main_update(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -170,6 +173,7 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "nbr_seats"
@@ -213,6 +217,7 @@ async def test_attribute_branch_update_from_null(db: InfrahubDatabase, default_b
     assert node_diff.uuid == car.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "nbr_seats"
@@ -258,6 +263,7 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.REMOVED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 5
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -281,6 +287,7 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
     assert node_diff.uuid == person_john_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -322,6 +329,7 @@ async def test_node_base_delete_branch_update(
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.REMOVED
+    assert node_diff.is_node_kind_migration is False
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     assert len(branch_root_path.nodes) == 1
@@ -330,6 +338,7 @@ async def test_node_base_delete_branch_update(
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     assert len(node_diff.relationships) == 0
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
@@ -371,6 +380,7 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
     assert node_diff.uuid == new_person.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.ADDED
+    assert node_diff.is_node_kind_migration is False
     assert before_change < node_diff.changed_at < after_change
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
     assert set(attributes_by_name.keys()) == {"name", "height"}
@@ -417,6 +427,7 @@ async def test_attribute_property_multiple_branch_updates(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -465,6 +476,7 @@ async def test_attribute_property_branch_create_multiple_updates(
     assert node_diff.uuid == person.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.ADDED
+    assert node_diff.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in node_diff.attributes}
     assert set(attributes_by_name.keys()) == {"name", "height"}
     # name attribute
@@ -550,6 +562,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     assert car_node.uuid == car_accord_main.id
     assert car_node.kind == "TestCar"
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.is_node_kind_migration is False
     assert len(car_node.attributes) == 0
     assert len(car_node.relationships) == 1
     relationship_diff = car_node.relationships[0]
@@ -594,6 +607,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     assert john_node.uuid == person_john_main.get_id()
     assert john_node.kind == "TestPerson"
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert len(john_node.attributes) == 0
     assert len(john_node.relationships) == 1
     relationship_diff = john_node.relationships[0]
@@ -622,6 +636,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     assert alfred_node.uuid == person_alfred_main.get_id()
     assert alfred_node.kind == "TestPerson"
     assert alfred_node.action is DiffAction.UPDATED
+    assert alfred_node.is_node_kind_migration is False
     assert len(alfred_node.attributes) == 0
     assert len(alfred_node.relationships) == 1
     relationship_diff = alfred_node.relationships[0]
@@ -655,6 +670,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     assert car_node.uuid == car_accord_main.id
     assert car_node.kind == "TestCar"
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.is_node_kind_migration is False
     assert len(car_node.attributes) == 0
     assert len(car_node.relationships) == 1
     relationship_diff = car_node.relationships[0]
@@ -700,6 +716,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     assert john_node.uuid == person_john_main.get_id()
     assert john_node.kind == "TestPerson"
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert len(john_node.attributes) == 0
     assert len(john_node.relationships) == 1
     relationship_diff = john_node.relationships[0]
@@ -764,6 +781,7 @@ async def test_relationship_one_property_branch_update(
     assert car_node.uuid == car_accord_main.id
     assert car_node.kind == "TestCar"
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.is_node_kind_migration is False
     assert len(car_node.attributes) == 0
     assert len(car_node.relationships) == 1
     relationship_diff = car_node.relationships[0]
@@ -791,6 +809,7 @@ async def test_relationship_one_property_branch_update(
     assert john_node.uuid == person_john_main.get_id()
     assert john_node.kind == "TestPerson"
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert len(john_node.attributes) == 0
     assert len(john_node.relationships) == 1
     relationship_diff = john_node.relationships[0]
@@ -823,6 +842,7 @@ async def test_relationship_one_property_branch_update(
     assert node_diff.uuid == person_john_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -837,6 +857,7 @@ async def test_relationship_one_property_branch_update(
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -930,6 +951,7 @@ async def test_add_node_branch(
     assert node_diff.uuid == person_jane_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -950,6 +972,7 @@ async def test_add_node_branch(
     assert node_diff.uuid == new_car.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.ADDED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 5
     attributes_by_name = {a.name: a for a in node_diff.attributes}
     assert set(attributes_by_name.keys()) == {"name", "color", "transmission", "nbr_seats", "is_electric"}
@@ -1014,6 +1037,7 @@ async def test_many_relationship_property_update(
     assert set(nodes_by_id.keys()) == {person_john_main.get_id(), car_accord_main.get_id()}
     john_node = nodes_by_id[person_john_main.get_id()]
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert john_node.attributes == []
     assert len(john_node.relationships) == 1
     cars_rel = john_node.relationships.pop()
@@ -1093,6 +1117,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     # check car node on branch
     car_node = nodes_by_id[car_accord_main.id]
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.is_node_kind_migration is False
     assert car_node.changed_at < from_time
     assert car_node.attributes == []
     assert len(car_node.relationships) == 1
@@ -1143,6 +1168,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     # check john node on branch
     john_node = nodes_by_id[person_john_main.id]
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert john_node.attributes == []
     assert len(john_node.relationships) == 1
     assert john_node.changed_at < from_time
@@ -1173,6 +1199,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     # check albert node on branch
     albert_node = nodes_by_id[person_albert_main.id]
     assert albert_node.action is DiffAction.UPDATED
+    assert albert_node.is_node_kind_migration is False
     assert albert_node.attributes == []
     assert len(albert_node.relationships) == 1
     assert albert_node.changed_at < from_time
@@ -1210,6 +1237,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     car_node = nodes_by_id[car_accord_main.id]
     assert car_node.action is DiffAction.UPDATED
     assert car_node.changed_at < from_time
+    assert car_node.is_node_kind_migration is False
     assert car_node.attributes == []
     assert len(car_node.relationships) == 1
     owner_rel = car_node.relationships[0]
@@ -1259,6 +1287,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     # check john node on main
     john_node = nodes_by_id[person_john_main.id]
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert john_node.attributes == []
     assert len(john_node.relationships) == 1
     assert john_node.changed_at < from_time
@@ -1320,6 +1349,7 @@ async def test_relationship_property_owner_conflicting_updates(
     # john node on branch
     john_node = nodes_by_id[person_john_main.get_id()]
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert john_node.attributes == []
     assert len(john_node.relationships) == 1
     cars_rel = john_node.relationships.pop()
@@ -1342,6 +1372,7 @@ async def test_relationship_property_owner_conflicting_updates(
     # car node on branch
     car_node = nodes_by_id[car_accord_main.get_id()]
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.is_node_kind_migration is False
     assert car_node.attributes == []
     assert len(car_node.relationships) == 1
     owner_rel = car_node.relationships.pop()
@@ -1370,6 +1401,7 @@ async def test_relationship_property_owner_conflicting_updates(
     # john node on main
     john_node = nodes_by_id[person_john_main.get_id()]
     assert john_node.action is DiffAction.UPDATED
+    assert john_node.is_node_kind_migration is False
     assert john_node.attributes == []
     assert len(john_node.relationships) == 1
     cars_rel = john_node.relationships.pop()
@@ -1392,6 +1424,7 @@ async def test_relationship_property_owner_conflicting_updates(
     # car node on main
     car_node = nodes_by_id[car_accord_main.get_id()]
     assert car_node.action is DiffAction.UPDATED
+    assert car_node.is_node_kind_migration is False
     assert car_node.attributes == []
     assert len(car_node.relationships) == 1
     owner_rel = car_node.relationships.pop()
@@ -1447,6 +1480,7 @@ async def test_agnostic_source_relationship_update(
     diff_node = branch_root_path.nodes.pop()
     assert diff_node.uuid == new_car.get_id()
     assert diff_node.action is DiffAction.UPDATED
+    assert diff_node.is_node_kind_migration is False
     assert diff_node.attributes == []
     assert len(diff_node.relationships) == 1
     diff_relationship = diff_node.relationships.pop()
@@ -1499,6 +1533,7 @@ async def test_agnostic_owner_relationship_added(
     diff_nodes_by_id = {n.uuid: n for n in branch_root_path.nodes}
     assert set(diff_nodes_by_id.keys()) == {new_car.get_id(), person_1.get_id()}
     diff_node_car = diff_nodes_by_id[new_car.get_id()]
+    assert diff_node_car.is_node_kind_migration is False
     assert diff_node_car.action is DiffAction.ADDED
     assert {(attr.name, attr.action) for attr in diff_node_car.attributes} == {
         ("name", DiffAction.ADDED),
@@ -1532,6 +1567,7 @@ async def test_agnostic_owner_relationship_added(
     }
     diff_node_person = diff_nodes_by_id[person_1.get_id()]
     assert diff_node_person.action is DiffAction.UPDATED
+    assert diff_node_person.is_node_kind_migration is False
     assert len(diff_node_person.attributes) == 0
     assert len(diff_node_person.relationships) == 1
     diff_relationship = diff_node_person.relationships.pop()
@@ -1589,6 +1625,7 @@ async def test_update_attribute_under_agnostic_node(
     assert set(diff_nodes_by_id.keys()) == {fruit_1.get_id()}
     diff_node_fruit = diff_nodes_by_id[fruit_1.get_id()]
     assert diff_node_fruit.action is DiffAction.UPDATED
+    assert diff_node_fruit.is_node_kind_migration is False
     assert len(diff_node_fruit.relationships) == 0
     assert len(diff_node_fruit.attributes) == 1
     attr_diff = diff_node_fruit.attributes.pop()
@@ -1651,6 +1688,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -1703,6 +1741,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -1721,6 +1760,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -1770,6 +1810,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -1788,6 +1829,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -1841,6 +1883,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     node_diff = nodes_by_id[car_accord_main.id]
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 0
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
@@ -1857,6 +1900,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     node_diff = nodes_by_id[person_alfred_main.id]
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UNCHANGED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 0
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
@@ -1876,6 +1920,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert node_diff.uuid == person_alfred_main.id
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -1918,6 +1963,7 @@ async def test_branch_node_delete_with_base_updates(
     node_diff = node_diffs_by_id[car_accord_main.id]
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 1
     rel_diffs_by_name = {r.name: r for r in node_diff.relationships}
     rel_diff = rel_diffs_by_name["owner"]
@@ -1960,6 +2006,7 @@ async def test_branch_node_delete_with_base_updates(
         assert diff_prop.new_value is None
     peer_node_diff = node_diffs_by_id[person_john_main.id]
     assert peer_node_diff.action is DiffAction.UPDATED
+    assert peer_node_diff.is_node_kind_migration is False
     assert len(peer_node_diff.attributes) == 0
     assert len(peer_node_diff.relationships) == 1
     rel_diffs_by_name = {r.name: r for r in peer_node_diff.relationships}
@@ -2004,6 +2051,7 @@ async def test_branch_node_delete_with_base_updates(
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.REMOVED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 5
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
@@ -2088,6 +2136,7 @@ async def test_branch_relationship_delete_with_property_update(
     assert node_diff.uuid == dog_main.id
     assert node_diff.kind == "TestDog"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     rel_diffs_by_name = {r.name: r for r in node_diff.relationships}
@@ -2120,6 +2169,7 @@ async def test_branch_relationship_delete_with_property_update(
     assert set(node_diffs_by_id.keys()) == {dog_branch.id, persons[0].id}
     dog_node = node_diffs_by_id[dog_branch.id]
     assert dog_node.action is DiffAction.UPDATED
+    assert dog_node.is_node_kind_migration is False
     assert len(dog_node.attributes) == 0
     assert len(dog_node.relationships) == 1
     rel_diffs_by_name = {r.name: r for r in dog_node.relationships}
@@ -2194,6 +2244,7 @@ async def test_node_deleted_on_base_update_on_branch(
     diff_node = diff_root.nodes.pop()
     assert diff_node.action is DiffAction.REMOVED
     assert diff_node.uuid == person_alfred_main.id
+    assert diff_node.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in diff_node.attributes}
     assert set(attributes_by_name.keys()) == {"name", "height"}
     for attr_diff in diff_node.attributes:
@@ -2213,6 +2264,7 @@ async def test_node_deleted_on_base_update_on_branch(
     diff_node = diff_root.nodes.pop()
     assert diff_node.action is DiffAction.UPDATED
     assert diff_node.uuid == person_alfred_main.id
+    assert diff_node.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in diff_node.attributes}
     assert set(attributes_by_name.keys()) == {"name"}
     attr_diff = diff_node.attributes.pop()
@@ -2250,6 +2302,7 @@ async def test_node_deleted_on_both(
         diff_node = diff_root.nodes.pop()
         assert diff_node.action is DiffAction.REMOVED
         assert diff_node.uuid == person_alfred_main.id
+        assert diff_node.is_node_kind_migration is False
         attributes_by_name = {a.name: a for a in diff_node.attributes}
         assert set(attributes_by_name.keys()) == {"name", "height"}
         for attr_diff in diff_node.attributes:
@@ -2299,6 +2352,7 @@ async def test_relationship_updated_then_node_deleted(
     assert set(nodes_by_id.keys()) == {car_camry_main.id, person_jane_main.id}
     car_base_diff = nodes_by_id[car_camry_main.id]
     assert car_base_diff.action is DiffAction.REMOVED
+    assert car_base_diff.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in car_base_diff.attributes}
     assert set(attributes_by_name.keys()) == {"color", "nbr_seats", "transmission", "is_electric", "name"}
     for attr_diff in attributes_by_name.values():
@@ -2345,6 +2399,7 @@ async def test_relationship_updated_then_node_deleted(
         assert prop_diff.new_value in (None, "NULL")
     person_base_diff = nodes_by_id[person_jane_main.id]
     assert person_base_diff.action is DiffAction.UPDATED
+    assert person_base_diff.is_node_kind_migration is False
     assert len(person_base_diff.attributes) == 0
     relationships_by_name = {r.name: r for r in person_base_diff.relationships}
     assert set(relationships_by_name.keys()) == {"cars"}
@@ -2375,6 +2430,7 @@ async def test_relationship_updated_then_node_deleted(
     assert set(nodes_by_id.keys()) == {car_camry_main.id, person_jane_main.id}
     car_base_diff = nodes_by_id[car_camry_main.id]
     assert car_base_diff.action is DiffAction.UPDATED
+    assert car_base_diff.is_node_kind_migration is False
     assert len(car_base_diff.attributes) == 0
     relationships_by_name = {r.name: r for r in car_base_diff.relationships}
     assert set(relationships_by_name.keys()) == {"owner"}
@@ -2419,6 +2475,7 @@ async def test_relationship_updated_then_node_deleted(
 
     person_base_diff = nodes_by_id[person_jane_main.id]
     assert person_base_diff.action is DiffAction.UPDATED
+    assert person_base_diff.is_node_kind_migration is False
     assert len(person_base_diff.attributes) == 0
     relationships_by_name = {r.name: r for r in person_base_diff.relationships}
     assert set(relationships_by_name.keys()) == {"cars"}
@@ -2509,6 +2566,7 @@ async def test_property_update_then_relationship_deleted(
     assert set(nodes_by_id.keys()) == {person_jane_main.id, person_john_main.id, car_camry_main.id}
     car_branch_diff = nodes_by_id[car_camry_main.id]
     assert car_branch_diff.action is DiffAction.UPDATED
+    assert car_branch_diff.is_node_kind_migration is False
     assert len(car_branch_diff.attributes) == 0
     relationships_by_name = {r.name: r for r in car_branch_diff.relationships}
     assert set(relationships_by_name.keys()) == {"owner"}
@@ -2552,6 +2610,7 @@ async def test_property_update_then_relationship_deleted(
 
     person_removed_branch_diff = nodes_by_id[person_jane_main.id]
     assert person_removed_branch_diff.action is DiffAction.UPDATED
+    assert person_removed_branch_diff.is_node_kind_migration is False
     assert len(person_removed_branch_diff.attributes) == 0
     relationships_by_name = {r.name: r for r in person_removed_branch_diff.relationships}
     assert set(relationships_by_name.keys()) == {"cars"}
@@ -2579,6 +2638,7 @@ async def test_property_update_then_relationship_deleted(
 
     person_added_branch_diff = nodes_by_id[person_john_main.id]
     assert person_added_branch_diff.action is DiffAction.UPDATED
+    assert person_added_branch_diff.is_node_kind_migration is False
     assert len(person_added_branch_diff.attributes) == 0
     relationships_by_name = {r.name: r for r in person_added_branch_diff.relationships}
     assert set(relationships_by_name.keys()) == {"cars"}
@@ -2652,6 +2712,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
     # top node
     node_diff = nodes_by_id[top_node.id]
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     rels_by_name = {r.name: r for r in node_diff.relationships}
     assert set(rels_by_name.keys()) == {"children"}
@@ -2680,6 +2741,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
     # middle node
     node_diff = nodes_by_id[mid_node.id]
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     rels_by_name = {r.name: r for r in node_diff.relationships}
     assert set(rels_by_name.keys()) == {"parent", "children"}
@@ -2729,6 +2791,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
     # bottom node
     node_diff = nodes_by_id[bottom_node.id]
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     rels_by_name = {r.name: r for r in node_diff.relationships}
     assert set(rels_by_name.keys()) == {"parent"}
@@ -2798,6 +2861,7 @@ async def test_diff_unchanged_included_when_not_first_diff(
     node_diff = nodes_by_id[car_accord_main.id]
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "color"
@@ -2813,6 +2877,7 @@ async def test_diff_unchanged_included_when_not_first_diff(
     node_diff = nodes_by_id[person_alfred_main.id]
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UNCHANGED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -2831,6 +2896,7 @@ async def test_diff_unchanged_included_when_not_first_diff(
     node_diff = branch_root_path.nodes[0]
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 1
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
@@ -2870,6 +2936,7 @@ async def test_create_local_and_aware_nodes_on_branch(
     assert set(nodes_by_id.keys()) == {person.id}
     node_diff = nodes_by_id[person.id]
     assert node_diff.action is DiffAction.ADDED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 0
     attrs_by_name = {a.name: a for a in node_diff.attributes}
     assert set(attrs_by_name.keys()) == {"name", "height"}
@@ -2905,6 +2972,7 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     # check car attributes and relationship
     node_diff = nodes_by_id[car.id]
     assert node_diff.action is DiffAction.ADDED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 1
     rel_diff = node_diff.relationships.pop()
     assert rel_diff.name == "owner"
@@ -2917,6 +2985,7 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     # check person relationship
     node_diff = nodes_by_id[person.id]
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     rel_diff = node_diff.relationships.pop()
@@ -2960,6 +3029,7 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     node_diff = nodes_by_id[car_accord_main.id]
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
@@ -2987,6 +3057,7 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     node_diff = nodes_by_id[person_john_main.id]
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
@@ -3014,6 +3085,7 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     node_diff = nodes_by_id[person_alfred_main.id]
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
@@ -3080,6 +3152,7 @@ async def test_diff_relationship_property_update_on_main(
     node_diff = nodes_by_id[car_accord_main.id]
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
+    assert node_diff.is_node_kind_migration is False
     assert len(node_diff.attributes) == 0
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
@@ -3160,16 +3233,17 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     )
 
     base_diff = calculated_diffs.base_branch_diff
-    assert len(base_diff.nodes) == 3
+    assert len(base_diff.nodes) == 2
     nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in base_diff.nodes}
     assert set(nodes_by_id_and_kind.keys()) == {
         (car_camry_main.id, "TestCar"),
-        (car_accord_main.id, "TestCar"),
+        # (car_accord_main.id, "TestCar"),
         (person_jane_main.id, person_jane_main.get_kind()),
     }
     # validate the jane has owner relationship removed
     jane_base_diff = nodes_by_id_and_kind[person_jane_main.id, person_jane_main.get_kind()]
     assert jane_base_diff.action is DiffAction.UPDATED
+    assert jane_base_diff.is_node_kind_migration is False
     assert not jane_base_diff.attributes
     rels_by_name = {r.name: r for r in jane_base_diff.relationships}
     assert set(rels_by_name.keys()) == {"cars"}
@@ -3195,86 +3269,70 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         assert prop_diff.previous_value == prop_value
         assert prop_diff.new_value is None
 
-    # validate that accord is unchanged on main
-    accord_base_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
-    assert accord_base_diff.action is DiffAction.UNCHANGED
-    attr_diffs_by_name = {a.name: a for a in accord_base_diff.attributes}
-    assert set(attr_diffs_by_name.keys()) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
-    for attr_diff in accord_base_diff.attributes:
-        assert attr_diff.action is DiffAction.UNCHANGED
-        props_by_type = {p.property_type: p for p in attr_diff.properties}
-        assert set(props_by_type.keys()) == {
-            DatabaseEdgeType.HAS_VALUE,
-            DatabaseEdgeType.IS_VISIBLE,
-            DatabaseEdgeType.IS_PROTECTED,
-        }
-        for prop_type, prop_value in [
-            (DatabaseEdgeType.HAS_VALUE, getattr(car_accord_main, attr_diff.name).value),
-            (DatabaseEdgeType.IS_VISIBLE, True),
-            (DatabaseEdgeType.IS_PROTECTED, False),
-        ]:
-            prop_diff = props_by_type[prop_type]
-            assert prop_diff.action is DiffAction.UNCHANGED
-            assert prop_diff.previous_value == (prop_value if prop_value is not None else "NULL")
-            assert prop_diff.new_value == (prop_value if prop_value is not None else "NULL")
-    rel_diffs_by_name = {r.name: r for r in accord_base_diff.relationships}
-    assert set(rel_diffs_by_name.keys()) == {"owner"}
-    owner_rel_diff = rel_diffs_by_name["owner"]
-    assert owner_rel_diff.action is DiffAction.UNCHANGED
-    elements_by_peer_id = {e.peer_id: e for e in owner_rel_diff.relationships}
-    assert set(elements_by_peer_id) == {person_john_main.id}
-    john_element = elements_by_peer_id[person_john_main.id]
-    assert john_element.action is DiffAction.UNCHANGED
-    props_by_type = {p.property_type: p for p in john_element.properties}
-    assert set(props_by_type.keys()) == {
-        DatabaseEdgeType.IS_RELATED,
-        DatabaseEdgeType.IS_VISIBLE,
-        DatabaseEdgeType.IS_PROTECTED,
-    }
-    for property_type, prop_value in (
-        (DatabaseEdgeType.IS_RELATED, person_john_main.id),
-        (DatabaseEdgeType.IS_VISIBLE, True),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.UNCHANGED
-        assert property_diff.previous_value == prop_value
-        assert property_diff.new_value == prop_value
+    # # validate that accord is unchanged on main
+    # accord_base_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
+    # assert accord_base_diff.action is DiffAction.UNCHANGED
+    # attr_diffs_by_name = {a.name: a for a in accord_base_diff.attributes}
+    # assert set(attr_diffs_by_name.keys()) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    # for attr_diff in accord_base_diff.attributes:
+    #     assert attr_diff.action is DiffAction.UNCHANGED
+    #     props_by_type = {p.property_type: p for p in attr_diff.properties}
+    #     assert set(props_by_type.keys()) == {
+    #         DatabaseEdgeType.HAS_VALUE,
+    #         DatabaseEdgeType.IS_VISIBLE,
+    #         DatabaseEdgeType.IS_PROTECTED,
+    #     }
+    #     for prop_type, prop_value in [
+    #         (DatabaseEdgeType.HAS_VALUE, getattr(car_accord_main, attr_diff.name).value),
+    #         (DatabaseEdgeType.IS_VISIBLE, True),
+    #         (DatabaseEdgeType.IS_PROTECTED, False),
+    #     ]:
+    #         prop_diff = props_by_type[prop_type]
+    #         assert prop_diff.action is DiffAction.UNCHANGED
+    #         assert prop_diff.previous_value == (prop_value if prop_value is not None else "NULL")
+    #         assert prop_diff.new_value == (prop_value if prop_value is not None else "NULL")
+    # rel_diffs_by_name = {r.name: r for r in accord_base_diff.relationships}
+    # assert set(rel_diffs_by_name.keys()) == {"owner"}
+    # owner_rel_diff = rel_diffs_by_name["owner"]
+    # assert owner_rel_diff.action is DiffAction.UNCHANGED
+    # elements_by_peer_id = {e.peer_id: e for e in owner_rel_diff.relationships}
+    # assert set(elements_by_peer_id) == {person_john_main.id}
+    # john_element = elements_by_peer_id[person_john_main.id]
+    # assert john_element.action is DiffAction.UNCHANGED
+    # props_by_type = {p.property_type: p for p in john_element.properties}
+    # assert set(props_by_type.keys()) == {
+    #     DatabaseEdgeType.IS_RELATED,
+    #     DatabaseEdgeType.IS_VISIBLE,
+    #     DatabaseEdgeType.IS_PROTECTED,
+    # }
+    # for property_type, prop_value in (
+    #     (DatabaseEdgeType.IS_RELATED, person_john_main.id),
+    #     (DatabaseEdgeType.IS_VISIBLE, True),
+    #     (DatabaseEdgeType.IS_PROTECTED, False),
+    # ):
+    #     property_diff = props_by_type[property_type]
+    #     assert property_diff.action is DiffAction.UNCHANGED
+    #     assert property_diff.previous_value == prop_value
+    #     assert property_diff.new_value == prop_value
 
     # validate that camry has color, nbr_seats, owner, driver changes on main
     camry_base_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
     assert camry_base_diff.action is DiffAction.UPDATED
+    assert camry_base_diff.is_node_kind_migration is False
     attr_diffs_by_name = {a.name: a for a in camry_base_diff.attributes}
-    assert set(attr_diffs_by_name.keys()) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    assert set(attr_diffs_by_name.keys()) == {"nbr_seats", "color"}
     for attr_diff in camry_base_diff.attributes:
-        if attr_diff.name in ("color", "nbr_seats"):
-            assert attr_diff.action is DiffAction.UPDATED
-        else:
-            assert attr_diff.action is DiffAction.UNCHANGED
+        assert attr_diff.action is DiffAction.UPDATED
         props_by_type = {p.property_type: p for p in attr_diff.properties}
-        assert set(props_by_type.keys()) == {
-            DatabaseEdgeType.HAS_VALUE,
-            DatabaseEdgeType.IS_VISIBLE,
-            DatabaseEdgeType.IS_PROTECTED,
-        }
-        for prop_type, prop_value in [
-            (DatabaseEdgeType.HAS_VALUE, getattr(car_camry_main, attr_diff.name).value),
-            (DatabaseEdgeType.IS_VISIBLE, True),
-            (DatabaseEdgeType.IS_PROTECTED, False),
-        ]:
-            prop_diff = props_by_type[prop_type]
-            if prop_type is DatabaseEdgeType.HAS_VALUE and attr_diff.name == "color":
-                prop_action = DiffAction.UPDATED
-                new_prop_value = new_main_camry_color
-            elif prop_type is DatabaseEdgeType.HAS_VALUE and attr_diff.name == "nbr_seats":
-                prop_action = DiffAction.UPDATED
-                new_prop_value = new_main_camry_nbr_seats
-            else:
-                prop_action = DiffAction.UNCHANGED
-                new_prop_value = prop_value
-            assert prop_diff.action is prop_action
-            assert prop_diff.previous_value == (prop_value if prop_value is not None else "NULL")
-            assert prop_diff.new_value == (new_prop_value if new_prop_value is not None else "NULL")
+        assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+        prop_diff = attr_diff.properties[0]
+        assert prop_diff.action is DiffAction.UPDATED
+        if attr_diff.name == "color":
+            assert prop_diff.previous_value == car_camry_main.color.value
+            assert prop_diff.new_value == new_main_camry_color
+        else:
+            assert prop_diff.previous_value == car_camry_main.nbr_seats.value
+            assert prop_diff.new_value == new_main_camry_nbr_seats
     rel_diffs_by_name = {r.name: r for r in camry_base_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"owner", "driver"}
     owner_rel_diff = rel_diffs_by_name["owner"]
@@ -3353,6 +3411,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # validate relationship on jane is correct
     jane_diff = nodes_by_id_and_kind[person_jane_main.id, person_jane_main.get_kind()]
     assert jane_diff.action is DiffAction.UPDATED
+    assert jane_diff.is_node_kind_migration is False
     assert len(jane_diff.attributes) == 0
     rels_by_name = {r.name: r for r in jane_diff.relationships}
     assert set(rels_by_name.keys()) == {"cars"}
@@ -3388,6 +3447,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # validate relationship on albert is correct
     albert_diff = nodes_by_id_and_kind[person_albert_main.id, person_albert_main.get_kind()]
     assert albert_diff.action is DiffAction.UPDATED
+    assert albert_diff.is_node_kind_migration is False
     assert not albert_diff.attributes
     rel_diffs_by_name = {r.name: r for r in albert_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"cars"}
@@ -3411,6 +3471,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # validate relationship on john is correct
     john_diff = nodes_by_id_and_kind[person_john_main.id, person_john_main.get_kind()]
     assert john_diff.action is DiffAction.UPDATED
+    assert john_diff.is_node_kind_migration is False
     assert not john_diff.attributes
     rel_diffs_by_name = {r.name: r for r in john_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"cars_driven"}
@@ -3434,6 +3495,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # test new car that was migrated on the branch
     branch_car_diff = nodes_by_id_and_kind[branch_car.id, "Test2NewCar"]
     assert branch_car_diff.action is DiffAction.ADDED
+    assert branch_car_diff.is_node_kind_migration is True
     attr_diffs_by_name = {a.name: a for a in branch_car_diff.attributes}
     assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
     for attr_name, expected_value in [
@@ -3486,11 +3548,9 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
 
     # check that old version of migrated node is removed
     old_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
-    attr_diffs_by_name = {a.name: a for a in old_camry_diff.attributes}
-    assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
-    for attr_diff in old_camry_diff.attributes:
-        assert attr_diff.action is DiffAction.REMOVED
-        assert not attr_diff.properties
+    assert old_camry_diff.action is DiffAction.REMOVED
+    assert old_camry_diff.is_node_kind_migration is True
+    assert not old_camry_diff.attributes
     rel_diffs_by_name = {r.name: r for r in old_camry_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"owner"}
     rel_diff = rel_diffs_by_name["owner"]
@@ -3517,23 +3577,21 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # validate new camry that was updated on branch before migration
     new_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "Test2NewCar"]
     assert new_camry_diff.action is DiffAction.ADDED
-    attr_diffs_by_name = {a.name: a for a in branch_car_diff.attributes}
-    assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    assert new_camry_diff.is_node_kind_migration is True
+    attr_diffs_by_name = {a.name: a for a in new_camry_diff.attributes}
+    assert set(attr_diffs_by_name) == {"nbr_seats", "color"}
     for attr_diff in new_camry_diff.attributes:
         assert attr_diff.action is DiffAction.ADDED
-        if attr_diff.name in ("color", "nbr_seats"):
-            props_by_type = {p.property_type: p for p in attr_diff.properties}
-            assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
-            value_diff_prop = props_by_type[DatabaseEdgeType.HAS_VALUE]
-            assert value_diff_prop.action is DiffAction.UPDATED
-            if attr_diff.name == "color":
-                assert value_diff_prop.previous_value == car_camry_main.color.value
-                assert value_diff_prop.new_value == new_branch_camry_color
-            elif attr_diff.name == "nbr_seats":
-                assert value_diff_prop.previous_value == car_camry_main.nbr_seats.value
-                assert value_diff_prop.new_value == new_branch_camry_nbr_seats
-        else:
-            assert not attr_diff.properties
+        props_by_type = {p.property_type: p for p in attr_diff.properties}
+        assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+        value_diff_prop = props_by_type[DatabaseEdgeType.HAS_VALUE]
+        assert value_diff_prop.action is DiffAction.UPDATED
+        if attr_diff.name == "color":
+            assert value_diff_prop.previous_value == car_camry_main.color.value
+            assert value_diff_prop.new_value == new_branch_camry_color
+        elif attr_diff.name == "nbr_seats":
+            assert value_diff_prop.previous_value == car_camry_main.nbr_seats.value
+            assert value_diff_prop.new_value == new_branch_camry_nbr_seats
     rel_diffs_by_name = {r.name: r for r in new_camry_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"owner", "driver"}
     owner_rel_diff = rel_diffs_by_name["owner"]
@@ -3564,7 +3622,6 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     assert set(elements_by_peer_id.keys()) == {new_branch_camry_driver_id}
     new_driver_element_diff = new_driver_rel_diff.relationships[0]
     assert new_driver_element_diff.action is DiffAction.ADDED
-
     properties_by_type = {p.property_type: p for p in new_driver_element_diff.properties}
     assert set(properties_by_type.keys()) == {
         DatabaseEdgeType.IS_PROTECTED,
@@ -3589,16 +3646,9 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         (new_accord_diff, DiffAction.ADDED),
     ):
         assert car_diff.action is expected_action
-        attr_diffs_by_name = {a.name: a for a in car_diff.attributes}
-        assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
-        for attr_diff in car_diff.attributes:
-            assert attr_diff.action is expected_action
-            assert not attr_diff.properties
-        rel_diffs_by_name = {r.name: r for r in car_diff.relationships}
-        assert set(rel_diffs_by_name.keys()) == {"owner"}
-        rel_diff = rel_diffs_by_name["owner"]
-        assert rel_diff.action is expected_action
-        assert not rel_diff.relationships
+        assert car_diff.is_node_kind_migration is True
+        assert not car_diff.attributes
+        assert not car_diff.relationships
 
     # update attributes and relationship after migration and first diff calculated
     final_branch_camry_name = "ultra camry"
@@ -3651,6 +3701,8 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         (new_main_camry_owner_id, "TestPerson"),
     }
     main_camry_diff = nodes_by_id_and_kind[car_camry_main.id, car_camry_main.get_kind()]
+    assert main_camry_diff.action is DiffAction.UPDATED
+    assert main_camry_diff.is_node_kind_migration is False
     attr_diffs_by_name = {a.name: a for a in main_camry_diff.attributes}
     assert set(attr_diffs_by_name.keys()) == {"color", "name"}
     for attr_name, new_value, previous_value in (
@@ -3677,6 +3729,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
 
     # check rel on new migrated car owner
     new_owner_diff = nodes_by_id_and_kind[final_main_camry_owner_id, "TestPerson"]
+    assert new_owner_diff.is_node_kind_migration is False
     assert new_owner_diff.action is DiffAction.UPDATED
     assert not new_owner_diff.attributes
     rel_diffs_by_name = {r.name: r for r in new_owner_diff.relationships}
@@ -3689,6 +3742,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # check rel on previous migrated car owner
     previous_owner_diff = nodes_by_id_and_kind[new_main_camry_owner_id, "TestPerson"]
     assert previous_owner_diff.action is DiffAction.UPDATED
+    assert previous_owner_diff.is_node_kind_migration is False
     assert not previous_owner_diff.attributes
     rel_diffs_by_name = {r.name: r for r in previous_owner_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"cars"}
@@ -3707,6 +3761,8 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         (new_branch_camry_owner_id, "TestPerson"),
     }
     branch_camry_diff = nodes_by_id_and_kind[car_camry_main.id, migrated_branch_camry.get_kind()]
+    assert branch_camry_diff.action is DiffAction.UPDATED
+    assert branch_camry_diff.is_node_kind_migration is False
     attr_diffs_by_name = {a.name: a for a in branch_camry_diff.attributes}
     assert set(attr_diffs_by_name.keys()) == {"color", "name"}
     for attr_name, new_value, previous_value in (
@@ -3734,6 +3790,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # check rel on new migrated car owner
     new_owner_diff = nodes_by_id_and_kind[final_branch_camry_owner_id, "TestPerson"]
     assert new_owner_diff.action is DiffAction.UPDATED
+    assert new_owner_diff.is_node_kind_migration is False
     assert not new_owner_diff.attributes
     rel_diffs_by_name = {r.name: r for r in new_owner_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"cars"}
@@ -3745,6 +3802,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     # check rel on previous migrated car owner
     previous_owner_diff = nodes_by_id_and_kind[new_branch_camry_owner_id, "TestPerson"]
     assert previous_owner_diff.action is DiffAction.UPDATED
+    assert previous_owner_diff.is_node_kind_migration is False
     assert not previous_owner_diff.attributes
     rel_diffs_by_name = {r.name: r for r in previous_owner_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"cars"}
@@ -3893,6 +3951,7 @@ async def test_calculate_with_renamed_relationships(
     for car_id, peer_id in ((car_accord_main.id, person_john_main.id), (car_camry_main.id, person_jane_main.id)):
         car_diff = nodes_by_id[car_id]
         assert car_diff.action is DiffAction.UPDATED
+        assert car_diff.is_node_kind_migration is False
         assert len(car_diff.attributes) == 0
         rels_by_identifier = {r.identifier: r for r in car_diff.relationships}
         assert set(rels_by_identifier.keys()) == {previous_rel_identifier, new_rel_identifier}
@@ -3946,6 +4005,7 @@ async def test_calculate_with_renamed_relationships(
     for person_id, peer_id in ((person_john_main.id, car_accord_main.id), (person_jane_main.id, car_camry_main.id)):
         person_diff = nodes_by_id[person_id]
         assert person_diff.action is DiffAction.UPDATED
+        assert person_diff.is_node_kind_migration is False
         assert len(person_diff.attributes) == 0
         rels_by_identifier = {r.identifier: r for r in person_diff.relationships}
         assert set(rels_by_identifier.keys()) == {previous_rel_identifier, new_rel_identifier}
@@ -3998,3 +4058,7 @@ async def test_calculate_with_renamed_relationships(
 
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 0
+
+
+# TODO: test for node migrated and then deleted
+# TODO: test for two node kind migrations on the same nodes on a branch

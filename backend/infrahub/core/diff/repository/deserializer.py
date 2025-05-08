@@ -84,11 +84,13 @@ class EnrichedDiffDeserializer:
     ) -> None:
         for attribute_result in result.get_nested_node_collection("diff_attributes"):
             diff_attr_node, diff_attr_property_node, diff_attr_property_conflict = attribute_result
-            if diff_attr_node is None or diff_attr_property_node is None:
+            if diff_attr_node is None:
                 continue
             enriched_attribute = self._deserialize_diff_attr(
                 diff_attr_node=diff_attr_node, enriched_root=enriched_root, enriched_node=enriched_node
             )
+            if diff_attr_property_node is None:
+                continue
             enriched_property = self._deserialize_diff_attr_property(
                 diff_attr_property_node=diff_attr_property_node,
                 enriched_attr=enriched_attribute,
@@ -211,6 +213,7 @@ class EnrichedDiffDeserializer:
             label=str(node_node.get("label")),
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node_node.get("action"))),
+            is_node_kind_migration=bool(node_node.get("is_node_kind_migration")),
             path_identifier=str(node_node.get("path_identifier")),
             num_added=int(node_node.get("num_added", 0)),
             num_updated=int(node_node.get("num_updated", 0)),

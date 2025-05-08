@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Generator
 
 from infrahub import config
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -302,20 +303,10 @@ CALL {
 WITH p, q, diff_rel, row_from_time, has_more_data, intra_branch_update
 WHERE intra_branch_update = FALSE
 // -------------------------------------
-// Check if this node is part of a node kind update b/c they need special filtering later
-// -------------------------------------
-CALL {
-    WITH p
-    OPTIONAL MATCH (migrated_kind_p:Node)-[is_part_of:IS_PART_OF {branch: $branch_name}]->(:Root)
-    WHERE migrated_kind_p.uuid = p.uuid
-    AND %(id_func)s(migrated_kind_p) <> %(id_func)s(p)
-    RETURN migrated_kind_p IS NOT NULL AS is_node_migrated_kind
-}
-// -------------------------------------
 // Get every path on this branch under each node
 // -------------------------------------
 CALL {
-    WITH p, q, diff_rel, row_from_time, is_node_migrated_kind
+    WITH p, q, diff_rel, row_from_time
     OPTIONAL MATCH path = (
         (q)<-[top_diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
     )
@@ -332,16 +323,8 @@ CALL {
     AND r_node.branch = top_diff_rel.branch
     AND r_node.status = top_diff_rel.status
     AND r_prop.from < $to_time
-    AND (
-        (r_prop.branch = top_diff_rel.branch AND r_prop.status = top_diff_rel.status)
-        // extra special case for nodes with a migrated kind for when an edge on a branch can be above an edge on main
-        OR (
-            is_node_migrated_kind AND
-            r_prop.status = "active"
-            AND r_prop.branch = $base_branch_name
-            AND top_diff_rel.branch <> r_prop.branch
-        )
-    )
+    AND r_prop.branch = top_diff_rel.branch
+    AND r_prop.status = top_diff_rel.status
     // ------------------------
     // special handling for nodes that had their kind updated,
     // the migration leaves two nodes with the same UUID linked to the same Relationship
@@ -764,3 +747,82 @@ WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS diff_path, has
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
         self.add_to_query("UNWIND diff_rel_paths AS diff_path")
         self.return_labels = ["DISTINCT diff_path AS diff_path", "has_more_data"]
+
+
+@dataclass
+class MigratedKindNode:
+    uuid: str
+    kind: str
+    db_id: str
+    from_time: Timestamp
+    action: DiffAction
+    has_more_data: bool
+
+
+class DiffMigratedKindNodesQuery(DiffCalculationQuery):
+    name = "diff_migrated_kind_nodes_query"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        params_dict = self.get_params()
+        self.params.update(params_dict)
+        migrated_kind_nodes_query = """
+// -------------------------------------
+// Identify nodes added/removed on branch in the time frame
+// -------------------------------------
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+AND n.branch_support = $branch_aware
+WITH DISTINCT n.uuid AS node_uuid, %(id_func)s(n) AS db_id
+WITH node_uuid, count(*) AS num_nodes_with_uuid
+WHERE num_nodes_with_uuid > 1
+// -------------------------------------
+// Limit the number of nodes
+// -------------------------------------
+WITH node_uuid
+ORDER BY node_uuid
+SKIP $offset
+LIMIT $limit
+WITH collect(node_uuid) AS node_uuids
+WITH node_uuids, size(node_uuids) = $limit AS has_more_data
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE n.uuid IN node_uuids
+AND (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+CALL {
+    WITH n
+    OPTIONAL MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n)
+    WITH diff_rel
+    ORDER BY diff_rel.from ASC
+    WITH collect(diff_rel.status) AS statuses
+    RETURN statuses = ["active", "deleted"] AS intra_branch_update
+}
+WITH n.uuid AS uuid, n.kind AS kind, %(id_func)s(n) AS db_id, diff_rel.from_time AS from_time, diff_rel.status AS status, has_more_data
+WHERE intra_branch_update = FALSE
+        """ % {"id_func": db.get_id_function_name()}
+        self.add_to_query(query=migrated_kind_nodes_query)
+        self.return_labels = [
+            "uuid",
+            "kind",
+            "db_id",
+            "from_time",
+            "status",
+            "has_more_data",
+        ]
+
+    def get_migrated_kind_nodes(self) -> Generator[MigratedKindNode, None, None]:
+        for result in self.get_results():
+            yield MigratedKindNode(
+                uuid=result.get_as_str("uuid"),
+                kind=result.get_as_str("kind"),
+                db_id=result.get_as_str("db_id"),
+                from_time=Timestamp(result.get_as_str("from_time")),
+                action=DiffAction.REMOVED
+                if result.get_as_str("status").lower() == RelationshipStatus.DELETED.value
+                else DiffAction.ADDED,
+                has_more_data=result.get_as_type("has_more_data", bool),
+            )

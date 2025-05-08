@@ -388,6 +388,8 @@ class DiffCombiner:
                         label=node_pair.later.label,
                         changed_at=node_pair.later.changed_at or node_pair.earlier.changed_at,
                         action=combined_action,
+                        is_node_kind_migration=node_pair.earlier.is_node_kind_migration
+                        or node_pair.later.is_node_kind_migration,
                         path_identifier=node_pair.later.path_identifier,
                         attributes=combined_attributes,
                         relationships=combined_relationships,

@@ -567,24 +567,7 @@ class DiffQueryParser:
 
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
-        is_node_kind_migration = self._is_node_kind_migration(database_path=database_path)
-        self._update_attribute_level(
-            database_path=database_path, diff_node=diff_node, is_node_kind_migration=is_node_kind_migration
-        )
-
-    def _is_node_kind_migration(self, database_path: DatabasePath) -> bool:
-        """
-        If the changes for this path are on the diff branch at the node and attribute/relationship
-        levels and on the base branch at the property level, then this must be part of a node kind
-        or inheritance update
-        """
-        if self.base_branch_name != self.diff_branch_name and database_path.all_branches == (
-            self.diff_branch_name,
-            self.diff_branch_name,
-            self.base_branch_name,
-        ):
-            return True
-        return False
+        self._update_attribute_level(database_path=database_path, diff_node=diff_node)
 
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
@@ -627,14 +610,11 @@ class DiffQueryParser:
                     return rel_schema
         return None
 
-    def _update_attribute_level(
-        self, database_path: DatabasePath, diff_node: DiffNodeIntermediate, is_node_kind_migration: bool = False
-    ) -> None:
+    def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
         """If is_node_kind_migration, then we can skip updating the property level"""
         if "Attribute" in database_path.attribute_node.labels:
             diff_attribute = self._get_diff_attribute(database_path=database_path, diff_node=diff_node)
-            if not is_node_kind_migration:
-                self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
+            self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
             return
         relationship_schema = self._get_relationship_schema(database_path=database_path)
         if not relationship_schema:
@@ -642,10 +622,9 @@ class DiffQueryParser:
         diff_relationship = self._get_diff_relationship(
             diff_node=diff_node, relationship_schema=relationship_schema, database_path=database_path
         )
-        if not is_node_kind_migration:
-            diff_relationship.add_path(
-                database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
-            )
+        diff_relationship.add_path(
+            database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
+        )
 
     def _get_diff_attribute(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate

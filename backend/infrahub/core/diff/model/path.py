@@ -327,6 +327,7 @@ class EnrichedDiffNode(BaseSummary):
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
     relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
@@ -428,6 +429,7 @@ class EnrichedDiffNode(BaseSummary):
             label="",
             changed_at=calculated_node.changed_at,
             action=calculated_node.action,
+            is_node_kind_migration=calculated_node.is_node_kind_migration,
             attributes={
                 EnrichedDiffAttribute.from_calculated_attribute(calculated_attribute=attr)
                 for attr in calculated_node.attributes
@@ -686,6 +688,7 @@ class DiffNode:
     identifier: NodeIdentifier
     changed_at: Timestamp
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     attributes: list[DiffAttribute] = field(default_factory=list)
     relationships: list[DiffRelationship] = field(default_factory=list)
 

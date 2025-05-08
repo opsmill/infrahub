@@ -85,16 +85,17 @@ UNWIND $node_details_list AS node_details
 WITH
     node_details.root_uuid AS root_uuid,
     node_details.node_map AS node_map,
-    toString(node_details.node_map.node_properties.uuid) AS node_uuid
+    toString(node_details.node_map.node_properties.uuid) AS node_uuid,
+    node_details.node_map.node_properties.db_id AS node_db_id
 MERGE (diff_root:DiffRoot {uuid: root_uuid})
-MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid})
+MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
 WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
 SET
     diff_node.kind = node_map.node_properties.kind,
     diff_node.label = node_map.node_properties.label,
-    diff_node.db_id = node_map.node_properties.db_id,
     diff_node.changed_at = node_map.node_properties.changed_at,
     diff_node.action = node_map.node_properties.action,
+    diff_node.is_node_kind_migration = node_map.node_properties.is_node_kind_migration
     diff_node.path_identifier = node_map.node_properties.path_identifier
 WITH root_uuid, node_map, diff_node, has_node_conflict
 CALL {
