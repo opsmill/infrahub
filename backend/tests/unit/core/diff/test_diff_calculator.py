@@ -3237,7 +3237,6 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in base_diff.nodes}
     assert set(nodes_by_id_and_kind.keys()) == {
         (car_camry_main.id, "TestCar"),
-        # (car_accord_main.id, "TestCar"),
         (person_jane_main.id, person_jane_main.get_kind()),
     }
     # validate the jane has owner relationship removed
@@ -3268,52 +3267,6 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == prop_value
         assert prop_diff.new_value is None
-
-    # # validate that accord is unchanged on main
-    # accord_base_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
-    # assert accord_base_diff.action is DiffAction.UNCHANGED
-    # attr_diffs_by_name = {a.name: a for a in accord_base_diff.attributes}
-    # assert set(attr_diffs_by_name.keys()) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
-    # for attr_diff in accord_base_diff.attributes:
-    #     assert attr_diff.action is DiffAction.UNCHANGED
-    #     props_by_type = {p.property_type: p for p in attr_diff.properties}
-    #     assert set(props_by_type.keys()) == {
-    #         DatabaseEdgeType.HAS_VALUE,
-    #         DatabaseEdgeType.IS_VISIBLE,
-    #         DatabaseEdgeType.IS_PROTECTED,
-    #     }
-    #     for prop_type, prop_value in [
-    #         (DatabaseEdgeType.HAS_VALUE, getattr(car_accord_main, attr_diff.name).value),
-    #         (DatabaseEdgeType.IS_VISIBLE, True),
-    #         (DatabaseEdgeType.IS_PROTECTED, False),
-    #     ]:
-    #         prop_diff = props_by_type[prop_type]
-    #         assert prop_diff.action is DiffAction.UNCHANGED
-    #         assert prop_diff.previous_value == (prop_value if prop_value is not None else "NULL")
-    #         assert prop_diff.new_value == (prop_value if prop_value is not None else "NULL")
-    # rel_diffs_by_name = {r.name: r for r in accord_base_diff.relationships}
-    # assert set(rel_diffs_by_name.keys()) == {"owner"}
-    # owner_rel_diff = rel_diffs_by_name["owner"]
-    # assert owner_rel_diff.action is DiffAction.UNCHANGED
-    # elements_by_peer_id = {e.peer_id: e for e in owner_rel_diff.relationships}
-    # assert set(elements_by_peer_id) == {person_john_main.id}
-    # john_element = elements_by_peer_id[person_john_main.id]
-    # assert john_element.action is DiffAction.UNCHANGED
-    # props_by_type = {p.property_type: p for p in john_element.properties}
-    # assert set(props_by_type.keys()) == {
-    #     DatabaseEdgeType.IS_RELATED,
-    #     DatabaseEdgeType.IS_VISIBLE,
-    #     DatabaseEdgeType.IS_PROTECTED,
-    # }
-    # for property_type, prop_value in (
-    #     (DatabaseEdgeType.IS_RELATED, person_john_main.id),
-    #     (DatabaseEdgeType.IS_VISIBLE, True),
-    #     (DatabaseEdgeType.IS_PROTECTED, False),
-    # ):
-    #     property_diff = props_by_type[property_type]
-    #     assert property_diff.action is DiffAction.UNCHANGED
-    #     assert property_diff.previous_value == prop_value
-    #     assert property_diff.new_value == prop_value
 
     # validate that camry has color, nbr_seats, owner, driver changes on main
     camry_base_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
@@ -4058,7 +4011,3 @@ async def test_calculate_with_renamed_relationships(
 
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 0
-
-
-# TODO: test for node migrated and then deleted
-# TODO: test for two node kind migrations on the same nodes on a branch
