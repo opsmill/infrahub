@@ -376,7 +376,8 @@ class DiffRelationshipIntermediate:
         last_changed_at = last_changed_relationship.changed_at
         action = DiffAction.UPDATED
         if last_changed_at < self.from_time or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
-            action = DiffAction.UNCHANGED  # bubble up action, excluding UNCHANGED
+            action = DiffAction.UNCHANGED
+        # bubble up action, excluding UNCHANGED
         if self.cardinality is RelationshipCardinality.ONE:
             actions = {sr.action for sr in single_relationships if sr.action is not DiffAction.UNCHANGED}
             if len(actions) == 1:
