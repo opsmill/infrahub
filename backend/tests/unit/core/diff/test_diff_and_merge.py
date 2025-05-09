@@ -21,33 +21,11 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.helpers.db_validation import verify_no_duplicate_paths
 from tests.unit.conftest import _build_hierarchical_location_data
 from tests.unit.core.test_utils import verify_all_linked_edges_deleted
 
 from .get_one_node import get_one_diff_node
-
-
-async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
-    """Verify that no duplicate paths exist at the database level"""
-    query = """
-MATCH path = (p)-[e]->(q)
-WITH COALESCE(p.uuid, p.value) AS node_id1, e.branch AS branch, e.from AS from_time, type(e) AS edge_type, COALESCE(q.uuid, q.value) AS node_id2, path
-WHERE node_id1 IS NOT NULL AND node_id2 IS NOT NULL
-WITH node_id1, branch, from_time, edge_type, node_id2, size(collect(path)) AS num_paths
-WHERE num_paths > 1
-RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
-    """
-    records = await db.execute_query(query=query)
-    for record in records:
-        node_id1 = record.get("node_id1")
-        branch = record.get("branch")
-        from_time = record.get("from_time")
-        edge_type = record.get("edge_type")
-        node_id2 = record.get("node_id2")
-        num_paths = record.get("num_paths")
-        raise ValueError(
-            f"{num_paths} paths ({branch=},{edge_type=},{from_time=}) between nodes '{node_id1}' and '{node_id2}'"
-        )
 
 
 class TestDiffAndMerge:

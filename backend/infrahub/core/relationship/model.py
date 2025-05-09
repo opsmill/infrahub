@@ -416,7 +416,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await update_relationships_to(rel_ids_to_update, to=delete_at, db=db)
 
         delete_query = await RelationshipDeleteQuery.init(
-            db=db, rel=self, source_id=node.id, destination_id=peer.id, branch=branch, at=delete_at
+            db=db, rel=self, source=node, destination=peer, branch=branch, at=delete_at
         )
         await delete_query.execute(db=db)
 

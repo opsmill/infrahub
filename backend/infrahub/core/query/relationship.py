@@ -202,6 +202,63 @@ class RelationshipQuery(Query):
             rel_prop_dict["hierarchy"] = self.schema.hierarchical
         return rel_prop_dict
 
+    def add_source_match_to_query(self, source_branch: Branch) -> None:
+        self.params["source_id"] = self.source_id or self.source.get_id()
+        if source_branch.is_global or source_branch.is_default:
+            source_query_match = """
+            MATCH (s:Node { uuid: $source_id })
+            OPTIONAL MATCH (s)-[delete_edge:IS_PART_OF {status: "deleted", branch: $source_branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH *, s WHERE delete_edge IS NULL
+            """
+            self.params["source_branch"] = source_branch.name
+        source_filter, source_filter_params = source_branch.get_query_filter_path(
+            at=self.at, variable_name="r", params_prefix="src_"
+        )
+        source_query_match = """
+            MATCH (s:Node { uuid: $source_id })
+            CALL {
+                WITH s
+                MATCH (s)-[r:IS_PART_OF]->(:Root)
+                WHERE %(source_filter)s
+                RETURN r.status = "active" AS s_is_active
+                ORDER BY r.from DESC
+                LIMIT 1
+            }
+            WITH *, s WHERE s_is_active = TRUE
+            """ % {"source_filter": source_filter}
+        self.params.update(source_filter_params)
+        self.add_to_query(source_query_match)
+
+    def add_dest_match_to_query(self, destination_branch: Branch, destination_id: str) -> None:
+        self.params["destination_id"] = destination_id
+        if destination_branch.is_global or destination_branch.is_default:
+            destination_query_match = """
+            MATCH (d:Node { uuid: $destination_id })
+            OPTIONAL MATCH (d)-[delete_edge:IS_PART_OF {status: "deleted", branch: $destination_branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH *, d WHERE delete_edge IS NULL
+            """
+            self.params["destination_branch"] = destination_branch.name
+        else:
+            destination_filter, destination_filter_params = destination_branch.get_query_filter_path(
+                at=self.at, variable_name="r", params_prefix="dst_"
+            )
+            destination_query_match = """
+            MATCH (d:Node { uuid: $destination_id })
+            CALL {
+                WITH d
+                MATCH (d)-[r:IS_PART_OF]->(:Root)
+                WHERE %(destination_filter)s
+                RETURN r.status = "active" AS d_is_active
+                ORDER BY r.from DESC
+                LIMIT 1
+            }
+            WITH *, d WHERE d_is_active = TRUE
+            """ % {"destination_filter": destination_filter}
+            self.params.update(destination_filter_params)
+        self.add_to_query(destination_query_match)
+
 
 class RelationshipCreateQuery(RelationshipQuery):
     name = "relationship_create"
@@ -220,8 +277,6 @@ class RelationshipCreateQuery(RelationshipQuery):
         super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
         self.params["branch_support"] = self.schema.branch.value
 
@@ -234,58 +289,11 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["is_protected"] = self.rel.is_protected
         self.params["is_visible"] = self.rel.is_visible
 
-        source_branch = self.source.get_branch_based_on_support_type()
-        if source_branch.is_global or source_branch.is_default:
-            source_query_match = """
-            MATCH (s:Node { uuid: $source_id })
-            WHERE NOT exists((s)-[:IS_PART_OF {status: "deleted", branch: $source_branch}]->(:Root))
-            """
-            self.params["source_branch"] = source_branch.name
-        else:
-            source_filter, source_filter_params = source_branch.get_query_filter_path(
-                at=self.at, variable_name="r", params_prefix="src_"
-            )
-            source_query_match = """
-            MATCH (s:Node { uuid: $source_id })
-            CALL {
-                WITH s
-                MATCH (s)-[r:IS_PART_OF]->(:Root)
-                WHERE %(source_filter)s
-                RETURN r.status = "active" AS s_is_active
-                ORDER BY r.from DESC
-                LIMIT 1
-            }
-            WITH s WHERE s_is_active = TRUE
-            """ % {"source_filter": source_filter}
-            self.params.update(source_filter_params)
-        self.add_to_query(source_query_match)
-
-        destination_branch = self.destination.get_branch_based_on_support_type()
-        if destination_branch.is_global or destination_branch.is_default:
-            destination_query_match = """
-            MATCH (d:Node { uuid: $destination_id })
-            WHERE NOT exists((d)-[:IS_PART_OF {status: "deleted", branch: $destination_branch}]->(:Root))
-            """
-            self.params["destination_branch"] = destination_branch.name
-        else:
-            destination_filter, destination_filter_params = destination_branch.get_query_filter_path(
-                at=self.at, variable_name="r", params_prefix="dst_"
-            )
-            destination_query_match = """
-            MATCH (d:Node { uuid: $destination_id })
-            CALL {
-                WITH d
-                MATCH (d)-[r:IS_PART_OF]->(:Root)
-                WHERE %(destination_filter)s
-                RETURN r.status = "active" AS d_is_active
-                ORDER BY r.from DESC
-                LIMIT 1
-            }
-            WITH s, d WHERE d_is_active = TRUE
-            """ % {"destination_filter": destination_filter}
-            self.params.update(destination_filter_params)
-        self.add_to_query(destination_query_match)
-
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(
+            destination_branch=self.destination.get_branch_based_on_support_type(),
+            destination_id=self.destination_id or self.destination.get_id(),
+        )
         self.query_add_all_node_property_match()
 
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.ACTIVE)
@@ -430,7 +438,6 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["name"] = self.schema.identifier
         self.params["branch"] = self.branch.name
@@ -440,9 +447,10 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         # -----------------------------------------------------------------------
         # Match all nodes, including properties
         # -----------------------------------------------------------------------
+
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(destination_branch=self.branch, destination_id=self.data.peer_id)
         query = """
-        MATCH (s:Node { uuid: $source_id })
-        MATCH (d:Node { uuid: $destination_id })
         MATCH (rl:Relationship { uuid: $rel_node_id })
         """
         self.add_to_query(query)
@@ -494,8 +502,6 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
-        self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
@@ -506,9 +512,14 @@ class RelationshipDeleteQuery(RelationshipQuery):
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(
+            destination_branch=self.destination.get_branch_based_on_support_type(),
+            destination_id=self.destination_id or self.destination.get_id(),
+        )
         query = """
-        MATCH (s:Node { uuid: $source_id })-[:IS_RELATED]-(rl:Relationship {uuid: $rel_id})-[:IS_RELATED]-(d:Node { uuid: $destination_id })
-        WITH s, rl, d
+        MATCH (s)-[:IS_RELATED]-(rl:Relationship {uuid: $rel_id})-[:IS_RELATED]-(d)
+        WITH DISTINCT s, rl, d
         LIMIT 1
         CREATE (s)%(r1)s(rl)
         CREATE (rl)%(r2)s(d)
@@ -850,8 +861,6 @@ class RelationshipGetQuery(RelationshipQuery):
     type: QueryType = QueryType.READ
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
         self.params["branch"] = self.branch.name
 
@@ -865,9 +874,12 @@ class RelationshipGetQuery(RelationshipQuery):
         r1 = f"{arrows.left.start}[r1:{self.rel.rel_type}]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel.rel_type}]{arrows.right.end}"
 
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(
+            destination_branch=self.destination.get_branch_based_on_support_type(),
+            destination_id=self.destination_id or self.destination.get_id(),
+        )
         query = """
-        MATCH (s:Node { uuid: $source_id })
-        MATCH (d:Node { uuid: $destination_id })
         MATCH (s)%s(rl:Relationship { name: $name })%s(d)
         WHERE %s
         """ % (
