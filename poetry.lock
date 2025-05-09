@@ -3553,13 +3553,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.3.7"
+version = "3.4.1"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 files = [
-    {file = "prefect-3.3.7-py3-none-any.whl", hash = "sha256:6de738a3ac381cc985bd2def750dfc71908e2b79c98c364489bbe06620281b07"},
-    {file = "prefect-3.3.7.tar.gz", hash = "sha256:7623341410f4321ff8be0e429a6a202192386dab680a5bf3c88068c14bbc3399"},
+    {file = "prefect-3.4.1-py3-none-any.whl", hash = "sha256:59663b3521b45f6d0bc6cd99409e5c69bd01b2e5b374c18c4c280f6c43feb8e3"},
+    {file = "prefect-3.4.1.tar.gz", hash = "sha256:8e80a95966daf63e064db57f64682a33be3574baf97dc829e0c708648b311f0d"},
 ]
 
 [package.dependencies]
@@ -3590,7 +3590,7 @@ jsonpatch = ">=1.32,<2.0"
 jsonschema = ">=4.0.0,<5.0.0"
 opentelemetry-api = ">=1.27.0,<2.0.0"
 orjson = ">=3.7,<4.0"
-packaging = ">=21.3,<24.3"
+packaging = ">=21.3,<25.1"
 pathspec = ">=0.8.0"
 pendulum = {version = ">=3.0.0,<4", markers = "python_version < \"3.13\""}
 prometheus-client = ">=0.20.0"
@@ -3613,6 +3613,7 @@ toml = ">=0.10.0"
 typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.16.0"
 typing-extensions = ">=4.10.0,<5.0.0"
 ujson = ">=5.8.0,<6.0.0"
+uuid7 = ">=0.1.0"
 uv = ">=0.6.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
 websockets = ">=13.0,<16.0"
@@ -5411,6 +5412,17 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
+name = "uuid7"
+version = "0.1.0"
+description = "UUID version 7, generating time-sorted UUIDs with 200ns time resolution and 48 bits of randomness"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "uuid7-0.1.0-py2.py3-none-any.whl", hash = "sha256:5e259bb63c8cb4aded5927ff41b444a80d0c7124e8a0ced7cf44efa1f5cccf61"},
+    {file = "uuid7-0.1.0.tar.gz", hash = "sha256:8c57aa32ee7456d3cc68c95c4530bc571646defac01895cfc73545449894a63c"},
+]
+
+[[package]]
 name = "uv"
 version = "0.6.4"
 description = "An extremely fast Python package and project manager, written in Rust."
@@ -6042,4 +6054,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "0c4a872c691816ac14d05c63a94e0b58690fe8ecdc894b2c96a9c5d83996916b"
+content-hash = "48695753fff0af09fb35288efc7a4ca8f432d470ba20f21860fdb00c9a9b2d73"
