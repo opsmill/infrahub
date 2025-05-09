@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'getting-started/overview',
         'getting-started/quick-start',
+        'getting-started/next-steps',
       ],
     },
     {

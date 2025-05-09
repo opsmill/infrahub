@@ -1,0 +1,51 @@
+---
+title: Next Steps
+---
+import ReferenceLink from "../../src/components/Card";
+
+You know more about the project now. On this page, we'll guide you through the key steps to run and develop your own instance of Infrahub.
+
+## 1. Installation
+
+Infrahub supports multiple installation options. Choose the one that best fits your environment:
+
+- **Docker Compose**: A quick way to run Infrahub on any machine with Docker installed.
+- **Kubernetes**: Ideal for running in production or cloud environments.
+- **Invoke**: Clone the repository and run it locally for development purposes.
+
+:::note Hardware Requirements
+
+Make sure your machine meets the hardware requirements for running Infrahub. Find the requirements in the [related topic](https://www.google.com/).
+
+:::
+
+<ReferenceLink title="Infrahub Installation Guide" url="https://www.google.com/"/>
+
+## 2. The Schema
+
+Everything starts with data. The schema defines the shape of your data and drives the rest of the system.
+
+- **Consume the schema library**: Use an existing schema to get started quickly.
+- **Create your own schema**: Define custom nodes and relationships to match your domain.
+
+## 3. Load Data
+
+With a schema in place, it's time to bring in some data.
+
+- **Use the CLI `load` command**: Load structured data directly into Infrahub.
+- **Use `infrahub sync`**: Keep your data in sync from external sources or files.
+
+## 4. Generate Your First Artifact
+
+Artifacts are outputs of transformations applied to nodes in your schema.
+
+- **Connect a Git repo**: Define your transformations in code and version them.
+- **Write a transform**: Describe how to convert input data into meaningful artifacts.
+- **Inspect the artifact**: View the result and validate it against your expectations.
+
+## 5. Going Further
+
+From here, you can extend and optimize your setup:
+
+- **Streamline ingestion with generators**: Automate data ingestion for recurring or dynamic inputs.
+- **Deploy artifacts to the field**: Push outputs to where they're needed—dashboards, APIs, or external systems.
