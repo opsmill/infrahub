@@ -10,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError
+from tests.helpers.db_validation import verify_no_duplicate_paths
 
 from ..shared import load_schema
 from .shared import TestSchemaLifecycleBase
@@ -298,6 +299,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         schema_step_02: dict[str, Any],
         schema_specific_one_base: dict[str, Any],
         schema_specific_one_new_kind: dict[str, Any],
+        specific_one_update_02: Node,
     ):
         is_success = await client.branch.merge(branch_name=BRANCH_ONE)
         assert is_success
@@ -306,6 +308,15 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         new_kind = schema_specific_one_new_kind["namespace"] + schema_specific_one_new_kind["name"]
         errors = await self.validate_duplicate_nodes(db=db, kind_update_map={old_kind: new_kind})
         assert errors == []
+        await verify_no_duplicate_paths(db=db)
 
-
-# test update generic namespace
+        retrieved_specific_one = await NodeManager.get_one(
+            db=db, branch=default_branch, id=initial_dataset["specific_one"].id
+        )
+        assert retrieved_specific_one.get_kind() == SPECIFIC_ONE_KIND_UPDATED
+        assert retrieved_specific_one.generic_attr_text.value == specific_one_update_02.generic_attr_text.value  # type: ignore[attr-defined]
+        retrieved_things_rels = await retrieved_specific_one.things.get_relationships(db=db)
+        updated_things_rels = await specific_one_update_02.things.get_relationships(db=db)  # type: ignore[attr-defined]
+        assert len(retrieved_things_rels) == 1
+        assert len(updated_things_rels) == 1
+        assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
