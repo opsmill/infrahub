@@ -486,28 +486,8 @@ class NodeListGetAttributeQuery(Query):
         )
         self.params.update(branch_params)
 
-        if not self.branch_agnostic and (self.branch.is_default or self.branch.is_global):
-            query = """
-            MATCH (n:Node)
-            WHERE n.uuid IN $ids
-            AND NOT exists((n)-[:IS_PART_OF {branch: $branch_name, status: "deleted"}]->(:Root))
-            """
-            self.params["branch_name"] = self.branch.name
-        else:
-            query = """
-            MATCH (n:Node)
-            WHERE n.uuid IN $ids
-            CALL {
-                WITH n
-                MATCH (n)-[r:IS_PART_OF]->(:Root)
-                WHERE %(branch_filter)s
-                RETURN r.status = "active" AS is_active
-                ORDER BY r.from DESC
-                LIMIT 1
-            }
-            WITH n WHERE is_active = TRUE
-            """ % {"branch_filter": branch_filter}
-        query += """
+        query = """
+        MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         """
         if self.fields:
