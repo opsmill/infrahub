@@ -59,11 +59,16 @@ class DiffMerger:
         )
         log.info(f"Diff {latest_diff.uuid} retrieved")
         batch_num = 0
-        migrated_kinds_id_map = {
-            n.uuid: n.identifier.db_id
-            for n in enriched_diff.nodes
-            if n.is_node_kind_migration and n.action is DiffAction.ADDED
-        }
+        migrated_kinds_id_map = {}
+        for n in enriched_diff.nodes:
+            if not n.is_node_kind_migration:
+                continue
+            if n.uuid not in migrated_kinds_id_map or (
+                n.uuid in migrated_kinds_id_map and n.action is DiffAction.ADDED
+            ):
+                # make sure that we use the ADDED db_id if it exists
+                # it will not if a node was migrated and then deleted
+                migrated_kinds_id_map[n.uuid] = n.identifier.db_id
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             if node_diff_dicts:
                 log.info(f"Merging batch of nodes #{batch_num}")

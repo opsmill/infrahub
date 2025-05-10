@@ -23,7 +23,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import SchemaNotFoundError
+from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
 from tests.helpers.db_validation import verify_no_duplicate_paths
 from tests.unit.conftest import _build_hierarchical_location_data
 from tests.unit.core.test_utils import verify_all_linked_edges_deleted
@@ -940,6 +940,7 @@ class TestDiffAndMerge:
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
         car_accord_main: Node,
+        car_camry_main: Node,
         person_jane_main: Node,
         person_john_main: Node,
     ):
@@ -982,6 +983,10 @@ class TestDiffAndMerge:
         migrated_car.color.value = new_color
         await migrated_car.save(db=db)
 
+        # delete a car
+        migrated_car_to_delete = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+        await migrated_car_to_delete.delete(db=db)
+
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
@@ -1013,6 +1018,9 @@ class TestDiffAndMerge:
         assert not {r.get_peer_id() for r in retrieved_driver_rels}
         with pytest.raises(SchemaNotFoundError):
             await NodeManager.query(db=db, branch=default_branch, schema="TestCar")
+        # try to get deleted node
+        with pytest.raises(NodeNotFoundError):
+            await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id, raise_on_error=True)
         await verify_no_duplicate_paths(db=db)
 
         await diff_merger.rollback(at=at)
@@ -1034,3 +1042,6 @@ class TestDiffAndMerge:
         assert {r.get_peer_id() for r in retrieved_owner_rels} == {original_car_owner.id}
         with pytest.raises(SchemaNotFoundError):
             await NodeManager.query(db=db, branch=default_branch, schema="Test2NewCar")
+        # get undeleted node
+        undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
+        assert undeleted_car.get_kind() == "TestCar"
