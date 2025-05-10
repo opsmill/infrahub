@@ -1109,7 +1109,12 @@ class RelationshipDeleteAllQuery(Query):
         CALL {
             WITH rl
             MATCH (rl)-[active_edge:IS_RELATED]->(n)
-            WHERE %(active_rel_filter)s AND active_edge.status ="active"
+            WHERE %(active_rel_filter)s
+            WITH rl, active_edge, n
+            ORDER BY active_edge.from DESC
+            LIMIT 1
+            WITH rl, active_edge, n
+            WHERE active_edge.status = "active"
             CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
             WITH rl, active_edge, n
@@ -1125,7 +1130,12 @@ class RelationshipDeleteAllQuery(Query):
 
             WITH rl
             MATCH (rl)<-[active_edge:IS_RELATED]-(n)
-            WHERE %(active_rel_filter)s AND active_edge.status ="active"
+            WHERE %(active_rel_filter)s
+            WITH rl, active_edge, n
+            ORDER BY active_edge.from DESC
+            LIMIT 1
+            WITH rl, active_edge, n
+            WHERE active_edge.status = "active"
             CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
             WITH rl, active_edge, n
@@ -1143,6 +1153,164 @@ class RelationshipDeleteAllQuery(Query):
         }
 
         self.add_to_query(query)
+        # {
+        #   'source_id': '183e023e-bc59-559c-43e3-1677a0b2bdfc',
+        #   'branch': 'branch2',
+        #   'rel_prop': {'branch': 'branch2', 'branch_level': 2, 'status': 'deleted', 'from': '2025-05-10T00:17:45.601332Z'},
+        #   'at': '2025-05-10T00:17:45.601332Z',
+        #   'branch0': ['-global-', 'main'],
+        #   'time0': '2025-05-10T00:16:39.992858Z',
+        #   'branch1': ['-global-', 'branch2'],
+        #   'time1': '2025-05-10T00:17:45.601332Z'
+        # }
+        """
+        MATCH (s:Node { uuid: $source_id })-[active_edge:IS_RELATED]-(rl:Relationship)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status = "active"
+        WITH DISTINCT rl
+        CALL {
+        WITH rl
+        MATCH (rl)<-[active_edge:IS_VISIBLE]-(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)<-[deleted_edge:IS_VISIBLE $rel_prop]-(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)<-[active_edge:IS_PROTECTED]-(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)<-[deleted_edge:IS_PROTECTED $rel_prop]-(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)<-[active_edge:HAS_OWNER]-(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)<-[deleted_edge:HAS_OWNER $rel_prop]-(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)<-[active_edge:HAS_SOURCE]-(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)<-[deleted_edge:HAS_SOURCE $rel_prop]-(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)-[active_edge:IS_VISIBLE]->(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)-[active_edge:IS_PROTECTED]->(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)-[active_edge:HAS_OWNER]->(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)-[active_edge:HAS_SOURCE]->(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        }
+        CALL {
+        WITH rl
+        MATCH (rl)-[active_edge:IS_RELATED]->(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH rl, active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        RETURN
+        n.uuid as uuid,
+        n.kind as kind,
+        rl.name as rel_identifier,
+        "outbound" as rel_direction
+        UNION
+        WITH rl
+        MATCH (rl)<-[active_edge:IS_RELATED]-(n)
+        WHERE ((active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch0 AND active_edge.from <= $time0 AND active_edge.to >= $time0)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to IS NULL)
+        OR (active_edge.branch IN $branch1 AND active_edge.from <= $time1 AND active_edge.to >= $time1)) AND active_edge.status ="active"
+        CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
+        SET deleted_edge.hierarchy = active_edge.hierarchy
+        WITH rl, active_edge, n
+        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+        SET active_edge.to = $at
+        RETURN
+        n.uuid as uuid,
+        n.kind as kind,
+        rl.name as rel_identifier,
+        "inbound" as rel_direction
+        }
+        RETURN DISTINCT uuid, kind, rel_identifier, rel_direction
+        """
 
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
