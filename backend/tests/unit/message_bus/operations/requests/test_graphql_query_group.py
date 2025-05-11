@@ -9,6 +9,7 @@ from pytest_httpx import HTTPXMock
 from infrahub.database import InfrahubDatabase
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.groups.tasks import update_graphql_query_group
+from infrahub.workers.dependencies import build_client
 
 
 @pytest.fixture
@@ -19,7 +20,13 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     return httpx_mock
 
 
-async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock, mock_schema_query_02):
+async def test_graphql_group_update(
+    db: InfrahubDatabase, httpx_mock: HTTPXMock, mock_schema_query_02, dependency_provider
+):
+    dependency_provider.override(
+        build_client, lambda: InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
+    )
+
     q1 = str(uuid.uuid4())
     p1 = str(uuid.uuid4())
     p2 = str(uuid.uuid4())
@@ -37,13 +44,7 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
         params={"name": "John"},
     )
 
-    with (
-        patch("infrahub.groups.tasks.add_tags"),
-        patch(
-            "infrahub.workers.dependencies.build_client",
-            return_value=InfrahubClient(config=Config(address="http://mock", insert_tracker=True)),
-        ),
-    ):
+    with patch("infrahub.groups.tasks.add_tags"):
         # add_branch_tag requires a prefect client, ie it does not work with WorkflowLocal
         response1 = {
             "data": {
