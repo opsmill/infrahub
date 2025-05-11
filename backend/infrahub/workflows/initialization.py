@@ -10,8 +10,8 @@ from infrahub import config
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
-# from infrahub.workflows.constants import WorkerType
 
+# from infrahub.workflows.constants import WorkerType
 from .catalogue import worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 

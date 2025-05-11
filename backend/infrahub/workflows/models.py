@@ -11,7 +11,7 @@ from prefect.client.schemas.schedules import CronSchedule
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
-from infrahub import __version__, config
+from infrahub import __version__
 
 from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
 

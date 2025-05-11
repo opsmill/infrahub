@@ -7,7 +7,6 @@ import pytest
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema

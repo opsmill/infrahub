@@ -12,7 +12,6 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.node import Node
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.directory import get_repositories_directory
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema

@@ -8,7 +8,6 @@ from infrahub.core.constants import InfrahubKind, TaskConclusion, ValidatorConcl
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.task import Task
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp

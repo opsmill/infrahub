@@ -12,7 +12,6 @@ from tests.helpers.test_app import TestInfrahubApp
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.services.adapters.cache.redis import RedisCache
 
 if TYPE_CHECKING:
     from pathlib import Path
