@@ -6,6 +6,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_client, build_message_bus
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
@@ -20,23 +21,26 @@ class TestBranchCreate(TestInfrahubApp):
         register_core_models_schema,
         session_admin,
         client,
-        service,
+        service: InfrahubServices,
+        dependency_provider,
     ):
+        dependency_provider.override(build_client, lambda: service.client)
+
         query = """
-        mutation {
-            BranchCreate(data: { name: "branch2", sync_with_git: false }) {
-                ok
-                object {
-                    id
-                    name
-                    description
-                    sync_with_git
-                    is_default
-                    branched_from
+            mutation {
+                BranchCreate(data: { name: "branch2", sync_with_git: false }) {
+                    ok
+                    object {
+                        id
+                        name
+                        description
+                        sync_with_git
+                        is_default
+                        branched_from
+                    }
                 }
             }
-        }
-        """
+            """
 
         result = await graphql_mutation(
             query=query, db=db, service=service, branch=default_branch, account_session=session_admin

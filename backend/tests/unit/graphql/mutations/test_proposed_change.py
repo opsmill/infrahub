@@ -19,6 +19,7 @@ from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
@@ -269,7 +270,10 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         session_first_account: AccountSession,
         session_admin: AccountSession,
         client: InfrahubClient,
+        dependency_provider,
     ):
+        dependency_provider.override(build_client, lambda: client)
+
         service = await InfrahubServices.new(
             database=db,
             message_bus=BusRecorder(),

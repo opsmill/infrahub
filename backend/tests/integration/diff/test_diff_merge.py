@@ -56,7 +56,7 @@ class TestDiffMerge(TestInfrahubApp):
         )
         await delorean.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
+        # bus_simulator.service._cache = RedisCache()
 
         return {
             "doc_brown": doc_brown,

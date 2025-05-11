@@ -192,7 +192,7 @@ async def update_core_schema_cmd(
     )
 
     with prefect_test_harness():
-        await update_core_schema(db=dbdriver, service=service, initialize=True, debug=debug)
+        await update_core_schema(db=dbdriver, initialize=True, debug=debug)
 
     await dbdriver.close()
 
@@ -342,9 +342,7 @@ async def initialize_internal_schema() -> None:
     registry.schema.register_schema(schema=schema)
 
 
-async def update_core_schema(
-    db: InfrahubDatabase, service: InfrahubServices, initialize: bool = True, debug: bool = False
-) -> None:
+async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debug: bool = False) -> None:
     """Update the core schema of Infrahub to the latest version"""
     # ----------------------------------------------------------
     # Initialize Schema and Registry
@@ -393,7 +391,7 @@ async def update_core_schema(
         schema_branch=candidate_schema,
         constraints=result.constraints,
     )
-    responses = await schema_validate_migrations(message=validate_migration_data, service=service)
+    responses = await schema_validate_migrations(message=validate_migration_data)
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
         rprint(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
@@ -435,7 +433,7 @@ async def update_core_schema(
         previous_schema=origin_schema,
         migrations=result.migrations,
     )
-    migration_error_msgs = await schema_apply_migrations(message=apply_migration_data, service=service)
+    migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
 
     if migration_error_msgs:
         rprint(f"{ERROR_BADGE} | Some error(s) happened while running the schema migrations")

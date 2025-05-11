@@ -4,25 +4,28 @@ from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import get_initialized_repo
-from infrahub.services import InfrahubServices
 from infrahub.tasks.artifact import define_artifact
+from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
 
 
 @flow(name="git-repository-check-artifact-create", flow_run_name="Check artifact creation")
-async def create(model: CheckArtifactCreate, service: InfrahubServices) -> ValidatorConclusion:
+async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
-    validator = await service.client.get(kind=InfrahubKind.ARTIFACTVALIDATOR, id=model.validator_id, include=["checks"])
+
+    client = get_client()
+
+    validator = await client.get(kind=InfrahubKind.ARTIFACTVALIDATOR, id=model.validator_id, include=["checks"])
 
     repo = await get_initialized_repo(
-        client=service.client,
+        client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
 
-    artifact, artifact_created = await define_artifact(model=model, service=service)
+    artifact, artifact_created = await define_artifact(model=model)
 
     severity = "info"
     artifact_result: dict[str, str | bool | None] = {
@@ -51,7 +54,7 @@ async def create(model: CheckArtifactCreate, service: InfrahubServices) -> Valid
 
     check = None
     check_name = f"{model.artifact_name}: {model.target_name}"
-    existing_check = await service.client.filters(
+    existing_check = await client.filters(
         kind=InfrahubKind.ARTIFACTCHECK, validator__ids=validator.id, name__value=check_name
     )
     if existing_check:
@@ -67,7 +70,7 @@ async def create(model: CheckArtifactCreate, service: InfrahubServices) -> Valid
         check.storage_id.value = artifact_result["storage_id"]
         await check.save()
     else:
-        check = await service.client.create(
+        check = await client.create(
             kind=InfrahubKind.ARTIFACTCHECK,
             data={
                 "name": check_name,

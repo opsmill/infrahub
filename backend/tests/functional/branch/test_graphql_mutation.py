@@ -81,7 +81,7 @@ class TestBranchMutations(TestInfrahubApp):
         )
         await jesko.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
+        # bus_simulator.service._cache = RedisCache()
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
         client_repository = await client.create(
             kind=InfrahubKind.REPOSITORY,

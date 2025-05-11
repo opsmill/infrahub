@@ -9,7 +9,6 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP
 
 from .adapters.event import InfrahubEventService
 from .adapters.http.httpx import HttpxAdapter
-from .adapters.workflow.local import WorkflowLocalExecution
 from .adapters.workflow.worker import WorkflowWorkerExecution
 from .component import InfrahubComponent
 from .scheduler import InfrahubScheduler
@@ -109,10 +108,6 @@ class InfrahubServices:
         scheduler.service = service
 
         if message_bus is not None:
-            # Need circular dependency for injecting `service`  within `execute_message`. This might be removed
-            # using proper dependency injections.
-            message_bus.service = service
-
             if cache is not None and database is not None:
                 component = await InfrahubComponent.new(
                     cache=cache, component_type=component_type, db=database, message_bus=message_bus
@@ -121,18 +116,12 @@ class InfrahubServices:
                 # itself relying on service.
                 service._component = component
 
-        if workflow is not None:
-            if isinstance(workflow, WorkflowWorkerExecution):
-                assert service.component is not None
-                # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
-                # constructor but this requires some redesign as it depends on InfrahubComponent which is instantiated
-                # after workflow instantiation.
-                await workflow.initialize(
-                    component_is_primary_server=await service.component.is_primary_gunicorn_worker()
-                )
-            elif isinstance(workflow, WorkflowLocalExecution):
-                # Circular dependency is only needed for injecting `service` within `execute_workflow` while testing.
-                workflow.service = service
+        if workflow is not None and isinstance(workflow, WorkflowWorkerExecution):
+            assert service.component is not None
+            # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
+            # constructor but this requires some redesign as it depends on InfrahubComponent which is instantiated
+            # after workflow instantiation.
+            await workflow.initialize(component_is_primary_server=await service.component.is_primary_gunicorn_worker())
 
         return service
 

@@ -95,7 +95,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         await jesko.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
+        # bus_simulator.service._cache = RedisCache()
         repo_path, repo_name = car_dealership_copy
         FileRepo(name=repo_name, local_repo_base_path=repo_path, sources_directory=git_repos_source_dir_module_scope)
         client_repository = await client.create(

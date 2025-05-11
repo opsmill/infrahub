@@ -22,6 +22,7 @@ from infrahub.proposed_change.tasks import (
     run_proposed_change_schema_integrity_check,
 )
 from infrahub.services import InfrahubServices
+from infrahub.workers.dependencies import build_cache, build_database
 from tests.adapters.cache import MemoryCache
 from tests.conftest import TestHelper
 
@@ -284,10 +285,14 @@ async def test_schema_integrity(
     schema_integrity_01: RequestProposedChangeSchemaIntegrity,
     branch_diff_01_summary: list[NodeDiff],
     service_all: InfrahubServices,
+    dependency_provider,
     car_accord_main: Node,
     car_volt_main: Node,
-    person_john_main,
+    person_john_main: Node,
 ):
+    dependency_provider.override(build_database, lambda: db)
+    dependency_provider.override(build_cache, lambda: service_all.cache)
+
     branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
     person = await Node.init(db=db, schema="TestPerson", branch=branch2)
@@ -305,7 +310,8 @@ async def test_schema_integrity(
         diff_summary=branch_diff_01_summary,
         cache=service_all.cache,
     )
-    await run_proposed_change_schema_integrity_check(model=schema_integrity_01, service=service_all)
+
+    await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
 
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
     assert len(checks) == 1

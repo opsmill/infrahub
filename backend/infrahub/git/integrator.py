@@ -234,6 +234,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
         )
 
+    @task(name="import-data-from-files", task_run_name="Import data from files", cache_policy=NONE)  # type: ignore[arg-type]
+    async def import_data_from_files(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> None:
+        log = get_run_logger()
+        log.info(f"Found {len(config_file.object_data)} object data files in the repository")
+
+        processed = 0
+        for object_file in config_file.object_data:
+            # 1. Load data from file
+            # 2. Create object from data inside the given branch
+            # 3. Store the commit in a metadata attribute
+            processed += 1
+
+        log.info(f"Processed {processed} object data files out of {len(config_file.object_data)}")
+
     @task(name="import-jinja2-tansforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)  # type: ignore[arg-type]
     async def import_jinja2_transforms(
         self,

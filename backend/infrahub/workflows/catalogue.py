@@ -391,7 +391,7 @@ GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
 
 GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     name="git-repository-import-object",
-    type=WorkflowType.USER,
+    type=WorkflowType.INTERNAL,  # I think it's not supposed to be user
     module="infrahub.git.tasks",
     function="import_objects_from_git_repository",
     tags=[WorkflowTag.DATABASE_CHANGE],

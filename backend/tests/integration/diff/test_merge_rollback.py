@@ -55,7 +55,7 @@ class TestBranchMergeRollback(TestInfrahubApp):
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
 
-        bus_simulator.service._cache = RedisCache()
+        # bus_simulator.service._cache = RedisCache()
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")

@@ -78,7 +78,7 @@ async def upgrade_cmd(
     await migrate_database(db=dbdriver, initialize=False, check=check)
 
     await initialize_internal_schema()
-    await update_core_schema(db=dbdriver, service=service, initialize=False)
+    await update_core_schema(db=dbdriver, initialize=False)
 
     # -------------------------------------------
     # Upgrade Internal Objects, generated and managed by Infrahub
@@ -93,7 +93,7 @@ async def upgrade_cmd(
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
-        await trigger_configure_all(service=service)
+        await trigger_configure_all()
 
     await dbdriver.close()
 

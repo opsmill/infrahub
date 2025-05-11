@@ -132,7 +132,7 @@ class TestDiffRebase(TestInfrahubApp):
         )
         await ed_209.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
+        # bus_simulator.service._cache = RedisCache()
 
         return {
             "john": john,

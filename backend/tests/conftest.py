@@ -108,8 +108,9 @@ def event_loop():
 
 
 @pytest.fixture
-def dependency_provider() -> Provider:
-    return provider
+def dependency_provider():
+    yield provider
+    provider.clear()
 
 
 @pytest.fixture(scope="module")

@@ -12,8 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_workflow
 
 
 async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
@@ -95,9 +94,12 @@ async def test_branch_rebase_diff_conflict(
     db: InfrahubDatabase,
     default_branch: Branch,
     workflow_local,
+    dependency_provider,
     car_person_schema,
     car_camry_main,
 ):
+    dependency_provider.override(build_workflow, lambda: workflow_local)
+
     branch2 = await create_branch(db=db, branch_name="branch2")
     car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
     car_main.name.value += "-main"
@@ -106,12 +108,9 @@ async def test_branch_rebase_diff_conflict(
     car_branch.name.value += "-branch"
     await car_branch.save(db=db)
 
-    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
-
     with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
         await rebase_branch(
             branch=branch2.name,
-            service=service,
             context=InfrahubContext.init(
                 branch=default_branch,
                 account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),

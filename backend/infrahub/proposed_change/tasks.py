@@ -83,8 +83,8 @@ from infrahub.proposed_change.models import (
     RunGeneratorAsCheckModel,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
-from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.validators.tasks import start_validator
+from infrahub.workers.dependencies import get_client, get_database, get_infrahub_services
 from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
@@ -104,19 +104,21 @@ from infrahub.workflows.utils import add_tags
 from .branch_diff import get_diff_summary_cache, get_modified_kinds
 
 if TYPE_CHECKING:
+    from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 
 async def _proposed_change_transition_state(
     state: ProposedChangeState,
-    service: InfrahubServices,
+    database: InfrahubDatabase,
     proposed_change: InternalCoreProposedChange | None = None,
     proposed_change_id: str | None = None,
 ) -> None:
-    async with service.database.start_session() as db:
+    async with database.start_session() as db:
         if proposed_change is None and proposed_change_id:
             proposed_change = await registry.manager.get_one(
                 db=db, id=proposed_change_id, kind=InternalCoreProposedChange, raise_on_error=True
@@ -152,9 +154,9 @@ async def merge_proposed_change(
     proposed_change_id: str,
     proposed_change_name: str,  # noqa: ARG001
     context: InfrahubContext,
-    service: InfrahubServices,
 ) -> State:
     log = get_run_logger()
+    service = await get_infrahub_services()
 
     await add_tags(nodes=[proposed_change_id])
 
@@ -175,7 +177,7 @@ async def merge_proposed_change(
             ):
                 # Ignoring Data integrity checks as they are handled again later
                 await _proposed_change_transition_state(
-                    proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
+                    proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
                 )
                 return Failed(message="Unable to merge proposed change containing failing checks")
             if validator_kind == InfrahubKind.DATAVALIDATOR:
@@ -183,7 +185,7 @@ async def merge_proposed_change(
                 for check in data_checks.values():
                     if check.conflicts.value and not check.keep_branch.value:
                         await _proposed_change_transition_state(
-                            proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
+                            proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
                         )
                         return Failed(
                             message="Data conflicts found on branch and missing decisions about what branch to keep"
@@ -191,19 +193,17 @@ async def merge_proposed_change(
 
         log.info("Proposed change is eligible to be merged")
         try:
-            await merge_branch(
-                branch=source_branch.name, context=context, service=service, proposed_change_id=proposed_change_id
-            )
+            await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
+                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
             )
             return Failed(message=f"Merge failure when trying to merge {exc.message}")
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
         await _proposed_change_transition_state(
-            proposed_change=proposed_change, state=ProposedChangeState.MERGED, service=service
+            proposed_change=proposed_change, state=ProposedChangeState.MERGED, database=db
         )
         return Completed(message="proposed change merged successfully")
 
@@ -213,8 +213,10 @@ async def merge_proposed_change(
     flow_run_name="Cancel all proposed change associated with branch {branch_name}",
     description="Cancel all Proposed change associated with a branch.",
 )
-async def cancel_proposed_changes_branch(branch_name: str, service: InfrahubServices) -> None:
+async def cancel_proposed_changes_branch(branch_name: str) -> None:
     await add_tags(branches=[branch_name])
+
+    service = await get_infrahub_services()
 
     proposed_changed_opened = await service.client.filters(
         kind=CoreProposedChange,
@@ -230,16 +232,16 @@ async def cancel_proposed_changes_branch(branch_name: str, service: InfrahubServ
     )
 
     for proposed_change in proposed_changed_opened + proposed_changed_closed:
-        await cancel_proposed_change(proposed_change=proposed_change, service=service)
+        await cancel_proposed_change(proposed_change=proposed_change, client=get_client())
 
 
 @task(name="Cancel a propose change", description="Cancel a propose change", cache_policy=NONE)  # type: ignore[arg-type]
-async def cancel_proposed_change(proposed_change: CoreProposedChange, service: InfrahubServices) -> None:
+async def cancel_proposed_change(proposed_change: CoreProposedChange, client: InfrahubClient) -> None:
     await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
 
     log.info("Canceling proposed change as the source branch was deleted")
-    proposed_change = await service.client.get(kind=CoreProposedChange, id=proposed_change.id)
+    proposed_change = await client.get(kind=CoreProposedChange, id=proposed_change.id)
     proposed_change.state.value = ProposedChangeState.CANCELED.value
     await proposed_change.save()
 
@@ -248,13 +250,12 @@ async def cancel_proposed_change(proposed_change: CoreProposedChange, service: I
     name="proposed-changed-data-integrity",
     flow_run_name="Triggers data integrity check",
 )
-async def run_proposed_change_data_integrity_check(
-    model: RequestProposedChangeDataIntegrity, service: InfrahubServices
-) -> None:
+async def run_proposed_change_data_integrity_check(model: RequestProposedChangeDataIntegrity) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    async with service.database.start_transaction() as dbt:
+    database = await get_database()
+    async with database.start_transaction() as dbt:
         destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
         source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
         component_registry = get_component_registry()
@@ -267,10 +268,10 @@ async def run_proposed_change_data_integrity_check(
     name="proposed-changed-run-generator",
     flow_run_name="Run generators",
 )
-async def run_generators(
-    model: RequestProposedChangeRunGenerators, context: InfrahubContext, service: InfrahubServices
-) -> None:
+async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
+
+    service = await get_infrahub_services()
 
     generators = await service.client.filters(
         kind=CoreGeneratorDefinition,
@@ -366,12 +367,12 @@ async def run_generators(
     name="proposed-changed-schema-integrity",
     flow_run_name="Process schema integrity",
 )
-async def run_proposed_change_schema_integrity_check(
-    model: RequestProposedChangeSchemaIntegrity, service: InfrahubServices
-) -> None:
+async def run_proposed_change_schema_integrity_check(model: RequestProposedChangeSchemaIntegrity) -> None:
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+
+    service = await get_infrahub_services()
 
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
     dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
@@ -398,8 +399,7 @@ async def run_proposed_change_schema_integrity_check(
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
             branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
-        ),
-        service=service,
+        )
     )
 
     # TODO we need to report a failure if an error happened during the execution of a validator
@@ -462,10 +462,10 @@ async def _get_proposed_change_schema_integrity_constraints(
     name="proposed-changed-repository-checks",
     flow_run_name="Process user defined checks",
 )
-async def repository_checks(
-    model: RequestProposedChangeRepositoryChecks, service: InfrahubServices, context: InfrahubContext
-) -> None:
+async def repository_checks(model: RequestProposedChangeRepositoryChecks, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+
+    service = await get_infrahub_services()
 
     for repository in model.branch_diff.repositories:
         if (
@@ -501,14 +501,14 @@ async def repository_checks(
         )
 
 
-@flow(
-    name="proposed-changed-user-tests",
-    flow_run_name="Run unit tests in repositories",
-)
-async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, service: InfrahubServices) -> None:
-    log = get_run_logger()
+@flow(name="proposed-changed-user-tests", flow_run_name="Run unit tests in repositories")
+async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+
+    log = get_run_logger()
+    client = get_client()
+
+    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
     def _execute(
         directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
@@ -542,7 +542,7 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, 
                     "-qqqq",
                     "-s",
                 ],
-                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
+                plugins=[InfrahubBackendPlugin(client.config, repository.repository_id, proposed_change.id)],
             )
 
         # Restore stdout/stderr back to their orignal states
@@ -554,7 +554,7 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, 
     for repository in model.branch_diff.repositories:
         if model.source_branch_sync_with_git:
             repo = await get_initialized_repo(
-                client=service.client,
+                client=client,
                 repository_id=repository.repository_id,
                 name=repository.repository_name,
                 repository_kind=repository.kind,
@@ -570,12 +570,14 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, 
     name="artifacts-generation-validation",
     flow_run_name="Validating generation of artifacts for {model.artifact_definition.definition_name}",
 )
-async def validate_artifacts_generation(
-    model: RequestArtifactDefinitionCheck, service: InfrahubServices, context: InfrahubContext
-) -> None:
+async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
+    service = await get_infrahub_services()
+
     log = get_run_logger()
+    client = get_client()
+
     artifact_definition = await service.client.get(
         kind=InfrahubKind.ARTIFACTDEFINITION,
         id=model.artifact_definition.definition_id,
@@ -597,7 +599,7 @@ async def validate_artifacts_generation(
             previous_validator = existing_validator
 
     validator = await start_validator(
-        service=service,
+        client=client,
         validator=previous_validator,
         validator_type=CoreArtifactValidator,
         proposed_change=model.proposed_change,
@@ -669,11 +671,11 @@ async def validate_artifacts_generation(
             )
 
     await run_checks_and_update_validator(
+        event_service=service.event,
         checks=checks,
         validator=validator,
         proposed_change_id=model.proposed_change,
         context=context,
-        service=service,
     )
 
 
@@ -698,15 +700,14 @@ def _should_render_artifact(artifact_id: str | None, managed_branch: bool, impac
     name="run-generator-as-check",
     flow_run_name="Execute Generator {model.generator_definition.definition_name} for {model.target_name}",
 )
-async def run_generator_as_check(
-    model: RunGeneratorAsCheckModel, service: InfrahubServices, context: InfrahubContext
-) -> ValidatorConclusion:
+async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: InfrahubContext) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
 
+    client = get_client()
     log = get_run_logger()
 
     repository = await get_initialized_repo(
-        client=service.client,
+        client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
@@ -731,7 +732,7 @@ async def run_generator_as_check(
         repo_directory=repository.directory_root,
         worktree_directory=commit_worktree.directory,
     )
-    generator_instance = await _define_instance(model=model, service=service)
+    generator_instance = await _define_instance(model=model, client=client)
 
     check_message = "Instance successfully generated"
     try:
@@ -743,7 +744,7 @@ async def run_generator_as_check(
 
         generator = generator_class(
             query=generator_definition.query,
-            client=service.client,
+            client=client,
             branch=model.branch_name,
             params=model.variables,
             generator_instance=generator_instance.id,
@@ -768,7 +769,7 @@ async def run_generator_as_check(
     await generator_instance.update(do_full_update=True)
 
     check = None
-    existing_check = await service.client.filters(
+    existing_check = await client.filters(
         kind=InfrahubKind.GENERATORCHECK, validator__ids=model.validator_id, instance__value=generator_instance.id
     )
     if existing_check:
@@ -779,7 +780,7 @@ async def run_generator_as_check(
         check.conclusion.value = conclusion.value
         await check.save()
     else:
-        check = await service.client.create(
+        check = await client.create(
             kind=InfrahubKind.GENERATORCHECK,
             data={
                 "name": model.target_name,
@@ -797,9 +798,9 @@ async def run_generator_as_check(
     return conclusion
 
 
-async def _define_instance(model: RunGeneratorAsCheckModel, service: InfrahubServices) -> InfrahubNode:
+async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClient) -> InfrahubNode:
     if model.generator_instance:
-        instance = await service.client.get(
+        instance = await client.get(
             kind=InfrahubKind.GENERATORINSTANCE, id=model.generator_instance, branch=model.branch_name
         )
         instance.status.value = GeneratorInstanceStatus.PENDING.value
@@ -809,7 +810,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, service: InfrahubSer
         async with lock.registry.get(
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
-            instances = await service.client.filters(
+            instances = await client.filters(
                 kind=InfrahubKind.GENERATORINSTANCE,
                 definition__ids=[model.generator_definition.definition_id],
                 object__ids=[model.target_id],
@@ -820,7 +821,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, service: InfrahubSer
                 instance.status.value = GeneratorInstanceStatus.PENDING.value
                 await instance.update(do_full_update=True)
             else:
-                instance = await service.client.create(
+                instance = await client.create(
                     kind=InfrahubKind.GENERATORINSTANCE,
                     branch=model.branch_name,
                     data={
@@ -838,13 +839,14 @@ async def _define_instance(model: RunGeneratorAsCheckModel, service: InfrahubSer
     name="request-generator-definition-check",
     flow_run_name="Validate Generator selection for {model.generator_definition.definition_name}",
 )
-async def request_generator_definition_check(
-    model: RequestGeneratorDefinitionCheck, service: InfrahubServices, context: InfrahubContext
-) -> None:
-    log = get_run_logger()
+async def request_generator_definition_check(model: RequestGeneratorDefinitionCheck, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    log = get_run_logger()
+    client = get_client()
+    service = await get_infrahub_services()
+
+    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
     validator_name = f"Generator Validator: {model.generator_definition.definition_name}"
     await proposed_change.validations.fetch()
@@ -859,7 +861,7 @@ async def request_generator_definition_check(
             previous_validator = existing_validator
 
     validator = await start_validator(
-        service=service,
+        client=client,
         validator=previous_validator,
         validator_type=CoreGeneratorValidator,
         proposed_change=model.proposed_change,
@@ -870,7 +872,7 @@ async def request_generator_definition_check(
         context=context,
     )
 
-    group = await service.client.get(
+    group = await client.get(
         kind=InfrahubKind.GENERICGROUP,
         prefetch_relationships=True,
         populate_store=True,
@@ -879,7 +881,7 @@ async def request_generator_definition_check(
     )
     await group.members.fetch()
 
-    existing_instances = await service.client.filters(
+    existing_instances = await client.filters(
         kind=InfrahubKind.GENERATORINSTANCE,
         definition__ids=[model.generator_definition.definition_id],
         include=["object"],
@@ -932,10 +934,10 @@ async def request_generator_definition_check(
     ]
 
     await run_checks_and_update_validator(
+        event_service=service.event,
         checks=checks_coroutines,
         validator=validator,
         context=context,
-        service=service,
         proposed_change_id=proposed_change.id,
     )
 
@@ -981,14 +983,12 @@ class DefinitionSelect(IntFlag):
 
 
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
-async def run_proposed_change_pipeline(
-    model: RequestProposedChangePipeline, service: InfrahubServices, context: InfrahubContext
-) -> None:
-    repositories = await _get_proposed_change_repositories(model=model, service=service)
+async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
+    service = await get_infrahub_services()
 
-    if model.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
-        repositories=repositories, service=service
-    ):
+    repositories = await _get_proposed_change_repositories(model=model)
+
+    if model.source_branch_sync_with_git and await _validate_repository_merge_conflicts(repositories=repositories):
         for repo in repositories:
             if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 trigger_repo_checks_model = TriggerRepositoryInternalChecks(
@@ -1004,7 +1004,7 @@ async def run_proposed_change_pipeline(
                 )
         return
 
-    await _gather_repository_repository_diffs(repositories=repositories, service=service)
+    await _gather_repository_repository_diffs(repositories=repositories)
 
     async with service.database.start_transaction() as dbt:
         destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
@@ -1016,9 +1016,7 @@ async def run_proposed_change_pipeline(
     diff_summary = await service.client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=service.cache)
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
-    await _populate_subscribers(
-        branch_diff=branch_diff, diff_summary=diff_summary, service=service, branch=model.source_branch
-    )
+    await _populate_subscribers(branch_diff=branch_diff, diff_summary=diff_summary, branch=model.source_branch)
 
     if model.check_type is CheckType.ARTIFACT:
         request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
@@ -1117,11 +1115,10 @@ async def run_proposed_change_pipeline(
     name="proposed-changed-refresh-artifacts",
     flow_run_name="Trigger artifacts refresh",
 )
-async def refresh_artifacts(
-    model: RequestProposedChangeRefreshArtifacts, service: InfrahubServices, context: InfrahubContext
-) -> None:
+async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
     log = get_run_logger()
+    service = await get_infrahub_services()
 
     definition_information = await service.client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,
@@ -1441,9 +1438,9 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     return parsed
 
 
-async def _get_proposed_change_repositories(
-    model: RequestProposedChangePipeline, service: InfrahubServices
-) -> list[ProposedChangeRepository]:
+async def _get_proposed_change_repositories(model: RequestProposedChangePipeline) -> list[ProposedChangeRepository]:
+    service = await get_infrahub_services()
+
     destination_all = await service.client.execute_graphql(
         query=DESTINATION_ALLREPOSITORIES, branch_name=model.destination_branch
     )
@@ -1461,10 +1458,9 @@ async def _get_proposed_change_repositories(
 
 
 @task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")  # type: ignore[arg-type]
-async def _validate_repository_merge_conflicts(
-    repositories: list[ProposedChangeRepository], service: InfrahubServices
-) -> bool:
+async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
     log = get_run_logger()
+    service = await get_infrahub_services()
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
@@ -1484,9 +1480,8 @@ async def _validate_repository_merge_conflicts(
     return conflicts
 
 
-async def _gather_repository_repository_diffs(
-    repositories: list[ProposedChangeRepository], service: InfrahubServices
-) -> None:
+async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
+    service = await get_infrahub_services()
     for repo in repositories:
         if repo.has_diff and repo.source_commit and repo.destination_commit:
             # TODO we need to find a way to return all files in the repo if the repo is new
@@ -1511,8 +1506,10 @@ async def _gather_repository_repository_diffs(
 
 
 async def _populate_subscribers(
-    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], service: InfrahubServices, branch: str
+    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], branch: str
 ) -> None:
+    service = await get_infrahub_services()
+
     result = await service.client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,

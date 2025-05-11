@@ -229,7 +229,7 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
             name=f"worker-events-{WORKER_IDENTITY}",
             arguments={},
             durable=False,
-            exclusive=True,
+            exclusive=False,
             queue_type="classic",
         )
         in agent_queues
@@ -464,4 +464,6 @@ async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQMan
 
 
 async def on_callback(message: AbstractIncomingMessage, service: InfrahubServices) -> None:
-    await execute_message(routing_key=message.routing_key or "", message_body=message.body, service=service)
+    await execute_message(
+        routing_key=message.routing_key or "", message_body=message.body, message_bus=service.message_bus
+    )

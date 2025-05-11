@@ -143,8 +143,7 @@ class InfrahubWorkerAsync(BaseWorker):
         entrypoint: str = configuration._related_objects["deployment"].entrypoint
 
         file_path, flow_name = entrypoint.split(":")
-        file_path.replace("/", ".")
-        module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
+        module_path = file_path.removeprefix("backend/").removesuffix(".py").replace("/", ".")
         flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
         inject_service_parameter(func=flow_func, parameters=flow_run.parameters, service=self.service)
         flow_run_logger.debug("Validating parameters")
@@ -155,10 +154,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
-        return InfrahubWorkerAsyncResult(
-            status_code=0,
-            identifier=str(flow_run.id),
-        )
+        return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
     def _init_logger(self) -> None:
         """Initialize loggers to use the API handle provided by Prefect."""
