@@ -793,6 +793,9 @@ AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
+// -------------------------------------
+// Ignore node created and deleted on this branch
+// -------------------------------------
 CALL {
     WITH n
     OPTIONAL MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n)
