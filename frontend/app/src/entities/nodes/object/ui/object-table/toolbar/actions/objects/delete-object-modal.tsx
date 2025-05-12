@@ -19,7 +19,9 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
         const regex = new RegExp(/Cannot delete \w* \'(\w|-)*\'\./g);
         const matches = message.match(regex);
 
-        toast(<Alert type={ALERT_TYPES.ERROR} message={matches?.[0]} />);
+        const messageDisplay = matches?.[0];
+
+        toast(<Alert type={ALERT_TYPES.ERROR} message={messageDisplay} />);
 
         graphqlClient.reFetchObservableQueries();
       },
