@@ -11,11 +11,9 @@ from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
-from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
 
 if TYPE_CHECKING:
-    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -123,11 +121,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         assert tshirt1_last_update_result.name_code.value == expected_name_code
 
-    async def test_transform_based_computed_attribute(
-        self, client: InfrahubClient, remote_repos_dir: Path, dependency_provider: Provider
-    ) -> None:
-        dependency_provider.override(build_client, lambda: client)
-
+    async def test_transform_based_computed_attribute(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         src_directory = CURRENT_DIRECTORY / "test_files/repos/computed_attribute"
         repo = GitRepo(name="computed_attribute", src_directory=src_directory, dst_directory=remote_repos_dir)
         commit = repo._repo.git[repo._repo.git.head()]
