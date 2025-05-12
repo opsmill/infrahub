@@ -30,6 +30,8 @@ export function RelationshipTable({
       ...props,
     });
 
+  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+
   const columns = React.useMemo(() => {
     return [
       ...getObjectTableColumns(relationshipSchema, { disabled: true }),
@@ -38,10 +40,10 @@ export function RelationshipTable({
         parentKind,
         relationshipName,
         permission: PERMISSION_ALLOW_ALL,
+        relationshipsCount: flatData.length,
       }),
     ];
-  }, [relationshipSchema.hash]);
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  }, [relationshipSchema.hash, flatData.length]);
 
   return (
     <InfiniteDataTable

@@ -1,5 +1,6 @@
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
+import { isInPreviousYear } from "@/shared/utils/date";
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 type DateDisplayProps = {
@@ -23,10 +24,12 @@ export const DateDisplay = (props: DateDisplayProps) => {
   const distanceFromNow = differenceInDays(new Date(), dateData);
 
   if (distanceFromNow > 7) {
+    const dateFormat = isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM";
+
     return (
       <span className="flex items-center flex-wrap">
-        <Tooltip enabled content={getDateDisplay(date)}>
-          <span className="text-xs font-normal">{format(dateData, "MMM d")}</span>
+        <Tooltip enabled content={getDateDisplay(dateData)}>
+          <span className="text-xs font-normal">{format(dateData, dateFormat)}</span>
         </Tooltip>
       </span>
     );
