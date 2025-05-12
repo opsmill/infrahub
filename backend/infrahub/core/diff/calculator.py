@@ -60,7 +60,7 @@ class DiffCalculator:
             )
             log.info(f"Beginning one diff calculation query {limit=}, {offset=}")
             await diff_query.execute(db=self.db)
-            log.info("Diff calculation query complete")
+            log.info(f"Diff calculation query complete {limit=}, {offset=}")
             last_result = None
             for query_result in diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
@@ -75,7 +75,7 @@ class DiffCalculator:
     ) -> None:
         has_more_data = True
         offset = 0
-        limit = int(config.SETTINGS.database.query_size_limit)
+        limit = config.SETTINGS.database.query_size_limit
         diff_nodes_by_identifier = {n.identifier: n for n in branch_diff.nodes}
         diff_nodes_to_add: list[DiffNode] = []
         while has_more_data:
@@ -91,7 +91,7 @@ class DiffCalculator:
             )
             log.info(f"Getting one batch of migrated kind nodes {limit=}, {offset=}")
             await diff_query.execute(db=self.db)
-            log.info("Migrated kind nodes query complete")
+            log.info(f"Migrated kind nodes query complete {limit=}, {offset=}")
             last_result = None
             for migrated_kind_node in diff_query.get_migrated_kind_nodes():
                 migrated_kind_identifier = NodeIdentifier(
@@ -143,7 +143,7 @@ class DiffCalculator:
         )
         node_limit = int(config.SETTINGS.database.query_size_limit / 10)
         fields_limit = int(config.SETTINGS.database.query_size_limit / 3)
-        properties_limit = int(config.SETTINGS.database.query_size_limit)
+        properties_limit = config.SETTINGS.database.query_size_limit
 
         calculation_request = DiffCalculationRequest(
             base_branch=base_branch,
