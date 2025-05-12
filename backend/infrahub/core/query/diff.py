@@ -820,12 +820,12 @@ WHERE intra_branch_update = FALSE
     def get_migrated_kind_nodes(self) -> Generator[MigratedKindNode, None, None]:
         for result in self.get_results():
             yield MigratedKindNode(
-                uuid=result.get_as_str("uuid"),
-                kind=result.get_as_str("kind"),
-                db_id=result.get_as_str("db_id"),
-                from_time=Timestamp(result.get_as_str("from_time")),
+                uuid=result.get_as_type("uuid", return_type=str),
+                kind=result.get_as_type("kind", return_type=str),
+                db_id=result.get_as_type("db_id", return_type=str),
+                from_time=result.get_as_type("from_time", return_type=Timestamp),
                 action=DiffAction.REMOVED
-                if result.get_as_str("status").lower() == RelationshipStatus.DELETED.value
+                if result.get_as_type("status", return_type=str).lower() == RelationshipStatus.DELETED.value
                 else DiffAction.ADDED,
                 has_more_data=result.get_as_type("has_more_data", bool),
             )
