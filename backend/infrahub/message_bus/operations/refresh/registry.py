@@ -8,7 +8,7 @@ from infrahub.workers.dependencies import get_component, get_database, get_log
 
 async def branches(message: messages.RefreshRegistryBranches) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
-        get_log().log.info("Ignoring refresh registry refresh request originating from self", worker=WORKER_IDENTITY)
+        get_log().info("Ignoring refresh registry refresh request originating from self", worker=WORKER_IDENTITY)
         return
 
     database = await get_database()

@@ -1013,7 +1013,9 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
-    await _populate_subscribers(branch_diff=branch_diff, diff_summary=diff_summary, branch=model.source_branch)
+    await _populate_subscribers(
+        branch_diff=branch_diff, diff_summary=diff_summary, branch=model.source_branch, client=client
+    )
 
     if model.check_type is CheckType.ARTIFACT:
         request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
