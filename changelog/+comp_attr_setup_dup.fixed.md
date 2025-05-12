@@ -1,1 +1,0 @@
-Fixed issue with computed attribute that would trigger multiple updates after a schema change if the attribute reference multiple kind of nodes.

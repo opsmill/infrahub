@@ -1,0 +1,53 @@
+---
+title: Release 1.2.8
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.8</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>May 1st, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #8</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.8](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.8)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.8
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.7 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Added support for "convert_query_response" for Python transforms. The feature works the same was as with Generators. Note any non default branch will need to be rebased after this upgrade. ([#6383](https://github.com/opsmill/infrahub/issues/6383))
+- Enabled HCL syntax highlighting for artifacts.
+
+### Fixed
+
+- Improved performance when retrieving nodes that have thousands of relationships.
+- Improved performance of the Git credential helper.
+
+### Housekeeping
+
+- Background performance improvements due to Prefect 3.3.7 upgrade.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade
+
+**After the upgrade, it is strongly recommended to rebase any open branches in Infrahub once the system is online again.**

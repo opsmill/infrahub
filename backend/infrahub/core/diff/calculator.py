@@ -14,6 +14,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
+from .model.field_specifiers_map import NodeFieldSpecifierMap
 from .model.path import CalculatedDiffs
 
 log = get_logger()
@@ -26,8 +27,8 @@ class DiffCalculationRequest:
     branch_from_time: Timestamp
     from_time: Timestamp
     to_time: Timestamp
-    current_node_field_specifiers: dict[str, set[str]] | None = field(default=None)
-    new_node_field_specifiers: dict[str, set[str]] | None = field(default=None)
+    current_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
+    new_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
 
 
 class DiffCalculator:
@@ -75,7 +76,7 @@ class DiffCalculator:
         from_time: Timestamp,
         to_time: Timestamp,
         include_unchanged: bool = True,
-        previous_node_specifiers: dict[str, set[str]] | None = None,
+        previous_node_specifiers: NodeFieldSpecifierMap | None = None,
     ) -> CalculatedDiffs:
         if diff_branch.name == registry.default_branch:
             diff_branch_from_time = from_time

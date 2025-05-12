@@ -1,6 +1,10 @@
+from collections import defaultdict
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import DiffAction
+from infrahub.core.diff.model.path import NodeIdentifier
 from infrahub.core.query.utils import filter_and, filter_or
 
 
@@ -29,6 +33,7 @@ class IncExclActionFilterOptions(BaseModel):
 class EnrichedDiffQueryFilters(BaseModel):
     ids: list[str] = Field(default_factory=list)
     kind: IncExclFilterOptions = IncExclFilterOptions()
+    identifiers: list[NodeIdentifier] = Field(default_factory=list)
     namespace: IncExclFilterOptions = IncExclFilterOptions()
     status: IncExclActionFilterOptions = IncExclActionFilterOptions()
     only_conflicted: bool = Field(default=False)
@@ -37,6 +42,7 @@ class EnrichedDiffQueryFilters(BaseModel):
     def is_empty(self) -> bool:
         if (
             not self.ids
+            and not self.identifiers
             and self.only_conflicted is False
             and self.kind.is_empty
             and self.namespace.is_empty
@@ -48,11 +54,19 @@ class EnrichedDiffQueryFilters(BaseModel):
     def generate(self) -> tuple[str, dict]:
         default_filter = ""
 
-        params = {}
+        params: dict[str, Any] = {}
 
         if self.ids:
             params["ids"] = self.ids
             return "diff_node.uuid in $ids", params
+
+        if self.identifiers:
+            params["ids"] = [n.uuid for n in self.identifiers]
+            id_kind_map: dict[str, list[str]] = defaultdict(list)
+            for node_identifier in self.identifiers:
+                id_kind_map[node_identifier.uuid].append(node_identifier.kind)
+            params["id_kind_map"] = id_kind_map
+            return "diff_node.uuid in $ids AND diff_node.kind IN $id_kind_map[diff_node.uuid]", params
 
         filters_list = []
 

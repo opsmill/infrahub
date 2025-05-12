@@ -1,3 +1,4 @@
+import json
 from typing import Any, Iterable
 
 from infrahub.core.query import Query, QueryType
@@ -90,6 +91,7 @@ WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS h
 SET
     diff_node.kind = node_map.node_properties.kind,
     diff_node.label = node_map.node_properties.label,
+    diff_node.db_labels = node_map.node_properties.db_labels,
     diff_node.changed_at = node_map.node_properties.changed_at,
     diff_node.action = node_map.node_properties.action,
     diff_node.path_identifier = node_map.node_properties.path_identifier
@@ -390,6 +392,7 @@ FOREACH (i in CASE WHEN has_property_conflict = TRUE THEN [1] ELSE [] END |
             "node_properties": {
                 "uuid": enriched_node.uuid,
                 "kind": enriched_node.kind,
+                "db_labels": json.dumps(list(enriched_node.identifier.labels)),
                 "label": enriched_node.label,
                 "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
                 "action": enriched_node.action.value,

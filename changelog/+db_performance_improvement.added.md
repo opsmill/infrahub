@@ -1,1 +1,0 @@
-Improve performance of the the core database class used throughout the backend by factoring out the classes used for creating and removing indexes
