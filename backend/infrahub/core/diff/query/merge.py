@@ -424,6 +424,7 @@ CALL {
         LIMIT 1
     }
     WITH attr_rel_prop_diff, COALESCE(attr, rel) AS attr_rel, peer_db_id
+    WHERE attr_rel IS NOT NULL
     UNWIND attr_rel_prop_diff.properties AS property_diff
     // ------------------------------
     // handle updates for properties under this attribute/relationship
@@ -607,7 +608,8 @@ CALL {
     // ignore edges of this type that already have the correct status on the target branch
     // --------------
     WITH n, peer, edge_type, latest_source_edge, latest_target_edge
-    WHERE latest_target_edge IS NULL OR latest_source_edge.status <> latest_target_edge.status
+    WHERE (latest_target_edge IS NULL AND latest_source_edge.status = "active")
+    OR latest_source_edge.status <> latest_target_edge.status
     CALL {
         // --------------
         // set the to time on active target branch edges that we are setting to deleted
