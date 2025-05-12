@@ -1111,9 +1111,8 @@ class RelationshipDeleteAllQuery(Query):
             MATCH (rl)-[active_edge:IS_RELATED]->(n)
             WHERE %(active_rel_filter)s
             WITH rl, active_edge, n
-            ORDER BY active_edge.from DESC
-            LIMIT 1
-            WITH rl, active_edge, n
+            ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+            WITH rl, n, head(collect(active_edge)) AS active_edge
             WHERE active_edge.status = "active"
             CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
@@ -1132,9 +1131,8 @@ class RelationshipDeleteAllQuery(Query):
             MATCH (rl)<-[active_edge:IS_RELATED]-(n)
             WHERE %(active_rel_filter)s
             WITH rl, active_edge, n
-            ORDER BY active_edge.from DESC
-            LIMIT 1
-            WITH rl, active_edge, n
+            ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+            WITH rl, n, head(collect(active_edge)) AS active_edge
             WHERE active_edge.status = "active"
             CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
@@ -1148,9 +1146,7 @@ class RelationshipDeleteAllQuery(Query):
                 "inbound" as rel_direction
         }
         RETURN DISTINCT uuid, kind, rel_identifier, rel_direction
-        """ % {
-            "active_rel_filter": active_rel_filter,
-        }
+        """ % {"active_rel_filter": active_rel_filter, "id_func": db.get_id_function_name()}
 
         self.add_to_query(query)
 
