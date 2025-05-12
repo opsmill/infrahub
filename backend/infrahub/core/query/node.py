@@ -413,9 +413,32 @@ class NodeDeleteQuery(NodeQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
 
+        if self.branch.is_global or self.branch.is_default:
+            node_query_match = """
+            MATCH (n:Node { uuid: $uuid })
+            OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH n WHERE delete_edge IS NULL
+            """
+        else:
+            node_filter, node_filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
+            node_query_match = """
+                MATCH (n:Node { uuid: $uuid })
+                CALL {
+                    WITH n
+                    MATCH (n)-[r:IS_PART_OF]->(:Root)
+                    WHERE %(node_filter)s
+                    RETURN r.status = "active" AS is_active
+                    ORDER BY r.from DESC
+                    LIMIT 1
+                }
+                WITH n WHERE is_active = TRUE
+                """ % {"node_filter": node_filter}
+            self.params.update(node_filter_params)
+        self.add_to_query(node_query_match)
+
         query = """
         MATCH (root:Root)
-        MATCH (n:Node { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 

@@ -102,3 +102,31 @@ async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDa
     for result in query.results:
         print(result)
         assert len(result.data) == 1 and result.data[0] == "Edges state is correct"
+
+
+async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
+    """Verify that no duplicate paths exist at the database level"""
+    query = """
+MATCH path = (p)-[e]->(q)
+WITH
+    %(id_func)s(p) AS node_id1,
+    e.branch AS branch,
+    e.from AS from_time,
+    type(e) AS edge_type,
+    %(id_func)s(q) AS node_id2,
+    path
+WITH node_id1, branch, from_time, edge_type, node_id2, size(collect(path)) AS num_paths
+WHERE num_paths > 1
+RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
+    """ % {"id_func": db.get_id_function_name()}
+    records = await db.execute_query(query=query)
+    for record in records:
+        node_id1 = record.get("node_id1")
+        branch = record.get("branch")
+        from_time = record.get("from_time")
+        edge_type = record.get("edge_type")
+        node_id2 = record.get("node_id2")
+        num_paths = record.get("num_paths")
+        raise ValueError(
+            f"{num_paths} paths ({branch=},{edge_type=},{from_time=}) between nodes '{node_id1}' and '{node_id2}'"
+        )
