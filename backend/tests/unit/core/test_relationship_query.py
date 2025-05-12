@@ -269,13 +269,12 @@ async def test_query_RelationshipDeleteQuery(
 
     rel_data = RelationshipPeerData(
         source_id=person_jack_tags_main.id,
+        source_db_id=person_jack_tags_main.db_id,
         source_kind=person_jack_tags_main.get_kind(),
-        source_labels=frozenset(("Node", "CoreNode", "TestPerson")),
         branch=branch.name,
         peer_id=tag_blue_main.id,
-        peer_kind=tag_blue_main.get_kind(),
-        peer_labels=frozenset(("Node", "CoreNode", "BuiltinTag")),
         peer_db_id=tag_blue_main.db_id,
+        peer_kind=tag_blue_main.get_kind(),
         rel_node_id=rel_node.get("uuid"),
         rel_node_db_id=rel_node.element_id,
         rels=[RelData.from_db(rel) for rel in paths[0][0]._relationships],
@@ -339,12 +338,11 @@ async def test_query_RelationshipDeleteQuery(
 
     rel_data = RelationshipPeerData(
         source_id=person_jack_tags_main.id,
+        source_db_id=person_jack_tags_main.db_id,
         source_kind=person_jack_tags_main.get_kind(),
-        source_labels=frozenset(("Node", "CoreNode", "TestPerson")),
         branch=branch.name,
         peer_id=tag_blue_main.id,
         peer_kind=tag_blue_main.get_kind(),
-        peer_labels=frozenset(("Node", "CoreNode", "BuiltinTag")),
         peer_db_id=tag_blue_main.db_id,
         rel_node_id=latest_rel_node.get("uuid"),
         rel_node_db_id=latest_rel_node.element_id,

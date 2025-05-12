@@ -87,13 +87,13 @@ class NodeIdentifier:
 
     uuid: str
     kind: str
-    labels: frozenset[str]
+    db_id: str
 
     def __hash__(self) -> int:
-        return hash(f"{self.uuid}:{self.kind}:{hash(self.labels)}")
+        return hash(f"{self.uuid}:{self.kind}:{self.db_id}")
 
     def __str__(self) -> str:
-        return f"{self.kind} '{self.uuid}' ({','.join(self.labels)})"
+        return f"{self.kind} '{self.uuid}' ({self.db_id})"
 
 
 @dataclass
@@ -327,6 +327,7 @@ class EnrichedDiffNode(BaseSummary):
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
     relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
@@ -428,6 +429,7 @@ class EnrichedDiffNode(BaseSummary):
             label="",
             changed_at=calculated_node.changed_at,
             action=calculated_node.action,
+            is_node_kind_migration=calculated_node.is_node_kind_migration,
             attributes={
                 EnrichedDiffAttribute.from_calculated_attribute(calculated_attribute=attr)
                 for attr in calculated_node.attributes
@@ -686,6 +688,7 @@ class DiffNode:
     identifier: NodeIdentifier
     changed_at: Timestamp
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     attributes: list[DiffAttribute] = field(default_factory=list)
     relationships: list[DiffRelationship] = field(default_factory=list)
 

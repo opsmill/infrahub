@@ -92,7 +92,7 @@ class NodeAttributesFromDB:
 class PeerInfo:
     uuid: str
     kind: str
-    labels: frozenset[str]
+    db_id: str
 
 
 class NodeQuery(Query):
@@ -1577,5 +1577,5 @@ class NodeGetHierarchyQuery(Query):
             yield PeerInfo(
                 uuid=peer_node.get("uuid"),
                 kind=peer_node.get("kind"),
-                labels=peer_node.labels,
+                db_id=peer_node.element_id,
             )

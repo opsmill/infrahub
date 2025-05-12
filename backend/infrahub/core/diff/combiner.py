@@ -14,6 +14,7 @@ from .model.path import (
     EnrichedDiffRoot,
     EnrichedDiffs,
     EnrichedDiffSingleRelationship,
+    NodeIdentifier,
 )
 
 
@@ -26,30 +27,35 @@ class NodePair:
 class DiffCombiner:
     def __init__(self) -> None:
         # {child_uuid: (parent_uuid, parent_rel_name)}
-        self._child_parent_uuid_map: dict[str, tuple[str, str]] = {}
-        self._parent_node_uuids: set[str] = set()
-        self._earlier_nodes_by_uuid: dict[str, EnrichedDiffNode] = {}
-        self._later_nodes_by_uuid: dict[str, EnrichedDiffNode] = {}
-        self._common_node_uuids: set[str] = set()
+        self._child_parent_identifier_map: dict[NodeIdentifier, tuple[NodeIdentifier, str]] = {}
+        self._parent_node_identifiers: set[NodeIdentifier] = set()
+        self._earlier_nodes_by_identifier: dict[NodeIdentifier, EnrichedDiffNode] = {}
+        self._later_nodes_by_identifier: dict[NodeIdentifier, EnrichedDiffNode] = {}
+        self._common_node_identifiers: set[NodeIdentifier] = set()
         self._diff_branch_name: str | None = None
 
     def _initialize(self, earlier_diff: EnrichedDiffRoot, later_diff: EnrichedDiffRoot) -> None:
         self._diff_branch_name = earlier_diff.diff_branch_name
-        self._child_parent_uuid_map = {}
-        self._earlier_nodes_by_uuid = {}
-        self._later_nodes_by_uuid = {}
-        self._common_node_uuids = set()
+        self._child_parent_identifier_map = {}
+        self._earlier_nodes_by_identifier = {}
+        self._later_nodes_by_identifier = {}
+        self._common_node_identifiers = set()
         # map the parent of each node (if it exists), preference to the later diff
         for diff_root in (earlier_diff, later_diff):
             for child_node in diff_root.nodes:
                 for parent_rel in child_node.relationships:
                     for parent_node in parent_rel.nodes:
-                        self._child_parent_uuid_map[child_node.uuid] = (parent_node.uuid, parent_rel.name)
+                        self._child_parent_identifier_map[child_node.identifier] = (
+                            parent_node.identifier,
+                            parent_rel.name,
+                        )
         # UUIDs of all the parents, removing the stale parents from the earlier diff
-        self._parent_node_uuids = {parent_tuple[0] for parent_tuple in self._child_parent_uuid_map.values()}
-        self._earlier_nodes_by_uuid = {n.uuid: n for n in earlier_diff.nodes}
-        self._later_nodes_by_uuid = {n.uuid: n for n in later_diff.nodes}
-        self._common_node_uuids = set(self._earlier_nodes_by_uuid.keys()) & set(self._later_nodes_by_uuid.keys())
+        self._parent_node_identifiers = {parent_tuple[0] for parent_tuple in self._child_parent_identifier_map.values()}
+        self._earlier_nodes_by_identifier = {n.identifier: n for n in earlier_diff.nodes}
+        self._later_nodes_by_identifier = {n.identifier: n for n in later_diff.nodes}
+        self._common_node_identifiers = set(self._earlier_nodes_by_identifier.keys()) & set(
+            self._later_nodes_by_identifier.keys()
+        )
 
     @property
     def diff_branch_name(self) -> str:
@@ -61,13 +67,13 @@ class DiffCombiner:
         filtered_node_pairs: list[NodePair] = []
         for earlier_node in earlier_diff.nodes:
             later_node: EnrichedDiffNode | None = None
-            if earlier_node.uuid in self._common_node_uuids:
-                later_node = self._later_nodes_by_uuid[earlier_node.uuid]
+            if earlier_node.identifier in self._common_node_identifiers:
+                later_node = self._later_nodes_by_identifier[earlier_node.identifier]
             # this is an out-of-date parent
             if (
                 earlier_node.action is DiffAction.UNCHANGED
                 and (later_node is None or later_node.action is DiffAction.UNCHANGED)
-                and earlier_node.uuid not in self._parent_node_uuids
+                and earlier_node.identifier not in self._parent_node_identifiers
             ):
                 continue
             if later_node is None:
@@ -79,15 +85,15 @@ class DiffCombiner:
             filtered_node_pairs.append(NodePair(earlier=earlier_node, later=later_node))
         for later_node in later_diff.nodes:
             # these have already been handled
-            if later_node.uuid in self._common_node_uuids:
+            if later_node.identifier in self._common_node_identifiers:
                 continue
             filtered_node_pairs.append(NodePair(later=later_node))
         return filtered_node_pairs
 
-    def _get_parent_relationship_name(self, node_id: str) -> str | None:
-        if node_id not in self._child_parent_uuid_map:
+    def _get_parent_relationship_name(self, node_id: NodeIdentifier) -> str | None:
+        if node_id not in self._child_parent_identifier_map:
             return None
-        return self._child_parent_uuid_map[node_id][1]
+        return self._child_parent_identifier_map[node_id][1]
 
     def _should_include(self, earlier: DiffAction, later: DiffAction) -> bool:
         actions = {earlier, later}
@@ -284,7 +290,7 @@ class DiffCombiner:
         self,
         earlier_relationships: set[EnrichedDiffRelationship],
         later_relationships: set[EnrichedDiffRelationship],
-        node_id: str,
+        node_id: NodeIdentifier,
     ) -> set[EnrichedDiffRelationship]:
         earlier_rels_by_name = {rel.name: rel for rel in earlier_relationships}
         later_rels_by_name = {rel.name: rel for rel in later_relationships}
@@ -365,7 +371,7 @@ class DiffCombiner:
             combined_relationships = self._combine_relationships(
                 earlier_relationships=node_pair.earlier.relationships,
                 later_relationships=node_pair.later.relationships,
-                node_id=node_pair.later.uuid,
+                node_id=node_pair.later.identifier,
             )
             if all(ca.action is DiffAction.UNCHANGED for ca in combined_attributes) and all(
                 cr.action is DiffAction.UNCHANGED for cr in combined_relationships
@@ -380,7 +386,7 @@ class DiffCombiner:
                 combined_attributes
                 or combined_relationships
                 or combined_conflict
-                or node_pair.later.uuid in self._parent_node_uuids
+                or node_pair.later.identifier in self._parent_node_identifiers
             ):
                 combined_nodes.add(
                     EnrichedDiffNode(
@@ -388,6 +394,8 @@ class DiffCombiner:
                         label=node_pair.later.label,
                         changed_at=node_pair.later.changed_at or node_pair.earlier.changed_at,
                         action=combined_action,
+                        is_node_kind_migration=node_pair.earlier.is_node_kind_migration
+                        or node_pair.later.is_node_kind_migration,
                         path_identifier=node_pair.later.path_identifier,
                         attributes=combined_attributes,
                         relationships=combined_relationships,
@@ -397,12 +405,12 @@ class DiffCombiner:
         return combined_nodes
 
     def _link_child_nodes(self, nodes: Iterable[EnrichedDiffNode]) -> None:
-        nodes_by_uuid: dict[str, EnrichedDiffNode] = {n.uuid: n for n in nodes}
-        for child_node in nodes_by_uuid.values():
-            if child_node.uuid not in self._child_parent_uuid_map:
+        nodes_by_identifier: dict[NodeIdentifier, EnrichedDiffNode] = {n.identifier: n for n in nodes}
+        for child_node in nodes_by_identifier.values():
+            if child_node.identifier not in self._child_parent_identifier_map:
                 continue
-            parent_uuid, parent_rel_name = self._child_parent_uuid_map[child_node.uuid]
-            parent_node = nodes_by_uuid[parent_uuid]
+            parent_identifier, parent_rel_name = self._child_parent_identifier_map[child_node.identifier]
+            parent_node = nodes_by_identifier[parent_identifier]
             parent_rel = child_node.get_relationship(name=parent_rel_name)
             parent_rel.nodes.add(parent_node)
 
