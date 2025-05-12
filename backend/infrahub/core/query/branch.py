@@ -51,23 +51,33 @@ class DeleteBranchRelationshipsQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE r.branch = $branch_name
-            DELETE r
-            """
-        else:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE r.branch = $branch_name
-            DELETE r
-            WITH *
-            UNWIND nodes(p) AS n
-            MATCH (n)
-            WHERE NOT exists((n)--())
-            DELETE n
-            """
+        query = """
+        MATCH (s)-[r1]-(d)
+        WHERE r1.branch = $branch_name
+        DELETE r1
+
+        WITH collect(DISTINCT s) + collect(DISTINCT d) AS nodes
+
+        // Collect node IDs for filtering
+        WITH nodes, [n in nodes | n.uuid] as nodes_uuids
+
+        // Also delete agnostic relationships that would not have been deleted above
+        MATCH (s2: Node)-[r2]-(d2)
+        WHERE NOT exists((s2)-[:IS_PART_OF]-(:Root))
+        AND s2.uuid IN nodes_uuids
+        DELETE r2
+
+        WITH nodes, collect(DISTINCT s2) + collect(DISTINCT d2) as additional_nodes
+
+        WITH nodes + additional_nodes as nodes
+
+        // Delete nodes that are no longer connected to any other nodes
+        UNWIND nodes AS n
+        WITH DISTINCT n
+        MATCH (n)
+        WHERE NOT exists((n)--())
+        DELETE n
+        """
         self.params["branch_name"] = self.branch_name
         self.add_to_query(query)
 

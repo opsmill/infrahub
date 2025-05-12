@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import NameTrackingId
+from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
@@ -415,7 +416,7 @@ class DiffTreeResolver:
             diff_branch_names=[diff_branch.name],
             from_time=from_timestamp,
             to_time=to_timestamp,
-            filters=filters_dict,
+            filters=EnrichedDiffQueryFilters(**filters_dict),
             include_parents=include_parents,
             limit=limit,
             offset=offset,

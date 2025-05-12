@@ -57,7 +57,7 @@ async def build_subquery_filter(
     params.update(field_params)
 
     field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
-    filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
+    filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
@@ -137,7 +137,7 @@ async def build_subquery_order(
     field_filter[-1].name = "last"
 
     field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
-    filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
+    filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
