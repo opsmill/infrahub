@@ -35,6 +35,8 @@ from .models import FlowLogs, FlowProgress, RelatedNodesInfo
 
 log = get_logger()
 
+NB_LOGS_LIMIT = 10_000
+
 
 class PrefectTask:
     @classmethod
@@ -84,8 +86,24 @@ class PrefectTask:
 
     @classmethod
     async def _get_logs(cls, client: PrefectClient, flow_ids: list[UUID]) -> FlowLogs:
+        offset = 0
+        all_logs = []
+
+        while True and offset < NB_LOGS_LIMIT:
+            # Retrieve logs with the current offset, without specifying a limit
+            logs_batch = await client.read_logs(
+                log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)), offset=offset
+            )
+            if not logs_batch:
+                break
+
+            all_logs.extend(logs_batch)
+            offset += len(logs_batch)
+
+        if offset >= NB_LOGS_LIMIT:
+            log.warning(f"Could not retrieve all logs for flows {flow_ids}, number of logs exceeded {NB_LOGS_LIMIT}")
+
         logs_flow = FlowLogs()
-        all_logs = await client.read_logs(log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)))
         for flow_log in all_logs:
             if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
