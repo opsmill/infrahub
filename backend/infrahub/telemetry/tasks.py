@@ -12,7 +12,7 @@ from infrahub import __version__, config
 from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.workers.dependencies import get_database, get_http, get_infrahub_services
+from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import TELEMETRY_KIND, TELEMETRY_VERSION
 from .database import gather_database_information
@@ -58,8 +58,8 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
     start_time = time.time()
 
     default_branch = registry.get_branch_from_registry()
-    service = await get_infrahub_services()
-    workers = await service.component.list_workers(branch=default_branch.name, schema_hash=False)
+    component = await get_component()
+    workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
 
     data = TelemetryData(
         deployment_id=registry.id,

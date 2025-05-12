@@ -14,7 +14,7 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
-from infrahub.workers.dependencies import get_infrahub_services
+from infrahub.workers.dependencies import get_database, get_workflow
 from infrahub.workflows.catalogue import BRANCH_MERGE
 from infrahub.workflows.utils import add_tags
 
@@ -23,9 +23,8 @@ from infrahub.workflows.utils import add_tags
 async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
     await add_tags(branches=[branch])
 
-    service = await get_infrahub_services()
-
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
         base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
 
@@ -52,7 +51,7 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
             diff_merger=diff_merger,
             diff_repository=diff_repository,
             source_branch=obj,
-            service=service,
+            workflow=get_workflow(),
         )
         candidate_schema = merger.get_candidate_schema()
         determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
@@ -68,4 +67,4 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        await service.workflow.execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})
+        await get_workflow().execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})

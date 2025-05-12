@@ -84,7 +84,7 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.validators.tasks import start_validator
-from infrahub.workers.dependencies import get_client, get_database, get_infrahub_services
+from infrahub.workers.dependencies import get_cache, get_client, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
@@ -156,11 +156,10 @@ async def merge_proposed_change(
     context: InfrahubContext,
 ) -> State:
     log = get_run_logger()
-    service = await get_infrahub_services()
-
     await add_tags(nodes=[proposed_change_id])
 
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session() as db:
         proposed_change = await registry.manager.get_one(
             db=db, id=proposed_change_id, kind=InternalCoreProposedChange, raise_on_error=True
         )
@@ -216,15 +215,15 @@ async def merge_proposed_change(
 async def cancel_proposed_changes_branch(branch_name: str) -> None:
     await add_tags(branches=[branch_name])
 
-    service = await get_infrahub_services()
+    client = get_client()
 
-    proposed_changed_opened = await service.client.filters(
+    proposed_changed_opened = await client.filters(
         kind=CoreProposedChange,
         include=["id", "source_branch"],
         state__value=ProposedChangeState.OPEN.value,
         source_branch__value=branch_name,
     )
-    proposed_changed_closed = await service.client.filters(
+    proposed_changed_closed = await client.filters(
         kind=CoreProposedChange,
         include=["id", "source_branch"],
         state__value=ProposedChangeState.CLOSED.value,
@@ -271,9 +270,9 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
-    service = await get_infrahub_services()
+    client = get_client()
 
-    generators = await service.client.filters(
+    generators = await client.filters(
         kind=CoreGeneratorDefinition,
         prefetch_relationships=True,
         populate_store=True,
@@ -295,7 +294,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
         for generator in generators
     ]
 
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=service.cache)
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=await get_cache())
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for generator_definition in generator_definitions:
@@ -328,7 +327,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
                 destination_branch=model.destination_branch,
             )
-            await service.workflow.submit_workflow(
+            await get_workflow().submit_workflow(
                 workflow=REQUEST_GENERATOR_DEFINITION_CHECK,
                 parameters={"model": request_generator_def_check_model},
                 context=context,
@@ -342,7 +341,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             destination_branch=model.destination_branch,
             branch_diff=model.branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
             parameters={"model": request_refresh_artifact_model},
             context=context,
@@ -356,7 +355,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             destination_branch=model.destination_branch,
             branch_diff=model.branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
             context=context,
             parameters={"model": model_proposed_change_repo_checks},
@@ -372,8 +371,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    service = await get_infrahub_services()
-
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
     dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
 
@@ -382,7 +379,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     schema_diff = dest_schema.diff(other=candidate_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=service.cache)
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=await get_cache())
     constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
         schema=candidate_schema, diff_summary=diff_summary
     )
@@ -421,7 +418,8 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     if not conflicts:
         return
 
-    async with service.database.start_transaction() as db:
+    database = await get_database()
+    async with database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
             db=db,
             validator_kind=InfrahubKind.SCHEMAVALIDATOR,
@@ -465,8 +463,6 @@ async def _get_proposed_change_schema_integrity_constraints(
 async def repository_checks(model: RequestProposedChangeRepositoryChecks, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    service = await get_infrahub_services()
-
     for repository in model.branch_diff.repositories:
         if (
             model.source_branch_sync_with_git
@@ -479,7 +475,7 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
                 source_branch=model.source_branch,
                 target_branch=model.destination_branch,
             )
-            await service.workflow.submit_workflow(
+            await get_workflow().submit_workflow(
                 workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
                 context=context,
                 parameters={"model": trigger_internal_checks_model},
@@ -494,7 +490,7 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
             target_branch=model.destination_branch,
             branch_diff=model.branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=GIT_REPOSITORY_USER_CHECKS_TRIGGER,
             context=context,
             parameters={"model": trigger_user_checks_model},
@@ -573,17 +569,15 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
 async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
-    service = await get_infrahub_services()
-
     log = get_run_logger()
     client = get_client()
 
-    artifact_definition = await service.client.get(
+    artifact_definition = await client.get(
         kind=InfrahubKind.ARTIFACTDEFINITION,
         id=model.artifact_definition.definition_id,
         branch=model.source_branch,
     )
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
     validator_name = f"Artifact Validator: {model.artifact_definition.definition_name}"
 
@@ -614,7 +608,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     group = artifact_definition.targets.peer
     await group.members.fetch()
 
-    existing_artifacts = await service.client.filters(
+    existing_artifacts = await client.filters(
         kind=InfrahubKind.ARTIFACT,
         definition__ids=[model.artifact_definition.definition_id],
         include=["object"],
@@ -663,7 +657,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             )
 
             checks.append(
-                service.workflow.execute_workflow(
+                get_workflow().execute_workflow(
                     workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
                     parameters={"model": check_model},
                     expected_return=ValidatorConclusion,
@@ -671,7 +665,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             )
 
     await run_checks_and_update_validator(
-        event_service=service.event,
+        event_service=await get_event_service(),
         checks=checks,
         validator=validator,
         proposed_change_id=model.proposed_change,
@@ -844,7 +838,6 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
     log = get_run_logger()
     client = get_client()
-    service = await get_infrahub_services()
 
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
@@ -924,7 +917,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
             check_generator_run_models.append(check_generator_run_model)
 
     checks_coroutines = [
-        service.workflow.execute_workflow(
+        get_workflow().execute_workflow(
             workflow=RUN_GENERATOR_AS_CHECK,
             parameters={"model": check_generator_run_model},
             expected_return=ValidatorConclusion,
@@ -934,7 +927,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     ]
 
     await run_checks_and_update_validator(
-        event_service=service.event,
+        event_service=await get_event_service(),
         checks=checks_coroutines,
         validator=validator,
         context=context,
@@ -984,11 +977,12 @@ class DefinitionSelect(IntFlag):
 
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
-    service = await get_infrahub_services()
+    client = get_client()
+    repositories = await _get_proposed_change_repositories(model=model, client=client)
 
-    repositories = await _get_proposed_change_repositories(model=model)
-
-    if model.source_branch_sync_with_git and await _validate_repository_merge_conflicts(repositories=repositories):
+    if model.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
+        repositories=repositories, client=client
+    ):
         for repo in repositories:
             if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 trigger_repo_checks_model = TriggerRepositoryInternalChecks(
@@ -997,24 +991,27 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
                     source_branch=repo.source_branch,
                     target_branch=repo.destination_branch,
                 )
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
                     context=context,
                     parameters={"model": trigger_repo_checks_model},
                 )
         return
 
-    await _gather_repository_repository_diffs(repositories=repositories)
+    await _gather_repository_repository_diffs(repositories=repositories, client=client)
 
-    async with service.database.start_transaction() as dbt:
+    database = await get_database()
+    async with database.start_transaction() as dbt:
         destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
         source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
-    diff_summary = await service.client.get_diff_summary(branch=model.source_branch)
-    await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=service.cache)
+    client = await get_client()
+
+    diff_summary = await client.get_diff_summary(branch=model.source_branch)
+    await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
     await _populate_subscribers(branch_diff=branch_diff, diff_summary=diff_summary, branch=model.source_branch)
 
@@ -1026,7 +1023,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             destination_branch=model.destination_branch,
             branch_diff=branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
             parameters={"model": request_refresh_artifact_model},
             context=context,
@@ -1042,7 +1039,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             refresh_artifacts=model.check_type is CheckType.ALL,
             do_repository_checks=model.check_type is CheckType.ALL,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
             context=context,
             parameters={"model": model_proposed_change_run_generator},
@@ -1058,7 +1055,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             destination_branch=model.destination_branch,
             branch_diff=branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
             context=context,
             parameters={"model": model_proposed_change_data_integrity},
@@ -1072,7 +1069,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             destination_branch=model.destination_branch,
             branch_diff=branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
             context=context,
             parameters={"model": model_proposed_change_repo_checks},
@@ -1081,7 +1078,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
             context=context,
             parameters={
@@ -1096,7 +1093,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         )
 
     if model.check_type in [CheckType.ALL, CheckType.TEST]:
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
             context=context,
             parameters={
@@ -1118,16 +1115,17 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
 async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
     log = get_run_logger()
-    service = await get_infrahub_services()
 
-    definition_information = await service.client.execute_graphql(
+    client = get_client()
+
+    definition_information = await client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,
         branch_name=model.source_branch,
     )
     artifact_definitions = _parse_artifact_definitions(
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=service.cache)
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=await get_cache())
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for artifact_definition in artifact_definitions:
@@ -1169,7 +1167,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
                 destination_branch=model.destination_branch,
             )
 
-            await service.workflow.submit_workflow(
+            await get_workflow().submit_workflow(
                 REQUEST_ARTIFACT_DEFINITION_CHECK,
                 parameters={"model": request_artifacts_definitions_model},
                 context=context,
@@ -1438,16 +1436,14 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     return parsed
 
 
-async def _get_proposed_change_repositories(model: RequestProposedChangePipeline) -> list[ProposedChangeRepository]:
-    service = await get_infrahub_services()
-
-    destination_all = await service.client.execute_graphql(
+async def _get_proposed_change_repositories(
+    model: RequestProposedChangePipeline, client: InfrahubClient
+) -> list[ProposedChangeRepository]:
+    destination_all = await client.execute_graphql(
         query=DESTINATION_ALLREPOSITORIES, branch_name=model.destination_branch
     )
-    source_managed = await service.client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
-    source_readonly = await service.client.execute_graphql(
-        query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch
-    )
+    source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
+    source_readonly = await client.execute_graphql(query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch)
 
     destination_all = destination_all[InfrahubKind.GENERICREPOSITORY]["edges"]
     source_all = (
@@ -1458,15 +1454,15 @@ async def _get_proposed_change_repositories(model: RequestProposedChangePipeline
 
 
 @task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")  # type: ignore[arg-type]
-async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
+async def _validate_repository_merge_conflicts(
+    repositories: list[ProposedChangeRepository], client: InfrahubClient
+) -> bool:
     log = get_run_logger()
-    service = await get_infrahub_services()
+
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
-            git_repo = await InfrahubRepository.init(
-                id=repo.repository_id, name=repo.repository_name, client=service.client
-            )
+            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch
@@ -1480,14 +1476,13 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
     return conflicts
 
 
-async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
-    service = await get_infrahub_services()
+async def _gather_repository_repository_diffs(
+    repositories: list[ProposedChangeRepository], client: InfrahubClient
+) -> None:
     for repo in repositories:
         if repo.has_diff and repo.source_commit and repo.destination_commit:
             # TODO we need to find a way to return all files in the repo if the repo is new
-            git_repo = await InfrahubRepository.init(
-                id=repo.repository_id, name=repo.repository_name, client=service.client
-            )
+            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
 
             files_changed: list[str] = []
             files_added: list[str] = []
@@ -1506,11 +1501,9 @@ async def _gather_repository_repository_diffs(repositories: list[ProposedChangeR
 
 
 async def _populate_subscribers(
-    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], branch: str
+    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], branch: str, client: InfrahubClient
 ) -> None:
-    service = await get_infrahub_services()
-
-    result = await service.client.execute_graphql(
+    result = await client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,
         variables={"members": get_modified_node_ids(diff_summary=diff_summary, branch=branch)},

@@ -6,7 +6,7 @@ from infrahub.message_bus.operations import git, refresh, send
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.tasks.check import set_check_status
-from infrahub.workers.dependencies import get_infrahub_services
+from infrahub.workers.dependencies import get_log
 
 COMMAND_MAP = {
     "git.file.get": git.file.get,
@@ -35,8 +35,7 @@ async def execute_message(
             await message_bus.reply_if_initiator_meta(message=response, initiator=message)
             return None
         if message.reached_max_retries:
-            service = await get_infrahub_services()
-            service.log.exception("Message failed after maximum number of retries", error=exc)
+            get_log().exception("Message failed after maximum number of retries", error=exc)
             await set_check_status(message, conclusion="failure")
             return None
         message.increase_retry_count()

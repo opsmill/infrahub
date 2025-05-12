@@ -15,7 +15,7 @@ from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
-from infrahub.workers.dependencies import get_client, get_database, get_infrahub_services, get_workflow
+from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -294,8 +294,8 @@ async def computed_attribute_setup_jinja2(
 
         if branch_name:
             await add_tags(branches=[branch_name])
-            service = await get_infrahub_services()
-            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
+            component = await get_component()
+            await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_computed_attribute_jinja2, trigger_type=TriggerType.COMPUTED_ATTR_JINJA2
@@ -310,7 +310,7 @@ async def computed_attribute_setup_jinja2(
         }
         for branch, kind, attribute_name in unique_nodes:
             if event_name != BranchDeletedEvent.event_name and branch == branch_name:
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
@@ -338,11 +338,10 @@ async def computed_attribute_setup_python(
         log = get_run_logger()
 
         branch_name = branch_name or registry.default_branch
-
         if branch_name:
             await add_tags(branches=[branch_name])
-            service = await get_infrahub_services()
-            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
+            component = await get_component()
+            await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
 
@@ -362,7 +361,7 @@ async def computed_attribute_setup_python(
         for branch, kind, attribute_name in unique_nodes:
             if event_name != BranchDeletedEvent.event_name and branch == branch_name:
                 log.info(f"Triggering update for {kind}.{attribute_name} on {branch}")
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={

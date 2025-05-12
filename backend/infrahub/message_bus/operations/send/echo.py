@@ -2,13 +2,12 @@ from prefect import flow
 
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse, SendEchoRequestResponseData
-from infrahub.workers.dependencies import get_infrahub_services, get_message_bus
+from infrahub.workers.dependencies import get_log, get_message_bus
 
 
 @flow(name="echo-request")
 async def request(message: messages.SendEchoRequest) -> None:
-    service = await get_infrahub_services()
-    service.log.info(f"Received message: {message.message}")
+    get_log().info(f"Received message: {message.message}")
 
     if message.reply_requested:
         response = SendEchoRequestResponse(data=SendEchoRequestResponseData(response=f"Reply to: {message.message}"))
