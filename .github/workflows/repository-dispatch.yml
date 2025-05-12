@@ -39,6 +39,7 @@ jobs:
           - "INFRAHUB_ENTERPRISE_REPOSITORY"
           - "INFRAHUB_CUSTOMER1_REPOSITORY"
           - "INFRAHUB_CUSTOMER2_REPOSITORY"
+          - "INFRAHUB_CUSTOMER3_REPOSITORY"
 
     steps:
       - name: Checkout code

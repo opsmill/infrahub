@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
@@ -170,7 +171,7 @@ class StandardWebhook(Webhook):
     def _assign_headers(self, uuid: UUID | None = None, at: Timestamp | None = None) -> None:
         message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
         timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-        payload = self._payload or {}
+        payload = json.dumps(self._payload or {})
         unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
         signature = self._sign(data=unsigned_data)
 
