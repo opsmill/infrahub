@@ -434,7 +434,7 @@ class NodeDeleteQuery(NodeQuery):
                 }
                 WITH n WHERE is_active = TRUE
                 """ % {"node_filter": node_filter}
-        self.params.update(node_filter_params)
+            self.params.update(node_filter_params)
         self.add_to_query(node_query_match)
 
         query = """
