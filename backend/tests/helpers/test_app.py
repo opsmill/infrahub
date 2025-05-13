@@ -61,10 +61,7 @@ class TestInfrahubApp(TestInfrahub):
         return str(UUIDT())
 
     @pytest.fixture(scope="class")
-    async def bus_simulator(
-        self,
-        db: InfrahubDatabase,
-    ) -> BusSimulator:
+    async def bus_simulator(self, db: InfrahubDatabase) -> BusSimulator:
         # Creating another service object to get service correctly initialized is a hack.
         # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
         # or ideally properly patch production code responsible for Bus instantiation instead

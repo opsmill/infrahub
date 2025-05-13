@@ -2,7 +2,6 @@ from uuid import uuid4
 
 import pytest
 import ujson
-from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.diff import NodeDiff
 from pytest_httpx import HTTPXMock
 
@@ -21,22 +20,9 @@ from infrahub.proposed_change.tasks import (
     _get_proposed_change_schema_integrity_constraints,
     run_proposed_change_schema_integrity_check,
 )
-from infrahub.services import InfrahubServices
 from infrahub.workers.dependencies import build_cache, build_database
 from tests.adapters.cache import MemoryCache
 from tests.conftest import TestHelper
-
-
-@pytest.fixture
-async def service_all(db: InfrahubDatabase, helper: TestHelper) -> InfrahubServices:
-    config = Config(address="http://mock", insert_tracker=True)
-    client = InfrahubClient(config=config)
-    bus_simulator = await helper.get_message_bus_simulator()
-    service = await InfrahubServices.new(message_bus=bus_simulator, cache=MemoryCache(), client=client, database=db)
-    bus_simulator.service = service
-
-    return service
-
 
 SOURCE_BRANCH_A = "branch2"
 DST_BRANCH_A = "main"
@@ -284,14 +270,14 @@ async def test_schema_integrity(
     car_person_schema,
     schema_integrity_01: RequestProposedChangeSchemaIntegrity,
     branch_diff_01_summary: list[NodeDiff],
-    service_all: InfrahubServices,
     dependency_provider,
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main: Node,
 ):
+    cache = MemoryCache()
     dependency_provider.override(build_database, lambda: db)
-    dependency_provider.override(build_cache, lambda: service_all.cache)
+    dependency_provider.override(build_cache, lambda: cache)
 
     branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
@@ -306,9 +292,7 @@ async def test_schema_integrity(
     branch2_schema.set(name="TestPerson", schema=person_schema)
 
     await set_diff_summary_cache(
-        pipeline_id=schema_integrity_01.branch_diff.pipeline_id,
-        diff_summary=branch_diff_01_summary,
-        cache=service_all.cache,
+        pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
     )
 
     await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
