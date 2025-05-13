@@ -1,6 +1,5 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
-import { generateRandomString } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
@@ -11,11 +10,11 @@ export interface ObjectParam {
 
 const getDeleteObjectsQuery = (objects: Array<ObjectParam>) => {
   // Creates dynamic mutations with aliases
-  const mutations = objects.reduce((acc, { id, kind }) => {
+  const mutations = objects.reduce((acc, { id, kind }, index) => {
     return {
       ...acc,
       // Alias key must be a string without numbers
-      [generateRandomString()]: {
+      [`delete_${kind}_${index}`]: {
         __aliasFor: `${kind}Delete`,
         __args: {
           data: { id },
