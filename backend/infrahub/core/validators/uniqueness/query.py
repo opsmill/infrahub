@@ -221,6 +221,13 @@ class NodeUniqueAttributeConstraintQuery(Query):
             attr_name,
             attr_value,
             relationship_identifier
+        ORDER BY
+            node_id,
+            deepest_branch_name,
+            node_count,
+            attr_name,
+            attr_value,
+            relationship_identifier
         """ % {
             "select_subqueries_str": select_subqueries_str,
             "branch_filter": branch_filter,
