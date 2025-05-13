@@ -39,9 +39,9 @@ async def setup_triggers(
     report = TriggerSetupReport()
 
     if trigger_type:
-        log.info(f"Setting up triggers of type {trigger_type.value}")
+        log.debug(f"Setting up triggers of type {trigger_type.value}")
     else:
-        log.info("Setting up all triggers")
+        log.debug("Setting up all triggers")
 
     # -------------------------------------------------------------
     # Retrieve existing Deployments and Automation from the server
@@ -111,5 +111,16 @@ async def setup_triggers(
         report.deleted.append(existing_automation)
         await client.delete_automation(automation_id=existing_automation.id)
         log.info(f"{item_to_delete} Deleted")
+
+    if trigger_type:
+        log.info(
+            f"Processed triggers of type {trigger_type.value}: "
+            f"{len(report.created)} created, {len(report.updated)} updated, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
+        )
+    else:
+        log.info(
+            f"Processed all triggers: "
+            f"{len(report.created)} created, {len(report.updated)} updated, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
+        )
 
     return report

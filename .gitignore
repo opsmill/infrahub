@@ -27,6 +27,7 @@ support_logs_*
 docs/build
 
 storage/*
+sandbox/*
 .coverage.*
 python_sdk/dist/*
 .benchmarks/*
