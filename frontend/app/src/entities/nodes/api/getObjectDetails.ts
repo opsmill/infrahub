@@ -1,5 +1,4 @@
-import "@/shared/utils/handlebars"; // Import handlebars utils
-import Handlebars from "handlebars";
+import Handlebars from "@/shared/libs/handlebars";
 
 export const getObjectDetailsPaginated = Handlebars.compile(`
 query {{kind}} {

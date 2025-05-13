@@ -8,7 +8,7 @@ import { QueryParamProvider } from "use-query-params";
 
 import "../../src/app/styles/index.css";
 import { queryClient } from "../../src/shared/api/rest/client";
-import { ReactRouter7Adapter } from "../../src/shared/lib/use-query-params";
+import { ReactRouter7Adapter } from "../../src/shared/libs/use-query-params";
 
 import "./commands";
 
