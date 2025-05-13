@@ -14,11 +14,10 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ## [Infrahub - v1.2.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.10) - 2025-05-13
 
 ### Added
-
-- <!-- vale off -->
-  Added the ability to use alternative value types for all attribute types with computed attributes. For attributes of type IPHost or Dropdown you can now access the `ip` or `label` fields and not only the `value` field.
-  <!-- vale on --> ([#5769](https://github.com/opsmill/infrahub/issues/5769))
+<!-- vale off -->
+- Added the ability to use alternative value types for all attribute types with computed attributes. For attributes of type IPHost or Dropdown you can now access the `ip` or `label` fields and not only the `value` field. ([#5769](https://github.com/opsmill/infrahub/issues/5769))
 - Computed Attribute of kind Jinja will only be recalculated during a schema update if the template itself has been updated.
+<!-- vale on -->
 
 ### Fixed
 
