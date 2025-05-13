@@ -2,6 +2,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { InputHTMLAttributes } from "react";
@@ -18,7 +19,7 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
   return (
     <div className={classNames("flex flex-col text-sm", className)} {...props}>
       <div className="flex items-center gap-1">
-        <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400 text-xs" />
+        <Icon icon={getSchemaIcon(schema)} className="text-gray-400 text-xs" />
         {schemaLabel}
       </div>
 
