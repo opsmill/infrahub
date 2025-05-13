@@ -51,11 +51,14 @@ test.describe("/objects/BuiltinTag - Bulk delete", () => {
         await page
           .getByRole("link", { name: "blue" })
           .locator("..")
-          .getByTestId("identifier-checkbox-cell");
+          .getByTestId("identifier-checkbox-cell")
+          .click();
         await page
           .getByRole("link", { name: "green" })
           .locator("..")
-          .getByTestId("identifier-checkbox-cell");
+          .getByTestId("identifier-checkbox-cell")
+          .click();
+
         await page.getByRole("button", { name: "Delete" }).click();
         await expect(page.getByText("Are you sure you want to")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
