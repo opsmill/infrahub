@@ -21,6 +21,10 @@ export const capitalizeFirstLetter = (string: string) => {
 export const pluralize = (count: number, word: string, suffix = "s") =>
   `${count} ${word}${count > 1 ? suffix : ""}`;
 
-export const generateRandomString = () => {
-  return Math.random().toString(36).substring(2, 15);
-};
+export function generateRandomString(length: number = 36) {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  return Array.from({ length }, () => {
+    return chars.charAt(Math.floor(Math.random() * chars.length));
+  }).join("");
+}
