@@ -1,5 +1,6 @@
 import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { Icon } from "@iconify-icon/react";
 
 const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
@@ -52,5 +53,5 @@ export function RelationshipTableColumnHeaderIcon({
 }: { relationshipSchema: RelationshipSchema }) {
   const { schema } = useSchema(relationshipSchema.peer);
 
-  return <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-stone-400" />;
+  return <Icon icon={getSchemaIcon(schema)} className="text-stone-400" />;
 }
