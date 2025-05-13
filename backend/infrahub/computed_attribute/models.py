@@ -118,6 +118,10 @@ class PythonTransformTarget:
 class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
     type: TriggerType = TriggerType.COMPUTED_ATTR_JINJA2
     computed_attribute: ComputedAttributeTarget
+    template_hash: str
+
+    def get_description(self) -> str:
+        return f"{super().get_description()} | hash:{self.template_hash}"
 
     @classmethod
     def from_computed_attribute(
@@ -138,6 +142,14 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             # extra work that doesn't accomplish anything. For this reason the filter should only match on the
             # node creation events if the attribute is optional.
             event_trigger.events.add(NodeCreatedEvent.event_name)
+
+        if (
+            computed_attribute.attribute.computed_attribute
+            and computed_attribute.attribute.computed_attribute.jinja2_template is None
+        ) or not computed_attribute.attribute.computed_attribute:
+            raise ValueError("Jinja2 template is required for computed attribute")
+
+        template_hash = computed_attribute.attribute.computed_attribute.get_hash()
 
         event_trigger.match = {"infrahub.node.kind": trigger_node.kind}
         if branches_out_of_scope:
@@ -177,6 +189,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
 
         definition = cls(
             name=f"{computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{trigger_node.kind}",
+            template_hash=template_hash,
             branch=branch,
             computed_attribute=computed_attribute,
             trigger=event_trigger,

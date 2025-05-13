@@ -30,6 +30,7 @@ class TriggerSetupReport(BaseModel):
 
 
 class TriggerType(str, Enum):
+    ACTION_TRIGGER_RULE = "action_trigger_rule"
     BUILTIN = "builtin"
     WEBHOOK = "webhook"
     COMPUTED_ATTR_JINJA2 = "computed_attr_jinja2"

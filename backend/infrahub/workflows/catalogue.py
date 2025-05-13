@@ -6,6 +6,35 @@ from .models import WorkerPoolDefinition, WorkflowDefinition
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
 
+ACTION_ADD_NODE_TO_GROUP = WorkflowDefinition(
+    name="action-add-node-to-group",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="add_node_to_group",
+)
+
+ACTION_RUN_GENERATOR = WorkflowDefinition(
+    name="action-run-generator",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="run_generator",
+)
+
+ACTION_RUN_GENERATOR_GROUP_EVENT = WorkflowDefinition(
+    name="action-run-generator-group-event",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="run_generator_group_event",
+)
+
+
+CONFIGURE_ACTION_RULES = WorkflowDefinition(
+    name="configure-action-rules",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="configure_action_rules",
+)
+
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
     type=WorkflowType.USER,
@@ -64,6 +93,13 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     module="infrahub.core.ipam.tasks",
     function="ipam_reconciliation",
     tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REMOVE_ADD_NODE_FROM_GROUP = WorkflowDefinition(
+    name="action-remove-node-from-group",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="remove_node_from_group",
 )
 
 REQUEST_GENERATOR_RUN = WorkflowDefinition(
@@ -267,6 +303,14 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
+    name="computed-attribute-jinja2-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_jinja2_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_jinja2_computed_attributes",
     type=WorkflowType.CORE,
@@ -465,6 +509,9 @@ TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
+    ACTION_ADD_NODE_TO_GROUP,
+    ACTION_RUN_GENERATOR,
+    ACTION_RUN_GENERATOR_GROUP_EVENT,
     ANONYMOUS_TELEMETRY_SEND,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
@@ -474,10 +521,12 @@ workflows = [
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
+    CONFIGURE_ACTION_RULES,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
@@ -499,6 +548,7 @@ workflows = [
     IPAM_RECONCILIATION,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    REMOVE_ADD_NODE_FROM_GROUP,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,

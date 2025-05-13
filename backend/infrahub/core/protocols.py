@@ -62,6 +62,12 @@ class BuiltinIPPrefix(CoreNode):
     children: RelationshipManager
 
 
+class CoreAction(CoreNode):
+    name: String
+    description: StringOptional
+    triggers: RelationshipManager
+
+
 class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
@@ -148,6 +154,10 @@ class CoreMenu(CoreNode):
     children: RelationshipManager
 
 
+class CoreNodeTriggerMatch(CoreNode):
+    trigger: RelationshipManager
+
+
 class CoreObjectComponentTemplate(CoreNode):
     template_name: String
 
@@ -187,6 +197,14 @@ class CoreTransformation(CoreNode):
     query: RelationshipManager
     repository: RelationshipManager
     tags: RelationshipManager
+
+
+class CoreTriggerRule(CoreNode):
+    name: String
+    description: StringOptional
+    active: Boolean
+    branch_scope: Dropdown
+    action: RelationshipManager
 
 
 class CoreValidator(CoreNode):
@@ -322,6 +340,10 @@ class CoreFileThread(CoreThread):
     repository: RelationshipManager
 
 
+class CoreGeneratorAction(CoreAction):
+    generator: RelationshipManager
+
+
 class CoreGeneratorCheck(CoreCheck):
     instance: String
 
@@ -376,6 +398,16 @@ class CoreGraphQLQueryGroup(CoreGroup):
     query: RelationshipManager
 
 
+class CoreGroupAction(CoreAction):
+    add_members: Boolean
+    group: RelationshipManager
+
+
+class CoreGroupTriggerRule(CoreTriggerRule):
+    members_added: Boolean
+    group: RelationshipManager
+
+
 class CoreIPAddressPool(CoreResourcePool, LineageSource):
     default_address_type: String
     default_prefix_length: IntegerOptional
@@ -393,6 +425,25 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
 
 class CoreMenuItem(CoreMenu):
     pass
+
+
+class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
+    attribute_name: String
+    value: StringOptional
+    value_previous: StringOptional
+    value_match: Dropdown
+
+
+class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
+    relationship_name: String
+    added: Boolean
+    peer: StringOptional
+
+
+class CoreNodeTriggerRule(CoreTriggerRule):
+    node_kind: String
+    mutation_action: Enum
+    matches: RelationshipManager
 
 
 class CoreNumberPool(CoreResourcePool, LineageSource):
