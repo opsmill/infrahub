@@ -16,23 +16,25 @@ test.describe("/objects/BuiltinTag - Bulk delete", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test("should not be able to delete objects", async ({ page }) => {
-    await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
-    await expect(page.getByRole("button", { name: "Add Tag" })).toBeVisible();
-    await expect(
-      page
-        .locator("a")
-        .filter({ hasText: "blue" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-    ).not.toBeVisible();
-    await expect(
-      page
-        .locator("a")
-        .filter({ hasText: "green" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-    ).not.toBeVisible();
+  test.describe("when not logged in", async () => {
+    test("should not be able to delete objects", async ({ page }) => {
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+      await expect(page.getByRole("button", { name: "Add Tag" })).toBeVisible();
+      await expect(
+        page
+          .locator("a")
+          .filter({ hasText: "blue" })
+          .locator("..")
+          .getByTestId("identifier-checkbox-cell")
+      ).not.toBeVisible();
+      await expect(
+        page
+          .locator("a")
+          .filter({ hasText: "green" })
+          .locator("..")
+          .getByTestId("identifier-checkbox-cell")
+      ).not.toBeVisible();
+    });
   });
 
   test.describe("when logged in", async () => {
