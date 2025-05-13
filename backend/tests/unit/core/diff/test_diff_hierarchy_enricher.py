@@ -15,7 +15,7 @@ async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, perso
         identifier=NodeIdentifier(
             uuid=car_yaris_main.get_id(),
             kind=car_yaris_main.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "TestCar")),
+            db_id=car_yaris_main.db_id,
         ),
         relationships=set(),
     )
@@ -47,7 +47,7 @@ async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_j
         identifier=NodeIdentifier(
             uuid=car_yaris_main.get_id(),
             kind=car_yaris_main.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "TestCar")),
+            db_id=car_yaris_main.db_id,
         ),
         relationships={diff_rel},
     )
@@ -99,7 +99,7 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
         identifier=NodeIdentifier(
             uuid=rack_c.get_id(),
             kind=rack_c.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "LocationGeneric", "LocationRack")),
+            db_id=rack_c.db_id,
         ),
         relationships=set(),
     )
@@ -107,7 +107,7 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
         identifier=NodeIdentifier(
             uuid=rack_x.get_id(),
             kind=rack_x.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "LocationGeneric", "LocationRack")),
+            db_id=rack_x.db_id,
         ),
         relationships=set(),
     )

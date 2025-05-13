@@ -1,5 +1,3 @@
-import json
-
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 
@@ -86,11 +84,13 @@ class EnrichedDiffDeserializer:
     ) -> None:
         for attribute_result in result.get_nested_node_collection("diff_attributes"):
             diff_attr_node, diff_attr_property_node, diff_attr_property_conflict = attribute_result
-            if diff_attr_node is None or diff_attr_property_node is None:
+            if diff_attr_node is None:
                 continue
             enriched_attribute = self._deserialize_diff_attr(
                 diff_attr_node=diff_attr_node, enriched_root=enriched_root, enriched_node=enriched_node
             )
+            if diff_attr_property_node is None:
+                continue
             enriched_property = self._deserialize_diff_attr_property(
                 diff_attr_property_node=diff_attr_property_node,
                 enriched_attr=enriched_attribute,
@@ -147,7 +147,7 @@ class EnrichedDiffDeserializer:
                     parent_identifier = NodeIdentifier(
                         uuid=parent.get("uuid"),
                         kind=parent.get("kind"),
-                        labels=frozenset(json.loads(parent.get("db_labels"))),
+                        db_id=parent.get("db_id"),
                     )
                     parent_request = ParentNodeAddRequest(
                         node_identifier=current_node_identifier,
@@ -201,8 +201,8 @@ class EnrichedDiffDeserializer:
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:
         node_uuid = str(node_node.get("uuid"))
         node_kind = str(node_node.get("kind"))
-        node_db_labels = frozenset(json.loads(node_node.get("db_labels")))
-        node_identifier = NodeIdentifier(uuid=node_uuid, kind=node_kind, labels=node_db_labels)
+        node_db_id = node_node.get("db_id")
+        node_identifier = NodeIdentifier(uuid=node_uuid, kind=node_kind, db_id=node_db_id)
         node_key = (enriched_root.uuid, node_identifier)
         if node_key in self._diff_node_map:
             return self._diff_node_map[node_key]
@@ -213,6 +213,7 @@ class EnrichedDiffDeserializer:
             label=str(node_node.get("label")),
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node_node.get("action"))),
+            is_node_kind_migration=bool(node_node.get("is_node_kind_migration")),
             path_identifier=str(node_node.get("path_identifier")),
             num_added=int(node_node.get("num_added", 0)),
             num_updated=int(node_node.get("num_updated", 0)),

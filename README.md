@@ -14,7 +14,7 @@
 
 Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that powers your infrastructure by combining the version control and branch management capabilities similar to Git with the flexible data model and UI of a graph database.
 
-If you just want to try Infrahub out, you can use our [Infrahub Sandbox](https://demo.infrahub.app/) to get started.
+If you just want to try Infrahub out, you can use our [Infrahub Sandbox](https://sandbox.infrahub.app/) to get started.
 
 ![infrahub screenshot](docs/docs/media/infrahub-readme.gif)
 
@@ -40,7 +40,7 @@ If you just want to try Infrahub out, you can use our [Infrahub Sandbox](https:/
 
 ## Quick Start
 
-[Infrahub Sandbox](https://demo.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
+[Infrahub Sandbox](https://sandbox.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
 
 [Getting Started Environment & Tutorial](https://opsmill.instruqt.com/pages/labs) - It spins up an instance of Infrahub on our cloud, provides a browser, terminal, code editor and walks you through the basic concepts:
 

@@ -558,7 +558,7 @@ class DiffQueryParser:
 
     def _get_diff_node(self, database_path: DatabasePath, diff_root: DiffRootIntermediate) -> DiffNodeIntermediate:
         identifier = NodeIdentifier(
-            uuid=database_path.node_id, kind=database_path.node_kind, labels=database_path.node_labels
+            uuid=database_path.node_id, kind=database_path.node_kind, db_id=database_path.node_db_id
         )
         if identifier not in diff_root.nodes_by_identifier:
             diff_root.nodes_by_identifier[identifier] = DiffNodeIntermediate(
@@ -571,19 +571,6 @@ class DiffQueryParser:
                 else None,
             )
         diff_node = diff_root.nodes_by_identifier[identifier]
-        # special handling for nodes that have their kind updated, which results in 2 nodes with the same uuid
-        if diff_node.db_id != database_path.node_db_id and (
-            database_path.node_changed_at > diff_node.from_time
-            or (
-                database_path.node_changed_at >= diff_node.from_time
-                and (diff_node.status, database_path.node_status)
-                == (RelationshipStatus.DELETED, RelationshipStatus.ACTIVE)
-            )
-        ):
-            diff_node.identifier.kind = database_path.node_kind
-            diff_node.db_id = database_path.node_db_id
-            diff_node.from_time = database_path.node_changed_at
-            diff_node.status = database_path.node_status
         diff_node.track_database_path(database_path=database_path)
         return diff_node
 
@@ -697,8 +684,10 @@ class DiffQueryParser:
             branch_diff_root = self._diff_root_by_branch.get(branch)
             if not branch_diff_root:
                 continue
+            base_diff_nodes_by_uuid = {n.uuid: n for n in base_diff_root.nodes_by_identifier.values()}
             for identifier, diff_node in branch_diff_root.nodes_by_identifier.items():
-                base_diff_node = base_diff_root.nodes_by_identifier.get(identifier)
+                # changes on a base branch node with a given UUID should apply to all diff branch nodes with that UUID
+                base_diff_node = base_diff_nodes_by_uuid.get(identifier.uuid)
                 if not base_diff_node:
                     continue
                 self._apply_attribute_previous_values(diff_node=diff_node, base_diff_node=base_diff_node)

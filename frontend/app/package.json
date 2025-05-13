@@ -97,7 +97,7 @@
     "tailwindcss-animate": "^1.0.7",
     "unidiff": "^1.0.4",
     "use-query-params": "^2.2.1",
-    "vite": "^6.3.3",
+    "vite": "^6.3.5",
     "vite-plugin-svgr": "^4.3.0",
     "vite-tsconfig-paths": "^5.1.4"
   },

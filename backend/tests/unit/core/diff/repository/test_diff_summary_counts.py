@@ -176,7 +176,7 @@ class TestDiffSummaryCountsQuery(DiffRepositoryTestBase):
         # make a change
         node_to_update = enriched_diffs.diff_branch_diff.nodes.pop()
         updated_node = self.build_diff_node(no_recurse=True)
-        updated_node.identifier.uuid = node_to_update.identifier.uuid
+        updated_node.identifier = node_to_update.identifier
         self._set_conflicts(diff_node=updated_node, conflict_chance=0.5)
         enriched_diffs.diff_branch_diff.nodes = {updated_node}
         # set the counts again
