@@ -2050,6 +2050,9 @@ class SchemaBranch:
 
         identified.add(node_schema)
 
+        if node_schema.is_node_schema:
+            identified.update([self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from])
+
         for relationship in node_schema.relationships:
             if (
                 relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE]

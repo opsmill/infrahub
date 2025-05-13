@@ -70,8 +70,7 @@ RETURN node_labels, node_uuid, num_dups
         query = """
 MATCH (a)-[e]->(b)
 WITH DISTINCT a, b, type(e) AS edge_type
-CALL {
-    WITH a, b, edge_type
+CALL (a, b, edge_type) {
     MATCH (a)-[e]->(b)
     WHERE type(e) = edge_type
     WITH %(id_func)s(a) as db_id_a, %(id_func)s(b) as db_id_b, e.branch AS branch, e.status AS status, count(*) AS num_dups

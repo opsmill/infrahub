@@ -92,6 +92,7 @@ class NodeAttributesFromDB:
 class PeerInfo:
     uuid: str
     kind: str
+    db_id: str
 
 
 class NodeQuery(Query):
@@ -406,9 +407,31 @@ class NodeDeleteQuery(NodeQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
 
+        if self.branch.is_global or self.branch.is_default:
+            node_query_match = """
+            MATCH (n:Node { uuid: $uuid })
+            OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH n WHERE delete_edge IS NULL
+            """
+        else:
+            node_filter, node_filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
+            node_query_match = """
+                MATCH (n:Node { uuid: $uuid })
+                CALL (n) {
+                    MATCH (n)-[r:IS_PART_OF]->(:Root)
+                    WHERE %(node_filter)s
+                    RETURN r.status = "active" AS is_active
+                    ORDER BY r.from DESC
+                    LIMIT 1
+                }
+                WITH n WHERE is_active = TRUE
+                """ % {"node_filter": node_filter}
+            self.params.update(node_filter_params)
+        self.add_to_query(node_query_match)
+
         query = """
         MATCH (root:Root)
-        MATCH (n:Node { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 
@@ -666,14 +689,12 @@ class NodeListGetRelationshipsQuery(Query):
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
             WHERE ($inbound_identifiers IS NULL OR rel.name in $inbound_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
-            CALL {
-                WITH n, rel, peer
+            CALL (n, rel, peer) {
                 MATCH (n)<-[r:IS_RELATED]-(rel)
                 WHERE (%(filters)s)
                 WITH n, rel, peer, r
@@ -697,8 +718,7 @@ class NodeListGetRelationshipsQuery(Query):
             WHERE ($outbound_identifiers IS NULL OR rel.name in $outbound_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
-            CALL {
-                WITH n, rel, peer
+            CALL (n, rel, peer) {
                 MATCH (n)-[r:IS_RELATED]->(rel)
                 WHERE (%(filters)s)
                 WITH n, rel, peer, r
@@ -722,8 +742,7 @@ class NodeListGetRelationshipsQuery(Query):
             WHERE ($bidirectional_identifiers IS NULL OR rel.name in $bidirectional_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
-            CALL {
-                WITH n, rel, peer
+            CALL (n, rel, peer) {
                 MATCH (n)-[r:IS_RELATED]->(rel)
                 WHERE (%(filters)s)
                 WITH n, rel, peer, r
@@ -1393,7 +1412,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -1425,6 +1444,11 @@ class NodeGetHierarchyQuery(Query):
             UNWIND peers_with_duplicates AS pwd
             RETURN DISTINCT pwd AS peer
         }
+
+        """ % {"filter": filter_str, "branch_filter": branch_filter}
+
+        if not self.branch.is_default:
+            query += """
         CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
@@ -1434,10 +1458,14 @@ class NodeGetHierarchyQuery(Query):
             LIMIT 1
         }
         WITH peer1 as peer, is_active
-        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        else:
+            query += """
+        WITH peer
+            """
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"]
+        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
@@ -1447,7 +1475,8 @@ class NodeGetHierarchyQuery(Query):
             if clean_filters.get("id", None):
                 self.params["peer_ids"].append(clean_filters.get("id"))
 
-        self.add_to_query("WHERE " + " AND ".join(where_clause))
+        if where_clause:
+            self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
@@ -1530,4 +1559,5 @@ class NodeGetHierarchyQuery(Query):
             yield PeerInfo(
                 uuid=peer_node.get("uuid"),
                 kind=peer_node.get("kind"),
+                db_id=peer_node.element_id,
             )

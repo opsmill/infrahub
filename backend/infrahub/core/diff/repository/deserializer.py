@@ -16,6 +16,7 @@ from ..model.path import (
     EnrichedDiffRoot,
     EnrichedDiffRootMetadata,
     EnrichedDiffSingleRelationship,
+    NodeIdentifier,
     deserialize_tracking_id,
 )
 from ..parent_node_adder import DiffParentNodeAdder, ParentNodeAddRequest
@@ -25,13 +26,15 @@ class EnrichedDiffDeserializer:
     def __init__(self, parent_adder: DiffParentNodeAdder) -> None:
         self.parent_adder = parent_adder
         self._diff_root_map: dict[str, EnrichedDiffRoot] = {}
-        self._diff_node_map: dict[tuple[str, str], EnrichedDiffNode] = {}
-        self._diff_node_attr_map: dict[tuple[str, str, str], EnrichedDiffAttribute] = {}
-        self._diff_node_rel_group_map: dict[tuple[str, str, str], EnrichedDiffRelationship] = {}
-        self._diff_node_rel_element_map: dict[tuple[str, str, str, str], EnrichedDiffSingleRelationship] = {}
-        self._diff_prop_map: dict[tuple[str, str, str, str] | tuple[str, str, str, str, str], EnrichedDiffProperty] = {}
-        # {EnrichedDiffRoot: [(node_uuid, parents_path: Neo4jPath), ...]}
-        self._parents_path_map: dict[EnrichedDiffRoot, list[tuple[str, Neo4jPath]]] = {}
+        self._diff_node_map: dict[tuple[str, NodeIdentifier], EnrichedDiffNode] = {}
+        self._diff_node_attr_map: dict[tuple[str, NodeIdentifier, str], EnrichedDiffAttribute] = {}
+        self._diff_node_rel_group_map: dict[tuple[str, NodeIdentifier, str], EnrichedDiffRelationship] = {}
+        self._diff_node_rel_element_map: dict[tuple[str, NodeIdentifier, str, str], EnrichedDiffSingleRelationship] = {}
+        self._diff_prop_map: dict[
+            tuple[str, NodeIdentifier, str, str] | tuple[str, str, str, str, str], EnrichedDiffProperty
+        ] = {}
+        # {EnrichedDiffRoot: [(NodeIdentifier, parents_path: Neo4jPath), ...]}
+        self._parents_path_map: dict[EnrichedDiffRoot, list[tuple[NodeIdentifier, Neo4jPath]]] = {}
 
     def initialize(self) -> None:
         self._diff_root_map = {}
@@ -42,10 +45,12 @@ class EnrichedDiffDeserializer:
         self._diff_prop_map = {}
         self._parents_path_map = {}
 
-    def _track_parents_path(self, enriched_root: EnrichedDiffRoot, node_uuid: str, parents_path: Neo4jPath) -> None:
+    def _track_parents_path(
+        self, enriched_root: EnrichedDiffRoot, node_identifier: NodeIdentifier, parents_path: Neo4jPath
+    ) -> None:
         if enriched_root not in self._parents_path_map:
             self._parents_path_map[enriched_root] = []
-        self._parents_path_map[enriched_root].append((node_uuid, parents_path))
+        self._parents_path_map[enriched_root].append((node_identifier, parents_path))
 
     async def read_result(self, result: QueryResult, include_parents: bool) -> None:
         enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
@@ -58,7 +63,7 @@ class EnrichedDiffDeserializer:
             parents_path = result.get("parents_path")
             if parents_path and isinstance(parents_path, Neo4jPath):
                 self._track_parents_path(
-                    enriched_root=enriched_root, node_uuid=enriched_node.uuid, parents_path=parents_path
+                    enriched_root=enriched_root, node_identifier=enriched_node.identifier, parents_path=parents_path
                 )
 
         node_conflict_node = result.get(label="diff_node_conflict")
@@ -79,11 +84,13 @@ class EnrichedDiffDeserializer:
     ) -> None:
         for attribute_result in result.get_nested_node_collection("diff_attributes"):
             diff_attr_node, diff_attr_property_node, diff_attr_property_conflict = attribute_result
-            if diff_attr_node is None or diff_attr_property_node is None:
+            if diff_attr_node is None:
                 continue
             enriched_attribute = self._deserialize_diff_attr(
                 diff_attr_node=diff_attr_node, enriched_root=enriched_root, enriched_node=enriched_node
             )
+            if diff_attr_property_node is None:
+                continue
             enriched_property = self._deserialize_diff_attr_property(
                 diff_attr_property_node=diff_attr_property_node,
                 enriched_attr=enriched_attribute,
@@ -130,17 +137,21 @@ class EnrichedDiffDeserializer:
     def _deserialize_parents(self) -> None:
         for enriched_root, node_path_tuples in self._parents_path_map.items():
             self.parent_adder.initialize(enriched_diff_root=enriched_root)
-            for node_uuid, parents_path in node_path_tuples:
+            for node_identifier, parents_path in node_path_tuples:
                 # Remove the node itself from the path
                 parents_path_slice = parents_path.nodes[1:]
 
                 # TODO Ensure the list is even
-                current_node_uuid = node_uuid
+                current_node_identifier = node_identifier
                 for rel, parent in zip(parents_path_slice[::2], parents_path_slice[1::2], strict=False):
+                    parent_identifier = NodeIdentifier(
+                        uuid=parent.get("uuid"),
+                        kind=parent.get("kind"),
+                        db_id=parent.get("db_id"),
+                    )
                     parent_request = ParentNodeAddRequest(
-                        node_id=current_node_uuid,
-                        parent_id=parent.get("uuid"),
-                        parent_kind=parent.get("kind"),
+                        node_identifier=current_node_identifier,
+                        parent_identifier=parent_identifier,
                         parent_label=parent.get("label"),
                         parent_rel_name=rel.get("name"),
                         parent_rel_identifier=rel.get("identifier"),
@@ -148,7 +159,7 @@ class EnrichedDiffDeserializer:
                         parent_rel_label=rel.get("label"),
                     )
                     self.parent_adder.add_parent(parent_request=parent_request)
-                    current_node_uuid = parent.get("uuid")
+                    current_node_identifier = parent_identifier
 
     @classmethod
     def _get_str_or_none_property_value(cls, node: Neo4jNode, property_name: str) -> str | None:
@@ -189,17 +200,20 @@ class EnrichedDiffDeserializer:
 
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:
         node_uuid = str(node_node.get("uuid"))
-        node_key = (enriched_root.uuid, node_uuid)
+        node_kind = str(node_node.get("kind"))
+        node_db_id = node_node.get("db_id")
+        node_identifier = NodeIdentifier(uuid=node_uuid, kind=node_kind, db_id=node_db_id)
+        node_key = (enriched_root.uuid, node_identifier)
         if node_key in self._diff_node_map:
             return self._diff_node_map[node_key]
 
         timestamp_str = self._get_str_or_none_property_value(node=node_node, property_name="changed_at")
         enriched_node = EnrichedDiffNode(
-            uuid=node_uuid,
-            kind=str(node_node.get("kind")),
+            identifier=node_identifier,
             label=str(node_node.get("label")),
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(node_node.get("action"))),
+            is_node_kind_migration=bool(node_node.get("is_node_kind_migration")),
             path_identifier=str(node_node.get("path_identifier")),
             num_added=int(node_node.get("num_added", 0)),
             num_updated=int(node_node.get("num_updated", 0)),
@@ -215,7 +229,7 @@ class EnrichedDiffDeserializer:
         self, diff_attr_node: Neo4jNode, enriched_root: EnrichedDiffRoot, enriched_node: EnrichedDiffNode
     ) -> EnrichedDiffAttribute:
         attr_name = str(diff_attr_node.get("name"))
-        attr_key = (enriched_root.uuid, enriched_node.uuid, attr_name)
+        attr_key = (enriched_root.uuid, enriched_node.identifier, attr_name)
         if attr_key in self._diff_node_attr_map:
             return self._diff_node_attr_map[attr_key]
 
@@ -238,7 +252,7 @@ class EnrichedDiffDeserializer:
         self, relationship_group_node: Neo4jNode, enriched_root: EnrichedDiffRoot, enriched_node: EnrichedDiffNode
     ) -> EnrichedDiffRelationship:
         diff_rel_name = str(relationship_group_node.get("name"))
-        rel_key = (enriched_root.uuid, enriched_node.uuid, diff_rel_name)
+        rel_key = (enriched_root.uuid, enriched_node.identifier, diff_rel_name)
         if rel_key in self._diff_node_rel_group_map:
             return self._diff_node_rel_group_map[rel_key]
 
@@ -272,7 +286,7 @@ class EnrichedDiffDeserializer:
         diff_element_peer_id = str(relationship_element_node.get("peer_id"))
         rel_element_key = (
             enriched_root.uuid,
-            enriched_node.uuid,
+            enriched_node.identifier,
             enriched_relationship_group.name,
             diff_element_peer_id,
         )
@@ -320,7 +334,7 @@ class EnrichedDiffDeserializer:
         enriched_root: EnrichedDiffRoot,
     ) -> EnrichedDiffProperty:
         diff_prop_type = str(diff_attr_property_node.get("property_type"))
-        attr_property_key = (enriched_root.uuid, enriched_node.uuid, enriched_attr.name, diff_prop_type)
+        attr_property_key = (enriched_root.uuid, enriched_node.identifier, enriched_attr.name, diff_prop_type)
         if attr_property_key in self._diff_prop_map:
             return self._diff_prop_map[attr_property_key]
 

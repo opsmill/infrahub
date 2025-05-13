@@ -22,8 +22,7 @@ WITH n.uuid AS node_uuid, count(*) as num_nodes_with_uuid
 WHERE num_nodes_with_uuid > 1
 WITH DISTINCT node_uuid
 MATCH (n:Node {uuid: node_uuid})
-CALL {
-    WITH n
+CALL (n) {
     WITH labels(n) AS n_labels
     UNWIND n_labels AS n_label
     WITH n_label
@@ -37,8 +36,7 @@ UNWIND nodes_to_delete AS node_to_delete
 //------------
 // Find the edges that we need to move to the selected node_to_keep
 //------------
-CALL {
-    WITH node_to_keep, node_to_delete
+CALL (node_to_keep, node_to_delete) {
     MATCH (node_to_delete)-[edge_to_delete]->(peer)
     RETURN {
         from_id: %(id_func_name)s(node_to_keep),
@@ -60,8 +58,7 @@ WITH node_to_delete, collect(edge_to_create) AS edges_to_create
 //------------
 // Find the edges that we need to remove from the duplicated nodes
 //------------
-CALL {
-    WITH node_to_delete
+CALL (node_to_delete) {
     MATCH (node_to_delete)-[e]->(peer)
     RETURN {
         db_id: %(id_func_name)s(e),
