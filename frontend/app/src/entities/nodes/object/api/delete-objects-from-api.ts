@@ -13,7 +13,6 @@ const getDeleteObjectsQuery = (objects: Array<ObjectParam>) => {
   const mutations = objects.reduce((acc, { id, kind }, index) => {
     return {
       ...acc,
-      // Alias key must be a string without numbers
       [`delete_${kind}_${index}`]: {
         __aliasFor: `${kind}Delete`,
         __args: {
