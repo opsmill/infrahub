@@ -146,6 +146,7 @@ core_repository_group = NodeSchema(
         Rel(
             name="repository",
             peer=InfrahubKind.GENERICREPOSITORY,
+            identifier="repository_group__repository",
             optional=False,
             cardinality=Cardinality.ONE,
         ),

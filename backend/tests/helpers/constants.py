@@ -2,7 +2,7 @@ import os
 
 from infrahub_sdk.utils import str_to_bool
 
-INFRAHUB_USE_TEST_CONTAINERS = str_to_bool(os.getenv("INFRAHUB_USE_TEST_CONTAINERS", "true"))
+INFRAHUB_USE_TEST_CONTAINERS = str_to_bool(os.getenv("INFRAHUB_USE_TEST_CONTAINERS", "false"))
 PORT_NATS = 4222
 PORT_REDIS = 6379
 PORT_CLIENT_RABBITMQ = 5672

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality
 from infrahub.core.schema import NodeSchema
 
 
@@ -11,6 +11,21 @@ class SchemaMappingValue(BaseModel):
 
 
 SchemaMapping = dict[str, SchemaMappingValue]
+
+
+def _are_branch_support_matching(
+    left_branch_support: BranchSupportType | None,
+    right_branch_support: BranchSupportType | None,
+) -> bool:
+    if left_branch_support == right_branch_support:
+        return True
+
+    local_aware = [BranchSupportType.AWARE, BranchSupportType.LOCAL]
+
+    if left_branch_support in local_aware and right_branch_support in local_aware:
+        return True
+
+    return False
 
 
 def get_schema_mapping(source_schema: NodeSchema, target_schema: NodeSchema) -> SchemaMapping:
@@ -31,7 +46,11 @@ def get_schema_mapping(source_schema: NodeSchema, target_schema: NodeSchema) -> 
     # Process attributes
     for target_attr in target_schema.attributes:
         source_attr = source_attrs.get(target_attr.name)
-        if source_attr and source_attr.kind == target_attr.kind:
+        if (
+            source_attr
+            and source_attr.kind == target_attr.kind
+            and _are_branch_support_matching(source_attr.branch, target_attr.branch)
+        ):
             target_field_to_source_field[target_attr.name] = SchemaMappingValue(
                 source_field_name=source_attr.name, is_mandatory=not target_attr.optional
             )
@@ -41,7 +60,12 @@ def get_schema_mapping(source_schema: NodeSchema, target_schema: NodeSchema) -> 
     # Process relationships
     for target_rel in target_schema.relationships:
         source_rel = source_rels.get(target_rel.name)
-        if source_rel and source_rel.peer == target_rel.peer and source_rel.cardinality == target_rel.cardinality:
+        if (
+            source_rel
+            and source_rel.peer == target_rel.peer
+            and source_rel.cardinality == target_rel.cardinality
+            and _are_branch_support_matching(source_rel.branch, target_rel.branch)
+        ):
             target_field_to_source_field[target_rel.name] = SchemaMappingValue(
                 source_field_name=source_rel.name,
                 is_mandatory=not target_rel.optional,

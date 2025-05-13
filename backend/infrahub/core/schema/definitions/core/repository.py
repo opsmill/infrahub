@@ -282,5 +282,13 @@ core_generic_repository = GenericSchema(
             cardinality=Cardinality.MANY,
             order_weight=12000,
         ),
+        Rel(
+            name="groups_objects",
+            peer=InfrahubKind.REPOSITORYGROUP,
+            identifier="repository_group__repository",
+            optional=True,
+            cardinality=Cardinality.MANY,
+            order_weight=13000,
+        ),
     ],
 )

@@ -15,6 +15,8 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.needs_rebase_status import raise_needs_rebase_error
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
@@ -74,6 +76,9 @@ async def generate_artifact(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> None:
+    if branch_params.branch.status == BranchStatus.NEED_REBASE.value:
+        raise_needs_rebase_error(branch_name=branch_params.branch.name)
+
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
         if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
