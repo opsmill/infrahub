@@ -1,5 +1,5 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
+import { BranchContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
@@ -31,9 +31,8 @@ const getDeleteObjectsQuery = (objects: Array<ObjectParam>) => {
   return jsonToGraphQLQuery(query);
 };
 
-export interface DeleteObjectsFromApiParams {
+export interface DeleteObjectsFromApiParams extends BranchContextParams {
   objects: Array<ObjectParam>;
-  branchName: Pick<ContextParams, "branchName">;
   context: Record<string, any>;
 }
 
