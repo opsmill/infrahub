@@ -28,7 +28,7 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
         });
       },
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes("objects"),
       });
