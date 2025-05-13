@@ -1,5 +1,6 @@
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";
 import { ToolBarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
+import { ToolbarDeleteObject } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-delete-action";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 import { NodeObject } from "@/entities/nodes/types";
@@ -38,6 +39,7 @@ export function ObjectTableToolbar({
 
       <ToolbarAddToGroupsAction selectedRows={selectedRows} />
       <ToolBarRemoveFromGroupsAction selectedRows={selectedRows} />
+      <ToolbarDeleteObject selectedRows={selectedRows} />
 
       {renderMore && (
         <>
