@@ -10,7 +10,7 @@ export interface ObjectParam {
 }
 
 const getDeleteObjectsQuery = (objects: Array<ObjectParam>) => {
-  // Creates dynamic mutations wwith aliases
+  // Creates dynamic mutations with aliases
   const mutations = objects.reduce((acc, { id, kind }) => {
     return {
       ...acc,
@@ -39,14 +39,12 @@ export interface DeleteObjectsParams {
 export function deleteObjectsFromApi({
   objects,
   branchName,
-  atDate,
   context,
 }: ContextParams & DeleteObjectsParams & DefaultContext) {
   return graphqlClient.mutate({
     mutation: gql(getDeleteObjectsQuery(objects)),
     context: {
       branch: branchName,
-      date: atDate,
       ...context,
     },
   });
