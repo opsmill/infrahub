@@ -1,0 +1,66 @@
+import { expect, test } from "@playwright/test";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+
+test.describe("/objects/BuiltinTag - Bulk delete", () => {
+  const BRANCH_NAME = generateRandomBranchName();
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
+  test("should not be able to delete objects", async ({ page }) => {
+    await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+    await expect(
+      page.getByRole("link", { name: "blue" }).locator("..").getByTestId("identifier-checkbox-cell")
+    ).not.toBeVisible();
+    await expect(
+      page
+        .getByRole("link", { name: "green" })
+        .locator("..")
+        .getByTestId("identifier-checkbox-cell")
+    ).not.toBeVisible();
+  });
+
+  test.describe("when logged in", async () => {
+    test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+    test("should be able to delete objects", async ({ page }) => {
+      test.step("assert we have the initial values", async () => {
+        await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+        await expect(
+          page
+            .getByRole("link", { name: "blue" })
+            .locator("..")
+            .getByTestId("identifier-checkbox-cell")
+        ).toBeVisible();
+        await expect(
+          page
+            .getByRole("link", { name: "green" })
+            .locator("..")
+            .getByTestId("identifier-checkbox-cell")
+        ).toBeVisible();
+      });
+
+      test.step("proceed delete", async () => {
+        await page
+          .getByRole("link", { name: "blue" })
+          .locator("..")
+          .getByTestId("identifier-checkbox-cell");
+        await page
+          .getByRole("link", { name: "green" })
+          .locator("..")
+          .getByTestId("identifier-checkbox-cell");
+        await page.getByRole("button", { name: "Delete" }).click();
+        await expect(page.getByText("Are you sure you want to")).toBeVisible();
+        await page.getByTestId("modal-delete-confirm").click();
+        await expect(page.getByText("Objects deleted!")).toBeVisible();
+      });
+    });
+  });
+});
