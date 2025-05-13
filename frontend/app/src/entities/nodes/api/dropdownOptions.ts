@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+import Handlebars from "@/shared/libs/handlebars";
 
 export const getDropdownOptions = Handlebars.compile(`query DropdownOptions {
   {{kind}}{{#if parentFilter}}({{{parentFilter}}}){{/if}}  {

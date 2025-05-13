@@ -26,7 +26,11 @@ export function SearchAnywhereDialog({ children, className, ...props }: DialogPr
         )}
         {...props}
       >
-        <Dialog aria-label="Search anywhere" data-testid="search-anywhere">
+        <Dialog
+          aria-label="Search anywhere"
+          data-testid="search-anywhere"
+          className="overflow-hidden"
+        >
           {children}
         </Dialog>
       </Modal>

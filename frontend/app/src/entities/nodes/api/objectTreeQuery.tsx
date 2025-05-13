@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+import Handlebars from "@/shared/libs/handlebars";
 
 export const objectTopLevelTreeQuery = Handlebars.compile(`
   query GET_{{kind}}_TOP_LEVEL_TREE {
