@@ -15,7 +15,9 @@ from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TC001
 
 class GeneratedAttributeSchema(HashableModel):
     id: str | None = Field(
-        default=None, description="The ID of the attribute", json_schema_extra={"update": "not_applicable"}
+        default=None,
+        description="The ID of the attribute",
+        json_schema_extra={"update": "not_applicable"},
     )
     name: str = Field(
         ...,
@@ -26,7 +28,9 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "migration_required"},
     )
     kind: str = Field(
-        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "validate_constraint"}
+        ...,
+        description="Defines the type of the attribute.",
+        json_schema_extra={"update": "validate_constraint"},
     )
     enum: list | None = Field(
         default=None,
@@ -99,7 +103,9 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "allowed"},
     )
     default_value: Any | None = Field(
-        default=None, description="Default value of the attribute.", json_schema_extra={"update": "allowed"}
+        default=None,
+        description="Default value of the attribute.",
+        json_schema_extra={"update": "allowed"},
     )
     inherited: bool = Field(
         default=False,

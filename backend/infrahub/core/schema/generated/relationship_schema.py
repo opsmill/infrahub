@@ -18,7 +18,9 @@ from infrahub.core.models import HashableModel
 
 class GeneratedRelationshipSchema(HashableModel):
     id: str | None = Field(
-        default=None, description="The ID of the relationship schema", json_schema_extra={"update": "not_applicable"}
+        default=None,
+        description="The ID of the relationship schema",
+        json_schema_extra={"update": "not_applicable"},
     )
     name: str = Field(
         ...,
