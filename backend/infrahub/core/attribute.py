@@ -782,6 +782,10 @@ class Dropdown(BaseAttribute):
 
         return ""
 
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["color", "description", "label", "value"]
+
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the dropdown."""
@@ -817,7 +821,18 @@ class IPNetwork(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address", "prefixlen"]
+        return [
+            "binary_address",
+            "broadcast_address",
+            "hostmask",
+            "netmask",
+            "num_addresses",
+            "prefixlen",
+            "value",
+            "version",
+            "with_hostmask",
+            "with_netmask",
+        ]
 
     @property
     def obj(self) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -950,7 +965,17 @@ class IPHost(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address"]
+        return [
+            "binary_address",
+            "hostmask",
+            "ip",
+            "netmask",
+            "prefixlen",
+            "value",
+            "version",
+            "with_hostmask",
+            "with_netmask",
+        ]
 
     @property
     def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
@@ -1169,6 +1194,22 @@ class MacAddress(BaseAttribute):
     def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
         return str(netaddr.EUI(addr=self.value))
+
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return [
+            "bare",
+            "binary",
+            "dot_notation",
+            "ei",
+            "eui48",
+            "eui64",
+            "oui",
+            "semicolon_notation",
+            "split_notation",
+            "value",
+            "version",
+        ]
 
 
 class MacAddressOptional(MacAddress):

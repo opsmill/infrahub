@@ -303,6 +303,14 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
+    name="computed-attribute-jinja2-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_jinja2_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_jinja2_computed_attributes",
     type=WorkflowType.CORE,
@@ -513,6 +521,7 @@ workflows = [
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
