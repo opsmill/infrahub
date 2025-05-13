@@ -1,6 +1,7 @@
 from prefect import flow
 from prefect.client.orchestration import get_client
 
+from infrahub.actions.gather import gather_trigger_action_rules
 from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
@@ -21,13 +22,14 @@ async def trigger_configure_all(service: InfrahubServices) -> None:
             computed_attribute_python_triggers,
             computed_attribute_python_query_triggers,
         ) = await gather_trigger_computed_attribute_python(db=db)
-
+        action_rules = await gather_trigger_action_rules(db=db)
         triggers = (
             computed_attribute_j2_triggers
             + computed_attribute_python_triggers
             + computed_attribute_python_query_triggers
             + builtin_triggers
             + webhook_trigger
+            + action_rules
         )
 
         async with get_client(sync_client=False) as prefect_client:
