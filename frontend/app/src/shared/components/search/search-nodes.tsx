@@ -69,7 +69,11 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
     data: objectDetailsData,
     isPending,
     error,
-  } = useGetObject({ objectSchema: schema!, objectId: node.id });
+  } = useGetObject({
+    objectSchema: schema!,
+    objectId: node.id,
+    getRelationshipsVisible: (rel) => rel,
+  });
 
   if (!schema) return null;
 
