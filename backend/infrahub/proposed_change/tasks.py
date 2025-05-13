@@ -1222,6 +1222,9 @@ query GatherArtifactDefinitions {
               file_path {
                 value
               }
+              convert_query_response {
+                value
+              }
             }
             repository {
               node {
@@ -1429,6 +1432,9 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
         elif artifact_definition.transform_kind == InfrahubKind.TRANSFORMPYTHON:
             artifact_definition.class_name = definition["node"]["transformation"]["node"]["class_name"]["value"]
             artifact_definition.file_path = definition["node"]["transformation"]["node"]["file_path"]["value"]
+            artifact_definition.convert_query_response = definition["node"]["transformation"]["node"][
+                "convert_query_response"
+            ]["value"]
 
         parsed.append(artifact_definition)
 

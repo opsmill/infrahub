@@ -9,8 +9,6 @@ class ConvertedPersonWith(InfrahubTransform):
     async def transform(self, data: dict[str, Any]) -> dict[str, Any]:
         node_id = data["TestingPerson"]["edges"][0]["node"]["id"]
 
-        person = self.store.get(key=node_id, kind="TestingPerson", raise_when_missing=False)
-        if not person:
-            person = await self.client.get(kind="TestingPerson", id=node_id)
+        person = self.store.get(key=node_id, kind="TestingPerson")
 
         return {"name": person.name.value, "age": person.age.value}
