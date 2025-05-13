@@ -19,7 +19,7 @@ from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import build_cache, build_client, build_message_bus
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
@@ -273,14 +273,14 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         dependency_provider,
     ):
         dependency_provider.override(build_client, lambda: client)
-        bus_recorder = BusRecorder()
-        dependency_provider.override(build_message_bus, lambda: bus_recorder)
-        cache = MemoryCache()
-        dependency_provider.override(build_cache, lambda: cache)
-
         service = await InfrahubServices.new(
-            database=db, message_bus=bus_recorder, workflow=WorkflowLocalExecution(), cache=cache, client=client
+            database=db,
+            message_bus=BusRecorder(),
+            workflow=WorkflowLocalExecution(),
+            cache=MemoryCache(),
+            client=client,
         )
+
         async with get_client(sync_client=False) as prefect_client:
             await setup_worker_pools(client=prefect_client)
             await setup_deployments(prefect_client)

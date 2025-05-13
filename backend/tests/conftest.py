@@ -108,9 +108,8 @@ def event_loop():
 
 
 @pytest.fixture
-def dependency_provider() -> Generator[Provider, Any, None]:
-    yield provider
-    provider.clear()
+def dependency_provider() -> Provider:
+    return provider
 
 
 @pytest.fixture(scope="module")

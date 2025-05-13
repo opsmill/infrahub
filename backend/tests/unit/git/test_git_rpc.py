@@ -26,7 +26,7 @@ from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client, build_message_bus
+from infrahub.workers.dependencies import build_client, build_message_bus, build_workflow
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.test_client import dummy_async_request
@@ -75,7 +75,11 @@ class TestAddRepository:
 
         patch.stopall()
 
-    async def test_git_rpc_create_successful(self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup):
+    async def test_git_rpc_create_successful(
+        self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup, dependency_provider
+    ):
+        dependency_provider.override(build_message_bus, lambda: self.recorder)
+
         repo_id = str(UUIDT())
         model = GitRepositoryAdd(
             repository_id=repo_id,
@@ -149,16 +153,16 @@ async def test_git_rpc_merge(
     bus_simulator = await helper.get_message_bus_simulator()
     dependency_provider.override(build_message_bus, lambda: bus_simulator)
 
-    service = await InfrahubServices.new(client=client, message_bus=bus_simulator, workflow=WorkflowLocalExecution())
+    workflow = WorkflowLocalExecution()
+    dependency_provider.override(build_workflow, lambda: workflow)
+
     context = InfrahubContext(
         branch=BranchContext(name=branch01.name, id=branch01.id),
         account=AccountSession(
             authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
         ),
     )
-    await service.workflow.submit_workflow(
-        workflow=GIT_REPOSITORIES_MERGE, context=context, parameters={"model": model}
-    )
+    await workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, context=context, parameters={"model": model})
 
     commit_main_after = repo.get_commit_value(branch_name="main")
 
@@ -272,11 +276,12 @@ class TestPullReadOnly:
     async def setup(self, dependency_provider):
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
-        self.service = await InfrahubServices.new(
-            client=self.client, workflow=WorkflowLocalExecution(), message_bus=self.recorder
-        )
+        self.workflow = WorkflowLocalExecution()
+        self.service = await InfrahubServices.new(client=self.client, workflow=self.workflow, message_bus=self.recorder)
 
         dependency_provider.override(build_message_bus, lambda: self.recorder)
+        dependency_provider.override(build_workflow, lambda: self.workflow)
+        dependency_provider.override(build_client, lambda: self.client)
 
         self.commit = str(UUIDT())
         self.infrahub_branch_name = "read-only-branch"

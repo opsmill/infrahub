@@ -20,7 +20,7 @@ from infrahub.proposed_change.tasks import (
     _get_proposed_change_schema_integrity_constraints,
     run_proposed_change_schema_integrity_check,
 )
-from infrahub.workers.dependencies import build_cache, build_database
+from infrahub.workers.dependencies import build_cache
 from tests.adapters.cache import MemoryCache
 from tests.conftest import TestHelper
 
@@ -276,7 +276,6 @@ async def test_schema_integrity(
     person_john_main: Node,
 ):
     cache = MemoryCache()
-    dependency_provider.override(build_database, lambda: db)
     dependency_provider.override(build_cache, lambda: cache)
 
     branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)

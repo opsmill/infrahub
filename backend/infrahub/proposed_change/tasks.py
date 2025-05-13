@@ -362,10 +362,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
         )
 
 
-@flow(
-    name="proposed-changed-schema-integrity",
-    flow_run_name="Process schema integrity",
-)
+@flow(name="proposed-changed-schema-integrity", flow_run_name="Process schema integrity")
 async def run_proposed_change_schema_integrity_check(model: RequestProposedChangeSchemaIntegrity) -> None:
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff

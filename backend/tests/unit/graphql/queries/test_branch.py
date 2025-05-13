@@ -3,7 +3,6 @@ import operator
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.workers.dependencies import build_client
 from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -17,10 +16,7 @@ class TestBranchQuery(TestInfrahubApp):
         session_admin,
         client,
         service,
-        dependency_provider,
     ):
-        dependency_provider.override(build_client, lambda: client)
-
         create_branch_query = """
         mutation {
             BranchCreate(data: { name: "branch3", description: "my description" }) {
