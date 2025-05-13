@@ -89,6 +89,7 @@ class GroupMutatedEvent(InfrahubEvent):
             "infrahub.node.id": self.node_id,
             "infrahub.node.action": self.action.value,
             "infrahub.node.root_id": self.node_id,
+            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
 
