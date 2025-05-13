@@ -80,6 +80,12 @@ test.describe("/objects/BuiltinTag - Bulk delete", () => {
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText("Objects deleted!")).toBeVisible();
       });
+
+      await test.step("assert the objects were deleted", async () => {
+        await expect(page.getByRole("link", { name: "red" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "blue" })).not.toBeVisible();
+        await expect(page.getByRole("link", { name: "green" })).not.toBeVisible();
+      });
     });
   });
 });
