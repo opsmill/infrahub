@@ -22,20 +22,17 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
         const messageDisplay = matches?.[0];
 
         toast(<Alert type={ALERT_TYPES.ERROR} message={messageDisplay} />);
-
-        queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey.includes("objects"),
-        });
       },
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
-
       setOpen(false);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Objects deleted!"} />);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("objects"),
+      });
     },
   });
 
