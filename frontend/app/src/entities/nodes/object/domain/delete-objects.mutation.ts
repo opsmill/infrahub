@@ -10,9 +10,10 @@ interface DeleteObjectsProps {
   context?: DefaultContext;
   onSuccess?: () => void;
   onError?: () => void;
+  onSettled?: () => void;
 }
 
-export function useDeleteObjects({ context, onSuccess, onError }: DeleteObjectsProps) {
+export function useDeleteObjects({ context, onSuccess, onError, onSettled }: DeleteObjectsProps) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
@@ -29,5 +30,6 @@ export function useDeleteObjects({ context, onSuccess, onError }: DeleteObjectsP
     },
     onSuccess,
     onError,
+    onSettled,
   });
 }
