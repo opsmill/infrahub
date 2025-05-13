@@ -1,6 +1,6 @@
 import { useDeleteObjects } from "@/entities/nodes/object/domain/delete-objects.mutation";
 import { NodeObject } from "@/entities/nodes/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
@@ -23,11 +23,15 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
 
         toast(<Alert type={ALERT_TYPES.ERROR} message={messageDisplay} />);
 
-        graphqlClient.reFetchObservableQueries();
+        queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey.includes("objects"),
+        });
       },
     },
-    onSuccess: () => {
-      graphqlClient.reFetchObservableQueries();
+    onSuccess: async () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("objects"),
+      });
 
       setOpen(false);
 
