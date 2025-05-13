@@ -4,6 +4,8 @@ import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/BuiltinTag - Bulk delete", () => {
+  test.describe.configure({ mode: "serial" });
+
   const BRANCH_NAME = generateRandomBranchName();
 
   test.beforeAll(async ({ request }) => {
@@ -16,12 +18,18 @@ test.describe("/objects/BuiltinTag - Bulk delete", () => {
 
   test("should not be able to delete objects", async ({ page }) => {
     await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+    await expect(page.getByRole("button", { name: "Add Tag" })).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "blue" }).locator("..").getByTestId("identifier-checkbox-cell")
+      page
+        .locator("a")
+        .filter({ hasText: "blue" })
+        .locator("..")
+        .getByTestId("identifier-checkbox-cell")
     ).not.toBeVisible();
     await expect(
       page
-        .getByRole("link", { name: "green" })
+        .locator("a")
+        .filter({ hasText: "green" })
         .locator("..")
         .getByTestId("identifier-checkbox-cell")
     ).not.toBeVisible();
@@ -31,30 +39,36 @@ test.describe("/objects/BuiltinTag - Bulk delete", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     test("should be able to delete objects", async ({ page }) => {
-      test.step("assert we have the initial values", async () => {
+      await test.step("assert we have the initial values", async () => {
         await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+        await expect(page.getByRole("button", { name: "Add Tag" })).toBeVisible();
         await expect(
           page
-            .getByRole("link", { name: "blue" })
+            .locator("a")
+            .filter({ hasText: "blue" })
             .locator("..")
             .getByTestId("identifier-checkbox-cell")
         ).toBeVisible();
         await expect(
           page
-            .getByRole("link", { name: "green" })
+            .locator("a")
+            .filter({ hasText: "green" })
             .locator("..")
             .getByTestId("identifier-checkbox-cell")
         ).toBeVisible();
       });
 
-      test.step("proceed delete", async () => {
+      await test.step("proceed delete", async () => {
         await page
-          .getByRole("link", { name: "blue" })
+          .locator("a")
+          .filter({ hasText: "blue" })
           .locator("..")
           .getByTestId("identifier-checkbox-cell")
           .click();
+
         await page
-          .getByRole("link", { name: "green" })
+          .locator("a")
+          .filter({ hasText: "green" })
           .locator("..")
           .getByTestId("identifier-checkbox-cell")
           .click();
