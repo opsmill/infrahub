@@ -62,6 +62,7 @@ class SchemaAttribute(BaseModel):
         default=None,
         description="Currently optional is defined with different defaults for the Pydantic models compared to the internal_schema dictionary",
     )
+    deprecation: str | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -145,6 +146,13 @@ class SchemaAttribute(BaseModel):
     def max(self) -> str:
         if self.max_length is not None:
             return f"max_length={self.max_length},"
+
+        return ""
+
+    @property
+    def deprecation_reason(self) -> str:
+        if self.deprecation is not None:
+            return f'deprecated="{self.deprecation}",'
 
         return ""
 
@@ -510,6 +518,7 @@ attribute_schema = SchemaNode(
             description="Regex uses to limit the characters allowed in for the attributes.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            deprecation="Deprecated in favor of parameters.regex if the kind of this AttributeSchema supports it",
         ),
         SchemaAttribute(
             name="max_length",
@@ -517,6 +526,7 @@ attribute_schema = SchemaNode(
             description="Set a maximum number of characters allowed for a given attribute.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            deprecation="Deprecated in favor of parameters.min_length if the kind of this AttributeSchema supports it",
         ),
         SchemaAttribute(
             name="min_length",
@@ -524,6 +534,7 @@ attribute_schema = SchemaNode(
             description="Set a minimum number of characters allowed for a given attribute.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            deprecation="Deprecated in favor of parameters.max_length if the kind of this AttributeSchema supports it",
         ),
         SchemaAttribute(
             name="label",

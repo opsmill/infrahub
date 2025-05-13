@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from infrahub.core.constants.schema import UpdateSupport
+from infrahub.core.models import HashableModel
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -12,7 +13,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
     }.get(kind, AttributeParameters)
 
 
-class AttributeParameters(BaseModel):
+class AttributeParameters(HashableModel):
     class Config:
         extra = "forbid"
 

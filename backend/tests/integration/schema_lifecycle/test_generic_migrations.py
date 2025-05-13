@@ -627,7 +627,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                                             "inherited": None,
                                             "regex": None,
                                             "order_weight": None,
-                                            "parameters": None,
+                                            "parameters": {"added": {}, "changed": {"regex": None}, "removed": {}},
                                         },
                                         "removed": {},
                                     },

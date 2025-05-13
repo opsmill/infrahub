@@ -296,7 +296,7 @@ async def test_schema_integrity(
     branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
     person_schema = branch2_schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
     branch2_schema.set(name="TestPerson", schema=person_schema)
 
     await set_diff_summary_cache(
@@ -316,9 +316,9 @@ async def test_schema_integrity(
             "branch": "placeholder",
             "id": person_john_main.id,
             "kind": "TestPerson",
-            "name": "schema/TestPerson/name/regex",
-            "path": "schema/TestPerson/name/regex",
-            "type": "attribute.regex.update",
+            "name": "schema/TestPerson/name/parameters.regex",
+            "path": "schema/TestPerson/name/parameters.regex",
+            "type": "attribute.parameters.regex.update",
             # ruff: noqa: E501
             "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
         }

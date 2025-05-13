@@ -252,9 +252,26 @@ class SchemaUpdateValidationResult(BaseModel):
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
-            for prop_name in sub_field_diff.changed:
+            for prop_name, prop_diff in sub_field_diff.changed.items():
                 field_info = field.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+
+                if field_info.deprecated:
+                    continue
+                if isinstance(prop_diff, HashableModelDiff):
+                    for param_field_name in prop_diff.changed:
+                        schema_path = SchemaPath(  # type: ignore[call-arg]
+                            schema_kind=schema.kind,
+                            path_type=path_type,
+                            field_name=field_name,
+                            property_name=f"{prop_name}.{param_field_name}",
+                        )
+
+                        self._process_field(
+                            schema_path=schema_path,
+                            field_update=field_update,
+                        )
+                    continue
 
                 schema_path = SchemaPath(  # type: ignore[call-arg]
                     schema_kind=schema.kind,

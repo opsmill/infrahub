@@ -47,16 +47,19 @@ class GeneratedAttributeSchema(HashableModel):
         default=None,
         description="Regex uses to limit the characters allowed in for the attributes.",
         json_schema_extra={"update": "validate_constraint"},
+        deprecated="Deprecated in favor of parameters.regex if the kind of this AttributeSchema supports it",
     )
     max_length: int | None = Field(
         default=None,
         description="Set a maximum number of characters allowed for a given attribute.",
         json_schema_extra={"update": "validate_constraint"},
+        deprecated="Deprecated in favor of parameters.min_length if the kind of this AttributeSchema supports it",
     )
     min_length: int | None = Field(
         default=None,
         description="Set a minimum number of characters allowed for a given attribute.",
         json_schema_extra={"update": "validate_constraint"},
+        deprecated="Deprecated in favor of parameters.max_length if the kind of this AttributeSchema supports it",
     )
     label: str | None = Field(
         default=None,
