@@ -1,11 +1,9 @@
-import { deleteObjectsFromApi } from "@/entities/nodes/object/api/delete-objects-from-api";
-import { DeleteObjectsParams } from "@/entities/nodes/object/api/delete-objects-from-api";
-import { ContextParams } from "@/shared/api/types";
-import { DefaultContext } from "@apollo/client";
+import {
+  DeleteObjectsFromApiParams,
+  deleteObjectsFromApi,
+} from "@/entities/nodes/object/api/delete-objects-from-api";
 
-export type DeleteObject = (
-  data: ContextParams & DeleteObjectsParams & DefaultContext
-) => Promise<void>;
+export type DeleteObject = (data: DeleteObjectsFromApiParams) => Promise<void>;
 
 export const deleteObjects: DeleteObject = async (data) => {
   await deleteObjectsFromApi(data);
