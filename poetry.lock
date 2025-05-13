@@ -395,13 +395,13 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2024.8.30"
+version = "2025.1.31"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "certifi-2024.8.30-py3-none-any.whl", hash = "sha256:922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8"},
-    {file = "certifi-2024.8.30.tar.gz", hash = "sha256:bec941d2aa8195e248a60b31ff9f0558284cf01a52591ceda73ea9afffd69fd9"},
+    {file = "certifi-2025.1.31-py3-none-any.whl", hash = "sha256:ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"},
+    {file = "certifi-2025.1.31.tar.gz", hash = "sha256:3d5da6925056f6f18f119200434a4780a94263f10d1c21d032a6f6b2baa20651"},
 ]
 
 [[package]]
@@ -1588,13 +1588,13 @@ tornado = ["tornado (>=0.2)"]
 
 [[package]]
 name = "h11"
-version = "0.14.0"
+version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
-    {file = "h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
+    {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
+    {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
 ]
 
 [[package]]
@@ -1728,24 +1728,24 @@ files = [
 
 [[package]]
 name = "httpcore"
-version = "1.0.5"
+version = "1.0.9"
 description = "A minimal low-level HTTP client."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "httpcore-1.0.5-py3-none-any.whl", hash = "sha256:421f18bac248b25d310f3cacd198d55b8e6125c107797b609ff9b7a6ba7991b5"},
-    {file = "httpcore-1.0.5.tar.gz", hash = "sha256:34a38e2f9291467ee3b44e89dd52615370e152954ba21721378a87b2960f7a61"},
+    {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},
+    {file = "httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"},
 ]
 
 [package.dependencies]
 certifi = "*"
-h11 = ">=0.13,<0.15"
+h11 = ">=0.16"
 
 [package.extras]
 asyncio = ["anyio (>=4.0,<5.0)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
-trio = ["trio (>=0.22.0,<0.26.0)"]
+trio = ["trio (>=0.22.0,<1.0)"]
 
 [[package]]
 name = "httptools"
@@ -3553,13 +3553,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.2.11"
+version = "3.4.1"
 description = "Workflow orchestration and management."
 optional = false
-python-versions = ">=3.9"
+python-versions = "<3.14,>=3.9"
 files = [
-    {file = "prefect-3.2.11-py3-none-any.whl", hash = "sha256:47b0f8dab3aec26c921b3d92be8243f802e09f74420da0faa68cd984e1e03583"},
-    {file = "prefect-3.2.11.tar.gz", hash = "sha256:f6227a1f4db1bb49a04c9f6c94518edaa6befda7423927874b3c70e849ddb460"},
+    {file = "prefect-3.4.1-py3-none-any.whl", hash = "sha256:59663b3521b45f6d0bc6cd99409e5c69bd01b2e5b374c18c4c280f6c43feb8e3"},
+    {file = "prefect-3.4.1.tar.gz", hash = "sha256:8e80a95966daf63e064db57f64682a33be3574baf97dc829e0c708648b311f0d"},
 ]
 
 [package.dependencies]
@@ -3584,20 +3584,20 @@ griffe = ">=0.49.0,<2.0.0"
 httpcore = ">=1.0.5,<2.0.0"
 httpx = {version = ">=0.23,<0.23.2 || >0.23.2", extras = ["http2"]}
 humanize = ">=4.9.0,<5.0.0"
-jinja2 = ">=3.0.0,<4.0.0"
+jinja2 = ">=3.1.6,<4.0.0"
 jinja2-humanize-extension = ">=0.4.0"
 jsonpatch = ">=1.32,<2.0"
 jsonschema = ">=4.0.0,<5.0.0"
 opentelemetry-api = ">=1.27.0,<2.0.0"
 orjson = ">=3.7,<4.0"
-packaging = ">=21.3,<24.3"
+packaging = ">=21.3,<25.1"
 pathspec = ">=0.8.0"
-pendulum = ">=3.0.0,<4"
+pendulum = {version = ">=3.0.0,<4", markers = "python_version < \"3.13\""}
 prometheus-client = ">=0.20.0"
 pydantic = ">=2.9,<2.10.0 || >2.10.0,<3.0.0"
 pydantic-core = ">=2.12.0,<3.0.0"
 pydantic-extra-types = ">=2.8.2,<3.0.0"
-pydantic-settings = ">2.2.1"
+pydantic-settings = ">2.2.1,<2.9.0 || >2.9.0,<3.0.0"
 python-dateutil = ">=2.8.2,<3.0.0"
 python-slugify = ">=5.0,<9.0"
 python-socks = {version = ">=2.5.3,<3.0", extras = ["asyncio"]}
@@ -3605,20 +3605,21 @@ pytz = ">=2021.1,<2026"
 pyyaml = ">=5.4.1,<7.0.0"
 readchar = ">=4.0.0,<5.0.0"
 rfc3339-validator = ">=0.1.4,<0.2.0"
-rich = ">=11.0,<14.0"
+rich = ">=11.0,<15.0"
 ruamel-yaml = ">=0.17.0"
 sniffio = ">=1.3.0,<2.0.0"
 sqlalchemy = {version = ">=2.0,<3.0.0", extras = ["asyncio"]}
 toml = ">=0.10.0"
 typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.16.0"
-typing-extensions = ">=4.5.0,<5.0.0"
+typing-extensions = ">=4.10.0,<5.0.0"
 ujson = ">=5.8.0,<6.0.0"
+uuid7 = ">=0.1.0"
 uv = ">=0.6.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
 websockets = ">=13.0,<16.0"
 
 [package.extras]
-aws = ["prefect-aws (>=0.5.0)"]
+aws = ["prefect-aws (>=0.5.8)"]
 azure = ["prefect-azure (>=0.4.0)"]
 bitbucket = ["prefect-bitbucket (>=0.3.0)"]
 dask = ["prefect-dask (>=0.3.0)"]
@@ -5411,6 +5412,17 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
+name = "uuid7"
+version = "0.1.0"
+description = "UUID version 7, generating time-sorted UUIDs with 200ns time resolution and 48 bits of randomness"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "uuid7-0.1.0-py2.py3-none-any.whl", hash = "sha256:5e259bb63c8cb4aded5927ff41b444a80d0c7124e8a0ced7cf44efa1f5cccf61"},
+    {file = "uuid7-0.1.0.tar.gz", hash = "sha256:8c57aa32ee7456d3cc68c95c4530bc571646defac01895cfc73545449894a63c"},
+]
+
+[[package]]
 name = "uv"
 version = "0.6.4"
 description = "An extremely fast Python package and project manager, written in Rust."
@@ -6042,4 +6054,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "8a04260be59d6b669e24e4262c8bcf4bb6600456dc65809d41b4351734cbb3a2"
+content-hash = "48695753fff0af09fb35288efc7a4ca8f432d470ba20f21860fdb00c9a9b2d73"

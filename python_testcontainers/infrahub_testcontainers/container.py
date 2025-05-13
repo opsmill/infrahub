@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -27,7 +28,6 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
-    "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-community",
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:3.13.7-management",
     "CACHE_DOCKER_IMAGE": "redis:7.2.4",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
@@ -58,6 +58,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_TASK_WORKER_COUNT": "2",
     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "true",
     "INFRAHUB_TESTING_DOCKER_PULL": "true",
+    "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
 }
 
 
@@ -265,9 +266,58 @@ class InfrahubDockerCompose(DockerCompose):
         )
 
         self.exec_in_container(
-            command=["cypher-shell", "-d", "system", "-u", "neo4j", "-p", "admin", "START DATABASE neo4j;"],
+            command=["chown", "-R", "neo4j:neo4j", "/data"],
             service_name=service_name,
         )
 
+        (restore_output, _, _) = self.exec_in_container(
+            command=[
+                "cypher-shell",
+                "--format",
+                "plain",
+                "-d",
+                "system",
+                "-u",
+                "neo4j",
+                "-p",
+                "admin",
+                "START DATABASE neo4j;",
+            ],
+            service_name=service_name,
+        )
+
+        for _ in range(3):
+            (stdout, _, _) = self.exec_in_container(
+                command=[
+                    "cypher-shell",
+                    "--format",
+                    "plain",
+                    "-d",
+                    "system",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "SHOW DATABASES WHERE name = 'neo4j' AND currentStatus = 'online';",
+                ],
+                service_name=service_name,
+            )
+            if stdout:
+                break
+            time.sleep(5)
+        else:
+            (debug_logs, _, _) = self.exec_in_container(
+                command=["cat", "logs/debug.log"],
+                service_name=service_name,
+            )
+            raise Exception(f"Failed to restore database:\n{restore_output}\nDebug logs:\n{debug_logs}")
+
+        old_services = self.services
+        self.services = ["infrahub-server", "task-worker"]
         self.stop(down=False)
-        self.start()
+        try:
+            self.start()
+        except Exception as exc:
+            stdout, stderr = self.get_logs()
+            raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
+        self.services = old_services

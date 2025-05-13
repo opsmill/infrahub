@@ -24,6 +24,7 @@ const CONTENT_TYPE_CONFIG: Record<
   "application/json": { extension: "json", language: "json", label: "JSON" },
   "text/markdown": { extension: "md", language: "markdown", label: "Markdown" },
   "application/yaml": { extension: "yaml", language: "yaml", label: "YAML" },
+  "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
   "image/svg+xml": { extension: "svg", language: "svg", label: "SVG" },
   "text/plain": { extension: "txt", language: "text", label: "text" },
 };
@@ -83,14 +84,14 @@ function FileContent({
     }
     case "image/svg+xml": {
       return (
-        <Svg value={fileContent} className="border shadow border-neutral-700 rounded-lg grow" />
+        <Svg value={fileContent} className="border shadow-sm border-neutral-700 rounded-lg grow" />
       );
     }
     default: {
       return (
         <ScrollArea
           scrollX
-          className="border shadow border-neutral-700 rounded-lg grow"
+          className="border shadow-sm border-neutral-700 rounded-lg grow"
           scrollBarClassName="bg-transparent"
         >
           <CodeViewer language={config.language} customStyle={{ margin: 0 }}>

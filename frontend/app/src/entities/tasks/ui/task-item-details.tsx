@@ -118,11 +118,11 @@ export const TaskItemDetails = forwardRef((_, ref) => {
 
   return (
     <div className=" flex-1 flex flex-col">
-      <div className="bg-custom-white">
+      <div className="bg-white">
         <List columns={columns} row={row} />
       </div>
 
-      <div className="rounded-md overflow-hidden bg-custom-white m-4 p-2">
+      <div className="rounded-md overflow-hidden bg-white m-4 p-2">
         <div className="flex mb-2">
           <h2 className="flex-1 font-semibold text-gray-900 m-2 ml-0">Task Logs ({count})</h2>
 

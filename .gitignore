@@ -17,6 +17,9 @@ development/docker-compose.dev-override.yml
 **/.idea/**
 dist/*
 
+# As we might run collect command from this repo
+support_logs_*
+
 # Direnv files (https://direnv.net/)
 .direnv/
 .envrc
@@ -30,6 +33,7 @@ python_sdk/dist/*
 
 # Test reports
 **/*.csv
+!backend/tests/unit/patch/**/*.csv
 
 # Generated files
 generated/

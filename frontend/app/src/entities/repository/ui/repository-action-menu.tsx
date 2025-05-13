@@ -5,6 +5,7 @@ import {
   REIMPORT_LAST_COMMIT,
 } from "@/entities/repository/api/actions";
 import { useMutation } from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
@@ -77,7 +78,7 @@ const CheckConnectivityModal = ({
     <>
       <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
         <div className="fixed inset-0 flex w-screen items-center justify-center bg-gray-600/25">
-          <Dialog.Panel className="bg-white p-4 border rounded-lg max-w-lg space-y-4">
+          <Dialog.Panel className="bg-white p-4 border border-gray-200 rounded-lg max-w-lg space-y-4">
             <Dialog.Title className="font-semibold text-lg">
               Check{loading && "ing"} repository connectivity
             </Dialog.Title>
@@ -98,7 +99,7 @@ const CheckConnectivityModal = ({
 
             <Dialog open={called && !loading} onClose={handleClose}>
               <div className="fixed inset-0 flex w-screen items-center justify-center">
-                <Dialog.Panel className="bg-white p-4 border rounded-lg max-w-lg space-y-4">
+                <Dialog.Panel className="bg-white p-4 border border-gray-200 rounded-lg max-w-lg space-y-4">
                   <Dialog.Title className="font-semibold text-lg">
                     Connection {isConnectivityOk ? "Successful" : "Failed"}
                   </Dialog.Title>
@@ -139,7 +140,7 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
     variables: {
       repositoryId,
     },
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
       if (data?.InfrahubRepositoryProcess?.ok) {
         toast(
           <Alert
@@ -147,6 +148,9 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
             message='Reimport of last commit started. You can view its status on the "Tasks" tab.'
           />
         );
+        await queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey.includes("objects"),
+        });
       }
     },
   });

@@ -22,13 +22,21 @@ from infrahub.core.constants import (
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
+from infrahub.core.schema import (
+    AttributeSchema,
+    NodeSchema,
+    NonGenericSchemaTypes,
+    ProfileSchema,
+    RelationshipSchema,
+    TemplateSchema,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
+from ...log import get_logger
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
@@ -53,6 +61,8 @@ SchemaProtocol = TypeVar("SchemaProtocol")
 #  -
 # ---------------------------------------------------------------------------------------
 
+log = get_logger()
+
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
@@ -63,7 +73,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> NodeSchema | ProfileSchema | TemplateSchema:
+    def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
 
     def get_kind(self) -> str:
@@ -259,7 +269,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
             return
 
-        if number_pool.node.value == self._schema.kind and number_pool.node_attribute.value == attribute.name:
+        if (
+            number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
+            and number_pool.node_attribute.value == attribute.name
+        ):
             try:
                 next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
             except PoolExhaustedError:
@@ -345,7 +358,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             fields.pop("updated_at")
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
-                errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
+                log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         # Backfill fields with the ones from the template if there's one
         await self.handle_object_template(fields=fields, db=db, errors=errors)
@@ -866,9 +879,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
 
-    async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
+    async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return await object_template.get_peer(db=db) if object_template is not None else None
+        return (
+            await object_template.get_peer(db=db, peer_type=CoreObjectTemplate) if object_template is not None else None
+        )
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None
@@ -882,3 +897,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             for relationship in self.get_schema().relationships
             if relationship.name not in exclude and relationship.kind == kind
         ]
+
+    def validate_relationships(self) -> None:
+        for name in self._relationships:
+            relm: RelationshipManager = getattr(self, name)
+            relm.validate()

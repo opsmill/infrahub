@@ -23,9 +23,9 @@ function SchemaPage() {
         className="w-full"
       />
 
-      <div className="flex items-stretch flex-grow bg-stone-50">
-        <SchemaSelector className="flex-grow max-w-md shrink-0" />
-        <SchemaViewerStack className="flex-grow min-w-96 sm:min-w-[520px] max-w-xl max-h-[calc(100vh-145px)] sticky top-2 right-2 m-2" />
+      <div className="flex items-stretch grow bg-stone-50">
+        <SchemaSelector className="grow max-w-md shrink-0" />
+        <SchemaViewerStack className="grow min-w-96 sm:min-w-[520px] max-w-xl max-h-[calc(100vh-145px)] sticky top-2 right-2 m-2" />
       </div>
     </Content.Card>
   );

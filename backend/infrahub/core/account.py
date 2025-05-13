@@ -69,8 +69,7 @@ class AccountGlobalPermissionQuery(Query):
         query = """
         MATCH (account:%(generic_account_node)s)
         WHERE account.uuid = $account_id
-        CALL {
-            WITH account
+        CALL (account) {
             MATCH (account)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN account as account1, r as r1
@@ -80,8 +79,7 @@ class AccountGlobalPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        CALL {
-            WITH account
+        CALL (account) {
             MATCH (account)-[r1:IS_RELATED]->(:Relationship {name: "group_member"})<-[r2:IS_RELATED]-(account_group:%(account_group_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH account_group, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -92,8 +90,7 @@ class AccountGlobalPermissionQuery(Query):
         }
         WITH account_group
 
-        CALL {
-            WITH account_group
+        CALL (account_group) {
             MATCH (account_group)-[r1:IS_RELATED]->(:Relationship {name: "role__accountgroups"})<-[r2:IS_RELATED]-(account_role:%(account_role_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH account_role, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -104,8 +101,7 @@ class AccountGlobalPermissionQuery(Query):
         }
         WITH account_role
 
-        CALL {
-            WITH account_role
+        CALL (account_role) {
             MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(global_permission:%(global_permission_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH global_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -116,7 +112,7 @@ class AccountGlobalPermissionQuery(Query):
         }
         WITH global_permission
 
-        CALL {
+        CALL (global_permission) {
             WITH global_permission
             MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(global_permission_action:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
@@ -127,8 +123,7 @@ class AccountGlobalPermissionQuery(Query):
         WITH global_permission, global_permission_action, is_active AS gpa_is_active
         WHERE gpa_is_active = TRUE
 
-        CALL {
-            WITH global_permission
+        CALL (global_permission) {
             MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(global_permission_decision:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN global_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -183,8 +178,7 @@ class AccountObjectPermissionQuery(Query):
         query = """
         MATCH (account:%(generic_account_node)s)
         WHERE account.uuid = $account_id
-        CALL {
-            WITH account
+        CALL (account) {
             MATCH (account)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN account as account1, r as r1
@@ -194,8 +188,7 @@ class AccountObjectPermissionQuery(Query):
         WITH account, r1 as r
         WHERE r.status = "active"
         WITH account
-        CALL {
-            WITH account
+        CALL (account) {
             MATCH (account)-[r1:IS_RELATED]->(:Relationship {name: "group_member"})<-[r2:IS_RELATED]-(account_group:%(account_group_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH account_group, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -206,8 +199,7 @@ class AccountObjectPermissionQuery(Query):
         }
         WITH account_group
 
-        CALL {
-            WITH account_group
+        CALL (account_group) {
             MATCH (account_group)-[r1:IS_RELATED]->(:Relationship {name: "role__accountgroups"})<-[r2:IS_RELATED]-(account_role:%(account_role_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH account_role, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -218,8 +210,7 @@ class AccountObjectPermissionQuery(Query):
         }
         WITH account_role
 
-        CALL {
-            WITH account_role
+        CALL (account_role) {
             MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(object_permission:%(object_permission_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH object_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -230,8 +221,7 @@ class AccountObjectPermissionQuery(Query):
         }
         WITH object_permission
 
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[r2:HAS_VALUE]->(object_permission_namespace:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_namespace, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -240,8 +230,7 @@ class AccountObjectPermissionQuery(Query):
         }
         WITH object_permission, object_permission_namespace, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(object_permission_name:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -250,8 +239,7 @@ class AccountObjectPermissionQuery(Query):
         }
         WITH object_permission, object_permission_namespace, object_permission_name, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(object_permission_action:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -260,8 +248,7 @@ class AccountObjectPermissionQuery(Query):
         }
         WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
         WHERE opa_is_active = TRUE
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(object_permission_decision:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -336,8 +323,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         query = """
         MATCH (account_role:%(account_role_node)s)
         WHERE account_role.uuid = $role_id
-        CALL {
-            WITH account_role
+        CALL (account_role) {
             MATCH (account_role)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN account_role as account_role1, r as r1
@@ -348,8 +334,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         WHERE r.status = "active"
         WITH account_role
 
-        CALL {
-            WITH account_role
+        CALL (account_role) {
             MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(global_permission:%(global_permission_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH global_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -360,8 +345,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         }
         WITH global_permission
 
-        CALL {
-            WITH global_permission
+        CALL (global_permission) {
             MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(global_permission_action:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN global_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -371,8 +355,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         WITH global_permission, global_permission_action, is_active AS gpa_is_active
         WHERE gpa_is_active = TRUE
 
-        CALL {
-            WITH global_permission
+        CALL (global_permission) {
             MATCH (global_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(global_permission_decision:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN global_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -425,8 +408,7 @@ class AccountRoleObjectPermissionQuery(Query):
         query = """
         MATCH (account_role:%(account_role_node)s)
         WHERE account_role.uuid = $role_id
-        CALL {
-            WITH account_role
+        CALL (account_role) {
             MATCH (account_role)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
             RETURN account_role as account_role1, r as r1
@@ -437,8 +419,7 @@ class AccountRoleObjectPermissionQuery(Query):
         WHERE r.status = "active"
         WITH account_role
 
-        CALL {
-            WITH account_role
+        CALL (account_role) {
             MATCH (account_role)-[r1:IS_RELATED]->(:Relationship {name: "role__permissions"})<-[r2:IS_RELATED]-(object_permission:%(object_permission_node)s)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH object_permission, r1, r2, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -449,8 +430,7 @@ class AccountRoleObjectPermissionQuery(Query):
         }
         WITH object_permission
 
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[r2:HAS_VALUE]->(object_permission_namespace:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_namespace, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -459,8 +439,7 @@ class AccountRoleObjectPermissionQuery(Query):
         }
         WITH object_permission, object_permission_namespace, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r2:HAS_VALUE]->(object_permission_name:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_name, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -469,8 +448,7 @@ class AccountRoleObjectPermissionQuery(Query):
         }
         WITH object_permission, object_permission_namespace, object_permission_name, is_active AS opn_is_active
         WHERE opn_is_active = TRUE
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "action"})-[r2:HAS_VALUE]->(object_permission_action:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_action, (r1.status = "active" AND r2.status = "active") AS is_active
@@ -479,8 +457,7 @@ class AccountRoleObjectPermissionQuery(Query):
         }
         WITH object_permission, object_permission_namespace, object_permission_name, object_permission_action, is_active AS opa_is_active
         WHERE opa_is_active = TRUE
-        CALL {
-            WITH object_permission
+        CALL (object_permission) {
             MATCH (object_permission)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "decision"})-[r2:HAS_VALUE]->(object_permission_decision:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             RETURN object_permission_decision, (r1.status = "active" AND r2.status = "active") AS is_active

@@ -11,14 +11,14 @@ function IpamLayout() {
         <IpNamespaceSelector />
       </Content.Title>
 
-      <div className="flex-grow flex overflow-auto">
-        <div className="min-w-64 max-w-[400px] border-r flex">
+      <div className="grow flex overflow-auto">
+        <div className="min-w-64 max-w-[400px] border-r border-gray-200 flex">
           <ScrollArea scrollX className="w-full p-2">
             <IpamTree className="w-full" />
           </ScrollArea>
         </div>
 
-        <section className="flex-grow overflow-auto">
+        <section className="grow overflow-auto">
           <Outlet />
         </section>
       </div>

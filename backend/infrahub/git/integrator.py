@@ -10,6 +10,7 @@ import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import ValidationError
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -53,7 +54,6 @@ if TYPE_CHECKING:
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
-    from infrahub_sdk.node import InfrahubNode
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
@@ -122,6 +122,10 @@ class TransformPythonInformation(BaseModel):
 
     timeout: int
     """Timeout for the function."""
+
+    convert_query_response: bool = Field(
+        ..., description="Indicate if the transform should convert the query response to InfrahubNode objects"
+    )
 
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
@@ -874,6 +878,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     file_path=file_path,
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
+                    convert_query_response=transform.convert_query_response,
                 )
             )
 
@@ -954,7 +959,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             source=self.id,
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=CoreCheckDefinition, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreCheckDefinition, branch=branch_name, data=create_payload)
         await obj.save()
 
         return obj
@@ -1005,6 +1010,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             "file_path": transform.file_path,
             "class_name": transform.class_name,
             "timeout": transform.timeout,
+            "convert_query_response": transform.convert_query_response,
         }
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema,
@@ -1012,7 +1018,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             source=str(self.id),
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=CoreTransformPython, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreTransformPython, branch=branch_name, data=create_payload)
         await obj.save()
         return obj
 
@@ -1028,6 +1034,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if existing_transform.timeout.value != local_transform.timeout:
             existing_transform.timeout.value = local_transform.timeout
 
+        if existing_transform.convert_query_response.value != local_transform.convert_query_response:
+            existing_transform.convert_query_response.value = local_transform.convert_query_response
+
         await existing_transform.save()
 
     @classmethod
@@ -1038,6 +1047,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
+            or existing_transform.convert_query_response.value != local_transform.convert_query_response
         ):
             return False
         return True
@@ -1129,7 +1139,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)  # type: ignore[arg-type]
     async def execute_python_transform(
-        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict | None = None
+        self,
+        branch_name: str,
+        commit: str,
+        location: str,
+        client: InfrahubClient,
+        convert_query_response: bool,
+        data: dict | None = None,
     ) -> Any:
         """Execute A Python Transform stored in the repository."""
         log = get_run_logger()
@@ -1159,7 +1175,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
             transform_class: type[InfrahubTransform] = getattr(module, class_name)
 
-            transform = transform_class(root_directory=commit_worktree.directory, branch=branch_name, client=client)
+            transform = transform_class(
+                root_directory=commit_worktree.directory,
+                branch=branch_name,
+                client=client,
+                convert_query_response=convert_query_response,
+                infrahub_node=InfrahubNode,
+            )
             return await transform.run(data=data)
 
         except ModuleNotFoundError as exc:
@@ -1216,6 +1238,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 location=transformation_location,
                 data=response,
                 client=self.sdk,
+                convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[misc]
 
         if definition.content_type.value == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
@@ -1275,6 +1298,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 location=message.transform_location,
                 data=response,
                 client=self.sdk,
+                convert_query_response=message.convert_query_response,
             )  # type: ignore[misc]
 
         if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):

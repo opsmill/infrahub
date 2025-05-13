@@ -16,6 +16,9 @@ backend_files: &backend_files
 sdk_files: &sdk_files
   - "python_sdk" # Catch updates to the submodule commit
 
+testcontainers_files:
+  - "python_testcontainers/**"
+
 infrahub_poetry_files: &infrahub_poetry_files
   - "**/pyproject.toml"
   - "**/poetry.lock"

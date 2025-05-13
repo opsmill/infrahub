@@ -6,7 +6,7 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={classNames("bg-custom-white rounded-lg border p-3", className)}
+    className={classNames("bg-white rounded-lg border border-gray-200 p-3", className)}
     {...props}
   />
 ));
@@ -20,12 +20,15 @@ const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderProps>(
     return (
       <div
         ref={ref}
-        className={classNames("bg-custom-white p-3 border rounded-lg overflow-hidden", className)}
+        className={classNames(
+          "bg-white p-3 border border-gray-200 rounded-lg overflow-hidden",
+          className
+        )}
         {...props}
       >
         <div
           className={classNames(
-            "h-full w-full border rounded-md overflow-auto flex flex-col",
+            "h-full w-full border border-gray-200 rounded-md overflow-auto flex flex-col",
             contentClassName
           )}
         >

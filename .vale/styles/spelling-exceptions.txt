@@ -9,6 +9,7 @@ artifact_name
 async
 Authentik
 boolean
+certifi
 check_definitions
 class_name
 CloudFormation
@@ -77,6 +78,7 @@ Jotai
 json
 JSONSchema
 kbps
+kubectl
 Keycloak
 Loopbacks
 markdownlint

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
+import uuid  # noqa: TC003
 from enum import Enum
 
-from infrahub_sdk.diff import NodeDiff  # noqa: TC002
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -96,6 +96,9 @@ class ProposedChangeArtifactDefinition(BaseModel):
     class_name: str = Field(default="")
     content_type: str
     file_path: str = Field(default="")
+    convert_query_response: bool = Field(
+        default=False, description="Convert query response to InfrahubNode objects for Python based transforms"
+    )
     timeout: int
 
     @property
@@ -109,9 +112,9 @@ class ProposedChangeArtifactDefinition(BaseModel):
 
 
 class ProposedChangeBranchDiff(BaseModel):
-    diff_summary: list[NodeDiff] = Field(default_factory=list, description="The DiffSummary between two branches")
     repositories: list[ProposedChangeRepository] = Field(default_factory=list)
     subscribers: list[ProposedChangeSubscriber] = Field(default_factory=list)
+    pipeline_id: uuid.UUID = Field(..., description="The unique ID of the execution of this pipeline")
 
     def get_repository(self, repository_id: str) -> ProposedChangeRepository:
         for repository in self.repositories:
@@ -122,39 +125,7 @@ class ProposedChangeBranchDiff(BaseModel):
     def get_subscribers_ids(self, kind: str) -> list[str]:
         return [subscriber.subscriber_id for subscriber in self.subscribers if subscriber.kind == kind]
 
-    def has_node_changes(self, branch: str) -> bool:
-        """Indicates if there is at least one node object that has been modified in the branch"""
-        return bool(
-            [
-                entry
-                for entry in self.diff_summary
-                if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
-            ]
-        )
-
-    def has_data_changes(self, branch: str) -> bool:
-        """Indicates if there are node or schema changes within the branch."""
-        return bool([entry for entry in self.diff_summary if entry["branch"] == branch])
-
     @property
     def has_file_modifications(self) -> bool:
         """Indicates modifications to any of the files in the Git repositories."""
         return any(repository.has_modifications for repository in self.repositories)
-
-    def modified_nodes(self, branch: str) -> list[str]:
-        """Return a list of non schema nodes that have been modified on the branch"""
-        return [
-            entry["id"]
-            for entry in self.diff_summary
-            if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
-        ]
-
-    def modified_kinds(self, branch: str) -> list[str]:
-        """Return a list of non schema kinds that have been modified on the branch"""
-        return list(
-            {
-                entry["kind"]
-                for entry in self.diff_summary
-                if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
-            }
-        )

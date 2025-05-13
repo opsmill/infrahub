@@ -155,7 +155,6 @@ class SchemaManager(NodeManager):
 
         updated_schema = None
         if update_db:
-            schema_diff = None
             if diff:
                 schema_diff = await self.update_schema_to_db(schema=schema, db=db, branch=branch, diff=diff)
             else:

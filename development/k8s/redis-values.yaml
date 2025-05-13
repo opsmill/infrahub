@@ -1,0 +1,17 @@
+---
+nameOverride: cache
+architecture: replication
+auth:
+  enabled: false
+master:
+  podAntiAffinityPreset: hard
+  persistence:
+    enabled: true
+  service:
+    ports:
+      redis: 6379
+replicas:
+  replicaCount: 3
+  podAntiAffinityPreset: hard
+sentinel:
+  enabled: true

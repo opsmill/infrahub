@@ -35,7 +35,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"] }
 typer = "0.12.5"
-prefect = "3.2.11"
+prefect = "3.4.1"
 prefect-redis = "0.2.2"
 ujson = "^5"
 Jinja2 = "^3"
@@ -191,95 +191,238 @@ disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.attribute"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "misc",
+    "no-untyped-def",
+    "operator",
+    "return",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.manager"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "index",
+    "no-untyped-def",
+    "return-value",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "list-item",
+    "no-redef",
+    "no-untyped-def",
+    "override",
+    "return",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node.base"
-ignore_errors = true
+disable_error_code = [
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node.standard"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "no-untyped-def",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "return-value",
+]
+
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.diff"
-ignore_errors = true
+disable_error_code = [
+    "assignment",
+    "call-overload",
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.ipam"
-ignore_errors = true
+disable_error_code = [
+    "attr-defined",
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.node"
-ignore_errors = true
+disable_error_code = [
+    "annotation-unchecked",
+    "arg-type",
+    "assignment",
+    "no-untyped-def",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.relationship"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+    "index",
+    "misc",
+    "no-untyped-def",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.standard_node"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.subquery"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "index",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "no-redef",
+    "return-value",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.schema_branch"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "index",
+    "no-untyped-def",
+    "operator",
+    "return-value",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.manager"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "assignment",
+    "func-returns-value",
+    "return-value",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.database"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "index",
+    "misc",
+    "no-untyped-def",
+    "return-value",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.git.base"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "index",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.git.repository"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.git_credential.askpass"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "list-item",
+    "union-attr",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.main"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-arg",
+    "return-value",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.proposed_change"
-ignore_errors = true
+disable_error_code = [
+    "assignment",
+    "attr-defined",
+    "no-untyped-def",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.repository"
-ignore_errors = true
+disable_error_code = [
+    "assignment",
+    "attr-defined",
+    "no-redef",
+    "no-untyped-def",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.schema"
@@ -289,22 +432,40 @@ disable_error_code = [
     "union-attr",
 ]
 
-
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.resolvers.resolver"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "no-untyped-def",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.types.standard_node"
-ignore_errors = true
+disable_error_code = [
+    "attr-defined",
+    "call-arg",
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.lock"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "no-untyped-def",
+    "operator",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations"
-ignore_errors = true
+disable_error_code = [
+    "operator",
+    "return",
+]
 
 [tool.ruff]
 line-length = 120

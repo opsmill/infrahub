@@ -26,16 +26,14 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config, lock
+from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .constants import DatabaseType, Neo4jRuntime
-from .memgraph import DatabaseManagerMemgraph
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
-from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -43,8 +41,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
-
-    from .manager import DatabaseManager
 
 validated_database = {}
 R = TypeVar("R")
@@ -134,7 +130,6 @@ class InfrahubDatabase:
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: DatabaseType | None = None,
         default_neo4j_runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT,
-        db_manager: DatabaseManager | None = None,
         schemas: list[SchemaBranch] | None = None,
         session: AsyncSession | None = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
@@ -160,14 +155,6 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
-
-        if db_manager:
-            self.manager = db_manager
-            self.manager.db = self
-        elif self.db_type == DatabaseType.NEO4J:
-            self.manager = DatabaseManagerNeo4j(db=self)
-        elif self.db_type == DatabaseType.MEMGRAPH:
-            self.manager = DatabaseManagerMemgraph(db=self)
 
     def __del__(self) -> None:
         if not self._session or not self._is_session_local or self._session.closed():
@@ -228,7 +215,6 @@ class InfrahubDatabase:
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
             schemas=schemas or self._schemas.values(),
-            db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
@@ -243,7 +229,6 @@ class InfrahubDatabase:
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
             schemas=schemas or self._schemas.values(),
-            db_manager=self.manager,
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
@@ -394,8 +379,10 @@ class InfrahubDatabase:
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
                 response = await self.run_query(query=query, params=params, name=name)
                 if response is None:
+                    span.set_attribute("rows", "empty")
                     return [], {}
                 results = [item async for item in response]
+                span.set_attribute("rows", len(results))
                 return results, response._metadata or {}
 
     async def run_query(

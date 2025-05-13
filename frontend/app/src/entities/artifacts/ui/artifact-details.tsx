@@ -65,7 +65,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
         </div>
       </Content.Card>
       <Card className="min-w-[350px] p-0">
-        <div className="font-semibold p-2 border-b">Activities</div>
+        <div className="font-semibold p-2 border-b  border-gray-200">Activities</div>
         <NodeEvents objectId={artifactId} objectKind={artifactKind} />
       </Card>
     </div>

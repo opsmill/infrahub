@@ -1006,9 +1006,11 @@ class SchemaBranch:
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
                 if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
-                    raise ValueError(
-                        f"{generic_schema.kind}: Attribute {attribute.name!r} computed attributes are only allowed on nodes not generics"
-                    )
+                    for inheriting_node in generic_schema.used_by:
+                        node_schema = self.get_node(name=inheriting_node, duplicate=False)
+                        self.computed_attributes.validate_generic_inheritance(
+                            node=node_schema, attribute=attribute, generic=generic_schema
+                        )
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
@@ -1910,10 +1912,8 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
-    def add_relationships_to_template(self, node: NodeSchema) -> None:
+    def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
         template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
-        if template_schema.is_generic_schema:
-            return
 
         # Remove previous relationships to account for new ones
         template_schema.relationships = [
@@ -1955,6 +1955,7 @@ class SchemaBranch:
                     label=f"{relationship.name} template".title()
                     if relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
                     else relationship.name.title(),
+                    inherited=relationship.inherited,
                 )
             )
 
@@ -1985,9 +1986,6 @@ class SchemaBranch:
         need_template_kinds = [n.kind for n in need_templates]
 
         if node.is_generic_schema:
-            # When needing a template for a generic, we generate an empty shell mostly to make sure that schemas (including the GraphQL one) will
-            # look right. We don't really care about applying inheritance of fields as it was already processed and actual templates will have the
-            # correct attributes and relationships
             template = GenericSchema(
                 name=node.kind,
                 namespace="Template",
@@ -1996,43 +1994,44 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
+                display_labels=["template_name__value"],
+                human_friendly_id=["template_name__value"],
+                uniqueness_constraints=[["template_name__value"]],
                 attributes=[template_name_attr],
             )
 
             for used in node.used_by:
                 if used in need_template_kinds:
                     template.used_by.append(self._get_object_template_kind(node_kind=used))
+        else:
+            template = TemplateSchema(
+                name=node.kind,
+                namespace="Template",
+                label=f"Object template {node.label}",
+                description=f"Object template for {node.kind}",
+                branch=node.branch,
+                include_in_menu=False,
+                display_labels=["template_name__value"],
+                human_friendly_id=["template_name__value"],
+                uniqueness_constraints=[["template_name__value"]],
+                inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
+                default_filter="template_name__value",
+                attributes=[template_name_attr],
+                relationships=[
+                    RelationshipSchema(
+                        name="related_nodes",
+                        identifier="node__objecttemplate",
+                        peer=node.kind,
+                        kind=RelationshipKind.TEMPLATE,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                    )
+                ],
+            )
 
-            return template
-
-        template = TemplateSchema(
-            name=node.kind,
-            namespace="Template",
-            label=f"Object template {node.label}",
-            description=f"Object template for {node.kind}",
-            branch=node.branch,
-            include_in_menu=False,
-            display_labels=["template_name__value"],
-            human_friendly_id=["template_name__value"],
-            uniqueness_constraints=[["template_name__value"]],
-            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
-            default_filter="template_name__value",
-            attributes=[template_name_attr],
-            relationships=[
-                RelationshipSchema(
-                    name="related_nodes",
-                    identifier="node__objecttemplate",
-                    peer=node.kind,
-                    kind=RelationshipKind.TEMPLATE,
-                    cardinality=RelationshipCardinality.MANY,
-                    branch=BranchSupportType.AWARE,
-                )
-            ],
-        )
-
-        for inherited in node.inherit_from:
-            if inherited in need_template_kinds:
-                template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
+            for inherited in node.inherit_from:
+                if inherited in need_template_kinds:
+                    template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
 
         for node_attr in node.attributes:
             if node_attr.unique or node_attr.read_only:
@@ -2041,7 +2040,7 @@ class SchemaBranch:
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=node_attr.optional if is_autogenerated_subtemplate else True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "inherited"]),
+                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only"]),
             )
             template.attributes.append(attr)
 
@@ -2055,6 +2054,9 @@ class SchemaBranch:
             return identified
 
         identified.add(node_schema)
+
+        if node_schema.is_node_schema:
+            identified.update([self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from])
 
         for relationship in node_schema.relationships:
             if (

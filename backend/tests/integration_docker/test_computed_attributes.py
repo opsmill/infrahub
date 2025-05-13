@@ -56,6 +56,9 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         assert tshirt1_initial.description.value == first_desc
 
+        # Validate computed attribute defined on generic
+        assert tshirt1_initial.name_code.value == "WEARABLE-EXPLORER"
+
         color1_initial.description.value = (
             "A striking, lively shade of orange that radiates the golden warmth of a sunset."
         )
@@ -86,6 +89,18 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             await sleep(1)
 
         assert tshirt1_second_update_result.description.value == expected_description
+        tshirt1_second_update_result.name.value = "Gardener"
+        await tshirt1_second_update_result.save()
+
+        expected_name_code = "WEARABLE-GARDENER"
+        for _ in range(10):
+            # Give the computed attribute triggers a little while to run
+            tshirt1_last_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
+            if tshirt1_last_update_result.name_code.value == expected_name_code:
+                break
+            await sleep(1)
+
+        assert tshirt1_last_update_result.name_code.value == expected_name_code
 
     async def test_transform_based_computed_attribute(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         src_directory = CURRENT_DIRECTORY / "test_files/repos/computed_attribute"

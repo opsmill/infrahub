@@ -1,10 +1,10 @@
-from collections import defaultdict
 from typing import AsyncGenerator, Generator, Iterable
 
 from neo4j.exceptions import TransientError
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.diff.query.drop_nodes import EnrichedDiffDropNodesQuery
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
 from infrahub.core.diff.query.summary_counts_enricher import (
     DiffFieldsSummaryCountsEnricherQuery,
@@ -16,6 +16,7 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
 from infrahub.log import get_logger
 
+from ..model.field_specifiers_map import NodeFieldSpecifierMap
 from ..model.path import (
     ConflictSelection,
     EnrichedDiffConflict,
@@ -26,6 +27,7 @@ from ..model.path import (
     EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
+    NodeIdentifier,
     TimeRange,
     TrackingId,
 )
@@ -108,7 +110,7 @@ class DiffRepository:
         diff_branch_names: list[str],
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
-        filters: dict | None = None,
+        filters: EnrichedDiffQueryFilters | None = None,
         include_parents: bool = True,
         limit: int | None = None,
         offset: int | None = None,
@@ -180,11 +182,11 @@ class DiffRepository:
     async def hydrate_diff_pair(
         self,
         enriched_diffs_metadata: EnrichedDiffsMetadata,
-        node_uuids: Iterable[str] | None = None,
+        node_identifiers: Iterable[NodeIdentifier] | None = None,
     ) -> EnrichedDiffs:
-        filters = None
-        if node_uuids:
-            filters = {"ids": list(node_uuids) if node_uuids is not None else None}
+        filters = EnrichedDiffQueryFilters()
+        if node_identifiers:
+            filters.identifiers = list(node_identifiers)
         hydrated_base_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.base_branch_name,
             diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
@@ -207,7 +209,7 @@ class DiffRepository:
         diff_branch_name: str,
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
-        filters: dict | None = None,
+        filters: EnrichedDiffQueryFilters | None = None,
         include_parents: bool = True,
     ) -> EnrichedDiffRoot:
         enriched_diffs = await self.get(
@@ -274,6 +276,12 @@ class DiffRepository:
                 )
                 await single_node_query.execute(db=self.db)
 
+    async def _drop_nodes(self, diff_root: EnrichedDiffRoot, node_identifiers: list[NodeIdentifier]) -> None:
+        drop_node_query = await EnrichedDiffDropNodesQuery.init(
+            db=self.db, enriched_diff_uuid=diff_root.uuid, node_identifiers=node_identifiers
+        )
+        await drop_node_query.execute(db=self.db)
+
     @retry_db_transaction(name="enriched_diff_hierarchy_update")
     async def _run_hierarchy_links_update_query(self, diff_root_uuid: str, diff_nodes: list[EnrichedDiffNode]) -> None:
         log.info(f"Updating diff hierarchy links, num_nodes={len(diff_nodes)}")
@@ -321,7 +329,12 @@ class DiffRepository:
                 node_uuids=node_uuids,
             )
 
-    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+    async def save(
+        self,
+        enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata,
+        do_summary_counts: bool = True,
+        node_identifiers_to_drop: list[NodeIdentifier] | None = None,
+    ) -> None:
         # metadata-only update
         if not isinstance(enriched_diffs, EnrichedDiffs):
             await self._save_root_metadata(enriched_diffs=enriched_diffs)
@@ -336,6 +349,8 @@ class DiffRepository:
             await self._save_node_batch(node_create_batch=node_create_batch)
             count_nodes_remaining -= len(node_create_batch)
             log.info(f"Batch saved. {count_nodes_remaining=}")
+        if node_identifiers_to_drop:
+            await self._drop_nodes(diff_root=enriched_diffs.diff_branch_diff, node_identifiers=node_identifiers_to_drop)
         await self._update_hierarchy_links(enriched_diffs=enriched_diffs)
         if do_summary_counts:
             await self._update_summary_counts(diff_root=enriched_diffs.diff_branch_diff)
@@ -501,21 +516,25 @@ class DiffRepository:
         await query.execute(db=self.db)
         return query.get_num_changes_by_branch()
 
-    async def get_node_field_specifiers(self, diff_id: str) -> dict[str, set[str]]:
+    async def get_node_field_specifiers(self, diff_id: str) -> NodeFieldSpecifierMap:
         limit = config.SETTINGS.database.query_size_limit
         offset = 0
-        specifiers: dict[str, set[str]] = defaultdict(set)
+        specifiers_map = NodeFieldSpecifierMap()
         while True:
             query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id, offset=offset, limit=limit)
             await query.execute(db=self.db)
             has_data = False
             for field_specifier_tuple in query.get_node_field_specifier_tuples():
-                specifiers[field_specifier_tuple[0]].add(field_specifier_tuple[1])
+                specifiers_map.add_entry(
+                    node_uuid=field_specifier_tuple[0],
+                    kind=field_specifier_tuple[1],
+                    field_name=field_specifier_tuple[2],
+                )
                 has_data = True
             if not has_data:
                 break
             offset += limit
-        return specifiers
+        return specifiers_map
 
     async def add_summary_counts(
         self,

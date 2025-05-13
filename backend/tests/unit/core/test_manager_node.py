@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
@@ -13,6 +15,8 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
+from tests.constants import TestKind
+from tests.helpers.schema import DEVICE_SCHEMA
 
 
 async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -246,6 +250,26 @@ async def test_get_one_by_hfid(
 
     with pytest.raises(NodeNotFoundError, match=r"Unable to find the node"):
         await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind, raise_on_error=True)
+
+
+async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branch):
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    # Change device schema to add a HFID
+    schema.nodes[0].human_friendly_id = ["name__value"]
+    schema.nodes[0].generate_template = False
+
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+
+    device = await Node.init(db=db, schema=TestKind.DEVICE, branch=branch)
+    await device.new(db=db, name="device-01", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear")
+    await device.save(db=db)
+    device_hfid = await device.get_hfid(db=db)
+
+    with pytest.raises(NodeNotFoundError, match=r"does not have a HFID defined"):
+        await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.INTERFACE_HOLDER, hfid=device_hfid)
+
+    with pytest.raises(NodeNotFoundError, match=r"HFID does not contain the same number of elements"):
+        await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.DEVICE, hfid=device_hfid + ["foo"])
 
 
 async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):

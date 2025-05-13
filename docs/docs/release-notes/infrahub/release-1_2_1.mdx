@@ -1,0 +1,85 @@
+---
+title: Release 1.2.1
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.1</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>March 26th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #1</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.1](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.1)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.1
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.0 and prior.
+
+## Outstanding fixes
+
+### Schema not valid anymore
+
+During the upgrade to 1.2, multiple users reported some issues related to their schema not being valid anymore that would prevent them from upgrading.
+The root cause of the issue is a bug that could lead to some duplicated HFID because it was possible to have a HFID constructed from non unique attribte(s).
+The bug has been [fixed in 1.2.0](https://github.com/opsmill/infrahub/pull/6012) but it added more constraints to the schema which could lead to a schema previously valid, not being valid anymore.
+In order to help with the migration to 1.2 and to give users more time and control to fix their schema, we introduced  in 1.2.1 a new flag `INFRAHUB_SCHEMA_STRICT_MODE` to relax the constraints enforced by Infrahub for the schema.
+
+If you current schema is not valid anymore with Infrahub 1.2 our recommendation is to:
+
+- disable the `STRICT_MODE` temporarily
+- fix your schema
+- re-enable the `STRICT_MODE`
+
+> We apologize for the inconvenience, such changes should have been better documented and communicated.
+
+### Upgrade command not available for Infrahub Enterprise
+
+In 1.2, we introduced a new command to upgrade Infrahub `infrahub upgrade`, unfortunately due to a bug the command was missing in Infrahub Enterprise.
+
+The issue has been fixed in 1.2.1 and the documentation has been updated to include more information regarding the upgrade procedure for Infrahub [Community](https://docs.infrahub.app/guides/upgrade) & [Enterprise](https://docs.infrahub.app/guides/upgrade-enterprise)
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Added relationships changes details in the activities. Aws.
+- Added an `INFRAHUB_SCHEMA_STRICT_MODE` environment variable. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. Default is `True`.
+
+### Changed
+
+- Modified the event filters for mandatory computed attributes to not include the `infrahub.node.created` event as the computed attribute will be rendered on node creation regardless. This change will avoid extra processing in the background workers. ([#6105](https://github.com/opsmill/infrahub/issues/6105))
+- Improved the event trigger filters for Transform based computed attributes to limit the number of tasks being triggered when updating impacted attributes. This will increase the overall performance when an update is triggered. ([#6113](https://github.com/opsmill/infrahub/issues/6113))
+- Used the new `schema_hash` parameter from client.schema.all() in the SDK to only selectively refresh the branch schema cache if the current hash differs from the one in the cache. This will provide a speedup for Jinja2 based computed attributes. ([#6133](https://github.com/opsmill/infrahub/issues/6133))
+- Improved performance for the upsert GraphQL Mutation.
+- Rename command `demo.migrate` to `demo.upgrade`
+
+### Fixed
+
+- Prevented the editing of metadata on a read only attribute in the UI. ([#5558](https://github.com/opsmill/infrahub/issues/5558))
+- Fixed an issue that prevents attributes and relationships on schema which inherit from a generic from receiving updates to the generic-level attributes or relationships. ([#5793](https://github.com/opsmill/infrahub/issues/5793))
+- Fixed a broken hierarchy when renaming a kind participating to a hierarchy. ([#6051](https://github.com/opsmill/infrahub/issues/6051))
+- Fixed the merge button state depending on ongoing merge tasks. ([#6059](https://github.com/opsmill/infrahub/issues/6059))
+- Fixed the schema migration validator to allow renaming the kind of a generic. ([#6060](https://github.com/opsmill/infrahub/issues/6060))
+- Ensured that if a node has a custom view, users should be taken there instead of the generic view.
+- Fixed addresses having multiple prefixes after loading prefixes concurrently.
+- Fixed the creation of related nodes when instantiating a template in a branch other than the default one.
+- Updated the version of Internal graph to ensure that 1.2 migrations are properly applied.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade

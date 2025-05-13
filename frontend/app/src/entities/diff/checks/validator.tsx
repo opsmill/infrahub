@@ -109,7 +109,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <span className="font-normal">-</span>
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
-      <div className="flex flex-grow justify-end">
+      <div className="flex grow justify-end">
         <Popover>
           <PopoverTrigger onClick={(e) => e.stopPropagation()} asChild>
             <InfoButton />
@@ -124,7 +124,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
   );
 
   return (
-    <Accordion title={title} className="bg-custom-white rounded-md p-2">
+    <Accordion title={title} className="bg-white rounded-md p-2">
       <ValidatorDetails id={id} />
     </Accordion>
   );

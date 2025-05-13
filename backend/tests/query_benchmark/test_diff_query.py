@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
 from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig

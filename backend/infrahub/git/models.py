@@ -29,6 +29,10 @@ class RequestArtifactGenerate(BaseModel):
     repository_name: str = Field(..., description="The name of the Repository")
     repository_kind: str = Field(..., description="The kind of the Repository")
     branch_name: str = Field(..., description="The branch where the check is run")
+    convert_query_response: bool = Field(
+        default=False,
+        description="Indicate if the query response should be converted to InfrahubNode objects for Python transforms",
+    )
     target_id: str = Field(..., description="The ID of the target object for this artifact")
     target_kind: str = Field(..., description="The kind of the target object for this artifact")
     target_name: str = Field(..., description="Name of the artifact target")

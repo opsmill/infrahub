@@ -18,6 +18,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
+from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -32,15 +33,16 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
-from infrahub.log import get_log_data
-from infrahub.message_bus import Meta, messages
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
-from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    BRANCH_MERGE_POST_PROCESS,
     DIFF_REFRESH_ALL,
+    DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     IPAM_RECONCILIATION,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+    TRIGGER_GENERATOR_DEFINITION_RUN,
 )
 from infrahub.workflows.utils import add_tags
 
@@ -210,8 +212,6 @@ async def merge_branch(
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
-            # await update_diff(model=RequestDiffUpdate(branch_name=obj.name))
-
             diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
             diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
@@ -271,15 +271,11 @@ async def merge_branch(
         # NOTE: we still need to convert this event and potentially pull
         #   some tasks currently executed based on the event into this workflow
         # -------------------------------------------------------------
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
-        message = messages.EventBranchMerge(
-            source_branch=obj.name,
-            target_branch=registry.default_branch,
+        await service.workflow.submit_workflow(
+            workflow=BRANCH_MERGE_POST_PROCESS,
             context=context,
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+            parameters={"source_branch": obj.name, "target_branch": registry.default_branch},
         )
-        await service.message_bus.send(message=message)
 
         events: list[InfrahubEvent] = [merge_event]
 
@@ -412,3 +408,45 @@ async def _get_diff_root(
         )
 
     return default_branch_diff
+
+
+@flow(
+    name="branch-merge-post-process",
+    flow_run_name="Run additional tasks after merging {source_branch} in {target_branch}",
+)
+async def post_process_branch_merge(
+    source_branch: str, target_branch: str, context: InfrahubContext, service: InfrahubServices
+) -> None:
+    async with service.database.start_session() as db:
+        await add_tags(branches=[source_branch])
+        log = get_run_logger()
+        log.info(f"Running additional tasks after merging {source_branch} within {target_branch}")
+
+        component_registry = get_component_registry()
+        default_branch = registry.get_branch_from_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        # send diff update requests for every branch-tracking diff
+        branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
+
+        await service.workflow.submit_workflow(
+            workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+            context=context,
+            parameters={"branch": target_branch},
+        )
+
+        await service.workflow.submit_workflow(
+            workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
+            context=context,
+            parameters={"branch": target_branch},
+        )
+
+        for diff_root in branch_diff_roots:
+            if (
+                diff_root.base_branch_name != diff_root.diff_branch_name
+                and diff_root.tracking_id
+                and isinstance(diff_root.tracking_id, BranchTrackingId)
+            ):
+                request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
+                await service.workflow.submit_workflow(
+                    workflow=DIFF_UPDATE, context=context, parameters={"model": request_diff_update_model}
+                )

@@ -725,7 +725,7 @@ async def test_to_graphql_no_fields(
 async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
     obj = await Node.init(db=db, schema="TestAllAttributeTypes")
 
-    large_string = "a" * 5_000
+    large_string = "a" * 9_000  # It's over 9000!!!!
 
     await obj.new(db=db, name="obj1", mystring=large_string)
 

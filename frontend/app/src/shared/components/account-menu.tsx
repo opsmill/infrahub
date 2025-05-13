@@ -216,7 +216,7 @@ const AccountMenuSkeleton = () => {
     <div className="flex items-center gap-2 p-2 shrink-0 border border-transparent">
       <Skeleton className="rounded-full size-9" />
 
-      <div className="flex-grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
+      <div className="grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
         <Skeleton className="h-4 w-4/5" />
         <Skeleton className="h-2 w-3/5" />
       </div>

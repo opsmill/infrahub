@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import CheckType
@@ -98,6 +100,9 @@ class RequestProposedChangePipeline(BaseModel):
     destination_branch: str = Field(..., description="The destination branch of the proposed change")
     check_type: CheckType = Field(
         default=CheckType.ALL, description="Can be used to restrict the pipeline to a specific type of job"
+    )
+    pipeline_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4, description="The unique ID of the execution of this pipeline"
     )
 
 

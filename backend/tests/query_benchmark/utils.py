@@ -1,8 +1,7 @@
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.graph.index import node_indexes, rel_indexes
-from infrahub.core.initialization import create_default_branch, create_global_branch, create_root_node
+from infrahub.core.initialization import add_indexes, create_default_branch, create_global_branch, create_root_node
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabaseMode, QueryConfig, get_db
 from tests.helpers.constants import PORT_BOLT_NEO4J
@@ -28,7 +27,6 @@ async def start_db_and_create_default_branch(
 
     # Initialize indexes if needed
     if load_indexes:
-        db.manager.index.init(nodes=node_indexes, rels=rel_indexes)
-        await db.manager.index.add()
+        await add_indexes(db=db)
 
     return db, default_branch

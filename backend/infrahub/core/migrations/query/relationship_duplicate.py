@@ -116,8 +116,7 @@ class RelationshipDuplicateQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        CALL {
-            WITH source, rel, destination
+        CALL (source, rel, destination) {
             MATCH path = (source)-[r1:IS_RELATED]-(rel)-[r2:IS_RELATED]-(destination)
             WHERE all(r IN relationships(path) WHERE %(branch_filter)s)
             RETURN rel as rel1, r1 as r11, r2 as r12
@@ -130,8 +129,7 @@ class RelationshipDuplicateQuery(Query):
         WITH DISTINCT(active_rel) as active_rel, new_rel
         // Process Inbound Relationship
         MATCH (active_rel)<-[]-(peer)
-        CALL {
-            WITH active_rel, peer
+        CALL (active_rel, peer) {
             MATCH (active_rel)<-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN active_rel as n1, r as rel_inband1, peer as p1
@@ -150,8 +148,7 @@ class RelationshipDuplicateQuery(Query):
         WITH DISTINCT(active_rel) as active_rel, new_rel
         // Process Outbound Relationship
         MATCH (active_rel)-[]->(peer)
-        CALL {
-            WITH active_rel, peer
+        CALL (active_rel, peer) {
             MATCH (active_rel)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN active_rel as n1, r as rel_outband1, peer as p1

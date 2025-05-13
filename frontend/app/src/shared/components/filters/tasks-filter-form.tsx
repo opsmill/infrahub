@@ -34,7 +34,7 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
       <Form
         ref={ref}
         onSubmit={onSubmit}
-        className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
+        className={classNames("bg-white flex flex-col flex-1 overflow-auto p-4", className)}
         defaultValues={{
           branch: currentFilters?.branch,
           state: currentFilters?.state,

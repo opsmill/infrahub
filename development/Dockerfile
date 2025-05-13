@@ -36,6 +36,8 @@ RUN poetry config virtualenvs.create false
 # STAGE : Frontend
 # ****************************************************************
 FROM docker.io/node:20-slim AS frontend
+ARG CI_ARG
+ENV CI=$CI_ARG
 
 RUN mkdir /source
 
@@ -83,7 +85,8 @@ RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/i
 
 WORKDIR /source
 
-ENV PREFECT_WORKER_QUERY_SECONDS="2"
+ENV PREFECT_WORKER_QUERY_SECONDS="2" \
+    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500
 
 # --------------------------------------------
 # Import Frontend Build

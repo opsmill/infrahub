@@ -1,0 +1,53 @@
+---
+title: Release 1.2.6
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.6</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>April 18th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #6</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.6](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.6)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.6
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.5 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Added generics to node selection in number pool form.
+- Enabled node select in the webhook form to quickly choose the node kind.
+
+### Changed
+
+- Raised a more accurate error when trying to lookup a node by HFID, specifically when the schema does not have an HFID or the number of elements does not match.
+
+### Fixed
+
+- Cleared GraphQL schema manager cache when deleting branches to release memory. ([#6021](https://github.com/opsmill/infrahub/issues/6021))
+- Added attributes and relationships to generic templates to ensure proper GraphQL schema generation. ([#6287](https://github.com/opsmill/infrahub/issues/6287))
+- Fixed node lookup by its HFID with a generic template kind. ([#6301](https://github.com/opsmill/infrahub/issues/6301))
+- Disabled option creation for restricted namespaces in dropdown and enum.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade

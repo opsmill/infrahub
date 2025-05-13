@@ -1,7 +1,6 @@
 import { ARTIFACT_OBJECT } from "@/config/constants";
 import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { Icon } from "@iconify-icon/react";
@@ -60,7 +59,6 @@ export const ObjectCreateFormTrigger = ({
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);
-            await graphqlClient.refetchQueries({ include: [schema.kind!] });
             if (onSuccess) onSuccess(result);
           }}
           onCancel={() => setShowCreateDrawer(false)}

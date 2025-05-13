@@ -102,7 +102,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
       <SlideOver title={title} open={showThread} setOpen={setShowThread}>
         <DiffComments path={path} refetch={refetch} />
 
-        <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t">
+        <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t border-gray-200">
           <Button onClick={() => setShowThread(false)}>Close</Button>
         </div>
       </SlideOver>

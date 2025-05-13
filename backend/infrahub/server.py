@@ -23,7 +23,6 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
-from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
@@ -58,7 +57,6 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
     # Initialize database Driver and load local registry
     database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
-    database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     build_component_registry()
 
@@ -83,7 +81,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
-        await initialization(db=db)
+        await initialization(db=db, add_database_indexes=True)
 
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay

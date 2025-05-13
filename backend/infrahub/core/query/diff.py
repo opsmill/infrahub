@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Generator
 
 from infrahub import config
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
     from infrahub.database import InfrahubDatabase
 
 
@@ -106,8 +108,8 @@ class DiffCalculationQuery(DiffQuery):
         self,
         base_branch: Branch,
         diff_branch_from_time: Timestamp,
-        current_node_field_specifiers: dict[str, set[str]] | None = None,
-        new_node_field_specifiers: dict[str, set[str]] | None = None,
+        current_node_field_specifiers: NodeFieldSpecifierMap | None = None,
+        new_node_field_specifiers: NodeFieldSpecifierMap | None = None,
         **kwargs: Any,
     ):
         self.base_branch = base_branch
@@ -119,20 +121,20 @@ class DiffCalculationQuery(DiffQuery):
 
     previous_base_path_query = """
 WITH DISTINCT diff_path AS diff_path, has_more_data
-CALL {
-    WITH diff_path
-    WITH diff_path, nodes(diff_path) AS d_nodes, relationships(diff_path) AS d_rels
-    WITH diff_path, d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
+CALL (diff_path) {
+    WITH nodes(diff_path) AS d_nodes, relationships(diff_path) AS d_rels
+    WITH d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
     // -------------------------------------
     // add base branch paths before branched_from, if they exist
     // -------------------------------------
     WITH n, attr_rel, r_node, r_prop
+    // 'base_n' instead of 'n' here to get previous value for node with a migrated kind/inheritance
     OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF {branch: $base_branch_name}]
-        -(n)-[base_r_node {branch: $base_branch_name}]
+        -(base_n {uuid: n.uuid})-[base_r_node {branch: $base_branch_name}]
         -(attr_rel)-[base_r_prop {branch: $base_branch_name}]->(base_prop)
     WHERE type(base_r_node) = type(r_node)
     AND type(base_r_prop) = type(r_prop)
-    AND [%(id_func)s(n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
+    AND [%(id_func)s(base_n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
     AND all(
         r in relationships(latest_base_path)
         WHERE r.from < $branch_from_time
@@ -142,7 +144,7 @@ CALL {
     // the migration leaves two nodes with the same UUID linked to the same Relationship
     // ------------------------
     AND (
-        n.uuid IS NULL OR base_prop.uuid IS NULL OR n.uuid <> base_prop.uuid
+        base_n.uuid IS NULL OR base_prop.uuid IS NULL OR base_n.uuid <> base_prop.uuid
         OR type(base_r_node) <> "IS_RELATED" OR type(base_r_prop) <> "IS_RELATED"
     )
     WITH latest_base_path, base_r_root, base_r_node, base_r_prop
@@ -155,10 +157,9 @@ CALL {
 WITH diff_path, latest_base_path, has_more_data
 UNWIND [diff_path, latest_base_path] AS penultimate_path
 WITH DISTINCT penultimate_path, has_more_data
-CALL {
-    WITH penultimate_path
-    WITH penultimate_path, nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
-    WITH penultimate_path, d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
+CALL (penultimate_path) {
+    WITH nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
+    WITH d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
     // -------------------------------------
     // Add peer-side of any relationships to get the peer's ID
     // -------------------------------------
@@ -231,10 +232,10 @@ class DiffNodePathsQuery(DiffCalculationQuery):
         self.params.update(params_dict)
         self.params.update(
             {
-                "new_node_ids_list": list(self.new_node_field_specifiers.keys())
+                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
                 if self.new_node_field_specifiers
                 else None,
-                "current_node_ids_list": list(self.current_node_field_specifiers.keys())
+                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
                 if self.current_node_field_specifiers
                 else None,
             }
@@ -276,7 +277,7 @@ WITH p, q, diff_rel, CASE
     WHEN $new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
-ORDER BY p.uuid DESC
+ORDER BY %(id_func)s(p) DESC
 SKIP $offset
 LIMIT $limit
 // -------------------------------------
@@ -289,8 +290,7 @@ WITH one_result[0] AS p, one_result[1] AS q, one_result[2] AS diff_rel, one_resu
 // -------------------------------------
 // Exclude nodes added then removed on branch within timeframe
 // -------------------------------------
-CALL {
-    WITH p, q, row_from_time
+CALL (p, q, row_from_time) {
     OPTIONAL MATCH (q)<-[is_part_of:IS_PART_OF {branch: $branch_name}]-(p)
     WHERE row_from_time <= is_part_of.from < $to_time
     WITH DISTINCT is_part_of.status AS rel_status
@@ -302,8 +302,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each node
 // -------------------------------------
-CALL {
-    WITH p, q, diff_rel, row_from_time
+CALL (p, q, diff_rel, row_from_time) {
     OPTIONAL MATCH path = (
         (q)<-[top_diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
     )
@@ -313,15 +312,15 @@ CALL {
     AND node.branch_support IN [$branch_aware, $branch_agnostic]
     AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-    AND ALL(
-        r in [r_node, r_prop]
-        WHERE r.from < $to_time AND r.branch = top_diff_rel.branch
-    )
     AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
-    AND top_diff_rel.status = r_node.status
-    AND top_diff_rel.status = r_prop.status
+    AND r_node.from < $to_time
+    AND r_node.branch = top_diff_rel.branch
+    AND r_node.status = top_diff_rel.status
+    AND r_prop.from < $to_time
+    AND r_prop.branch = top_diff_rel.branch
+    AND r_prop.status = top_diff_rel.status
     // ------------------------
     // special handling for nodes that had their kind updated,
     // the migration leaves two nodes with the same UUID linked to the same Relationship
@@ -330,12 +329,11 @@ CALL {
         p.uuid IS NULL OR prop.uuid IS NULL OR p.uuid <> prop.uuid
         OR type(r_node) <> "IS_RELATED" OR type(r_prop) <> "IS_RELATED"
     )
-    WITH path, p, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
+    WITH path, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
     // -------------------------------------
     // Exclude attributes/relationships added then removed on branch within timeframe
     // -------------------------------------
-    CALL {
-        WITH p, rel_type, node, row_from_time
+    CALL (p, rel_type, node, row_from_time) {
         OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(node)
         WHERE row_from_time <= rel_to_check.from < $to_time
         AND type(rel_to_check) = rel_type
@@ -371,15 +369,16 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
 
         self.params.update(
             {
-                "current_node_field_specifiers_map": {
-                    node_uuid: list(field_names)
-                    for node_uuid, field_names in self.current_node_field_specifiers.items()
-                }
+                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
+                if self.current_node_field_specifiers
+                else None,
+                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
+                if self.new_node_field_specifiers
+                else None,
+                "current_node_field_specifiers_map": self.current_node_field_specifiers.get_uuid_field_names_map()
                 if self.current_node_field_specifiers is not None
                 else None,
-                "new_node_field_specifiers_map": {
-                    node_uuid: list(field_names) for node_uuid, field_names in self.new_node_field_specifiers.items()
-                }
+                "new_node_field_specifiers_map": self.new_node_field_specifiers.get_uuid_field_names_map()
                 if self.new_node_field_specifiers is not None
                 else None,
             }
@@ -400,16 +399,16 @@ AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_
 // node ID and field name filtering first pass
 AND (
     (
-        $current_node_field_specifiers_map IS NOT NULL
-        AND $current_node_field_specifiers_map[p.uuid] IS NOT NULL
+        $current_node_ids_list IS NOT NULL
+        AND p.uuid IN $current_node_ids_list
         AND q.name IN $current_node_field_specifiers_map[p.uuid]
     ) OR (
-        $new_node_field_specifiers_map IS NOT NULL
-        AND $new_node_field_specifiers_map[p.uuid] IS NOT NULL
+        $new_node_ids_list IS NOT NULL
+        AND p.uuid IN $new_node_ids_list
         AND q.name IN $new_node_field_specifiers_map[p.uuid]
     ) OR (
-        $current_node_field_specifiers_map IS NULL
-        AND $new_node_field_specifiers_map IS NULL
+        $new_node_ids_list IS NULL
+        AND $current_node_ids_list IS NULL
     )
 )
 // node ID and field name filtering second pass
@@ -417,8 +416,12 @@ AND (
     // time-based filters for nodes already included in the diff or fresh changes
     (
         (
-            ($current_node_field_specifiers_map IS NOT NULL AND q.name IN $current_node_field_specifiers_map[p.uuid])
-            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
+            (
+                $current_node_ids_list IS NOT NULL
+                AND p.uuid IN $current_node_ids_list
+                AND q.name IN $current_node_field_specifiers_map[p.uuid]
+            )
+            OR ($current_node_ids_list IS NULL AND $new_node_ids_list IS NULL)
         )
         AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
         AND (
@@ -428,7 +431,11 @@ AND (
     )
     // time-based filters for new nodes
     OR (
-        ($new_node_field_specifiers_map IS NOT NULL AND q.name IN $new_node_field_specifiers_map[p.uuid])
+        (
+            $new_node_ids_list IS NOT NULL
+            AND p.uuid IN $new_node_ids_list
+            AND q.name IN $new_node_field_specifiers_map[p.uuid]
+        )
         AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
         AND (
             ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
@@ -454,15 +461,18 @@ WITH one_result[0] AS root, one_result[1] AS r_root, one_result[2] AS p, one_res
 // Add correct from_time for row
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q, has_more_data, CASE
-    WHEN $new_node_field_specifiers_map IS NOT NULL AND q.name IN $new_node_field_specifiers_map[p.uuid] THEN $branch_from_time
+    WHEN
+        $new_node_ids_list IS NOT NULL
+        AND p.uuid IN $new_node_ids_list
+        AND q.name IN $new_node_field_specifiers_map[p.uuid]
+    THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
 // -------------------------------------
 // Exclude attributes/relationship under nodes deleted on this branch in the timeframe
 // because those were all handled above at the node level
 // -------------------------------------
-CALL {
-    WITH root, p, row_from_time
+CALL (root, p, row_from_time) {
     OPTIONAL MATCH (root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(p)
     WHERE row_from_time <= r_root_deleted.from < $to_time
     WITH r_root_deleted
@@ -476,8 +486,7 @@ WHERE node_deleted = FALSE
 // Exclude relationships added and deleted within the timeframe
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q, has_more_data, row_from_time, type(diff_rel) AS rel_type
-CALL {
-    WITH p, rel_type, q, row_from_time
+CALL (p, rel_type, q, row_from_time) {
     OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(q)
     WHERE row_from_time <= rel_to_check.from < $to_time
     AND type(rel_to_check) = rel_type
@@ -490,8 +499,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each attribute/relationship
 // -------------------------------------
-CALL {
-    WITH root, r_root, p, diff_rel, q
+CALL (root, r_root, p, diff_rel, q) {
     OPTIONAL MATCH path = (
         (root:Root)<-[mid_r_root:IS_PART_OF]-(p)-[mid_diff_rel]-(q)-[r_prop]-(prop)
     )
@@ -526,8 +534,7 @@ CALL {
 // Exclude properties added and deleted within the timeframe
 // -------------------------------------
 WITH q, nodes(latest_prop_path)[3] AS prop, type(relationships(latest_prop_path)[2]) AS rel_type, latest_prop_path, has_more_data, row_from_time
-CALL {
-    WITH q, rel_type, prop, row_from_time
+CALL (q, rel_type, prop, row_from_time) {
     OPTIONAL MATCH (q)-[rel_to_check {branch: $branch_name}]-(prop)
     WHERE row_from_time <= rel_to_check.from < $to_time
     AND type(rel_to_check) = rel_type
@@ -554,15 +561,16 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 
         self.params.update(
             {
-                "current_node_field_specifiers_map": {
-                    node_uuid: list(field_names)
-                    for node_uuid, field_names in self.current_node_field_specifiers.items()
-                }
+                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
+                if self.current_node_field_specifiers
+                else None,
+                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
+                if self.new_node_field_specifiers
+                else None,
+                "current_node_field_specifiers_map": self.current_node_field_specifiers.get_uuid_field_names_map()
                 if self.current_node_field_specifiers is not None
                 else None,
-                "new_node_field_specifiers_map": {
-                    node_uuid: list(field_names) for node_uuid, field_names in self.new_node_field_specifiers.items()
-                }
+                "new_node_field_specifiers_map": self.new_node_field_specifiers.get_uuid_field_names_map()
                 if self.new_node_field_specifiers is not None
                 else None,
             }
@@ -580,16 +588,16 @@ AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass
 AND (
     (
-        $current_node_field_specifiers_map IS NOT NULL
-        AND $current_node_field_specifiers_map[n.uuid] IS NOT NULL
+        $current_node_ids_list IS NOT NULL
+        AND n.uuid IN $current_node_ids_list
         AND p.name IN $current_node_field_specifiers_map[n.uuid]
     ) OR (
-        $new_node_field_specifiers_map IS NOT NULL
-        AND $new_node_field_specifiers_map[n.uuid] IS NOT NULL
+        $new_node_ids_list IS NOT NULL
+        AND n.uuid IN $new_node_ids_list
         AND p.name IN $new_node_field_specifiers_map[n.uuid]
     ) OR (
-        $current_node_field_specifiers_map IS NULL
-        AND $new_node_field_specifiers_map IS NULL
+        $new_node_ids_list IS NULL
+        AND $current_node_ids_list IS NULL
     )
 )
 // node ID and field name filtering second pass
@@ -597,8 +605,12 @@ AND (
     // time-based filters for nodes already included in the diff or fresh changes
     (
         (
-            ($current_node_field_specifiers_map IS NOT NULL AND p.name IN $current_node_field_specifiers_map[n.uuid])
-            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
+            (
+                $current_node_ids_list IS NOT NULL
+                AND n.uuid IN $current_node_ids_list
+                AND p.name IN $current_node_field_specifiers_map[n.uuid]
+            )
+            OR ($current_node_ids_list IS NULL AND $new_node_ids_list IS NULL)
         )
         AND (
             ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
@@ -612,7 +624,11 @@ AND (
     )
     // time-based filters for new nodes
     OR (
-        ($new_node_field_specifiers_map IS NOT NULL AND p.name IN $new_node_field_specifiers_map[n.uuid])
+        (
+            $new_node_ids_list IS NOT NULL
+            AND n.uuid IN $new_node_ids_list
+            AND p.name IN $new_node_field_specifiers_map[n.uuid]
+        )
         AND (
             ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($branch_from_time <= diff_rel.to < $to_time)
@@ -667,7 +683,11 @@ WITH one_result[0] AS diff_rel_path, one_result[1] AS r_root, one_result[2] AS n
 // Add correct from_time for row
 // -------------------------------------
 WITH diff_rel_path, r_root, n, r_node, p, diff_rel, has_more_data, CASE
-    WHEN $new_node_field_specifiers_map IS NOT NULL AND p.name IN $new_node_field_specifiers_map[n.uuid] THEN $branch_from_time
+    WHEN
+        $new_node_ids_list IS NOT NULL
+        AND n.uuid IN $new_node_ids_list
+        AND p.name IN $new_node_field_specifiers_map[n.uuid]
+    THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
 WITH diff_rel_path, r_root, n, r_node, p, diff_rel, has_more_data, row_from_time
@@ -681,24 +701,21 @@ ORDER BY
     r_node.from DESC,
     r_root.from DESC
 WITH n, p, row_from_time, diff_rel, diff_rel_path, has_more_data
-CALL {
+CALL (n, p, row_from_time){
     // -------------------------------------
     // Exclude properties under nodes and attributes/relationships deleted
     // on this branch in the timeframe because those were all handled above
     // -------------------------------------
-    WITH n, p, row_from_time
-    CALL {
-        WITH n, row_from_time
+    CALL (n, row_from_time) {
         OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
-        WHERE row_from_time <= r_root_deleted.from < $to_time
+        WHERE r_root_deleted.from < $to_time
         WITH r_root_deleted
         ORDER BY r_root_deleted.status DESC
         LIMIT 1
         RETURN COALESCE(r_root_deleted.status = "deleted", FALSE) AS node_deleted
     }
-    WITH n, p, row_from_time, node_deleted
-    CALL {
-        WITH n, p, row_from_time
+    WITH node_deleted
+    CALL (n, p, row_from_time) {
         OPTIONAL MATCH (n)-[r_node_deleted {branch: $branch_name}]-(p)
         WHERE row_from_time <= r_node_deleted.from < $to_time
         AND type(r_node_deleted) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
@@ -718,3 +735,84 @@ WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS diff_path, has
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
         self.add_to_query("UNWIND diff_rel_paths AS diff_path")
         self.return_labels = ["DISTINCT diff_path AS diff_path", "has_more_data"]
+
+
+@dataclass
+class MigratedKindNode:
+    uuid: str
+    kind: str
+    db_id: str
+    from_time: Timestamp
+    action: DiffAction
+    has_more_data: bool
+
+
+class DiffMigratedKindNodesQuery(DiffCalculationQuery):
+    name = "diff_migrated_kind_nodes_query"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        params_dict = self.get_params()
+        self.params.update(params_dict)
+        migrated_kind_nodes_query = """
+// -------------------------------------
+// Identify nodes added/removed on branch in the time frame
+// -------------------------------------
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+AND n.branch_support = $branch_aware
+WITH DISTINCT n.uuid AS node_uuid, %(id_func)s(n) AS db_id
+WITH node_uuid, count(*) AS num_nodes_with_uuid
+WHERE num_nodes_with_uuid > 1
+// -------------------------------------
+// Limit the number of nodes
+// -------------------------------------
+WITH node_uuid
+ORDER BY node_uuid
+SKIP $offset
+LIMIT $limit
+WITH collect(node_uuid) AS node_uuids
+WITH node_uuids, size(node_uuids) = $limit AS has_more_data
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE n.uuid IN node_uuids
+AND (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+// -------------------------------------
+// Ignore node created and deleted on this branch
+// -------------------------------------
+CALL (n) {
+    OPTIONAL MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n)
+    WITH diff_rel
+    ORDER BY diff_rel.from ASC
+    WITH collect(diff_rel.status) AS statuses
+    RETURN statuses = ["active", "deleted"] AS intra_branch_update
+}
+WITH n.uuid AS uuid, n.kind AS kind, %(id_func)s(n) AS db_id, diff_rel.from_time AS from_time, diff_rel.status AS status, has_more_data
+WHERE intra_branch_update = FALSE
+        """ % {"id_func": db.get_id_function_name()}
+        self.add_to_query(query=migrated_kind_nodes_query)
+        self.return_labels = [
+            "uuid",
+            "kind",
+            "db_id",
+            "from_time",
+            "status",
+            "has_more_data",
+        ]
+
+    def get_migrated_kind_nodes(self) -> Generator[MigratedKindNode, None, None]:
+        for result in self.get_results():
+            yield MigratedKindNode(
+                uuid=result.get_as_type("uuid", return_type=str),
+                kind=result.get_as_type("kind", return_type=str),
+                db_id=result.get_as_type("db_id", return_type=str),
+                from_time=result.get_as_type("from_time", return_type=Timestamp),
+                action=DiffAction.REMOVED
+                if result.get_as_type("status", return_type=str).lower() == RelationshipStatus.DELETED.value
+                else DiffAction.ADDED,
+                has_more_data=result.get_as_type("has_more_data", bool),
+            )

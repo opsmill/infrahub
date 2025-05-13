@@ -56,6 +56,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_USERNAME:
   INFRAHUB_DOCS_INDEX_PATH:
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:
+  INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY:
   INFRAHUB_GIT_SYNC_INTERVAL:
   INFRAHUB_INITIAL_ADMIN_PASSWORD:
@@ -113,6 +114,8 @@ services:
     profiles: [demo, dev]
     build:
       context: ../
+      args:
+        CI_ARG: ${CI:-0}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"

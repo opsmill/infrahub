@@ -1,0 +1,56 @@
+---
+title: Release 1.2.9
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.9</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>May 7th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #9</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.9](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.9)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.9
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.8 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Added the `INFRAHUB_TESTING_SCHEMA_STRICT_MODE` environment variable to allow users to control `INFRAHUB_SCHEMA_STRICT_MODE` when using `infrahub-testcontainers`.
+- Improved the performance of the core database class used throughout the backend by factoring out the classes used for creating and removing indexes.
+
+### Changed
+
+- Sped up computed attribute mutation by changing the node query to only request the required attributes from the database. This change will provide performance improvements for the background processing of computed attributes. ([#6403](https://github.com/opsmill/infrahub/issues/6403))
+
+### Fixed
+
+- Deleting a branch now correctly deletes nodes with agnostic relationships. This typically fixes an issue after deleting a branch where an object had been created on this branch through a ResourceManager ([#5463](https://github.com/opsmill/infrahub/issues/5463))
+- Fixed `textarea` values display in the object details view. ([#6400](https://github.com/opsmill/infrahub/issues/6400))
+- Added inherited kinds of a node as templates to fix GraphQL schema when inheritance is involved. ([#6415](https://github.com/opsmill/infrahub/issues/6415))
+- Fixed an issue with computed attribute that would trigger multiple updates after a schema change if the attribute reference multiple kind of nodes.
+- Updated the date formatting to include the year for dates before the current year, and ensure consistency between the list and detail views.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade
+
+**After the upgrade, it is strongly recommended to rebase any open branches in Infrahub once the system is online again.**

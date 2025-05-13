@@ -80,7 +80,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
 
       return (
         <div>
-          <div className="flex bg-custom-white text-sm">
+          <div className="flex bg-white text-sm">
             <Link
               to={constructPath(pathname, [
                 { name: QSP.PROPOSED_CHANGES_TAB, value: TASK_TAB },

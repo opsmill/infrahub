@@ -1,0 +1,19 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: taskmanagerdb
+  namespace: infrahub
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+  postgresql:
+    pg_hba:
+      - host all all 10.0.0.0/8 md5
+  bootstrap:
+    initdb:
+      database: prefect
+      owner: prefect
+      secret:
+        name: prefect-user

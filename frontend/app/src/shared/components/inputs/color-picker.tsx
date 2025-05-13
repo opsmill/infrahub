@@ -49,7 +49,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
         <PopoverTrigger
           className={classNames(
             focusVisibleStyle,
-            "size-5 bg-gradient-to-br from-custom-white via-custom-blue-50 to-custom-gray rounded-full shrink-0"
+            "size-5 bg-linear-to-br from-custom-white via-custom-blue-50 to-custom-gray rounded-full shrink-0"
           )}
         />
 

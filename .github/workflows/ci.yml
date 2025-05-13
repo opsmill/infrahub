@@ -48,6 +48,7 @@ jobs:
       infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -400,7 +401,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+      (needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.testcontainers == 'true')
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners

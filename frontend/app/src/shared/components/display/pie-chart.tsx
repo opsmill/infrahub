@@ -33,7 +33,7 @@ const renderCustomizedTooltip = (props: any) => {
   }
 
   return (
-    <span className="text-xs bg-custom-white p-2 rounded-md">
+    <span className="text-xs bg-white p-2 rounded-md">
       {data.name}: {data.value}
     </span>
   );

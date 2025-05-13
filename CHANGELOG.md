@@ -11,19 +11,112 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.9) - 2025-05-07
+
+### Added
+
+- Added the `INFRAHUB_TESTING_SCHEMA_STRICT_MODE` environment variable to allow users to control `INFRAHUB_SCHEMA_STRICT_MODE` when using `infrahub-testcontainers`.
+- Improved the performance of the core database class used throughout the backend by factoring out the classes used for creating and removing indexes.
+
+### Changed
+
+- Sped up computed attribute mutation by changing the node query to only request the required attributes from the database. This change will provide performance improvements for the background processing of computed attributes. ([#6403](https://github.com/opsmill/infrahub/issues/6403))
+
+### Fixed
+
+- Deleting a branch now correctly deletes nodes with agnostic relationships. This typically fixes an issue after deleting a branch where an object had been created on this branch through a ResourceManager ([#5463](https://github.com/opsmill/infrahub/issues/5463))
+- Fixed `textarea` values display in the object details view. ([#6400](https://github.com/opsmill/infrahub/issues/6400))
+- Added inherited kinds of a node as templates to fix GraphQL schema when inheritance is involved. ([#6415](https://github.com/opsmill/infrahub/issues/6415))
+- Fixed an issue with computed attribute that would trigger multiple updates after a schema change if the attribute reference multiple kind of nodes.
+- Updated the date formatting to include the year for dates before the current year, and ensure consistency between the list and detail views.
+
+## [Infrahub - v1.2.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.8) - 2025-05-01
+
+### Added
+
+- Added support for "convert_query_response" for Python transforms. The feature works the same was as with Generators. Note any non default branch will need to be rebased after this upgrade. ([#6383](https://github.com/opsmill/infrahub/issues/6383))
+- Enabled HCL syntax highlighting for artifacts.
+
+### Fixed
+
+- Improved performance when retrieving nodes that have thousands of relationships.
+- Improved performance of the Git credential helper.
+
+### Housekeeping
+
+- Background performance improvements due to Prefect 3.3.7 upgrade.
+
+## [Infrahub - v1.2.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.7) - 2025-04-28
+
+### Security
+
+- Update the `h11` package to 0.16.0.
+
+### Fixed
+
+- Mutating a backend node with extra attributes now logs an error instead of raising an error. It also fixes an issue
+  preventing a corrupted node mutation. ([#6349](https://github.com/opsmill/infrahub/issues/6349))
+- Improved the performance of computed attributes when updating a large number of objects at once. Replaced client.filter call in Jinja2 based computed attributes. ([#6351](https://github.com/opsmill/infrahub/issues/6351))
+- Improved the IPAM allocation performance by leveraging database indexes (+10% improvement).
+
+### Housekeeping
+
+- Updated the Python `certifi` package to 2025.1.31.
+- Updated Infrahub SDK to version 1.11.1.
+
+## [Infrahub - v1.2.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.6) - 2025-04-18
+
+### Added
+
+- Added generics to node selection in number pool form.
+- Enabled node select in the webhook form to quickly choose the node kind.
+
+### Changed
+
+- Raised a more accurate error when trying to lookup a node by HFID, specifically when the schema does not have an HFID or the number of elements does not match.
+
+### Fixed
+
+- Cleared GraphQL schema manager cache when deleting branches to release memory. ([#6021](https://github.com/opsmill/infrahub/issues/6021))
+- Added attributes and relationships to generic templates to ensure proper GraphQL schema generation. ([#6287](https://github.com/opsmill/infrahub/issues/6287))
+- Fixed node lookup by its HFID with a generic template kind. ([#6301](https://github.com/opsmill/infrahub/issues/6301))
+- Disabled option creation for restricted namespaces in dropdown and enum.
+
+## [Infrahub - v1.2.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.5) - 2025-04-11
+
+### Added
+
+- Added support for computed attributes on generics. ([#5736](https://github.com/opsmill/infrahub/issues/5736))
+- Added new `infrahub db selected-export` command to run an anonymized export of selected object that includes no actual data. ([#6248](https://github.com/opsmill/infrahub/issues/6248))
+- Added a migration to correctly set children of 0.0.0.0/0 and ::/0 IP prefixes if they exist.
+- Updated the component relationship form to quickly create a new object and associate it to the current node.
+
+### Changed
+
+- Allowed using a generic in a number pool to group number allocation for all nodes inheriting from a given generic. ([#6080](https://github.com/opsmill/infrahub/issues/6080))
+- Allowed specifying an empty string for optional text schema attributes in order to remove existing values.
+
+### Fixed
+
+- Refactored management of diff summary within pipelines so that they are stored in cache instead of a database. On a proposed change with large branches the size could be significant which lead to longer pipeline runs and slower lookup of tasks after they had run. ([#5866](https://github.com/opsmill/infrahub/issues/5866))
+- Fixed the ability to override default timeout for Python transform and checks. ([#6267](https://github.com/opsmill/infrahub/issues/6267))
+- Fixed a vertical scrolling issue in hierarchical node detailed view. ([#6269](https://github.com/opsmill/infrahub/issues/6269))
+- Fixed a horizontal scrolling issue in tabs. ([#6272](https://github.com/opsmill/infrahub/issues/6272))
+- Fixed the upsert operation when updating relationships with cardinality `one` or `many` having min/max count constraints.
+
 ## [Infrahub - v1.2.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.4) - 2025-04-04
 
 ### Fixed
 
-- Fix migration to remove an attribute from a schema to correctly ignore overridden attributes from a generic schema ([#6073](https://github.com/opsmill/infrahub/issues/6073))
-- Fix an issue where HFID and uniqueness constraints for component templates would end up having duplicate elements after loading several schemas
-- Fix an issue where optional unique attributes having a NULL value could be duplicated.
+- Fixed the migration to remove an attribute from a schema to correctly ignore overridden attributes from a generic schema. ([#6073](https://github.com/opsmill/infrahub/issues/6073))
+- Fixed an issue where HFID and uniqueness constraints for component templates would end up having duplicate elements after loading several schemas.
+- Fixed an issue where optional unique attributes having a NULL value could be duplicated.
   Upgrading Infrahub to a version containing this fix will perform a check identifying such duplicates.
   If some duplicates are found, data or schema should be fixed in order to complete the upgrade:
   - Either the uniqueness constraint on corresponding attributes should be removed within schema.
   - Or duplicated unique attributes values should be modified.
 - Properly clear references to old branches and schema objects from the registry when deleting branches.
-- Restrict event.related payload for CoreGraphQLQueryGroup events
+- Restricted event.related payload for CoreGraphQLQueryGroup events.
 
 ## [Infrahub - v1.2.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.3) - 2025-03-31
 
@@ -33,51 +126,52 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Fixed
 
-- Fixed menu upgrade when Non-Builtin items are attached to a Builtin menu item ([#6182](https://github.com/opsmill/infrahub/issues/6182))
-- Add a migration to backfill hierarchy data missing from the default branch after a branch is merged and then deleted. The root cause of the missing data has already been fixed. ([#6019](https://github.com/opsmill/infrahub/issues/6019))
-- Fixed broken hierarchy when renaming a kind participating to a hierarchy ([#6051](https://github.com/opsmill/infrahub/issues/6051))
-- Fixed schema migration validator to allow renaming the kind of a generic ([#6060](https://github.com/opsmill/infrahub/issues/6060))
-- Fix error in IPAM reconciliation logic to correctly assign 0.0.0.0/0 as a parent prefix ([#6172](https://github.com/opsmill/infrahub/issues/6172))
-- Ensure node level migrations are not executed on a generic
-- Fix updating a node through Upsert when payload contains existing unique attributes not part of hfid
+- Fixed the menu upgrade when Non-Builtin items are attached to a Builtin menu item. ([#6182](https://github.com/opsmill/infrahub/issues/6182))
+- Added a migration to backfill hierarchy data missing from the default branch after a branch is merged and then deleted. The root cause of the missing data has already been fixed. ([#6019](https://github.com/opsmill/infrahub/issues/6019))
+- Fixed a broken hierarchy when renaming a kind participating to a hierarchy. ([#6051](https://github.com/opsmill/infrahub/issues/6051))
+- Fixed the schema migration validator to allow renaming the kind of a generic. ([#6060](https://github.com/opsmill/infrahub/issues/6060))
+- Fixed an error in IPAM reconciliation logic to correctly assign 0.0.0.0/0 as a parent prefix. ([#6172](https://github.com/opsmill/infrahub/issues/6172))
+- Ensured that node level migrations are not executed on a generic.
+- Fixed updating a node through Upsert when payload contains existing unique attributes not part of HFID.
 
 ## [Infrahub - v1.2.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.2) - 2025-03-28
 
+### Infrahub Enterprise
+
+- Fixed the `infrahub upgrade` command not working properly in Infrahub Enterprise.
+
 ### Fixed
 
-- Fix generic schema updates to correctly propagate an updated order_weight to a downstream attribute or relationship on an inheriting schema ([#5684](https://github.com/opsmill/infrahub/issues/5684))
-- Fix operational status of repositories remaining to "Unknown" even after a synchronization ([#5755](https://github.com/opsmill/infrahub/issues/5755))
-- Fix an issue that could cause the display label to not appear for nodes that have had their kind updated
+- Fixed generic schema updates to correctly propagate an updated order_weight to a downstream attribute or relationship on an inheriting schema. ([#5684](https://github.com/opsmill/infrahub/issues/5684))
+- Fixed operational status of repositories remaining to "Unknown" even after a synchronization. ([#5755](https://github.com/opsmill/infrahub/issues/5755))
+- Fixed an issue that could cause the display label to not appear for nodes that have had their kind updated.
 
 ## [Infrahub - v1.2.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.1) - 2025-03-26
 
 ### Added
 
-- Add relationships changes details in the activities
-- Add a INFRAHUB_SCHEMA_STRICT_MODE environment variable. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. Default is `True`
+- Added relationships changes details in the activities.
+- Added an `INFRAHUB_SCHEMA_STRICT_MODE` environment variable. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. Default is `True`.
 
 ### Changed
 
-- Improved performance for upsert GraphQL Mutation
-- Modified event filters for mandatory computed attributes to not include the `infrahub.node.created` event as the computed attribute will be rendered on node creation regardless. This change will avoid extra processing in the background workers. ([#6105](https://github.com/opsmill/infrahub/issues/6105))
-- Improved event trigger filters for Transform based computed attributes to limit the number of tasks being triggered when updating impacted attributes. This will increase the overall performance when an update is triggered. ([#6113](https://github.com/opsmill/infrahub/issues/6113))
-- <!-- vale off -->
-  Use the new `schema_hash` parameter from client.schema.all() in the SDK to only selectively refresh the branch schema cache if the current hash differs from the one in the cache. This will provide a speedup for Jinja2 based computed attributes.
-
-  <!-- vale on --> ([#6133](https://github.com/opsmill/infrahub/issues/6133))
+- Modified the event filters for mandatory computed attributes to not include the `infrahub.node.created` event as the computed attribute will be rendered on node creation regardless. This change will avoid extra processing in the background workers. ([#6105](https://github.com/opsmill/infrahub/issues/6105))
+- Improved the event trigger filters for Transform based computed attributes to limit the number of tasks being triggered when updating impacted attributes. This will increase the overall performance when an update is triggered. ([#6113](https://github.com/opsmill/infrahub/issues/6113))
+- Used the new `schema_hash` parameter from client.schema.all() in the SDK to only selectively refresh the branch schema cache if the current hash differs from the one in the cache. This will provide a speedup for Jinja2 based computed attributes. ([#6133](https://github.com/opsmill/infrahub/issues/6133))
+- Improved performance for the upsert GraphQL Mutation.
 - Rename command `demo.migrate` to `demo.upgrade`
 
 ### Fixed
 
-- Fix addresses having multiple prefixes after loading prefixes concurrently
-- If a node has a custom view, users should be taken there instead of the generic view.
-- Prevent editing metadata on a read only attribute on UI ([#5558](https://github.com/opsmill/infrahub/issues/5558))
-- Fix issue that prevents attributes and relationships on a schema that inherit from a generic from receiving updates to the generic-level attributes or relationships ([#5793](https://github.com/opsmill/infrahub/issues/5793))
-- Fixed broken hierarchy when renaming a kind participating to a hierarchy ([#6051](https://github.com/opsmill/infrahub/issues/6051))
-- Fix merge button state depending on ongoing merge tasks ([#6059](https://github.com/opsmill/infrahub/issues/6059))
-- Fixed schema migration validator to allow renaming the kind of a generic ([#6060](https://github.com/opsmill/infrahub/issues/6060))
-- Fix creation of related nodes when instantiating a template in a branch other than the default one
-- Update version of Internal graph to ensure that 1.2 migrations are properly applied
+- Prevented the editing of metadata on a read only attribute in the UI. ([#5558](https://github.com/opsmill/infrahub/issues/5558))
+- Fixed an issue that prevents attributes and relationships on schema which inherit from a generic from receiving updates to the generic-level attributes or relationships. ([#5793](https://github.com/opsmill/infrahub/issues/5793))
+- Fixed a broken hierarchy when renaming a kind participating to a hierarchy. ([#6051](https://github.com/opsmill/infrahub/issues/6051))
+- Fixed the merge button state depending on ongoing merge tasks. ([#6059](https://github.com/opsmill/infrahub/issues/6059))
+- Fixed the schema migration validator to allow renaming the kind of a generic. ([#6060](https://github.com/opsmill/infrahub/issues/6060))
+- Ensured that if a node has a custom view, users should be taken there instead of the generic view.
+- Fixed addresses having multiple prefixes after loading prefixes concurrently.
+- Fixed the creation of related nodes when instantiating a template in a branch other than the default one.
+- Updated the version of Internal graph to ensure that 1.2 migrations are properly applied.
 
 ## [Infrahub - v1.2.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.0) - 2025-03-19
 
@@ -225,7 +319,7 @@ Enhancements include support for additional content-types (as listed below), col
 ### Added
 
 - Allow OIDC providers to fall back to id_token for group membership reports if they are not provided within the `userinfo` URL. This allows for group support using Azure. ([#5464](https://github.com/opsmill/infrahub/issues/5464))
-- Add computed attributes display in schema visualizer to display the jinja2 and python transforms details. ([#5515](https://github.com/opsmill/infrahub/issues/5515))
+- Add computed attributes display in schema visualizer to display the Jinja2 and Python transforms details. ([#5515](https://github.com/opsmill/infrahub/issues/5515))
 
 ### Fixed
 
@@ -525,7 +619,7 @@ Enhancements include support for additional content-types (as listed below), col
 
 ### Fixed
 
-- The `infrahub-git` agent service has been renamed to `task-worker` in docker compose and the command to start it has been updated as well ([#1075](https://github.com/opsmill/infrahub/issues/1075))
+- The `infrahub-git` agent service has been renamed to `task-worker` in Docker Compose and the command to start it has been updated as well ([#1075](https://github.com/opsmill/infrahub/issues/1075))
 - Add ability to import repositories with default branch other than 'main' ([#3435](https://github.com/opsmill/infrahub/issues/3435))
 - Disable approve/merge/close buttons for merged Proposed Changes ([#3495](https://github.com/opsmill/infrahub/issues/3495))
 - Fixed regex validation for List type attributes ([#3929](https://github.com/opsmill/infrahub/issues/3929))
@@ -541,7 +635,7 @@ Enhancements include support for additional content-types (as listed below), col
 - Add order_weight property to multiple attributes and relationships in the demo schema to improve how some models are displayed in the list views
 - Changed the Python SDK connection timeout to 60s
 - Fix metric missing the query name in Prometheus data
-- Fixes an issue where docker compose would output ANSI control characters that don't support it
+- Fixes an issue where Docker Compose would output ANSI control characters that don't support it
 - Prevent temporary directories generated by Docusaurus to be imported by Docker
 
 ## [Infrahub - v0.16.4](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.4) - 2024-10-17

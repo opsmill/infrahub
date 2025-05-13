@@ -8,7 +8,7 @@ import {
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { AttributeSchema, NodeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -115,7 +115,7 @@ export const NumberPoolForm = ({
   }
 
   return (
-    <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
+    <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
@@ -148,12 +148,15 @@ export const NumberPoolForm = ({
 
 const NodeAttributesSelects = () => {
   const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+
+  const options = [...generics, ...nodes];
 
   const form = useFormContext();
   const selectedNodeField: FormAttributeValue = form.watch(NUMBER_POOL_NODE_FIELD);
-  const selectedNode = nodes.find((node) => node.kind === selectedNodeField?.value);
+  const selectedNode = options.find((node) => node.kind === selectedNodeField?.value);
 
-  const nodesWithNumberAttributes: Array<NodeSchema> = nodes.filter((node) =>
+  const nodesWithNumberAttributes: Array<NodeSchema> = options.filter((node) =>
     node.attributes?.some(
       (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
     )

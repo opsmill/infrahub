@@ -6,31 +6,35 @@ import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-it
 import {
   getObjectAttributes,
   getObjectRelationships,
-  getObjectTabs,
-  getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import {
+  ObjectDetailsTab,
+  ObjectTaskTab,
+  RelationshipTab,
+} from "@/entities/nodes/object/ui/object-tabs";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import { NodeObject } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
-import { Tabs } from "@/shared/components/tabs";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
+import { useAtom, useAtomValue } from "jotai";
 import { useRef } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -41,8 +45,7 @@ import RelationshipDetails from "./relationship-details-paginated";
 
 type ObjectDetailsProps = {
   schema: ModelSchema;
-  objectDetailsData: any;
-  taskData?: Object;
+  objectDetailsData: NodeObject;
   hideHeaders?: boolean;
   permission: Permission;
 };
@@ -51,20 +54,20 @@ export default function ObjectItemDetails({
   schema,
   objectDetailsData,
   permission,
-  taskData,
   hideHeaders,
 }: ObjectDetailsProps) {
   const location = useLocation();
   const { objectKind, objectid } = useParams();
   const { pathname } = location;
 
-  const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [genericList] = useAtom(genericSchemasAtom);
+  const isTaskTarget = !isGenericSchema(schema) && !!schema.inherit_from?.includes(TASK_TARGET);
 
   const refetchRef = useRef(null);
 
@@ -79,31 +82,13 @@ export default function ObjectItemDetails({
 
   const attributes = getObjectAttributes({ schema: schema });
   const relationships = getObjectRelationships({ schema: schema });
-  const relationshipsTabs = getTabs(schema);
+  const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
     objectDetailsData?.display_label
       ? `${objectDetailsData?.display_label} details`
       : `${schema.label} details`
   );
-
-  const tabs = [
-    {
-      label: schema?.label,
-      name: schema?.name,
-    },
-    ...getObjectTabs(relationshipsTabs, objectDetailsData),
-    // Includes the task tab only for specific nodes,
-    schema?.inherit_from?.includes(TASK_TARGET) && {
-      label: "Tasks",
-      name: TASK_TAB,
-      count: taskData?.count ?? 0,
-      onClick: () => {
-        setQspTab(TASK_TAB);
-        setQspTaskId(undefined);
-      },
-    },
-  ].filter(Boolean);
 
   if (!objectDetailsData) {
     return null;
@@ -112,24 +97,44 @@ export default function ObjectItemDetails({
   return (
     <>
       {!hideHeaders && (
-        <Tabs
-          tabs={tabs}
-          rightItems={
-            <ActionButtons
-              schema={schema}
-              objectDetailsData={objectDetailsData}
-              permission={permission}
-            />
-          }
-        />
+        <header className="flex items-center border-b border-gray-200 px-2">
+          <div className="grow flex gap-8 px-4">
+            <ObjectDetailsTab
+              isActive={!qspTab}
+              to={getObjectDetailsUrl(objectKind as string, objectid)}
+            >
+              {schema.label}
+            </ObjectDetailsTab>
+
+            {relationshipsTabs.map((tab) => {
+              return (
+                <RelationshipTab
+                  key={tab.name}
+                  objectKind={objectKind as string}
+                  objectId={objectDetailsData.id}
+                  relationshipSchema={tab as RelationshipSchema}
+                />
+              );
+            })}
+
+            {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id as string} />}
+          </div>
+          <ActionButtons
+            schema={schema}
+            objectDetailsData={objectDetailsData}
+            permission={permission}
+          />
+        </header>
       )}
 
       {!qspTab && (
         <div className="flex flex-col xl:items-start xl:grid xl:grid-cols-3 gap-2 p-2">
           <Card className="md:col-span-2 p-0 grow overflow-x-hidden">
-            <CardWithBorder.Title className="border-b">Details</CardWithBorder.Title>
+            <CardWithBorder.Title className="border-b border-gray-200">
+              Details
+            </CardWithBorder.Title>
 
-            <div className="divide-y">
+            <div className="divide-y divide-gray-200">
               {attributes.map((attribute) => {
                 if (!objectDetailsData[attribute.name]) {
                   return null;
@@ -148,14 +153,14 @@ export default function ObjectItemDetails({
 
                         {objectDetailsData[attribute.name] && (
                           <MetaDetailsTooltip
-                            updatedAt={objectDetailsData[attribute.name].updated_at}
-                            source={objectDetailsData[attribute.name].source}
-                            owner={objectDetailsData[attribute.name].owner}
-                            isFromProfile={objectDetailsData[attribute.name].is_from_profile}
-                            isProtected={objectDetailsData[attribute.name].is_protected}
+                            updatedAt={objectDetailsData[attribute.name]?.updated_at}
+                            source={objectDetailsData[attribute.name]?.source}
+                            owner={objectDetailsData[attribute.name]?.owner}
+                            isFromProfile={objectDetailsData[attribute.name]?.is_from_profile}
+                            isProtected={objectDetailsData[attribute.name]?.is_protected}
                             header={
                               !attribute.read_only && (
-                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
                                   <div className="font-semibold">{attribute.label}</div>
                                   <ButtonWithTooltip
                                     disabled={!permission.update.isAllowed}
@@ -182,7 +187,7 @@ export default function ObjectItemDetails({
                           />
                         )}
 
-                        {objectDetailsData[attribute.name].is_protected && (
+                        {objectDetailsData[attribute.name]?.is_protected && (
                           <LockClosedIcon className="w-4 h-4" />
                         )}
                       </>
@@ -214,8 +219,10 @@ export default function ObjectItemDetails({
             </div>
           </Card>
 
-          <Card className="p-0 overflow-x-hidden">
-            <CardWithBorder.Title className="border-b">Activities</CardWithBorder.Title>
+          <Card className="p-0 overflow-x-hidden" data-testid="activities-panel">
+            <CardWithBorder.Title className="border-b border-gray-200">
+              Activities
+            </CardWithBorder.Title>
             <NodeEvents objectId={objectid} objectKind={objectKind} />
           </Card>
         </div>
@@ -235,7 +242,7 @@ export default function ObjectItemDetails({
 
       {qspTab && qspTab === TASK_TAB && qspTaskId && (
         <div>
-          <div className="flex bg-custom-white text-sm">
+          <div className="flex bg-white text-sm">
             <Link
               to={constructPath(pathname, [
                 { name: QSP.TAB, value: TASK_TAB },
@@ -271,9 +278,10 @@ export default function ObjectItemDetails({
       >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => {
-            graphqlClient.refetchQueries({ include: [schema.kind!, "GET_EVENTS"] });
-            queryClient.invalidateQueries({ queryKey: ["events", [objectid]] });
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey.includes("objects"),
+            });
           }}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
