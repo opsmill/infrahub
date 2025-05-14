@@ -15,9 +15,7 @@ from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TC001
 
 class GeneratedAttributeSchema(HashableModel):
     id: str | None = Field(
-        default=None,
-        description="The ID of the attribute",
-        json_schema_extra={"update": "not_applicable"},
+        default=None, description="The ID of the attribute", json_schema_extra={"update": "not_applicable"}
     )
     name: str = Field(
         ...,
@@ -28,9 +26,7 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "migration_required"},
     )
     kind: str = Field(
-        ...,
-        description="Defines the type of the attribute.",
-        json_schema_extra={"update": "validate_constraint"},
+        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "validate_constraint"}
     )
     enum: list | None = Field(
         default=None,
@@ -49,21 +45,18 @@ class GeneratedAttributeSchema(HashableModel):
     )
     regex: str | None = Field(
         default=None,
-        description="Regex uses to limit the characters allowed in for the attributes.",
+        description="Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)",
         json_schema_extra={"update": "validate_constraint"},
-        deprecated="Deprecated in favor of parameters.regex if the kind of this AttributeSchema supports it",
     )
     max_length: int | None = Field(
         default=None,
-        description="Set a maximum number of characters allowed for a given attribute.",
+        description="Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)",
         json_schema_extra={"update": "validate_constraint"},
-        deprecated="Deprecated in favor of parameters.min_length if the kind of this AttributeSchema supports it",
     )
     min_length: int | None = Field(
         default=None,
-        description="Set a minimum number of characters allowed for a given attribute.",
+        description="Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)",
         json_schema_extra={"update": "validate_constraint"},
-        deprecated="Deprecated in favor of parameters.max_length if the kind of this AttributeSchema supports it",
     )
     label: str | None = Field(
         default=None,
@@ -103,9 +96,7 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "allowed"},
     )
     default_value: Any | None = Field(
-        default=None,
-        description="Default value of the attribute.",
-        json_schema_extra={"update": "allowed"},
+        default=None, description="Default value of the attribute.", json_schema_extra={"update": "allowed"}
     )
     inherited: bool = Field(
         default=False,

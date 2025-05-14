@@ -12,9 +12,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa:
 
 class GeneratedBaseNodeSchema(HashableModel):
     id: str | None = Field(
-        default=None,
-        description="The ID of the node",
-        json_schema_extra={"update": "not_applicable"},
+        default=None, description="The ID of the node", json_schema_extra={"update": "not_applicable"}
     )
     name: str = Field(
         ...,
@@ -101,12 +99,8 @@ class GeneratedBaseNodeSchema(HashableModel):
         json_schema_extra={"update": "not_applicable"},
     )
     attributes: list[AttributeSchema] = Field(
-        default_factory=list,
-        description="Node attributes",
-        json_schema_extra={"update": "not_applicable"},
+        default_factory=list, description="Node attributes", json_schema_extra={"update": "not_applicable"}
     )
     relationships: list[RelationshipSchema] = Field(
-        default_factory=list,
-        description="Node Relationships",
-        json_schema_extra={"update": "not_applicable"},
+        default_factory=list, description="Node Relationships", json_schema_extra={"update": "not_applicable"}
     )

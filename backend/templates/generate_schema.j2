@@ -16,8 +16,7 @@ class Generated{{ schema }}({{ parent }}):
         {{ attribute.pattern }}
         {{ attribute.min }}
         {{ attribute.max }}
-        json_schema_extra={"update": "{{ attribute.extra["update"].value }}"},
-        {{ attribute.deprecation_reason }}
+        json_schema_extra={"update": "{{ attribute.extra["update"].value }}"}
     )
 {%- endfor %}
 

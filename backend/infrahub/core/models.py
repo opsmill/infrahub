@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 GENERIC_ATTRIBUTES_TO_IGNORE = ["namespace", "name", "branch"]
+PROPERTY_NAMES_TO_IGNORE = ["regex", "min_length", "max_length"]
 
 
 class NodeKind(BaseModel):
@@ -253,11 +254,12 @@ class SchemaUpdateValidationResult(BaseModel):
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
             for prop_name, prop_diff in sub_field_diff.changed.items():
+                if prop_name in PROPERTY_NAMES_TO_IGNORE:
+                    continue
+
                 field_info = field.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
-                if field_info.deprecated:
-                    continue
                 if isinstance(prop_diff, HashableModelDiff):
                     for param_field_name in prop_diff.changed:
                         schema_path = SchemaPath(  # type: ignore[call-arg]
