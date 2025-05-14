@@ -475,6 +475,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                                     "generic_attr_text": {
                                         "added": {},
                                         "changed": {
+                                            "parameters": {"added": {}, "changed": {"regex": None}, "removed": {}},
                                             "regex": None,
                                             "inherited": None,
                                             "order_weight": None,
