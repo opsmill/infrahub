@@ -1,0 +1,99 @@
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import DynamicForm from "@/shared/components/form/dynamic-form";
+import { NodeFormProps } from "@/shared/components/form/node-form";
+import { FormFieldValue } from "@/shared/components/form/type";
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { toast } from "react-toastify";
+
+interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
+  currentObject?: Record<string, AttributeType | RelationshipType>;
+  onCancel?: () => void;
+  onUpdateComplete?: () => void;
+}
+
+export const NodeTriggerRuleForm = ({ currentObject, isUpdate, ...props }: NumberPoolFormProps) => {
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
+
+  const schemaFields = getFormFieldsFromSchema({
+    ...props,
+    initialObject: currentObject,
+    isUpdate,
+  });
+
+  const fields = schemaFields.map((field) => {
+    if (field.name === "node_kind") {
+      return {
+        ...field,
+        type: "kind",
+      };
+    }
+
+    return field;
+  });
+
+  async function handleSubmit(data: Record<string, FormFieldValue>) {
+    try {
+      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+
+      if (!Object.keys(newObject).length) {
+        return;
+      }
+
+      const mutationString = currentObject
+        ? updateObjectWithId({
+            kind: NODE_TRIGGER_RULE,
+            data: stringifyWithoutQuotes({
+              id: currentObject.id,
+              ...newObject,
+            }),
+          })
+        : createObject({
+            kind: NODE_TRIGGER_RULE,
+            data: stringifyWithoutQuotes({
+              ...newObject,
+            }),
+          });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      const result = await graphqlClient.mutate({
+        mutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
+      });
+
+      if (currentObject) {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node trigger rule updated!"} />, {
+          toastId: "alert-success-node-trigger-rule-updated",
+        });
+      } else {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node trigger rule created!"} />, {
+          toastId: "alert-success-node-trigger-rule-created",
+        });
+      }
+
+      if (onSuccess) await onSuccess(result?.data?.[`${NODE_TRIGGER_RULE}Create`]);
+      if (onUpdateComplete) await onUpdateComplete();
+    } catch (error: unknown) {
+      console.error("An error occurred while creating the object: ", error);
+    }
+  }
+
+  return <DynamicForm fields={fields} onSubmit={handleSubmit} className="p-4 overflow-auto" />;
+};
