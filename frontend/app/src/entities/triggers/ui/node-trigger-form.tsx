@@ -8,7 +8,7 @@ import DynamicForm from "@/shared/components/form/dynamic-form";
 import { NodeFormProps } from "@/shared/components/form/node-form";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
@@ -45,7 +45,7 @@ export const NodeTriggerRuleForm = ({ currentObject, isUpdate, ...props }: Numbe
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
-      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+      const newObject = getCreateMutationFromFormData(fields, data);
 
       if (!Object.keys(newObject).length) {
         return;
@@ -88,8 +88,8 @@ export const NodeTriggerRuleForm = ({ currentObject, isUpdate, ...props }: Numbe
         });
       }
 
-      if (onSuccess) await onSuccess(result?.data?.[`${NODE_TRIGGER_RULE}Create`]);
-      if (onUpdateComplete) await onUpdateComplete();
+      if (props.onSuccess) await props.onSuccess(result?.data?.[`${NODE_TRIGGER_RULE}Create`]);
+      if (props.onUpdateComplete) await props.onUpdateComplete();
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
     }
