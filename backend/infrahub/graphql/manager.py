@@ -25,7 +25,7 @@ from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
-from .mutations.action import InfrahubTriggerRuleMutation
+from .mutations.action import InfrahubTriggerRuleMatchMutation, InfrahubTriggerRuleMutation
 from .mutations.artifact_definition import InfrahubArtifactDefinitionMutation
 from .mutations.ipam import (
     InfrahubIPAddressMutation,
@@ -526,6 +526,8 @@ class GraphQLSchemaManager:
                 InfrahubKind.STANDARDWEBHOOK: InfrahubWebhookMutation,
                 InfrahubKind.CUSTOMWEBHOOK: InfrahubWebhookMutation,
                 InfrahubKind.NODETRIGGERRULE: InfrahubTriggerRuleMutation,
+                InfrahubKind.NODETRIGGERATTRIBUTEMATCH: InfrahubTriggerRuleMatchMutation,
+                InfrahubKind.NODETRIGGERRELATIONSHIPMATCH: InfrahubTriggerRuleMatchMutation,
             }
 
             if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
