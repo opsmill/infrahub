@@ -1,7 +1,6 @@
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
@@ -14,34 +13,40 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 import { toast } from "react-toastify";
 
-interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
-  currentObject?: Record<string, AttributeType | RelationshipType>;
-  onCancel?: () => void;
-  onUpdateComplete?: () => void;
-}
+interface NumberPoolFormProps extends NodeFormProps {}
 
-export const NodeTriggerRuleForm = ({ currentObject, isUpdate, ...props }: NumberPoolFormProps) => {
+export const NodeTriggerRuleForm = ({
+  currentObject,
+  isUpdate,
+  onSubmit,
+  onSuccess,
+  ...props
+}: NumberPoolFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const schemaFields = getFormFieldsFromSchema({
-    ...props,
-    initialObject: currentObject,
-    isUpdate,
-  });
+  const fields = useMemo(() => {
+    const schemaFields = getFormFieldsFromSchema({
+      ...props,
+      initialObject: currentObject,
+      isUpdate,
+    });
 
-  const fields = schemaFields.map((field) => {
-    if (field.name === "node_kind") {
-      return {
-        ...field,
-        type: "kind",
-      };
-    }
+    // Replace default_address_type (text) field with a select
+    return schemaFields.map((field) => {
+      if (field.name === "node_kind") {
+        return {
+          ...field,
+          type: "kind",
+        };
+      }
 
-    return field;
-  });
+      return field;
+    });
+  }, [props.schema.kind, currentObject, isUpdate]);
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
@@ -88,8 +93,7 @@ export const NodeTriggerRuleForm = ({ currentObject, isUpdate, ...props }: Numbe
         });
       }
 
-      if (props.onSuccess) await props.onSuccess(result?.data?.[`${NODE_TRIGGER_RULE}Create`]);
-      if (props.onUpdateComplete) await props.onUpdateComplete();
+      if (onSuccess) await onSuccess(result?.data?.[`${NODE_TRIGGER_RULE}Create`]);
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
     }
