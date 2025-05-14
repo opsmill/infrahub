@@ -18,6 +18,7 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import get_log
 
 if TYPE_CHECKING:
     from aio_pika.abc import (
@@ -130,8 +131,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         if message.routing_key in messages.MESSAGE_MAP:
             await execute_message(routing_key=message.routing_key, message_body=message.body, message_bus=self)
         else:
-            # self.service.log.error("Invalid message received", message=f"{message!r}")
-            pass
+            get_log().error("Invalid message received", message=f"{message!r}")
 
     async def on_message(self, message: AbstractIncomingMessage) -> None:
         async with message.process():
@@ -139,14 +139,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             if message.routing_key in messages.MESSAGE_MAP:
                 await execute_message(routing_key=message.routing_key, message_body=message.body, message_bus=self)
             else:
-                # self.service.log.error("Invalid message received", message=f"{message!r}")
-                pass
+                get_log().error("Invalid message received", message=f"{message!r}")
 
     async def on_reconnect(
         self,
         weak: bool = False,  # noqa: ARG002
     ) -> None:
-        # self.service.log.info("Reconnected to RabbitMQ, reinitializing connection")
+        get_log().info("Reconnected to RabbitMQ, reinitializing connection")
         await self._initialize_connection()
 
     async def _initialize_api_server(self) -> None:
