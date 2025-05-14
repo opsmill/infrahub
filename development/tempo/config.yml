@@ -17,7 +17,8 @@ distributor:
         grpc:
 
 ingester:
-  max_block_duration: 5m
+  max_block_duration: 30m
+  complete_block_timeout: 12h
 
 compactor:
   replicas: 1
