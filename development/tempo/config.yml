@@ -23,18 +23,7 @@ ingester:
 compactor:
   replicas: 1
   compaction:
-    block_retention: 1h
-    compaction_interval: 10m
-    compaction_window: 5m
-    max_concurrent: 2
-    max_time_per_tenant: 5m
-    resolution_enabled: true
-    resolution_keep_original: false
-    resolution_levels:
-      - resolution: 1m
-        block_retention: 24h
-      - resolution: 5m
-        block_retention: 168h
+    block_retention: 96h
 
 metrics_generator:
   registry:
