@@ -56,7 +56,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
             new_node_schema=new_node_schema,
             previous_node_schema=previous_node_schema,
             schema_path=migration.path,
-            database=get_database(),
+            database=await get_database(),
         )
 
     async for _, result in batch.execute():
