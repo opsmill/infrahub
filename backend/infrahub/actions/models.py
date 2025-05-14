@@ -71,7 +71,7 @@ class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
 class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
     relationship_name: str
     added: bool
-    peer: str
+    peer: str | None
 
 
 class CoreNodeTriggerRule(CoreTriggerRule):
@@ -138,9 +138,10 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
                 event_trigger.match_related = {
                     "prefect.resource.role": "infrahub.node.relationship_update",
                     "infrahub.field.name": match.relationship_name,
-                    "infrahub.relationship.peer_id": match.peer,
                     "infrahub.relationship.peer_status": peer_status,
                 }
+                if isinstance(match.peer, str):
+                    event_trigger.match_related["infrahub.relationship.peer_id"] = match.peer
 
         if isinstance(trigger_rule.action, CoreGeneratorAction):
             workflow = ExecuteWorkflow(
