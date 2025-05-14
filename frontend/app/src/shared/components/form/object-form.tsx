@@ -123,7 +123,6 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <IpPrefixPoolForm schema={schema} {...props} />;
   }
 
-  console.log("kind: ", kind);
   if (kind === NODE_TRIGGER_RULE) {
     return <NodeTriggerRuleForm schema={schema} {...props} />;
   }
