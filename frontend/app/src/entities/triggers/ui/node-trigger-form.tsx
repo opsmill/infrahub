@@ -35,7 +35,7 @@ export const NodeTriggerRuleForm = ({
       isUpdate,
     });
 
-    // Replace default_address_type (text) field with a select
+    // Replace node_kind (text) field with a select
     return schemaFields.map((field) => {
       if (field.name === "node_kind") {
         return {
