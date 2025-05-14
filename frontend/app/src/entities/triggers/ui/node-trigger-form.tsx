@@ -16,7 +16,7 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { toast } from "react-toastify";
 
-interface NumberPoolFormProps extends NodeFormProps {}
+interface NodeTriggerRuleFormProps extends NodeFormProps {}
 
 export const NodeTriggerRuleForm = ({
   currentObject,
@@ -24,7 +24,7 @@ export const NodeTriggerRuleForm = ({
   onSubmit,
   onSuccess,
   ...props
-}: NumberPoolFormProps) => {
+}: NodeTriggerRuleFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
