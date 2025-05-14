@@ -24,6 +24,8 @@ import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissi
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
+import { NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import { NodeTriggerRuleForm } from "@/entities/triggers/ui/node-trigger-form";
 import { WebhookForm } from "@/entities/webhook/ui/webhook-form";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
@@ -119,6 +121,11 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (kind === IP_PREFIX_POOL) {
     return <IpPrefixPoolForm schema={schema} {...props} />;
+  }
+
+  console.log("kind: ", kind);
+  if (kind === NODE_TRIGGER_RULE) {
+    return <NodeTriggerRuleForm schema={schema} {...props} />;
   }
 
   if (isGeneric) {
