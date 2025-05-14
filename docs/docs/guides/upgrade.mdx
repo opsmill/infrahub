@@ -18,47 +18,30 @@ Follow the instructions below for your current release version and deployment me
 Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand. For detailed information, see our [Backup Guide](./database-backup).
 :::
 
-### Upgrading to Infrahub 1.1 and before
+:::info
+In infrahub 1.2 and later, the upgrade process has been streamlined with a unified upgrade command.
+For earlier versions, please refer to the [release notes](/release-notes/infrahub) for specific upgrade instructions.
+:::
 
-For versions **1.1** and earlier, perform the manual upgrade steps:
-
-```bash
-# Download the desired release
-curl -L -o infrahub.tar.gz https://github.com/infrahub/infrahub/releases/download/v1.1/infrahub-1.1.tar.gz
-tar -xzf infrahub.tar.gz
-
-# Stop the current instance
-invoke demo.stop
-
-# Replace the binary and run migrations
-cp infrahub-1.1/infrahub /usr/local/bin/infrahub
-invoke demo.migrate
-
-# Restart the instance
-invoke demo.start
-```
 
 ### Upgrading to Infrahub 1.2 and after
-
-In version 1.2 the upgrade process has been streamlined with a unified upgrade command:
-
-```bash
-inv upgrade
-```
 
 <Tabs>
 <TabItem value="docker" label="Docker" default>
 
 ```bash
 # Stop the current instance
-invoke demo.stop
+docker compose down
 
-# Rebuild and run migrations
-invoke demo.build
-invoke demo.migrate
+# Retrieve the latest docker-compose version
+curl https://infrahub.opsmill.io > docker-compose.yml
+
+# Run the unified upgrade command
+docker compose run infrahub-server infrahub upgrade
 
 # Restart the instance
-invoke demo.start
+docker compose up -d
+
 ```
 
 </TabItem>
@@ -106,47 +89,23 @@ Follow the instructions below for your current release version and deployment me
 Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand. For detailed information, see our [Backup Guide](./database-backup).
 :::
 
-### Upgrading to Infrahub Enterprise 1.1 and before
-
-For versions **1.1** and earlier, perform the manual upgrade steps:
-
-```bash
-# Download the desired enterprise release
-curl -L -o infrahub-enterprise.tar.gz https://github.com/infrahub/infrahub-enterprise/releases/download/v1.1/infrahub-enterprise-1.1.tar.gz
-tar -xzf infrahub-enterprise.tar.gz
-
-# Stop the current instance
-invoke demo.stop
-
-# Replace the enterprise binary and run migrations
-cp infrahub-enterprise-1.1/infrahub-enterprise /usr/local/bin/infrahub-enterprise
-invoke demo.migrate
-
-# Restart the instance
-invoke demo.start
-```
-
 ### Upgrading to Infrahub Enterprise 1.2 and after
-
-In version 1.2 the upgrade process has been streamlined with a unified upgrade command:
-
-```bash
-inv upgrade
-```
 
 <Tabs>
 <TabItem value="docker" label="Docker" default>
 
 ```bash
 # Stop the current instance
-invoke demo.stop
+docker compose down
 
-# Rebuild and run migrations
-invoke demo.build
-invoke demo.migrate
+# Retrieve the latest docker-compose version
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+
+# Run the unified upgrade command
+docker compose run infrahub-server infrahub upgrade
 
 # Restart the instance
-invoke demo.start
+docker compose up -d
 ```
 
 </TabItem>
@@ -163,20 +122,5 @@ helm upgrade infrahub-enterprise infrahub/enterprise
 ```
 
 <!-- vale on -->
-</TabItem>
-<TabItem value="devdemo" label="Dev/Demo">
-
-```bash
-# Stop the current instance
-invoke demo.stop
-
-# Rebuild and run migrations
-invoke demo.build
-invoke demo.migrate
-
-# Restart the instance
-invoke demo.start
-```
-
 </TabItem>
 </Tabs>
