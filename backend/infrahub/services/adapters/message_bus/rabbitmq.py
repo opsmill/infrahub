@@ -194,7 +194,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def _initialize_git_worker(self) -> None:
         bindings = self.event_bindings + self.broadcasted_event_bindings
-        events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}")
+        events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.events", type="topic", durable=True
@@ -205,7 +205,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
-        self.callback_queue = await self.channel.declare_queue(name=f"worker-callback-{WORKER_IDENTITY}")
+        self.callback_queue = await self.channel.declare_queue(
+            name=f"worker-callback-{WORKER_IDENTITY}", exclusive=True
+        )
         await self.callback_queue.consume(self.on_callback, no_ack=True)
 
         message_channel = await self.connection.channel()
