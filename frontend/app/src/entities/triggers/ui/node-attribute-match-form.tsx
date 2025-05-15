@@ -1,4 +1,3 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -16,6 +15,7 @@ import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
@@ -36,7 +36,7 @@ export const NodeAttributeMatchForm = ({
   onCancel,
   ...props
 }: NodeAttributeMatchFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const { objectKind, objectid } = useParams();
   const { schema } = useSchema(objectKind);
@@ -99,7 +99,7 @@ export const NodeAttributeMatchForm = ({
       const result = await graphqlClient.mutate({
         mutation,
         context: {
-          branch: branch?.name,
+          branch: currentBranch.name,
           date,
         },
       });
