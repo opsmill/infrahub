@@ -53,7 +53,7 @@ class NodeDataLoader(DataLoader[str, Node | None]):
         self.db = db
 
     async def batch_load_fn(self, keys: list[Any]) -> list[Node | None]:
-        async with self.db.start_session() as db:
+        async with self.db.start_session(read_only=True) as db:
             nodes_by_id = await NodeManager.get_many(
                 db=db,
                 ids=keys,

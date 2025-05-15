@@ -1,4 +1,3 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import {
   ObjectTableSelectionToolbarProps,
@@ -7,29 +6,26 @@ import {
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
-export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<T>[];
   data: Array<T>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  hasNextPage: boolean;
-  fetchNextPage: () => void;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
 }
 
-export function InfiniteDataTable<T extends NodeObject>({
+export function DataTable<T extends NodeObject>({
   columns,
   data,
   isLoading,
   renderEmpty,
-  hasNextPage,
-  fetchNextPage,
   toolbarActions,
   ...props
-}: InfiniteDataTableProps<T>) {
+}: DataTableProps<T>) {
   const { isAuthenticated } = useAuth();
-  const tableContainerRef = React.useRef<HTMLTableElement>(null);
+
   const table = useReactTable({
     columns,
     data,
@@ -44,23 +40,6 @@ export function InfiniteDataTable<T extends NodeObject>({
     }
   }, [isAuthenticated]);
 
-  const fetchMoreOnBottomReached = React.useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      if (containerRefElement) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 250px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 250 && !isLoading && hasNextPage) {
-          fetchNextPage();
-        }
-      }
-    },
-    [fetchNextPage, isLoading]
-  );
-
-  React.useEffect(() => {
-    fetchMoreOnBottomReached(tableContainerRef.current);
-  }, [fetchMoreOnBottomReached]);
-
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
   const style = React.useMemo<React.CSSProperties>(
@@ -73,13 +52,7 @@ export function InfiniteDataTable<T extends NodeObject>({
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
   return (
-    <div
-      className="grid content-start overflow-auto"
-      style={style}
-      onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
-      ref={tableContainerRef}
-      {...props}
-    >
+    <div className="grid content-start" style={style} {...props}>
       {selectedRows.length > 0 && (
         <ObjectTableToolbar
           selectedRows={selectedRows}

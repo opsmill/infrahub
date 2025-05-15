@@ -118,6 +118,8 @@ REST
 resources
 schema's
 schema_mapping
+scrollbar
+scrollable
 sdk
 subcommand
 subnet

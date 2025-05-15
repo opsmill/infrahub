@@ -24,10 +24,12 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 
 echo ""
-echo "Benchmark results:"
+echo "System: $(yq -crM .SystemInformation results_cpu.yml)"
 echo ""
 
-echo "CPU: $(yq .SystemInformation.Manufacturer results_cpu.yml) $(yq .SystemInformation.Processor results_cpu.yml)"
+echo ""
+echo "Benchmark results:"
+echo ""
 
 [ $TOTAL_RAM -lt $RAM_LIMIT ] && echo -n $RED || echo -n $GREEN
 echo -n "Memory: ${TOTAL_RAM} MB - Required: ${RAM_LIMIT} MB "

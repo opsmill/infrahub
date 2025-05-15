@@ -34,7 +34,7 @@ class Relationships(ObjectType):
 
         response: dict[str, Any] = {"edges": [], "count": None}
 
-        async with graphql_context.db.start_session() as db:
+        async with graphql_context.db.start_session(read_only=True) as db:
             query = await RelationshipGetByIdentifierQuery.init(
                 db=db,
                 branch=graphql_context.branch,
