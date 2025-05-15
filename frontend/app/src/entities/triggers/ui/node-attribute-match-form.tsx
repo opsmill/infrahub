@@ -16,13 +16,14 @@ import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
+import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { isRequired } from "@/shared/components/form/utils/validation";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
+import { Skeleton } from "@/shared/components/skeleton";
 import { useParams } from "react-router";
 import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "../constants";
 
@@ -37,6 +38,9 @@ export const NodeAttributeMatchForm = ({
 }: NodeAttributeMatchFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const { objectKind, objectid } = useParams();
+  const { schema } = useSchema(objectKind);
+  const { data, isPending } = useGetObject({ objectSchema: schema, objectId: objectid });
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
@@ -44,13 +48,21 @@ export const NodeAttributeMatchForm = ({
     isUpdate,
   });
 
+  const attributeField = schemaFields.find((field) => {
+    return field.name === "attribute_name";
+  });
+
   const fields = schemaFields.filter((field) => {
     return field.name !== "attribute_name";
   });
 
   const defaultValues = {
-    action: getCurrentFieldValue("action", currentObject),
-    decision: getCurrentFieldValue("decision", currentObject),
+    attribute_name: getCurrentFieldValue("attribute_name", currentObject),
+    value: getCurrentFieldValue("value", currentObject),
+    value_previous: getCurrentFieldValue("value_previous", currentObject),
+    value_match: getCurrentFieldValue("value_match", currentObject),
+    member_of_group: getCurrentFieldValue("member_of_group", currentObject),
+    trigger: getCurrentFieldValue("trigger", currentObject),
   };
 
   const form = useForm<FieldValues>({
@@ -114,7 +126,11 @@ export const NodeAttributeMatchForm = ({
   return (
     <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <NodeAttributeField />
+        <NodeAttributeField
+          field={attributeField}
+          kind={data?.node_kind?.value}
+          isLoading={isPending}
+        />
 
         {fields.map((field) => {
           return <DynamicInput key={field.name} {...field} />;
@@ -134,27 +150,30 @@ export const NodeAttributeMatchForm = ({
   );
 };
 
-const NodeAttributeField = () => {
-  const { objectKind } = useParams();
-  const { schema } = useSchema(objectKind);
+const NodeAttributeField = ({ field, kind, isLoading }: { kind?: string; isLoading: boolean }) => {
+  const { schema } = useSchema(kind);
 
-  const objectAttributes = schema?.attributes;
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <LabelFormField
+          label={"Attribute Name"}
+          required={!!field.rules?.required}
+          description={field.description}
+        />
+
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
 
   const attributeOptions: Array<DropdownOption> =
-    objectAttributes?.map((attribute) => {
+    schema?.attributes?.map((attribute) => {
       return {
         value: attribute.name,
         label: attribute.label ?? attribute.name,
       };
     }) ?? [];
 
-  return (
-    <DropdownField
-      defaultValue={DEFAULT_FORM_FIELD_VALUE}
-      rules={{ validate: { required: isRequired } }}
-      name="attribute_name"
-      label="Attribute Name"
-      items={attributeOptions}
-    />
-  );
+  return <DropdownField {...field} items={attributeOptions} />;
 };
