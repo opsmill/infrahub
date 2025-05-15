@@ -7,6 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.length import AttributeLengthChecker, AttributeLengthUpdateValidatorQuery
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
@@ -199,7 +200,7 @@ async def test_validator(
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,
-        constraint_name="attribute.parameters.min_length.update",
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value,
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         schema_branch=SchemaBranch(cache={}),

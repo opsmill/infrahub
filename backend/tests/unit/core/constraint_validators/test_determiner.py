@@ -8,6 +8,7 @@ from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 
 @pytest.fixture
@@ -184,7 +185,7 @@ class TestConstraintDeterminer:
             ),
         )
         max_length_param_constraint_info = SchemaUpdateConstraintInfo(
-            constraint_name="attribute.parameters.max_length.update",
+            constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
             path=SchemaPath(
                 path_type=SchemaPathType.ATTRIBUTE,
                 schema_kind="TestPerson",

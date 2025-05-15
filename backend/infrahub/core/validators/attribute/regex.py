@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
@@ -78,7 +79,7 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         return "attribute.regex.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in (self.name, "attribute.parameters.regex.update")
+        return request.constraint_name in (self.name, ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value)
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []

@@ -12,6 +12,7 @@ from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
 from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
@@ -318,7 +319,7 @@ async def test_schema_integrity(
             "kind": "TestPerson",
             "name": "schema/TestPerson/name/parameters.regex",
             "path": "schema/TestPerson/name/parameters.regex",
-            "type": "attribute.parameters.regex.update",
+            "type": ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
             # ruff: noqa: E501
             "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
         }

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
@@ -81,8 +82,8 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
         return request.constraint_name in (
             "attribute.min_length.update",
             "attribute.max_length.update",
-            "attribute.parameters.min_length.update",
-            "attribute.parameters.max_length.update",
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
