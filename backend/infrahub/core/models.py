@@ -262,6 +262,14 @@ class SchemaUpdateValidationResult(BaseModel):
 
                 if isinstance(prop_diff, HashableModelDiff):
                     for param_field_name in prop_diff.changed:
+                        # override field_update if this field has its own json_schema_extra.update
+                        try:
+                            prop_field = getattr(field, prop_name)
+                            param_field_info = prop_field.model_fields[param_field_name]
+                            param_field_update = str(param_field_info.json_schema_extra.get("update"))
+                        except (AttributeError, KeyError):
+                            param_field_update = None
+
                         schema_path = SchemaPath(
                             schema_kind=schema.kind,
                             path_type=path_type,
@@ -271,7 +279,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
                         self._process_field(
                             schema_path=schema_path,
-                            field_update=field_update,
+                            field_update=param_field_update or field_update,
                         )
                     continue
 
