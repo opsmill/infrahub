@@ -24,7 +24,6 @@ from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
@@ -32,12 +31,10 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_message_bus, set_component_type
+from infrahub.workers.dependencies import get_cache, get_database, get_message_bus, get_workflow, set_component_type
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -56,26 +53,18 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         )
 
     # Initialize database Driver and load local registry
-    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database = application.state.db = await get_database()
 
     build_component_registry()
 
-    workflow = config.OVERRIDE.workflow or (
-        WorkflowWorkerExecution()
-        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
-        else WorkflowLocalExecution()
-    )
+    workflow = get_workflow()
     component_type = ComponentType.API_SERVER
     set_component_type(component_type=component_type)
     message_bus = await get_message_bus()
 
-    cache = config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
+    cache = await get_cache()
     service = await InfrahubServices.new(
-        cache=cache,
-        database=database,
-        message_bus=message_bus,
-        workflow=workflow,
-        component_type=component_type,
+        cache=cache, database=database, message_bus=message_bus, workflow=workflow, component_type=component_type
     )
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
