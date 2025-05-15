@@ -75,12 +75,14 @@ async def test_gather_trigger_gather_trigger_action_rules_node_attribute(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.updated"},
         match={"infrahub.node.kind": "BuiltinTag", "infrahub.branch.name": "main"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.attribute_update",
-            "infrahub.field.name": "description",
-            "infrahub.attribute.action": ["added", "updated", "removed"],
-            "infrahub.attribute.value": "something_new",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "description",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+                "infrahub.attribute.value": "something_new",
+            }
+        ],
     )
 
     attribute_match.value_match.value = "value_previous"
@@ -92,12 +94,14 @@ async def test_gather_trigger_gather_trigger_action_rules_node_attribute(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.updated"},
         match={"infrahub.node.kind": "BuiltinTag", "infrahub.branch.name": "main"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.attribute_update",
-            "infrahub.field.name": "description",
-            "infrahub.attribute.action": ["added", "updated", "removed"],
-            "infrahub.attribute.value_previous": "something_old",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "description",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+                "infrahub.attribute.value_previous": "something_old",
+            }
+        ],
     )
 
     attribute_match.value_match.value = "value_full"
@@ -110,13 +114,15 @@ async def test_gather_trigger_gather_trigger_action_rules_node_attribute(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.updated"},
         match={"infrahub.node.kind": "BuiltinTag", "infrahub.branch.name": "main"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.attribute_update",
-            "infrahub.field.name": "description",
-            "infrahub.attribute.action": ["added", "updated", "removed"],
-            "infrahub.attribute.value": "something_new",
-            "infrahub.attribute.value_previous": "something_old",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "description",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+                "infrahub.attribute.value": "something_new",
+                "infrahub.attribute.value_previous": "something_old",
+            }
+        ],
     )
 
     main_node_trigger_rule.branch_scope.value = "other_branches"
@@ -129,13 +135,51 @@ async def test_gather_trigger_gather_trigger_action_rules_node_attribute(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.updated"},
         match={"infrahub.node.kind": "BuiltinTag", "infrahub.branch.name": "!main"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.attribute_update",
-            "infrahub.field.name": "description",
-            "infrahub.attribute.action": ["added", "updated", "removed"],
-            "infrahub.attribute.value": "something_new",
-            "infrahub.attribute.value_previous": "something_old",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "description",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+                "infrahub.attribute.value": "something_new",
+                "infrahub.attribute.value_previous": "something_old",
+            }
+        ],
+    )
+
+    second_attribute_match = await Node.init(db=db, schema=CoreNodeTriggerAttributeMatch)
+    await second_attribute_match.new(
+        db=db,
+        attribute_name="another_attribute",
+        value="the-new-value",
+        value_previous="the-old-value",
+        value_match="value_full",
+        trigger=main_node_trigger_rule,
+    )
+    await second_attribute_match.save(db=db)
+
+    triggers = await gather_trigger_action_rules(db=db)
+    assert len(triggers) == 1
+    automation = triggers[0]
+
+    assert automation.trigger == EventTrigger(
+        events={"infrahub.node.updated"},
+        match={"infrahub.node.kind": "BuiltinTag", "infrahub.branch.name": "!main"},
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "description",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+                "infrahub.attribute.value": "something_new",
+                "infrahub.attribute.value_previous": "something_old",
+            },
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "another_attribute",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+                "infrahub.attribute.value": "the-new-value",
+                "infrahub.attribute.value_previous": "the-old-value",
+            },
+        ],
     )
 
     main_node_trigger_rule.active.value = False
@@ -196,12 +240,14 @@ async def test_gather_trigger_gather_trigger_action_rules_node_relationship(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.created"},
         match={"infrahub.node.kind": "TestCar"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.relationship_update",
-            "infrahub.field.name": "owner",
-            "infrahub.relationship.peer_id": car_owner.id,
-            "infrahub.relationship.peer_status": "added",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.relationship_update",
+                "infrahub.field.name": "owner",
+                "infrahub.relationship.peer_id": car_owner.id,
+                "infrahub.relationship.peer_status": "added",
+            }
+        ],
     )
 
     relationship_match.added.value = False
@@ -213,12 +259,14 @@ async def test_gather_trigger_gather_trigger_action_rules_node_relationship(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.created"},
         match={"infrahub.node.kind": "TestCar"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.relationship_update",
-            "infrahub.field.name": "owner",
-            "infrahub.relationship.peer_id": car_owner.id,
-            "infrahub.relationship.peer_status": "removed",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.relationship_update",
+                "infrahub.field.name": "owner",
+                "infrahub.relationship.peer_id": car_owner.id,
+                "infrahub.relationship.peer_status": "removed",
+            }
+        ],
     )
 
     main_node_trigger_rule.branch_scope.value = "other_branches"
@@ -232,12 +280,14 @@ async def test_gather_trigger_gather_trigger_action_rules_node_relationship(
     assert automation.trigger == EventTrigger(
         events={"infrahub.node.deleted"},
         match={"infrahub.node.kind": "TestCar", "infrahub.branch.name": "!main"},
-        match_related={
-            "prefect.resource.role": "infrahub.node.relationship_update",
-            "infrahub.field.name": "owner",
-            "infrahub.relationship.peer_id": car_owner.id,
-            "infrahub.relationship.peer_status": "removed",
-        },
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.relationship_update",
+                "infrahub.field.name": "owner",
+                "infrahub.relationship.peer_id": car_owner.id,
+                "infrahub.relationship.peer_status": "removed",
+            }
+        ],
     )
 
     main_node_trigger_rule.active.value = False
