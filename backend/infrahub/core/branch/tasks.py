@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 from uuid import uuid4
 
@@ -342,6 +343,12 @@ async def validate_branch(branch: str, service: InfrahubServices) -> State:
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
 async def create_branch(model: BranchCreateModel, context: InfrahubContext, service: InfrahubServices) -> None:
     await add_tags(branches=[model.name])
+
+    value = str(uuid4())
+
+    tasks_log = logging.getLogger("infrahub.tasks")
+    for i in range(85_000):
+        tasks_log.info(f"Demo log entry {i + 1} {value=}")
 
     async with service.database.start_session() as db:
         try:

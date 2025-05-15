@@ -36,6 +36,7 @@ from .models import FlowLogs, FlowProgress, RelatedNodesInfo
 log = get_logger()
 
 NB_LOGS_LIMIT = 10_000
+PREFECT_MAX_LOGS_PER_CALL = 200
 
 
 class PrefectTask:
@@ -85,25 +86,42 @@ class PrefectTask:
         return related_nodes
 
     @classmethod
-    async def _get_logs(cls, client: PrefectClient, flow_ids: list[UUID]) -> FlowLogs:
-        offset = 0
-        all_logs = []
-
-        while True and offset < NB_LOGS_LIMIT:
-            # Retrieve logs with the current offset, without specifying a limit
-            logs_batch = await client.read_logs(
-                log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)), offset=offset
-            )
-            if not logs_batch:
-                break
-
-            all_logs.extend(logs_batch)
-            offset += len(logs_batch)
-
-        if offset >= NB_LOGS_LIMIT:
-            log.warning(f"Could not retrieve all logs for flows {flow_ids}, number of logs exceeded {NB_LOGS_LIMIT}")
+    async def _get_logs(
+        cls, client: PrefectClient, flow_ids: list[UUID], log_limit: int | None, log_offset: int | None
+    ) -> FlowLogs:
+        """
+        Return the logs for a flow run, based on log_limit and log_offset.
+        At most, NB_LOGS_LIMIT logs will be returned per flow.
+        """
 
         logs_flow = FlowLogs()
+
+        log_limit = log_limit if log_limit is not None else NB_LOGS_LIMIT
+        log_offset = log_offset or 0
+        current_offset = log_offset
+
+        if log_limit > NB_LOGS_LIMIT:
+            raise ValueError("log_limit cannot be greater than NB_LOGS_LIMIT")
+
+        all_logs = []
+
+        # Fetch the logs in batches of PREFECT_MAX_LOGS_PER_CALL, as prefect does not allow to fetch more logs at once.
+        remaining = min(log_limit, NB_LOGS_LIMIT)
+        while remaining > 0:
+            batch_limit = min(PREFECT_MAX_LOGS_PER_CALL, remaining)
+            logs_batch = await client.read_logs(
+                log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)),
+                offset=current_offset,
+                limit=batch_limit,
+            )
+            all_logs.extend(logs_batch)
+            nb_fetched = len(logs_batch)
+            if nb_fetched < batch_limit:
+                break  # No more logs to fetch
+
+            current_offset += nb_fetched
+            remaining -= nb_fetched
+
         for flow_log in all_logs:
             if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
@@ -206,6 +224,8 @@ class PrefectTask:
         branch: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
+        log_limit: int | None = None,
+        log_offset: int | None = None,
     ) -> dict[str, Any]:
         nodes: list[dict] = []
         count = None
@@ -237,7 +257,9 @@ class PrefectTask:
                     sort=FlowRunSort.START_TIME_DESC,
                 )
                 if log_fields:
-                    logs_flow = await cls._get_logs(client=client, flow_ids=[flow.id for flow in flows])
+                    logs_flow = await cls._get_logs(
+                        client=client, flow_ids=[flow.id for flow in flows], log_limit=log_limit, log_offset=log_offset
+                    )
 
                 if "progress" in node_fields:
                     progress_flow = await cls._get_progress(client=client, flow_ids=[flow.id for flow in flows])
@@ -283,7 +305,7 @@ class PrefectTask:
                                 "updated_at": flow.updated.to_iso8601_string(),  # type: ignore
                                 "start_time": flow.start_time.to_iso8601_string() if flow.start_time else None,
                                 "id": flow.id,
-                                "logs": {"edges": logs},
+                                "logs": {"edges": logs, "count": len(logs)},
                             }
                         }
                     )
