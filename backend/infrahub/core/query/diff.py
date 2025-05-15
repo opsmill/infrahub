@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Generator
 
 from infrahub import config
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -128,12 +129,13 @@ CALL {
     // add base branch paths before branched_from, if they exist
     // -------------------------------------
     WITH n, attr_rel, r_node, r_prop
+    // 'base_n' instead of 'n' here to get previous value for node with a migrated kind/inheritance
     OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF {branch: $base_branch_name}]
-        -(n)-[base_r_node {branch: $base_branch_name}]
+        -(base_n {uuid: n.uuid})-[base_r_node {branch: $base_branch_name}]
         -(attr_rel)-[base_r_prop {branch: $base_branch_name}]->(base_prop)
     WHERE type(base_r_node) = type(r_node)
     AND type(base_r_prop) = type(r_prop)
-    AND [%(id_func)s(n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
+    AND [%(id_func)s(base_n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
     AND all(
         r in relationships(latest_base_path)
         WHERE r.from < $branch_from_time
@@ -143,7 +145,7 @@ CALL {
     // the migration leaves two nodes with the same UUID linked to the same Relationship
     // ------------------------
     AND (
-        n.uuid IS NULL OR base_prop.uuid IS NULL OR n.uuid <> base_prop.uuid
+        base_n.uuid IS NULL OR base_prop.uuid IS NULL OR base_n.uuid <> base_prop.uuid
         OR type(base_r_node) <> "IS_RELATED" OR type(base_r_prop) <> "IS_RELATED"
     )
     WITH latest_base_path, base_r_root, base_r_node, base_r_prop
@@ -277,7 +279,7 @@ WITH p, q, diff_rel, CASE
     WHEN $new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
-ORDER BY p.uuid DESC
+ORDER BY %(id_func)s(p) DESC
 SKIP $offset
 LIMIT $limit
 // -------------------------------------
@@ -314,15 +316,15 @@ CALL {
     AND node.branch_support IN [$branch_aware, $branch_agnostic]
     AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-    AND ALL(
-        r in [r_node, r_prop]
-        WHERE r.from < $to_time AND r.branch = top_diff_rel.branch
-    )
     AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
-    AND top_diff_rel.status = r_node.status
-    AND top_diff_rel.status = r_prop.status
+    AND r_node.from < $to_time
+    AND r_node.branch = top_diff_rel.branch
+    AND r_node.status = top_diff_rel.status
+    AND r_prop.from < $to_time
+    AND r_prop.branch = top_diff_rel.branch
+    AND r_prop.status = top_diff_rel.status
     // ------------------------
     // special handling for nodes that had their kind updated,
     // the migration leaves two nodes with the same UUID linked to the same Relationship
@@ -717,7 +719,7 @@ CALL {
     CALL {
         WITH n, row_from_time
         OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
-        WHERE row_from_time <= r_root_deleted.from < $to_time
+        WHERE r_root_deleted.from < $to_time
         WITH r_root_deleted
         ORDER BY r_root_deleted.status DESC
         LIMIT 1
@@ -745,3 +747,85 @@ WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS diff_path, has
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
         self.add_to_query("UNWIND diff_rel_paths AS diff_path")
         self.return_labels = ["DISTINCT diff_path AS diff_path", "has_more_data"]
+
+
+@dataclass
+class MigratedKindNode:
+    uuid: str
+    kind: str
+    db_id: str
+    from_time: Timestamp
+    action: DiffAction
+    has_more_data: bool
+
+
+class DiffMigratedKindNodesQuery(DiffCalculationQuery):
+    name = "diff_migrated_kind_nodes_query"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        params_dict = self.get_params()
+        self.params.update(params_dict)
+        migrated_kind_nodes_query = """
+// -------------------------------------
+// Identify nodes added/removed on branch in the time frame
+// -------------------------------------
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+AND n.branch_support = $branch_aware
+WITH DISTINCT n.uuid AS node_uuid, %(id_func)s(n) AS db_id
+WITH node_uuid, count(*) AS num_nodes_with_uuid
+WHERE num_nodes_with_uuid > 1
+// -------------------------------------
+// Limit the number of nodes
+// -------------------------------------
+WITH node_uuid
+ORDER BY node_uuid
+SKIP $offset
+LIMIT $limit
+WITH collect(node_uuid) AS node_uuids
+WITH node_uuids, size(node_uuids) = $limit AS has_more_data
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE n.uuid IN node_uuids
+AND (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+// -------------------------------------
+// Ignore node created and deleted on this branch
+// -------------------------------------
+CALL {
+    WITH n
+    OPTIONAL MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n)
+    WITH diff_rel
+    ORDER BY diff_rel.from ASC
+    WITH collect(diff_rel.status) AS statuses
+    RETURN statuses = ["active", "deleted"] AS intra_branch_update
+}
+WITH n.uuid AS uuid, n.kind AS kind, %(id_func)s(n) AS db_id, diff_rel.from_time AS from_time, diff_rel.status AS status, has_more_data
+WHERE intra_branch_update = FALSE
+        """ % {"id_func": db.get_id_function_name()}
+        self.add_to_query(query=migrated_kind_nodes_query)
+        self.return_labels = [
+            "uuid",
+            "kind",
+            "db_id",
+            "from_time",
+            "status",
+            "has_more_data",
+        ]
+
+    def get_migrated_kind_nodes(self) -> Generator[MigratedKindNode, None, None]:
+        for result in self.get_results():
+            yield MigratedKindNode(
+                uuid=result.get_as_type("uuid", return_type=str),
+                kind=result.get_as_type("kind", return_type=str),
+                db_id=result.get_as_type("db_id", return_type=str),
+                from_time=result.get_as_type("from_time", return_type=Timestamp),
+                action=DiffAction.REMOVED
+                if result.get_as_type("status", return_type=str).lower() == RelationshipStatus.DELETED.value
+                else DiffAction.ADDED,
+                has_more_data=result.get_as_type("has_more_data", bool),
+            )

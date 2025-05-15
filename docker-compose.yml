@@ -54,6 +54,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY: ${INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY:-0.01}
   INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY: ${INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY:-5}
   INFRAHUB_DB_PASSWORD: ${INFRAHUB_DB_PASSWORD:-admin}
+  INFRAHUB_DB_POLICY:
   INFRAHUB_DB_PORT: ${INFRAHUB_DB_PORT:-7687}
   INFRAHUB_DB_PROTOCOL: ${INFRAHUB_DB_PROTOCOL:-bolt}
   INFRAHUB_DB_QUERY_SIZE_LIMIT: ${INFRAHUB_DB_QUERY_SIZE_LIMIT:-5000}
@@ -179,7 +180,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.9}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.10}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -212,7 +213,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.9}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.10}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -258,7 +259,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.9}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.2.10}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

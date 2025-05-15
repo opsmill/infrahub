@@ -476,8 +476,6 @@ async def validate_database(
 
 
 async def get_db(retry: int = 0) -> AsyncDriver:
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
-
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
@@ -485,7 +483,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
     driver = AsyncGraphDatabase.driver(
-        URI,
+        config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,

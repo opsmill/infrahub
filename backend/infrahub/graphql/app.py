@@ -155,7 +155,7 @@ class InfrahubGraphQLApp:
 
             db = websocket.app.state.db
 
-            async with db.start_session() as db:
+            async with db.start_session(read_only=True) as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
                 branch = await registry.get_branch(db=db, branch=branch_name)
 

@@ -1,8 +1,9 @@
 import { SEARCH_QUERY_NAME } from "@/config/constants";
 import { POOLS_PEER } from "@/entities/ipam/constants";
 import { SEARCH } from "@/entities/nodes/api/search";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -64,15 +65,22 @@ type NodesOptionsProps = {
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
   const { isGeneric, schema } = useSchema(node.kind);
-  const { data, loading, error } = useObjectDetails(schema!, node.id);
+  const {
+    data: objectDetailsData,
+    isPending,
+    error,
+  } = useGetObject({
+    objectSchema: schema!,
+    objectId: node.id,
+    getRelationshipsVisible: (rel) => rel,
+  });
 
   if (!schema) return null;
 
-  if (loading) return <SearchResultNodeSkeleton />;
+  if (isPending) return <SearchResultNodeSkeleton />;
 
   if (error) return null;
 
-  const objectDetailsData = schema && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
 
   const useIpNamespace =
@@ -99,7 +107,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
       <div className="grow text-sm overflow-auto">
         <div className="flex justify-between">
           <span className="mr-1 font-semibold text-custom-blue-800">
-            {objectDetailsData?.display_label}
+            {getNodeLabel(objectDetailsData)}
           </span>
 
           <div className="inline-flex items-center gap-1">

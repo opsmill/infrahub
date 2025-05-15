@@ -437,3 +437,49 @@ async def test_relationship_assign_from_pool(
     await obj.save(db=db)
 
     assert await obj.prefix.get_peer(db=db)
+
+
+async def test_relationship_timestamp_changes(
+    db: InfrahubDatabase, person_jack_main: Node, tag_blue_main: Node, tag_red_main: Node, branch: Branch
+):
+    # test going back in time after adding a relationship
+    before_add = Timestamp()
+    person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
+    await person_jack.tags.update(db=db, data=[tag_blue_main.id])
+    await person_jack.save(db=db)
+    before_add_person_jack = await NodeManager.get_one(
+        db=db, branch=branch, id=person_jack_main.id, at=before_add, prefetch_relationships=True
+    )
+    tag_rels = await before_add_person_jack.tags.get_relationships(db=db)
+    assert not tag_rels
+
+    # test going back in time after deleting a relationship
+    before_remove = Timestamp()
+    person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
+    await person_jack.tags.update(db=db, data=[None])
+    await person_jack.save(db=db)
+    before_remove_person_jack = await NodeManager.get_one(
+        db=db, branch=branch, id=person_jack_main.id, at=before_remove, prefetch_relationships=True
+    )
+    tag_rels = await before_remove_person_jack.tags.get_relationships(db=db)
+    assert len(tag_rels) == 1
+    assert [r.peer_id for r in tag_rels] == [tag_blue_main.id]
+
+    # test with manually set save time
+    save_time = Timestamp()
+    before_save = save_time.add(microseconds=-1)
+    after_save = save_time.add(microseconds=1)
+    person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
+    await person_jack.tags.update(db=db, data=[tag_red_main.id])
+    await person_jack.save(db=db, at=save_time)
+    before_save_person_jack = await NodeManager.get_one(
+        db=db, branch=branch, id=person_jack_main.id, at=before_save, prefetch_relationships=True
+    )
+    tag_rels = await before_save_person_jack.tags.get_relationships(db=db)
+    assert len(tag_rels) == 0
+    after_save_person_jack = await NodeManager.get_one(
+        db=db, branch=branch, id=person_jack_main.id, at=after_save, prefetch_relationships=True
+    )
+    tag_rels = await after_save_person_jack.tags.get_relationships(db=db)
+    assert len(tag_rels) == 1
+    assert [r.peer_id for r in tag_rels] == [tag_red_main.id]

@@ -20,7 +20,7 @@ log = get_logger()
 async def update_diff(model: RequestDiffUpdate, service: InfrahubServices) -> None:
     await add_tags(branches=[model.branch_name])
 
-    async with service.database.start_session() as db:
+    async with service.database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
         base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=db, branch=model.branch_name)
@@ -40,7 +40,7 @@ async def update_diff(model: RequestDiffUpdate, service: InfrahubServices) -> No
 async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices) -> None:
     await add_tags(branches=[branch_name])
 
-    async with service.database.start_session() as db:
+    async with service.database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
         base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=db, branch=branch_name)
@@ -53,7 +53,7 @@ async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices
 async def refresh_diff_all(branch_name: str, context: InfrahubContext, service: InfrahubServices) -> None:
     await add_tags(branches=[branch_name])
 
-    async with service.database.start_session() as db:
+    async with service.database.start_session(read_only=True) as db:
         component_registry = get_component_registry()
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)

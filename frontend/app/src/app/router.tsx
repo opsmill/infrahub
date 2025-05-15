@@ -7,7 +7,7 @@ import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
-import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
+import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 import queryString from "query-string";
 import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
