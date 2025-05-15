@@ -4,7 +4,7 @@ import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
-import { FormFieldValue } from "@/shared/components/form/type";
+import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -150,7 +150,13 @@ export const NodeAttributeMatchForm = ({
   );
 };
 
-const NodeAttributeField = ({ field, kind, isLoading }: { kind?: string; isLoading: boolean }) => {
+interface NodeAttributeFieldProps {
+  kind?: string;
+  isLoading?: boolean;
+  field?: DynamicFieldProps;
+}
+
+const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps) => {
   const { schema } = useSchema(kind);
 
   if (isLoading) {
@@ -158,8 +164,8 @@ const NodeAttributeField = ({ field, kind, isLoading }: { kind?: string; isLoadi
       <div className="space-y-2">
         <LabelFormField
           label={"Attribute Name"}
-          required={!!field.rules?.required}
-          description={field.description}
+          required={!!field?.rules?.required}
+          description={field?.description}
         />
 
         <Skeleton className="h-10 w-full" />
