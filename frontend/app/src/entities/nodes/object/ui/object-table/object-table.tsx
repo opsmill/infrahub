@@ -16,19 +16,24 @@ export interface ObjectsTableProps {
 
 export const ObjectTable = ({ schema, permission }: ObjectsTableProps) => {
   const [filters] = useFilters();
-  const { isFetching, data, fetchNextPage, hasNextPage } = useObjects({ schema, filters });
+  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
+    schema,
+    filters,
+  });
 
   const columns = React.useMemo(() => {
     return [...getObjectTableColumns(schema), getObjectActionsColumn(permission)];
   }, [schema.hash]);
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
+  const isLoading = isPending || isFetchingNextPage;
+
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columns={columns}
         data={flatData}
-        isLoading={isFetching}
+        isLoading={isLoading}
         renderEmpty={() => <ObjectTableEmpty schema={schema} />}
         data-testid="object-items"
       />

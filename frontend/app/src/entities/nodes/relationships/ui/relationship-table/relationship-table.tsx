@@ -21,14 +21,15 @@ export function RelationshipTable({
   ...props
 }: RelationshipTableProps) {
   const [filters] = useFilters();
-  const { data, isFetching, fetchNextPage, hasNextPage } = useObjectRelationships({
-    relationshipSchema,
-    parentId,
-    parentKind,
-    relationshipName,
-    filters,
-    ...props,
-  });
+  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } =
+    useObjectRelationships({
+      relationshipSchema,
+      parentId,
+      parentKind,
+      relationshipName,
+      filters,
+      ...props,
+    });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
@@ -45,12 +46,14 @@ export function RelationshipTable({
     ];
   }, [relationshipSchema.hash, flatData.length]);
 
+  const isLoading = isPending || isFetchingNextPage;
+
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columns={columns}
         data={flatData}
-        isLoading={isFetching}
+        isLoading={isLoading}
         renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
       />
     </InfiniteScroll>
