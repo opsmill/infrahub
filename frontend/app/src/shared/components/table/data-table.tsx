@@ -2,48 +2,26 @@ import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/obj
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 
-export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<T>[];
   data: Array<T>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  hasNextPage: boolean;
-  fetchNextPage: () => void;
 }
 
-export function InfiniteDataTable<T extends object>({
+export function DataTable<T extends object>({
   columns,
   data,
   isLoading,
   renderEmpty,
-  hasNextPage,
-  fetchNextPage,
   ...props
-}: InfiniteDataTableProps<T>) {
-  const tableContainerRef = React.useRef<HTMLTableElement>(null);
+}: DataTableProps<T>) {
   const table = useReactTable({
     columns,
     data,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
   });
-
-  const fetchMoreOnBottomReached = React.useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      if (containerRefElement) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 250px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 250 && !isLoading && hasNextPage) {
-          fetchNextPage();
-        }
-      }
-    },
-    [fetchNextPage, isLoading]
-  );
-
-  React.useEffect(() => {
-    fetchMoreOnBottomReached(tableContainerRef.current);
-  }, [fetchMoreOnBottomReached]);
 
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
@@ -55,13 +33,7 @@ export function InfiniteDataTable<T extends object>({
   );
 
   return (
-    <div
-      className="grid content-start overflow-auto"
-      style={style}
-      onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
-      ref={tableContainerRef}
-      {...props}
-    >
+    <div className="grid content-start" style={style} {...props}>
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
