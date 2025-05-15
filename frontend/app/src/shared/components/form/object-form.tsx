@@ -128,7 +128,6 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <NodeTriggerRuleForm schema={schema} {...props} />;
   }
 
-  console.log("kind: ", kind);
   if (kind === NODE_TRIGGER_ATTRIBUTE_MATCH) {
     return <NodeAttributeMatchForm schema={schema} {...props} />;
   }
