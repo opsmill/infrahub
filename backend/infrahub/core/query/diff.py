@@ -784,8 +784,7 @@ AND (
 // -------------------------------------
 // Ignore node created and deleted on this branch
 // -------------------------------------
-CALL {
-    WITH n
+CALL (n) {
     OPTIONAL MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n)
     WITH diff_rel
     ORDER BY diff_rel.from ASC

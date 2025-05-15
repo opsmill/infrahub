@@ -418,8 +418,7 @@ class NodeDeleteQuery(NodeQuery):
             node_filter, node_filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
             node_query_match = """
                 MATCH (n:Node { uuid: $uuid })
-                CALL {
-                    WITH n
+                CALL (n) {
                     MATCH (n)-[r:IS_PART_OF]->(:Root)
                     WHERE %(node_filter)s
                     RETURN r.status = "active" AS is_active
@@ -690,14 +689,12 @@ class NodeListGetRelationshipsQuery(Query):
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
             WHERE ($inbound_identifiers IS NULL OR rel.name in $inbound_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
-            CALL {
-                WITH n, rel, peer
+            CALL (n, rel, peer) {
                 MATCH (n)<-[r:IS_RELATED]-(rel)
                 WHERE (%(filters)s)
                 WITH n, rel, peer, r
@@ -721,8 +718,7 @@ class NodeListGetRelationshipsQuery(Query):
             WHERE ($outbound_identifiers IS NULL OR rel.name in $outbound_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
-            CALL {
-                WITH n, rel, peer
+            CALL (n, rel, peer) {
                 MATCH (n)-[r:IS_RELATED]->(rel)
                 WHERE (%(filters)s)
                 WITH n, rel, peer, r
@@ -746,8 +742,7 @@ class NodeListGetRelationshipsQuery(Query):
             WHERE ($bidirectional_identifiers IS NULL OR rel.name in $bidirectional_identifiers)
             AND n.uuid <> peer.uuid
             WITH DISTINCT n, rel, peer
-            CALL {
-                WITH n, rel, peer
+            CALL (n, rel, peer) {
                 MATCH (n)-[r:IS_RELATED]->(rel)
                 WHERE (%(filters)s)
                 WITH n, rel, peer, r

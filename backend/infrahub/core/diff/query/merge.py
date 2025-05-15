@@ -56,8 +56,7 @@ CALL (node_diff_map, node_db_id) {
     RETURN n
 }
 WITH n, node_diff_map, is_node_kind_migration
-CALL (node_diff_map, is_node_kind_migration) {
-    WITH n, node_diff_map, is_node_kind_migration
+CALL (n, node_diff_map, is_node_kind_migration) {
     WITH n, node_diff_map, is_node_kind_migration, CASE
         WHEN node_diff_map.action = "ADDED" THEN "active"
         WHEN node_diff_map.action = "REMOVED" THEN "deleted"
@@ -537,19 +536,17 @@ class DiffMergeMigratedKindsQuery(Query):
         query = """
 MATCH (n:Node)
 WHERE n.uuid IN $migrated_uuids
-CALL {
+CALL (n) {
     // --------------
     // for each migrated node (created or deleted), find its latest edges on the source branch,
     // check if they exist on the target, create them if not
     // --------------
-    WITH n
     MATCH (n)-[]-(peer)
     WITH DISTINCT n, peer
-    CALL {
+    CALL (n, peer) {
         // --------------
         // get the latest outbound edge for each type between n and peer
         // --------------
-        WITH n, peer
         MATCH (n)-[e {branch: $source_branch}]->(peer)
         WHERE e.from <= $at AND e.to IS NULL
         WITH e, type(e) AS edge_type
@@ -557,11 +554,10 @@ CALL {
         WITH edge_type, head(collect(e)) AS latest_source_edge
         RETURN edge_type, latest_source_edge
     }
-    CALL {
+    CALL (n, peer, edge_type) {
         // --------------
         // for each n, peer, edge_type, get the latest edge on target
         // --------------
-        WITH n, peer, edge_type
         OPTIONAL MATCH (n)-[e {branch: $target_branch}]->(peer)
         WHERE type(e) = edge_type AND e.from <= $at
         RETURN e AS latest_target_edge
@@ -574,11 +570,10 @@ CALL {
     WITH n, peer, edge_type, latest_source_edge, latest_target_edge
     WHERE (latest_target_edge IS NULL AND latest_source_edge.status = "active")
     OR latest_source_edge.status <> latest_target_edge.status
-    CALL {
+    CALL (latest_source_edge, latest_target_edge) {
         // --------------
         // set the to time on active target branch edges that we are setting to deleted
         // --------------
-        WITH latest_source_edge, latest_target_edge
         WITH latest_source_edge, latest_target_edge
         WHERE latest_target_edge IS NOT NULL
         AND latest_source_edge.status = "deleted"
@@ -589,8 +584,7 @@ CALL {
     // --------------
     // create the outbound edges on the target branch, one subquery per possible type
     // --------------
-    CALL {
-        WITH n, latest_source_edge, peer, edge_type
+    CALL (n, latest_source_edge, peer, edge_type) {
         WITH n, latest_source_edge, peer, edge_type
         WHERE edge_type = "IS_PART_OF"
         CREATE (n)-[new_edge:IS_PART_OF]->(peer)
@@ -599,8 +593,7 @@ CALL {
         SET new_edge.branch_level = $branch_level
         SET new_edge.branch = $target_branch
     }
-    CALL {
-        WITH n, latest_source_edge, peer, edge_type
+    CALL (n, latest_source_edge, peer, edge_type) {
         WITH n, latest_source_edge, peer, edge_type
         WHERE edge_type = "IS_RELATED"
         CREATE (n)-[new_edge:IS_RELATED]->(peer)
@@ -609,8 +602,7 @@ CALL {
         SET new_edge.branch_level = $branch_level
         SET new_edge.branch = $target_branch
     }
-    CALL {
-        WITH n, latest_source_edge, peer, edge_type
+    CALL (n, latest_source_edge, peer, edge_type) {
         WITH n, latest_source_edge, peer, edge_type
         WHERE edge_type = "HAS_ATTRIBUTE"
         CREATE (n)-[new_edge:HAS_ATTRIBUTE]->(peer)
@@ -623,11 +615,10 @@ CALL {
     // do all of this again for inbound edges
     // --------------
     WITH DISTINCT n, peer
-    CALL {
+    CALL (n, peer) {
         // --------------
         // get the latest inbound edge for each type between n and peer
         // --------------
-        WITH n, peer
         MATCH (n)<-[e {branch: $source_branch}]-(peer)
         WHERE e.from <= $at AND e.to IS NULL
         WITH e, type(e) AS edge_type
@@ -635,11 +626,10 @@ CALL {
         WITH edge_type, head(collect(e)) AS latest_source_edge
         RETURN edge_type, latest_source_edge
     }
-    CALL {
+    CALL (n, peer, edge_type) {
         // --------------
         // for each n, peer, edge_type, get the latest edge on target
         // --------------
-        WITH n, peer, edge_type
         OPTIONAL MATCH (n)<-[e {branch: $target_branch}]-(peer)
         WHERE type(e) = edge_type AND e.from <= $at
         RETURN e AS latest_target_edge
@@ -651,11 +641,10 @@ CALL {
     // --------------
     WITH n, peer, edge_type, latest_source_edge, latest_target_edge
     WHERE latest_target_edge IS NULL OR latest_source_edge.status <> latest_target_edge.status
-    CALL {
+    CALL (latest_source_edge, latest_target_edge) {
         // --------------
         // set the to time on active target branch edges that we are setting to deleted
         // --------------
-        WITH latest_source_edge, latest_target_edge
         WITH latest_source_edge, latest_target_edge
         WHERE latest_target_edge IS NOT NULL
         AND latest_source_edge.status = "deleted"
@@ -666,8 +655,7 @@ CALL {
     // --------------
     // create the outbound edges on the target branch, one subquery per possible type
     // --------------
-    CALL {
-        WITH n, latest_source_edge, peer, edge_type
+    CALL (n, latest_source_edge, peer, edge_type) {
         WITH n, latest_source_edge, peer, edge_type
         WHERE edge_type = "IS_RELATED"
         CREATE (n)<-[new_edge:IS_RELATED]-(peer)
@@ -676,8 +664,7 @@ CALL {
         SET new_edge.branch_level = $branch_level
         SET new_edge.branch = $target_branch
     }
-    CALL {
-        WITH n, latest_source_edge, peer, edge_type
+    CALL (n, latest_source_edge, peer, edge_type) {
         WITH n, latest_source_edge, peer, edge_type
         WHERE edge_type = "HAS_OWNER"
         CREATE (n)<-[new_edge:HAS_OWNER]-(peer)
@@ -686,8 +673,7 @@ CALL {
         SET new_edge.branch_level = $branch_level
         SET new_edge.branch = $target_branch
     }
-    CALL {
-        WITH n, latest_source_edge, peer, edge_type
+    CALL (n, latest_source_edge, peer, edge_type) {
         WITH n, latest_source_edge, peer, edge_type
         WHERE edge_type = "HAS_SOURCE"
         CREATE (n)<-[new_edge:HAS_SOURCE]-(peer)
@@ -727,14 +713,14 @@ class DiffMergeRollbackQuery(Query):
         // ---------------------------
         // reset to times on target branch
         // ---------------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH ()-[r_to {to: $at, branch: $target_branch}]-()
             SET r_to.to = NULL
         }
         // ---------------------------
         // reset from times on target branch
         // ---------------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH ()-[r_from {from: $at, branch: $target_branch}]-()
             DELETE r_from
         }
