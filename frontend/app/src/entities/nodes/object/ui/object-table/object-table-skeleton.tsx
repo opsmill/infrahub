@@ -13,7 +13,7 @@ export function ObjectTableSkeleton({ headerCount }: ObjectsTableSkeletonProps) 
       {[...Array(headerCount)].map((_, colIndex) => (
         <TableCell
           key={`skeleton-${rowIndex}-${colIndex}`}
-          className={classNames(colIndex === 0 && "sticky left-0")}
+          className={classNames(colIndex === 0 && "sticky left-0 bg-white z-1")}
         >
           <Skeleton className="h-4 w-full" />
         </TableCell>
