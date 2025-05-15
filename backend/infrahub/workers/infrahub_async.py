@@ -112,7 +112,6 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         set_component_type(component_type=self.component_type)
-        await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
             initialize_lock(service=self.service)
