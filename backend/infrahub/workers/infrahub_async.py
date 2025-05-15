@@ -31,6 +31,7 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
+from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
