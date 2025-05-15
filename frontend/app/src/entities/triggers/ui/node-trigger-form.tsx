@@ -1,4 +1,4 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
@@ -25,7 +25,7 @@ export const NodeTriggerRuleForm = ({
   onSuccess,
   ...props
 }: NodeTriggerRuleFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
 
   const fields = useMemo(() => {
@@ -78,7 +78,7 @@ export const NodeTriggerRuleForm = ({
       const result = await graphqlClient.mutate({
         mutation,
         context: {
-          branch: branch?.name,
+          branch: currentBranch?.name,
           date,
         },
       });
