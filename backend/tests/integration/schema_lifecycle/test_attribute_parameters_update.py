@@ -120,7 +120,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         schema_root = SchemaRoot(**schema_step_01)
         await load_schema_root(db=db, branch_name=default_branch.name, schema=schema_root, update_db=True)
 
-        # delete parameters from the LegacyThing schema attribute
+        # delete parameters from the LegacyThing schema attribute b/c legacy AttributeSchemas will not have them
         query = """
         MATCH (legacy_schema:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(av {value: "ThingLegacy"})
         MATCH (legacy_schema)-[:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[:IS_RELATED]-(schema_attr:SchemaAttribute)
