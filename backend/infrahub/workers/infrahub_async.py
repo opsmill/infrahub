@@ -23,8 +23,14 @@ from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
-from infrahub.workers.dependencies import get_cache, get_database, get_message_bus, get_workflow, set_component_type
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_component,
+    get_database,
+    get_message_bus,
+    get_workflow,
+    set_component_type,
+)
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
@@ -184,6 +190,7 @@ class InfrahubWorkerAsync(BaseWorker):
             database=await get_database(),
             message_bus=await get_message_bus(),
             workflow=get_workflow(),
+            component=await get_component(),
             component_type=self.component_type,
         )
 

@@ -34,7 +34,7 @@ from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_cache, get_message_bus, get_workflow, set_component_type
+from infrahub.workers.dependencies import get_cache, get_component, get_message_bus, get_workflow, set_component_type
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -66,8 +66,14 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     message_bus = await get_message_bus()
 
     cache = await get_cache()
+    component = await get_component()
     service = await InfrahubServices.new(
-        cache=cache, database=database, message_bus=message_bus, workflow=workflow, component_type=component_type
+        cache=cache,
+        database=database,
+        message_bus=message_bus,
+        workflow=workflow,
+        component=component,
+        component_type=component_type,
     )
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization

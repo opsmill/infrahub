@@ -5,6 +5,7 @@ from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
 from infrahub.auth import AccountSession, AuthType
+from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -18,6 +19,7 @@ from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
@@ -273,12 +275,15 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         dependency_provider,
     ):
         dependency_provider.override(build_client, lambda: client)
+        cache = MemoryCache()
+        message_bus = BusRecorder()
         service = await InfrahubServices.new(
             database=db,
-            message_bus=BusRecorder(),
+            message_bus=message_bus,
             workflow=WorkflowLocalExecution(),
-            cache=MemoryCache(),
+            cache=cache,
             client=client,
+            component=InfrahubComponent(cache=cache, db=db, message_bus=message_bus, component_type=ComponentType.NONE),
         )
 
         async with get_client(sync_client=False) as prefect_client:

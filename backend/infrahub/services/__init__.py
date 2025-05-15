@@ -10,7 +10,6 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from .adapters.event import InfrahubEventService
 from .adapters.http.httpx import HttpxAdapter
 from .adapters.workflow.worker import WorkflowWorkerExecution
-from .component import InfrahubComponent
 from .scheduler import InfrahubScheduler
 
 if TYPE_CHECKING:
@@ -24,6 +23,7 @@ if TYPE_CHECKING:
     from .adapters.http import InfrahubHTTP
     from .adapters.message_bus import InfrahubMessageBus
     from .adapters.workflow import InfrahubWorkflow
+    from .component import InfrahubComponent
     from .protocols import InfrahubLogger
 
 
@@ -53,6 +53,7 @@ class InfrahubServices:
         database: InfrahubDatabase | None = None,
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
+        component: InfrahubComponent | None = None,
     ):
         """
         This method should not be called directly, use `new` instead for a proper initialization.
@@ -63,12 +64,12 @@ class InfrahubServices:
         self._database = database
         self._message_bus = message_bus
         self._workflow = workflow
+        self._component = component
         self.log = log
         self.component_type = component_type
         self.http = http
         self.event = event
         self.scheduler = scheduler
-        self._component = None
 
     @classmethod
     async def new(
@@ -80,6 +81,7 @@ class InfrahubServices:
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
         log: InfrahubLogger | None = None,
+        component: InfrahubComponent | None = None,
         component_type: ComponentType | None = None,
         http: InfrahubHTTP | None = None,
     ) -> InfrahubServices:
@@ -98,6 +100,7 @@ class InfrahubServices:
             message_bus=message_bus,
             workflow=workflow,
             log=log or get_logger(),
+            component=component,
             component_type=component_type,
             scheduler=scheduler,
             event=event or InfrahubEventService(message_bus),
@@ -106,15 +109,6 @@ class InfrahubServices:
 
         # This circular dependency could be removed if InfrahubScheduler only depends on what it needs.
         scheduler.service = service
-
-        if message_bus is not None:
-            if cache is not None and database is not None:
-                component = await InfrahubComponent.new(
-                    cache=cache, component_type=component_type, db=database, message_bus=message_bus
-                )
-                # We need to post init `service._component` because InfrahubComponent.new relies on message_bus
-                # itself relying on service.
-                service._component = component
 
         if workflow is not None and isinstance(workflow, WorkflowWorkerExecution):
             assert service.component is not None
