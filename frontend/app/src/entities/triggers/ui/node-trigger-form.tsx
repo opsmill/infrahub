@@ -78,7 +78,7 @@ export const NodeTriggerRuleForm = ({
       const result = await graphqlClient.mutate({
         mutation,
         context: {
-          branch: currentBranch?.name,
+          branch: currentBranch.name,
           date,
         },
       });
