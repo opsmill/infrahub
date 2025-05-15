@@ -262,7 +262,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
                 if isinstance(prop_diff, HashableModelDiff):
                     for param_field_name in prop_diff.changed:
-                        schema_path = SchemaPath(  # type: ignore[call-arg]
+                        schema_path = SchemaPath(
                             schema_kind=schema.kind,
                             path_type=path_type,
                             field_name=field_name,
@@ -275,7 +275,7 @@ class SchemaUpdateValidationResult(BaseModel):
                         )
                     continue
 
-                schema_path = SchemaPath(  # type: ignore[call-arg]
+                schema_path = SchemaPath(
                     schema_kind=schema.kind,
                     path_type=path_type,
                     field_name=field_name,
