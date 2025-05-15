@@ -74,7 +74,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         else:
             return values
         if kind != "Dropdown" and choices:
-            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind']}")
+            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {kind}")
 
         if kind == "Dropdown" and not choices:
             raise ValueError("The property 'choices' is required for kind=Dropdown")
@@ -188,7 +188,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 class TextAttributeSchema(AttributeSchema):
     parameters: TextAttributeParameters = Field(
         default_factory=TextAttributeParameters,
-        description="Extra parameters specific text attributes",
+        description="Extra parameters specific to text attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
@@ -196,12 +196,18 @@ class TextAttributeSchema(AttributeSchema):
     def reconcile_parameters(self) -> Self:
         if self.regex != self.parameters.regex:
             final_regex = self.parameters.regex or self.regex
+            if not final_regex:  # falsy parameters.regex override falsy regex
+                final_regex = self.parameters.regex
             self.regex = self.parameters.regex = final_regex
         if self.min_length != self.parameters.min_length:
             final_min_length = self.parameters.min_length or self.min_length
+            if not final_min_length:  # falsy parameters.min_length override falsy min_length
+                final_min_length = self.parameters.min_length
             self.min_length = self.parameters.min_length = final_min_length
         if self.max_length != self.parameters.max_length:
             final_max_length = self.parameters.max_length or self.max_length
+            if not final_max_length:  # falsy parameters.max_length override falsy max_length
+                final_max_length = self.parameters.max_length
             self.max_length = self.parameters.max_length = final_max_length
         return self
 
