@@ -62,7 +62,10 @@ export const NodeAttributeMatchForm = ({
     value_previous: getCurrentFieldValue("value_previous", currentObject),
     value_match: getCurrentFieldValue("value_match", currentObject),
     member_of_group: getCurrentFieldValue("member_of_group", currentObject),
-    trigger: getCurrentFieldValue("trigger", currentObject),
+    trigger: getCurrentFieldValue("trigger", currentObject) ?? {
+      source: { type: "user" },
+      value: { id: objectid, display_label: data?.display_label },
+    },
   };
 
   const form = useForm<FieldValues>({
