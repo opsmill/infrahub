@@ -1,1 +1,0 @@
-Prevent creating duplicate edges on the database when adding a relationship to or deleting a relationship from a node that had its kind or inheritance updated
