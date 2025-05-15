@@ -1,3 +1,4 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import {
   ObjectTableSelectionToolbarProps,
@@ -6,7 +7,6 @@ import {
 import { NodeObject } from "@/entities/nodes/types";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<T>[];
