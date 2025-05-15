@@ -24,7 +24,7 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { useParams } from "react-router";
-import { NODE_TRIGGER_ATTRIBUTE } from "../constants";
+import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "../constants";
 
 interface NodeAttributeMatchFormProps extends NodeFormProps {}
 
@@ -67,14 +67,14 @@ export const NodeAttributeMatchForm = ({
 
       const mutationString = currentObject
         ? updateObjectWithId({
-            kind: NODE_TRIGGER_ATTRIBUTE,
+            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
             data: stringifyWithoutQuotes({
               id: currentObject.id,
               ...newObject,
             }),
           })
         : createObject({
-            kind: NODE_TRIGGER_ATTRIBUTE,
+            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
             data: stringifyWithoutQuotes({
               ...newObject,
             }),
@@ -104,7 +104,7 @@ export const NodeAttributeMatchForm = ({
 
       if (onSuccess)
         await onSuccess(
-          result?.data?.[`${NODE_TRIGGER_ATTRIBUTE}${currentObject ? "Update" : "Create"}`]
+          result?.data?.[`${NODE_TRIGGER_ATTRIBUTE_MATCH}${currentObject ? "Update" : "Create"}`]
         );
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
