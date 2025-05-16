@@ -24,8 +24,13 @@ import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissi
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import {
+  NODE_TRIGGER_ATTRIBUTE_MATCH,
+  NODE_TRIGGER_RELATIONSHIP,
+  NODE_TRIGGER_RULE,
+} from "@/entities/triggers/constants";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
+import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
 import { NodeTriggerRuleForm } from "@/entities/triggers/ui/node-trigger-form";
 import { WebhookForm } from "@/entities/webhook/ui/webhook-form";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -130,6 +135,10 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (kind === NODE_TRIGGER_ATTRIBUTE_MATCH) {
     return <NodeAttributeMatchForm schema={schema} {...props} />;
+  }
+
+  if (kind === NODE_TRIGGER_RELATIONSHIP) {
+    return <NodeRelationshipMatchForm schema={schema} {...props} />;
   }
 
   if (isGeneric) {
