@@ -3172,7 +3172,7 @@ async def test_calculate_with_migrated_kind_node(  # noqa: C901
     person_albert_main,
 ):
     """Test that the diff can correctly handle a schema kind migration, which results in 2 nodes with the same UUID"""
-    branch = await create_branch(db=db, branch_name="branch")
+    branch = await create_branch(db=db, branch_name="branch-migrated-kind")
     branch_car = await Node.init(db=db, schema="TestCar", branch=branch)
     await branch_car.new(db=db, name="nova", nbr_seats=2, is_electric=False, owner=person_jane_main.id)
     await branch_car.save(db=db)
