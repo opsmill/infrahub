@@ -13,7 +13,6 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
 import { toast } from "react-toastify";
 
 interface NodeTriggerRuleFormProps extends NodeFormProps {}
@@ -28,25 +27,11 @@ export const NodeTriggerRuleForm = ({
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
 
-  const fields = useMemo(() => {
-    const schemaFields = getFormFieldsFromSchema({
-      ...props,
-      initialObject: currentObject,
-      isUpdate,
-    });
-
-    // Replace node_kind (text) field with a select
-    return schemaFields.map((field) => {
-      if (field.name === "node_kind") {
-        return {
-          ...field,
-          type: "kind",
-        };
-      }
-
-      return field;
-    });
-  }, [props.schema.kind, currentObject, isUpdate]);
+  const fields = getFormFieldsFromSchema({
+    ...props,
+    initialObject: currentObject,
+    isUpdate,
+  });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {

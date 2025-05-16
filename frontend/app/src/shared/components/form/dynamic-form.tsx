@@ -132,7 +132,7 @@ export const DynamicInput = (props: DynamicFieldProps) => {
 
       return <RelationshipField {...props} />;
     }
-    case "kind": {
+    case ATTRIBUTE_KIND.NODE_KIND: {
       return <NodeKindField {...props} />;
     }
     default: {

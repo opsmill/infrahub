@@ -31,22 +31,10 @@ export function WebhookForm({
   const { currentBranch } = useCurrentBranch();
 
   const fields = useMemo(() => {
-    const schemaFields = getFormFieldsFromSchema({
+    return getFormFieldsFromSchema({
       ...props,
       initialObject: currentObject,
       isUpdate,
-    });
-
-    // Replace default_prefix_type (text) field with a select
-    return schemaFields.map((field) => {
-      if (field.name === "node_kind") {
-        return {
-          ...field,
-          type: "kind",
-        };
-      }
-
-      return field;
     });
   }, [props, genericPrefixSchema, currentObject, isUpdate]);
 
