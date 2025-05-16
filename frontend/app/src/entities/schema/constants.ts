@@ -22,6 +22,7 @@ export const ATTRIBUTE_KIND = {
   JSON: "JSON",
   ANY: "Any",
   BOOLEAN: "Boolean",
+  SCHEMA_KIND: "SchemaKind",
 } as const;
 
 // Reference: https://docs.infrahub.app/topics/schema > Attribute kinds behavior in the UI
