@@ -18,6 +18,7 @@ from infrahub.webhook.tasks import (
     delete_webhook_automation,
     webhook_process,
 )
+from infrahub.workers.dependencies import build_http_service
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS, worker_pools
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.adapters.http import MemoryHTTP
@@ -29,6 +30,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
     from prefect.events.actions import RunDeployment
 
@@ -267,17 +269,18 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_process_standard_webhook_success(
         self,
         db: InfrahubDatabase,
-        service,
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
         webhook_deployment,
+        dependency_provider: Provider,
     ) -> None:
-        service.http = MemoryHTTP()
-        service.http.add_post_response(
+        http = MemoryHTTP()
+        http.add_post_response(
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=200),
         )
+        dependency_provider.override(build_http_service, lambda: http)
 
         await webhook_process(
             webhook_id=webhook1.id,
@@ -292,17 +295,18 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_process_standard_webhook_failure(
         self,
         db: InfrahubDatabase,
-        service,
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
         webhook_deployment,
+        dependency_provider: Provider,
     ) -> None:
-        service.http = MemoryHTTP()
-        service.http.add_post_response(
+        http = MemoryHTTP()
+        http.add_post_response(
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=404),
         )
+        dependency_provider.override(build_http_service, lambda: http)
 
         with pytest.raises(httpx.HTTPStatusError):
             await webhook_process(
