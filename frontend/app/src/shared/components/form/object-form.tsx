@@ -2,13 +2,11 @@ import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
-  CUSTOM_WEBHOOK_OBJECT,
   GLOBAL_PERMISSION_OBJECT,
   NUMBER_POOL_OBJECT,
   OBJECT_PERMISSION_OBJECT,
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
-  STANDARD_WEBHOOK_OBJECT,
 } from "@/config/constants";
 
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -24,10 +22,8 @@ import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissi
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "@/entities/triggers/constants";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
-import { NodeTriggerRuleForm } from "@/entities/triggers/ui/node-trigger-form";
-import { WebhookForm } from "@/entities/webhook/ui/webhook-form";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
@@ -124,10 +120,6 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <IpPrefixPoolForm schema={schema} {...props} />;
   }
 
-  if (kind === NODE_TRIGGER_RULE) {
-    return <NodeTriggerRuleForm schema={schema} {...props} />;
-  }
-
   if (kind === NODE_TRIGGER_ATTRIBUTE_MATCH) {
     return <NodeAttributeMatchForm schema={schema} {...props} />;
   }
@@ -138,10 +130,6 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (isNode && schema.generate_profile) {
     return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
-  }
-
-  if (kind === STANDARD_WEBHOOK_OBJECT || kind === CUSTOM_WEBHOOK_OBJECT) {
-    return <WebhookForm schema={schema} kind={kind} {...props} />;
   }
 
   return <NodeForm schema={schema} profiles={currentProfiles} {...props} />;
