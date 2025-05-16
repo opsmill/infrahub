@@ -12,7 +12,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
  */
 const sidebars: SidebarsConfig = {
   docsSidebar: [
-    "introduction",
+    "home",
     {
       type: 'category',
       label: 'Getting Started',
@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/overview',
         'getting-started/quick-start',
         'getting-started/next-steps',
+        'getting-started/concepts',
       ],
     },
     // {
