@@ -229,7 +229,7 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
             name=f"worker-events-{WORKER_IDENTITY}",
             arguments={},
             durable=False,
-            exclusive=False,
+            exclusive=True,
             queue_type="classic",
         )
         in agent_queues
