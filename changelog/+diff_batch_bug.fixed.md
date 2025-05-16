@@ -1,0 +1,1 @@
+Fix a problem in the logic to calculate a diff that could cause it to quit too early under certain unlikely circumstances
