@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 GENERIC_ATTRIBUTES_TO_IGNORE = ["namespace", "name", "branch"]
+PROPERTY_NAMES_TO_IGNORE = ["regex", "min_length", "max_length"]
 
 
 class NodeKind(BaseModel):
@@ -252,11 +253,37 @@ class SchemaUpdateValidationResult(BaseModel):
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
-            for prop_name in sub_field_diff.changed:
+            for prop_name, prop_diff in sub_field_diff.changed.items():
+                if prop_name in PROPERTY_NAMES_TO_IGNORE:
+                    continue
+
                 field_info = field.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
-                schema_path = SchemaPath(  # type: ignore[call-arg]
+                if isinstance(prop_diff, HashableModelDiff):
+                    for param_field_name in prop_diff.changed:
+                        # override field_update if this field has its own json_schema_extra.update
+                        try:
+                            prop_field = getattr(field, prop_name)
+                            param_field_info = prop_field.model_fields[param_field_name]
+                            param_field_update = str(param_field_info.json_schema_extra.get("update"))
+                        except (AttributeError, KeyError):
+                            param_field_update = None
+
+                        schema_path = SchemaPath(
+                            schema_kind=schema.kind,
+                            path_type=path_type,
+                            field_name=field_name,
+                            property_name=f"{prop_name}.{param_field_name}",
+                        )
+
+                        self._process_field(
+                            schema_path=schema_path,
+                            field_update=param_field_update or field_update,
+                        )
+                    continue
+
+                schema_path = SchemaPath(
                     schema_kind=schema.kind,
                     path_type=path_type,
                     field_name=field_name,

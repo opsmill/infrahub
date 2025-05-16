@@ -7,7 +7,8 @@ import {
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
-import { InfiniteDataTable } from "@/shared/components/table/infinite-data-table";
+import { DataTable } from "@/shared/components/table/data-table";
+import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
 
@@ -21,7 +22,7 @@ export function RelationshipTable({
   ...props
 }: RelationshipTableProps) {
   const [filters] = useFilters();
-  const { data, isPending, isFetchingNextPage, fetchNextPage, hasNextPage } =
+  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } =
     useObjectRelationships({
       relationshipSchema,
       parentId,
@@ -46,22 +47,24 @@ export function RelationshipTable({
     ];
   }, [relationshipSchema.hash, flatData.length]);
 
+  const isLoading = isPending || isFetchingNextPage;
+
   return (
-    <InfiniteDataTable
-      columns={columns}
-      data={flatData}
-      isLoading={isPending || isFetchingNextPage}
-      renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
-      hasNextPage={hasNextPage}
-      fetchNextPage={fetchNextPage}
-      toolbarActions={({ selectedRows }) => (
-        <ToolbarDissociateAction
-          objectId={parentId}
-          relationshipIds={selectedRows.map((row) => row.id)}
-          relationshipName={relationshipName}
-          relationshipLabel="all selected rows"
-        />
-      )}
-    />
+    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
+      <DataTable
+        columns={columns}
+        data={flatData}
+        isLoading={isLoading}
+        renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
+        toolbarActions={({ selectedRows }) => (
+          <ToolbarDissociateAction
+            objectId={parentId}
+            relationshipIds={selectedRows.map((row) => row.id)}
+            relationshipName={relationshipName}
+            relationshipLabel="all selected rows"
+          />
+        )}
+      />
+    </InfiniteScroll>
   );
 }

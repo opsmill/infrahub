@@ -83,18 +83,18 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
 
     async def wait_until_automations_are_configured(self, automation_names: list[str], client: PrefectClient) -> None:
         continue_waiting = True
-        max_retries = 10
+        max_retries = 30
         retry = 0
 
         while continue_waiting:
             automations = await client.read_automations()
-            automation_names = [automation.name.split(NAME_SEPARATOR)[-1] for automation in automations]
-            if all(item in automation_names for item in automation_names):
+            observed_automation_names = [automation.name.split(NAME_SEPARATOR)[-1] for automation in automations]
+            if set(automation_names).issubset(observed_automation_names):
                 continue_waiting = False
             else:
                 retry += 1
                 if retry >= max_retries:
-                    assert all(item in automation_names for item in automation_names)
+                    assert set(automation_names).issubset(observed_automation_names)
                 await asyncio.sleep(1)
 
     async def test_create_main_triggers(

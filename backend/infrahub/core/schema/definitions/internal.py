@@ -31,6 +31,7 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
+from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -506,21 +507,21 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="regex",
             kind="Text",
-            description="Regex uses to limit the characters allowed in for the attributes.",
+            description="Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="max_length",
             kind="Number",
-            description="Set a maximum number of characters allowed for a given attribute.",
+            description="Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="min_length",
             kind="Number",
-            description="Set a minimum number of characters allowed for a given attribute.",
+            description="Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
@@ -616,6 +617,15 @@ attribute_schema = SchemaNode(
             default_value=AllowOverrideType.ANY,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="parameters",
+            kind="JSON",
+            internal_kind=AttributeParameters,
+            optional=True,
+            description="Extra parameters specific to this kind of attribute",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            default_factory="AttributeParameters",
         ),
         SchemaAttribute(
             name="deprecation",

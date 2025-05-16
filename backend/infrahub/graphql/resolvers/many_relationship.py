@@ -33,7 +33,7 @@ class ManyRelationshipResolver:
         parent_id: str,
         node_schema: NodeSchema,
     ) -> list[str]:
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             query = await NodeGetHierarchyQuery.init(
                 db=dbs,
                 direction=RelationshipHierarchyDirection.DESCENDANTS,
@@ -55,7 +55,7 @@ class ManyRelationshipResolver:
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
     ) -> int:
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             return await NodeManager.count_peers(
                 db=dbs,
                 ids=ids,
@@ -194,7 +194,7 @@ class ManyRelationshipResolver:
         offset: int | None = None,
         limit: int | None = None,
     ) -> list[dict[str, Any]] | None:
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
                 ids=ids,
@@ -257,7 +257,7 @@ class ManyRelationshipResolver:
             all_peer_rels.extend(node_peer_rels)
         if not all_peer_rels:
             return None
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             return [
                 await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)
                 for obj in all_peer_rels

@@ -13,7 +13,7 @@ from pydantic import field_validator
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
 
-from .attribute_schema import AttributeSchema
+from .attribute_schema import AttributeSchema, get_attribute_schema_class_for_kind
 from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema
 
@@ -73,6 +73,30 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
+
+    @field_validator("attributes", mode="before")
+    @classmethod
+    def set_attribute_type(cls, raw_attributes: Any) -> Any:
+        if not isinstance(raw_attributes, list):
+            return raw_attributes
+        attribute_schemas_with_types: list[Any] = []
+        for raw_attr in raw_attributes:
+            if not isinstance(raw_attr, (dict, AttributeSchema)):
+                attribute_schemas_with_types.append(raw_attr)
+                continue
+            if isinstance(raw_attr, dict):
+                kind = raw_attr.get("kind")
+                attribute_type_class = get_attribute_schema_class_for_kind(kind=kind)
+                attribute_schemas_with_types.append(attribute_type_class(**raw_attr))
+                continue
+
+            expected_attr_schema_class = get_attribute_schema_class_for_kind(kind=raw_attr.kind)
+            if not isinstance(raw_attr, expected_attr_schema_class):
+                final_attr = expected_attr_schema_class(**raw_attr.model_dump())
+            else:
+                final_attr = raw_attr
+            attribute_schemas_with_types.append(final_attr)
+        return attribute_schemas_with_types
 
     def to_dict(self) -> dict:
         data = self.model_dump(
