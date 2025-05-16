@@ -1,3 +1,105 @@
-# Overview
+---
+title: Overview
+description: An Introduction to Infrahub's Vision, Core Features, and Infrastructure Data Management Approach.
+---
 
-Hello
+Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that power your infrastructure by combining the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
+
+![Infrahub architecture](./../media/overview.excalidraw.svg)
+
+Infrahub acts as a central hub to manage all of the information and code that powers your infrastructure. At its heart, Infrahub is built on 3 fundamental pillars:
+
+- **A Flexible Schema**: A model of the infrastructure and the relation between the objects in the model, that's easily extensible.
+- **Version Control**: Natively integrated into the graph database which opens up some new capabilities like branching, diffing, and merging data directly in the database.
+- **Unified Storage**: By combining a graph database and git, Infrahub stores data and code needed to manage the infrastructure.
+
+## Interfaces
+
+![Infrahub interfaces](./../media/overview-interfaces.excalidraw.svg)
+
+Managing infrastructure at scale often means many people, teams, workflows and other systems must interact with the Infrahub infrastructure management platform. Infrahub provides multiple methods to interact:
+
+### WebUI
+
+- By default, exposed on TCP port `8000`
+- Built-in documentation
+- Global search, including searching data and documentation
+- A GraphQL sandbox
+- Swagger documentation for the REST API
+
+### GraphQL API
+
+GraphQL is the primary API to interact with data, and allows access to everything defined by the schema. The [Python SDK]($(base_url)python-sdk/introduction) is built on top of the GraphQL API.
+
+- By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/graphql`
+- The Frontend utilizes the GraphQL API for most tasks
+- More information can be found in the [GraphQL topic](../topics/graphql)
+
+### REST API
+
+GraphQL can only accept a query in string format and returns JSON, so there are certain workflows that are available via the REST API.
+
+- Loading the schema
+- Retrieving artifacts
+- Accessing the object store
+- Executing a saved GraphQL query
+
+The REST API has the following properties:
+
+- By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/api`
+- Swagger docs can be found at: `http://<API_SERVER_IP>:8000/api/docs`
+
+### infrahubctl
+
+`infrahubctl` is a command line utility designed to help with the day to day management of an Infrahub installation. It's meant to run on any laptop or server and it communicates with a remote Infrahub server over the network.
+
+More information can be found in the [infrahubctl]($(base_url)infrahubctl/infrahubctl) documentation section.
+
+### Python SDK
+
+The Infrahub Python SDK greatly simplifies how you can interact with Infrahub programmatically.
+
+More information can be found in the [Python SDK]($(base_url)python-sdk/introduction) documentation section.
+
+### Git
+
+One of the three pillars Infrahub is built on is the idea of having unified storage for data and files. The data is stored in the graph database and the files are stored in Git.
+
+When integrating a Git repository with Infrahub, the Task worker will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
+
+More information can be found in the [external repositories guide](../guides/repository)
+
+## Data input and sync
+
+![Infrahub data input and sync](./../media/overview-data.excalidraw.svg)
+
+When a schema has been loaded in to Infrahub, data can be populated or synced through multiple methods:
+
+- Via the WebUI: users can add, modify, and delete objects
+- Via [infrahub-sync](https://docs.infrahub.app/sync)
+- Via the [Infrahub SDK]($(base_url)python-sdk/introduction), which simplifies working with the GraphQL API:
+  - One-time imports can done similar to this [Python example](https://github.com/opsmill/infrahub-demo-dc-fabric/blob/main/generators/create_basic.py)
+  - Integration with other systems
+- Via the GraphQL or REST API directly
+
+Infrahub provides [data lineage and metadata](../topics/metadata.mdx) for tracking the origin and ownership of the data, and how the data changes and moves over time. When data comes from other systems and creates objects in the Infrahub database, those objects will have attributes such as it's source and if it's read-only, allowing for unidirectional sync from other sources of truth.
+
+## Integrations
+
+Infrahub offers robust integrations with both Ansible and Nornir, which facilitate the automation and management of infrastructure tasks.
+
+These integrations elevate Infrahub's functionality, transforming it into a centralized source of truth for infrastructure data while leveraging the robust automation capabilities of Ansible and Nornir. This streamlines the management and automation of infrastructure tasks, ensuring both efficiency and precision.
+
+### Ansible integration
+
+This integration is provided through the [`opsmill.infrahub` Ansible Collection](https://docs.infrahub.app/ansible/). It allows Infrahub to be used as a dynamic inventory source for Ansible, enabling management of infrastructure based on data stored in Infrahub.
+
+### Nornir integration
+
+Nornir is a Python-based automation framework primarily used for network automation. The [Infrahub plugin for Nornir](https://docs.infrahub.app/nornir/) enables Infrahub to serve as an inventory source, providing a streamlined solution for managing network devices and configurations.
+
+### Key features
+
+- **Inventory Management**: Infrahub can dynamically generate and update inventories for Ansible and Nornir, ensuring that the latest state of infrastructure is always used.
+- **Automation**: By leveraging each framework's automation capabilities, users can execute complex infrastructure management tasks directly from Infrahub data.
+- **Configuration Deployment**: These integrations ensure that configurations managed by Infrahub are consistent across the infrastructure by applying them through Ansible or Nornir.
