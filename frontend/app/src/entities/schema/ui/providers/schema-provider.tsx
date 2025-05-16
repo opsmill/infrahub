@@ -68,7 +68,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
         ...R.fromPairs(schemaKindNameTuples),
         SchemaAttribute: "Attribute",
         SchemaRelationship: "Relationship",
-        SchemaNode: "Node",
+        NodeKind: "Node",
       };
 
       const schemaLabels = [
