@@ -328,7 +328,6 @@ disable_error_code = [
     "assignment",
     "attr-defined",
     "index",
-    "no-untyped-def",
     "operator",
     "return-value",
     "union-attr",
