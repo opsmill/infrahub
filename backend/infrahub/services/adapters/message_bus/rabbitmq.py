@@ -12,13 +12,12 @@ from opentelemetry.semconv.trace import SpanAttributes
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.log import clear_log_context, get_log_data
+from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_log
 
 if TYPE_CHECKING:
     from aio_pika.abc import (
@@ -131,7 +130,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         if message.routing_key in messages.MESSAGE_MAP:
             await execute_message(routing_key=message.routing_key, message_body=message.body, message_bus=self)
         else:
-            get_log().error("Invalid message received", message=f"{message!r}")
+            get_logger().error("Invalid message received", message=f"{message!r}")
 
     async def on_message(self, message: AbstractIncomingMessage) -> None:
         async with message.process():
@@ -139,13 +138,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             if message.routing_key in messages.MESSAGE_MAP:
                 await execute_message(routing_key=message.routing_key, message_body=message.body, message_bus=self)
             else:
-                get_log().error("Invalid message received", message=f"{message!r}")
+                get_logger().error("Invalid message received", message=f"{message!r}")
 
     async def on_reconnect(
         self,
         weak: bool = False,  # noqa: ARG002
     ) -> None:
-        get_log().info("Reconnected to RabbitMQ, reinitializing connection")
+        get_logger().info("Reconnected to RabbitMQ, reinitializing connection")
         await self._initialize_connection()
 
     async def _initialize_api_server(self) -> None:

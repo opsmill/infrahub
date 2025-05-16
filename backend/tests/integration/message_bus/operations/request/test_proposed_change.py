@@ -24,7 +24,6 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
@@ -142,7 +141,6 @@ class TestProposedChange(TestInfrahubApp):
         test_client: InfrahubTestClient,
         client: InfrahubClient,
         context: InfrahubContext,
-        dependency_provider,
     ):
         model = RequestProposedChangePipeline(
             source_branch="change1",
@@ -150,10 +148,6 @@ class TestProposedChange(TestInfrahubApp):
             destination_branch="main",
             proposed_change=prepare_proposed_change,
         )
-        bus_pre_data_changes = BusRecorder()
-        dependency_provider.override(build_client, lambda: client)
-        dependency_provider.overrude(build_message_bus, lambda: bus_pre_data_changes)
-
         with patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow:

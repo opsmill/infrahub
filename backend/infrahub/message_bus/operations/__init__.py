@@ -1,12 +1,12 @@
 import ujson
 from prefect import Flow
 
+from infrahub.log import get_logger
 from infrahub.message_bus import RPCErrorResponse, messages
 from infrahub.message_bus.operations import git, refresh, send
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.tasks.check import set_check_status
-from infrahub.workers.dependencies import get_log
 
 COMMAND_MAP = {
     "git.file.get": git.file.get,
@@ -35,7 +35,7 @@ async def execute_message(
             await message_bus.reply_if_initiator_meta(message=response, initiator=message)
             return None
         if message.reached_max_retries:
-            get_log().exception("Message failed after maximum number of retries", error=exc)
+            get_logger().exception("Message failed after maximum number of retries", error=exc)
             await set_check_status(message, conclusion="failure")
             return None
         message.increase_retry_count()
