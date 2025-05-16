@@ -1136,7 +1136,7 @@ class SchemaBranch:
                 self.set(name=name, schema=node)
 
     def process_labels(self) -> None:
-        def check_if_need_to_update_label(node) -> bool:
+        def check_if_need_to_update_label(node: MainSchemaTypes) -> bool:
             if not node.label:
                 return True
             for item in node.relationships + node.attributes:
