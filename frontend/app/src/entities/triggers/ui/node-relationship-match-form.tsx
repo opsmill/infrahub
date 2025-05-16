@@ -21,6 +21,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
+import RelationshipField from "@/shared/components/form/fields/relationship.field";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
@@ -158,7 +159,7 @@ interface NodeRelationshipFieldProps {
 
 const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationshipFieldProps) => {
   const { schema } = useSchema(kind);
-  const [peerKind, setPeerKind] = useState(null);
+  const [peerKind, setPeerKind] = useState<string | null>(null);
 
   const relationshipField = schemaFields.find((field) => {
     return field.name === "relationship_name";
@@ -190,14 +191,18 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
       };
     }) ?? [];
 
-  const handleChange = (data) => {
-    console.log("data: ", data);
+  const handleChange = (selectedRelationship: string) => {
+    const relationshipSchema = schema?.relationships?.find((relationship) => {
+      return relationship.name === selectedRelationship;
+    });
+
+    setPeerKind(relationshipSchema?.peer ?? null);
   };
 
   return (
     <>
-      <DropdownField {...relationshipField} items={relationshipOptions} onSelect={handleChange} />
-      <DropdownField {...peerField} items={relationshipOptions} />
+      <DropdownField {...relationshipField} items={relationshipOptions} onChange={handleChange} />
+      {peerKind && <RelationshipField {...peerField} relationship={{ peer: peerKind }} />}
     </>
   );
 };
