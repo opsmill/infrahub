@@ -85,6 +85,42 @@ query TaskQuery(
 """
 
 
+QUERY_TASK_WITH_LOG_OFFSET = """
+query TaskQuery(
+    $related_nodes: [String]
+) {
+  InfrahubTask(related_node__ids: $related_nodes, log_offset: 1, log_limit: 10) {
+    count
+    edges {
+      node {
+        conclusion
+        created_at
+        id
+        related_node
+        related_node_kind
+        related_nodes {
+            id
+            kind
+        }
+        title
+        updated_at
+        logs {
+            edges {
+                node {
+                    id
+                    message
+                    severity
+                    timestamp
+                }
+            }
+        }
+      }
+    }
+  }
+}
+"""
+
+
 @pytest.fixture
 async def tag_blue(db: InfrahubDatabase, default_branch: Branch) -> Node:
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
@@ -570,6 +606,43 @@ async def test_task_query_both(
         db=db,
         branch=default_branch,
         query=QUERY_TASK_WITH_LOGS,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
+    assert task_names == [
+        "dummy-completed-account-br1-db",
+        "dummy-completed-br1-db",
+        "dummy-completed-no-branch",
+        "dummy-running-br1",
+        "dummy-running-br1-db",
+        "dummy-scheduled-blue-db",
+        "dummy-scheduled-br1-db",
+    ]
+    assert result.data["InfrahubTask"]["count"] == len(task_names)
+
+
+async def test_task_query_with_log_offset(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    tag_blue,
+    account_bob,
+    delete_flow_runs,
+    flow_runs_data: dict[str, FlowRun],
+):
+    """
+    In unit tests logs are not forwarded to the Prefect server for unknown reasons.
+    Therefore this test mainly tests log_offset and log_limit do not break the query when they are specified,
+    but their logic itself is not tested on a large amount of logs.
+    """
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_TASK_WITH_LOG_OFFSET,
         variables={},
     )
     assert result.errors is None

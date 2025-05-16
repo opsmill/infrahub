@@ -101,7 +101,7 @@ class PrefectTask:
         current_offset = log_offset
 
         if log_limit > NB_LOGS_LIMIT:
-            raise ValueError("log_limit cannot be greater than NB_LOGS_LIMIT")
+            raise ValueError(f"log_limit cannot be greater than {NB_LOGS_LIMIT}")
 
         all_logs = []
 
