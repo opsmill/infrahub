@@ -68,8 +68,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         await delorean.previous_owner.update(db=db, data={"id": doc_brown.id, "_relation__is_protected": True})  # type: ignore[attr-defined]
         await delorean.save(db=db)
 
-        # bus_simulator.service._cache = RedisCache()
-
         return {
             "doc_brown": doc_brown,
             "marty": marty,

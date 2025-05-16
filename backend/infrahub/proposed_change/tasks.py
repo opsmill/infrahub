@@ -1005,7 +1005,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
-    client = await get_client()
+    client = get_client()
 
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
