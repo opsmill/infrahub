@@ -57,7 +57,10 @@ export const getFormFieldFromAttribute = ({
       permissions: { update: attributeData?.permissions?.update_value },
       isReadOnly: attributeSchema.read_only,
     }),
-    type: attributeSchema.kind as Exclude<AttributeKind, "Dropdown">,
+    type:
+      schema.namespace === "Core" && attributeSchema.name === "node_kind"
+        ? "NodeKind"
+        : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
     rules: {
       required: !isFilterForm && !attributeSchema.optional,
       validate: {
