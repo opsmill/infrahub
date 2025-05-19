@@ -31,7 +31,7 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
-from infrahub.core.schema.attribute_parameters import AttributeParameters
+from infrahub.core.schema.attribute_parameters import AttributeParameters, NumberPoolParameters, TextAttributeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -48,7 +48,7 @@ class SchemaAttribute(BaseModel):
     kind: str
     description: str
     extra: ExtraField
-    internal_kind: type[Any] | GenericAlias | None = None
+    internal_kind: type[Any] | GenericAlias | list[type[Any]] | None = None
     regex: str | None = None
     unique: bool | None = None
     optional: bool | None = None
@@ -93,6 +93,9 @@ class SchemaAttribute(BaseModel):
     def object_kind(self) -> str:
         if isinstance(self.internal_kind, GenericAlias):
             return str(self.internal_kind)
+
+        if isinstance(self.internal_kind, list):
+            return " | ".join([internal_kind.__name__ for internal_kind in self.internal_kind])
 
         if self.internal_kind and self.kind == "List":
             return f"list[{self.internal_kind.__name__}]"
@@ -621,7 +624,7 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="parameters",
             kind="JSON",
-            internal_kind=AttributeParameters,
+            internal_kind=[AttributeParameters, TextAttributeParameters, NumberPoolParameters],
             optional=True,
             description="Extra parameters specific to this kind of attribute",
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},

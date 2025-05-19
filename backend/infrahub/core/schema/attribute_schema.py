@@ -12,7 +12,12 @@ from infrahub.core.enums import generate_python_enum
 from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
-from .attribute_parameters import AttributeParameters, TextAttributeParameters, get_attribute_parameters_class_for_kind
+from .attribute_parameters import (
+    AttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+    get_attribute_parameters_class_for_kind,
+)
 from .generated.attribute_schema import GeneratedAttributeSchema
 
 if TYPE_CHECKING:
@@ -25,6 +30,7 @@ if TYPE_CHECKING:
 
 def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
     attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
+        "NumberPool": NumberPoolSchema,
         "Text": TextAttributeSchema,
         "TextArea": TextAttributeSchema,
     }
@@ -92,6 +98,16 @@ class AttributeSchema(GeneratedAttributeSchema):
         if not isinstance(value, expected_parameters_class) and isinstance(value, AttributeParameters):
             return expected_parameters_class(**value.model_dump())
         return value
+
+    @model_validator(mode="after")
+    def validate_parameters(self) -> Self:
+        if isinstance(self.parameters, NumberPoolParameters) and not self.kind == "NumberPool":
+            raise ValueError(f"NumberPoolParameters can't be used as parameters for {self.kind}")
+
+        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea"]:
+            raise ValueError(f"TextAttributeParameters can't be used as parameters for {self.kind}")
+
+        return self
 
     def get_class(self) -> type[BaseAttribute]:
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
@@ -183,6 +199,14 @@ class AttributeSchema(GeneratedAttributeSchema):
             partial_match=partial_match,
             support_profiles=support_profiles,
         )
+
+
+class NumberPoolSchema(AttributeSchema):
+    parameters: NumberPoolParameters = Field(
+        default_factory=NumberPoolParameters,
+        description="Extra parameters specific to text attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
 
 
 class TextAttributeSchema(AttributeSchema):

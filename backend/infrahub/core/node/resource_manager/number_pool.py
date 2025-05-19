@@ -37,7 +37,6 @@ class CoreNumberPool(Node):
             db=db, pool_id=self.get_id(), identifier=identifier, reserved=number
         )
         await query_set.execute(db=db)
-
         return number
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch) -> int:
