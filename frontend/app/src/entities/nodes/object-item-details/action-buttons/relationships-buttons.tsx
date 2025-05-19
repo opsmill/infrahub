@@ -107,8 +107,6 @@ export function RelationshipsButtons({
       setShowAddDrawer(false);
     }
   };
-  console.log("objectDetailsData: ", objectDetailsData);
-  console.log("peerRelationshipSchema: ", peerRelationshipSchema);
 
   return (
     <>
