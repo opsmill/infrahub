@@ -1,3 +1,4 @@
+import pytest
 from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
@@ -8,6 +9,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
@@ -239,8 +241,25 @@ class TestBranchCreate(TestInfrahubApp):
         assert branch2.active_schema_hash.main == default_branch.active_schema_hash.main
 
 
+@pytest.fixture
+async def local_services(db: InfrahubDatabase, dependency_provider) -> InfrahubServices:
+    message_bus = BusRecorder()
+    workflow = WorkflowLocalExecution()
+
+    dependency_provider.override(build_database, lambda: db)
+    dependency_provider.override(build_message_bus, lambda: message_bus)
+    dependency_provider.override(build_workflow, lambda: workflow)
+
+    return await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow)
+
+
 async def test_branch_delete(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema,
+    register_core_models_schema,
+    session_admin,
+    local_services: InfrahubServices,
 ):
     delete_query = """
     mutation {
@@ -249,11 +268,8 @@ async def test_branch_delete(
         }
     }
     """
-
-    service = await InfrahubServices.new(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
-
     delete_before_create = await graphql_mutation(
-        query=delete_query, db=db, branch=default_branch, account_session=session_admin, service=service
+        query=delete_query, db=db, branch=default_branch, account_session=session_admin, service=local_services
     )
 
     assert delete_before_create.errors
@@ -261,7 +277,7 @@ async def test_branch_delete(
 
 
 async def test_branch_rebase_wrong_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin, local_services: InfrahubServices
 ):
     query = """
     mutation {
@@ -273,12 +289,11 @@ async def test_branch_rebase_wrong_branch(
         }
     }
     """
-    recorder = BusRecorder()
-    service = await InfrahubServices.new(message_bus=recorder)
+
     gql_params = await prepare_graphql_params(
         db=db,
         include_subscription=False,
-        service=service,
+        service=local_services,
         branch=default_branch,
         account_session=session_admin,
     )
@@ -295,7 +310,7 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
+async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, local_services: InfrahubServices):
     branch4 = await create_branch(branch_name="branch4", db=db)
 
     query = """
@@ -310,9 +325,8 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     }
     }
     """
-    service = await InfrahubServices.new(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch4, service=service)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch4, service=local_services)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -331,7 +345,7 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
 
 
 async def test_branch_merge_wrong_branch(
-    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin
+    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
 ):
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
@@ -345,10 +359,9 @@ async def test_branch_merge_wrong_branch(
         }
     }
     """
-    service = await InfrahubServices.new(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
 
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
+        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=local_services
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -363,7 +376,9 @@ async def test_branch_merge_wrong_branch(
     assert result.errors[0].message == "Branch: branch99 not found."
 
 
-async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin):
+async def test_branch_merge_with_conflict_fails(
+    db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin, local_services: InfrahubServices
+):
     query = """
     mutation {
         BranchMerge(data: { name: "branch2" }) {
@@ -383,11 +398,8 @@ async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person
     car_branch.name.value += "-branch"
     await car_branch.save(db=db)
 
-    recorder = BusRecorder()
-    service = await InfrahubServices.new(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
-
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service
+        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=local_services
     )
     result = await graphql(
         schema=gql_params.schema,
