@@ -14,6 +14,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
     AttributeParameters,
+    NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
     get_attribute_parameters_class_for_kind,
@@ -33,6 +34,7 @@ def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
         "NumberPool": NumberPoolSchema,
         "Text": TextAttributeSchema,
         "TextArea": TextAttributeSchema,
+        "Number": NumberAttributeSchema,
     }
     return attribute_schema_class_by_kind.get(kind, AttributeSchema)
 
@@ -172,6 +174,12 @@ class AttributeSchema(GeneratedAttributeSchema):
     def get_max_length(self) -> int | None:
         return self.max_length
 
+    def get_min_value(self) -> int | None:
+        return self.min_value
+
+    def get_max_value(self) -> int | None:
+        return self.max_value
+
     async def get_query_filter(
         self,
         name: str,
@@ -219,19 +227,13 @@ class TextAttributeSchema(AttributeSchema):
     @model_validator(mode="after")
     def reconcile_parameters(self) -> Self:
         if self.regex != self.parameters.regex:
-            final_regex = self.parameters.regex or self.regex
-            if not final_regex:  # falsy parameters.regex override falsy regex
-                final_regex = self.parameters.regex
+            final_regex = self.parameters.regex if self.parameters.regex is not None else self.regex
             self.regex = self.parameters.regex = final_regex
         if self.min_length != self.parameters.min_length:
-            final_min_length = self.parameters.min_length or self.min_length
-            if not final_min_length:  # falsy parameters.min_length override falsy min_length
-                final_min_length = self.parameters.min_length
+            final_min_length = self.parameters.min_length if self.parameters.min_length is not None else self.min_length
             self.min_length = self.parameters.min_length = final_min_length
         if self.max_length != self.parameters.max_length:
-            final_max_length = self.parameters.max_length or self.max_length
-            if not final_max_length:  # falsy parameters.max_length override falsy max_length
-                final_max_length = self.parameters.max_length
+            final_max_length = self.parameters.max_length if self.parameters.max_length is not None else self.max_length
             self.max_length = self.parameters.max_length = final_max_length
         return self
 
@@ -243,3 +245,27 @@ class TextAttributeSchema(AttributeSchema):
 
     def get_max_length(self) -> int | None:
         return self.parameters.max_length
+
+
+class NumberAttributeSchema(AttributeSchema):
+    parameters: NumberAttributeParameters = Field(
+        default_factory=NumberAttributeParameters,
+        description="Extra parameters specific to number attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @model_validator(mode="after")
+    def reconcile_parameters(self) -> Self:
+        if self.min_value != self.parameters.min_value:
+            final_min_value = self.parameters.min_value if self.parameters.min_value is not None else self.min_value
+            self.min_value = self.parameters.min_value = final_min_value
+        if self.max_value != self.parameters.max_value:
+            final_max_value = self.parameters.max_value if self.parameters.max_value is not None else self.max_value
+            self.max_value = self.parameters.max_value = final_max_value
+        return self
+
+    def get_min_value(self) -> int | None:
+        return self.parameters.min_value
+
+    def get_max_value(self) -> int | None:
+        return self.parameters.max_value

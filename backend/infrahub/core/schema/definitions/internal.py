@@ -529,6 +529,20 @@ attribute_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="min_value",
+            kind="Number",
+            description="Lowest possible value for the attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="max_value",
+            kind="Number",
+            description="Highest possible value for the attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="label",
             kind="Text",
             optional=True,

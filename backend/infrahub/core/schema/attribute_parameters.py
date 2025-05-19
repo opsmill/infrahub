@@ -14,6 +14,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
         "NumberPool": NumberPoolParameters,
         "Text": TextAttributeParameters,
         "TextArea": TextAttributeParameters,
+        "Number": NumberAttributeParameters,
     }
     return param_classes.get(kind, AttributeParameters)
 
@@ -61,5 +62,18 @@ class TextAttributeParameters(AttributeParameters):
     max_length: int | None = Field(
         default=None,
         description="Set a maximum number of characters allowed.",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+
+class NumberAttributeParameters(AttributeParameters):
+    min_value: int | None = Field(
+        default=None,
+        description="Set a minimum value allowed.",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+    max_value: int | None = Field(
+        default=None,
+        description="Set a maximum value allowed.",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
