@@ -1,4 +1,4 @@
-from graphene import Field, InputObjectType, List, ObjectType, String
+from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene.types.uuid import UUID
 
 from .enums import Severity
@@ -26,4 +26,5 @@ class TaskLogNodes(ObjectType):
 
 
 class TaskLogEdge(ObjectType):
-    edges = List(TaskLogNodes)
+    edges = List(NonNull(TaskLogNodes), required=True)
+    count = Int(required=True)
