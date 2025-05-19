@@ -245,10 +245,7 @@ async def cancel_proposed_change(proposed_change: CoreProposedChange, client: In
     await proposed_change.save()
 
 
-@flow(
-    name="proposed-changed-data-integrity",
-    flow_run_name="Triggers data integrity check",
-)
+@flow(name="proposed-changed-data-integrity", flow_run_name="Triggers data integrity check")
 async def run_proposed_change_data_integrity_check(model: RequestProposedChangeDataIntegrity) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
@@ -1452,7 +1449,11 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(model=model, source=source_all, destination=destination_all)
 
 
-@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")  # type: ignore[arg-type]
+@task(
+    name="proposed-change-validate-repository-conflicts",
+    task_run_name="Validate conflicts on repository",
+    cache_policy=NONE,
+)  # type: ignore[arg-type]
 async def _validate_repository_merge_conflicts(
     repositories: list[ProposedChangeRepository], client: InfrahubClient
 ) -> bool:
