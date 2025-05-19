@@ -8,7 +8,6 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
@@ -24,7 +23,6 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client: InfrahubClient,
         service: InfrahubServices,
-        memory_cache: MemoryCache,
     ):
         query = """
             mutation {

@@ -16,7 +16,6 @@ class TestBranchQuery(TestInfrahubApp):
         session_admin,
         client,
         service,
-        memory_cache,
     ):
         create_branch_query = """
         mutation {
