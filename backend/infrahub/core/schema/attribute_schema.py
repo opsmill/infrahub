@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import enum
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from infrahub import config
+from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.enums import generate_python_enum
 from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
+from .attribute_parameters import AttributeParameters, TextAttributeParameters, get_attribute_parameters_class_for_kind
 from .generated.attribute_schema import GeneratedAttributeSchema
 
 if TYPE_CHECKING:
@@ -19,6 +21,14 @@ if TYPE_CHECKING:
     from infrahub.core.constants import BranchSupportType
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
+
+
+def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
+    attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
+        "Text": TextAttributeSchema,
+        "TextArea": TextAttributeSchema,
+    }
+    return attribute_schema_class_by_kind.get(kind, AttributeSchema)
 
 
 class AttributeSchema(GeneratedAttributeSchema):
@@ -53,15 +63,35 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_dropdown_choices(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def validate_dropdown_choices(cls, values: Any) -> Any:
         """Validate that choices are defined for a dropdown but not for other kinds."""
-        if values.get("kind") != "Dropdown" and values.get("choices"):
-            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind']}")
+        if isinstance(values, dict):
+            kind = values.get("kind")
+            choices = values.get("choices")
+        elif isinstance(values, AttributeSchema):
+            kind = values.kind
+            choices = values.choices
+        else:
+            return values
+        if kind != "Dropdown" and choices:
+            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {kind}")
 
-        if values.get("kind") == "Dropdown" and not values.get("choices"):
+        if kind == "Dropdown" and not choices:
             raise ValueError("The property 'choices' is required for kind=Dropdown")
 
         return values
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def set_parameters_type(cls, value: Any, info: ValidationInfo) -> Any:
+        """Override parameters class if using base AttributeParameters class and should be using a subclass"""
+        kind = info.data["kind"]
+        expected_parameters_class = get_attribute_parameters_class_for_kind(kind=kind)
+        if value is None:
+            return expected_parameters_class()
+        if not isinstance(value, expected_parameters_class) and isinstance(value, AttributeParameters):
+            return expected_parameters_class(**value.model_dump())
+        return value
 
     def get_class(self) -> type[BaseAttribute]:
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
@@ -106,7 +136,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     def to_node(self) -> dict[str, Any]:
         fields_to_exclude = {"id", "state", "filters"}
-        fields_to_json = {"computed_attribute"}
+        fields_to_json = {"computed_attribute", "parameters"}
         data = self.model_dump(exclude=fields_to_exclude | fields_to_json)
 
         for field_name in fields_to_json:
@@ -116,6 +146,15 @@ class AttributeSchema(GeneratedAttributeSchema):
                 data[field_name] = None
 
         return data
+
+    def get_regex(self) -> str | None:
+        return self.regex
+
+    def get_min_length(self) -> int | None:
+        return self.min_length
+
+    def get_max_length(self) -> int | None:
+        return self.max_length
 
     async def get_query_filter(
         self,
@@ -144,3 +183,39 @@ class AttributeSchema(GeneratedAttributeSchema):
             partial_match=partial_match,
             support_profiles=support_profiles,
         )
+
+
+class TextAttributeSchema(AttributeSchema):
+    parameters: TextAttributeParameters = Field(
+        default_factory=TextAttributeParameters,
+        description="Extra parameters specific to text attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @model_validator(mode="after")
+    def reconcile_parameters(self) -> Self:
+        if self.regex != self.parameters.regex:
+            final_regex = self.parameters.regex or self.regex
+            if not final_regex:  # falsy parameters.regex override falsy regex
+                final_regex = self.parameters.regex
+            self.regex = self.parameters.regex = final_regex
+        if self.min_length != self.parameters.min_length:
+            final_min_length = self.parameters.min_length or self.min_length
+            if not final_min_length:  # falsy parameters.min_length override falsy min_length
+                final_min_length = self.parameters.min_length
+            self.min_length = self.parameters.min_length = final_min_length
+        if self.max_length != self.parameters.max_length:
+            final_max_length = self.parameters.max_length or self.max_length
+            if not final_max_length:  # falsy parameters.max_length override falsy max_length
+                final_max_length = self.parameters.max_length
+            self.max_length = self.parameters.max_length = final_max_length
+        return self
+
+    def get_regex(self) -> str | None:
+        return self.parameters.regex
+
+    def get_min_length(self) -> int | None:
+        return self.parameters.min_length
+
+    def get_max_length(self) -> int | None:
+        return self.parameters.max_length

@@ -526,7 +526,11 @@ class DiffQueryParser:
         return self._current_node_field_specifiers
 
     def read_result(self, query_result: QueryResult) -> None:
-        path = query_result.get_path(label="diff_path")
+        try:
+            path = query_result.get_path(label="diff_path")
+        except ValueError:
+            # the path was null, so nothing to read
+            return
         database_path = DatabasePath.from_cypher_path(cypher_path=path)
         self._parse_path(database_path=database_path)
         self._current_node_field_specifiers = None

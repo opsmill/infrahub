@@ -14,6 +14,8 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
+from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.database import InfrahubDatabase
 
 
@@ -186,6 +188,32 @@ def test_core_models():
 
 def test_internal_schema():
     assert SchemaRoot(**internal_schema)
+
+
+async def test_attribute_schema_parameters():
+    regex = "abc"
+    min_length = 3
+    max_length = 5
+
+    attr_schema = TextAttributeSchema(
+        name="something", kind="Text", parameters={"regex": regex, "min_length": min_length, "max_length": max_length}
+    )
+    assert isinstance(attr_schema.parameters, TextAttributeParameters)
+    assert attr_schema.parameters.regex == attr_schema.regex == regex
+    assert attr_schema.parameters.min_length == attr_schema.min_length == min_length
+    assert attr_schema.parameters.max_length == attr_schema.max_length == max_length
+
+    attr_schema = TextAttributeSchema(
+        name="something", kind="Text", regex=regex, min_length=min_length, max_length=max_length
+    )
+    assert isinstance(attr_schema.parameters, TextAttributeParameters)
+    assert attr_schema.parameters.regex == attr_schema.regex == regex
+    assert attr_schema.parameters.min_length == attr_schema.min_length == min_length
+    assert attr_schema.parameters.max_length == attr_schema.max_length == max_length
+
+    # TODO: update text of error message in this situation
+    with pytest.raises(ValidationError):
+        attr_schema = AttributeSchema(name="something", kind="Number", parameters={"regex": "abc"})
 
 
 async def test_attribute_schema_choices_invalid_kind():

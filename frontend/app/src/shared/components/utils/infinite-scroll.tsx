@@ -1,5 +1,4 @@
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { ScrollAreaProps } from "@radix-ui/react-scroll-area";
+import { ScrollArea, ScrollAreaProps } from "@/shared/components/ui/scroll-area";
 import React from "react";
 
 export interface InfiniteScrollProps extends ScrollAreaProps {

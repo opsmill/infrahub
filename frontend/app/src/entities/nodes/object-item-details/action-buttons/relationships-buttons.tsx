@@ -1,5 +1,4 @@
 import { QSP } from "@/config/qsp";
-import { AttributeType, Node, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -24,7 +23,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
-  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
 }
 
 export function RelationshipsButtons({
@@ -109,6 +107,8 @@ export function RelationshipsButtons({
       setShowAddDrawer(false);
     }
   };
+  console.log("objectDetailsData: ", objectDetailsData);
+  console.log("peerRelationshipSchema: ", peerRelationshipSchema);
 
   return (
     <>
@@ -148,16 +148,12 @@ export function RelationshipsButtons({
             onCancel={() => {
               setShowAddDrawer(false);
             }}
-            kind={relationshipSchemaData?.peer!}
             currentObject={{
-              device: {
-                node: {
-                  id: objectid!,
-                  display_label: objectDetailsData.display_label,
-                  __typename: objectDetailsData.__typename,
-                },
+              [peerRelationshipSchema.name]: {
+                node: objectDetailsData,
               },
             }}
+            kind={relationshipSchemaData?.peer!}
           />
         ) : (
           <DynamicForm

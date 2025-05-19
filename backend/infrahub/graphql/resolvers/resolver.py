@@ -29,7 +29,7 @@ async def account_resolver(
     fields = await extract_fields(info.field_nodes[0].selection_set)
     graphql_context: GraphqlContext = info.context
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         results = await NodeManager.query(
             schema=InfrahubKind.GENERICACCOUNT,
             filters={"ids": [graphql_context.account_session.account_id]},
@@ -102,7 +102,7 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
@@ -158,7 +158,7 @@ async def default_paginated_list_resolver(
     fields = await extract_selection(info.field_nodes[0], schema=schema)
 
     graphql_context: GraphqlContext = info.context
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         response: dict[str, Any] = {"edges": []}
         filters = {
             key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
@@ -293,7 +293,7 @@ async def hierarchy_resolver(
 
     response: dict[str, Any] = {"edges": [], "count": None}
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         if "count" in fields:
             response["count"] = await NodeManager.count_hierarchy(
                 db=db,

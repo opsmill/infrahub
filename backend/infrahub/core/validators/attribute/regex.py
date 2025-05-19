@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
@@ -23,7 +24,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["attr_value_regex"] = self.attribute_schema.regex
+        self.params["attr_value_regex"] = self.attribute_schema.get_regex()
         self.params["null_value"] = NULL_VALUE
         query = """
         MATCH p = (n:%(node_kind)s)
@@ -78,14 +79,14 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         return "attribute.regex.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name == self.name
+        return request.constraint_name in (self.name, ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value)
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
-        if not attribute_schema.regex:
+        if not attribute_schema.get_regex():
             return grouped_data_paths_list
 
         for query_class in self.query_classes:

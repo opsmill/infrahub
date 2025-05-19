@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 
 import pytest
@@ -302,6 +303,39 @@ async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: B
     assert "invalid-choice must be one of" in str(exc.value)
 
 
+@pytest.mark.parametrize("params_only", [False, True])
+async def test_validate_content_text_parameters(db: InfrahubDatabase, default_branch: Branch, params_only: bool):
+    regex = "^[a-z]*$"
+    min_length = 2
+    max_length = 5
+    node_schema = NodeSchema(
+        namespace="Test",
+        name="Node",
+        attributes=[
+            AttributeSchema(name="text_test", kind="Text", regex=regex, min_length=min_length, max_length=max_length)
+        ],
+    )
+    attr_schema = node_schema.get_attribute("text_test")
+    assert attr_schema.regex == attr_schema.parameters.regex
+    assert attr_schema.min_length == attr_schema.parameters.min_length
+    assert attr_schema.max_length == attr_schema.parameters.max_length
+    if params_only:
+        attr_schema.regex = attr_schema.min_length = attr_schema.min_length = None
+
+    new_node = await Node.init(db=db, branch=default_branch, schema=node_schema)
+    with pytest.raises(ValidationError, match=r"must have a minimum length of 2"):
+        await new_node.new(db=db, text_test="a")
+
+    with pytest.raises(ValidationError, match=r"must have a maximum length of 5"):
+        await new_node.new(db=db, text_test="abcdef")
+
+    with pytest.raises(ValidationError, match=rf"must conform with the regex: '{re.escape(regex)}'"):
+        await new_node.new(db=db, text_test="Ab")
+
+    await new_node.new(db=db, text_test="abc")
+    assert new_node.text_test.value == "abc"
+
+
 async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("status")
     active = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
@@ -366,7 +400,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 2/ a regex is defined and a valid value is provided
-    schema.regex = "^[A-Z7-9]+$"
+    schema.parameters.regex = "^[A-Z7-9]+$"
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
     # 3/ a regex is defined and a non-valid value is provided
@@ -374,7 +408,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 4/ An invalid regex is defined
-    schema.regex = "^[A-Z7-9"
+    schema.parameters.regex = "^[A-Z7-9"
     with pytest.raises(ValidationError):
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
@@ -386,8 +420,8 @@ async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, cri
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 2/ min_length or max_length are defined and a valid value is provided
-    schema.min_length = 5
-    schema.max_length = 10
+    schema.parameters.min_length = 5
+    schema.parameters.max_length = 10
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
     # 3/ min_length or max_length are defined and a non-valid value is provided
