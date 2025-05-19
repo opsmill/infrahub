@@ -108,6 +108,7 @@ export function RelationshipsButtons({
     }
   };
   console.log("objectDetailsData: ", objectDetailsData);
+  console.log("peerRelationshipSchema: ", peerRelationshipSchema);
 
   return (
     <>
@@ -148,10 +149,7 @@ export function RelationshipsButtons({
               setShowAddDrawer(false);
             }}
             currentObject={{
-              device: {
-                node: objectDetailsData,
-              },
-              trigger: {
+              [peerRelationshipSchema.name]: {
                 node: objectDetailsData,
               },
             }}
