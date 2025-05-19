@@ -12,7 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub.workers.dependencies import build_workflow
+from infrahub.workers.dependencies import build_database
 
 
 async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
@@ -98,7 +98,8 @@ async def test_branch_rebase_diff_conflict(
     car_person_schema,
     car_camry_main,
 ):
-    dependency_provider.override(build_workflow, lambda: workflow_local)
+    # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
+    dependency_provider.override(build_database, lambda: db)
 
     branch2 = await create_branch(db=db, branch_name="branch2")
     car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)

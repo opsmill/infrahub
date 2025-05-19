@@ -75,11 +75,7 @@ class TestAddRepository:
 
         patch.stopall()
 
-    async def test_git_rpc_create_successful(
-        self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup, dependency_provider
-    ):
-        dependency_provider.override(build_message_bus, lambda: self.recorder)
-
+    async def test_git_rpc_create_successful(self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup):
         repo_id = str(UUIDT())
         model = GitRepositoryAdd(
             repository_id=repo_id,
