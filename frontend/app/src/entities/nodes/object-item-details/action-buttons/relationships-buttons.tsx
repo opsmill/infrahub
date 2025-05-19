@@ -1,4 +1,5 @@
 import { QSP } from "@/config/qsp";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -23,6 +24,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
+  objectDetailsData?: Record<string, AttributeType | RelationshipType>;
 }
 
 export function RelationshipsButtons({
