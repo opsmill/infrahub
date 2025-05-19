@@ -57,11 +57,6 @@ export const NodeAttributeMatchForm = ({
     return field.name !== "attribute_name";
   });
 
-  const triggerDefaultValue = getRelationshipDefaultValue({
-    relationshipData: currentObject?.trigger,
-    relationshipName: "trigger",
-  });
-
   const defaultValues = {
     attribute_name: getCurrentFieldValue("attribute_name", currentObject),
     value: getCurrentFieldValue("value", currentObject),
@@ -71,12 +66,10 @@ export const NodeAttributeMatchForm = ({
       relationshipData: currentObject?.member_of_group,
       relationshipName: "member_of_group",
     }),
-    trigger: triggerDefaultValue.value
-      ? triggerDefaultValue
-      : {
-          source: { type: "user" },
-          value: { id: objectid, display_label: data?.display_label },
-        },
+    trigger: getRelationshipDefaultValue({
+      relationshipData: currentObject?.trigger,
+      relationshipName: "trigger",
+    }),
   };
 
   const form = useForm<FieldValues>({
