@@ -3,7 +3,11 @@ import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
-import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import {
+  DynamicFieldProps,
+  FormAttributeValue,
+  FormFieldValue,
+} from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -12,7 +16,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { FieldValues, useForm } from "react-hook-form";
+import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -25,7 +29,7 @@ import RelationshipField from "@/shared/components/form/fields/relationship.fiel
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "../constants";
 
@@ -128,6 +132,7 @@ export const NodeRelationshipMatchForm = ({
     <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <NodeRelationshipField
+          form={form}
           schemaFields={schemaFields}
           kind={data?.node_kind?.value}
           isLoading={isPending}
@@ -160,6 +165,9 @@ interface NodeRelationshipFieldProps {
 const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationshipFieldProps) => {
   const { schema } = useSchema(kind);
   const [peerKind, setPeerKind] = useState<string | null>(null);
+  const form = useFormContext();
+
+  const selectedRelationshipField: FormAttributeValue = form.watch("relationship_name");
 
   const relationshipField = schemaFields.find((field) => {
     return field.name === "relationship_name";
@@ -191,17 +199,19 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
       };
     }) ?? [];
 
-  const handleChange = (selectedRelationship: string) => {
+  useEffect(() => {
+    if (!selectedRelationshipField?.value) return;
+
     const relationshipSchema = schema?.relationships?.find((relationship) => {
-      return relationship.name === selectedRelationship;
+      return relationship.name === selectedRelationshipField?.value;
     });
 
     setPeerKind(relationshipSchema?.peer ?? null);
-  };
+  }, [selectedRelationshipField?.value]);
 
   return (
     <>
-      <DropdownField {...relationshipField} items={relationshipOptions} onChange={handleChange} />
+      <DropdownField {...relationshipField} items={relationshipOptions} />
       {peerKind && <RelationshipField {...peerField} relationship={{ peer: peerKind }} />}
     </>
   );
