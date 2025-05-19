@@ -5,6 +5,7 @@ from .attribute.length import AttributeLengthChecker
 from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .attribute.unique import AttributeUniquenessChecker
+from .enum import ConstraintIdentifier
 from .interface import ConstraintCheckerInterface
 from .node.attribute import NodeAttributeAddChecker
 from .node.generate_profile import NodeGenerateProfileChecker
@@ -17,11 +18,14 @@ from .relationship.peer import RelationshipPeerChecker
 from .uniqueness.checker import UniquenessChecker
 
 CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
-    "attribute.regex.update": AttributeRegexChecker,
-    "attribute.enum.update": AttributeEnumChecker,
     "attribute.kind.update": AttributeKindChecker,
+    "attribute.regex.update": AttributeRegexChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value: AttributeRegexChecker,
+    "attribute.enum.update": AttributeEnumChecker,
     "attribute.min_length.update": AttributeLengthChecker,
     "attribute.max_length.update": AttributeLengthChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value: AttributeLengthChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value: AttributeLengthChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,

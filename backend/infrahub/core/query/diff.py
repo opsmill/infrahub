@@ -199,6 +199,13 @@ WITH reduce(
     diff_rel_paths = [], item IN [penultimate_path, peer_path] |
     CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
 ) AS diff_rel_paths, has_more_data
+// ------------------------
+// make sure we still include has_more_data if diff_rel_paths is empty
+// ------------------------
+WITH CASE
+    WHEN diff_rel_paths = [] THEN [NULL]
+    ELSE diff_rel_paths
+END AS diff_rel_paths, has_more_data
     """
 
     def get_previous_base_path_query(self, db: InfrahubDatabase) -> str:

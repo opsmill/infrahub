@@ -26,7 +26,7 @@ class NodeConstraintRunner:
     async def check(
         self, node: Node, field_filters: list[str] | None = None, skip_uniqueness_check: bool = False
     ) -> None:
-        async with self.db.start_session() as db:
+        async with self.db.start_session(read_only=False) as db:
             await node.resolve_relationships(db=db)
 
             if not skip_uniqueness_check:

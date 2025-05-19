@@ -39,10 +39,15 @@ class TriggerType(str, Enum):
     # OBJECT = "object"
 
 
+def _match_related_dict() -> dict:
+    # Make Mypy happy as match related is a dict[str, Any] | list[dict[str, Any]]
+    return {}
+
+
 class EventTrigger(BaseModel):
     events: set = Field(default_factory=set)
     match: dict[str, Any] = Field(default_factory=dict)
-    match_related: dict[str, Any] = Field(default_factory=dict)
+    match_related: dict[str, Any] | list[dict[str, Any]] = Field(default_factory=_match_related_dict)
 
     def get_prefect(self) -> PrefectEventTrigger:
         return PrefectEventTrigger(
@@ -50,9 +55,19 @@ class EventTrigger(BaseModel):
             expect=self.events,
             within=timedelta(0),
             match=ResourceSpecification(self.match),
-            match_related=ResourceSpecification(self.match_related),
+            match_related=self.related_resource_specification,
             threshold=1,
         )
+
+    @property
+    def related_resource_specification(self) -> ResourceSpecification | list[ResourceSpecification]:
+        if isinstance(self.match_related, dict):
+            return ResourceSpecification(self.match_related)
+
+        if len(self.match_related) == 1:
+            return ResourceSpecification(self.match_related[0])
+
+        return [ResourceSpecification(related_match) for related_match in self.match_related]
 
 
 class ExecuteWorkflow(BaseModel):

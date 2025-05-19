@@ -71,7 +71,7 @@ class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
 class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
     relationship_name: str
     added: bool
-    peer: str
+    peer: str | None
 
 
 class CoreNodeTriggerRule(CoreTriggerRule):
@@ -116,9 +116,10 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
             case BranchScope.OTHER_BRANCHES:
                 event_trigger.match["infrahub.branch.name"] = f"!{registry.default_branch}"
 
+        related_matches: list[dict[str, str | list[str]]] = []
         for match in trigger_rule.matches:
             if isinstance(match, CoreNodeTriggerAttributeMatch):
-                event_trigger.match_related = {
+                match_related: dict[str, str | list[str]] = {
                     "prefect.resource.role": "infrahub.node.attribute_update",
                     "infrahub.field.name": match.attribute_name,
                     "infrahub.attribute.action": ["added", "updated", "removed"],
@@ -126,21 +127,25 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
 
                 match match.value_match:
                     case ValueMatch.VALUE:
-                        event_trigger.match_related["infrahub.attribute.value"] = match.value or ""
+                        match_related["infrahub.attribute.value"] = match.value or ""
                     case ValueMatch.VALUE_PREVIOUS:
-                        event_trigger.match_related["infrahub.attribute.value_previous"] = match.value_previous or ""
+                        match_related["infrahub.attribute.value_previous"] = match.value_previous or ""
                     case ValueMatch.VALUE_FULL:
-                        event_trigger.match_related["infrahub.attribute.value"] = match.value or ""
-                        event_trigger.match_related["infrahub.attribute.value_previous"] = match.value_previous or ""
+                        match_related["infrahub.attribute.value"] = match.value or ""
+                        match_related["infrahub.attribute.value_previous"] = match.value_previous or ""
 
             elif isinstance(match, CoreNodeTriggerRelationshipMatch):
                 peer_status = "added" if match.added else "removed"
-                event_trigger.match_related = {
+                match_related = {
                     "prefect.resource.role": "infrahub.node.relationship_update",
                     "infrahub.field.name": match.relationship_name,
-                    "infrahub.relationship.peer_id": match.peer,
                     "infrahub.relationship.peer_status": peer_status,
                 }
+                if isinstance(match.peer, str):
+                    match_related["infrahub.relationship.peer_id"] = match.peer
+            related_matches.append(match_related)
+
+        event_trigger.match_related = related_matches or {}
 
         if isinstance(trigger_rule.action, CoreGeneratorAction):
             workflow = ExecuteWorkflow(

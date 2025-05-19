@@ -16,7 +16,7 @@ export function ObjectTableSkeleton({ headerCount }: ObjectsTableSkeletonProps) 
           return (
             <TableCell
               key={`skeleton-${rowIndex}-${colIndex}`}
-              className={classNames(colIndex === 0 && "sticky left-0")}
+              className={classNames(colIndex === 0 && "sticky left-0 bg-white z-1")}
             >
               {colIndex === 0 && <Checkbox isDisabled className={"mr-4"} />}
               <Skeleton className="h-4 w-full" />
