@@ -27,8 +27,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_cache, build_client, build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 
 from .test_client import InfrahubTestClient
@@ -77,6 +78,13 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.message_bus = bus
         dependency_provider.override(build_message_bus, lambda: bus)
         return bus
+
+    @pytest.fixture(scope="class")
+    async def memory_cache(self, db: InfrahubDatabase, dependency_provider: Provider) -> MemoryCache:
+        cache = MemoryCache()
+        config.OVERRIDE.cache = cache
+        dependency_provider.override(build_cache, lambda: cache)
+        return cache
 
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_local(

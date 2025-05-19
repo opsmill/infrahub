@@ -1,3 +1,5 @@
+from infrahub_sdk.client import InfrahubClient
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -6,7 +8,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
@@ -20,12 +22,10 @@ class TestBranchCreate(TestInfrahubApp):
         car_person_schema,
         register_core_models_schema,
         session_admin,
-        client,
+        client: InfrahubClient,
         service: InfrahubServices,
-        dependency_provider,
+        memory_cache: MemoryCache,
     ):
-        dependency_provider.override(build_client, lambda: service.client)
-
         query = """
             mutation {
                 BranchCreate(data: { name: "branch2", sync_with_git: false }) {
