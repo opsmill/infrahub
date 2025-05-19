@@ -22,6 +22,7 @@ import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
 import { useParams } from "react-router";
@@ -56,16 +57,26 @@ export const NodeAttributeMatchForm = ({
     return field.name !== "attribute_name";
   });
 
+  const triggerDefaultValue = getRelationshipDefaultValue({
+    relationshipData: currentObject?.trigger,
+    relationshipName: "trigger",
+  });
+
   const defaultValues = {
     attribute_name: getCurrentFieldValue("attribute_name", currentObject),
     value: getCurrentFieldValue("value", currentObject),
     value_previous: getCurrentFieldValue("value_previous", currentObject),
     value_match: getCurrentFieldValue("value_match", currentObject),
-    member_of_group: getCurrentFieldValue("member_of_group", currentObject),
-    trigger: getCurrentFieldValue("trigger", currentObject) ?? {
-      source: { type: "user" },
-      value: { id: objectid, display_label: data?.display_label },
-    },
+    member_of_group: getRelationshipDefaultValue({
+      relationshipData: currentObject?.member_of_group,
+      relationshipName: "member_of_group",
+    }),
+    trigger: triggerDefaultValue.value
+      ? triggerDefaultValue
+      : {
+          source: { type: "user" },
+          value: { id: objectid, display_label: data?.display_label },
+        },
   };
 
   const form = useForm<FieldValues>({
