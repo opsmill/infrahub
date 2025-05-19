@@ -149,15 +149,6 @@ export function RelationshipsButtons({
               setShowAddDrawer(false);
             }}
             kind={relationshipSchemaData?.peer!}
-            currentObject={{
-              device: {
-                node: {
-                  id: objectid!,
-                  display_label: objectDetailsData.display_label,
-                  __typename: objectDetailsData.__typename,
-                },
-              },
-            }}
           />
         ) : (
           <DynamicForm
