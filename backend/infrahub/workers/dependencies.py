@@ -7,7 +7,6 @@ from infrahub_sdk.config import Config
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.database import InfrahubDatabase, get_db
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.services.adapters.http import InfrahubHTTP
@@ -16,16 +15,25 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.services.component import InfrahubComponent
 
 _singletons: dict[str, Any] = {}
 
 
+def set_component_type(component_type: ComponentType) -> None:
+    if "component_type" not in _singletons:
+        _singletons["component_type"] = component_type
+
+
+def get_component_type() -> ComponentType:
+    try:
+        return _singletons["component_type"]
+    except KeyError as exc:
+        raise ValueError("Component type is not set. It needs to be initialized before working with services.") from exc
+
+
 def build_client() -> InfrahubClient:
-    if "client" not in _singletons:
-        _singletons["client"] = InfrahubClient(
-            config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
-        )
-    return _singletons["client"]
+    return InfrahubClient(config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True))
 
 
 @inject
@@ -61,7 +69,7 @@ async def build_message_bus() -> InfrahubMessageBus:
     if "message_bus" not in _singletons:
         _singletons["message_bus"] = config.OVERRIDE.message_bus or (
             await InfrahubMessageBus.new_from_driver(
-                component_type=ComponentType.GIT_AGENT, driver=config.SETTINGS.broker.driver
+                component_type=get_component_type(), driver=config.SETTINGS.broker.driver
             )
         )
     return _singletons["message_bus"]
@@ -109,15 +117,17 @@ def get_http(http_service: InfrahubHTTP = Depends(build_http_service)) -> Infrah
     return http_service
 
 
-async def get_infrahub_services() -> InfrahubServices:
-    if "services" not in _singletons:
-        _singletons["services"] = await InfrahubServices.new(
+async def build_component() -> InfrahubComponent:
+    if "component" not in _singletons:
+        _singletons["component"] = await InfrahubComponent.new(
             cache=await get_cache(),
-            client=get_client(),
-            database=await get_database(),
+            component_type=get_component_type(),
+            db=await get_database(),
             message_bus=await get_message_bus(),
-            workflow=get_workflow(),
-            component_type=ComponentType.GIT_AGENT,
         )
+    return _singletons["component"]
 
-    return _singletons["services"]
+
+@inject
+async def get_component(component: InfrahubComponent = Depends(build_component)) -> InfrahubComponent:  # noqa: B008
+    return component

@@ -38,6 +38,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import set_component_type
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -66,6 +67,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         else WorkflowLocalExecution()
     )
     component_type = ComponentType.API_SERVER
+    set_component_type(component_type=component_type)
     message_bus = config.OVERRIDE.message_bus or await InfrahubMessageBus.new_from_driver(
         component_type=component_type, driver=config.SETTINGS.broker.driver
     )
