@@ -79,6 +79,32 @@ export const getCreateMutationFromFormDataOnly = (
     if (currentObject && data.value === currentObject[name]?.value) return acc;
 
     if (data.source?.type === "user") {
+      if (typeof data.value === "object" && data.value !== null) {
+        if (Array.isArray(data.value)) {
+          // To differentiate between list (string[]) and relationship (Node[])
+          if (data.value.every((value) => typeof value === "string")) {
+            return {
+              ...acc,
+              [name]: { value: data.value },
+            };
+          }
+
+          if (data.value.every((value) => "id" in value)) {
+            return {
+              ...acc,
+              [name]: data.value.map(({ id }) => ({ id })),
+            };
+          }
+        }
+
+        if ("id" in data.value) {
+          return {
+            ...acc,
+            [name]: { id: data.value.id },
+          };
+        }
+      }
+
       const fieldValue = data.value === "" ? null : data.value;
 
       return {

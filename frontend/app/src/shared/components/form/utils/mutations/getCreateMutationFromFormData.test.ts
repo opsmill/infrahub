@@ -41,7 +41,7 @@ describe("getCreateMutationFromFormData", () => {
     expect(mutationData).to.deep.equal({});
   });
 
-  it("returns empty if form data if empty", () => {
+  it("returns empty if form data is empty", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [buildField()];
     const formData: Record<string, FormFieldValue> = {};
@@ -484,6 +484,26 @@ describe("getCreateMutationFromFormDataOnly", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       field2: { value: "changed" },
+    });
+  });
+
+  it("handles relationship value correctly", () => {
+    // GIVEN
+    const formData: Record<string, FormFieldValue> = {
+      field1: {
+        source: {
+          type: "user",
+        },
+        value: { id: "peer-id", display_label: "peer test", __typename: "PeerKind" },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormDataOnly(formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: { id: "peer-id" },
     });
   });
 });
