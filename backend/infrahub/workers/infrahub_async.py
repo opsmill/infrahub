@@ -29,6 +29,7 @@ from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
+from infrahub.workers.dependencies import set_component_type
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
@@ -63,6 +64,7 @@ class InfrahubWorkerAsync(BaseWorker):
     _logo_url = "https://example.com/logo"
     _description = "Infrahub worker designed to run the flow in the main async loop."
     service: InfrahubServices  # keep a reference to `service` so we can inject it within flows parameters.
+    component_type = ComponentType.GIT_AGENT
 
     async def setup(
         self,
@@ -115,6 +117,7 @@ class InfrahubWorkerAsync(BaseWorker):
             )
         )
 
+        set_component_type(component_type=self.component_type)
         await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
@@ -203,11 +206,10 @@ class InfrahubWorkerAsync(BaseWorker):
         return config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
 
     async def _init_services(self, client: InfrahubClient) -> None:
-        component_type = ComponentType.GIT_AGENT
         client = await self._init_infrahub_client(client=client)
         database = await self._init_database()
         workflow = await self._init_workflow()
-        message_bus = await self._init_message_bus(component_type=component_type)
+        message_bus = await self._init_message_bus(component_type=self.component_type)
         cache = await self._init_cache()
 
         service = await InfrahubServices.new(
@@ -216,7 +218,7 @@ class InfrahubWorkerAsync(BaseWorker):
             database=database,
             message_bus=message_bus,
             workflow=workflow,
-            component_type=component_type,
+            component_type=self.component_type,
         )
 
         self.service = service
