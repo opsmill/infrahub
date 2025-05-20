@@ -4,6 +4,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
 import {
+  DynamicDropdownFieldProps,
   DynamicFieldProps,
   FormAttributeValue,
   FormFieldValue,
@@ -20,6 +21,7 @@ import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
@@ -27,6 +29,7 @@ import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipField from "@/shared/components/form/fields/relationship.field";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
 import { useEffect, useState } from "react";
@@ -37,6 +40,7 @@ interface NodeRelationshipMatchFormProps extends NodeFormProps {}
 
 export const NodeRelationshipMatchForm = ({
   currentObject,
+  objectTemplate,
   isUpdate,
   onSuccess,
   onCancel,
@@ -59,15 +63,28 @@ export const NodeRelationshipMatchForm = ({
   });
 
   const defaultValues = {
-    relationship_name: getCurrentFieldValue("relationship_name", currentObject),
-    added: getCurrentFieldValue("added", currentObject),
-    peer: getCurrentFieldValue("peer", currentObject),
-    value_match: getCurrentFieldValue("value_match", currentObject),
-    member_of_group: getCurrentFieldValue("member_of_group", currentObject),
-    trigger: getCurrentFieldValue("trigger", currentObject) ?? {
-      source: { type: "user" },
-      value: { id: objectid, display_label: data?.display_label },
-    },
+    relationship_name: getCurrentFieldValue("relationship_name", {
+      relationship_name: currentObject?.relationship_name as AttributeType,
+    }),
+    added: getCurrentFieldValue("added", {
+      added: currentObject?.added as AttributeType,
+    }),
+    peer: getCurrentFieldValue("peer", {
+      peer: currentObject?.peer as AttributeType,
+    }),
+    value_match: getCurrentFieldValue("value_match", {
+      value_match: currentObject?.value_match as AttributeType,
+    }),
+    member_of_group: getRelationshipDefaultValue({
+      relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
+      relationshipName: "member_of_group",
+      objectTemplate,
+    }),
+    trigger: getRelationshipDefaultValue({
+      relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
+      relationshipName: "member_of_group",
+      objectTemplate,
+    }),
   };
 
   const form = useForm<FieldValues>({
@@ -171,25 +188,11 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
 
   const relationshipField = schemaFields.find((field) => {
     return field.name === "relationship_name";
-  });
+  }) as DynamicDropdownFieldProps;
 
   const peerField = schemaFields.find((field) => {
     return field.name === "peer";
   });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <LabelFormField
-          label={"Relationship Name"}
-          required={!!relationshipField?.rules?.required}
-          description={relationshipField?.description}
-        />
-
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
-  }
 
   const relationshipOptions: Array<DropdownOption> =
     schema?.relationships?.map((relationship) => {
@@ -208,6 +211,20 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
 
     setPeerKind(relationshipSchema?.peer ?? null);
   }, [selectedRelationshipField?.value]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <LabelFormField
+          label={"Relationship Name"}
+          required={!!relationshipField?.rules?.required}
+          description={relationshipField?.description}
+        />
+
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
 
   return (
     <>
