@@ -9,22 +9,45 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
 import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 import queryString from "query-string";
-import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
+import { RouterProvider } from "react-aria-components";
+import {
+  Navigate,
+  type NavigateOptions,
+  Outlet,
+  UIMatch,
+  createBrowserRouter,
+  useHref,
+  useNavigate,
+} from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 import { QueryParamProvider } from "use-query-params";
 
-export const router = createBrowserRouter([
-  {
-    path: "",
-    errorElement: <ErrorBoundaryRouter />,
-    element: (
-      <QueryParamProvider
-        adapter={ReactRouter7Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}
-      >
+declare module "react-aria-components" {
+  interface RouterConfig {
+    routerOptions: NavigateOptions;
+  }
+}
+
+function useAbsoluteHref(path: string) {
+  const relative = useHref(path);
+  if (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:")) {
+    return path;
+  }
+  return relative;
+}
+
+function RootProviders({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+
+  return (
+    <QueryParamProvider
+      adapter={ReactRouter7Adapter}
+      options={{
+        searchStringToObject: queryString.parse,
+        objectToSearchString: queryString.stringify,
+      }}
+    >
+      <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
         <ToastContainer
           hideProgressBar={true}
           transition={Slide}
@@ -33,8 +56,20 @@ export const router = createBrowserRouter([
           newestOnTop
           position="bottom-right"
         />
+        {children}
+      </RouterProvider>
+    </QueryParamProvider>
+  );
+}
+
+export const router = createBrowserRouter([
+  {
+    path: "",
+    errorElement: <ErrorBoundaryRouter />,
+    element: (
+      <RootProviders>
         <Outlet />
-      </QueryParamProvider>
+      </RootProviders>
     ),
     children: [
       {
