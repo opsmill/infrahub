@@ -32,7 +32,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
             "label": "Thing",
             "attributes": [
                 {"name": "value", "kind": "Text", "regex": "old", "min_length": 0, "max_length": 4},
-                {"name": "number", "kind": "Number", "min_value": 0, "max_value": 10},
             ],
         }
 
@@ -86,12 +85,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     "regex": regex_02,
                     "min_length": min_length_02,
                     "max_length": max_length_02,
-                },
-                {
-                    "name": "number",
-                    "kind": "Number",
-                    "min_value": 20,
-                    "max_value": 30,
                 },
             ],
         }
@@ -156,8 +149,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
 
     def _validate_schema_number_parameters(self, schema: NodeSchema, min_value: int | None, max_value: int | None):
         number_attr = schema.get_attribute("number")
-        assert number_attr.min_value == min_value
-        assert number_attr.max_value == max_value
         assert isinstance(number_attr.parameters, NumberAttributeParameters)
         assert number_attr.parameters.min_value == min_value
         assert number_attr.parameters.max_value == max_value
@@ -167,7 +158,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
 
         legacy_schema = schema_branch.get_node(name=LEGACY_KIND, duplicate=False)
         self._validate_schema_value_parameters(schema=legacy_schema, regex="old", min_length=0, max_length=4)
-        self._validate_schema_number_parameters(schema=legacy_schema, min_value=0, max_value=10)
 
         new_schema = schema_branch.get_node(name=NEW_KIND, duplicate=False)
         self._validate_schema_value_parameters(schema=new_schema, regex="newnew", min_length=5, max_length=6)
@@ -209,22 +199,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                                         },
                                         "removed": {},
                                     },
-                                    "number": {
-                                        "added": {},
-                                        "changed": {
-                                            "min_value": None,
-                                            "max_value": None,
-                                            "parameters": {
-                                                "added": {},
-                                                "changed": {
-                                                    "min_value": None,
-                                                    "max_value": None,
-                                                },
-                                                "removed": {},
-                                            },
-                                        },
-                                        "removed": {},
-                                    },
                                 },
                                 "removed": {},
                             },
@@ -258,8 +232,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                                     "number": {
                                         "added": {},
                                         "changed": {
-                                            "min_value": None,
-                                            "max_value": None,
                                             "parameters": {
                                                 "added": {},
                                                 "changed": {
@@ -301,7 +273,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         self._validate_schema_value_parameters(
             schema=legacy_schema, regex=regex_02, min_length=min_length_02, max_length=max_length_02
         )
-        self._validate_schema_number_parameters(schema=legacy_schema, min_value=20, max_value=30)
 
         new_schema = updated_schema_branch.get_node(name=NEW_KIND, duplicate=False)
         self._validate_schema_value_parameters(

@@ -174,12 +174,6 @@ class AttributeSchema(GeneratedAttributeSchema):
     def get_max_length(self) -> int | None:
         return self.max_length
 
-    def get_min_value(self) -> int | None:
-        return self.min_value
-
-    def get_max_value(self) -> int | None:
-        return self.max_value
-
     async def get_query_filter(
         self,
         name: str,
@@ -253,19 +247,3 @@ class NumberAttributeSchema(AttributeSchema):
         description="Extra parameters specific to number attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
-
-    @model_validator(mode="after")
-    def reconcile_parameters(self) -> Self:
-        if self.min_value != self.parameters.min_value:
-            final_min_value = self.parameters.min_value if self.parameters.min_value is not None else self.min_value
-            self.min_value = self.parameters.min_value = final_min_value
-        if self.max_value != self.parameters.max_value:
-            final_max_value = self.parameters.max_value if self.parameters.max_value is not None else self.max_value
-            self.max_value = self.parameters.max_value = final_max_value
-        return self
-
-    def get_min_value(self) -> int | None:
-        return self.parameters.min_value
-
-    def get_max_value(self) -> int | None:
-        return self.parameters.max_value

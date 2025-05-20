@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..interface import ConstraintCheckerInterface
@@ -23,9 +24,12 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        if not isinstance(self.attribute_schema.parameters, NumberAttributeParameters):
+            raise ValueError("attribute parameters are not a NumberAttributeParameters")
+
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["min_value"] = self.attribute_schema.get_min_value()
-        self.params["max_value"] = self.attribute_schema.get_max_value()
+        self.params["min_value"] = self.attribute_schema.parameters.min_value
+        self.params["max_value"] = self.attribute_schema.parameters.max_value
 
         query = """
         MATCH (n:%(node_kind)s)
@@ -91,8 +95,11 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
-        min_value = attribute_schema.get_min_value()
-        max_value = attribute_schema.get_max_value()
+        if not isinstance(attribute_schema.parameters, NumberAttributeParameters):
+            raise ValueError("attribute parameters are not a NumberAttributeParameters")
+
+        min_value = attribute_schema.parameters.min_value
+        max_value = attribute_schema.parameters.max_value
         if min_value is None and max_value is None:
             return grouped_data_paths_list
 
