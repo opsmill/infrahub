@@ -26,7 +26,7 @@ from infrahub.workers.dependencies import get_client, get_database, get_event_se
 
 from ..core.timestamp import Timestamp
 from ..core.validators.checks_runner import run_checks_and_update_validator
-from ..log import get_log_data
+from ..log import get_log_data, get_logger
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import (
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
@@ -182,7 +182,7 @@ async def sync_remote_repositories() -> None:
                     default_branch_name=repository_data.repository.default_branch.value,
                 )
             except RepositoryError as exc:
-                log.error(str(exc))
+                get_logger().error(str(exc))
                 init_failed = True
 
             if init_failed:
@@ -548,7 +548,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
             and existing_validator.check_definition.id == model.check_definition_id
         ):
             previous_validator = existing_validator
-            log.info("Found the same validator {previous_validator}")
+            get_logger().info("Found the same validator", validator=previous_validator)
 
     validator = await start_validator(
         client=client,
