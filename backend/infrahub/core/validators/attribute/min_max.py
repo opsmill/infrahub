@@ -44,7 +44,6 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             LIMIT 1
         }
         WITH full_path, node, attribute_value, value_relationship
-        WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND (
             (toInteger($min_value) IS NOT NULL AND attribute_value < toInteger($min_value))
@@ -65,6 +64,7 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
+                    value=str(result.get("attribute_value")),
                 ),
             )
 

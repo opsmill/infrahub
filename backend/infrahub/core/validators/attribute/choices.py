@@ -42,7 +42,6 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             LIMIT 1
         }
         WITH full_path, node, attribute_value, value_relationship
-        WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
