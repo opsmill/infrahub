@@ -66,10 +66,8 @@ async def process_transform(
     await add_tags(branches=[branch_name], nodes=[object_id])
     client = get_client()
 
-    node_schema = await client.schema.get(kind=node_kind, branch=branch_name)
-
-    # schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    # node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
+    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
     transform_attributes: dict[str, ComputedAttribute] = {}
     for attribute in node_schema.attributes:
         if attribute.computed_attribute and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
