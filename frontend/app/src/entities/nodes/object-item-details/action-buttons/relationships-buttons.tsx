@@ -24,7 +24,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
-  objectDetailsData?: Record<string, AttributeType | RelationshipType>;
+  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
 }
 
 export function RelationshipsButtons({
