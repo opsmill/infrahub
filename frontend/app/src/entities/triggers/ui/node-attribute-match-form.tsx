@@ -3,7 +3,7 @@ import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
-import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { DynamicDropdownFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -16,6 +16,7 @@ import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
@@ -32,6 +33,7 @@ interface NodeAttributeMatchFormProps extends NodeFormProps {}
 
 export const NodeAttributeMatchForm = ({
   currentObject,
+  objectTemplate,
   isUpdate,
   onSuccess,
   onCancel,
@@ -51,24 +53,34 @@ export const NodeAttributeMatchForm = ({
 
   const attributeField = schemaFields.find((field) => {
     return field.name === "attribute_name";
-  });
+  }) as DynamicDropdownFieldProps;
 
   const fields = schemaFields.filter((field) => {
     return field.name !== "attribute_name";
   });
 
   const defaultValues = {
-    attribute_name: getCurrentFieldValue("attribute_name", currentObject),
-    value: getCurrentFieldValue("value", currentObject),
-    value_previous: getCurrentFieldValue("value_previous", currentObject),
-    value_match: getCurrentFieldValue("value_match", currentObject),
+    attribute_name: getCurrentFieldValue("attribute_name", {
+      attribute_name: currentObject?.attribute_name as AttributeType,
+    }),
+    value: getCurrentFieldValue("value", {
+      value: currentObject?.value as AttributeType,
+    }),
+    value_previous: getCurrentFieldValue("value_previous", {
+      value_previous: currentObject?.value_previous as AttributeType,
+    }),
+    value_match: getCurrentFieldValue("value_match", {
+      value_match: currentObject?.value_match as AttributeType,
+    }),
     member_of_group: getRelationshipDefaultValue({
-      relationshipData: currentObject?.member_of_group,
+      relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
       relationshipName: "member_of_group",
+      objectTemplate,
     }),
     trigger: getRelationshipDefaultValue({
-      relationshipData: currentObject?.trigger,
+      relationshipData: currentObject?.trigger as RelationshipType | undefined,
       relationshipName: "trigger",
+      objectTemplate,
     }),
   };
 
@@ -160,7 +172,7 @@ export const NodeAttributeMatchForm = ({
 interface NodeAttributeFieldProps {
   kind?: string;
   isLoading?: boolean;
-  field?: DynamicFieldProps;
+  field?: DynamicDropdownFieldProps;
 }
 
 const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps) => {
@@ -188,5 +200,5 @@ const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps)
       };
     }) ?? [];
 
-  return <DropdownField {...field} items={attributeOptions} />;
+  return <DropdownField {...field} name="attribute_name" items={attributeOptions} />;
 };
