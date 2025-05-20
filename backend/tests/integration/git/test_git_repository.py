@@ -18,7 +18,6 @@ from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from infrahub.workflows.initialization import setup_task_manager
@@ -106,11 +105,7 @@ class TestInfrahubClient:
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id,
-            name=git_repo_infrahub_demo_edge.name,
-            location=git_repo_infrahub_demo_edge.path,
-            client=client,
-            service=await InfrahubServices.new(database=db),
+            id=obj.id, name=git_repo_infrahub_demo_edge.name, location=git_repo_infrahub_demo_edge.path, client=client
         )
 
         return repo

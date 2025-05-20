@@ -70,7 +70,6 @@ async def add_git_repository(model: GitRepositoryAdd, service: InfrahubServices)
             infrahub_branch_name=model.infrahub_branch_name,
             internal_status=model.internal_status,
             default_branch_name=model.default_branch_name,
-            service=service,
         )
         await repo.import_objects_from_files(  # type: ignore[call-overload]
             infrahub_branch_name=model.infrahub_branch_name, git_branch_name=model.default_branch_name
@@ -106,7 +105,6 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly, service:
             client=service.client,
             ref=model.ref,
             infrahub_branch_name=model.infrahub_branch_name,
-            service=service,
         )
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)  # type: ignore[call-overload]
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
@@ -168,7 +166,6 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(
-                    service=service,
                     id=repository_data.repository.id,
                     name=repository_data.repository.name.value,
                     location=repository_data.repository.location.value,
@@ -183,7 +180,6 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
             if init_failed:
                 try:
                     repo = await InfrahubRepository.new(
-                        service=service,
                         id=repository_data.repository.id,
                         name=repository_data.repository.name.value,
                         location=repository_data.repository.location.value,
@@ -231,7 +227,7 @@ async def git_branch_create(
 ) -> None:
     log = get_run_logger()
     repo = await InfrahubRepository.init(
-        id=repository_id, name=repository_name, location=repository_location, client=client, service=service
+        id=repository_id, name=repository_name, location=repository_location, client=client
     )
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
@@ -397,7 +393,6 @@ async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServ
                 client=service.client,
                 ref=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
-                service=service,
             )
         except RepositoryError:
             init_failed = True
@@ -410,7 +405,6 @@ async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServ
                 client=service.client,
                 ref=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
-                service=service,
             )
 
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
@@ -441,7 +435,6 @@ async def merge_git_repository(model: GitRepositoryMerge, service: InfrahubServi
         name=model.repository_name,
         client=service.client,
         default_branch_name=model.default_branch,
-        service=service,
     )
 
     if model.internal_status == RepositoryInternalStatus.STAGING.value:
