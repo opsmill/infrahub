@@ -37,16 +37,17 @@ export const NodeAttributeMatchForm = ({
   isUpdate,
   onSuccess,
   onCancel,
+  schema,
   ...props
 }: NodeAttributeMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
-  const { objectKind, objectid } = useParams();
-  const { schema } = useSchema(objectKind);
+  const { objectid } = useParams();
   const { data, isPending } = useGetObject({ objectSchema: schema, objectId: objectid });
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
+    schema,
     initialObject: currentObject,
     isUpdate,
   });

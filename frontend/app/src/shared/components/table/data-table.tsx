@@ -5,10 +5,17 @@ import {
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 import { NodeObject } from "@/entities/nodes/types";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  ColumnOrderState,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import React from "react";
 
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+  columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
   data: Array<T>;
   isLoading?: boolean;
@@ -17,6 +24,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 export function DataTable<T extends NodeObject>({
+  columnOrder,
   columns,
   data,
   isLoading,
@@ -32,6 +40,9 @@ export function DataTable<T extends NodeObject>({
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,
+    state: {
+      columnOrder,
+    },
   });
 
   React.useEffect(() => {
