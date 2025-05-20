@@ -48,12 +48,15 @@ docker compose up -d
 <!-- vale off -->
 
 ```bash
-# Add or update Helm repository
-helm repo add infrahub https://charts.infrahub.com
-helm repo update
+# Upgrade the Helm release
+helm upgrade
 
-# Upgrade the release
-helm upgrade infrahub infrahub/infrahub
+# Run the unified upgrade command inside the server pod
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+
+# Restart deployments to apply changes
+kubectl rollout restart deployment/prefect-server
+kubectl rollout restart deployment/infrahub-infrahub-server
 ```
 
 <!-- vale on -->
@@ -117,12 +120,15 @@ docker compose up -d
 <!-- vale off -->
 
 ```bash
-# Add or update Helm repository
-helm repo add infrahub-enterprise https://charts.infrahub.com/enterprise
-helm repo update
+# Upgrade the Helm release
+helm upgrade
 
-# Upgrade the release
-helm upgrade infrahub-enterprise infrahub/enterprise
+# Run the unified upgrade command inside the server pod
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+
+# Restart deployments to apply changes
+kubectl rollout restart deployment/prefect-server
+kubectl rollout restart deployment/infrahub-infrahub-server
 ```
 
 <!-- vale on -->
