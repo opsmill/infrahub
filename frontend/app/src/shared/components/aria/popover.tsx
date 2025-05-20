@@ -26,5 +26,5 @@ export const Popover = ({ className, offset = 4, ...props }: PopoverProps) => (
 );
 
 export function PopoverDialog({ className, ...props }: AriaDialogProps) {
-  return <AriaDialog className={classNames("p-2 outline outline-0", className)} {...props} />;
+  return <AriaDialog className={classNames("p-2 outline-hidden", className)} {...props} />;
 }

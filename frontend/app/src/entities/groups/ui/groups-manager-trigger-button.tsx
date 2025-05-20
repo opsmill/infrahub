@@ -1,11 +1,14 @@
 import { GroupsManager, GroupsManagerProps } from "@/entities/groups/ui/groups-manager";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { Permission } from "@/entities/permission/types";
 import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-type GroupsManagerTriggerProps = ButtonProps & GroupsManagerProps;
+export interface GroupsManagerTriggerProps extends ButtonProps, GroupsManagerProps {
+  permission: Permission;
+}
 
 export const GroupsManagerTriggerButton = ({
   schema,
