@@ -113,7 +113,8 @@ jobs:
   markdown-lint:
     if: |
       needs.files-changed.outputs.documentation == 'true' ||
-      needs.files-changed.outputs.release == 'true'
+      needs.files-changed.outputs.release == 'true' ||
+      needs.files-changed.outputs.github_workflows
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
