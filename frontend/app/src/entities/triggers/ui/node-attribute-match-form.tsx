@@ -96,7 +96,7 @@ export const NodeAttributeMatchForm = ({
         return;
       }
 
-      const mutationString = currentObject
+      const mutationString = currentObject?.id
         ? updateObjectWithId({
             kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
             data: stringifyWithoutQuotes({

@@ -34,7 +34,7 @@ import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "../constants";
+import { NODE_TRIGGER_RELATIONSHIP } from "../constants";
 
 interface NodeRelationshipMatchFormProps extends NodeFormProps {}
 
@@ -99,18 +99,24 @@ export const NodeRelationshipMatchForm = ({
         return;
       }
 
-      const mutationString = currentObject
+      const mutationString = currentObject?.id
         ? updateObjectWithId({
-            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
+            kind: NODE_TRIGGER_RELATIONSHIP,
             data: stringifyWithoutQuotes({
               id: currentObject.id,
               ...newObject,
+              peer: newObject?.peer?.id && {
+                value: newObject?.peer?.id,
+              },
             }),
           })
         : createObject({
-            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
+            kind: NODE_TRIGGER_RELATIONSHIP,
             data: stringifyWithoutQuotes({
               ...newObject,
+              peer: newObject?.peer?.id && {
+                value: newObject?.peer?.id,
+              },
             }),
           });
 
@@ -127,18 +133,18 @@ export const NodeRelationshipMatchForm = ({
       });
 
       if (currentObject) {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match updated!"} />, {
-          toastId: "alert-success-node-attribute-match-updated",
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match updated!"} />, {
+          toastId: "alert-success-node-relationship-match-updated",
         });
       } else {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match created!"} />, {
-          toastId: "alert-success-node-attribute-match-created",
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match created!"} />, {
+          toastId: "alert-success-node-relationship-match-created",
         });
       }
 
       if (onSuccess)
         await onSuccess(
-          result?.data?.[`${NODE_TRIGGER_ATTRIBUTE_MATCH}${currentObject ? "Update" : "Create"}`]
+          result?.data?.[`${NODE_TRIGGER_RELATIONSHIP}${currentObject ? "Update" : "Create"}`]
         );
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
