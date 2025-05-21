@@ -85,9 +85,7 @@ class CoreIPAddressPool(Node):
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
 
         try:
-            weighted_resources = sorted(
-                resources.values(), key=lambda r: r.pool_allocation_weight.value or 0, reverse=True
-            )
+            weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
         except AttributeError:
             weighted_resources = list(resources.values())
 

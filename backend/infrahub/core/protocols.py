@@ -210,7 +210,7 @@ class CoreWebhook(CoreNode):
 
 
 class CoreWeightedPoolResource(CoreNode):
-    pool_allocation_weight: IntegerOptional
+    allocation_weight: IntegerOptional
 
 
 class LineageOwner(CoreNode):
