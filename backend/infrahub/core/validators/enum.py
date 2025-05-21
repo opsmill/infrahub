@@ -7,3 +7,4 @@ class ConstraintIdentifier(str, Enum):
     ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE = "attribute.parameters.max_length.update"
     ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE = "attribute.parameters.min_value.update"
     ATTRIBUTE_PARAMETERS_MAX_VALUE_UPDATE = "attribute.parameters.max_value.update"
+    ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE = "attribute.parameters.excluded_values.update"

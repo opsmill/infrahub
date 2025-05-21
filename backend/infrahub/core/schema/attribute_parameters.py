@@ -77,3 +77,42 @@ class NumberAttributeParameters(AttributeParameters):
         description="Set a maximum value allowed.",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
+    excluded_values: str | None = Field(
+        default=None,
+        description="List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'",
+        pattern=r"^(\d+(?:-\d+)?)(?:,\d+(?:-\d+)?)*$",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    def get_excluded_single_values(self) -> list[int | tuple[int, int]]:
+        if not self.excluded_values:
+            return []
+
+        result: list[int | tuple[int, int]] = []
+        for value in self.excluded_values.split(","):
+            if "-" not in value:
+                result.append(int(value))
+        return result
+
+    def get_excluded_ranges(self) -> list[tuple[int, int]]:
+        if not self.excluded_values:
+            return []
+
+        result: list[tuple[int, int]] = []
+        for value in self.excluded_values.split(","):
+            if "-" in value:
+                start, end = map(int, value.split("-"))
+                result.append((start, end))
+        return result
+
+    def is_valid_value(self, value: int) -> bool:
+        if self.min_value is not None and value < self.min_value:
+            return False
+        if self.max_value is not None and value > self.max_value:
+            return False
+        if value in self.get_excluded_single_values():
+            return False
+        for start, end in self.get_excluded_ranges():
+            if start <= value <= end:
+                return False
+        return True

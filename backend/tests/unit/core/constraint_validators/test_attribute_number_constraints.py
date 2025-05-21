@@ -5,6 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.min_max import AttributeNumberChecker, AttributeNumberUpdateValidatorQuery
 from infrahub.core.validators.enum import ConstraintIdentifier
@@ -65,6 +66,7 @@ async def test_query_number_constraints_too_small(
             node_id=person_john_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in all_data_paths
     )
@@ -75,6 +77,7 @@ async def test_query_number_constraints_too_small(
             node_id=person_jane_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in all_data_paths
     )
@@ -110,6 +113,7 @@ async def test_query_number_too_large(
             node_id=person_jane_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in all_data_paths
     )
@@ -120,6 +124,7 @@ async def test_query_number_too_large(
             node_id=person_john_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in all_data_paths
     )
@@ -197,12 +202,13 @@ async def test_query_delete_on_branch(
             node_id=person_jane_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in all_data_paths
     )
 
 
-async def test_validator(
+async def test_validator_min_max(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch: Branch,
@@ -237,6 +243,7 @@ async def test_validator(
             node_id=person_jane_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in data_paths
     )
@@ -247,6 +254,86 @@ async def test_validator(
             node_id=person_john_main.id,
             kind="TestPerson",
             field_name="height",
+            value=180,
         )
         in data_paths
     )
+
+
+@pytest.mark.parametrize(
+    "excluded_values",
+    [
+        "180",
+        "170-180",
+        "170-175,180-185,190-195, 200",
+    ],
+)
+async def test_validator_excluded_values(
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch: Branch,
+    person_john_main,
+    person_jane_main,
+    excluded_values: str,
+):
+    await branch.rebase(db=db)
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    height_attr = person_schema.get_attribute(name="height")
+    height_attr.parameters.excluded_values = excluded_values
+    height_attr.parameters.min_value = None
+    height_attr.parameters.max_value = None
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE.value,
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height"),
+        schema_branch=SchemaBranch(cache={}),
+    )
+
+    constraint_checker = AttributeNumberChecker(db=db, branch=branch)
+    grouped_data_paths = await constraint_checker.check(request)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_all_data_paths()
+    assert len(data_paths) == 2
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=person_jane_main.id,
+            kind="TestPerson",
+            field_name="height",
+            value=180,
+        )
+        in data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=person_john_main.id,
+            kind="TestPerson",
+            field_name="height",
+            value=180,
+        )
+        in data_paths
+    )
+
+
+def test_get_excluded_values():
+    parameters = NumberAttributeParameters(excluded_values="100")
+    assert parameters.get_excluded_single_values() == [100]
+    assert parameters.get_excluded_ranges() == []
+
+    parameters = NumberAttributeParameters(excluded_values="100-200")
+    assert parameters.get_excluded_ranges() == [(100, 200)]
+    assert parameters.get_excluded_single_values() == []
+
+    parameters = NumberAttributeParameters(excluded_values="100,150-200,280,300-400")
+    assert parameters.get_excluded_single_values() == [100, 280]
+    assert parameters.get_excluded_ranges() == [(150, 200), (300, 400)]
+
+    with pytest.raises(ValueError):
+        parameters = NumberAttributeParameters(excluded_values="100-")

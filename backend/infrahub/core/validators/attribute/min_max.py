@@ -30,6 +30,8 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["attr_name"] = self.attribute_schema.name
         self.params["min_value"] = self.attribute_schema.parameters.min_value
         self.params["max_value"] = self.attribute_schema.parameters.max_value
+        self.params["excluded_values"] = self.attribute_schema.parameters.get_excluded_single_values()
+        self.params["excluded_ranges"] = self.attribute_schema.parameters.get_excluded_ranges()
 
         query = """
         MATCH (n:%(node_kind)s)
@@ -48,6 +50,8 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         AND (
             (toInteger($min_value) IS NOT NULL AND attribute_value < toInteger($min_value))
             OR (toInteger($max_value) IS NOT NULL AND attribute_value > toInteger($max_value))
+            OR (size($excluded_values) > 0 AND attribute_value IN $excluded_values)
+            OR (size($excluded_ranges) > 0 AND any(range in $excluded_ranges WHERE attribute_value >= range[0] AND attribute_value <= range[1]))
         )
         """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
@@ -64,7 +68,7 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
-                    value=str(result.get("attribute_value")),
+                    value=result.get("attribute_value"),
                 ),
             )
 
@@ -84,10 +88,9 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name in (
-            "attribute.min_value.update",
-            "attribute.max_value.update",
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_VALUE_UPDATE.value,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE.value,
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
@@ -98,9 +101,11 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
         if not isinstance(attribute_schema.parameters, NumberAttributeParameters):
             raise ValueError("attribute parameters are not a NumberAttributeParameters")
 
-        min_value = attribute_schema.parameters.min_value
-        max_value = attribute_schema.parameters.max_value
-        if min_value is None and max_value is None:
+        if (
+            attribute_schema.parameters.min_value is None
+            and attribute_schema.parameters.max_value is None
+            and attribute_schema.parameters.excluded_values is None
+        ):
             return grouped_data_paths_list
 
         for query_class in self.query_classes:
