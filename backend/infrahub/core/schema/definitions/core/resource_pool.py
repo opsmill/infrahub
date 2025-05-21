@@ -40,7 +40,7 @@ core_weighted_pool_resource = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AWARE,
     generate_profile=False,
-    attributes=[Attr(name="weight", kind="Number", optional=True, order_weight=10000)],
+    attributes=[Attr(name="pool_allocation_weight", label="Weight", kind="Number", optional=True, order_weight=10000)],
 )
 
 core_ip_prefix_pool = NodeSchema(
