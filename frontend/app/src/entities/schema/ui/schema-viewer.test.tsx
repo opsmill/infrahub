@@ -36,6 +36,11 @@ describe("Schema Visualizer Component", () => {
             kind: "Jinja2",
             jinja2_template: "test",
           },
+          parameters: {
+            regex: "test-regex",
+            min_length: 1,
+            max_length: 10,
+          },
         },
       ],
     });
@@ -49,6 +54,9 @@ describe("Schema Visualizer Component", () => {
     // THEN
     await expect.element(component.getByText("random-id")).toBeVisible();
     await expect.element(component.getByText("CoreTransformJinja2")).toBeVisible();
+    await expect.element(component.getByText("test-regex")).toBeVisible();
+    await expect.element(component.getByText("Min length1")).toBeVisible();
+    await expect.element(component.getByText("Max length10")).toBeVisible();
   });
 
   test("renders jinja template correctly", async () => {
