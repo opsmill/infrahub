@@ -81,8 +81,8 @@ export const NodeRelationshipMatchForm = ({
       objectTemplate,
     }),
     trigger: getRelationshipDefaultValue({
-      relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
-      relationshipName: "member_of_group",
+      relationshipData: currentObject?.trigger as RelationshipType | undefined,
+      relationshipName: "trigger",
       objectTemplate,
     }),
   };
