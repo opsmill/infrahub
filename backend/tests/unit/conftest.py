@@ -2505,7 +2505,7 @@ async def ipam_schema() -> SchemaRoot:
                 "order_by": ["prefix__value"],
                 "display_labels": ["prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX],
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
             {
                 "name": "IPAddress",
@@ -2887,10 +2887,12 @@ async def ip_dataset_prefix_v4(
     await net146.save(db=db)
 
     net140 = await Node.init(db=db, schema=prefix_schema)
+    # await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146, weight=100)
     await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146)
     await net140.save(db=db)
 
     net141 = await Node.init(db=db, schema=prefix_schema)
+    # await net141.new(db=db, prefix="10.11.0.0/16", ip_namespace=ns1, parent=net146, weight=200)
     await net141.new(db=db, prefix="10.11.0.0/16", ip_namespace=ns1, parent=net146)
     await net141.save(db=db)
 
