@@ -54,9 +54,9 @@ async def test_get_next_weighted(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    net140.weight.value = 100
+    net140.allocation_weight.value = 100
     await net140.save(db=db)
-    net141.weight.value = 200
+    net141.allocation_weight.value = 200
     await net141.save(db=db)
 
     prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)

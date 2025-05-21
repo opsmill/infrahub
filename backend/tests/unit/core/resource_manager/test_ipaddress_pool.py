@@ -53,9 +53,9 @@ async def test_get_next_weighted(
     net144 = ip_dataset_prefix_v4["net144"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    net144.weight.value = 100
+    net144.allocation_weight.value = 100
     await net144.save(db=db)
-    net145.weight.value = 200
+    net145.allocation_weight.value = 200
     await net145.save(db=db)
 
     adress_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
