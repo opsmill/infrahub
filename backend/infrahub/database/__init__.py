@@ -284,7 +284,7 @@ class InfrahubDatabase:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
             return await self._session.close()
 
