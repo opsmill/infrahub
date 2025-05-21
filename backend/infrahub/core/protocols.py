@@ -209,6 +209,10 @@ class CoreWebhook(CoreNode):
     validate_certificates: BooleanOptional
 
 
+class CoreWeightedPoolResource(CoreNode):
+    pool_allocation_weight: IntegerOptional
+
+
 class LineageOwner(CoreNode):
     pass
 
