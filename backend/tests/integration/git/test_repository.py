@@ -71,6 +71,21 @@ class TestCreateRepository(TestInfrahubApp):
         assert repository.operational_status.value == "online"
         assert check_definition.file_path.value == "checks/car_overview.py"
 
+        person_ethan = await NodeManager.get_one_by_default_filter(
+            db=db, id="Ethan Carter", kind="TestingPerson", raise_on_error=True
+        )
+        assert person_ethan.name.value == "Ethan Carter"
+        assert person_ethan.height.value == 180
+
+        manufacturer_mercedes = await NodeManager.get_one_by_default_filter(
+            db=db, id="Mercedes", kind="TestingManufacturer", raise_on_error=True, prefetch_relationships=True
+        )
+        assert manufacturer_mercedes.name.value == "Mercedes"
+        assert list((await manufacturer_mercedes.customers.get_peers(db=db)).values())[0].name.value == "Ethan Carter"
+
+    # TODO add a test with invalid yml file OR invalid order of objects in the yml file, and make sure the repository ends
+    # up in error import state
+
     @pytest.mark.parametrize(
         "stderr,expected_operational_status",
         [

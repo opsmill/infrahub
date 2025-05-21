@@ -29,6 +29,7 @@ from infrahub_sdk.schema.repository import (
     InfrahubPythonTransformConfig,
     InfrahubRepositoryConfig,
 )
+from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import compare_lists
@@ -54,6 +55,7 @@ if TYPE_CHECKING:
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
+    from infrahub_sdk.ctl.utils import YamlFileVar
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
@@ -198,6 +200,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 await self.import_artifact_definitions(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )  # type: ignore[misc]
+                await self.import_objects(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
@@ -814,6 +817,37 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for transform_name in only_graph:
             log.info(f"TransformPython {transform_name!r} not found locally, deleting")
             await transform_definition_in_graph[transform_name].delete()
+
+    async def _load_yamlfile_from_disk(self, paths: list[Path], file_type: type[YamlFileVar]) -> list[YamlFileVar]:
+        data_files = file_type.load_from_disk(paths=paths)
+
+        for data_file in data_files:
+            if not data_file.valid or not data_file.content:
+                raise ValueError(f"{data_file.error_message} ({data_file.location})")
+
+        return data_files
+
+    async def _load_objects(
+        self,
+        paths: list[Path],
+        branch: str,
+    ) -> None:
+        """Load one or multiple objects files into Infrahub."""
+
+        files = await self._load_yamlfile_from_disk(paths=paths, file_type=ObjectFile)
+        for file in files:
+            await file.validate_format(client=self.client, branch=branch)
+        for file in files:
+            await file.process(client=self.client, branch=branch)
+
+    @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)  # type: ignore[arg-type]
+    async def import_objects(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        file_pathes = [branch_wt.directory / obj.file_path for obj in config_file.objects]
+        await self._load_objects(paths=file_pathes, branch=branch_name)
+
+        # TODO attach to a group?
 
     @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)  # type: ignore[arg-type]
     async def get_check_definition(
