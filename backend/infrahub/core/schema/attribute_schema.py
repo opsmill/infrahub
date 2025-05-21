@@ -204,7 +204,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 class NumberPoolSchema(AttributeSchema):
     parameters: NumberPoolParameters = Field(
         default_factory=NumberPoolParameters,
-        description="Extra parameters specific to text attributes",
+        description="Extra parameters specific to NumberPool attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 

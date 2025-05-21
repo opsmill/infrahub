@@ -270,16 +270,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
         except NodeNotFoundError:
             if number_pool_parameters:
-                await self._create_number_pool(
-                    db=db, attribute=attribute, errors=errors, number_pool_parameters=number_pool_parameters
+                number_pool = await self._create_number_pool(
+                    db=db, attribute=attribute, number_pool_parameters=number_pool_parameters
+                )
+
+            else:
+                errors.append(
+                    ValidationError(
+                        {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+                    )
                 )
                 return
-            errors.append(
-                ValidationError(
-                    {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
-                )
-            )
-            return
 
         if (
             number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
@@ -305,8 +306,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
 
     async def _create_number_pool(
-        self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list, number_pool_parameters: NumberPoolParameters
-    ) -> None:
+        self, db: InfrahubDatabase, attribute: BaseAttribute, number_pool_parameters: NumberPoolParameters
+    ) -> CoreNumberPool:
         schema = db.schema.get_node_schema(name="CoreNumberPool", duplicate=False)
 
         pool_node = self._schema.kind
@@ -329,7 +330,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             end_range=number_pool_parameters.end_range,
         )
         await number_pool.save(db=db)
-        await self.handle_pool(db=db, attribute=attribute, errors=errors)
+        # Do a lookup of the number pool to get the correct mapped type from the registry
+        # without this we don't get access to the .get_resource() method.
+        return await registry.manager.get_one_by_id_or_default_filter(db=db, id=number_pool.id, kind=CoreNumberPool)
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
