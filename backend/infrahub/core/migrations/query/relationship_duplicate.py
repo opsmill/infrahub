@@ -48,7 +48,6 @@ class RelationshipDuplicateQuery(Query):
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_rel, new_rel",
-            f"WITH peer_node, {rel_name}, active_rel, new_rel",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
         if direction == GraphRelDirection.OUTBOUND:
@@ -61,28 +60,32 @@ class RelationshipDuplicateQuery(Query):
         return "\n".join(subquery)
 
     @classmethod
-    def _render_sub_query_out(cls) -> str:
+    def _render_sub_query_out(cls) -> tuple[str, str]:
+        rel_name = "rel_outband"
+        sub_query_out_args = f"peer_node, {rel_name}, active_rel, new_rel"
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_outband", rel_type=rel_type, direction=GraphRelDirection.OUTBOUND
+                rel_name=rel_name, rel_type=rel_type, direction=GraphRelDirection.OUTBOUND
             )
             for rel_type, rel_def in GraphRelationshipRelationships.model_fields.items()
             if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
-        return sub_query_out
+        return sub_query_out, sub_query_out_args
 
     @classmethod
-    def _render_sub_query_in(cls) -> str:
+    def _render_sub_query_in(cls) -> tuple[str, str]:
+        rel_name = "rel_inband"
+        sub_query_in_args = f"peer_node, {rel_name}, active_rel, new_rel"
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_inband", rel_type=rel_type, direction=GraphRelDirection.INBOUND
+                rel_name=rel_name, rel_type=rel_type, direction=GraphRelDirection.INBOUND
             )
             for rel_type, rel_def in GraphRelationshipRelationships.model_fields.items()
             if rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
-        return sub_query_in
+        return sub_query_in, sub_query_in_args
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -109,8 +112,8 @@ class RelationshipDuplicateQuery(Query):
             "from": self.at.to_string(),
         }
 
-        sub_query_out = self._render_sub_query_out()
-        sub_query_in = self._render_sub_query_in()
+        sub_query_out, sub_query_out_args = self._render_sub_query_out()
+        sub_query_in, sub_query_in_args = self._render_sub_query_in()
 
         self.add_to_query(self.render_match())
 
@@ -138,7 +141,7 @@ class RelationshipDuplicateQuery(Query):
         }
         WITH n1 as active_rel, rel_inband1 as rel_inband, p1 as peer_node, new_rel
         WHERE rel_inband.status = "active"
-        CALL {
+        CALL (%(sub_query_in_args)s) {
             %(sub_query_in)s
         }
         WITH p2 as peer_node, rel_inband, active_rel, new_rel
@@ -157,7 +160,7 @@ class RelationshipDuplicateQuery(Query):
         }
         WITH n1 as active_rel, rel_outband1 as rel_outband, p1 as peer_node, new_rel
         WHERE rel_outband.status = "active"
-        CALL {
+        CALL (%(sub_query_out_args)s) {
             %(sub_query_out)s
         }
         WITH p2 as peer_node, rel_outband, active_rel, new_rel
@@ -169,5 +172,7 @@ class RelationshipDuplicateQuery(Query):
             "branch_filter": branch_filter,
             "sub_query_out": sub_query_out,
             "sub_query_in": sub_query_in,
+            "sub_query_in_args": sub_query_in_args,
+            "sub_query_out_args": sub_query_out_args,
         }
         self.add_to_query(query)
