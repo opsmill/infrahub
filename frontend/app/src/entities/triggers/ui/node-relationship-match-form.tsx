@@ -235,7 +235,7 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
   return (
     <>
       <DropdownField {...relationshipField} items={relationshipOptions} />
-      {peerKind && <RelationshipField {...peerField} relationship={{ peer: peerKind }} />}
+      <RelationshipField {...peerField} relationship={{ peer: peerKind }} disabled={!peerKind} />
     </>
   );
 };
