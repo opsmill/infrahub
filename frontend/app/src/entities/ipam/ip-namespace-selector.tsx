@@ -1,6 +1,9 @@
 import { GET_IP_NAMESPACES } from "@/entities/ipam/api/ip-namespaces";
 import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
 import useQuery from "@/shared/api/graphql/useQuery";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
+import { Col } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/skeleton";
 import {
   Combobox,
@@ -100,6 +103,16 @@ const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentPr
               </ComboboxItem>
             ))}
           </ComboboxList>
+          <Col className="border-t border-neutral-200">
+            <LinkButton
+              to={constructPath("/ipam/namespaces")}
+              variant="ghost"
+              size="sm"
+              className="text-xs justify-start m-2"
+            >
+              View all IP namespaces
+            </LinkButton>
+          </Col>
         </ComboboxContent>
       </Combobox>
     </div>

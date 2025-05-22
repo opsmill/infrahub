@@ -34,7 +34,7 @@ function IpNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListPag
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <Col className="items-stretch overflow-hidden h-full gap-0">
+    <Col className="overflow-hidden h-full gap-0">
       <div className="flex items-center h-14 shrink-0 border-b px-2 border-gray-200">
         <FilterSearchInput schema={namespaceSchema} />
 
@@ -51,7 +51,7 @@ function IpNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListPag
       </div>
 
       <InfiniteScroll hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
-        <Col className="items-stretch p-2">
+        <Col className="p-2">
           {flatData.map((item) => {
             return <IpNamespaceCard key={item.id} ipNamespace={item} />;
           })}
