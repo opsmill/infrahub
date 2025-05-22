@@ -72,7 +72,7 @@ describe("Schema Visualizer Component", () => {
           optional: false,
           read_only: false,
           parameters: {
-            number_pool_id: "random-id",
+            number_pool_id: "random-pool-id",
             start_range: 10,
             end_range: 100,
           },
@@ -87,7 +87,7 @@ describe("Schema Visualizer Component", () => {
     await component.getByText("attribute NumberPool").click();
 
     // THEN
-    await expect.element(component.getByText("random-id")).toBeVisible();
+    await expect.element(component.getByText("random-pool-id")).toBeVisible();
     await expect.element(component.getByText("Number pool")).toBeVisible();
     await expect.element(component.getByText("Start range10")).toBeVisible();
     await expect.element(component.getByText("End range100")).toBeVisible();
