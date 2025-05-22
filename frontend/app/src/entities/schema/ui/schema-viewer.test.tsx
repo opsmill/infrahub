@@ -71,6 +71,7 @@ describe("Schema Visualizer Component", () => {
           kind: "Text",
           optional: false,
           read_only: false,
+          parameters: {},
           computed_attribute: {
             kind: "Jinja2",
             jinja2_template: "{{ name__value | upper }}",
@@ -103,6 +104,7 @@ describe("Schema Visualizer Component", () => {
           kind: "Text",
           optional: false,
           read_only: false,
+          parameters: {},
           computed_attribute: {
             kind: "TransformPython",
             transform: "test-transform",

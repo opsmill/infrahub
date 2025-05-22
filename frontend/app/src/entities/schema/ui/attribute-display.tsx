@@ -93,9 +93,9 @@ const AttributeParameters = ({
         <PropertyTitle title="Parameters" />
 
         <div className="pl-4">
-          <PropertyRow title="Regex" value={attribute.parameters.regex} />
-          <PropertyRow title="Min length" value={attribute.parameters.min_length} />
-          <PropertyRow title="Max length" value={attribute.parameters.max_length} />
+          <PropertyRow title="Regex" value={attribute.parameters?.regex} />
+          <PropertyRow title="Min length" value={attribute.parameters?.min_length} />
+          <PropertyRow title="Max length" value={attribute.parameters?.max_length} />
         </div>
       </div>
     );
