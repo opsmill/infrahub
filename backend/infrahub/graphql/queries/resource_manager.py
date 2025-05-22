@@ -306,7 +306,8 @@ async def resolve_number_pool_allocation(
 async def resolve_number_pool_utilization(
     db: InfrahubDatabase, pool: CoreNode, at: Timestamp | str | None, branch: Branch
 ) -> dict:
-    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=at, branch=branch)
+    core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")
+    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
     await number_pool.load_data()
 
     return {

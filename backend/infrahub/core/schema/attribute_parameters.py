@@ -7,6 +7,7 @@ from pydantic import Field, model_validator
 
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
+from infrahub.utils import merge_overlapping_intervals
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -84,7 +85,9 @@ class NumberAttributeParameters(AttributeParameters):
             if "-" in value:
                 start, end = map(int, value.split("-"))
                 ranges.append((start, end))
-        return ranges
+
+        merged_ranges = merge_overlapping_intervals(ranges)
+        return merged_ranges
 
     def is_valid_value(self, value: int) -> bool:
         if self.min_value is not None and value < self.min_value:
@@ -99,7 +102,7 @@ class NumberAttributeParameters(AttributeParameters):
         return True
 
 
-class NumberPoolParameters(NumberAttributeParameters):
+class NumberPoolParameters(AttributeParameters):
     end_range: int = Field(
         default=sys.maxsize,
         description="End range for numbers for the associated NumberPool",
@@ -118,11 +121,6 @@ class NumberPoolParameters(NumberAttributeParameters):
 
     @model_validator(mode="after")
     def validate_ranges(self) -> Self:
-        if self.min_value is not None or self.max_value is not None:
-            raise ValueError(
-                "`min_value` and `max_value` should not be specified while using NumberPool attribute. Instead, use `start_range` and `end_range`."
-            )
-
         if self.start_range > self.end_range:
             raise ValueError("`start_range` can't be less than `end_range`")
         return self

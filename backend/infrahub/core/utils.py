@@ -278,3 +278,21 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     @classmethod
     def __init_subclass_with_meta__(cls, **meta_options: dict[str, Any]) -> None:
         """This method just terminates the super() chain"""
+
+
+def merge_overlapping_intervals(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    if len(intervals) == 0:
+        return []
+
+    intervals_list = [list(interval) for interval in intervals]
+    sorted_intervals = sorted(intervals_list, key=lambda interval: interval[0])
+    merged = [sorted_intervals[0]]
+    for current in sorted_intervals:
+        previous = merged[-1]
+        if current[0] <= previous[1]:
+            previous[1] = max(previous[1], current[1])
+        else:
+            merged.append(current)
+
+    merged_intervals: list[tuple[int, int]] = [(start, end) for start, end in merged]
+    return merged_intervals

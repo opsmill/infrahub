@@ -201,7 +201,7 @@ async def test_allocate_from_number_pool_with_excluded_values(
 
     np1 = await Node.init(db=db, schema="CoreNumberPool")
     await np1.new(
-        db=db, name="pool1", node=speeding_ticket.kind, node_attribute="ticket_id", start_range=1, end_range=100
+        db=db, name="pool1", node=speeding_ticket.kind, node_attribute="ticket_id", start_range=10, end_range=30
     )
     await np1.save(db=db)
 
@@ -231,4 +231,8 @@ async def test_allocate_from_number_pool_with_excluded_values(
     assert ticket.ticket_id.value == 10
 
     utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
-    assert utilization["edges"][0]["node"]["utilization"] == 1.0
+
+    nb_values_used_in_pool = 1
+    nb_excluded_values = 4
+    total_pool_length = np1.end_range.value - np1.start_range.value + 1 - nb_excluded_values
+    assert utilization["edges"][0]["node"]["utilization"] == nb_values_used_in_pool / total_pool_length * 100

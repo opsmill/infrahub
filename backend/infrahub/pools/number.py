@@ -8,7 +8,7 @@ from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.protocols import CoreNode
+    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -20,7 +20,9 @@ class UsedNumber:
 
 
 class NumberUtilizationGetter:
-    def __init__(self, db: InfrahubDatabase, pool: CoreNode, branch: Branch, at: Timestamp | str | None = None) -> None:
+    def __init__(
+        self, db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch, at: Timestamp | str | None = None
+    ) -> None:
         self.db = db
         self.at = at
         self.pool = pool
@@ -62,4 +64,4 @@ class NumberUtilizationGetter:
 
     @property
     def total_pool_size(self) -> int:
-        return self.end_range - self.start_range + 1
+        return self.end_range - self.start_range + 1 - self.pool.get_attribute_nb_excluded_values()
