@@ -54,7 +54,7 @@ def test_number_pool_invalid_range() -> None:
             },
         ],
     }
-    with pytest.raises(pydantic.ValidationError, match="start_range can't be less than end_range"):
+    with pytest.raises(pydantic.ValidationError, match="`start_range` can't be less than `end_range`"):
         NodeSchema(**node_schema)
 
 
