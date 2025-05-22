@@ -50,6 +50,11 @@ export const generateNodeSchema = (
         inherited: false,
         allow_override: "any",
         deprecation: null,
+        parameters: {
+          regex: null,
+          min_length: null,
+          max_length: null,
+        },
       },
       {
         id: "18262e04-2276-99bd-3f45-c514f0b9917c",
@@ -73,6 +78,11 @@ export const generateNodeSchema = (
         inherited: false,
         allow_override: "any",
         deprecation: null,
+        parameters: {
+          regex: null,
+          min_length: null,
+          max_length: null,
+        },
       },
     ],
     relationships: [
