@@ -7,6 +7,7 @@ import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
 import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 import queryString from "query-string";
 import { RouterProvider } from "react-aria-components";
@@ -393,6 +394,19 @@ export const router = createBrowserRouter([
                   {
                     index: true,
                     lazy: () => import("@/entities/ipam/ipam-router"),
+                  },
+                  {
+                    path: "namespaces",
+                    lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
+                    handle: {
+                      breadcrumb: () => {
+                        return {
+                          type: "link",
+                          label: "namespaces",
+                          to: constructPath("/ipam/namespaces"),
+                        } satisfies BreadcrumbItem;
+                      },
+                    },
                   },
                   {
                     path: IPAM_ROUTE.ADDRESSES,

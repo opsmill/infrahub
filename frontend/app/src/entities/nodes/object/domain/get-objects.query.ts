@@ -1,5 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { PaginationParams } from "@/shared/api/types";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
@@ -38,7 +38,7 @@ export function getObjectsInfiniteQueryOptions({
   });
 }
 
-export function useObjects(params: Omit<GetObjectsQueryParams, "branchName" | "atDate">) {
+export function useObjects(params: Omit<GetObjectsQueryParams, keyof ContextParams>) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
