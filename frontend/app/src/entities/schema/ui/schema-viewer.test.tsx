@@ -59,6 +59,40 @@ describe("Schema Visualizer Component", () => {
     await expect.element(component.getByText("Max length10")).toBeVisible();
   });
 
+  test("renders attributes with number pool correctly", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        {
+          id: "random-id",
+          name: "attribute",
+          kind: "NumberPool",
+          optional: false,
+          read_only: false,
+          parameters: {
+            number_pool_id: "random-id",
+            start_range: 10,
+            end_range: 100,
+          },
+        },
+      ],
+    });
+
+    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("attribute NumberPool").click();
+
+    // THEN
+    await expect.element(component.getByText("random-id")).toBeVisible();
+    await expect.element(component.getByText("Number pool")).toBeVisible();
+    await expect.element(component.getByText("Start range10")).toBeVisible();
+    await expect.element(component.getByText("End range100")).toBeVisible();
+  });
+
   test("renders jinja template correctly", async () => {
     // GIVEN
     const schema = generateNodeSchema({
@@ -71,7 +105,6 @@ describe("Schema Visualizer Component", () => {
           kind: "Text",
           optional: false,
           read_only: false,
-          parameters: {},
           computed_attribute: {
             kind: "Jinja2",
             jinja2_template: "{{ name__value | upper }}",
@@ -104,7 +137,6 @@ describe("Schema Visualizer Component", () => {
           kind: "Text",
           optional: false,
           read_only: false,
-          parameters: {},
           computed_attribute: {
             kind: "TransformPython",
             transform: "test-transform",
