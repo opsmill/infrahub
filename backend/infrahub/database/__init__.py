@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 validated_database = {}
@@ -90,6 +90,15 @@ class DatabaseSchemaManager:
             return schema
 
         raise ValueError("The selected node is not of type NodeSchema")
+
+    def get_generic_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> GenericSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if schema.is_generic_schema:
+            return schema
+
+        raise ValueError("The selected node is not of type GenericSchema")
 
     def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch_name = get_branch_name(branch=branch)
@@ -284,7 +293,7 @@ class InfrahubDatabase:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
             return await self._session.close()
 

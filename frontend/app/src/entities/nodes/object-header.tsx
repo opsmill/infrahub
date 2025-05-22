@@ -29,7 +29,7 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
     isPending,
     isRefetching,
     isError,
-  } = useObjectsCount({ schemaKind: schema.kind as string, filters });
+  } = useObjectsCount({ objectKind: schema.kind as string, filters });
 
   const refetchObjects = () => {
     queryClient.invalidateQueries({

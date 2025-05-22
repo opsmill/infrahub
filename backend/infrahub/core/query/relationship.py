@@ -217,8 +217,7 @@ class RelationshipQuery(Query):
         )
         source_query_match = """
             MATCH (s:Node { uuid: $source_id })
-            CALL {
-                WITH s
+            CALL (s) {
                 MATCH (s)-[r:IS_PART_OF]->(:Root)
                 WHERE %(source_filter)s
                 RETURN r.status = "active" AS s_is_active
@@ -246,8 +245,7 @@ class RelationshipQuery(Query):
             )
             destination_query_match = """
             MATCH (d:Node { uuid: $destination_id })
-            CALL {
-                WITH d
+            CALL (d) {
                 MATCH (d)-[r:IS_PART_OF]->(:Root)
                 WHERE %(destination_filter)s
                 RETURN r.status = "active" AS d_is_active

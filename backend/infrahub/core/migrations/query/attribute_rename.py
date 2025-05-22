@@ -56,7 +56,6 @@ class AttributeRenameQuery(Query):
     def _render_sub_query_per_rel_type_update_active(rel_type: str, rel_def: FieldInfo) -> str:
         subquery = [
             "WITH peer_node, rb, active_attr",
-            "WITH peer_node, rb, active_attr",
             f'WHERE type(rb) = "{rel_type}"',
         ]
         if rel_def.default.direction.value == "outbound":
@@ -72,7 +71,6 @@ class AttributeRenameQuery(Query):
     @staticmethod
     def _render_sub_query_per_rel_type_create_new(rel_type: str, rel_def: FieldInfo) -> str:
         subquery = [
-            "WITH peer_node, rb, active_attr, new_attr",
             "WITH peer_node, rb, active_attr, new_attr",
             f'WHERE type(rb) = "{rel_type}"',
         ]
@@ -158,7 +156,7 @@ class AttributeRenameQuery(Query):
         }
         WITH a1 as active_attr, r1 as rb, p1 as peer_node, new_attr
         WHERE rb.status = "active"
-        CALL {
+        CALL (peer_node, rb, active_attr, new_attr){
             %(sub_query_create_all)s
         }
         WITH p2 as peer_node, rb, new_attr, active_attr
@@ -167,7 +165,7 @@ class AttributeRenameQuery(Query):
 
         if not (self.branch.is_default or self.branch.is_global):
             query = """
-            CALL {
+            CALL (peer_node, rb, active_attr) {
                 %(sub_query_update_all)s
             }
             WITH p2 as peer_node, rb, new_attr
