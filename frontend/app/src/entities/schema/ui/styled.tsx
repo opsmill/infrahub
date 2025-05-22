@@ -107,6 +107,18 @@ export const PropertyRow = ({
   );
 };
 
+export const PropertyTitle = ({
+  title,
+}: {
+  title: string;
+}) => {
+  return (
+    <dl className="flex justify-between items-start gap-4 text-sm font-semibold p-2 py-3">
+      <dt>{title}</dt>
+    </dl>
+  );
+};
+
 export const TabStyled = ({ className, ...props }: TabProps) => (
   <Tab
     className={({ isSelected }) =>
