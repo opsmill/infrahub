@@ -26,6 +26,8 @@ env:
   VMAGENT_PORT: 0
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   migration-tests:
     strategy:
       fail-fast: false
@@ -38,8 +40,10 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 120
+    needs: prepare-environment
     env:
       INFRAHUB_DB_TYPE: neo4j
+      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -51,7 +55,7 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install poetry==${{ env.POETRY_VERSION }}
           poetry config virtualenvs.prefer-active-python true
           pip install invoke toml
       - name: "Install Package"

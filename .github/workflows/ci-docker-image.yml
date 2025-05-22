@@ -44,7 +44,12 @@ env:
   DOCKERFILE: "development/Dockerfile"
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   build:
+    needs: prepare-environment
+    env:
+      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     runs-on:
       group: huge-runners
     steps:
