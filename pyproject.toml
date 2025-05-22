@@ -196,7 +196,6 @@ disable_error_code = [
     "assignment",
     "attr-defined",
     "misc",
-    "no-untyped-def",
     "operator",
     "return",
     "union-attr",
@@ -241,7 +240,6 @@ module = "infrahub.core.node.standard"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "return-value",
 ]
 
@@ -353,7 +351,6 @@ disable_error_code = [
     "assignment",
     "index",
     "misc",
-    "no-untyped-def",
     "return-value",
     "union-attr",
 ]

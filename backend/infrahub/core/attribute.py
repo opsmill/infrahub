@@ -93,8 +93,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         updated_at: Timestamp | str | None = None,
         is_default: bool = False,
         is_from_profile: bool = False,
-        **kwargs,
-    ):
+        **kwargs: dict[str, Any],
+    ) -> None:
         self.id = id
         self.db_id = db_id
 
@@ -169,7 +169,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return self.branch
 
     @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.attribute[cls.__name__] = cls
 

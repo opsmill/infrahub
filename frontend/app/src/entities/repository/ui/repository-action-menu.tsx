@@ -6,16 +6,18 @@ import {
 } from "@/entities/repository/api/actions";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
+import {
+  Menu,
+  MenuItem,
+  MenuPopover,
+  MenuSection,
+  MenuTrigger,
+} from "@/shared/components/aria/menu";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import { Dialog } from "@headlessui/react";
 import { useState } from "react";
+import { Pressable } from "react-aria-components";
 import { toast } from "react-toastify";
 
 const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
@@ -23,8 +25,8 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <MenuTrigger>
+        <Pressable>
           <ButtonWithTooltip
             tooltipContent="More"
             tooltipEnabled
@@ -34,17 +36,21 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
           >
             <Icon icon="mdi:dots-vertical" className="text-custom-blue-900 text-lg p-4" />
           </ButtonWithTooltip>
-        </DropdownMenuTrigger>
+        </Pressable>
 
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setIsOpen(true)}>
-            <Icon icon="mdi:access-point" className="text-lg" />
-            Check connectivity
-          </DropdownMenuItem>
+        <MenuPopover placement="bottom end">
+          <Menu>
+            <MenuSection>
+              <MenuItem onAction={() => setIsOpen(true)}>
+                <Icon icon="mdi:access-point" className="text-lg" />
+                Check connectivity
+              </MenuItem>
 
-          <ReimportLastCommitAction repositoryId={repositoryId} />
-        </DropdownMenuContent>
-      </DropdownMenu>
+              <ReimportLastCommitAction repositoryId={repositoryId} />
+            </MenuSection>
+          </Menu>
+        </MenuPopover>
+      </MenuTrigger>
 
       <CheckConnectivityModal repositoryId={repositoryId} isOpen={isOpen} setIsOpen={setIsOpen} />
     </>
@@ -156,10 +162,10 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
   });
 
   return (
-    <DropdownMenuItem onClick={() => reimportLastCommit()}>
+    <MenuItem onAction={() => reimportLastCommit()}>
       <Icon icon="mdi:reload" className="text-lg" />
       Reimport last commit
-    </DropdownMenuItem>
+    </MenuItem>
   );
 };
 
