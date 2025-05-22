@@ -1,5 +1,8 @@
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
+import { Link } from "@/shared/components/ui/link";
 import { ComputedAttributeDisplay } from "./computed-attribute-display";
 import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styled";
 
@@ -96,6 +99,27 @@ const AttributeParameters = ({
           <PropertyRow title="Regex" value={attribute.parameters?.regex} />
           <PropertyRow title="Min length" value={attribute.parameters?.min_length} />
           <PropertyRow title="Max length" value={attribute.parameters?.max_length} />
+        </div>
+      </div>
+    );
+  }
+
+  if (attribute.kind === "NumberPool") {
+    return (
+      <div>
+        <PropertyTitle title="Parameters" />
+
+        <div className="pl-4">
+          <PropertyRow
+            title="Number pool"
+            value={
+              <Link to={constructPath(`/resource-manager/${attribute.parameters?.number_pool_id}`)}>
+                <NodeLabel id={attribute.parameters?.number_pool_id} />
+              </Link>
+            }
+          />
+          <PropertyRow title="Start range" value={attribute.parameters?.start_range} />
+          <PropertyRow title="End range" value={attribute.parameters?.end_range} />
         </div>
       </div>
     );
