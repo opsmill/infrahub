@@ -65,7 +65,6 @@ export const NodeRelationshipMatchForm = ({
   const defaultPeerValue = getCurrentFieldValue("peer", {
     peer: currentObject?.peer as AttributeType,
   });
-  console.log("defaultPeerValue: ", defaultPeerValue);
 
   const defaultValues = {
     relationship_name: getCurrentFieldValue("relationship_name", {
