@@ -1,2 +1,0 @@
-- on table, scrollbar sits on top of the scrollable content, taking up no space.
-- Fixed an issue where next page loaded even when table wasn't scrolled in some case.

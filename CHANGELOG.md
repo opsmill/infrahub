@@ -11,6 +11,21 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.11](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.11) - 2025-05-23
+
+### Added
+
+- Add the `CoreWeightedPoolResource` generic to better control which resource should be used when allocating from a pool. The higher the weight of the resource, the more likely it is to be selected for allocation.
+
+### Changed
+
+- The scrollbar in the infinite scroll tables, is now only visible when your mouse hovers the table.
+
+### Fixed
+
+- Fix a problem in the logic to calculate a diff that could cause it to quit too early under certain unlikely circumstances
+- Fixes an issue where the next page of data was loaded even when the infinite scroll table wasn't scrolled.
+
 ## [Infrahub - v1.2.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.10) - 2025-05-13
 
 ### Added
