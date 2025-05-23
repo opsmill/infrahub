@@ -273,7 +273,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if violating_branches:
             raise ValidationError(
                 input_value=f"Unable to delete number pool {number_pool.node.value}.{number_pool.node_attribute.value}"
-                f"is in use (branches: {','.join(violating_branches)})"
+                f" is in use (branches: {','.join(violating_branches)})"
             )
 
         return await super().mutate_delete(info=info, data=data, branch=branch)
