@@ -337,3 +337,9 @@ def test_get_excluded_values():
 
     with pytest.raises(ValueError):
         parameters = NumberAttributeParameters(excluded_values="100-")
+
+    with pytest.raises(ValueError, match="Excluded ranges cannot overlap"):
+        parameters = NumberAttributeParameters(excluded_values="100-200,150-250")
+
+    with pytest.raises(ValueError, match="Excluded ranges cannot overlap"):
+        parameters = NumberAttributeParameters(excluded_values="100-200,200-250")

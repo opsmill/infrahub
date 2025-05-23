@@ -205,10 +205,10 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
             )
 
-        if attribute.parameters.min_value and start_range < attribute.parameters.min_value:
+        if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
             raise ValidationError(input_value="start_range can't be less than min_value")
 
-        if attribute.parameters.max_value and end_range > attribute.parameters.max_value:
+        if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
             raise ValidationError(input_value="end_range can't be larger than max_value")
 
         return await super().mutate_create(info=info, data=data, branch=branch)

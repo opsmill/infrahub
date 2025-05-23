@@ -7,7 +7,6 @@ from pydantic import Field, model_validator
 
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
-from infrahub.utils import merge_overlapping_intervals
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -64,9 +63,15 @@ class NumberAttributeParameters(AttributeParameters):
     @model_validator(mode="after")
     def validate_ranges(self) -> Self:
         ranges = self.get_excluded_ranges()
-        for start_range, end_range in ranges:
-            if start_range > end_range:
+        for i, (start_range_1, end_range_1) in enumerate(ranges):
+            if start_range_1 > end_range_1:
                 raise ValueError("`start_range` can't be less than `end_range`")
+
+            # Check for overlapping ranges
+            for start_range_2, end_range_2 in ranges[i + 1 :]:
+                if not (end_range_1 < start_range_2 or start_range_1 > end_range_2):
+                    raise ValueError("Excluded ranges cannot overlap")
+
         return self
 
     def get_excluded_single_values(self) -> list[int]:
@@ -86,8 +91,7 @@ class NumberAttributeParameters(AttributeParameters):
                 start, end = map(int, value.split("-"))
                 ranges.append((start, end))
 
-        merged_ranges = merge_overlapping_intervals(ranges)
-        return merged_ranges
+        return ranges
 
     def is_valid_value(self, value: int) -> bool:
         if self.min_value is not None and value < self.min_value:
