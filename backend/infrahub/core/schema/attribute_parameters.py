@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
@@ -20,8 +20,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
 
 
 class AttributeParameters(HashableModel):
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class TextAttributeParameters(AttributeParameters):
