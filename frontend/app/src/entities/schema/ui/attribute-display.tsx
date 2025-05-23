@@ -3,6 +3,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
 import { Link } from "@/shared/components/ui/link";
+import { formatNumberDisplay } from "@/shared/utils/number";
 import { ComputedAttributeDisplay } from "./computed-attribute-display";
 import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styled";
 
@@ -118,8 +119,14 @@ const AttributeParameters = ({
               </Link>
             }
           />
-          <PropertyRow title="Start range" value={attribute.parameters?.start_range} />
-          <PropertyRow title="End range" value={attribute.parameters?.end_range} />
+          <PropertyRow
+            title="Start range"
+            value={formatNumberDisplay(attribute.parameters?.start_range)}
+          />
+          <PropertyRow
+            title="End range"
+            value={formatNumberDisplay(attribute.parameters?.end_range)}
+          />
         </div>
       </div>
     );
