@@ -4,6 +4,7 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 from ..node.grouped_uniqueness import NodeGroupedUniquenessConstraintDependency
 from ..relationship_manager.count import RelationshipCountConstraintDependency
 from ..relationship_manager.peer_kind import RelationshipPeerKindConstraintDependency
+from ..relationship_manager.peer_relatives import RelationshipPeerRelativesConstraintDependency
 from ..relationship_manager.profiles_kind import RelationshipProfilesKindConstraintDependency
 
 
@@ -18,5 +19,6 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
                 RelationshipPeerKindConstraintDependency.build(context=context),
                 RelationshipCountConstraintDependency.build(context=context),
                 RelationshipProfilesKindConstraintDependency.build(context=context),
+                RelationshipPeerRelativesConstraintDependency.build(context),
             ],
         )
