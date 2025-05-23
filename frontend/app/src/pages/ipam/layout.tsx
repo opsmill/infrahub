@@ -26,6 +26,4 @@ function IpamLayout() {
   );
 }
 
-export function Component() {
-  return <IpamLayout />;
-}
+export const Component = IpamLayout;
