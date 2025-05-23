@@ -100,7 +100,9 @@ queries:
     file_path: "templates/person_with_cars.gql"
 
 objects:
-  - name: "persons"
-    file_path: "objects/persons.yml"
-  - name: "manufacturers"
-    file_path: "objects/manufacturers.yml"
+  - "objects/persons.yml"
+  - "objects/manufacturers.yml"
+
+menus:
+  - "menus/person_base.yml"
+  - "menus/manufacturer_base.yml"

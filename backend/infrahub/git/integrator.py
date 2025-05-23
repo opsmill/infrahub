@@ -29,11 +29,12 @@ from infrahub_sdk.schema.repository import (
     InfrahubPythonTransformConfig,
     InfrahubRepositoryConfig,
 )
+from infrahub_sdk.spec.menu import MenuFile
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import compare_lists
-from infrahub_sdk.yaml import SchemaFile
+from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
@@ -41,7 +42,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
-from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositorySyncStatus
+from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
@@ -161,7 +162,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def ensure_location_is_defined(self) -> None:
         if self.location:
             return
-        client = self.get_client()
+        client = self.sdk
         repo = await client.get(
             kind=CoreGenericRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
         )
@@ -181,6 +182,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
         sync_status = RepositorySyncStatus.IN_SYNC if config_file else RepositorySyncStatus.ERROR_IMPORT
+        if sync_status == RepositorySyncStatus.ERROR_IMPORT:
+            raise ValueError("Unable to import the repository here")
+
         error: Exception | None = None
 
         try:
@@ -189,6 +193,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
                 await self.import_all_graphql_query(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+                )  # type: ignore[misc]
+
+                await self.import_objects(
+                    branch_name=infrahub_branch_name,
+                    commit=commit,
+                    files_pathes=config_file.objects,
+                    object_type=RepositoryObjects.OBJECT,
+                )  # type: ignore[misc]
+                await self.import_objects(
+                    branch_name=infrahub_branch_name,
+                    commit=commit,
+                    files_pathes=config_file.menus,
+                    object_type=RepositoryObjects.MENU,
                 )  # type: ignore[misc]
 
                 await self.import_all_python_files(  # type: ignore[call-overload]
@@ -200,11 +217,15 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 await self.import_artifact_definitions(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )  # type: ignore[misc]
-                await self.import_objects(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
+
+                # TODO: import menu, check def load() in menu.^y + add a deidcated group for menu, work as for objects
+                # "CoreRepositoryMenuGroup"
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
             error = exc
+            log = get_run_logger()
+            log.error(f"Error importing the repository {self.name} : {exc}")
 
         await self._update_sync_status(branch_name=infrahub_branch_name, status=sync_status)
 
@@ -831,23 +852,65 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self,
         paths: list[Path],
         branch: str,
+        file_type: type[InfrahubFile],
     ) -> None:
         """Load one or multiple objects files into Infrahub."""
 
-        files = await self._load_yamlfile_from_disk(paths=paths, file_type=ObjectFile)
+        log = get_run_logger()
+        files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
+        log.info(f"Loaded files {files=}")
+
         for file in files:
-            await file.validate_format(client=self.client, branch=branch)
+            await file.validate_format(client=self.get_client(), branch=branch)
+            schema = await self.get_client().schema.get(kind=file.spec.kind, branch=branch)
+            if not schema.human_friendly_id and not schema.default_filter:
+                raise ValueError(
+                    f"Schemas of objects or menus defined within {file.location} "
+                    "should have a `human_friendly_id` defined to avoid creating duplicated objects."
+                )
+
         for file in files:
-            await file.process(client=self.client, branch=branch)
+            # TODO: client.log that is then used should log into infrahub.tasks
+            log.info(f"Loading objects defined in {file.location}")
+            await file.process(client=self.get_client(), branch=branch)
 
     @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)  # type: ignore[arg-type]
-    async def import_objects(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
+    async def import_objects(
+        self, branch_name: str, commit: str, files_pathes: list[Path], object_type: RepositoryObjects
+    ) -> None:
+        log = get_run_logger()
+        log.info(f"Importing {object_type.value} from {files_pathes=}")
+
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        file_pathes = [branch_wt.directory / obj.file_path for obj in config_file.objects]
-        await self._load_objects(paths=file_pathes, branch=branch_name)
+        file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
-        # TODO attach to a group?
+        log.info("Before getting the repository object")
+        # do not clone for now, assume only one import at a time
+        if self.is_read_only:
+            sdk_repo_obj = await self.get_client().get(
+                kind=InfrahubKind.READONLYREPOSITORY, id=str(self.id), raise_when_missing=True
+            )
+        else:
+            sdk_repo_obj = await self.get_client().get(
+                kind=InfrahubKind.REPOSITORY, id=str(self.id), raise_when_missing=True
+            )
+
+        log.info(f"After getting the repository object {sdk_repo_obj.id}")
+
+        async with self.get_client().start_tracking(
+            identifier=f"group-repo-{object_type.value}-{self.id}",
+            delete_unused_nodes=True,
+            group_type="CoreRepositoryGroup",
+            group_params={"content": object_type.value, "repository": sdk_repo_obj},
+        ):
+            log.info("Started to track")
+            file_type = ObjectFile if object_type == RepositoryObjects.OBJECT else MenuFile
+            await self._load_objects(
+                paths=file_pathes,
+                branch=branch_name,
+                file_type=file_type,
+            )
 
     @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)  # type: ignore[arg-type]
     async def get_check_definition(

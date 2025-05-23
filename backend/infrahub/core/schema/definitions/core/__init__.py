@@ -28,7 +28,13 @@ from .check import core_check_definition
 from .core import core_node, core_task_target
 from .generator import core_generator_definition, core_generator_instance
 from .graphql_query import core_graphql_query
-from .group import core_generator_group, core_graphql_query_group, core_group, core_standard_group
+from .group import (
+    core_generator_group,
+    core_graphql_query_group,
+    core_group,
+    core_repository_group,
+    core_standard_group,
+)
 from .ipam import builtin_ip_address, builtin_ip_prefix, builtin_ipam, core_ipam_namespace
 from .lineage import lineage_owner, lineage_source
 from .menu import generic_menu_item, menu_item
@@ -116,6 +122,7 @@ core_models_mixed: dict[str, list] = {
         core_standard_group,
         core_generator_group,
         core_graphql_query_group,
+        core_repository_group,
         builtin_tag,
         core_account,
         core_account_token,
