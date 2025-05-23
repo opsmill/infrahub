@@ -209,7 +209,9 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
     }) ?? [];
 
   useEffect(() => {
-    if (!selectedRelationshipField?.value) return;
+    if (!selectedRelationshipField?.value) {
+      return setPeerKind(null);
+    }
 
     const relationshipSchema = schema?.relationships?.find((relationship) => {
       return relationship.name === selectedRelationshipField?.value;
