@@ -69,6 +69,7 @@ Infrahub's
 infrahubctl
 IP
 IPAddress
+IPHost
 IPAM
 is_empty
 is_ip_within
