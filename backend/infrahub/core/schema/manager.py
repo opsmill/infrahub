@@ -764,3 +764,6 @@ class SchemaManager(NodeManager):
                 del self._cache[hash_key]
 
         return removed_branches
+
+    def get_branches(self) -> list[str]:
+        return list(self._branches.keys())
