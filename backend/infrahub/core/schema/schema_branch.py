@@ -1024,6 +1024,14 @@ class SchemaBranch:
     def _validate_number_pool_parameters(
         self, node_schema: NodeSchema, attribute: AttributeSchema, number_pool_parameters: NumberPoolParameters
     ) -> None:
+        if attribute.optional:
+            raise ValidationError(f"{node_schema.kind}.{attribute.name} is a NumberPool it can't be optional")
+
+        if not attribute.read_only:
+            raise ValidationError(
+                f"{node_schema.kind}.{attribute.name} is a NumberPool it has to be a read_only attribute"
+            )
+
         if attribute.inherited:
             generics_with_attribute = []
             for generic_name in node_schema.inherit_from:
