@@ -97,7 +97,7 @@ const IpNamespaceSelectorContent = ({ namespaces, className }: IpNamespaceSelect
             "hover:bg-gray-100"
           )}
         >
-          <Row className="text-xs text-gray-600">Namespace</Row>
+          <Row className="text-xs text-gray-600">IP Namespace</Row>
           <Row className="text-sm">
             {currentNamespace ? getNodeLabel(currentNamespace as any) : null}
 

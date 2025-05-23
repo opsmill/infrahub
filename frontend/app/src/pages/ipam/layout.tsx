@@ -7,19 +7,17 @@ import { Outlet } from "react-router";
 
 function IpamLayout() {
   return (
-    <Content.Card className="h-[calc(100%-1rem)] flex flex-col overflow-hidden">
-      <div className="grow flex overflow-auto">
-        <Col className="min-w-64 max-w-[400px] gap-0 border-r border-gray-200">
-          <IpNamespaceSelector className="border-b border-gray-200" />
-          <ScrollArea scrollX className="w-full p-2">
-            <IpamTree className="w-full" />
-          </ScrollArea>
-        </Col>
+    <Content.Card className="h-[calc(100%-1rem)] flex">
+      <Col className="min-w-64 max-w-[400px] gap-0 border-r border-gray-200 shrink-0">
+        <IpNamespaceSelector className="border-b border-gray-200" />
+        <ScrollArea scrollX className="w-full p-2">
+          <IpamTree className="w-full" />
+        </ScrollArea>
+      </Col>
 
-        <section className="grow overflow-auto">
-          <Outlet />
-        </section>
-      </div>
+      <section className="flex flex-col h-full grow">
+        <Outlet />
+      </section>
     </Content.Card>
   );
 }
