@@ -287,7 +287,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             and number_pool.node_attribute.value == attribute.name
         ):
             try:
-                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
+                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self, attribute=attribute)
             except PoolExhaustedError:
                 errors.append(
                     ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})

@@ -11,6 +11,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
 
@@ -178,14 +179,16 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         try:
-            pool_node = registry.schema.get(name=data["node"].value)
-            if not pool_node.is_generic_schema and not pool_node.is_node_schema:
+            schema_node = registry.schema.get(name=data["node"].value)
+            if not schema_node.is_generic_schema and not schema_node.is_node_schema:
                 raise ValidationError(input_value="The selected model is not a Node or a Generic")
         except SchemaNotFoundError as exc:
             exc.message = "The selected model does not exist"
             raise exc
 
-        attributes = [attribute for attribute in pool_node.attributes if attribute.name == data["node_attribute"].value]
+        attributes = [
+            attribute for attribute in schema_node.attributes if attribute.name == data["node_attribute"].value
+        ]
         if not attributes:
             raise ValidationError(input_value="The selected attribute doesn't exist in the selected model")
 
@@ -193,8 +196,21 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if attribute.kind != "Number":
             raise ValidationError(input_value="The selected attribute is not of the kind Number")
 
-        if data["start_range"].value > data["end_range"].value:
+        start_range = data["start_range"].value
+        end_range = data["end_range"].value
+        if start_range > end_range:
             raise ValidationError(input_value="start_range can't be larger than end_range")
+
+        if not isinstance(attribute.parameters, NumberAttributeParameters):
+            raise ValidationError(
+                input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
+            )
+
+        if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
+            raise ValidationError(input_value="start_range can't be less than min_value")
+
+        if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
+            raise ValidationError(input_value="end_range can't be larger than max_value")
 
         return await super().mutate_create(info=info, data=data, branch=branch)
 
