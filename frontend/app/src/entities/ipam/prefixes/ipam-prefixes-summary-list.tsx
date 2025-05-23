@@ -1,10 +1,10 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { GET_PREFIXES } from "@/entities/ipam/api/prefixes";
-import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getPermission } from "@/entities/permission/utils";
@@ -26,22 +26,19 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 const IpamIPPrefixesSummaryList = forwardRef((_, ref) => {
   const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
-  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
+  const { currentIpNamespace } = useCurrentIpNamespace();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
-    variables: { namespaces: namespace ? [namespace] : [defaultIpNamespace] },
-    skip: !defaultIpNamespace,
+    variables: { namespaces: currentIpNamespace.id },
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
@@ -119,9 +116,8 @@ const IpamIPPrefixesSummaryList = forwardRef((_, ref) => {
 
       refetch();
 
-      const currentIpNamespace = namespace ?? defaultIpNamespace;
       if (currentIpNamespace) {
-        reloadIpamTree(currentIpNamespace, prefix);
+        reloadIpamTree(currentIpNamespace.id, prefix);
       }
 
       setRelatedRowToDelete(undefined);
@@ -145,7 +141,7 @@ const IpamIPPrefixesSummaryList = forwardRef((_, ref) => {
 
   return (
     <div className="w-full">
-      {(loading || !defaultIpNamespace) && <LoadingIndicator />}
+      {loading && <LoadingIndicator />}
 
       {data && (
         <Table

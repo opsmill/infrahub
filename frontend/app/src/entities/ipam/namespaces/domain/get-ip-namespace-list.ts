@@ -16,6 +16,7 @@ export interface IpNamespace extends NodeCore {
   description: { value: string };
   ip_addresses: { count: number };
   ip_prefixes: { count: number };
+  default?: { value: boolean };
 }
 
 export type GetIpNamespaceList = (params: GetIpNamespaceListParams) => Promise<Array<IpNamespace>>;
@@ -50,6 +51,12 @@ export const getIpNamespaceList: GetIpNamespaceList = async ({
               },
               ip_addresses: {
                 count: true,
+              },
+              __on: {
+                __typeName: "IpamNamespace",
+                default: {
+                  value: true,
+                },
               },
             },
           },

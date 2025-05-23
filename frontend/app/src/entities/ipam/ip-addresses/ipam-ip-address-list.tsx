@@ -2,7 +2,6 @@ import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { GET_IP_ADDRESSES } from "@/entities/ipam/api/ip-address";
 import { GET_PREFIX_KIND } from "@/entities/ipam/api/prefixes";
-import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import {
   IPAM_QSP,
@@ -11,6 +10,7 @@ import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
+import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getPermission } from "@/entities/permission/utils";
@@ -32,15 +32,13 @@ import { useAtomValue } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 const IpamIPAddressesList = forwardRef((_, ref) => {
   const { prefix } = useParams();
-  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
-  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const date = useAtomValue(datetimeAtom);
+  const { currentIpNamespace } = useCurrentIpNamespace();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
 
@@ -55,16 +53,15 @@ const IpamIPAddressesList = forwardRef((_, ref) => {
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
     variables: {
       prefixIds: prefix ? [prefix] : null,
-      namespaces: namespace ? [namespace] : [defaultIpNamespace],
+      namespaces: currentIpNamespace.id,
     },
-    skip: !defaultIpNamespace,
   });
 
   const permission = getPermission(data?.[IP_ADDRESS_GENERIC]?.permissions?.edges);
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
     variables: { ids: [prefix] },
-    skip: !prefix || !defaultIpNamespace,
+    skip: !prefix,
   });
 
   const prefixData = getPrefixKindData?.[IP_PREFIX_GENERIC]?.edges?.[0]?.node;
@@ -165,7 +162,7 @@ const IpamIPAddressesList = forwardRef((_, ref) => {
         </div>
       )}
 
-      {(loading || !defaultIpNamespace) && <LoadingIndicator />}
+      {loading && <LoadingIndicator />}
 
       {data && (
         <Table

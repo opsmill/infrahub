@@ -11,6 +11,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
+import Content from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
@@ -34,7 +35,7 @@ function IpNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListPag
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <Col className="overflow-hidden h-full gap-0">
+    <Content.Card className="flex flex-col overflow-hidden h-full gap-0">
       <div className="flex items-center h-14 shrink-0 border-b px-2 border-gray-200">
         <FilterSearchInput schema={namespaceSchema} />
 
@@ -65,7 +66,7 @@ function IpNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListPag
           {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={namespaceSchema} />}
         </Col>
       </InfiniteScroll>
-    </Col>
+    </Content.Card>
   );
 }
 

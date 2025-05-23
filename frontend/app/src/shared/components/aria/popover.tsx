@@ -2,13 +2,15 @@ import { classNames } from "@/shared/utils/common";
 import {
   Dialog as AriaDialog,
   DialogProps as AriaDialogProps,
+  DialogTrigger as AriaDialogTrigger,
   Popover as AriaPopover,
   PopoverProps as AriaPopoverProps,
   composeRenderProps,
 } from "react-aria-components";
 
-export type PopoverProps = AriaPopoverProps;
+export const PopoverTrigger = AriaDialogTrigger;
 
+export type PopoverProps = AriaPopoverProps;
 export const Popover = ({ className, offset = 4, ...props }: PopoverProps) => (
   <AriaPopover
     offset={offset}
