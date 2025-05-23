@@ -4,6 +4,7 @@ from .attribute.choices import AttributeChoicesChecker
 from .attribute.enum import AttributeEnumChecker
 from .attribute.kind import AttributeKindChecker
 from .attribute.length import AttributeLengthChecker
+from .attribute.number_pool import AttributeNumberPoolChecker
 from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .attribute.unique import AttributeUniquenessChecker
@@ -31,6 +32,8 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE.value: AttributeNumberChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_VALUE_UPDATE.value: AttributeNumberChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE.value: AttributeNumberChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE: AttributeNumberPoolChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE: AttributeNumberPoolChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,

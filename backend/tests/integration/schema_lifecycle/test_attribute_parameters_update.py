@@ -6,7 +6,11 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, TextAttributeParameters
+from infrahub.core.schema.attribute_parameters import (
+    NumberAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
 from tests.helpers.schema import load_schema as load_schema_root
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -32,6 +36,13 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
             "label": "Thing",
             "attributes": [
                 {"name": "value", "kind": "Text", "regex": "old", "min_length": 0, "max_length": 4},
+                {
+                    "name": "assigned_number",
+                    "kind": "NumberPool",
+                    "optional": False,
+                    "read_only": True,
+                    "parameters": {"start_range": 10, "end_range": 200},
+                },
             ],
         }
 
@@ -45,6 +56,13 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
             "attributes": [
                 {"name": "value", "kind": "Text", "parameters": {"regex": "newnew", "min_length": 5, "max_length": 6}},
                 {"name": "number", "kind": "Number", "parameters": {"min_value": 0, "max_value": 10}},
+                {
+                    "name": "assigned_number",
+                    "kind": "NumberPool",
+                    "optional": False,
+                    "read_only": True,
+                    "parameters": {"start_range": 5, "end_range": 10000},
+                },
             ],
         }
 
@@ -107,6 +125,13 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     "kind": "Number",
                     "parameters": {"min_value": 20, "max_value": 30},
                 },
+                {
+                    "name": "assigned_number",
+                    "kind": "NumberPool",
+                    "optional": False,
+                    "read_only": True,
+                    "parameters": {"start_range": 50, "end_range": 1200},
+                },
             ],
         }
 
@@ -153,6 +178,12 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         assert number_attr.parameters.min_value == min_value
         assert number_attr.parameters.max_value == max_value
 
+    def _validate_schema_numberpool_parameters(self, schema: NodeSchema, start_range: int, end_range: int) -> None:
+        number_attr = schema.get_attribute("assigned_number")
+        assert isinstance(number_attr.parameters, NumberPoolParameters)
+        assert number_attr.parameters.start_range == start_range
+        assert number_attr.parameters.end_range == end_range
+
     async def test_schema_01_is_correct(self, db: InfrahubDatabase, default_branch: Branch, load_schema_01) -> None:
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
@@ -162,6 +193,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         new_schema = schema_branch.get_node(name=NEW_KIND, duplicate=False)
         self._validate_schema_value_parameters(schema=new_schema, regex="newnew", min_length=5, max_length=6)
         self._validate_schema_number_parameters(schema=new_schema, min_value=0, max_value=10)
+        self._validate_schema_numberpool_parameters(schema=new_schema, start_range=5, end_range=10000)
 
     async def test_schema02_load_update(
         self,
@@ -243,6 +275,20 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                                         },
                                         "removed": {},
                                     },
+                                    "assigned_number": {
+                                        "added": {},
+                                        "changed": {
+                                            "parameters": {
+                                                "added": {},
+                                                "changed": {
+                                                    "start_range": None,
+                                                    "end_range": None,
+                                                },
+                                                "removed": {},
+                                            },
+                                        },
+                                        "removed": {},
+                                    },
                                 },
                                 "removed": {},
                             },
@@ -279,3 +325,4 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
             schema=new_schema, regex=regex_02, min_length=min_length_02, max_length=max_length_02
         )
         self._validate_schema_number_parameters(schema=new_schema, min_value=20, max_value=30)
+        self._validate_schema_numberpool_parameters(schema=new_schema, start_range=50, end_range=1200)
