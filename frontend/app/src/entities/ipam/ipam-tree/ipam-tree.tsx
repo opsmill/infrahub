@@ -30,9 +30,10 @@ export default function IpamTree({ className }: { className?: string }) {
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useAtom(ipamTreeAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
-  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds?: string[]; search?: string }>(
-    GET_PREFIXES_ONLY
-  );
+  const [fetchPrefixes] = useLazyQuery<
+    PrefixData,
+    { parentIds?: string[]; search?: string; ipNamespaceIds: string[] }
+  >(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function IpamTree({ className }: { className?: string }) {
     if (element.children.length > 0) return; // To avoid refetching data
 
     const { data } = await fetchPrefixes({
-      variables: { parentIds: [element.id.toString()] },
+      variables: { parentIds: [element.id.toString()], ipNamespaceIds: [currentIpNamespace.id] },
     });
 
     if (!data) return;
@@ -73,7 +74,7 @@ export default function IpamTree({ className }: { className?: string }) {
     }
 
     const { data } = await fetchPrefixes({
-      variables: { search: value },
+      variables: { search: value, ipNamespaceIds: [currentIpNamespace.id] },
     });
 
     if (!data) return;
