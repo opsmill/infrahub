@@ -1,5 +1,6 @@
 agent
 Alibaba
+allocation_weight
 Ansible
 anonymized
 append_git_suffix
@@ -68,6 +69,7 @@ Infrahub's
 infrahubctl
 IP
 IPAddress
+IPHost
 IPAM
 is_empty
 is_ip_within

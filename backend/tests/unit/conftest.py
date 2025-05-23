@@ -2505,7 +2505,7 @@ async def ipam_schema() -> SchemaRoot:
                 "order_by": ["prefix__value"],
                 "display_labels": ["prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX],
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
             {
                 "name": "IPAddress",

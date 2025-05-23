@@ -32,6 +32,8 @@ class Tasks(ObjectType):
         workflow: list[str] | None = None,
         related_node__ids: list | None = None,
         q: str | None = None,
+        log_limit: int | None = None,
+        log_offset: int | None = None,
     ) -> dict[str, Any]:
         related_nodes = related_node__ids or []
         ids = ids or []
@@ -45,6 +47,8 @@ class Tasks(ObjectType):
             statuses=state,
             workflows=workflow,
             related_nodes=related_nodes,
+            log_limit=log_limit,
+            log_offset=log_offset,
         )
 
     @staticmethod
@@ -71,6 +75,8 @@ class Tasks(ObjectType):
         branch: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
+        log_limit: int | None = None,
+        log_offset: int | None = None,
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
@@ -87,6 +93,8 @@ class Tasks(ObjectType):
             related_nodes=related_nodes,
             limit=limit,
             offset=offset,
+            log_limit=log_limit,
+            log_offset=log_offset,
         )
         prefect_count = prefect_tasks.get("count", None)
         return {
@@ -105,6 +113,8 @@ Task = Field(
     workflow=List(String),
     ids=List(String),
     q=String(required=False),
+    log_limit=Int(required=False),
+    log_offset=Int(required=False),
     resolver=Tasks.resolve,
     required=True,
 )
