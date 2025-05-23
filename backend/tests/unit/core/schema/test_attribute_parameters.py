@@ -54,8 +54,62 @@ def test_number_pool_invalid_range() -> None:
             },
         ],
     }
-    with pytest.raises(pydantic.ValidationError, match="start_range can't be less than end_range"):
+    with pytest.raises(pydantic.ValidationError, match="`start_range` can't be less than `end_range`"):
         NodeSchema(**node_schema)
+
+
+def test_number_pool_optional() -> None:
+    node_schema_definition: dict[str, Any] = {
+        "name": "NumberAttribute",
+        "namespace": "Test",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {
+                "name": "assigned_number",
+                "kind": "NumberPool",
+                "optional": True,
+                "unique": True,
+                "read_only": True,
+                "parameters": {"start_range": 10, "end_range": 25},
+            },
+        ],
+    }
+    node_schema = NodeSchema(**node_schema_definition)
+
+    schema = SchemaRoot(nodes=[node_schema])
+    schema_branch = SchemaBranch(cache={})
+    schema_branch.load_schema(schema=schema)
+    with pytest.raises(
+        ValidationError, match="TestNumberAttribute.assigned_number is a NumberPool it can't be optional"
+    ):
+        schema_branch.process()
+
+
+def test_number_pool_read_only() -> None:
+    node_schema_definition: dict[str, Any] = {
+        "name": "NumberAttribute",
+        "namespace": "Test",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {
+                "name": "assigned_number",
+                "kind": "NumberPool",
+                "optional": False,
+                "unique": True,
+                "read_only": False,
+                "parameters": {"start_range": 10, "end_range": 25},
+            },
+        ],
+    }
+    node_schema = NodeSchema(**node_schema_definition)
+
+    schema = SchemaRoot(nodes=[node_schema])
+    schema_branch = SchemaBranch(cache={})
+    schema_branch.load_schema(schema=schema)
+    with pytest.raises(
+        ValidationError, match="TestNumberAttribute.assigned_number is a NumberPool it has to be a read_only attribute"
+    ):
+        schema_branch.process()
 
 
 def test_number_pool_assign_from_generics() -> None:

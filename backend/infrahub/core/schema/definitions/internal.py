@@ -31,7 +31,12 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
-from infrahub.core.schema.attribute_parameters import AttributeParameters, NumberPoolParameters, TextAttributeParameters
+from infrahub.core.schema.attribute_parameters import (
+    AttributeParameters,
+    NumberAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -624,7 +629,12 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="parameters",
             kind="JSON",
-            internal_kind=[AttributeParameters, TextAttributeParameters, NumberPoolParameters],
+            internal_kind=[
+                AttributeParameters,
+                TextAttributeParameters,
+                NumberAttributeParameters,
+                NumberPoolParameters,
+            ],
             optional=True,
             description="Extra parameters specific to this kind of attribute",
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},

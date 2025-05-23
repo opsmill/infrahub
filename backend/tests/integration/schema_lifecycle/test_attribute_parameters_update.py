@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_parameters import TextAttributeParameters
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, TextAttributeParameters
 from tests.helpers.schema import load_schema as load_schema_root
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -31,7 +31,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
             "include_in_menu": True,
             "label": "Thing",
             "attributes": [
-                {"name": "value", "kind": "Text", "regex": "old", "min_length": 3, "max_length": 4},
+                {"name": "value", "kind": "Text", "regex": "old", "min_length": 0, "max_length": 4},
             ],
         }
 
@@ -44,6 +44,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
             "label": "Thing",
             "attributes": [
                 {"name": "value", "kind": "Text", "parameters": {"regex": "newnew", "min_length": 5, "max_length": 6}},
+                {"name": "number", "kind": "Number", "parameters": {"min_value": 0, "max_value": 10}},
             ],
         }
 
@@ -101,6 +102,11 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     "kind": "Text",
                     "parameters": {"regex": regex_02, "min_length": min_length_02, "max_length": max_length_02},
                 },
+                {
+                    "name": "number",
+                    "kind": "Number",
+                    "parameters": {"min_value": 20, "max_value": 30},
+                },
             ],
         }
 
@@ -141,14 +147,21 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         assert value_attr.parameters.min_length == min_length
         assert value_attr.parameters.max_length == max_length
 
+    def _validate_schema_number_parameters(self, schema: NodeSchema, min_value: int | None, max_value: int | None):
+        number_attr = schema.get_attribute("number")
+        assert isinstance(number_attr.parameters, NumberAttributeParameters)
+        assert number_attr.parameters.min_value == min_value
+        assert number_attr.parameters.max_value == max_value
+
     async def test_schema_01_is_correct(self, db: InfrahubDatabase, default_branch: Branch, load_schema_01) -> None:
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
         legacy_schema = schema_branch.get_node(name=LEGACY_KIND, duplicate=False)
-        self._validate_schema_value_parameters(schema=legacy_schema, regex="old", min_length=3, max_length=4)
+        self._validate_schema_value_parameters(schema=legacy_schema, regex="old", min_length=0, max_length=4)
 
         new_schema = schema_branch.get_node(name=NEW_KIND, duplicate=False)
         self._validate_schema_value_parameters(schema=new_schema, regex="newnew", min_length=5, max_length=6)
+        self._validate_schema_number_parameters(schema=new_schema, min_value=0, max_value=10)
 
     async def test_schema02_load_update(
         self,
@@ -216,6 +229,20 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                                         },
                                         "removed": {},
                                     },
+                                    "number": {
+                                        "added": {},
+                                        "changed": {
+                                            "parameters": {
+                                                "added": {},
+                                                "changed": {
+                                                    "min_value": None,
+                                                    "max_value": None,
+                                                },
+                                                "removed": {},
+                                            },
+                                        },
+                                        "removed": {},
+                                    },
                                 },
                                 "removed": {},
                             },
@@ -246,7 +273,9 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         self._validate_schema_value_parameters(
             schema=legacy_schema, regex=regex_02, min_length=min_length_02, max_length=max_length_02
         )
+
         new_schema = updated_schema_branch.get_node(name=NEW_KIND, duplicate=False)
         self._validate_schema_value_parameters(
             schema=new_schema, regex=regex_02, min_length=min_length_02, max_length=max_length_02
         )
+        self._validate_schema_number_parameters(schema=new_schema, min_value=20, max_value=30)

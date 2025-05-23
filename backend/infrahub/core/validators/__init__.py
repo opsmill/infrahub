@@ -1,3 +1,5 @@
+from infrahub.core.validators.attribute.min_max import AttributeNumberChecker
+
 from .attribute.choices import AttributeChoicesChecker
 from .attribute.enum import AttributeEnumChecker
 from .attribute.kind import AttributeKindChecker
@@ -26,6 +28,9 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "attribute.max_length.update": AttributeLengthChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value: AttributeLengthChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value: AttributeLengthChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE.value: AttributeNumberChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_VALUE_UPDATE.value: AttributeNumberChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE.value: AttributeNumberChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,
