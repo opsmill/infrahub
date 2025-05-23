@@ -6,15 +6,16 @@ from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mut
 from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
-from infrahub.core import registry
+from infrahub.core import protocols, registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
+from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
 
 from ..queries.resource_manager import PoolAllocatedNode
-from .main import InfrahubMutationMixin, InfrahubMutationOptions
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -221,3 +222,43 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 raise ValidationError(input_value="start_range can't be larger than end_range")
 
         return number_pool, result
+
+    @classmethod
+    @retry_db_transaction(name="resource_manager_update")
+    async def mutate_delete(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+    ) -> DeleteResult:
+        graphql_context: GraphqlContext = info.context
+
+        number_pool = await NodeManager.find_object(
+            db=graphql_context.db,
+            kind=protocols.CoreNumberPool,
+            id=data.get("id"),
+            hfid=data.get("hfid"),
+            branch=branch,
+        )
+
+        active_branches = registry.schema.get_branches()
+        violating_branches = []
+        for active_branch in active_branches:
+            try:
+                schema = registry.schema.get(name=number_pool.node.value, branch=active_branch)
+            except SchemaNotFoundError:
+                continue
+
+            if number_pool.node_attribute.value in schema.attribute_names:
+                attribute = schema.get_attribute(name=number_pool.node_attribute.value)
+                if attribute.kind == "NumberPool":
+                    violating_branches.append(active_branch)
+
+        if violating_branches:
+            raise ValidationError(
+                input_value=f"Unable to delete number pool {number_pool.node.value}.{
+                    number_pool.node_attribute.value
+                } is in use (branches: {','.join(violating_branches)})"
+            )
+
+        return await super().mutate_delete(info=info, data=data, branch=branch)
