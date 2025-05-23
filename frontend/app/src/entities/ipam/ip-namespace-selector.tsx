@@ -1,19 +1,22 @@
 import { GET_IP_NAMESPACES } from "@/entities/ipam/api/ip-namespaces";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
-import { Col } from "@/shared/components/container";
+import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/skeleton";
 import {
   Combobox,
   ComboboxContent,
   ComboboxItem,
   ComboboxList,
-  ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { Icon } from "@iconify-icon/react";
+import { PopoverTrigger } from "@/shared/components/ui/popover";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 import { useSetAtom } from "jotai";
+import { ChevronsUpDownIcon } from "lucide-react";
 import { useEffect, useId } from "react";
 import { useNavigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -21,7 +24,11 @@ import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import { constructPathForIpam } from "./common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
 
-export default function IpNamespaceSelector() {
+interface IpNamespaceSelectorProps {
+  className?: string;
+}
+
+export default function IpNamespaceSelector({ ...props }: IpNamespaceSelectorProps) {
   const { loading, data, error } = useQuery(GET_IP_NAMESPACES);
 
   if (loading) {
@@ -34,14 +41,14 @@ export default function IpNamespaceSelector() {
 
   const namespaces = data?.[NAMESPACE_GENERIC]?.edges.map((edge: any) => edge.node) ?? [];
 
-  return <IpNamespaceSelectorContent namespaces={namespaces} />;
+  return <IpNamespaceSelectorContent namespaces={namespaces} {...props} />;
 }
 
-type IpNamespaceSelectorContentProps = {
+interface IpNamespaceSelectorContentProps extends IpNamespaceSelectorProps {
   namespaces: Array<IpamNamespace>;
-};
+}
 
-const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentProps) => {
+const IpNamespaceSelectorContent = ({ namespaces, className }: IpNamespaceSelectorContentProps) => {
   const { prefix, ip_address } = useParams();
   const navigate = useNavigate();
   const [ipamTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
@@ -78,16 +85,27 @@ const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentPr
   };
 
   return (
-    <div className="flex gap-2 items-center">
-      <Icon icon="mdi:chevron-right" />
-      <label htmlFor={id}>Namespace</label>
-
+    <div className={classNames("flex gap-2 items-center", className)}>
       <Combobox>
-        <ComboboxTrigger id={id} data-testid="namespace-select">
-          {selectedNamespace?.display_label ?? defaultNamespace?.display_label}
-        </ComboboxTrigger>
+        <PopoverTrigger
+          id={id}
+          data-testid="namespace-select"
+          className={classNames(
+            focusVisibleStyle,
+            "flex flex-col w-full rounded-md p-1 m-1",
+            "border border-transparent",
+            "hover:bg-gray-100"
+          )}
+        >
+          <Row className="text-xs text-gray-600">Namespace</Row>
+          <Row className="text-sm">
+            {currentNamespace ? getNodeLabel(currentNamespace as any) : null}
 
-        <ComboboxContent align="start" fitTriggerWidth={false}>
+            <ChevronsUpDownIcon className="ml-auto text-gray-600 size-3.5" />
+          </Row>
+        </PopoverTrigger>
+
+        <ComboboxContent align="start">
           <ComboboxList className="max-w-md">
             {namespaces.map((namespace) => (
               <ComboboxItem
@@ -103,6 +121,7 @@ const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentPr
               </ComboboxItem>
             ))}
           </ComboboxList>
+
           <Col className="border-t border-neutral-200">
             <LinkButton
               to={constructPath("/ipam/namespaces")}
