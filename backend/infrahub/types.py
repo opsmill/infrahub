@@ -235,6 +235,10 @@ class Number(InfrahubDataType):
     infrahub = "Integer"
 
 
+class NumberPool(Number):
+    label: str = "Number Pool"
+
+
 class Bandwidth(InfrahubDataType):
     label: str = "Bandwidth"
     graphql = graphene.Int
@@ -329,6 +333,7 @@ ATTRIBUTE_TYPES: dict[str, type[InfrahubDataType]] = {
     "MacAddress": MacAddress,
     "Color": Color,
     "Number": Number,
+    "NumberPool": NumberPool,
     "Bandwidth": Bandwidth,
     "IPHost": IPHost,
     "IPNetwork": IPNetwork,
@@ -353,6 +358,7 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "MacAddress": str,  # MAC addresses can be straightforward strings
     "Color": str,  # Colors often represented as hex strings
     "Number": float,  # Numbers can be floats for general use
+    "NumberPool": float,  # Numbers can be floats for general use
     "Bandwidth": float,  # Bandwidth in some units, represented as a float
     "IPHost": IPvAnyAddress,  # type: ignore[dict-item]
     "IPNetwork": str,

@@ -5,6 +5,7 @@ import hashlib
 from collections import defaultdict
 from itertools import chain, combinations
 from typing import Any
+from uuid import uuid4
 
 from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
@@ -49,6 +50,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -518,6 +520,7 @@ class SchemaBranch:
         self.validate_names()
         self.validate_kinds()
         self.validate_computed_attributes()
+        self.validate_attribute_parameters()
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -994,6 +997,58 @@ class SchemaBranch:
                     raise ValueError(
                         f"{node.kind}: Relationship {rel.name!r} is referring an invalid peer {rel.peer!r}"
                     ) from None
+
+    def validate_attribute_parameters(self) -> None:
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if (
+                    attribute.kind == "NumberPool"
+                    and isinstance(attribute.parameters, NumberPoolParameters)
+                    and not attribute.parameters.number_pool_id
+                ):
+                    attribute.parameters.number_pool_id = str(uuid4())
+
+        for name in self.nodes.keys():
+            node_schema = self.get_node(name=name, duplicate=False)
+            for attribute in node_schema.attributes:
+                if (
+                    attribute.kind == "NumberPool"
+                    and isinstance(attribute.parameters, NumberPoolParameters)
+                    and not attribute.parameters.number_pool_id
+                ):
+                    self._validate_number_pool_parameters(
+                        node_schema=node_schema, attribute=attribute, number_pool_parameters=attribute.parameters
+                    )
+
+    def _validate_number_pool_parameters(
+        self, node_schema: NodeSchema, attribute: AttributeSchema, number_pool_parameters: NumberPoolParameters
+    ) -> None:
+        if attribute.optional:
+            raise ValidationError(f"{node_schema.kind}.{attribute.name} is a NumberPool it can't be optional")
+
+        if not attribute.read_only:
+            raise ValidationError(
+                f"{node_schema.kind}.{attribute.name} is a NumberPool it has to be a read_only attribute"
+            )
+
+        if attribute.inherited:
+            generics_with_attribute = []
+            for generic_name in node_schema.inherit_from:
+                generic_schema = self.get_generic(name=generic_name, duplicate=False)
+                if attribute.name in generic_schema.attribute_names:
+                    generic_attribute = generic_schema.get_attribute(name=attribute.name)
+                    generics_with_attribute.append(generic_schema)
+                    if isinstance(generic_attribute.parameters, NumberPoolParameters):
+                        number_pool_parameters.number_pool_id = generic_attribute.parameters.number_pool_id
+
+            if len(generics_with_attribute) > 1:
+                raise ValidationError(
+                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic"
+                )
+
+        else:
+            number_pool_parameters.number_pool_id = str(uuid4())
 
     def validate_computed_attributes(self) -> None:
         self.computed_attributes = ComputedAttributes()

@@ -51,7 +51,6 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         def render_sub_query_per_rel_type(rel_type: str, rel_def: FieldInfo) -> str:
             subquery = [
                 "WITH peer_node, rb, active_attr",
-                "WITH peer_node, rb, active_attr",
                 f'WHERE type(rb) = "{rel_type}"',
             ]
             if rel_def.default.direction.value == "outbound":
@@ -105,7 +104,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         }
         WITH a1 as active_attr, r1 as rb, p1 as peer_node
         WHERE rb.status = "active"
-        CALL {
+        CALL (peer_node, rb, active_attr) {
             %(sub_query_all)s
         }
         WITH p2 as peer_node, rb, active_attr

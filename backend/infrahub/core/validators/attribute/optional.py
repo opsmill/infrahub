@@ -38,7 +38,6 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             LIMIT 1
         }
         WITH full_path, node, attribute_value, value_relationship
-        WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND (attribute_value IS NULL OR attribute_value = $null_value)
         """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
@@ -85,7 +84,6 @@ class AttributeOptionalChecker(ConstraintCheckerInterface):
             return grouped_data_paths_list
 
         for query_class in self.query_classes:
-            # TODO add exception handling
             query = await query_class.init(
                 db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
             )

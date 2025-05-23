@@ -30,6 +30,7 @@ from infrahub.core.schema import (
     RelationshipSchema,
     TemplateSchema,
 )
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
@@ -254,6 +255,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         within the create code.
         """
 
+        number_pool_parameters: NumberPoolParameters | None = None
+        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+            attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
+            attribute.is_default = False
+            number_pool_parameters = attribute.schema.parameters
+
         if not attribute.from_pool:
             return
 
@@ -262,19 +269,25 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
         except NodeNotFoundError:
-            errors.append(
-                ValidationError(
-                    {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+            if number_pool_parameters:
+                number_pool = await self._create_number_pool(
+                    db=db, attribute=attribute, number_pool_parameters=number_pool_parameters
                 )
-            )
-            return
+
+            else:
+                errors.append(
+                    ValidationError(
+                        {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+                    )
+                )
+                return
 
         if (
             number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
             and number_pool.node_attribute.value == attribute.name
         ):
             try:
-                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
+                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self, attribute=attribute)
             except PoolExhaustedError:
                 errors.append(
                     ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})
@@ -291,6 +304,35 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     }
                 )
             )
+
+    async def _create_number_pool(
+        self, db: InfrahubDatabase, attribute: BaseAttribute, number_pool_parameters: NumberPoolParameters
+    ) -> CoreNumberPool:
+        schema = db.schema.get_node_schema(name="CoreNumberPool", duplicate=False)
+
+        pool_node = self._schema.kind
+        schema_attribute = self._schema.get_attribute(attribute.schema.name)
+        if schema_attribute.inherited:
+            for generic_name in self._schema.inherit_from:
+                generic_node = db.schema.get_generic_schema(name=generic_name, duplicate=False)
+                if attribute.schema.name in generic_node.attribute_names:
+                    pool_node = generic_node.kind
+                    break
+
+        number_pool = await Node.init(db=db, schema=schema, branch=self._branch)
+        await number_pool.new(
+            db=db,
+            id=number_pool_parameters.number_pool_id,
+            name=f"{pool_node}.{attribute.schema.name} [{number_pool_parameters.number_pool_id}]",
+            node=pool_node,
+            node_attribute=attribute.schema.name,
+            start_range=number_pool_parameters.start_range,
+            end_range=number_pool_parameters.end_range,
+        )
+        await number_pool.save(db=db)
+        # Do a lookup of the number pool to get the correct mapped type from the registry
+        # without this we don't get access to the .get_resource() method.
+        return await registry.manager.get_one_by_id_or_default_filter(db=db, id=number_pool.id, kind=CoreNumberPool)
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
@@ -342,7 +384,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
+    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:  # noqa: PLR0915
         errors = []
 
         if "_source" in fields.keys():
@@ -374,6 +416,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                             and mandatory_attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
                         ):
                             self._computed_jinja2_attributes.append(mandatory_attr)
+                            continue
+
+                        if mandatory_attribute.kind == "NumberPool":
                             continue
 
                     errors.append(

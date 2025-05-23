@@ -6,15 +6,17 @@ from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mut
 from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
-from infrahub.core import registry
+from infrahub.core import protocols, registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
+from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
 
 from ..queries.resource_manager import PoolAllocatedNode
-from .main import InfrahubMutationMixin, InfrahubMutationOptions
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -177,14 +179,16 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         try:
-            pool_node = registry.schema.get(name=data["node"].value)
-            if not pool_node.is_generic_schema and not pool_node.is_node_schema:
+            schema_node = registry.schema.get(name=data["node"].value)
+            if not schema_node.is_generic_schema and not schema_node.is_node_schema:
                 raise ValidationError(input_value="The selected model is not a Node or a Generic")
         except SchemaNotFoundError as exc:
             exc.message = "The selected model does not exist"
             raise exc
 
-        attributes = [attribute for attribute in pool_node.attributes if attribute.name == data["node_attribute"].value]
+        attributes = [
+            attribute for attribute in schema_node.attributes if attribute.name == data["node_attribute"].value
+        ]
         if not attributes:
             raise ValidationError(input_value="The selected attribute doesn't exist in the selected model")
 
@@ -192,8 +196,21 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if attribute.kind != "Number":
             raise ValidationError(input_value="The selected attribute is not of the kind Number")
 
-        if data["start_range"].value > data["end_range"].value:
+        start_range = data["start_range"].value
+        end_range = data["end_range"].value
+        if start_range > end_range:
             raise ValidationError(input_value="start_range can't be larger than end_range")
+
+        if not isinstance(attribute.parameters, NumberAttributeParameters):
+            raise ValidationError(
+                input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
+            )
+
+        if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
+            raise ValidationError(input_value="start_range can't be less than min_value")
+
+        if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
+            raise ValidationError(input_value="end_range can't be larger than max_value")
 
         return await super().mutate_create(info=info, data=data, branch=branch)
 
@@ -221,3 +238,43 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 raise ValidationError(input_value="start_range can't be larger than end_range")
 
         return number_pool, result
+
+    @classmethod
+    @retry_db_transaction(name="resource_manager_update")
+    async def mutate_delete(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+    ) -> DeleteResult:
+        graphql_context: GraphqlContext = info.context
+
+        number_pool = await NodeManager.find_object(
+            db=graphql_context.db,
+            kind=protocols.CoreNumberPool,
+            id=data.get("id"),
+            hfid=data.get("hfid"),
+            branch=branch,
+        )
+
+        active_branches = registry.schema.get_branches()
+        violating_branches = []
+        for active_branch in active_branches:
+            try:
+                schema = registry.schema.get(name=number_pool.node.value, branch=active_branch)
+            except SchemaNotFoundError:
+                continue
+
+            if number_pool.node_attribute.value in schema.attribute_names:
+                attribute = schema.get_attribute(name=number_pool.node_attribute.value)
+                if attribute.kind == "NumberPool":
+                    violating_branches.append(active_branch)
+
+        if violating_branches:
+            raise ValidationError(
+                input_value=f"Unable to delete number pool {number_pool.node.value}.{
+                    number_pool.node_attribute.value
+                } is in use (branches: {','.join(violating_branches)})"
+            )
+
+        return await super().mutate_delete(info=info, data=data, branch=branch)
