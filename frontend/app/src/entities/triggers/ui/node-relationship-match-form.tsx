@@ -27,7 +27,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
-import RelationshipField from "@/shared/components/form/fields/relationship.field";
+import PeerField from "@/shared/components/form/fields/peer.field";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
@@ -62,6 +62,11 @@ export const NodeRelationshipMatchForm = ({
     return field.name !== "relationship_name" && field.name !== "peer";
   });
 
+  const defaultPeerValue = getCurrentFieldValue("peer", {
+    peer: currentObject?.peer as AttributeType,
+  });
+  console.log("defaultPeerValue: ", defaultPeerValue);
+
   const defaultValues = {
     relationship_name: getCurrentFieldValue("relationship_name", {
       relationship_name: currentObject?.relationship_name as AttributeType,
@@ -69,9 +74,10 @@ export const NodeRelationshipMatchForm = ({
     added: getCurrentFieldValue("added", {
       added: currentObject?.added as AttributeType,
     }),
-    peer: getCurrentFieldValue("peer", {
-      peer: currentObject?.peer as AttributeType,
-    }),
+    peer: {
+      source: defaultPeerValue?.source,
+      value: { id: defaultPeerValue?.value },
+    },
     value_match: getCurrentFieldValue("value_match", {
       value_match: currentObject?.value_match as AttributeType,
     }),
@@ -237,7 +243,7 @@ const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationsh
   return (
     <>
       <DropdownField {...relationshipField} items={relationshipOptions} />
-      <RelationshipField {...peerField} relationship={{ peer: peerKind }} disabled={!peerKind} />
+      <PeerField {...peerField} peer={peerKind} disabled={!peerKind} />
     </>
   );
 };
