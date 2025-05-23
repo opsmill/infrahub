@@ -24,7 +24,7 @@ class NodeToValidate:
     schema: NonGenericSchemaTypes
 
 
-class RelationshipRelativesConstraint(RelationshipManagerConstraintInterface):
+class RelationshipPeerRelativesConstraint(RelationshipManagerConstraintInterface):
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
