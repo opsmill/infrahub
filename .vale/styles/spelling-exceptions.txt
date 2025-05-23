@@ -1,5 +1,6 @@
 agent
 Alibaba
+allocation_weight
 Ansible
 anonymized
 append_git_suffix

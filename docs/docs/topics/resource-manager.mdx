@@ -17,6 +17,8 @@ A resource manager in Infrahub allocates resources in a branch agnostic way. Whe
 
 Depending on how you use the resource manager, it can allocate resources in an idempotent way. This is helpful when you want to use generators that have to behave in an idempotent way.
 
+Resources that inherit from `CoreWeightedPoolResource` have an `allocation_weight` attribute, which lets you influence allocation order. Resources with higher weights are preferred first when allocating a Prefix or IP Address from a pool.
+
 Resources can be allocated in 2 different ways:
 
 - Direct allocation: A direct allocation is typically used when you don't need the resource to be related to another node in Infrahub, or if you want establish such a relation at a later time. For example, you want to allocated an IP address out of a pool that is not going to be linked to another node in Infrahub.

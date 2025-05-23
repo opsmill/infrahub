@@ -524,6 +524,40 @@ Execute this mutation twice, note the identifier. The resulting IP prefix should
 
 :::
 
+:::success Weighted allocation of an IP prefix
+
+When multiple resources are managed by a resource manager and need to be allocated in a specific order, you can assign weights to control that behavior.
+
+To enable this, update your schema to inherit from the `CoreWeightedPoolResource` generic. This adds the `allocation_weight` attribute to your Prefix resource.
+
+Set a value for allocation_weight when creating the Prefix. **Higher values are preferred first during allocation**.
+
+<Tabs>
+  <TabItem value="YAML" label="Schema update">
+
+  ```yaml
+nodes:
+  - name: IPPrefix
+    namespace: Ipam
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPPrefix"
+      - "CoreWeightedPoolResource"
+    description: "IPv4 or IPv6 network"
+    label: "IP Prefix"
+    relationships:
+      - name: vlan
+        peer: IpamVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
+  ```
+
+  </TabItem>
+</Tabs>
+
+:::
+
 ## Using number pool
 
 A `CoreNumberPool` is connected to a node's numeric attribute. It lets you automatically assign numbers from a set range as values for that attribute.
