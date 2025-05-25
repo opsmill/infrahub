@@ -6,8 +6,19 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import VideoPlayer from '../../src/components/VideoPlayer';
 import ReferenceLink from "../../src/components/Card";
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
 
-# Installing Infrahub
+## Hardware requirements
+
+Please ensure the systems on which you want to install Infrahub meet the [hardware requirements](../topics/hardware-requirements).
+
+:::info
+
+Allocating more CPU cores to the Neo4j database will only improve performance on Infrahub Enterprise as it's leverage parallel query execution.
+
+:::
+
+## Community
 
 Infrahub is deployed as a container-based architecture, and can be deployed for testing or production use in a number of different ways:
 
@@ -19,11 +30,7 @@ Infrahub is deployed as a container-based architecture, and can be deployed for 
   <VideoPlayer url='https://www.youtube.com/watch?v=onVhaTVFkrM' light />
 </center>
 
-## Hardware requirements
-
-Please ensure the systems on which you want to install Infrahub meet the [hardware requirements](../topics/hardware-requirements).
-
-## Quick start via curl
+### Quick start via curl
 
 To quickly spin up the latest Infrahub locally, you can retrieve the Docker Compose file from [infrahub.opsmill.io](https://infrahub.opsmill.io).
 Using [https://infrahub.opsmill.io](https://infrahub.opsmill.io) or [https://infrahub.opsmill.io/stable](https://infrahub.opsmill.io/stable) will retrieve the latest stable version.
@@ -41,49 +48,49 @@ For a list of versions, check our [release notes on GitHub](https://github.com/o
 
 :::
 
-### To spin up an Infrahub environment
+#### To spin up an Infrahub environment
 
 <Tabs>
 <TabItem value="MacOS" default>
 
-```shell
+```bash
 curl https://infrahub.opsmill.io | docker compose -p infrahub -f - up -d
 ```
 
 </TabItem>
 <TabItem value="Ubuntu">
 
-```shell
+```bash
 curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - up -d
 ```
 
 </TabItem>
 </Tabs>
 
-### To spin down and remove an Infrahub environment
+#### To spin down and remove an Infrahub environment
 
 <Tabs>
 <TabItem value="MacOS" default>
 
-```shell
+```bash
 curl https://infrahub.opsmill.io | docker compose -p infrahub -f - down -v
 ```
 
 </TabItem>
 <TabItem value="Ubuntu">
 
-```shell
+```bash
 curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - down -v
 ```
 
 </TabItem>
 </Tabs>
 
-## From Git repository
+### From Git repository
 
 Create the base directory for the Infrahub installation. For this guide, we'll use `/opt/infrahub`.
 
-```shell
+```bash
 sudo mkdir -p /opt/infrahub/
 cd /opt/infrahub/
 ```
@@ -96,14 +103,14 @@ Depending on your system configuration, you might have to give other users write
 
 Usage of the `/opt/infrahub` directory is merely a suggestion. You can use any directory on your system, especially for development or demo purposes.
 
-```shell
+```bash
 mkdir -p ~/source/infrahub/
 cd ~/source/infrahub/
 ```
 
 Next, clone the Infrahub GitHub repository into the current directory.
 
-```shell
+```bash
 git clone --recursive --depth 1 https://github.com/opsmill/infrahub.git
 ```
 
@@ -115,7 +122,7 @@ The command above utilizes a "shallow clone" to retrieve only the most recent co
 
 The `git clone` command should generate output similar to the following:
 
-```shell
+```bash
 Cloning into '.'...
 remote: Enumerating objects: 1312, done.
 remote: Counting objects: 100% (1312/1312), done.
@@ -142,7 +149,7 @@ The pre-requisites for this type of deployment are to have:
 On MacOS, Python is installed by default so you should be able to install `invoke` directly.
 Invoke works best when you install it in the main Python environment, but you can also install it in a virtual environment if you prefer. To install `invoke` and `toml`, run the following command:
 
-```shell
+```bash
 pip3 install invoke toml
 ```
 
@@ -170,7 +177,7 @@ If Python pip is not already installed on your system, install it first with `su
 
 Ensure that the path to your Python binaries are defined in your shell's `$PATH` variable. On Ubuntu 22.04, an example could be:
 
-```shell
+```bash
 echo 'export PATH="$PATH:~/.local/bin"' >> ~/.bashrc
 source ~/.bashrc
 ```
@@ -193,7 +200,7 @@ Please reach out if you need some help and feel free to send a PR with the insta
 
 Once Docker Desktop and Invoke are installed you can start and initialize Infrahub:
 
-```shell
+```bash
 cd infrahub
 invoke demo.start
 ```
@@ -219,7 +226,7 @@ The default devcontainer `.devcontainer/devcontainer.json` launches Infrahub wit
 
 <ReferenceLink title="Infrahub devcontainer file" url="https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json" openInNewTab />
 
-## K8s with Helm charts
+### K8s with Helm charts
 
 A first version of our K8S helm-chart is available in our repository.
 
@@ -300,12 +307,200 @@ neo4j:
           storage: 100Gi
 ```
 
-```shell
+```bash
 helm install infrahub -f values.yml path/to/infrahub/chart
 ```
 
 You can also install the chart using the OpsMill registry.
 
-```shell
+```bash
 helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub
 ```
+
+## Enterprise<EnterpriseBadge />
+
+Enterprise is based off the Community version, with several changes for:
+
+* enterprise features
+* high availability
+* better performance
+* security hardening (Docker image, etc)
+
+Infrahub Enterprise can be deployed the same way as Infrahub Community, using the curl method or using Helm:
+
+* [Quick start via curl](#quick-start-via-curl)
+* [K8s with Helm charts](#k8s-with-helm-charts)
+
+### Quick start via curl
+
+To quickly spin up the latest Infrahub locally, you can retrieve the Docker Compose file from [infrahub.opsmill.io/enterprise](https://infrahub.opsmill.io/enterprise).
+
+#### To spin up an Infrahub environment
+
+<Tabs>
+<TabItem value="MacOS" default>
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | docker compose -p infrahub -f - up -d
+```
+
+</TabItem>
+<TabItem value="Ubuntu">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f - up -d
+```
+
+</TabItem>
+</Tabs>
+
+#### To spin down and remove an Infrahub environment
+
+<Tabs>
+<TabItem value="MacOS" default>
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | docker compose -p infrahub -f - down -v
+```
+
+</TabItem>
+<TabItem value="Ubuntu">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f - down -v
+```
+
+</TabItem>
+</Tabs>
+
+### K8s with Helm charts
+
+Enterprise Helm chart is based of the original Infrahub chart and using it as a Helm dependency.
+Thus most of the configuration related to Infrahub goes inside the `infrahub` top-level key.
+
+<ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-enterprise" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub-enterprise/infrahub-enterprise" openInNewTab />
+
+The following are required for production deployments using Helm:
+
+* data persistence for the database must be enabled
+* multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
+* S3 storage should be configured for the Infrahub API Server, it is required if you have multiple replicas
+
+:::warning
+
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis) for production.
+They are present to ease deployment on non-production environments.
+
+:::
+
+You can use the following values example:
+
+```yaml
+infrahub:
+  infrahubServer:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-server
+            topologyKey: topology.kubernetes.io/zone
+    persistence:
+      enabled: false
+    ingress:
+      enabled: true
+    infrahubServer:
+      env:
+        INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_CONFIG: /config/infrahub.toml
+        INFRAHUB_DB_TYPE: neo4j
+        INFRAHUB_LOG_LEVEL: INFO
+        INFRAHUB_PRODUCTION: "true"
+        INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+        INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
+        INFRAHUB_STORAGE_DRIVER: s3
+        AWS_ACCESS_KEY_ID: xxxx
+        AWS_SECRET_ACCESS_KEY: xxxx
+        AWS_S3_BUCKET_NAME: infrahub-data
+        AWS_S3_ENDPOINT_URL: https://s3
+
+  infrahubTaskWorker:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-task-worker
+            topologyKey: topology.kubernetes.io/zone
+
+  neo4j:
+    services:
+      admin:
+        enabled: true
+    volumes:
+      data:
+        mode: dynamic
+        dynamic:
+          storageClassName: premium-rwo
+          requests:
+            storage: 100Gi
+```
+
+```bash
+helm install infrahub -f values.yml path/to/infrahub-enterprise/chart
+```
+
+You can also install the chart using the OpsMill registry.
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise
+```
+
+### Backup and restore Infrahub Enterprise
+
+Backing Infrahub Enterprise up consists of:
+
+1. Backup the Neo4j database
+
+  You can use the following tools to backup the Neo4j database: [Database Backup](./database-backup)
+  Thanks to Neo4j Enterprise, you can leverage the online backup feature that does not require stopping the database.
+
+2. Backup the artifact store
+
+  Either the S3 bucket or the local filesystem, accordingly.
+
+3. Backup the Prefect database (task logs, etc)
+
+  You can use standard PostgreSQL tools like pg_dump
+  For example, when running using Docker compose:
+
+`docker exec infrahub-task-manager-db-1 pg_dump -Fc -d prefect -U postgres > prefect.dump`
+
+Restoring Infrahub Enterprise consists of:
+
+1. Starting Infrahub
+2. Restoring the Neo4j database ([Database Restore](./database-backup#restore-a-backup-on-a-non-default-cypher-port))
+3. Restoring the artifact store
+4. Restoring the Prefect database
+
+  For example, when running using Docker Compose:
+
+  `docker exec infrahub-task-manager-db-1 pg_restore -d prefect -U postgres --clean --create prefect.dump`
+
+  Then restart the task manager (Prefect server)
+
+5. Restarting Infrahub (API servers, then task workers)
+
+### High Availability
+
+[High Availability Architecture](../topics/architecture#infrahub-high-availability-deployment)
