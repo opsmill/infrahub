@@ -617,12 +617,13 @@ class Migration029(ArbitraryMigration):
                         DatabaseEdgeType.HAS_SOURCE,
                     ],
                 )
-
                 await node_cleanup_query.execute(db=db)
+                has_results = False
                 for result in node_cleanup_query.get_results():
+                    has_results = True
                     more_nodes_to_process = result.get_as_type("more_nodes_to_process", bool)
                 offset += limit
-                if not more_nodes_to_process:
+                if not has_results or not more_nodes_to_process:
                     break
 
             hard_delete_query = await PerformHardDeletes.init(db=db)
@@ -658,10 +659,12 @@ class Migration029(ArbitraryMigration):
                     ],
                 )
                 await relationship_cleanup_query.execute(db=db)
+                has_results = False
                 for result in relationship_cleanup_query.get_results():
+                    has_results = True
                     more_nodes_to_process = result.get_as_type("more_nodes_to_process", bool)
                 offset += limit
-                if not more_nodes_to_process:
+                if not has_results or not more_nodes_to_process:
                     break
 
             hard_delete_query = await PerformHardDeletes.init(db=db)
