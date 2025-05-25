@@ -48,23 +48,6 @@ class TestKindMigrationDeduplicationPatches:
             edge_updater=PatchPlanEdgeUpdater(db=db, batch_size_limit=1),
         )
 
-    async def validate_node_deduplication_patch(self, db: InfrahubDatabase) -> list[str]:
-        query = """
-MATCH (n:Node)
-WITH labels(n) AS node_labels, n.uuid AS node_uuid, count(*) AS num_dups
-WITH node_labels, node_uuid, num_dups
-WHERE num_dups > 1
-RETURN node_labels, node_uuid, num_dups
-        """
-        results = await db.execute_query(query=query)
-        errors = []
-        for result in results:
-            node_labels = result.get("node_labels")
-            node_uuid = result.get("node_uuid")
-            num_dups = result.get("num_dups")
-            errors.append(f"{num_dups} duplicate nodes exist for {node_uuid=}, {node_labels=}")
-        return errors
-
     async def validate_edge_deduplication_patch(self, db: InfrahubDatabase) -> list[str]:
         query = """
 MATCH (a)-[e]->(b)
@@ -103,5 +86,5 @@ RETURN db_id_a, db_id_b, edge_type, branch, status, num_dups
         )
         await patch_runner.apply(patch_plan_directory=patch_plan_dir)
 
-        after_errors = await self.validate_node_deduplication_patch(db=db)
+        after_errors = await self.validate_edge_deduplication_patch(db=db)
         assert not after_errors

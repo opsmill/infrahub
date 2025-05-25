@@ -33,9 +33,17 @@ class CleanUpDuplicatedUuidVertices(Query):
     insert_return = False
     insert_limit = False
 
-    def __init__(self, vertex_label: str, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        vertex_label: str,
+        outbound_edge_types: list[DatabaseEdgeType],
+        inbound_edge_types: list[DatabaseEdgeType],
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self.vertex_label = vertex_label
+        self.outbound_edge_types = outbound_edge_types
+        self.inbound_edge_types = inbound_edge_types
 
     def _get_or_create_active_edge_subquery(
         self,
@@ -312,26 +320,20 @@ CALL {
         """ % {"id_func_name": db.get_id_function_name(), "vertex_label": self.vertex_label}
         self.add_to_query(query_start)
 
-        outbound_edges_query = self._build_directed_edges_subquery(
-            db=db,
-            direction=RelationshipDirection.OUTBOUND,
-            edge_types=[
-                DatabaseEdgeType.IS_PART_OF,
-                DatabaseEdgeType.HAS_ATTRIBUTE,
-                DatabaseEdgeType.IS_RELATED,
-            ],
-        )
-        self.add_to_query(outbound_edges_query)
-        inbound_edges_query = self._build_directed_edges_subquery(
-            db=db,
-            direction=RelationshipDirection.INBOUND,
-            edge_types=[
-                DatabaseEdgeType.IS_RELATED,
-                DatabaseEdgeType.HAS_OWNER,
-                DatabaseEdgeType.HAS_SOURCE,
-            ],
-        )
-        self.add_to_query(inbound_edges_query)
+        if self.outbound_edge_types:
+            outbound_edges_query = self._build_directed_edges_subquery(
+                db=db,
+                direction=RelationshipDirection.OUTBOUND,
+                edge_types=self.outbound_edge_types,
+            )
+            self.add_to_query(outbound_edges_query)
+        if self.inbound_edge_types:
+            inbound_edges_query = self._build_directed_edges_subquery(
+                db=db,
+                direction=RelationshipDirection.INBOUND,
+                edge_types=self.inbound_edge_types,
+            )
+            self.add_to_query(inbound_edges_query)
 
         query_end = """
 // ------------
@@ -599,8 +601,23 @@ class Migration029(ArbitraryMigration):
             while more_nodes_to_process:
                 log.info(f"Running node duplicates cleanup query {limit=},{offset=}")
                 node_cleanup_query = await CleanUpDuplicatedUuidVertices.init(
-                    db=db, vertex_label="Node", limit=limit, offset=offset
+                    db=db,
+                    vertex_label="Node",
+                    limit=limit,
+                    offset=offset,
+                    outbound_edge_types=[
+                        DatabaseEdgeType.IS_PART_OF,
+                        DatabaseEdgeType.HAS_ATTRIBUTE,
+                        DatabaseEdgeType.IS_RELATED,
+                        DatabaseEdgeType.IS_RESERVED,
+                    ],
+                    inbound_edge_types=[
+                        DatabaseEdgeType.IS_RELATED,
+                        DatabaseEdgeType.HAS_OWNER,
+                        DatabaseEdgeType.HAS_SOURCE,
+                    ],
                 )
+
                 await node_cleanup_query.execute(db=db)
                 for result in node_cleanup_query.get_results():
                     more_nodes_to_process = result.get_as_type("more_nodes_to_process", bool)
@@ -625,7 +642,20 @@ class Migration029(ArbitraryMigration):
             while more_nodes_to_process:
                 log.info(f"Running relationship duplicates cleanup query {limit=},{offset=}")
                 relationship_cleanup_query = await CleanUpDuplicatedUuidVertices.init(
-                    db=db, vertex_label="Relationship", limit=limit, offset=offset
+                    db=db,
+                    vertex_label="Relationship",
+                    limit=limit,
+                    offset=offset,
+                    outbound_edge_types=[
+                        DatabaseEdgeType.IS_RELATED,
+                        DatabaseEdgeType.IS_VISIBLE,
+                        DatabaseEdgeType.IS_PROTECTED,
+                        DatabaseEdgeType.HAS_OWNER,
+                        DatabaseEdgeType.HAS_SOURCE,
+                    ],
+                    inbound_edge_types=[
+                        DatabaseEdgeType.IS_RELATED,
+                    ],
                 )
                 await relationship_cleanup_query.execute(db=db)
                 for result in relationship_cleanup_query.get_results():
