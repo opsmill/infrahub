@@ -1,5 +1,6 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import { getPermission } from "@/entities/permission/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -17,7 +18,6 @@ import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
-import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import {
   IPAM_QSP,
   IPAM_ROUTE,
@@ -41,8 +41,7 @@ function IpamRouter() {
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
   const genericList = useAtomValue(genericSchemasAtom);
-  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
-  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
+  const { currentIpNamespace } = useCurrentIpNamespace();
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
@@ -190,10 +189,7 @@ function IpamRouter() {
             refetchRef?.current?.refetch();
             setShowCreateDrawer(false);
 
-            const currentIpNamespace = namespace ?? defaultIpNamespace;
-            if (currentIpNamespace) {
-              reloadIpamTree(currentIpNamespace, prefix);
-            }
+            reloadIpamTree(currentIpNamespace.id, prefix);
           }}
           onCancel={() => setShowCreateDrawer(false)}
         />

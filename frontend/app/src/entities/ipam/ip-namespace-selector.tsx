@@ -1,108 +1,48 @@
-import { GET_IP_NAMESPACES } from "@/entities/ipam/api/ip-namespaces";
-import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
-import useQuery from "@/shared/api/graphql/useQuery";
+import { useGetIpNamespaceList } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list.query";
+import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
-import { Col } from "@/shared/components/container";
-import { Skeleton } from "@/shared/components/skeleton";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/shared/components/ui/combobox";
-import { Icon } from "@iconify-icon/react";
-import { useSetAtom } from "jotai";
-import { useEffect, useId } from "react";
-import { useNavigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
-import { defaultIpNamespaceAtom } from "./common/namespace.state";
-import { constructPathForIpam } from "./common/utils";
-import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
+import { Col, Row } from "@/shared/components/container";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { classNames, debounce } from "@/shared/utils/common";
+import { ChevronsUpDownIcon } from "lucide-react";
+import React from "react";
+import { Button as AriaButton } from "react-aria-components";
 
-export default function IpNamespaceSelector() {
-  const { loading, data, error } = useQuery(GET_IP_NAMESPACES);
-
-  if (loading) {
-    return <Skeleton className="h-10 w-80" />;
-  }
-
-  if (error) {
-    return null;
-  }
-
-  const namespaces = data?.[NAMESPACE_GENERIC]?.edges.map((edge: any) => edge.node) ?? [];
-
-  return <IpNamespaceSelectorContent namespaces={namespaces} />;
+interface IpNamespaceSelectorProps {
+  className?: string;
 }
 
-type IpNamespaceSelectorContentProps = {
-  namespaces: Array<IpamNamespace>;
-};
-
-const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentProps) => {
-  const { prefix, ip_address } = useParams();
-  const navigate = useNavigate();
-  const [ipamTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
-  const [namespaceQSP, setNamespaceQSP] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
-  const setDefaultIpNamespace = useSetAtom(defaultIpNamespaceAtom);
-  const selectedNamespace = namespaces.find((result) => result.id === namespaceQSP);
-  const defaultNamespace = namespaces.find((result) => result.default?.value === true);
-  const currentNamespace = selectedNamespace || defaultNamespace;
-  const id = useId();
-
-  useEffect(() => {
-    if (defaultNamespace) {
-      setDefaultIpNamespace(defaultNamespace.id);
-    }
-  }, []);
-
-  const handleNamespaceChange = (newValue: IpamNamespace) => {
-    if (!newValue.id || newValue.id === defaultNamespace?.id) {
-      setNamespaceQSP(undefined); // Removes QSP for default namespace
-    } else {
-      setNamespaceQSP(newValue.id);
-    }
-
-    if (prefix || ip_address) {
-      // Redirects to main lists on namespace switch
-      if (ipamTab === IPAM_TABS.IP_DETAILS) {
-        // Redirects to main IP Addresses view
-        navigate(constructPathForIpam(IPAM_ROUTE.ADDRESSES));
-      } else {
-        // Redirects to main Prefixes view
-        navigate(constructPathForIpam(IPAM_ROUTE.PREFIXES));
-      }
-    }
-  };
+export default function IpNamespaceSelector({ className }: IpNamespaceSelectorProps) {
+  const { currentIpNamespace } = useCurrentIpNamespace();
 
   return (
-    <div className="flex gap-2 items-center">
-      <Icon icon="mdi:chevron-right" />
-      <label htmlFor={id}>Namespace</label>
+    <div className={classNames("flex gap-2 items-center", className)}>
+      <PopoverTrigger>
+        <AriaButton
+          data-testid="namespace-select"
+          className={classNames(
+            focusVisibleStyle,
+            "flex flex-col w-full rounded-md p-1 m-1",
+            "border border-transparent",
+            "hover:bg-gray-100"
+          )}
+        >
+          <Row className="text-xs text-gray-600">IP Namespace</Row>
+          <Row className="text-sm">
+            {getNodeLabel(currentIpNamespace)}
+            <ChevronsUpDownIcon className="ml-auto text-gray-600 size-3.5" />
+          </Row>
+        </AriaButton>
 
-      <Combobox>
-        <ComboboxTrigger id={id} data-testid="namespace-select">
-          {selectedNamespace?.display_label ?? defaultNamespace?.display_label}
-        </ComboboxTrigger>
+        <Popover placement="bottom start">
+          <IpNamespaceComboboxList />
 
-        <ComboboxContent align="start" fitTriggerWidth={false}>
-          <ComboboxList className="max-w-md">
-            {namespaces.map((namespace) => (
-              <ComboboxItem
-                key={namespace.id}
-                value={namespace.id}
-                selectedValue={currentNamespace?.id}
-                onSelect={() => handleNamespaceChange(namespace)}
-              >
-                <div className="overflow-hidden">
-                  <div className="truncate font-semibold">{namespace.display_label}</div>
-                  <p className="text-xs truncate text-gray-500">{namespace.description?.value}</p>
-                </div>
-              </ComboboxItem>
-            ))}
-          </ComboboxList>
           <Col className="border-t border-neutral-200">
             <LinkButton
               to={constructPath("/ipam/namespaces")}
@@ -113,8 +53,66 @@ const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentPr
               View all IP namespaces
             </LinkButton>
           </Col>
-        </ComboboxContent>
-      </Combobox>
+        </Popover>
+      </PopoverTrigger>
     </div>
   );
-};
+}
+
+function IpNamespaceComboboxList({ ...props }) {
+  const [search, setSearch] = React.useState("");
+  const { currentIpNamespace, setCurrentIpNamespace } = useCurrentIpNamespace();
+  const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useGetIpNamespaceList({
+      filters: search ? [{ name: "any__value", value: search }] : undefined,
+    });
+
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
+
+  const setSearchDebounced = debounce(setSearch, 300);
+
+  return (
+    <ComboboxList
+      onValueChange={(newValue) => setSearchDebounced(newValue)}
+      shouldFilter={false}
+      {...props}
+    >
+      {isPending ? (
+        <Spinner className="flex justify-center m-2" />
+      ) : (
+        <>
+          <ComboboxEmpty>No IP namespace found</ComboboxEmpty>
+
+          {data.pages.map((page) => {
+            return page.map((namespace) => (
+              <ComboboxItem
+                key={namespace.id}
+                value={namespace.id}
+                selectedValue={currentIpNamespace.id}
+                onSelect={() => setCurrentIpNamespace(namespace)}
+              >
+                <div className="overflow-hidden">
+                  <div className="truncate font-semibold">{getNodeLabel(namespace)}</div>
+                  <p className="text-xs truncate text-gray-500">{namespace.description?.value}</p>
+                </div>
+              </ComboboxItem>
+            ));
+          })}
+        </>
+      )}
+
+      {hasNextPage && (
+        <ComboboxItem
+          value="Load more"
+          onSelect={() => fetchNextPage()}
+          disabled={!hasNextPage || isFetchingNextPage}
+          className="justify-center text-custom-blue-700"
+        >
+          {isFetchingNextPage ? "Loading more..." : "Load more"}
+        </ComboboxItem>
+      )}
+    </ComboboxList>
+  );
+}

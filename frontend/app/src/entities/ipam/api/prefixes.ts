@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_PREFIXES_ONLY = gql`
-  query GET_PREFIXES_ONLY($parentIds: [ID!], $search: String) {
-    BuiltinIPPrefix(parent__ids: $parentIds, any__value: $search, partial_match: true) {
+  query GET_PREFIXES_ONLY($parentIds: [ID!], $search: String, $ipNamespaceIds: [ID!]) {
+    BuiltinIPPrefix(parent__ids: $parentIds, any__value: $search, partial_match: true, ip_namespace__ids: $ipNamespaceIds) {
       edges {
         node {
           id

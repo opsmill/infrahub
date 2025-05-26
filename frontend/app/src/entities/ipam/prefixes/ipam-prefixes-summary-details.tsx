@@ -1,7 +1,8 @@
 import { GET_PREFIX_KIND } from "@/entities/ipam/api/prefixes";
 import { IpDetailsCard } from "@/entities/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getPermission } from "@/entities/permission/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -12,7 +13,6 @@ import { Link } from "@/shared/components/ui/link";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
@@ -56,7 +56,7 @@ type PrefixSummaryContentProps = {
 };
 
 const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProps) => {
-  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const { currentIpNamespace } = useCurrentIpNamespace();
   const { schema: prefixSchema } = useSchema(prefixKind);
 
   const columns = prefixSchema
@@ -73,7 +73,7 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
       ]
     : [];
 
-  const filters = namespace ? `ip_namespace__ids: ["${namespace}"]` : "";
+  const filters = `ip_namespace__ids: ["${currentIpNamespace.id}"]`;
 
   const query = gql(
     getObjectDetailsPaginated({

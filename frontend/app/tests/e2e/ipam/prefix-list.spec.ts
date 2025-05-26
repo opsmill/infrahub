@@ -15,7 +15,7 @@ test.describe("/ipam/prefixes - Prefix list", () => {
     await expect(page.getByText("Prefix203.111.0.0/16")).toBeVisible();
     await expect(page.getByText("Utilization0%")).toBeVisible();
     await expect(page.getByRole("progressbar")).toBeVisible();
-    await expect(page.getByText("Ip Namespacedefault")).toBeVisible();
+    await expect(page.getByRole("row", { name: "IP Namespace default" })).toBeVisible();
   });
 
   test("view all sub-prefixes of a given prefix", async ({ page }) => {

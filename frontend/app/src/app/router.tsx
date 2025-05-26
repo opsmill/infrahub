@@ -379,6 +379,19 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: "/ipam/namespaces",
+                lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "link",
+                      label: "namespaces",
+                      to: constructPath("/ipam/namespaces"),
+                    } satisfies BreadcrumbItem;
+                  },
+                },
+              },
+              {
                 path: IPAM_ROUTE.INDEX,
                 lazy: () => import("@/pages/ipam/layout"),
                 handle: {
@@ -387,26 +400,13 @@ export const router = createBrowserRouter([
                       type: "link",
                       label: "IP Address Manager",
                       to: constructPathForIpam("/ipam"),
-                    };
+                    } as BreadcrumbItem;
                   },
                 },
                 children: [
                   {
                     index: true,
                     lazy: () => import("@/entities/ipam/ipam-router"),
-                  },
-                  {
-                    path: "namespaces",
-                    lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "namespaces",
-                          to: constructPath("/ipam/namespaces"),
-                        } satisfies BreadcrumbItem;
-                      },
-                    },
                   },
                   {
                     path: IPAM_ROUTE.ADDRESSES,
