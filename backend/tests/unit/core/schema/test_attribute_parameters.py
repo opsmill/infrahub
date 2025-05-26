@@ -4,12 +4,17 @@ from typing import Any
 import pydantic
 import pytest
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema, SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import (
+    NumberAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -183,3 +188,23 @@ async def test_create_nodes_from_generic_numberpools(
     assert request_1.identifier.value == "REQ2"
     assert request_2.number.value == 3
     assert request_2.identifier.value == "REQ3"
+
+
+def test_validate_min_max_number_attribute() -> None:
+    with pytest.raises(
+        pydantic.ValidationError,
+        match="`max_value` can't be less than `min_value` when the schema is configured with strict mode",
+    ):
+        NumberAttributeParameters(min_value=10, max_value=5)
+
+    assert config.SETTINGS.main.schema_strict_mode
+
+
+def test_validate_min_max_text_attribute() -> None:
+    with pytest.raises(
+        pydantic.ValidationError,
+        match="`max_length` can't be less than `min_length` when the schema is configured with strict mode",
+    ):
+        TextAttributeParameters(min_length=10, max_length=5)
+
+    assert config.SETTINGS.main.schema_strict_mode
