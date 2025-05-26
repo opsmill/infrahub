@@ -1,6 +1,7 @@
 import os
 import subprocess  # noqa: S404
 import uuid
+import warnings
 from pathlib import Path
 
 import pytest
@@ -73,7 +74,13 @@ class TestInfrahubDocker:
 
     @pytest.fixture(scope="class")
     def infrahub_app(self, request: pytest.FixtureRequest, infrahub_compose: InfrahubDockerCompose) -> dict[str, int]:
+        tests_failed_before_class = request.session.testsfailed
+
         def cleanup() -> None:
+            tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
+            if tests_failed_during_class > 0:
+                stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
+                warnings.warn(f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}", stacklevel=2)
             infrahub_compose.stop()
 
         request.addfinalizer(cleanup)
