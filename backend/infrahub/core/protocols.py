@@ -497,6 +497,11 @@ class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTas
     commit: StringOptional
 
 
+class CoreRepositoryGroup(CoreGroup):
+    content: Dropdown
+    repository: RelationshipManager
+
+
 class CoreRepositoryValidator(CoreValidator):
     repository: RelationshipManager
 

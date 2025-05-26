@@ -162,6 +162,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
     model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
+    def get_client(self) -> InfrahubClient:
+        if self.client is None:
+            raise ValueError("Client is not set")
+        return self.client
+
     @property
     def sdk(self) -> InfrahubClient:
         if self.client:
@@ -444,9 +449,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         responses = repo.git.worktree("list", "--porcelain").split("\n\n")
 
         return [Worktree.init(response) for response in responses]
-
-    def get_client(self) -> InfrahubClient:
-        return self.sdk
 
     def get_location(self) -> str:
         if self.location:

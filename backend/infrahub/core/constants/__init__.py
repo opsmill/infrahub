@@ -146,6 +146,11 @@ class AllowOverrideType(InfrahubStringEnum):
     ANY = "any"
 
 
+class RepositoryObjects(InfrahubStringEnum):
+    OBJECT = "object"
+    MENU = "menu"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     APPLICATION_YAML = "application/yaml"

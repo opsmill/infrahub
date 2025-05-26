@@ -1,0 +1,10 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: TestingPerson
+  data:
+    - name: Ethan Carter
+      height: 180
+    - name: Olivia Bennett
+      height: 170
