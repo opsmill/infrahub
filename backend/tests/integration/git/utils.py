@@ -51,6 +51,7 @@ async def check_repo_correctly_created(repo_id, db, branch_name: str):
         branch=branch_name,
     )
     assert repository_group.content.value == RepositoryObjects.OBJECT.value
+    assert (await repository_group.repository.get_peer(db=db)).id == repo_id
     members = (await repository_group.members.get_peers(db=db)).values()
     assert len(members) == 4
     assert {m.id for m in members} == {
@@ -69,6 +70,7 @@ async def check_repo_correctly_created(repo_id, db, branch_name: str):
         branch=branch_name,
     )
     assert repository_group_menus.content.value == RepositoryObjects.MENU.value
+    assert (await repository_group_menus.repository.get_peer(db=db)).id == repo_id
     _ = await NodeManager.get_one_by_hfid(
         db=db,
         hfid=["Testing", "Manufacturer"],
