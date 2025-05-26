@@ -40,7 +40,7 @@ const PeerField = ({
         display_label: data?.display_label,
       },
     };
-  }, [data?.display_label]);
+  }, [data?.id]);
 
   return (
     <FormField
