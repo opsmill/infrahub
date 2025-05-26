@@ -3,7 +3,12 @@ import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
-import { DynamicDropdownFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import {
+  DynamicDropdownFieldProps,
+  DynamicFieldProps,
+  FormAttributeValue,
+  FormFieldValue,
+} from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -12,7 +17,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { FieldValues, useForm } from "react-hook-form";
+import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -22,23 +27,25 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
+import PeerField from "@/shared/components/form/fields/peer.field";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "../constants";
+import { NODE_TRIGGER_RELATIONSHIP } from "../constants";
 
-interface NodeAttributeMatchFormProps extends NodeFormProps {}
+interface NodeRelationshipMatchFormProps extends NodeFormProps {}
 
-export const NodeAttributeMatchForm = ({
+export const NodeRelationshipMatchForm = ({
   currentObject,
   objectTemplate,
   isUpdate,
   onSuccess,
   onCancel,
   ...props
-}: NodeAttributeMatchFormProps) => {
+}: NodeRelationshipMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const { objectKind, objectid } = useParams();
@@ -51,24 +58,25 @@ export const NodeAttributeMatchForm = ({
     isUpdate,
   });
 
-  const attributeField = schemaFields.find((field) => {
-    return field.name === "attribute_name";
-  }) as DynamicDropdownFieldProps;
-
   const fields = schemaFields.filter((field) => {
-    return field.name !== "attribute_name";
+    return field.name !== "relationship_name" && field.name !== "peer";
+  });
+
+  const defaultPeerValue = getCurrentFieldValue("peer", {
+    peer: currentObject?.peer as AttributeType,
   });
 
   const defaultValues = {
-    attribute_name: getCurrentFieldValue("attribute_name", {
-      attribute_name: currentObject?.attribute_name as AttributeType,
+    relationship_name: getCurrentFieldValue("relationship_name", {
+      relationship_name: currentObject?.relationship_name as AttributeType,
     }),
-    value: getCurrentFieldValue("value", {
-      value: currentObject?.value as AttributeType,
+    added: getCurrentFieldValue("added", {
+      added: currentObject?.added as AttributeType,
     }),
-    value_previous: getCurrentFieldValue("value_previous", {
-      value_previous: currentObject?.value_previous as AttributeType,
-    }),
+    peer: {
+      source: defaultPeerValue?.source,
+      value: { id: defaultPeerValue?.value },
+    },
     value_match: getCurrentFieldValue("value_match", {
       value_match: currentObject?.value_match as AttributeType,
     }),
@@ -98,16 +106,22 @@ export const NodeAttributeMatchForm = ({
 
       const mutationString = currentObject?.id
         ? updateObjectWithId({
-            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
+            kind: NODE_TRIGGER_RELATIONSHIP,
             data: stringifyWithoutQuotes({
               id: currentObject.id,
               ...newObject,
+              peer: newObject?.peer?.id && {
+                value: newObject?.peer?.id,
+              },
             }),
           })
         : createObject({
-            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
+            kind: NODE_TRIGGER_RELATIONSHIP,
             data: stringifyWithoutQuotes({
               ...newObject,
+              peer: newObject?.peer?.id && {
+                value: newObject?.peer?.id,
+              },
             }),
           });
 
@@ -124,18 +138,18 @@ export const NodeAttributeMatchForm = ({
       });
 
       if (currentObject) {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match updated!"} />, {
-          toastId: "alert-success-node-attribute-match-updated",
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match updated!"} />, {
+          toastId: "alert-success-node-relationship-match-updated",
         });
       } else {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match created!"} />, {
-          toastId: "alert-success-node-attribute-match-created",
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match created!"} />, {
+          toastId: "alert-success-node-relationship-match-created",
         });
       }
 
       if (onSuccess)
         await onSuccess(
-          result?.data?.[`${NODE_TRIGGER_ATTRIBUTE_MATCH}${currentObject ? "Update" : "Create"}`]
+          result?.data?.[`${NODE_TRIGGER_RELATIONSHIP}${currentObject ? "Update" : "Create"}`]
         );
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
@@ -145,8 +159,9 @@ export const NodeAttributeMatchForm = ({
   return (
     <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <NodeAttributeField
-          field={attributeField}
+        <NodeRelationshipField
+          form={form}
+          schemaFields={schemaFields}
           kind={data?.node_kind?.value}
           isLoading={isPending}
         />
@@ -169,22 +184,54 @@ export const NodeAttributeMatchForm = ({
   );
 };
 
-interface NodeAttributeFieldProps {
+interface NodeRelationshipFieldProps {
   kind?: string;
   isLoading?: boolean;
-  field?: DynamicDropdownFieldProps;
+  schemaFields: Array<DynamicFieldProps>;
 }
 
-const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps) => {
+const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationshipFieldProps) => {
   const { schema } = useSchema(kind);
+  const [peerKind, setPeerKind] = useState<string | null>(null);
+  const form = useFormContext();
+
+  const selectedRelationshipField: FormAttributeValue = form.watch("relationship_name");
+
+  const relationshipField = schemaFields.find((field) => {
+    return field.name === "relationship_name";
+  }) as DynamicDropdownFieldProps;
+
+  const peerField = schemaFields.find((field) => {
+    return field.name === "peer";
+  });
+
+  const relationshipOptions: Array<DropdownOption> =
+    schema?.relationships?.map((relationship) => {
+      return {
+        value: relationship.name,
+        label: relationship.label ?? relationship.name,
+      };
+    }) ?? [];
+
+  useEffect(() => {
+    if (!selectedRelationshipField?.value) {
+      return setPeerKind(null);
+    }
+
+    const relationshipSchema = schema?.relationships?.find((relationship) => {
+      return relationship.name === selectedRelationshipField?.value;
+    });
+
+    setPeerKind(relationshipSchema?.peer ?? null);
+  }, [selectedRelationshipField?.value]);
 
   if (isLoading) {
     return (
       <div className="space-y-2">
         <LabelFormField
-          label={"Attribute Name"}
-          required={!!field?.rules?.required}
-          description={field?.description}
+          label={"Relationship Name"}
+          required={!!relationshipField?.rules?.required}
+          description={relationshipField?.description}
         />
 
         <Skeleton className="h-10 w-full" />
@@ -192,13 +239,10 @@ const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps)
     );
   }
 
-  const attributeOptions: Array<DropdownOption> =
-    schema?.attributes?.map((attribute) => {
-      return {
-        value: attribute.name,
-        label: attribute.label ?? attribute.name,
-      };
-    }) ?? [];
-
-  return <DropdownField {...field} name="attribute_name" items={attributeOptions} />;
+  return (
+    <>
+      <DropdownField {...relationshipField} items={relationshipOptions} />
+      <PeerField {...peerField} peer={peerKind} disabled={!peerKind} />
+    </>
+  );
 };
