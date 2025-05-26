@@ -5,6 +5,7 @@ from typing import Self
 
 from pydantic import ConfigDict, Field, model_validator
 
+from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
 
@@ -40,6 +41,21 @@ class TextAttributeParameters(AttributeParameters):
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
+    @model_validator(mode="after")
+    def validate_min_max(self) -> Self:
+        if (
+            config.SETTINGS.initialized
+            and config.SETTINGS.main.schema_strict_mode
+            and self.min_length is not None
+            and self.max_length is not None
+        ):
+            if self.min_length > self.max_length:
+                raise ValueError(
+                    "`max_length` can't be less than `min_length` when the schema is configured with strict mode"
+                )
+
+        return self
+
 
 class NumberAttributeParameters(AttributeParameters):
     min_value: int | None = Field(
@@ -70,6 +86,21 @@ class NumberAttributeParameters(AttributeParameters):
             for start_range_2, end_range_2 in ranges[i + 1 :]:
                 if not (end_range_1 < start_range_2 or start_range_1 > end_range_2):
                     raise ValueError("Excluded ranges cannot overlap")
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_min_max(self) -> Self:
+        if (
+            config.SETTINGS.initialized
+            and config.SETTINGS.main.schema_strict_mode
+            and self.min_value is not None
+            and self.max_value is not None
+        ):
+            if self.min_value > self.max_value:
+                raise ValueError(
+                    "`max_value` can't be less than `min_value` when the schema is configured with strict mode"
+                )
 
         return self
 
