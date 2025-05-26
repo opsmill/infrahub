@@ -65,39 +65,34 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         device_1 = await Node.init(db=db, schema=TestKind.DEVICE)
         await device_1.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
 
-        interfaces: list[Node] = []
+        interfaces_1: list[Node] = []
         interfaces_1_ids: list[str] = []
         for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
             interface = await Node.init(db=db, schema=TestKind.PHYSICAL_INTERFACE)
             await interface.new(db=db, name=if_name, phys_type="QSFP28 (100GE)", device=device_1)
             await interface.save(db=db)
-            interfaces.append(interface)
+            interfaces_1.append(interface)
             interfaces_1_ids.append(interface.id)
 
-        await device_1.interfaces.update(db=db, data=interfaces)
+        await device_1.interfaces.update(db=db, data=interfaces_1)  # type: ignore[attr-defined]
         await device_1.save(db=db)
 
         device_2 = await Node.init(db=db, schema=TestKind.DEVICE)
         await device_2.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
 
-        interfaces: list[Node] = []
+        interfaces_2: list[Node] = []
         interfaces_2_ids: list[str] = []
         for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
             interface = await Node.init(db=db, schema=TestKind.PHYSICAL_INTERFACE)
             await interface.new(db=db, name=if_name, phys_type="QSFP28 (100GE)", device=device_2)
             await interface.save(db=db)
-            interfaces.append(interface)
+            interfaces_2.append(interface)
             interfaces_2_ids.append(interface.id)
 
-        await device_2.interfaces.update(db=db, data=interfaces)
+        await device_2.interfaces.update(db=db, data=interfaces_2)  # type: ignore[attr-defined]
         await device_2.save(db=db)
 
-        return {
-            "device_1": device_1,
-            "interfaces_1_ids": interfaces_1_ids,
-            "device_2": device_2,
-            "interfaces_2_ids": interfaces_2_ids,
-        }
+        return {"device_1": device_1, "device_2": device_2}
 
     async def test_create_lag_main(
         self, db: InfrahubDatabase, data: dict[str, Node], client: InfrahubClient, default_branch: Branch
@@ -106,7 +101,11 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         await device.interfaces.fetch()
 
         lag = await client.create(
-            kind=LAG_KIND, name="ae0", device=device, members=data["interfaces_1_ids"], branch=default_branch.name
+            kind=LAG_KIND,
+            name="ae0",
+            device=device,
+            members=[i.peer for i in device.interfaces],  # type: ignore[attr-defined]
+            branch=default_branch.name,
         )
         await lag.save()
 
@@ -125,7 +124,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             kind=LAG_KIND,
             name="ae1",
             device=device_1,
-            members=data["interfaces_1_ids"] + data["interfaces_2_ids"],
+            members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)],  # type: ignore[attr-defined]
             branch=default_branch.name,
         )
 
@@ -145,7 +144,11 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         await device.interfaces.fetch()
 
         lag = await client.create(
-            kind=LAG_KIND, name="ae0", device=device, members=data["interfaces_2_ids"], branch=branch.name
+            kind=LAG_KIND,
+            name="ae0",
+            device=device,
+            members=[i.peer for i in device.interfaces],  # type: ignore[attr-defined]
+            branch=branch.name,
         )
         await lag.save()
 
@@ -166,7 +169,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             kind=LAG_KIND,
             name="ae1",
             device=device_2,
-            members=data["interfaces_1_ids"] + data["interfaces_2_ids"],
+            members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)[:-1]],  # type: ignore[attr-defined]
             branch=branch.name,
         )
 
