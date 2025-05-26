@@ -58,6 +58,7 @@ async def test_schema_models_generics(
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
         InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.REPOSITORYGROUP,
         "EdgedTestPerson",
         "NestedEdgedCoreGroup",
         "NestedEdgedTestCar",

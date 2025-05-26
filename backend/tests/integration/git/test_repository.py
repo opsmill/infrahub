@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from git import GitCommandError
 
-from infrahub.core.constants import InfrahubKind, RepositoryObjects, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import RepositoryError
@@ -15,6 +15,7 @@ from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
+from tests.integration.git.utils import check_repo_correctly_created
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,6 +51,7 @@ class TestCreateRepository(TestInfrahubApp):
         initial_dataset: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
+        default_branch,
     ) -> None:
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
         client_repository = await client.create(
@@ -59,69 +61,23 @@ class TestCreateRepository(TestInfrahubApp):
         await client_repository.save()
 
         repository: CoreRepository = await NodeManager.get_one(
-            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+            db=db,
+            id=client_repository.id,
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
         )
-
         check_definition: CoreCheckDefinition = await NodeManager.get_one_by_default_filter(
-            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION, raise_on_error=True
+            db=db,
+            id="car_description_check",
+            kind=InfrahubKind.CHECKDEFINITION,
+            raise_on_error=True,
         )
-
         assert repository.commit.value
-        assert repository.internal_status.value == "active"
+        assert repository.internal_status.value == "active", f"{repository.internal_status.value=}"
         assert repository.operational_status.value == "online"
         assert check_definition.file_path.value == "checks/car_overview.py"
 
-        person_ethan = await NodeManager.get_one_by_default_filter(
-            db=db, id="Ethan Carter", kind="TestingPerson", raise_on_error=True
-        )
-        assert person_ethan.name.value == "Ethan Carter"
-        assert person_ethan.height.value == 180
-
-        manufacturer_mercedes = await NodeManager.get_one_by_default_filter(
-            db=db, id="Mercedes", kind="TestingManufacturer", raise_on_error=True, prefetch_relationships=True
-        )
-        assert manufacturer_mercedes.name.value == "Mercedes"
-        assert list((await manufacturer_mercedes.customers.get_peers(db=db)).values())[0].name.value == "Ethan Carter"
-
-        repository_group = await NodeManager.get_one_by_default_filter(
-            db=db,
-            id=f"group-repo-{RepositoryObjects.OBJECT.value}-{repository.id}",
-            kind="CoreRepositoryGroup",
-            raise_on_error=True,
-            prefetch_relationships=True,
-        )
-        assert repository_group.content.value == RepositoryObjects.OBJECT.value
-        members = (await repository_group.members.get_peers(db=db)).values()
-        assert len(members) == 4
-        assert manufacturer_mercedes.id in {m.id for m in members}
-        assert person_ethan.id in {m.id for m in members}
-
-        # TODO Retrieve menus
-
-        repository_group_menus = await NodeManager.get_one_by_default_filter(
-            db=db,
-            id=f"group-repo-{RepositoryObjects.MENU.value}-{repository.id}",
-            kind="CoreRepositoryGroup",
-            raise_on_error=True,
-            prefetch_relationships=True,
-        )
-
-        assert repository_group_menus.content.value == RepositoryObjects.MENU.value
-
-        _ = await NodeManager.get_one_by_hfid(
-            db=db,
-            hfid=["Testing", "Manufacturer"],
-            kind="CoreMenu",
-            raise_on_error=True,
-            prefetch_relationships=True,
-        )
-
-        _ = await NodeManager.get_one_by_hfid(
-            db=db, hfid=["Testing", "Person"], kind="CoreMenu", raise_on_error=True, prefetch_relationships=True
-        )
-
-    # TODO add a test with invalid yml file OR invalid order of objects in the yml file, and make sure the repository ends
-    # up in error import state
+        await check_repo_correctly_created(repo_id=client_repository.id, db=db, branch_name=default_branch.name)
 
     @pytest.mark.parametrize(
         "stderr,expected_operational_status",

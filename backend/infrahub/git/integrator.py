@@ -182,8 +182,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
         sync_status = RepositorySyncStatus.IN_SYNC if config_file else RepositorySyncStatus.ERROR_IMPORT
-        if sync_status == RepositorySyncStatus.ERROR_IMPORT:
-            raise ValueError("Unable to import the repository here")
 
         error: Exception | None = None
 
@@ -218,14 +216,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )  # type: ignore[misc]
 
-                # TODO: import menu, check def load() in menu.^y + add a deidcated group for menu, work as for objects
-                # "CoreRepositoryMenuGroup"
-
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
             error = exc
-            log = get_run_logger()
-            log.error(f"Error importing the repository {self.name} : {exc}")
 
         await self._update_sync_status(branch_name=infrahub_branch_name, status=sync_status)
 
@@ -858,7 +851,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
-        log.info(f"Loaded files {files=}")
 
         for file in files:
             await file.validate_format(client=self.get_client(), branch=branch)
@@ -870,7 +862,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 )
 
         for file in files:
-            # TODO: client.log that is then used should log into infrahub.tasks
             log.info(f"Loading objects defined in {file.location}")
             await file.process(client=self.get_client(), branch=branch)
 
@@ -878,15 +869,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_objects(
         self, branch_name: str, commit: str, files_pathes: list[Path], object_type: RepositoryObjects
     ) -> None:
-        log = get_run_logger()
-        log.info(f"Importing {object_type.value} from {files_pathes=}")
-
         branch_wt = self.get_worktree(identifier=commit or branch_name)
-
         file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
-        log.info("Before getting the repository object")
-        # do not clone for now, assume only one import at a time
         if self.is_read_only:
             sdk_repo_obj = await self.get_client().get(
                 kind=InfrahubKind.READONLYREPOSITORY, id=str(self.id), raise_when_missing=True
@@ -896,15 +881,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 kind=InfrahubKind.REPOSITORY, id=str(self.id), raise_when_missing=True
             )
 
-        log.info(f"After getting the repository object {sdk_repo_obj.id}")
-
+        # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
         async with self.get_client().start_tracking(
             identifier=f"group-repo-{object_type.value}-{self.id}",
             delete_unused_nodes=True,
+            branch=branch_name,
             group_type="CoreRepositoryGroup",
             group_params={"content": object_type.value, "repository": sdk_repo_obj},
         ):
-            log.info("Started to track")
             file_type = ObjectFile if object_type == RepositoryObjects.OBJECT else MenuFile
             await self._load_objects(
                 paths=file_pathes,
