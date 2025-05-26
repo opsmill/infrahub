@@ -27,5 +27,5 @@ async def rebased_branch(message: messages.RefreshRegistryRebasedBranch, service
     async with lock.registry.local_schema_lock():
         service.log.info("Refreshing rebased branch")
 
-        async with service.database.start_session() as db:
+        async with service.database.start_session(read_only=True) as db:
             registry.branch[message.branch] = await registry.branch_object.get_by_name(name=message.branch, db=db)

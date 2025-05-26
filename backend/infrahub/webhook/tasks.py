@@ -111,7 +111,7 @@ async def webhook_process(
 async def configure_webhook_all(service: InfrahubServices) -> None:
     log = get_run_logger()
 
-    async with service.database.start_session() as db:
+    async with service.database.start_session(read_only=True) as db:
         triggers = await gather_trigger_webhook(db=db)
 
     async with get_client(sync_client=False) as prefect_client:
