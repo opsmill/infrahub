@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.node import Node
-from infrahub.core.schema.node_schema import NodeSchema
-from infrahub.core.schema.relationship_schema import RelationshipSchema
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA, load_schema
+from tests.helpers.schema.device import LAG_INTERFACE
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -22,33 +20,13 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-LAG_KIND = "TestingLinkAggegrationInterface"
-
 
 class TestPeerRelativesConstraint(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
     def schema(self, default_branch: Branch, register_internal_schema: SchemaBranch) -> SchemaRoot:
         schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
         schema_with_lag.nodes[0].generate_template = False
-        schema_with_lag.nodes.append(
-            NodeSchema(
-                name="LinkAggegrationInterface",
-                namespace="Testing",
-                inherit_from=[TestKind.INTERFACE],
-                include_in_menu=True,
-                label="LAG Interface",
-                relationships=[
-                    RelationshipSchema(
-                        name="members",
-                        kind=RelationshipKind.COMPONENT,
-                        optional=True,
-                        peer=TestKind.PHYSICAL_INTERFACE,
-                        cardinality=RelationshipCardinality.MANY,
-                        common_relatives=["device"],
-                    )
-                ],
-            )
-        )
+        schema_with_lag.nodes.append(LAG_INTERFACE)
         return schema_with_lag
 
     @pytest.fixture(scope="class")
@@ -101,7 +79,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         await device.interfaces.fetch()
 
         lag = await client.create(
-            kind=LAG_KIND,
+            kind=TestKind.LAG_INTERFACE,
             name="ae0",
             device=device,
             members=[i.peer for i in device.interfaces],  # type: ignore[attr-defined]
@@ -121,7 +99,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         await device_2.interfaces.fetch()
 
         lag = await client.create(
-            kind=LAG_KIND,
+            kind=TestKind.LAG_INTERFACE,
             name="ae1",
             device=device_1,
             members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)],  # type: ignore[attr-defined]
@@ -144,7 +122,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         await device.interfaces.fetch()
 
         lag = await client.create(
-            kind=LAG_KIND,
+            kind=TestKind.LAG_INTERFACE,
             name="ae0",
             device=device,
             members=[i.peer for i in device.interfaces],  # type: ignore[attr-defined]
@@ -166,7 +144,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         await device_2.interfaces.fetch()
 
         lag = await client.create(
-            kind=LAG_KIND,
+            kind=TestKind.LAG_INTERFACE,
             name="ae1",
             device=device_2,
             members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)[:-1]],  # type: ignore[attr-defined]

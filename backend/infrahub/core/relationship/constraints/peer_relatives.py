@@ -41,13 +41,6 @@ class RelationshipPeerRelativesConstraint(RelationshipManagerConstraintInterface
 
         for peer in peers.values():
             peer_schema = peer.get_schema()
-
-            # FIXME: this should be part of the schema validation process
-            if relationship_name not in peer_schema.relationship_names:
-                raise ValidationError(
-                    f"Peer {peer.id} of '{relm.name}' does not have a '{relationship_name}' relationship"
-                )
-
             peer_relm: RelationshipManager = getattr(peer, relationship_name)
             peer_relm_peers = await peer_relm.get_peers(db=self.db)
 

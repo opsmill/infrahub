@@ -39,6 +39,7 @@ from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
 from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema.device import LAG_INTERFACE
 
 from .conftest import _get_schema_by_kind
 
@@ -940,6 +941,24 @@ async def test_schema_branch_validate_kinds_peer():
         schema.validate_kinds()
 
     assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
+
+
+async def test_schema_branch_validate_kinds_common_relatives():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_relatives = ["doesnotexist"]
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' set 'common_relatives' with invalid relationship from "
+        "'TestingPhysicalInterface'"
+    )
 
 
 async def test_schema_branch_validate_kinds_inherit():
