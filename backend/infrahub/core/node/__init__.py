@@ -384,7 +384,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:  # noqa: PLR0915
+    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
 
         if "_source" in fields.keys():
@@ -437,6 +437,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
+        errors.extend(await self._process_fields_relationships(fields=fields, db=db))
+        errors.extend(await self._process_fields_attributes(fields=fields, db=db))
+
+        if errors:
+            raise ValidationError(errors)
+
+        # Check if any post processor have been defined
+        # A processor can be used for example to assigne a default value
+        for name in self._attributes + self._relationships:
+            if hasattr(self, f"process_{name}"):
+                await getattr(self, f"process_{name}")(db=db)
+
+    async def _process_fields_relationships(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
+        errors: list[ValidationError] = []
+
         for rel_schema in self._schema.relationships:
             self._relationships.append(rel_schema.name)
 
@@ -457,6 +472,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
             except ValidationError as exc:
                 errors.append(exc)
+
+        return errors
+
+    async def _process_fields_attributes(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
+        errors: list[ValidationError] = []
 
         for attr_schema in self._schema.attributes:
             self._attributes.append(attr_schema.name)
@@ -486,14 +506,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             except ValidationError as exc:
                 errors.append(exc)
 
-        if errors:
-            raise ValidationError(errors)
-
-        # Check if any post processor have been defined
-        # A processor can be used for example to assigne a default value
-        for name in self._attributes + self._relationships:
-            if hasattr(self, f"process_{name}"):
-                await getattr(self, f"process_{name}")(db=db)
+        return errors
 
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = db.schema.get_schema_branch(self._branch.name)
