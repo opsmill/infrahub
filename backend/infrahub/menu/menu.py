@@ -249,7 +249,7 @@ default_menu = [
             MenuItemDefinition(
                 namespace="Builtin",
                 name="TriggerDefinition",
-                label="Triggers",
+                label="Events",
                 icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.TRIGGERRULE)),
                 protected=True,
                 section=MenuSection.INTERNAL,
@@ -258,7 +258,7 @@ default_menu = [
                     MenuItemDefinition(
                         namespace="Core",
                         name="TriggerRule",
-                        label="Trigger Rules",
+                        label="Rules",
                         kind=InfrahubKind.TRIGGERRULE,
                         icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.TRIGGERRULE)),
                         protected=True,
@@ -268,7 +268,7 @@ default_menu = [
                     MenuItemDefinition(
                         namespace="Core",
                         name="Action",
-                        label="Trigger Actions",
+                        label="Actions",
                         kind=InfrahubKind.ACTION,
                         icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.ACTION)),
                         protected=True,
