@@ -6,7 +6,8 @@ from infrahub.cli.db import load_export
 from infrahub.core.migrations.graph.m029_duplicates_cleanup import Migration029
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_no_duplicate_paths, verify_no_duplicate_relationships
+from infrahub.database.validation import verify_no_duplicate_relationships
+from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class TestMigration029:
@@ -32,7 +33,5 @@ CREATE (:Branch {name: "branch-9176", is_default: FALSE, is_global: FALSE, branc
         execution_result = await migration.execute(db=db)
         assert not execution_result.errors
 
-        # verify no duplicate Nodes, Attributes, Relationships
         await verify_no_duplicate_paths(db=db)
         await verify_no_duplicate_relationships(db=db)
-        # TODO: one more test to verify that no data is lost during this migration
