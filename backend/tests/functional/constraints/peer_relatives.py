@@ -109,9 +109,9 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         with pytest.raises(GraphQLError) as exc:
             await lag.save()
         assert (
-            "'TestingLinkAggegrationInterface.members' has different peers for its 'TestingPhysicalInterface.device' relationship compared to other "
-            "nodes"
-        ) in exc.value.errors[0]["message"]
+            "must have the same set of peers for their 'TestingPhysicalInterface.device' relationship"
+            in exc.value.errors[0]["message"]
+        )
 
     async def test_create_lag_branch(
         self, db: InfrahubDatabase, data: dict[str, Node], client: InfrahubClient, default_branch: Branch
@@ -154,6 +154,6 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
         with pytest.raises(GraphQLError) as exc:
             await lag.save()
         assert (
-            "'TestingLinkAggegrationInterface.members' has different peers for its 'TestingPhysicalInterface.device' relationship compared to other "
-            "nodes"
-        ) in exc.value.errors[0]["message"]
+            "must have the same set of peers for their 'TestingPhysicalInterface.device' relationship"
+            in exc.value.errors[0]["message"]
+        )

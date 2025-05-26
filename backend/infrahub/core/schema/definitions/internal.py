@@ -759,7 +759,7 @@ relationship_schema = SchemaNode(
             kind="List",
             internal_kind=str,
             optional=True,
-            description="List of relationships where all objects must share the same set of peers.",
+            description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(

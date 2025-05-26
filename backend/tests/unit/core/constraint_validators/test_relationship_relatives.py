@@ -85,9 +85,6 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
 
         with pytest.raises(
             ValidationError,
-            match=(
-                "'TestingLinkAggegrationInterface.members' has different peers for its 'TestingPhysicalInterface.device' relationship compared "
-                "to other nodes"
-            ),
+            match=r"must have the same set of peers for their 'TestingPhysicalInterface.device' relationship",
         ):
             await constraint.check(relm=lag.members, node_schema=lag_schema)

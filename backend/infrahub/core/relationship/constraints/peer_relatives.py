@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 @dataclass
 class NodeToValidate:
     uuid: str
-    relative_uuids: list[str]
+    relative_uuids: set[str]
     schema: NonGenericSchemaTypes
 
 
@@ -46,7 +46,7 @@ class RelationshipPeerRelativesConstraint(RelationshipManagerConstraintInterface
 
             nodes_to_validate.append(
                 NodeToValidate(
-                    uuid=peer.id, relative_uuids=[n.id for n in peer_relm_peers.values()], schema=peer_schema
+                    uuid=peer.id, relative_uuids={n.id for n in peer_relm_peers.values()}, schema=peer_schema
                 )
             )
 
@@ -54,8 +54,8 @@ class RelationshipPeerRelativesConstraint(RelationshipManagerConstraintInterface
         for node in nodes_to_validate[1:]:
             if node.relative_uuids != relative_uuids:
                 raise ValidationError(
-                    f"Node {node.uuid} of '{node_schema.kind}.{relm.name}' has different peers for its "
-                    f"'{node.schema.kind}.{relationship_name}' relationship compared to other nodes"
+                    f"All the elements of the '{relm.name}' relationship on node {node.uuid} ({node_schema.kind}) must have the same set of peers "
+                    f"for their '{node.schema.kind}.{relationship_name}' relationship"
                 )
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:

@@ -998,9 +998,9 @@ class SchemaBranch:
                         f"{node.kind}: Relationship {rel.name!r} is referring an invalid peer {rel.peer!r}"
                     ) from None
                 if rel.common_relatives:
-                    rel_schema = self.get(name=rel.peer, duplicate=False)
+                    peer_schema = self.get(name=rel.peer, duplicate=False)
                     for common_relatives_rel_name in rel.common_relatives:
-                        if common_relatives_rel_name not in rel_schema.relationship_names:
+                        if common_relatives_rel_name not in peer_schema.relationship_names:
                             raise ValueError(
                                 f"{node.kind}: Relationship {rel.name!r} set 'common_relatives' with invalid relationship from '{rel.peer}'"
                             ) from None
