@@ -51,8 +51,8 @@ class TestUniqueIPHost(TestInfrahubApp):
 
         return {"device": device}
 
-    async def test_adding_valid_device(self, client: InfrahubClient, data: dict[str, Node]) -> None:
-        device = await client.create(
+    async def test_create_devices(self, client: InfrahubClient, data: dict[str, Node]) -> None:
+        device_1 = await client.create(
             TestKind.DEVICE,
             name="Bar",
             manufacturer="Bar Inc.",
@@ -60,13 +60,12 @@ class TestUniqueIPHost(TestInfrahubApp):
             airflow="Front to rear",
             primary_address="192.168.1.2/24",
         )
-        await device.save()
+        await device_1.save()
 
         devices = await client.all(kind=TestKind.DEVICE)
         assert len(devices) == 2
 
-    async def test_adding_invalid_device(self, client: InfrahubClient, data: dict[str, Node]) -> None:
-        device = await client.create(
+        device_2 = await client.create(
             TestKind.DEVICE,
             name="Baz",
             manufacturer="Baz Inc.",
@@ -75,7 +74,7 @@ class TestUniqueIPHost(TestInfrahubApp):
             primary_address="192.168.1.2/255.255.255.0",
         )
         with pytest.raises(GraphQLError) as exc:
-            await device.save()
+            await device_2.save()
         assert exc.value.errors[0]["message"] == "Violates uniqueness constraint 'primary_address'"
 
         devices = await client.all(kind=TestKind.DEVICE)
