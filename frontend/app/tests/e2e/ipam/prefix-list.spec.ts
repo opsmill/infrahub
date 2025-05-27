@@ -41,12 +41,12 @@ test.describe("/ipam/ip_prefixes - Prefix list", () => {
   });
 
   test("display error message when schema is not found", async ({ page }) => {
-    await page.goto("http://localhost:8080/ipam/IpamIPPrefix/YYY");
+    await page.goto("/ipam/IpamIPPrefix/YYY");
     await expect(page.getByText("Cannot find IP Prefix with id YYY")).toBeVisible();
   });
 
   test("display error message when prefix id is not found", async ({ page }) => {
-    await page.goto("http://localhost:8080/ipam/XXX/YYY");
+    await page.goto("/ipam/XXX/YYY");
     await expect(page.getByText("Schema for XXX not found.")).toBeVisible();
   });
 
