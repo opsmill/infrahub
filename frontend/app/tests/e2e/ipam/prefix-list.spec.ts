@@ -49,4 +49,21 @@ test.describe("/ipam/ip_prefixes - Prefix list", () => {
     await page.goto("http://localhost:8080/ipam/XXX/YYY");
     await expect(page.getByText("Schema for XXX not found.")).toBeVisible();
   });
+
+  test("search prefixes using text search", async ({ page }) => {
+    await page.goto("/ipam");
+    await expect(page.getByTestId("ip-prefix-table")).toContainText("10.0.0.0/8");
+
+    await test.step("enter search term and verify filtered results", async () => {
+      await page.getByRole("searchbox", { name: "Search" }).fill("2001");
+      await expect(page.getByTestId("ip-prefix-table")).toContainText("2001:db8::/100");
+      await expect(page.getByTestId("ip-prefix-table")).toContainText("2001:db8::14:0/110");
+      await expect(page.getByTestId("ip-prefix-table")).not.toContainText("10.0.0.0/8");
+    });
+
+    await test.step("clear search and verify all results return", async () => {
+      await page.getByRole("button", { name: "Clear filters" }).click();
+      await expect(page.getByTestId("ip-prefix-table")).toContainText("10.0.0.0/8");
+    });
+  });
 });
