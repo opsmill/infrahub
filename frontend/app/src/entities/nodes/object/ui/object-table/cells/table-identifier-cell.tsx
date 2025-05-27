@@ -7,7 +7,7 @@ import { TableCell } from "@/shared/components/table/table-cell";
 export interface TableIdentifierCellProps {
   objectKind: string;
   objectId: string;
-  label: string;
+  label: React.ReactNode;
   isSelected?: boolean;
   onSelectionChange?: (isSelected: boolean) => void;
 }

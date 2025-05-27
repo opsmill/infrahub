@@ -7,9 +7,9 @@ import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { GET_PREFIXES_ONLY } from "@/entities/ipam/api/prefixes";
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IPAM_ROUTE, TREE_ROOT_ID } from "@/entities/ipam/constants";
+import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
@@ -108,7 +108,7 @@ export default function IpamTree({ className }: { className?: string }) {
         onNodeSelect={({ element, isSelected }) => {
           if (!isSelected) return;
 
-          const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+          const url = getObjectDetailsUrl(element.metadata?.kind as string, element.id.toString());
           navigate(url);
         }}
         className={className}
@@ -123,7 +123,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericSchemasAtom);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+  const url = getObjectDetailsUrl(element.metadata?.kind as string, element.id.toString());
 
   return (
     <Link

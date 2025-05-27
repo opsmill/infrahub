@@ -1,12 +1,8 @@
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import {
-  IPAM_QSP,
-  IPAM_ROUTE,
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
 
 export const getObjectDetailsUrl = (
@@ -14,33 +10,19 @@ export const getObjectDetailsUrl = (
   objectId?: string,
   overrideParams?: overrideQueryParams[]
 ) => {
-  if (objectKind === IP_PREFIX_GENERIC) {
-    return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId ?? ""}`, overrideParams);
-  }
-
-  if (objectKind === IP_ADDRESS_GENERIC) {
-    return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId ?? ""}`, [
-      { name: IPAM_QSP.TAB, value: "ip-details" },
-      ...(overrideParams ?? []),
-    ]);
-  }
-
-  const { schema, isGeneric } = getSchema(objectKind);
+  const { schema } = getSchema(objectKind);
   if (!schema) {
     const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
     return constructPath(path, overrideParams);
   }
 
-  if (!isGeneric) {
-    const inheritFrom = schema.inherit_from;
+  if (isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema)) {
+    const path = objectId ? `/ipam/${objectKind}/${objectId}` : `/ipam/${objectKind}`;
+    return constructPathForIpam(path, overrideParams);
+  }
 
-    if (inheritFrom?.includes(IP_PREFIX_GENERIC) || inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
-      return constructPathForIpam(`/ipam/${schema.kind}/${objectId ?? ""}`, overrideParams);
-    }
-
-    if (inheritFrom?.includes(RESOURCE_GENERIC_KIND)) {
-      return constructPathForIpam(`/resource-manager/${objectId ?? ""}`, overrideParams);
-    }
+  if (isOfKind(RESOURCE_GENERIC_KIND, schema)) {
+    return constructPathForIpam(`/resource-manager/${objectId ?? ""}`, overrideParams);
   }
 
   const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;

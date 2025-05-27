@@ -1,6 +1,7 @@
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
@@ -19,6 +20,11 @@ export function IpPrefixDetails({ prefixSchema, prefixId }: IpPrefixDetailsProps
   const { isPending, error, data } = useGetObject({
     objectSchema: prefixSchema,
     objectId: prefixId,
+    getRelationshipsVisible: (relationships) =>
+      relationships.filter((rel) => {
+        if (rel.cardinality === "one") return true;
+        return isRelationshipVisibleInDetailedView(rel);
+      }),
   });
 
   if (isPending) {

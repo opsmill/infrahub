@@ -395,6 +395,10 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/ipam/ipam-ip-prefixes-page"),
                   },
                   {
+                    path: "ip_prefixes",
+                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-page"),
+                  },
+                  {
                     path: "ip_addresses",
                     lazy: () => import("@/pages/ipam/ipam-ip-addresses-page"),
                   },
