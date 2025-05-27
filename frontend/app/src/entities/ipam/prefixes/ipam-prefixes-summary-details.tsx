@@ -16,11 +16,11 @@ import { useParams } from "react-router";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
-  const { prefix } = useParams() as { prefix: string };
+  const { objectId } = useParams() as { objectId: string };
 
   const { loading, data } = useQuery(GET_PREFIX_KIND, {
     variables: {
-      ids: [prefix],
+      ids: [objectId],
     },
   });
 
@@ -29,7 +29,7 @@ export default function IpamIPPrefixesSummaryDetails() {
   const prefixData = data[IP_PREFIX_GENERIC].edges[0];
 
   if (!prefixData)
-    return <Alert type={ALERT_TYPES.ERROR} message={`Prefix with id ${prefix} not found.`} />;
+    return <Alert type={ALERT_TYPES.ERROR} message={`Prefix with id ${objectId} not found.`} />;
 
   const {
     id: prefixId,

@@ -8,16 +8,16 @@ import { Outlet } from "react-router";
 
 function IpamLayout() {
   return (
-    <Content.Card className="h-[calc(100%-1rem)] flex">
+    <Content.Card className="flex h-full w-full">
       <IpNamespaceProvider>
-        <Col className="min-w-64 max-w-[400px] gap-0 border-r border-gray-200 shrink-0">
+        <Col className="w-xs shrink-0 border-r border-gray-200 h-full">
           <IpNamespaceSelector className="border-b border-gray-200" />
           <ScrollArea scrollX className="w-full p-2">
             <IpamTree className="w-full" />
           </ScrollArea>
         </Col>
 
-        <section className="flex flex-col h-full grow">
+        <section className="grow flex flex-col overflow-hidden">
           <Outlet />
         </section>
       </IpNamespaceProvider>

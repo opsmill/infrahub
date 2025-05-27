@@ -34,15 +34,8 @@ export const getObjectDetailsUrl = (
   if (!isGeneric) {
     const inheritFrom = schema.inherit_from;
 
-    if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {
-      return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId ?? ""}`, overrideParams);
-    }
-
-    if (inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
-      return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId ?? ""}`, [
-        { name: IPAM_QSP.TAB, value: "ip-details" },
-        ...(overrideParams ?? []),
-      ]);
+    if (inheritFrom?.includes(IP_PREFIX_GENERIC) || inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
+      return constructPathForIpam(`/ipam/${schema.kind}/${objectId ?? ""}`, overrideParams);
     }
 
     if (inheritFrom?.includes(RESOURCE_GENERIC_KIND)) {

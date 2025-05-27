@@ -2,7 +2,6 @@ import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -379,20 +378,7 @@ export const router = createBrowserRouter([
                 },
               },
               {
-                path: "/ipam/namespaces",
-                lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "namespaces",
-                      to: constructPath("/ipam/namespaces"),
-                    } satisfies BreadcrumbItem;
-                  },
-                },
-              },
-              {
-                path: IPAM_ROUTE.INDEX,
+                path: "ipam",
                 lazy: () => import("@/pages/ipam/layout"),
                 handle: {
                   breadcrumb: () => {
@@ -406,78 +392,38 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/entities/ipam/ipam-router"),
+                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-page"),
                   },
                   {
-                    path: IPAM_ROUTE.ADDRESSES,
-                    lazy: () => import("@/entities/ipam/ipam-router"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "IP Addresses",
-                          to: constructPathForIpam("/ipam/addresses"),
-                        };
-                      },
-                    },
+                    path: "ip_addresses",
+                    lazy: () => import("@/pages/ipam/ipam-ip-addresses-page"),
+                  },
+                  {
+                    path: ":objectKind/:objectId",
+                    lazy: () => import("@/pages/ipam/ipam-details-layout"),
                     children: [
                       {
-                        path: ":ip_address",
-                        lazy: () => import("@/entities/ipam/ipam-router"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.ip_address,
-                              kind: IP_ADDRESS_GENERIC,
-                            };
-                          },
-                        },
+                        index: true,
+                        lazy: () => import("@/pages/ipam/ipam-details-page"),
+                      },
+                      {
+                        path: ":relationshipName",
+                        lazy: () => import("@/pages/ipam/ipam-details-relationship-page"),
                       },
                     ],
                   },
                   {
-                    path: IPAM_ROUTE.PREFIXES,
-                    lazy: () => import("@/entities/ipam/ipam-router"),
+                    path: "namespaces",
+                    lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
                     handle: {
                       breadcrumb: () => {
                         return {
                           type: "link",
-                          label: "IP Prefixes",
-                          to: constructPathForIpam("/ipam/prefixes"),
-                        };
+                          label: "namespaces",
+                          to: constructPath("/ipam/namespaces"),
+                        } satisfies BreadcrumbItem;
                       },
                     },
-                    children: [
-                      {
-                        path: ":prefix",
-                        lazy: () => import("@/entities/ipam/ipam-router"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.prefix,
-                              kind: IP_PREFIX_GENERIC,
-                            };
-                          },
-                        },
-                        children: [
-                          {
-                            path: ":ip_address",
-                            lazy: () => import("@/entities/ipam/ipam-router"),
-                            handle: {
-                              breadcrumb: (match: UIMatch) => {
-                                return {
-                                  type: "select",
-                                  value: match.params.ip_address,
-                                  kind: IP_ADDRESS_GENERIC,
-                                };
-                              },
-                            },
-                          },
-                        ],
-                      },
-                    ],
                   },
                 ],
               },

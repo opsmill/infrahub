@@ -16,7 +16,7 @@ import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
 
 export default function IpAddressSummary() {
-  const { prefix, ip_address } = useParams();
+  const { objectId: ip_address } = useParams();
 
   const { loading, data } = useQuery(GET_IP_ADDRESS_KIND, {
     variables: {
@@ -26,9 +26,7 @@ export default function IpAddressSummary() {
 
   if (loading || !data) return <IpamSummarySkeleton />;
 
-  const parentLink = prefix
-    ? constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${prefix}`)
-    : constructPathForIpam(IPAM_ROUTE.ADDRESSES);
+  const parentLink = constructPathForIpam(IPAM_ROUTE.ADDRESSES);
 
   const ipAddressData = data[IP_ADDRESS_GENERIC].edges[0].node;
 
