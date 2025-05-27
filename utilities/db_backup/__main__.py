@@ -358,7 +358,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         # expects name format of <database_name>-2024-02-07T22-12-16.backup
         backup_map = {}
         for backup_path in local_backup_directory.iterdir():
-            if not backup_path.suffix == ".backup":
+            if backup_path.suffix != ".backup":
                 continue
             split_name = backup_path.name.split("-")
             database_name = "-".join(split_name[:-5])

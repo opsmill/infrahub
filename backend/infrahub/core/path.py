@@ -125,7 +125,7 @@ class SchemaPath(InfrahubPath):
         if self.field_name:
             identifier += f"/{self.field_name}"
 
-        if self.property_name and not self.path_type == SchemaPathType.NODE:
+        if self.property_name and self.path_type != SchemaPathType.NODE:
             identifier += f"/{self.property_name}"
 
         return identifier

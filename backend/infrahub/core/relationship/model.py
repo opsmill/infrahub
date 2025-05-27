@@ -494,7 +494,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             peer_fields = {
                 key: value
                 for key, value in fields.items()
-                if not key.startswith(PREFIX_PROPERTY) or not key == "__typename"
+                if not key.startswith(PREFIX_PROPERTY) or key != "__typename"
             }
             rel_fields = {
                 key.replace(PREFIX_PROPERTY, ""): value
