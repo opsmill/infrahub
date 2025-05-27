@@ -30,18 +30,30 @@ if TYPE_CHECKING:
 
 
 def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
-    attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
-        "NumberPool": NumberPoolSchema,
-        "Text": TextAttributeSchema,
-        "TextArea": TextAttributeSchema,
-        "Number": NumberAttributeSchema,
-    }
     return attribute_schema_class_by_kind.get(kind, AttributeSchema)
 
 
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
     _enum_class: type[enum.Enum] | None = None
+
+    @classmethod
+    def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        schema = super().model_json_schema(*args, **kwargs)
+
+        # Build conditional schema based on attribute_schema_class_by_kind mapping
+        # This override allows people using the Yaml language server to get the correct mappings
+        # for the parameters when selecting the appropriate kind
+        schema["allOf"] = []
+        for kind, schema_class in attribute_schema_class_by_kind.items():
+            schema["allOf"].append(
+                {
+                    "if": {"properties": {"kind": {"const": kind}}},
+                    "then": {"properties": {"parameters": {"$ref": f"#/definitions/{schema_class.__name__}"}}},
+                }
+            )
+
+        return schema
 
     @property
     def is_attribute(self) -> bool:
@@ -247,3 +259,11 @@ class NumberAttributeSchema(AttributeSchema):
         description="Extra parameters specific to number attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
+
+
+attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
+    "NumberPool": NumberPoolSchema,
+    "Text": TextAttributeSchema,
+    "TextArea": TextAttributeSchema,
+    "Number": NumberAttributeSchema,
+}
