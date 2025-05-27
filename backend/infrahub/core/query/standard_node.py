@@ -3,27 +3,41 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from infrahub.core.node.standard import StandardNode
     from infrahub.database import InfrahubDatabase
 
 
 class StandardNodeQuery(Query):
     def __init__(
-        self, node: StandardNode = None, node_id: str | None = None, node_db_id: int | None = None, **kwargs: Any
-    ):
-        self.node = node
+        self,
+        node: StandardNode | None = None,
+        node_id: UUID | None = None,
+        node_db_id: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self._node = node
         self.node_id = node_id
         self.node_db_id = node_db_id
 
-        if not self.node_id and self.node:
+        if not self.node_id and self._node:
             self.node_id = self.node.uuid
 
-        if not self.node_db_id and self.node:
+        if not self.node_db_id and self._node:
             self.node_db_id = self.node.id
 
         super().__init__(**kwargs)
+
+    @property
+    def node(self) -> StandardNode:
+        if self._node:
+            return self._node
+
+        raise InitializationError("The query is not initialized with a node")
 
 
 class RootNodeCreateQuery(StandardNodeQuery):
