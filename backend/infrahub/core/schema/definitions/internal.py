@@ -755,6 +755,14 @@ relationship_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="common_relatives",
+            kind="List",
+            internal_kind=str,
+            optional=True,
+            description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
             name="order_weight",
             kind="Number",
             description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
