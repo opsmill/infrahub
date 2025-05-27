@@ -40,7 +40,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           </Row>
         </AriaButton>
 
-        <Popover placement="bottom start">
+        <Popover placement="bottom start" style={{ width: "var(--trigger-width)" }}>
           <IpNamespaceComboboxList />
 
           <Col className="border-t border-neutral-200">
