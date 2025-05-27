@@ -19,6 +19,6 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
                 RelationshipPeerKindConstraintDependency.build(context=context),
                 RelationshipCountConstraintDependency.build(context=context),
                 RelationshipProfilesKindConstraintDependency.build(context=context),
-                RelationshipPeerRelativesConstraintDependency.build(context),
+                RelationshipPeerRelativesConstraintDependency.build(context=context),
             ],
         )
