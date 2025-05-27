@@ -60,6 +60,33 @@ Schemas to be loaded as part of an external repository can be defined in file(s)
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
 
+## Objects
+
+Objects to be loaded as part of an external repository can be defined in file(s) as described [here](https://docs.infrahub.app/python-sdk/topics/object_file). The objects must also be explicitly identified in the `.infrahub.yml` file under `objects`.
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  objects:
+    - objects/devices.yml
+  ```
+
+</details>
+
+## Menus
+
+Menus to be loaded as part of an external repository can be defined in file(s) as described [here](../guides/menu). The menus must also be explicitly identified in the `.infrahub.yml` file under `menus`.
+
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  menus:
+    - menus/base.yml
+  ```
+
+</details>
+
 ## Jinja2 transformation {#transform-jinja-2}
 
 Jinja2 Transformations can be defined as described [here](../topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
