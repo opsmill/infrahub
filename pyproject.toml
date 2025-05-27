@@ -292,13 +292,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.query.standard_node"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query.subquery"
 disable_error_code = [
     "arg-type",
