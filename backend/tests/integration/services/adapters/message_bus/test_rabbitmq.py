@@ -400,7 +400,7 @@ async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQ
     )
     await queue.consume(bus.on_callback, no_ack=True)
 
-    await bus.exchange.publish(Message(body="Completely invalid".encode()), routing_key="event.branch.invalid")
+    await bus.exchange.publish(Message(body=b"Completely invalid"), routing_key="event.branch.invalid")
     await asyncio.sleep(delay=1)
     assert "Invalid message received" in fake_log.error_logs
     await service.shutdown()
