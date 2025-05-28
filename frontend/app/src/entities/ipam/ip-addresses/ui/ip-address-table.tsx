@@ -139,7 +139,7 @@ export function IpAddressTable({ schema, permission, baseFilters = [] }: IpAddre
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   return (
-    <InfiniteScroll hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
+    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columnOrder={IP_ADDRESS_TABLE_COLUMN_ORDER}
         columns={columns}
