@@ -93,7 +93,8 @@ export default function IpamTree({ className }: { className?: string }) {
   return (
     <>
       <SearchInput
-        containerClassName="mb-2"
+        containerClassName="p-1"
+        className="border-transparent"
         placeholder="Filter..."
         onChange={debouncedHandleSearch}
       />

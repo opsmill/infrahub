@@ -10,10 +10,10 @@ function IpamLayout() {
   return (
     <Content.Card className="flex h-full w-full">
       <IpNamespaceProvider>
-        <Col className="w-60 shrink-0 border-r border-gray-200 h-full">
+        <Col className="w-60 shrink-0 border-r border-gray-200 h-full gap-0">
           <IpNamespaceSelector className="border-b border-gray-200" />
-          <ScrollArea scrollX className="w-full p-2">
-            <IpamTree className="w-full" />
+          <ScrollArea scrollX className="w-full">
+            <IpamTree className="w-full px-2" />
           </ScrollArea>
         </Col>
 

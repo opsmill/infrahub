@@ -17,7 +17,7 @@ export const Component = () => {
   }
 
   return (
-    <div className="flex gap-2 p-2 overflow-auto">
+    <div className="flex flex-wrap items-start gap-2 p-2 overflow-auto">
       <Card className="p-0">
         <h3 className="font-semibold border-b p-2 border-gray-200">Details</h3>
         {isOfKind(IP_ADDRESS_GENERIC, schema) ? (
@@ -27,7 +27,7 @@ export const Component = () => {
         )}
       </Card>
 
-      <Card className="p-0">
+      <Card className="p-0 grow">
         <h3 className="font-semibold p-2 border-b  border-gray-200">Activities</h3>
         <NodeEvents objectKind={objectKind} objectId={objectId} />
       </Card>
