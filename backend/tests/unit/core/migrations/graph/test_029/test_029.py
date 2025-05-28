@@ -7,6 +7,7 @@ from infrahub.core.migrations.graph.m029_duplicates_cleanup import Migration029
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships
+from tests.db_snapshot import DbSnapshotterDeduplicated
 from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
@@ -26,8 +27,23 @@ CREATE (:Branch {name: "branch-1396", is_default: FALSE, is_global: FALSE, branc
 CREATE (:Branch {name: "branch-9176", is_default: FALSE, is_global: FALSE, branched_from: "2025-05-01T10:30:00.000000Z"})
         """
         await db.execute_query(query=query)
+        # export does not include AttributeValue.value or Boolean.value, we need to set those for the snapshot
+        query = """
+CALL {
+    MATCH (a:AttributeValue)
+    RETURN a
+    UNION
+    MATCH (a:Boolean)
+    RETURN a
+}
+%(uuid_generation)s
+        """ % {"uuid_generation": db.render_uuid_generation(node_label="a", node_attr="value")}
+        await db.execute_query(query=query)
 
     async def test_migration_029(self, db: InfrahubDatabase):
+        snapshotter = DbSnapshotterDeduplicated(db=db)
+        before_snapshot = await snapshotter.snapshot()
+
         migration = Migration029()
         migration.limit = 33
         execution_result = await migration.execute(db=db)
@@ -35,3 +51,6 @@ CREATE (:Branch {name: "branch-9176", is_default: FALSE, is_global: FALSE, branc
 
         await verify_no_duplicate_paths(db=db)
         await verify_no_duplicate_relationships(db=db)
+        after_snapshot = await snapshotter.snapshot()
+
+        before_snapshot.compare(other=after_snapshot)
