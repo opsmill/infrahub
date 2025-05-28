@@ -52,7 +52,7 @@ class BaseNodeOptions(BaseOptions):
 
 
 class ObjectNodeMeta(BaseNodeMeta):
-    def __new__(mcs, name_, bases, namespace, **options):  # noqa: N804
+    def __new__(mcs, name_, bases, namespace, **options):
         # Note: it's safe to pass options as keyword arguments as they are still type-checked by NodeOptions.
 
         # We create this type, to then overload it with the dataclass attrs

@@ -97,7 +97,7 @@ async def convert_object_type(
     if not isinstance(node_schema, NodeSchema):
         raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")
 
-    async with db.start_transaction() as dbt:  # noqa: PLR1702
+    async with db.start_transaction() as dbt:
         deleted_node_out_rels_peer_ids = await get_out_rels_peers_ids(node=node, db=dbt)
         deleted_node_unidir_rels_peer_ids = await get_unidirectional_rels_peers_ids(node=node, db=dbt, branch=branch)
 

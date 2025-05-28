@@ -1,4 +1,3 @@
-# noqa: INP001
 from pathlib import Path
 
 from invoke import Context, task

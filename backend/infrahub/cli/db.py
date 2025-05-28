@@ -449,7 +449,7 @@ async def selected_export_cmd(
     ctx: typer.Context,
     kinds: list[str] = typer.Option([], help="Node kinds to export"),  # noqa: B008
     uuids: list[str] = typer.Option([], help="UUIDs of nodes to export"),  # noqa: B008
-    query_limit: int = typer.Option(1000, help="Maximum batch size of export query"),  # noqa: B008
+    query_limit: int = typer.Option(1000, help="Maximum batch size of export query"),
     export_dir: Path = typer.Option(Path("infrahub-exports"), help="Path of directory to save exports"),  # noqa: B008
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:

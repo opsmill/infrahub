@@ -339,7 +339,7 @@ class InfrahubDatabase:
         CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
 
         if config.SETTINGS.database.max_concurrent_queries:
-            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:  # noqa: ASYNC110
+            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:
                 await asyncio.sleep(config.SETTINGS.database.max_concurrent_queries_delay)
                 connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
 

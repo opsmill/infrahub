@@ -3161,7 +3161,7 @@ async def test_diff_relationship_property_update_on_main(
     assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
 
 
-async def test_calculate_with_migrated_kind_node(  # noqa: C901
+async def test_calculate_with_migrated_kind_node(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_accord_main,

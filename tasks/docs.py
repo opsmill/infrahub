@@ -443,7 +443,7 @@ def _generate_infrahub_bus_events_documentation() -> None:
     print(f"Docs saved to: {output_file}")
 
 
-def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
+def _generate_infrahub_events_documentation() -> None:
     """
     Generate documentation for all Infrahub events into a single MDX file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.

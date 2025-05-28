@@ -1273,7 +1273,7 @@ async def create_bgp_mesh(client: InfrahubClient, log: logging.Logger, branch: s
 
 async def generate_site_vlans(
     client: InfrahubClient,
-    log: logging.Logger,  # noqa: ARG001
+    log: logging.Logger,
     branch: str,
     site: Site,
     site_id: int,
@@ -2245,7 +2245,7 @@ async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: 
 
 
 async def map_permissions_to_roles(
-    client: InfrahubClient,  # noqa: ARG001
+    client: InfrahubClient,
     log: logging.Logger,  # noqa: ARG001
     branch: str,  # noqa: ARG001
     batch: InfrahubBatch,
@@ -2306,7 +2306,7 @@ async def map_permissions_to_roles(
 
 
 async def map_user_and_roles_to_groups(
-    client: InfrahubClient,  # noqa: ARG001
+    client: InfrahubClient,
     log: logging.Logger,  # noqa: ARG001
     branch: str,  # noqa: ARG001
     batch: InfrahubBatch,

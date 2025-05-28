@@ -91,7 +91,7 @@ class SchemaBranch:
             self.templates = data.get("templates", {})
 
     @classmethod
-    def validate(cls, data: Any) -> Self:  # noqa: ARG003
+    def validate(cls, data: Any) -> Self:
         if isinstance(data, cls):
             return data
         if isinstance(data, dict):
