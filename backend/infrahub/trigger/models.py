@@ -28,6 +28,10 @@ class TriggerSetupReport(BaseModel):
     deleted: list[Automation] = Field(default_factory=list)
     unchanged: list[TriggerDefinition] = Field(default_factory=list)
 
+    @property
+    def in_use_count(self) -> int:
+        return len(self.created + self.updated + self.unchanged)
+
 
 class TriggerType(str, Enum):
     ACTION_TRIGGER_RULE = "action_trigger_rule"
