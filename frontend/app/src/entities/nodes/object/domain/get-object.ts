@@ -12,6 +12,7 @@ export type GetObjectParams = ContextParams & {
   objectId: string;
   getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
   getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
+  relationshipFragment?: Record<string, string>;
 };
 
 export type GetObject = (params: GetObjectParams) => Promise<NodeObject>;
@@ -23,6 +24,7 @@ export const getObject: GetObject = async ({
   objectId,
   getAttributesVisible = (attributes) => attributes, // all attributes are visible by default on detailed view
   getRelationshipsVisible = getRelationshipsVisibleInDetailedView,
+  relationshipFragment,
 }) => {
   const attributesVisible = getAttributesVisible(objectSchema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisible(objectSchema.relationships ?? []);
@@ -42,7 +44,10 @@ export const getObject: GetObject = async ({
             display_label: true,
             hfid: true,
             ...addAttributesToRequest(attributesVisible, { withMetadata: true }),
-            ...addRelationshipsToRequest(relationshipsVisible, { withMetadata: true }),
+            ...addRelationshipsToRequest(relationshipsVisible, {
+              relationshipFragment,
+              withMetadata: true,
+            }),
           },
         },
       },
