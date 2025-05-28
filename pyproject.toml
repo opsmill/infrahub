@@ -546,7 +546,6 @@ ignore = [
     "RUF010",  # Use explicit conversion flag
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",  # Prefer `next(...)` over single element slice
-    "RUF021",  # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
     "RUF036",  # `None` not at the end of the type annotation.
     "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw

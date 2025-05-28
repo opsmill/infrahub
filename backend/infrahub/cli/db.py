@@ -326,7 +326,7 @@ async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check
                 root_node.graph_version = migration.minimum_version + 1
                 await root_node.save(db=db)
 
-        if not execution_result.success or validation_result and not validation_result.success:
+        if not execution_result.success or (validation_result and not validation_result.success):
             rprint(f"Migration: {migration.name} {FAILED_BADGE}")
             for error in execution_result.errors:
                 rprint(f"  {error}")

@@ -99,7 +99,7 @@ class ManyRelationshipResolver:
         filters = {
             f"{info.field_name}__{key}": value
             for key, value in kwargs.items()
-            if "__" in key and value or key in ["id", "ids"]
+            if ("__" in key and value) or key in ["id", "ids"]
         }
 
         response: dict[str, Any] = {"edges": [], "count": None}

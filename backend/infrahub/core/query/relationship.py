@@ -676,7 +676,7 @@ class RelationshipGetPeerQuery(Query):
         where_clause = ['all(r IN rels WHERE r.status = "active")']
         clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
 
-        if clean_filters and "id" in clean_filters or "ids" in clean_filters:
+        if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
             self.params["peer_ids"] = clean_filters.get("ids", [])
             if clean_filters.get("id", None):

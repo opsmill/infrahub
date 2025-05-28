@@ -471,7 +471,7 @@ class SchemaManager(NodeManager):
         if diff_attributes:
             for item in node.local_attributes:
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
-                if item.name in diff_attributes.added or item.name in diff_attributes.changed and item.id is None:
+                if item.name in diff_attributes.added or (item.name in diff_attributes.changed and item.id is None):
                     created_item = await self.create_attribute_in_db(
                         schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
                     )
@@ -491,7 +491,9 @@ class SchemaManager(NodeManager):
         if diff_relationships:
             for item in node.local_relationships:
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
-                if item.name in diff_relationships.added or item.name in diff_relationships.changed and item.id is None:
+                if item.name in diff_relationships.added or (
+                    item.name in diff_relationships.changed and item.id is None
+                ):
                     created_rel = await self.create_relationship_in_db(
                         schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
                     )
