@@ -13,6 +13,7 @@ import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
+import { pluralize } from "@/shared/utils/string";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { ColumnDef } from "@tanstack/react-table";
@@ -85,17 +86,17 @@ export const getIpPrefixTableColumns = (
                 : (row.original.ip_addresses as any).count;
 
             return (
-              <TableCell className="whitespace-nowrap gap-3">
+              <TableCell className="whitespace-nowrap gap-4">
                 <TableAttributeCell attributeSchema={attribute} attributeData={attributeData} />
                 <div className="ml-auto text-xs">
-                  <span>{memberCount}</span> <span className="text-gray-400">members</span>
+                  <span className="text-gray-400">{pluralize(memberCount, "member")}</span>
                 </div>
               </TableCell>
             );
           }
           if (attribute.name === "utilization") {
             return (
-              <TableCell>
+              <TableCell className="w-40">
                 <ProgressBarChart value={parseInt(attributeData.value, 10)} />
               </TableCell>
             );

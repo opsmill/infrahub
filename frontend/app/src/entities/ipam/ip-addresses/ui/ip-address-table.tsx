@@ -9,7 +9,6 @@ import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/
 import { ObjectsTableProps } from "@/entities/nodes/object/ui/object-table/object-table";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
@@ -41,7 +40,7 @@ export const getIpAddressTableColumns = (
   return [
     {
       id: "id",
-      accessorFn: (node) => getNodeLabel(node),
+      accessorFn: (node) => node.display_label,
       header: () => (
         <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
           {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
