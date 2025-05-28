@@ -593,7 +593,7 @@ CALL {
 
 class DbSnapshotterDeduplicated:
     """
-    TODO: ...
+    Captures the state of all nodes, attributes, and relationships on the database, removing duplicated edges/vertices
 
     NOTES:
     - Does not account for the IS_RESERVED edge type
