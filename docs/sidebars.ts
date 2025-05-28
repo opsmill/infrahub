@@ -105,6 +105,7 @@ const sidebars: SidebarsConfig = {
         'topics/metadata',
         'topics/database-backup',
         'topics/developer-guide',
+        'topics/event-actions',
         'topics/events',
         'topics/local-demo-environment',
         'topics/generator',

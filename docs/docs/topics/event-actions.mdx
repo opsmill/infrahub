@@ -1,0 +1,46 @@
+---
+title: Event rules and actions
+---
+
+The event framework let's you match against [events](/topics/events) as they occur within Infrahub and define filter conditions to match against specific occurrences and then trigger an action. By creating multiple rules and actions you can chain a workflow together.
+
+An example of what this might look like:
+
+1. Node trigger rule
+    * Match against `infrahub.node.updated` events that looks at devices being updated and the `description` attribute is changed to "active"
+    * Run the group action that adds the device to the "active-devices" group
+2. Group trigger rule
+    * Match against `infrahub.group.member_added` events where the "active-devices" group has a new member
+    * Trigger a run of a generator definition targeting the new member
+
+Another example:
+
+1. Node trigger rule
+    * Match against `infrahub.node.updated` events that looks at devices being updated and the `description` attribute is changed from "active"
+    * Run the group action that removes the device to the "active-devices" group
+
+## Trigger rules and filters
+
+A trigger rule is a node kind that inherits from the `CoreTriggerRule` generic and is what sets up the match against an event type. In the current version two such nodes exist in the schema.
+
+* CoreNodeTriggerRule: Filters on mutations done against a specific node. Combined with one or more match statements you can filter against a change to a specific attribute or relationship on the node.
+* CoreGroupTriggerRule: Filters on changes to a specific group. Allows you to filter against members being added or removed from the group.
+
+### Node trigger rules
+
+When setting up a node trigger rule you will select the kind of node you want to match against. If you don't specify any other matching conditions it will match against any type of modification done against that node, i.e. any attribute or relationship. In order to add additional constraints you can create a match filter that matches against attributes or relationships.
+
+When you know you want to match against a specific set of attributes or relationships it's recommended to set the trigger to inactive until all of the match conditions have been configured.
+
+:::info Activation of trigger rules
+
+* The trigger needs to be marked as active before it starts to filter on events. You can prepare a rule and only mark it as active once you've created all of the match statements that you need.
+
+:::
+
+## Actions
+
+An action is a node kind that inherits from the `CoreAction` generic. In the current version two such nodes exist in the schema.
+
+* CoreGeneratorAction: Run a generator definition with the impacted objects as input
+* CoreGroupAction: Add or remove a member from a group.
