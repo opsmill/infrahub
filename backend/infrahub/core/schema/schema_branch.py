@@ -453,7 +453,7 @@ class SchemaBranch:
         if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
-        fields: dict[str, str | None | dict[str, None]] = {}
+        fields: dict[str, str | dict[str, None] | None] = {}
         if isinstance(node, GenericSchema):
             for child_node_name in node.used_by:
                 child_node = self.get(name=child_node_name, duplicate=False)
