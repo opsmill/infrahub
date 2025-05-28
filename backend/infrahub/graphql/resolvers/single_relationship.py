@@ -107,7 +107,7 @@ class SingleRelationshipResolver:
         filters = {
             f"{field_name}__{key}": value
             for key, value in kwargs.items()
-            if "__" in key and value or key in ["id", "ids"]
+            if ("__" in key and value) or key in ["id", "ids"]
         }
         async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
