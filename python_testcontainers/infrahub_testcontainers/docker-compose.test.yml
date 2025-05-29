@@ -120,6 +120,9 @@ services:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
 
   task-manager-background-svc:
+    deploy:
+      mode: replicated
+      replicas: ${INFRAHUB_TESTING_TASK_MANAGER_BACKGROUND_SVC_REPLICAS:-1}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: prefect server services start
     restart: unless-stopped
