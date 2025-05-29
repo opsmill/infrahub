@@ -379,6 +379,57 @@ export const router = createBrowserRouter([
               },
               {
                 path: "ipam",
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "link",
+                      label: "IP Address Manager",
+                      to: constructPathForIpam("/ipam"),
+                    } as BreadcrumbItem;
+                  },
+                },
+                children: [
+                  {
+                    path: "namespaces",
+                    handle: {
+                      breadcrumb: () => {
+                        return {
+                          type: "link",
+                          label: "namespaces",
+                          to: constructPath("/ipam/namespaces"),
+                        } satisfies BreadcrumbItem;
+                      },
+                    },
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
+                      },
+                      {
+                        path: ":objectKind",
+                        lazy: () => import("@/pages/objects/layout"),
+                        children: [
+                          {
+                            path: ":objectid",
+                            lazy: () => import("@/pages/objects/object-details"),
+                            handle: {
+                              breadcrumb: (match: UIMatch) => {
+                                return {
+                                  type: "select",
+                                  value: match.params.objectid,
+                                  kind: match.params.objectKind,
+                                };
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: "ipam",
                 lazy: () => import("@/pages/ipam/layout"),
                 handle: {
                   breadcrumb: () => {
@@ -415,19 +466,6 @@ export const router = createBrowserRouter([
                         lazy: () => import("@/pages/ipam/ipam-details-relationship-page"),
                       },
                     ],
-                  },
-                  {
-                    path: "namespaces",
-                    lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "namespaces",
-                          to: constructPath("/ipam/namespaces"),
-                        } satisfies BreadcrumbItem;
-                      },
-                    },
                   },
                 ],
               },

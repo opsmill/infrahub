@@ -1,3 +1,4 @@
+import { IpNamespace } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list";
 import { useGetIpNamespaceList } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list.query";
 import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -6,7 +7,12 @@ import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
+import {
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxListProps,
+} from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, debounce } from "@/shared/utils/common";
@@ -19,11 +25,12 @@ interface IpNamespaceSelectorProps {
 }
 
 export default function IpNamespaceSelector({ className }: IpNamespaceSelectorProps) {
-  const { currentIpNamespace } = useCurrentIpNamespace();
+  const { currentIpNamespace, setCurrentIpNamespace } = useCurrentIpNamespace();
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <div className={classNames("flex gap-2 items-center", className)}>
-      <PopoverTrigger>
+      <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
         <AriaButton
           data-testid="namespace-select"
           className={classNames(
@@ -41,7 +48,12 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         </AriaButton>
 
         <Popover placement="bottom start" style={{ width: "var(--trigger-width)" }}>
-          <IpNamespaceComboboxList />
+          <IpNamespaceComboboxList
+            onNamespaceSelection={(value) => {
+              setCurrentIpNamespace(value);
+              setIsOpen(false);
+            }}
+          />
 
           <Col className="border-t border-neutral-200">
             <LinkButton
@@ -59,9 +71,13 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
   );
 }
 
-function IpNamespaceComboboxList({ ...props }) {
+interface IpNamespaceComboboxListProps extends ComboboxListProps {
+  onNamespaceSelection: (value: IpNamespace) => void;
+}
+
+function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespaceComboboxListProps) {
   const [search, setSearch] = React.useState("");
-  const { currentIpNamespace, setCurrentIpNamespace } = useCurrentIpNamespace();
+  const { currentIpNamespace } = useCurrentIpNamespace();
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useGetIpNamespaceList({
       filters: search ? [{ name: "any__value", value: search }] : undefined,
@@ -91,10 +107,10 @@ function IpNamespaceComboboxList({ ...props }) {
                 key={namespace.id}
                 value={namespace.id}
                 selectedValue={currentIpNamespace.id}
-                onSelect={() => setCurrentIpNamespace(namespace)}
+                onSelect={() => onNamespaceSelection(namespace)}
               >
                 <div className="overflow-hidden">
-                  <div className="truncate font-semibold">{getNodeLabel(namespace)}</div>
+                  <div className="truncate">{getNodeLabel(namespace)}</div>
                   <p className="text-xs truncate text-gray-500">{namespace.description?.value}</p>
                 </div>
               </ComboboxItem>

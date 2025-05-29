@@ -1,4 +1,5 @@
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
+import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeObject } from "@/entities/nodes/types";
@@ -20,11 +21,12 @@ import { Button, ButtonProps } from "@/shared/components/buttons/button-primitiv
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Icon } from "@iconify-icon/react";
+import { useSetAtom } from "jotai";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Pressable } from "react-aria-components";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;
@@ -42,6 +44,8 @@ export function ObjectDetailsMenu({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const nodeLabel = getNodeLabel(objectData);
 
@@ -52,7 +56,13 @@ export function ObjectDetailsMenu({
     <>
       <MenuTrigger>
         <Pressable>
-          <Button variant="ghost" size="xs" className="p-4 shrink-0" {...props}>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="p-4 shrink-0"
+            data-testid="object-details-menu"
+            {...props}
+          >
             <Icon icon="mdi:dots-vertical" />
           </Button>
         </Pressable>
@@ -185,13 +195,18 @@ export function ObjectDetailsMenu({
         close={() => setIsDeleteModalOpen(false)}
         onDelete={() => {
           if ("parent" in objectData && "node" in objectData.parent && objectData.parent.node) {
-            return getObjectDetailsUrl(
-              objectData.parent.node.__typename,
-              objectData.parent.node.id
+            navigate(
+              getObjectDetailsUrl(objectData.parent.node.__typename, objectData.parent.node.id)
             );
+            if (location.pathname.startsWith("/ipam")) {
+              reloadIpamTree(objectData.parent.node.id);
+            }
+          } else {
+            navigate(getObjectDetailsUrl(objectSchema.kind as string));
+            if (location.pathname.startsWith("/ipam")) {
+              reloadIpamTree();
+            }
           }
-
-          navigate(getObjectDetailsUrl(objectSchema.kind as string, objectData.id));
         }}
       />
     </>

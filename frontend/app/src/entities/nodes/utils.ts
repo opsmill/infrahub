@@ -1,5 +1,9 @@
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import {
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+  NAMESPACE_GENERIC,
+} from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -16,8 +20,18 @@ export const getObjectDetailsUrl = (
     return constructPath(path, overrideParams);
   }
 
-  if (isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema)) {
-    const path = objectId ? `/ipam/${objectKind}/${objectId}` : `/ipam/${objectKind}`;
+  if (isOfKind(IP_PREFIX_GENERIC, schema)) {
+    const path = objectId ? `/ipam/${objectKind}/${objectId}` : "/ipam";
+    return constructPathForIpam(path, overrideParams);
+  }
+
+  if (isOfKind(IP_ADDRESS_GENERIC, schema)) {
+    const path = objectId ? `/ipam/${objectKind}/${objectId}` : "/ipam/ip_addresses";
+    return constructPathForIpam(path, overrideParams);
+  }
+
+  if (isOfKind(NAMESPACE_GENERIC, schema)) {
+    const path = objectId ? `/ipam/namespaces/${objectKind}/${objectId}` : "/ipam/namespaces";
     return constructPathForIpam(path, overrideParams);
   }
 

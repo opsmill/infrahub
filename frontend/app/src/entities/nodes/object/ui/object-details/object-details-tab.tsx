@@ -1,8 +1,8 @@
+import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 import { Icon } from "@iconify-icon/react";
@@ -27,7 +27,7 @@ export function ObjectDetailsTab({
   });
   const { schema } = useSchema(relationship.peer);
 
-  const url = href ?? constructPath(relationship.name);
+  const url = href ?? constructPathForIpam(relationship.name);
 
   return (
     <LinkTab href={url}>

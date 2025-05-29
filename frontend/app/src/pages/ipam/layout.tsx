@@ -1,27 +1,27 @@
 import IpNamespaceSelector from "@/entities/ipam/ip-namespace-selector";
 import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
 import { IpNamespaceProvider } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
-import { Col } from "@/shared/components/container";
-import Content from "@/shared/components/layout/content";
+import { Row } from "@/shared/components/container";
+import { Card } from "@/shared/components/ui/card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Outlet } from "react-router";
 
 function IpamLayout() {
   return (
-    <Content.Card className="flex h-full w-full">
-      <IpNamespaceProvider>
-        <Col className="w-60 shrink-0 border-r border-gray-200 h-full gap-0">
+    <IpNamespaceProvider>
+      <Row className="items-stretch gap-0.5 h-full w-full overflow-hidden">
+        <Card className="flex flex-col p-0 w-60 shrink-0">
           <IpNamespaceSelector className="border-b border-gray-200" />
-          <ScrollArea scrollX className="w-full">
+          <ScrollArea scrollX>
             <IpamTree className="w-full px-2" />
           </ScrollArea>
-        </Col>
+        </Card>
 
-        <section className="grow flex flex-col overflow-hidden">
+        <Card className="flex flex-col p-0 grow overflow-hidden">
           <Outlet />
-        </section>
-      </IpNamespaceProvider>
-    </Content.Card>
+        </Card>
+      </Row>
+    </IpNamespaceProvider>
   );
 }
 

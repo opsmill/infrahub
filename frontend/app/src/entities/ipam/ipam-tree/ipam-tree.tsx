@@ -24,7 +24,7 @@ import {
 } from "./utils";
 
 export default function IpamTree({ className }: { className?: string }) {
-  const { prefix } = useParams();
+  const { objectId: prefix } = useParams();
   const { currentIpNamespace } = useCurrentIpNamespace();
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export default function IpamTree({ className }: { className?: string }) {
 
   useEffect(() => {
     setLoading(true);
-    reloadIpamTree(currentIpNamespace.id, prefix).then((newTree) => {
+    reloadIpamTree(prefix).then((newTree) => {
       if (prefix) {
         const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
         setExpandedIds(ancestorIds);
@@ -64,7 +64,7 @@ export default function IpamTree({ className }: { className?: string }) {
     const value = e.target.value as string;
 
     if (value === "") {
-      return reloadIpamTree(currentIpNamespace.id, prefix).then((newTree) => {
+      return reloadIpamTree(prefix).then((newTree) => {
         if (prefix) {
           const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
           setExpandedIds(ancestorIds);
