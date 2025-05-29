@@ -57,7 +57,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         await john.save(db=db)
 
         deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
-        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.new(db=db, firstname="Deleted", lastname="Bob", height=175, description="He's not here")
         await deleted_bob.save(db=db)
         await deleted_bob.delete(db=db)
 

@@ -1,4 +1,3 @@
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
@@ -11,6 +10,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.test_app import TestInfrahubApp
 
 PERSON_KIND = "TestingPerson"
