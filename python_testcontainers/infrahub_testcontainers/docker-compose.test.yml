@@ -109,6 +109,8 @@ services:
       PREFECT_MESSAGING_CACHE: prefect_redis.messaging
       PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}"
       PREFECT_REDIS_MESSAGING_DB: "1"
+      PREFECT_REDIS_MESSAGING_CONSUMER_MIN_IDLE_TIME: "30"
+
       WEB_CONCURRENCY: ${TASK_MANAGER_API_WORKERS:-2}
     healthcheck:
       test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
@@ -140,6 +142,7 @@ services:
       PREFECT_MESSAGING_CACHE: prefect_redis.messaging
       PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}"
       PREFECT_REDIS_MESSAGING_DB: "1"
+      PREFECT_REDIS_MESSAGING_CONSUMER_MIN_IDLE_TIME: "30"
 
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
