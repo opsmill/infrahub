@@ -9,6 +9,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import SchemaNotFoundError
 from tests.helpers.db_validation import verify_no_duplicate_paths
 
@@ -110,6 +111,13 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         specific_one = await Node.init(schema=SPECIFIC_ONE_KIND, db=db)
         await specific_one.new(db=db, generic_attr_text="Alpha", generic_attr_num=1, favorite_thing=thing_one)
         await specific_one.save(db=db)
+
+        deleted_specific_one = await Node.init(schema=SPECIFIC_ONE_KIND, db=db)
+        await deleted_specific_one.new(
+            db=db, generic_attr_text="Deleted-Alpha", generic_attr_num=-1, favorite_thing=thing_one
+        )
+        await deleted_specific_one.save(db=db)
+        await deleted_specific_one.delete(db=db)
 
         objs = {
             "thing_one": thing_one,
@@ -320,3 +328,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         assert len(retrieved_things_rels) == 1
         assert len(updated_things_rels) == 1
         assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

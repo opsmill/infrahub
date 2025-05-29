@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
@@ -54,6 +55,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, firstname="John", lastname="Doe", height=175, description="The famous Joe Doe")
         await john.save(db=db)
+
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
 
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
@@ -207,3 +213,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert len(persons2) == 1
         john2 = persons2[0]
         assert john2.height.value == 200
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

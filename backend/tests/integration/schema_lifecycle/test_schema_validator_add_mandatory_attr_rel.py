@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -160,6 +161,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         caprica = await Node.init(schema=CYLON_KIND, db=db)
         await caprica.new(db=db, name="Caprica", height=185, model_number=6, description="6 (Caprica)")
         await caprica.save(db=db)
+
+        deleted_cylon = await Node.init(schema=CYLON_KIND, db=db)
+        await deleted_cylon.new(db=db, name="<REDACTED>", height=185, model_number=1)
+        await deleted_cylon.save(db=db)
+        await deleted_cylon.delete(db=db)
 
         objs = {
             "starbuck": starbuck.id,
@@ -325,8 +331,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert success is True
 
     async def test_load_mandatory_attribute_success_default_value(
-        self, client: InfrahubClient, initial_dataset, schema_with_person_default_value
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_with_person_default_value
     ):
         branch = await client.branch.create(branch_name="add-default-value")
         response = await client.schema.load(schemas=[schema_with_person_default_value], branch=branch.name)
         assert response.errors == {}
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
