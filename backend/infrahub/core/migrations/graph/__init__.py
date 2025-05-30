@@ -31,6 +31,7 @@ from .m026_0000_prefix_fix import Migration026
 from .m027_delete_isolated_nodes import Migration027
 from .m028_delete_diffs import Migration028
 from .m029_duplicates_cleanup import Migration029
+from .m030_illegal_edges import Migration030
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -67,6 +68,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration027,
     Migration028,
     Migration029,
+    Migration030,
 ]
 
 

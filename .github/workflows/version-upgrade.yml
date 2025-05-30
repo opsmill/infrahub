@@ -56,8 +56,8 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install poetry==${{ env.POETRY_VERSION }}
-          poetry config virtualenvs.prefer-active-python true
+          pipx install -f poetry==${{ env.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
           pip install invoke toml
       - name: "Install Package"
         run: "poetry install"
