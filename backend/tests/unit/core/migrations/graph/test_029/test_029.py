@@ -53,4 +53,4 @@ CALL {
         await verify_no_duplicate_relationships(db=db)
         after_snapshot = await snapshotter.snapshot()
 
-        before_snapshot.compare(other=after_snapshot)
+        before_snapshot.assert_equal(other=after_snapshot)

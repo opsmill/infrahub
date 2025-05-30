@@ -130,7 +130,7 @@ class BranchProperty(BranchStatus):
     def __hash__(self) -> int:
         return hash((self.active_from, self.deleted_at, self.property_type, self.value))
 
-    def compare(self, other: BranchProperty) -> None:
+    def assert_equal(self, other: BranchProperty) -> None:
         assert self.property_type is other.property_type
         assert self.value == other.value
         assert self.active_from == other.active_from
@@ -145,7 +145,7 @@ class RelationshipDeduplicated:
     # {branch name: {property type: {BranchProperty, ...}}}
     branch_properties_map: dict[str, dict[PropertyTypes, set[BranchProperty]]]
 
-    def compare(self, other: RelationshipDeduplicated) -> None:
+    def assert_equal(self, other: RelationshipDeduplicated) -> None:
         assert self.name == other.name
         assert self.direction == other.direction
         assert self.peer_uuid == other.peer_uuid
@@ -168,7 +168,7 @@ class AttributeDeduplicated:
     # {branch name: {property type: {BranchProperty, ...}}}
     branch_properties_map: dict[str, dict[PropertyTypes, set[BranchProperty]]]
 
-    def compare(self, other: AttributeDeduplicated) -> None:
+    def assert_equal(self, other: AttributeDeduplicated) -> None:
         assert self.name == other.name
         these_branches = set(self.branch_properties_map.keys())
         other_branches = set(other.branch_properties_map.keys())
@@ -193,7 +193,7 @@ class DeduplicatedNode:
     # {(relationship name, peer uuid, direction): RelationshipDeduplicated}
     relationships_map: dict[tuple[str, str, RelationshipDirection], RelationshipDeduplicated]
 
-    def compare(self, other: DeduplicatedNode) -> None:
+    def assert_equal(self, other: DeduplicatedNode) -> None:
         assert self.identifier == other.identifier
         these_branches = set(self.status_map.keys())
         other_branches = set(other.status_map.keys())
@@ -207,27 +207,27 @@ class DeduplicatedNode:
         assert these_attr_names == other_attr_names
         for attr_name, this_attr in self.attributes_map.items():
             other_attr = other.attributes_map[attr_name]
-            this_attr.compare(other_attr)
+            this_attr.assert_equal(other_attr)
 
         these_rel_keys = set(self.relationships_map.keys())
         other_rel_keys = set(other.relationships_map.keys())
         assert these_rel_keys == other_rel_keys
         for rel_key, this_rel in self.relationships_map.items():
             other_rel = other.relationships_map[rel_key]
-            this_rel.compare(other_rel)
+            this_rel.assert_equal(other_rel)
 
 
 @dataclass
 class DbSnapshotDeduplicated:
     nodes_map: dict[NodeIdentifier, DeduplicatedNode]
 
-    def compare(self, other: DbSnapshotDeduplicated) -> None:
+    def assert_equal(self, other: DbSnapshotDeduplicated) -> None:
         these_node_ids = set(self.nodes_map.keys())
         other_node_ids = set(other.nodes_map.keys())
         assert these_node_ids == other_node_ids
         for node_id, this_node in self.nodes_map.items():
             other_node = other.nodes_map[node_id]
-            this_node.compare(other_node)
+            this_node.assert_equal(other_node)
 
 
 class DeduplicatedNodesQuery(Query):
