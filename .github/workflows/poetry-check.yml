@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
       - name: "Setup environment"
         run: |
-          pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
       - name: "Validate pyproject.toml and consistency with poetry.lock"
         run: |
           poetry check
