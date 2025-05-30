@@ -12,7 +12,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
-)  # noqa: TC001
+)
 from infrahub.core.models import HashableModel
 
 
