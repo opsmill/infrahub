@@ -146,6 +146,7 @@ services:
 
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    command: postgres -c 'max_connections=${INFRAHUB_TESTING_TASK_MANAGER_DB_MAX_CONNECTIONS:-100}'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
