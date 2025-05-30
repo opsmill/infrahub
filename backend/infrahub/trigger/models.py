@@ -5,10 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from prefect.events.actions import RunDeployment
-from prefect.events.schemas.automations import (
-    Automation,  # noqa: TC002
-    Posture,
-)
+from prefect.events.schemas.automations import Automation, Posture
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field

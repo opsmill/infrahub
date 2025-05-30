@@ -117,7 +117,6 @@ class RelationshipDuplicateQuery(Query):
 
         self.add_to_query(self.render_match())
 
-        # ruff: noqa: E501
         query = """
         CALL (source, rel, destination) {
             MATCH path = (source)-[r1:IS_RELATED]-(rel)-[r2:IS_RELATED]-(destination)

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 from infrahub import __version__
 from infrahub.auth import AccountSession, AuthType
-from infrahub.context import InfrahubContext  # noqa: TC001
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY

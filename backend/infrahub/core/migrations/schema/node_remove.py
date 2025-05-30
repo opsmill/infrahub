@@ -58,7 +58,6 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
 
         node_remove_query = self.render_node_remove_query(branch_filter=branch_filter)
 
-        # ruff: noqa: E501
         query = """
         // Find all the active nodes
         MATCH (node:%(node_kind)s)

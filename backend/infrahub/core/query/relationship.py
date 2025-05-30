@@ -1035,7 +1035,7 @@ class RelationshipDeleteAllQuery(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["source_id"] = kwargs["node_id"]
         self.params["branch"] = self.branch.name
 
