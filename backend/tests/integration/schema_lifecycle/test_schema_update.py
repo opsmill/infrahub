@@ -3,6 +3,9 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
+from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+
 from .shared import (
     TestSchemaLifecycleBase,
 )
@@ -51,7 +54,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         response = await client.schema.load(schemas=[schema_network], branch="test")
         assert not response.errors
 
-    async def test_step_03_load_data(self, client: InfrahubClient, schema_network):
+    async def test_step_03_load_data(self, db: InfrahubDatabase, client: InfrahubClient, schema_network):
         dev1 = await client.create(kind="NetworkDevice", hostname="device", model="switch", branch="test")
         await dev1.save()
         assert dev1.id
@@ -59,3 +62,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         intf1 = await client.create(kind="NetworkInterface", name="interface1", device=dev1.id, branch="test")
         await intf1.save()
         assert intf1.id
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
