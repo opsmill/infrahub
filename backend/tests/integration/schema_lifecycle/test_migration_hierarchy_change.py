@@ -10,6 +10,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.test_app import TestInfrahubApp
 
 PERSON_KIND = "TestingPerson"
@@ -185,3 +186,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         site_schema = db.schema.get(name="LocationSite", branch=branch_1, duplicate=False)
         assert site_schema.parent == "LocationMetro"
         assert site_schema.children == ""  # noqa: PLC1901
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

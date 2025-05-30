@@ -12,6 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.relationship.model import RelationshipManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import TestSchemaLifecycleBase
@@ -137,13 +138,34 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         await specific_one.new(db=db, generic_attr_text="Alpha", generic_attr_num=1, favorite_thing=thing_one)
         await specific_one.save(db=db)
 
+        deleted_specific_one = await Node.init(schema=SPECIFIC_ONE_KIND, db=db)
+        await deleted_specific_one.new(
+            db=db, generic_attr_text="Deleted-Alpha", generic_attr_num=-1, favorite_thing=thing_one
+        )
+        await deleted_specific_one.save(db=db)
+        await deleted_specific_one.delete(db=db)
+
         specific_two = await Node.init(schema=SPECIFIC_TWO_KIND, db=db)
         await specific_two.new(db=db, generic_attr_text="Bravo", generic_attr_num=2, favorite_thing=thing_two)
         await specific_two.save(db=db)
 
+        deleted_specific_two = await Node.init(schema=SPECIFIC_TWO_KIND, db=db)
+        await deleted_specific_two.new(
+            db=db, generic_attr_text="Deleted-Bravo", generic_attr_num=-2, favorite_thing=thing_two
+        )
+        await deleted_specific_two.save(db=db)
+        await deleted_specific_two.delete(db=db)
+
         specific_three = await Node.init(schema=SPECIFIC_THREE_KIND, db=db)
         await specific_three.new(db=db, generic_attr_text="Charlie", generic_attr_num=3, favorite_thing=thing_three)
         await specific_three.save(db=db)
+
+        deleted_specific_three = await Node.init(schema=SPECIFIC_THREE_KIND, db=db)
+        await deleted_specific_three.new(
+            db=db, generic_attr_text="Deleted-Charlie", generic_attr_num=-3, favorite_thing=thing_three
+        )
+        await deleted_specific_three.save(db=db)
+        await deleted_specific_three.delete(db=db)
 
         objs = {
             "thing_one": thing_one,
@@ -1170,6 +1192,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             ],
         )
         assert not errors
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
 
 
 class TestSchemaLifecycleGenericUpdates(SchemaLifecycleGenericBase):
