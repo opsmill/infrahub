@@ -31,11 +31,13 @@ test.describe("/ipam/ip_addresses - IP Address list", () => {
       await page.getByRole("heading", { name: "Activities" }).click();
     });
 
-    // await test.step("use breadcrumb to go back to parent prefix", async () => {
-    //   await page.getByRole("link", { name: "All IP Addresses" }).click();
-    //   await expect(page.getByText("Showing 1 to ")).toBeVisible();
-    //   await expect(page.locator("[aria-selected=true]")).toContainText("172.16.0.0/16");
-    //   await expect(page.url()).toContain("/prefixes/");
-    // });
+    await test.step("use breadcrumb to go back to parent prefix", async () => {
+      await page
+        .getByLabel("IPAM navigation breadcrumb")
+        .getByRole("link", { name: "172.16.0.0/16" })
+        .click();
+
+      await expect(page.getByRole("heading", { name: "172.16.0.0/16" })).toBeVisible();
+    });
   });
 });

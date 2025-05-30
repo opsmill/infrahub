@@ -30,14 +30,13 @@ test.describe("/ipam/ip_prefixes - Prefix list", () => {
       await expect(page.getByText("Prefix2001:db8::/110")).toBeVisible();
     });
 
-    // await test.step("use breadcrumb to go back to parent prefix", async () => {
-    //   await page
-    //     .getByTestId("ipam-main-content")
-    //     .getByRole("link", { name: "2001:db8::/100" })
-    //     .click();
-    //   await expect(page.getByTestId("ipam-main-content")).toContainText("Showing 1 to ");
-    //   await expect(page.url()).toContain("ipam-tab=prefix-details");
-    // });
+    await test.step("use breadcrumb to go back to parent prefix", async () => {
+      await page
+        .getByLabel("IPAM navigation breadcrumb")
+        .getByRole("link", { name: "2001:db8::/100" })
+        .click();
+    });
+    await expect(page.getByRole("heading", { name: "2001:db8::/100" })).toBeVisible();
   });
 
   test("display error message when schema is not found", async ({ page }) => {
