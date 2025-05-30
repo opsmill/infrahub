@@ -14,6 +14,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("infrahub-performance-test")
 
     group.addoption(
+        "--deployment-type",
+        action="store",
+        dest="infrahub_deployment_type",
+        default=None,
+        metavar="INFRAHUB_DEPLOYMENT_TYPE",
+        help="Type of deployment to use (default: None, options: cluster)",
+    )
+
+    group.addoption(
         "--performance-result-address",
         action="store",
         dest="infrahub_performance_test_result_address",
