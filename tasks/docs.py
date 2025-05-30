@@ -1,7 +1,7 @@
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from invoke import Context, task
 
@@ -9,6 +9,9 @@ from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 
 @task
@@ -33,6 +36,7 @@ def generate(context: Context) -> None:
 def generate_schema(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for the schema."""
     _generate_infrahub_schema_documentation()
+    _generate_infrahub_schema_attribute_kind_parameters_snippet()
 
 
 @task
@@ -191,11 +195,47 @@ def _generate(context: Context) -> None:
 #         with context.cd(ESCAPED_REPO_PATH):
 #             context.run(exec_cmd)
 
+
 #     for cmd in app.registered_groups:
 #         exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
 #         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
 #         with context.cd(ESCAPED_REPO_PATH):
 #             context.run(exec_cmd)
+def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
+    """Generate documentation for any attributes that have parameters defined to be defined by users."""
+    import jinja2
+    from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
+
+    kind_ap_parameters: dict[str, dict] = {}
+    for kind, schema_cls in attribute_schema_class_by_kind.items():
+        # If the schema has a parameters class, add it to the list
+        init_schema = schema_cls(name="ignore", kind=kind)
+        if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
+            params = {
+                param: info
+                for param, info in init_schema.parameters.model_fields.items()
+                if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
+            }
+            kind_ap_parameters[kind] = params
+    # for _, obj in inspect.getmembers(ap):
+    #     if inspect.isclass(obj) and issubclass(obj, ap.AttributeParameters) and obj is not ap.AttributeParameters:
+    #         kind_ap_parameters.append(obj)
+
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "schema" / "attribute_kind_params.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "snippets" / "attribute-kind-params.mdx"
+    output_label = f"docs/docs/snippets/attribute-kind-params.mdx"
+    if not template_file.exists():
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = template_file.read_text(encoding="utf-8")
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(kinds=kind_ap_parameters)
+
+    output_file.write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
 
 
 def _generate_infrahub_schema_documentation() -> None:

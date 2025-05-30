@@ -120,8 +120,14 @@ const sidebars: SidebarsConfig = {
         'topics/repository',
         'topics/resource-manager',
         'topics/resources-testing-framework',
-        'topics/schema',
-        'topics/schema-attr-kind-number-pool',
+        {
+          type: 'category',
+          label: 'Schema',
+          items: [
+            'topics/schema',
+            'topics/schema-attr-kind-number-pool',
+          ],
+        },
         'topics/tasks',
         'topics/transformation',
         'topics/version-control',

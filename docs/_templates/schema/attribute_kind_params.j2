@@ -1,0 +1,14 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+{%- for kind, params in kinds.items() | sort %}
+<TabItem value="{{ kind }}">
+| Parameter | Default | Required |
+| --------- | ------- | -------- |
+{%   for name, info in params.items() -%}
+| {{ name }} | {{ info.default | default(False) }} | {{ info.required | default(False) }} |
+{%   endfor -%}
+</TabItem>
+{%- endfor %}
+</Tabs>
