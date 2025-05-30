@@ -14,6 +14,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
+from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ..queries.resource_manager import PoolAllocatedNode
 from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
@@ -257,18 +258,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             branch=branch,
         )
 
-        active_branches = registry.schema.get_branches()
-        violating_branches = []
-        for active_branch in active_branches:
-            try:
-                schema = registry.schema.get(name=number_pool.node.value, branch=active_branch)
-            except SchemaNotFoundError:
-                continue
-
-            if number_pool.node_attribute.value in schema.attribute_names:
-                attribute = schema.get_attribute(name=number_pool.node_attribute.value)
-                if attribute.kind == "NumberPool":
-                    violating_branches.append(active_branch)
+        violating_branches = get_branches_with_schema_number_pool(
+            kind=number_pool.node.value, attribute_name=number_pool.node_attribute.value
+        )
 
         if violating_branches:
             raise ValidationError(
