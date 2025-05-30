@@ -1,7 +1,7 @@
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from invoke import Context, task
 
@@ -9,9 +9,6 @@ from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
 
 
 @task
@@ -204,6 +201,7 @@ def _generate(context: Context) -> None:
 def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
     """Generate documentation for any attributes that have parameters defined to be defined by users."""
     import jinja2
+
     from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
 
     kind_ap_parameters: dict[str, dict] = {}
@@ -223,7 +221,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
     template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "schema" / "attribute_kind_params.j2"
     output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "snippets" / "attribute-kind-params.mdx"
-    output_label = f"docs/docs/snippets/attribute-kind-params.mdx"
+    output_label = "docs/docs/snippets/attribute-kind-params.mdx"
     if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
