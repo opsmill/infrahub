@@ -121,6 +121,7 @@ const sidebars: SidebarsConfig = {
         'topics/resource-manager',
         'topics/resources-testing-framework',
         'topics/schema',
+        'topics/schema-attr-kind-number-pool',
         'topics/tasks',
         'topics/transformation',
         'topics/version-control',
