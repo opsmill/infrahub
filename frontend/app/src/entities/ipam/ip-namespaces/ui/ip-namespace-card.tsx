@@ -1,4 +1,4 @@
-import { IpNamespace } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list";
+import { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Row } from "@/shared/components/container";

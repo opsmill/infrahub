@@ -1,6 +1,6 @@
-import { IpNamespace } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list";
-import { useGetIpNamespaceList } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list.query";
-import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
+import { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
+import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";

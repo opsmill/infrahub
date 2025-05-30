@@ -1,11 +1,11 @@
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/entities/ipam/constants";
+import { currentIpNamespaceAtom } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import {
   GET_PREFIXES_ONLY,
   GET_PREFIX_ANCESTORS,
   GET_TOP_LEVEL_PREFIXES,
 } from "@/entities/ipam/ipam-tree/api/prefixes";
-import { currentIpNamespaceAtom } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { TreeProps } from "@/shared/components/ui/tree";
 import { datetimeAtom } from "@/shared/stores/time.atom";

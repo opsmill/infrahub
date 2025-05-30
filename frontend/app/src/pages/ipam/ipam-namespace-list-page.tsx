@@ -1,6 +1,6 @@
 import { NAMESPACE_GENERIC } from "@/entities/ipam/constants";
-import { useGetIpNamespaceList } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list.query";
-import { IpNamespaceCard } from "@/entities/ipam/namespaces/ui/ip-namespace-card";
+import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
+import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { Permission } from "@/entities/permission/types";

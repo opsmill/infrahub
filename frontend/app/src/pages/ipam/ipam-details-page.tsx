@@ -1,7 +1,7 @@
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import { IpAddressDetails } from "@/entities/ipam/ip-addresses/ui/ip-address-details";
-import { IpPrefixDetails } from "@/entities/ipam/prefixes/ui/ip-prefix-details";
+import { IpPrefixDetails } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-details";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import ErrorScreen from "@/shared/components/errors/error-screen";

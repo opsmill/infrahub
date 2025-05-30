@@ -1,5 +1,5 @@
-import { useGetIpPrefixList } from "@/entities/ipam/prefixes/domain/get-ip-prefix-list.query";
-import { getIpPrefixTableColumns } from "@/entities/ipam/prefixes/utils/get-ip-prefix-table-columns";
+import { useGetIpPrefixList } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list.query";
+import { getIpPrefixTableColumns } from "@/entities/ipam/ip-prefixes/utils/get-ip-prefix-table-columns";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/get-object-actions-column";
 import { ObjectsTableProps } from "@/entities/nodes/object/ui/object-table/object-table";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";

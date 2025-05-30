@@ -1,5 +1,5 @@
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { IpPrefixTable, IpPrefixTableProps } from "@/entities/ipam/prefixes/ui/ip-prefix-table";
+import { IpPrefixTable, IpPrefixTableProps } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-table";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { ModelSchema } from "@/entities/schema/types";

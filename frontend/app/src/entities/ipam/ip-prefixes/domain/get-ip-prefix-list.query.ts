@@ -2,7 +2,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   GetIpPrefixListParams,
   getIpPrefixList,
-} from "@/entities/ipam/prefixes/domain/get-ip-prefix-list";
+} from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";

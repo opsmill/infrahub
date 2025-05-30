@@ -1,7 +1,7 @@
-import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
-import IpNamespaceSelector from "@/entities/ipam/namespaces/ip-namespace-selector";
-import { IpNamespaceProvider } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
+import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
+import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { IpamBreadcrumb } from "@/entities/ipam/ipam-breadcrumb";
+import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Card } from "@/shared/components/ui/card";

@@ -3,7 +3,7 @@ import { NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import {
   GetIpNamespaceListParams,
   getIpNamespaceList,
-} from "@/entities/ipam/namespaces/domain/get-ip-namespace-list";
+} from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";

@@ -1,6 +1,6 @@
 import { IPAM_QSP, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import { IpNamespace } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list";
-import { useGetIpNamespaceList } from "@/entities/ipam/namespaces/domain/get-ip-namespace-list.query";
+import { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { NodeCore } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";

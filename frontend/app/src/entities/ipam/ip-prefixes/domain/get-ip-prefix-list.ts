@@ -1,4 +1,4 @@
-import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { NodeObject } from "@/entities/nodes/types";
