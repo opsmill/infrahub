@@ -53,10 +53,10 @@ test.describe("/schema - Schema visualizer", () => {
   test("view schema attribute kind numberpool", async ({ page }) => {
     await page.goto("/schema");
     await page.getByPlaceholder("Search schema").fill("InfraBackBoneService");
-    await page.getByText('InfraBackbone Service').click();
-    await page.getByRole('tab', { name: 'Attributes' }).click();
-    await page.getByText('Service Identifier NumberPool').click();
-    await page.getByText('Parameters').click();
+    await page.getByText("InfraBackbone Service").click();
+    await page.getByRole("tab", { name: "Attributes" }).click();
+    await page.getByText("Service Identifier NumberPool").click();
+    await page.getByText("Parameters").click();
     await saveScreenshotForDocs(page, "schema_numberpool");
   });
 });

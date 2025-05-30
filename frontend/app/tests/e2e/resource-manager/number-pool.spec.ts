@@ -46,9 +46,9 @@ test.describe("/resource-manager - Resource Manager", () => {
 
   test("numberpool attribute kind resource manager", async ({ page }) => {
     await page.goto("/resource-manager");
-    await expect(page.getByRole('link', { name: 'InfraService.' })).toBeVisible();
-    await page.getByRole('link', { name: 'InfraService.' }).click();
-    await page.getByRole('link', { name: 'View', exact: true }).click();
+    await expect(page.getByRole("link", { name: "InfraService." })).toBeVisible();
+    await page.getByRole("link", { name: "InfraService." }).click();
+    await page.getByRole("link", { name: "View", exact: true }).click();
     await saveScreenshotForDocs(page, "numberpool_attribute_kind_resource_manager");
   });
 });
