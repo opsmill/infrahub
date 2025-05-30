@@ -1,7 +1,7 @@
 import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
+import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -403,7 +403,7 @@ export const router = createBrowserRouter([
                     children: [
                       {
                         index: true,
-                        lazy: () => import("@/pages/ipam/namespaces/ip-namespace-list-page"),
+                        lazy: () => import("@/pages/ipam/ipam-namespace-list-page"),
                       },
                       {
                         path: ":objectKind",
@@ -430,7 +430,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: "ipam",
-                lazy: () => import("@/pages/ipam/layout"),
+                lazy: () => import("@/pages/ipam/ipam-layout"),
                 handle: {
                   breadcrumb: () => {
                     return {
@@ -443,15 +443,15 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-page"),
+                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-list-page"),
                   },
                   {
                     path: "ip_prefixes",
-                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-page"),
+                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-list-page"),
                   },
                   {
                     path: "ip_addresses",
-                    lazy: () => import("@/pages/ipam/ipam-ip-addresses-page"),
+                    lazy: () => import("@/pages/ipam/ipam-ip-addresses-list-page"),
                   },
                   {
                     path: ":objectKind/:objectId",

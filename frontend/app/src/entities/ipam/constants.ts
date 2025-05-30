@@ -13,12 +13,6 @@ export const POOLS_DICTIONNARY = {
 
 export const TREE_ROOT_ID = "root" as const;
 
-export const IPAM_TABS = {
-  SUMMARY: "summary",
-  PREFIX_DETAILS: "prefix-details",
-  IP_DETAILS: "ip-details",
-};
-
 const IPAM_BASE_ROUTE = "/ipam";
 
 export const IPAM_ROUTE = {

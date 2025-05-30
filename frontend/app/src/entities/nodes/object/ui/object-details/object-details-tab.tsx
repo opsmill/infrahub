@@ -1,4 +1,4 @@
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
+import { constructPathForIpam } from "@/entities/ipam/utils";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

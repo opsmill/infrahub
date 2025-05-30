@@ -2,7 +2,7 @@ import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
+import { NodeAttribute, NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -38,20 +38,26 @@ export function IpPrefixDetails({ prefixSchema, prefixId }: IpPrefixDetailsProps
   const properties: Property[] = [
     { name: "ID", value: data.id },
     ...(prefixSchema.attributes ?? []).map((schemaAttribute) => {
+      const attributeData = data[schemaAttribute.name] as NodeAttribute | undefined;
+
+      if (!attributeData || (!attributeData.value && attributeData.value !== 0)) {
+        return {
+          name: schemaAttribute.label || schemaAttribute.name,
+          value: "-",
+        };
+      }
+
       if (schemaAttribute.name === "utilization") {
         return {
           name: schemaAttribute.label || schemaAttribute.name,
-          value: <ProgressBarChart value={parseInt(data[schemaAttribute.name].value, 10)} />,
+          value: <ProgressBarChart value={parseInt(attributeData.value.toString(), 10)} />,
         };
       }
 
       return {
         name: schemaAttribute.label || schemaAttribute.name,
         value: (
-          <ObjectAttributeValue
-            attributeSchema={schemaAttribute}
-            attributeValue={data[schemaAttribute.name]}
-          />
+          <ObjectAttributeValue attributeSchema={schemaAttribute} attributeValue={attributeData} />
         ),
       };
     }),

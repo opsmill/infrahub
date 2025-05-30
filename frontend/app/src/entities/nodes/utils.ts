@@ -1,9 +1,9 @@
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
   NAMESPACE_GENERIC,
 } from "@/entities/ipam/constants";
+import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";

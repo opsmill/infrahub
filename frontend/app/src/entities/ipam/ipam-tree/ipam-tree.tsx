@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { GET_PREFIXES_ONLY } from "@/entities/ipam/api/prefixes";
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
+import { GET_PREFIXES_ONLY } from "@/entities/ipam/ipam-tree/api/prefixes";
 import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";

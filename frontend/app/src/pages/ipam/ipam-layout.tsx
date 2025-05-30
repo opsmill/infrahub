@@ -1,7 +1,7 @@
-import IpNamespaceSelector from "@/entities/ipam/ip-namespace-selector";
 import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
+import IpNamespaceSelector from "@/entities/ipam/namespaces/ip-namespace-selector";
 import { IpNamespaceProvider } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
-import { IpamBreadcrumb } from "@/pages/ipam/ipam-breadcrumb";
+import { IpamBreadcrumb } from "@/entities/ipam/ipam-breadcrumb";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Card } from "@/shared/components/ui/card";
@@ -9,7 +9,7 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
-function IpamLayout() {
+export const Component = () => {
   return (
     <IpNamespaceProvider>
       <Row className="items-stretch gap-0.5 h-full w-full overflow-hidden">
@@ -34,6 +34,4 @@ function IpamLayout() {
       </Row>
     </IpNamespaceProvider>
   );
-}
-
-export const Component = IpamLayout;
+};

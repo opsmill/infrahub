@@ -22,7 +22,7 @@ interface IpNamespaceListPageProps {
   permission: Permission;
 }
 
-function IpNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListPageProps) {
+function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListPageProps) {
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, isFetchingNextPage, hasNextPage } = useGetIpNamespaceList(
     {
@@ -80,7 +80,7 @@ export const Component = () => {
   return (
     <RequireObjectPermissions objectKind={NAMESPACE_GENERIC}>
       {({ permission }) => {
-        return <IpNamespaceListPage namespaceSchema={schema} permission={permission} />;
+        return <IpamNamespaceListPage namespaceSchema={schema} permission={permission} />;
       }}
     </RequireObjectPermissions>
   );

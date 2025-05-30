@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("/ipam/ip_prefixes - Prefix list", () => {
+test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
   test("view the prefix list, use the pagination and view prefix summary", async ({ page }) => {
     await page.goto("/ipam");
     await page

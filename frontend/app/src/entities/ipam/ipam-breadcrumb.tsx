@@ -1,6 +1,6 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { constructPathForIpam } from "@/entities/ipam/utils";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { NodeCore, NodeObject, NodeRelationshipOne } from "@/entities/nodes/types";
