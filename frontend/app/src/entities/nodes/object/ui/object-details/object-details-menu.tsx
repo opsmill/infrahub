@@ -58,8 +58,7 @@ export function ObjectDetailsMenu({
         <Pressable>
           <Button
             variant="ghost"
-            size="xs"
-            className="p-4 shrink-0"
+            className="p-0 shrink-0 size-7"
             data-testid="object-details-menu"
             {...props}
           >
@@ -67,7 +66,7 @@ export function ObjectDetailsMenu({
           </Button>
         </Pressable>
 
-        <MenuPopover placement="bottom end">
+        <MenuPopover>
           <Menu>
             <MenuSection>
               <MenuHeader>Actions</MenuHeader>

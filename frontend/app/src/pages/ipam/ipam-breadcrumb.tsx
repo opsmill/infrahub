@@ -11,13 +11,13 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { ChevronRightIcon, HouseIcon } from "lucide-react";
 import { Link, LinkProps, useParams } from "react-router";
-import { classNames } from "@/shared/utils/common";
 
 interface IPPrefixNode extends NodeCore {
   parent?: {
