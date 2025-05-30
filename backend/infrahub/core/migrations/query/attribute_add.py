@@ -90,7 +90,5 @@ class AttributeAddQuery(Query):
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
         }
 
-        # breakpoint()
-
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "a.uuid"]

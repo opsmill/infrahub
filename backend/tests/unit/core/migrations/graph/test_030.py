@@ -5,6 +5,7 @@ from infrahub.core.migrations.graph.m030_illegal_edges import Migration030
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_edges_added_after_node_delete
 
 
 async def _add_attribute(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
@@ -109,3 +110,5 @@ async def test_migration_030(
         create_on_branch.id: {default_branch.name, branch.name},
         intra_branch_delete.id: {default_branch.name},
     }
+
+    await verify_no_edges_added_after_node_delete(db=db)
