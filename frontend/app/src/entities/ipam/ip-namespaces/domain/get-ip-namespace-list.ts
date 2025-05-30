@@ -6,7 +6,7 @@ import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { NAMESPACE_GENERIC } from "../../constants";
+import { IP_NAMESPACE_GENERIC } from "../../constants";
 
 export interface GetIpNamespaceListParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;
@@ -31,8 +31,8 @@ export const getIpNamespaceList: GetIpNamespaceList = async ({
   const query = gql(
     jsonToGraphQLQuery({
       query: {
-        __name: `GetObjects${NAMESPACE_GENERIC}`,
-        [NAMESPACE_GENERIC]: {
+        __name: `GetObjects${IP_NAMESPACE_GENERIC}`,
+        [IP_NAMESPACE_GENERIC]: {
           __args: {
             limit,
             offset,
@@ -78,5 +78,5 @@ export const getIpNamespaceList: GetIpNamespaceList = async ({
     throw new Error(errors[0].message);
   }
 
-  return data?.[NAMESPACE_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
+  return data?.[IP_NAMESPACE_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
 };

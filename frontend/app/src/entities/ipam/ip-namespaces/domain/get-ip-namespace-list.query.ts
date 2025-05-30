@@ -1,5 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import {
   GetIpNamespaceListParams,
   getIpNamespaceList,
@@ -19,7 +19,7 @@ export function getIpNamespaceListInfiniteQueryOptions(
   params: GetIpNamespaceListInfiniteQueryOptionsParams
 ) {
   return infiniteQueryOptions({
-    queryKey: [params.branchName, params.atDate, NAMESPACE_GENERIC, "objects", params.filters],
+    queryKey: [params.branchName, params.atDate, IP_NAMESPACE_GENERIC, "objects", params.filters],
     queryFn: async ({ pageParam }) => {
       return getIpNamespaceList({
         ...params,

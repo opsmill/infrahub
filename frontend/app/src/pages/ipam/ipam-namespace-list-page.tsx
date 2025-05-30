@@ -1,4 +1,4 @@
-import { NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
@@ -71,14 +71,14 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
 }
 
 export const Component = () => {
-  const { schema } = useSchema(NAMESPACE_GENERIC);
+  const { schema } = useSchema(IP_NAMESPACE_GENERIC);
 
   if (!schema) {
-    return <ErrorScreen message={`Schema ${NAMESPACE_GENERIC} not found.`} />;
+    return <ErrorScreen message={`Schema ${IP_NAMESPACE_GENERIC} not found.`} />;
   }
 
   return (
-    <RequireObjectPermissions objectKind={NAMESPACE_GENERIC}>
+    <RequireObjectPermissions objectKind={IP_NAMESPACE_GENERIC}>
       {({ permission }) => {
         return <IpamNamespaceListPage namespaceSchema={schema} permission={permission} />;
       }}

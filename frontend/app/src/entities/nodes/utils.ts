@@ -1,7 +1,7 @@
 import {
   IP_ADDRESS_GENERIC,
+  IP_NAMESPACE_GENERIC,
   IP_PREFIX_GENERIC,
-  NAMESPACE_GENERIC,
 } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -30,7 +30,7 @@ export const getObjectDetailsUrl = (
     return constructPathForIpam(path, overrideParams);
   }
 
-  if (isOfKind(NAMESPACE_GENERIC, schema)) {
+  if (isOfKind(IP_NAMESPACE_GENERIC, schema)) {
     const path = objectId ? `/ipam/namespaces/${objectKind}/${objectId}` : "/ipam/namespaces";
     return constructPathForIpam(path, overrideParams);
   }
