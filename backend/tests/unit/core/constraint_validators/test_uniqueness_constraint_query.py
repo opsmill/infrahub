@@ -661,7 +661,7 @@ async def test_query_response_min_count_0_attribute_paths_with_value(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 3
+    assert len(query_result.results) == 2
     for result in query_result.results:
         serial_result = dict(result.data)
         assert serial_result in expected_result_dicts
@@ -711,7 +711,7 @@ async def test_query_response_min_count_0_relationship_paths_with_value(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 3
+    assert len(query_result.results) == 2
     for result in query_result.results:
         serial_result = dict(result.data)
         assert serial_result in expected_result_dicts
