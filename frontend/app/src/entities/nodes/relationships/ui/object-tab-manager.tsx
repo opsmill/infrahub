@@ -22,6 +22,10 @@ export function ObjectTabManager({ parentNodeSchema, objectDetailsData }: Object
   const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const refetchRef = useRef(null);
 
+  if (!qspTab) {
+    return null;
+  }
+
   if (qspTab === REPOSITORY_OBJECTS_TAB) {
     return null;
   }
