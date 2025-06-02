@@ -8,6 +8,9 @@ import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
+import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
+import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import {
   getObjectAttributes,
@@ -20,6 +23,7 @@ import {
   RepositoryObjectsTab,
 } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
+import { ObjectTabManager } from "@/entities/nodes/relationships/ui/object-tab-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { NodeObject } from "@/entities/nodes/types";
@@ -39,10 +43,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ObjectTabManager } from "../relationships/ui/object-tab-manager";
-import { ActionButtons } from "./action-buttons";
-import { ObjectAttributeRow } from "./object-attribute-row";
-import RelationshipDetails from "./relationship-details-paginated";
 
 type ObjectDetailsProps = {
   schema: ModelSchema;
