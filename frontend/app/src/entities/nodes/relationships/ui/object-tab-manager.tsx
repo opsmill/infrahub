@@ -1,6 +1,8 @@
-import { REPOSITORY_OBJECTS_TAB, TASK_TAB } from "@/config/constants";
+import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
+import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
+import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-objects-manager";
 import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
@@ -27,7 +29,7 @@ export function ObjectTabManager({ parentNodeSchema, objectDetailsData }: Object
   }
 
   if (qspTab === REPOSITORY_OBJECTS_TAB) {
-    return null;
+    return <RepositoryObjectsManager />;
   }
 
   if (qspTab === TASK_TAB && !qspTaskId) {

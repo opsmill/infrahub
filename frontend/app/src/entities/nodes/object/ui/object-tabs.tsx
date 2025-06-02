@@ -1,6 +1,7 @@
-import { REPOSITORY_OBJECTS_TAB, TASK_TAB } from "@/config/constants";
+import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
+import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
 import { useGetRepositoryObjectsCount } from "@/entities/repository/domain/get-repository-objects-count.query";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
