@@ -151,6 +151,7 @@ export const relationshipKindForForm: Array<RelationshipKind> = ["Attribute", "P
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
 
 export const TASK_TAB = "tasks";
+export const REPOSITORY_OBJECTS_TAB = "repository_objects";
 
 export const SEARCH_QUERY_NAME = "InfrahubSearchAnywhere";
 

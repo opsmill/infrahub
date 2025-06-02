@@ -1,4 +1,10 @@
-import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
+import {
+  DEFAULT_BRANCH_NAME,
+  GENERIC_REPOSITORY_KIND,
+  MENU_EXCLUDELIST,
+  TASK_TAB,
+  TASK_TARGET,
+} from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -11,6 +17,7 @@ import {
   ObjectDetailsTab,
   ObjectTaskTab,
   RelationshipTab,
+  RepositoryObjectsTab,
 } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
@@ -68,6 +75,8 @@ export default function ObjectItemDetails({
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [genericList] = useAtom(genericSchemasAtom);
   const isTaskTarget = !isGenericSchema(schema) && !!schema.inherit_from?.includes(TASK_TARGET);
+  const isRepository =
+    !isGenericSchema(schema) && !!schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND);
 
   const refetchRef = useRef(null);
 
@@ -118,6 +127,7 @@ export default function ObjectItemDetails({
             })}
 
             {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id as string} />}
+            {isRepository && <RepositoryObjectsTab objectId={objectDetailsData.id as string} />}
           </div>
           <ActionButtons
             schema={schema}
