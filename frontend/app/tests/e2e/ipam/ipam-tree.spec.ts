@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe.fixme("/ipam - Ipam Tree", () => {
+test.describe("/ipam - Ipam Tree", () => {
   test("load child tree item when clicking on parent tree item", async ({ page }) => {
     await page.goto("/ipam");
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
@@ -45,18 +45,7 @@ test.describe.fixme("/ipam - Ipam Tree", () => {
     await page.goto("/ipam");
 
     await page.getByTestId("ipam-tree").getByRole("link", { name: "10.0.0.0/8" }).click();
-    await expect(page.getByText("Ipam IP Prefix summary")).toBeVisible();
-    await expect(page.getByText("Prefix10.0.0.0/8")).toBeVisible();
-    expect(page.url()).toContain("/ipam/prefixes/");
-  });
-
-  test("verify tree count", async ({ page }) => {
-    await page.goto("/ipam/prefixes/");
-    await expect(page.getByRole("link", { name: "/8 21" })).toBeVisible();
-    await page.getByRole("treeitem", { name: "/8 21" }).getByTestId("tree-item-toggle").click();
-    await expect(page.getByRole("link", { name: "/16 16" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "10.0.0.0/16" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "10.2.0.0/" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "10.0.0.0/8" })).toBeVisible();
   });
 
   test.describe("IPAM search", () => {

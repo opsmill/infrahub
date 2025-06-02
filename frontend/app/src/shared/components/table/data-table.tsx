@@ -55,7 +55,7 @@ export function DataTable<T extends NodeObject>({
   const allRows = table.getRowModel().rows;
   const style = React.useMemo<React.CSSProperties>(
     () => ({
-      gridTemplateColumns: `repeat(${allHeaders.length - 1}, minmax(auto, 1fr)) 2.5rem`,
+      gridTemplateColumns: `repeat(${allHeaders.length - 2}, auto) 1fr 2.5rem`,
     }),
     [allHeaders.length]
   );

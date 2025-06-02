@@ -7,7 +7,7 @@ import { TableCell } from "@/shared/components/table/table-cell";
 export interface TableIdentifierCellProps {
   objectKind: string;
   objectId: string;
-  label: string;
+  label: React.ReactNode;
   isSelected?: boolean;
   onSelectionChange?: (isSelected: boolean) => void;
 }
@@ -21,7 +21,7 @@ export function TableIdentifierCell({
 }: TableIdentifierCellProps) {
   const { isAuthenticated } = useAuth();
   return (
-    <TableCell className="sticky left-0 bg-white" data-testid="identifier-cell">
+    <TableCell className="sticky left-0 bg-white z-1" data-testid="identifier-cell">
       {isAuthenticated && (
         <Checkbox
           isSelected={isSelected}

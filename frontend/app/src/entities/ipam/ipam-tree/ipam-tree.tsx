@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { GET_PREFIXES_ONLY } from "@/entities/ipam/api/prefixes";
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IPAM_ROUTE, TREE_ROOT_ID } from "@/entities/ipam/constants";
-import { useCurrentIpNamespace } from "@/entities/ipam/namespaces/ui/ip-namespace-provider";
+import { TREE_ROOT_ID } from "@/entities/ipam/constants";
+import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
+import { GET_PREFIXES_ONLY } from "@/entities/ipam/ipam-tree/api/prefixes";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
@@ -24,7 +24,7 @@ import {
 } from "./utils";
 
 export default function IpamTree({ className }: { className?: string }) {
-  const { prefix } = useParams();
+  const { objectId: prefix } = useParams();
   const { currentIpNamespace } = useCurrentIpNamespace();
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export default function IpamTree({ className }: { className?: string }) {
 
   useEffect(() => {
     setLoading(true);
-    reloadIpamTree(currentIpNamespace.id, prefix).then((newTree) => {
+    reloadIpamTree(prefix).then((newTree) => {
       if (prefix) {
         const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
         setExpandedIds(ancestorIds);
@@ -64,7 +64,7 @@ export default function IpamTree({ className }: { className?: string }) {
     const value = e.target.value as string;
 
     if (value === "") {
-      return reloadIpamTree(currentIpNamespace.id, prefix).then((newTree) => {
+      return reloadIpamTree(prefix).then((newTree) => {
         if (prefix) {
           const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
           setExpandedIds(ancestorIds);
@@ -93,7 +93,8 @@ export default function IpamTree({ className }: { className?: string }) {
   return (
     <>
       <SearchInput
-        containerClassName="mb-2"
+        containerClassName="p-1"
+        className="border-transparent"
         placeholder="Filter..."
         onChange={debouncedHandleSearch}
       />
@@ -108,7 +109,7 @@ export default function IpamTree({ className }: { className?: string }) {
         onNodeSelect={({ element, isSelected }) => {
           if (!isSelected) return;
 
-          const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+          const url = getObjectDetailsUrl(element.metadata?.kind as string, element.id.toString());
           navigate(url);
         }}
         className={className}
@@ -123,7 +124,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericSchemasAtom);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
+  const url = getObjectDetailsUrl(element.metadata?.kind as string, element.id.toString());
 
   return (
     <Link
