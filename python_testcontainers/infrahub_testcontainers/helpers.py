@@ -62,7 +62,7 @@ class TestInfrahubDocker:
 
     @pytest.fixture(scope="class")
     def deployment_type(self, request: pytest.FixtureRequest) -> str | None:
-        return request.config.getoption("infrahub_deployment_type")
+        return request.config.getoption(name="infrahub_deployment_type", default=None)
 
     @pytest.fixture(scope="class")
     def infrahub_compose(
