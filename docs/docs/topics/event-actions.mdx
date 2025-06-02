@@ -1,46 +1,72 @@
 ---
-title: Event rules and actions
+title: Event Rules and Actions
 ---
 
-The event framework let's you match against [events](/topics/events) as they occur within Infrahub and define filter conditions to match against specific occurrences and then trigger an action. By creating multiple rules and actions you can chain a workflow together.
+The event framework allows you to respond to [events](/topics/events) as they occur within Infrahub by defining filter conditions and triggering actions.
+By creating multiple rules and actions, you can build automated workflows.
 
-An example of what this might look like:
+## How it works
 
-1. Node trigger rule
-    * Match against `infrahub.node.updated` events that looks at devices being updated and the `description` attribute is changed to "active"
-    * Run the group action that adds the device to the "active-devices" group
-2. Group trigger rule
-    * Match against `infrahub.group.member_added` events where the "active-devices" group has a new member
-    * Trigger a run of a generator definition targeting the new member
+1. **Define trigger rules** that match specific events
+2. **Set filter conditions** to narrow down which events should trigger actions
+3. **Configure actions** to execute when conditions are met
 
-Another example:
+## Example workflows
 
-1. Node trigger rule
-    * Match against `infrahub.node.updated` events that looks at devices being updated and the `description` attribute is changed from "active"
-    * Run the group action that removes the device to the "active-devices" group
+### Adding devices to active group
 
-## Trigger rules and filters
+```mermaid
+graph LR
+    A[Device Updated] --> B{status = "active"?}
+    B -->|Yes| C[Add to active-devices group]
+    C --> D[Group member added event]
+    D --> E[Run generator for new member]
+```
 
-A trigger rule is a node kind that inherits from the `CoreTriggerRule` generic and is what sets up the match against an event type. In the current version two such nodes exist in the schema.
+1. **Node trigger rule**
+   * Matches `infrahub.node.updated` events when a device's `status` changes to "active"
+   * Executes a group action to add the device to the "active-devices" group
 
-* CoreNodeTriggerRule: Filters on mutations done against a specific node. Combined with one or more match statements you can filter against a change to a specific attribute or relationship on the node.
-* CoreGroupTriggerRule: Filters on changes to a specific group. Allows you to filter against members being added or removed from the group.
+2. **Group trigger rule**
+   * Matches `infrahub.group.member_added` events for the "active-devices" group
+   * Runs a generator definition targeting the newly added member
 
-### Node trigger rules
+### Removing devices from active group
 
-When setting up a node trigger rule you will select the kind of node you want to match against. If you don't specify any other matching conditions it will match against any type of modification done against that node, i.e. any attribute or relationship. In order to add additional constraints you can create a match filter that matches against attributes or relationships.
+```mermaid
+graph LR
+    A[Device Updated] --> B{status changed from "active"?}
+    B -->|Yes| C[Remove from active-devices group]
+```
 
-When you know you want to match against a specific set of attributes or relationships it's recommended to set the trigger to inactive until all of the match conditions have been configured.
+## Trigger rules
 
-:::info Activation of trigger rules
+Trigger rules are nodes that inherit from the `CoreTriggerRule` generic and match against specific event types:
 
-* The trigger needs to be marked as active before it starts to filter on events. You can prepare a rule and only mark it as active once you've created all of the match statements that you need.
+| Rule Type | Description | Use Case |
+|-----------|-------------|----------|
+| `CoreNodeTriggerRule` | Filters on mutations to specific nodes | Match changes to attributes or relationships |
+| `CoreGroupTriggerRule` | Filters on changes to specific groups | Match when members are added or removed |
 
+### Configuring node trigger rule
+
+When setting up a node trigger rule:
+
+1. Select the node kind to match against
+2. Create match filters for specific attributes or relationships
+3. Set the trigger to active when configuration is complete
+
+:::success Best Practice
+The trigger needs to be marked as active before it starts to filter on events
+
+Keep the trigger inactive until you've configured all match conditions to prevent premature execution.
 :::
 
 ## Actions
 
-An action is a node kind that inherits from the `CoreAction` generic. In the current version two such nodes exist in the schema.
+Actions are nodes that inherit from the `CoreAction` generic:
 
-* CoreGeneratorAction: Run a generator definition with the impacted objects as input
-* CoreGroupAction: Add or remove a member from a group.
+| Action Type | Description | Effect |
+|-------------|-------------|--------|
+| `CoreGeneratorAction` | Runs a generator definition | Uses impacted objects as input |
+| `CoreGroupAction` | Modifies group membership | Adds or removes members from a group |
