@@ -8,10 +8,12 @@ import { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { LinkTab } from "@/shared/components/ui/link";
+import { Icon } from "@iconify-icon/react";
 import { IdCardIcon } from "lucide-react";
 import { Outlet, useParams } from "react-router";
 
@@ -34,7 +36,12 @@ function IpamDetailsLayout({ objectSchema, objectId, permission }: IpamDetailsPa
 
   return (
     <Col className="gap-0 overflow-hidden">
-      <Row className="p-2">
+      <Row className="text-xs py-2 px-2.5 gap-1.5 text-custom-blue-800">
+        <Icon icon={getSchemaIcon(objectSchema)} />
+        {objectSchema.label}
+      </Row>
+
+      <Row className="px-2">
         <h2 className="font-semibold text-lg justify-between">{getNodeLabel(data)}</h2>
 
         <ObjectDetailsMenu objectSchema={objectSchema} objectData={data} permission={permission} />

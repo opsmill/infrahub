@@ -35,7 +35,7 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
   }, [namespaceList, namespaceQSP]);
 
   if (isPending) {
-    return <LoadingIndicator className="w-full h-full" message="Loading IP namespaces..." />;
+    return <LoadingIndicator className="h-full" message="Loading IP namespaces..." />;
   }
 
   if (error) {

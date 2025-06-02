@@ -35,14 +35,14 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           data-testid="namespace-select"
           className={classNames(
             focusVisibleStyle,
-            "flex flex-col w-full rounded-md p-1 m-1",
+            "flex flex-col w-full px-2 py-1",
             "border border-transparent",
             "hover:bg-gray-100"
           )}
         >
           <Row className="text-xs text-gray-600">IP Namespace</Row>
           <Row className="text-sm">
-            {getNodeLabel(currentIpNamespace)}
+            <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
             <ChevronsUpDownIcon className="ml-auto text-gray-600 size-3.5" />
           </Row>
         </AriaButton>

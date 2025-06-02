@@ -10,15 +10,17 @@ import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { ChevronRightIcon, HouseIcon } from "lucide-react";
+import React from "react";
 import { Link, LinkProps, useParams } from "react-router";
 
 function BreadcrumbError({ error }: { error: Error }) {
   console.error("IPAM Breadcrumb Error:", error);
 
   return (
-    <div className="text-red-500 text-sm flex items-center gap-1">
+    <div className="text-red-500 text-sm flex items-center">
       <IpamBreadcrumbSeparator />
       <span>Error loading breadcrumb</span>
     </div>
@@ -42,6 +44,8 @@ function IpamBreadcrumbLink({ className, ...props }: LinkProps) {
   return (
     <Link
       className={classNames(
+        focusVisibleStyle,
+        "border border-transparent p-1 rounded-md",
         "hover:text-neutral-600 last:font-medium last:text-neutral-600",
         className
       )}
@@ -50,11 +54,14 @@ function IpamBreadcrumbLink({ className, ...props }: LinkProps) {
   );
 }
 
-export function IpamBreadcrumb() {
+export interface IpamBreadcrumbProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export function IpamBreadcrumb({ className, ...props }: IpamBreadcrumbProps) {
   return (
     <nav
-      className="text-neutral-400 text-sm flex items-center gap-1 h-9"
+      className={classNames("text-neutral-400 text-sm flex items-center", className)}
       aria-label="IPAM navigation breadcrumb"
+      {...props}
     >
       <IpamBreadcrumbLink to={constructPathForIpam("/ipam")} aria-label="Navigate to IPAM home">
         <HouseIcon className="size-4" />

@@ -25,7 +25,8 @@ export function LinkTab({ href, className, ...props }: LinkTabProps) {
     <RouterLink
       to={href}
       className={classNames(
-        "transition-all px-3 py-2 border-b-2 border-transparent inline-flex items-center gap-2 text-sm truncate h-10",
+        "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
+        "px-3 py-2 border-b-2 border-transparent inline-flex items-center gap-2 text-sm truncate h-11",
         isTabActive && "border-custom-blue-600"
       )}
       {...props}
