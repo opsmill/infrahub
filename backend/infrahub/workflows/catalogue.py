@@ -242,6 +242,14 @@ BRANCH_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_MERGED = WorkflowDefinition(
+    name="branch-merged",
+    type=WorkflowType.CORE,
+    module="infrahub.branch.tasks",
+    function="branch_merged",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     name="branch-merge-post-process",
     type=WorkflowType.CORE,
@@ -249,7 +257,6 @@ BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     function="post_process_branch_merge",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
-
 
 BRANCH_MERGE_MUTATION = WorkflowDefinition(
     name="merge-branch-mutation",
@@ -498,11 +505,27 @@ GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
     function="run_check_merge_conflicts",
 )
 
+SCHEMA_UPDATED = WorkflowDefinition(
+    name="schema-updated",
+    type=WorkflowType.CORE,
+    module="infrahub.schema.tasks",
+    function="schema_updated",
+)
+
+
 TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
     name="trigger-configure-all",
     type=WorkflowType.CORE,
     module="infrahub.trigger.tasks",
     function="trigger_configure_all",
+)
+
+
+VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
+    name="validate-schema-number-pools",
+    type=WorkflowType.CORE,
+    module="infrahub.pools.tasks",
+    function="validate_schema_number_pools",
 )
 
 
@@ -517,6 +540,7 @@ workflows = [
     BRANCH_CREATE,
     BRANCH_DELETE,
     BRANCH_MERGE,
+    BRANCH_MERGED,
     BRANCH_MERGE_MUTATION,
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
@@ -564,6 +588,7 @@ workflows = [
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
     RUN_GENERATOR_AS_CHECK,
     SCHEMA_APPLY_MIGRATION,
+    SCHEMA_UPDATED,
     SCHEMA_VALIDATE_MIGRATION,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
@@ -572,6 +597,7 @@ workflows = [
     TRIGGER_GENERATOR_DEFINITION_RUN,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+    VALIDATE_SCHEMA_NUMBER_POOLS,
     WEBHOOK_CONFIGURE_ALL,
     WEBHOOK_CONFIGURE_ONE,
     WEBHOOK_DELETE_AUTOMATION,
