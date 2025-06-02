@@ -9,6 +9,7 @@ export function isRelationshipVisibleInDetailedView(
       return true;
     }
     case "Component":
+    case "Generic":
     case "Hierarchy": {
       return relationshipSchema.cardinality === "one";
     }

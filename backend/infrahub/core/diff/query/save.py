@@ -78,6 +78,7 @@ class EnrichedNodeBatchCreateQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = self._build_node_batch_params()
+
         query = """
 UNWIND $node_details_list AS node_details
 WITH
