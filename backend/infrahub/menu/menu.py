@@ -256,7 +256,7 @@ default_menu = [
                 order_weight=6000,
                 children=[
                     MenuItemDefinition(
-                        namespace="Core",
+                        namespace="Builtin",
                         name="TriggerRule",
                         label="Rules",
                         kind=InfrahubKind.TRIGGERRULE,
@@ -266,7 +266,7 @@ default_menu = [
                         order_weight=1000,
                     ),
                     MenuItemDefinition(
-                        namespace="Core",
+                        namespace="Builtin",
                         name="Action",
                         label="Actions",
                         kind=InfrahubKind.ACTION,
