@@ -51,7 +51,7 @@ export const getIpPrefixTableColumns = (
             label={
               <>
                 {[...Array(ancestors)].map((_, i) => (
-                  <div className="bg-current size-1 rounded-full mr-2.5" key={i} />
+                  <div className="bg-custom-blue-600/40 size-1 rounded-full mr-2.5" key={i} />
                 ))}
                 {value}
               </>
