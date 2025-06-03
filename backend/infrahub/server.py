@@ -33,12 +33,11 @@ from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import set_component_type
+from infrahub.workers.dependencies import get_message_bus, set_component_type
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -68,9 +67,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     )
     component_type = ComponentType.API_SERVER
     set_component_type(component_type=component_type)
-    message_bus = config.OVERRIDE.message_bus or await InfrahubMessageBus.new_from_driver(
-        component_type=component_type, driver=config.SETTINGS.broker.driver
-    )
+    message_bus = await get_message_bus()
 
     cache = config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
     service = await InfrahubServices.new(
