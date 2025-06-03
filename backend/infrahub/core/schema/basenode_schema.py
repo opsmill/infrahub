@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema
@@ -491,20 +491,25 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
 
-    def _update_element_names(
-        self, element_list: list[str] | None, name_update_map: dict[str, str]
+    def _update_element_list(
+        self, element_list: list[str] | None, name_update_map: dict[str, str], deleted_field_names: set[str]
     ) -> list[str] | None:
         if not element_list:
             return element_list
         updated_element_list = []
-        for element in element_list:
-            current_schema_path = self.parse_schema_path(path=element)
-            current_field_name = current_schema_path.field_name
-            if not current_field_name or current_field_name not in name_update_map:
-                updated_element_list.append(element)
+        for element_path in element_list:
+            split_path = element_path.split("__", 1)
+            current_field_name = split_path[0]
+            if current_field_name in deleted_field_names:
                 continue
-            new_field_name = name_update_map[current_field_name]
-            new_element_str = current_schema_path.to_string(field_name_override=new_field_name)
+            the_rest = split_path[1] if len(split_path) > 1 else None
+            new_field_name = name_update_map.get(current_field_name)
+            if not new_field_name:
+                updated_element_list.append(element_path)
+                continue
+            new_element_str = new_field_name
+            if the_rest:
+                new_element_str += f"__{the_rest}"
             updated_element_list.append(new_element_str)
         return updated_element_list
 
@@ -513,12 +518,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not any(p for p in properties_to_update):
             return
 
+        deleted_names: set[str] = set()
         chronological_names = defaultdict(list)
         for field in self.attributes + self.relationships:
             if not field.id:
                 continue
             chronological_names[field.id].append(field.name)
         for field in other.attributes + other.relationships:
+            if field.state is HashableModelState.ABSENT:
+                deleted_names.add(field.name)
             if not field.id:
                 continue
             chronological_names[field.id].append(field.name)
@@ -527,20 +535,24 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if self.uniqueness_constraints:
             updated_constraints = []
             for constraint in self.uniqueness_constraints:
-                updated_constraint = self._update_element_names(element_list=constraint, name_update_map=field_name_map)
+                updated_constraint = self._update_element_list(
+                    element_list=constraint, name_update_map=field_name_map, deleted_field_names=deleted_names
+                )
                 if updated_constraint:
                     updated_constraints.append(updated_constraint)
             self.uniqueness_constraints = updated_constraints
         if self.human_friendly_id:
-            self.human_friendly_id = self._update_element_names(
-                element_list=self.human_friendly_id, name_update_map=field_name_map
+            self.human_friendly_id = self._update_element_list(
+                element_list=self.human_friendly_id, name_update_map=field_name_map, deleted_field_names=deleted_names
             )
         if self.display_labels:
-            self.display_labels = self._update_element_names(
-                element_list=self.display_labels, name_update_map=field_name_map
+            self.display_labels = self._update_element_list(
+                element_list=self.display_labels, name_update_map=field_name_map, deleted_field_names=deleted_names
             )
         if self.order_by:
-            self.order_by = self._update_element_names(element_list=self.order_by, name_update_map=field_name_map)
+            self.order_by = self._update_element_list(
+                element_list=self.order_by, name_update_map=field_name_map, deleted_field_names=deleted_names
+            )
 
     def update(self, other: HashableModel) -> Self:
         if isinstance(other, BaseNodeSchema):
