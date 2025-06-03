@@ -956,3 +956,84 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
 
     assert delete_fail.errors
     assert "Unable to delete number pool SnowTask.number is in use (branches: main)" in str(delete_fail.errors)
+
+
+async def test_update_schema_number_pool_range(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
+    number_pool_attribute = node_schema.get_attribute(name="number")
+    assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    query_before_creation = await graphql(
+        schema=gql_params.schema,
+        source=QUERY_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": number_pool_attribute.parameters.number_pool_id,
+        },
+    )
+
+    assert not query_before_creation.errors
+    assert query_before_creation.data
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
+
+    create_snow_incident_mutation = """
+    mutation CreateSnowIncident(
+        $title: String!,
+    ) {
+    SnowIncidentCreate(
+        data: {
+        title: {value: $title},
+        }
+    ) {
+        object {
+            title {
+                value
+            }
+            number {
+                value
+                source {
+                    id
+                }
+            }
+            identifier {
+                value
+            }
+        }
+      }
+    }
+    """
+
+    create_snow_incident = await graphql(
+        schema=gql_params.schema,
+        source=create_snow_incident_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "title": "Printer is saying PC load Letter",
+        },
+    )
+    assert not create_snow_incident.errors
+    assert create_snow_incident.data
+
+    update_forbidden = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": number_pool_attribute.parameters.number_pool_id,
+            "start_range": 1,
+            "end_range": 10,
+        },
+    )
+
+    assert update_forbidden.errors
+    assert (
+        "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+        in str(update_forbidden.errors)
+    )
