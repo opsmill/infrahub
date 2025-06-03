@@ -1,4 +1,3 @@
-import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { ObjectDetailsTab, TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
@@ -17,7 +16,7 @@ export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
 
   return (
     <ObjectDetailsTab
-      isActive={qspTab === TASK_TAB}
+      isActive={qspTab === REPOSITORY_OBJECTS_TAB}
       to={constructPath(pathname, [{ name: QSP.TAB, value: REPOSITORY_OBJECTS_TAB }])}
       {...props}
     >
