@@ -23,7 +23,10 @@ Example schemas can be found:
 - In other OpsMill-provided [demo repositories](https://github.com/opsmill?q=demo&type=all&language=&sort=)
 - Via the Infrahub community
 
-The schema definitional YAML file can be stored in any file storage, however storage in a Git repository would be best practice. The schema can be loaded in to Infrahub via [`infrahubctl load`]($(base_url)infrahubctl/infrahubctl-load) command or via REST API. Swagger documentation for the REST API can be viewed by clicking the `{...}` Swagger Documentation icon in the bottom-left of the Frontend UI of Infrahub.
+The schema can be loaded in to Infrahub using one of these two methods:
+
+- Using [`infrahubctl schema load`]($(base_url)infrahubctl/infrahubctl-load) command - This is recommended way for development or quick testing purposes.
+- Using Infrahub Git integration - This is the recommended way for production deployments as it offers better version control and collaboration features.
 
 Once the schema is loaded, it's stored and version controlled in the graph database, and distributed to all containers acting as Infrahub API Servers.
 
@@ -63,17 +66,6 @@ Key aspects of generators include:
 
 8. Extensibility: Advanced users can create custom generators to suit their organization's specific needs.
 
-### Design-driven automation
-
-Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../topics/schema.mdx) and instantiated by a generator.
-
-Downstream objects are linked to the generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
-
-:::success Examples
-
-- Want to read how Generators can be used to create a service catalog? See our blog post on [How to Turn Your Source of Truth into a Service Factory](https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/).
-:::
-
 <ReferenceLink title="Learn more about generator" url="../topics/generator" />
 
 ## Version control
@@ -110,19 +102,44 @@ Infrahub supports CI processes by running checks on proposed changes during the 
 
 Those concepts are tightly integrated and work together to cover any use cases in the infrastructure management space.
 
-For example:
+### Design-driven automation / Service Catalog
 
-- A new service needs to be deployed:
+Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../topics/schema.mdx) and instantiated by a generator.
+
+Downstream objects are linked to the generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
+
+Taking the example of a new service that needs to be deployed:
     - A branch is created to stage the changes
     - A generator runs and creates the needed objects according to the business logic
     - A transformation runs to create the needed configuration files
     - The changes are reviewed and eventually merged in a proposed change
 
-- A new attribute for device objects is needed:
-    - A branch is created to stage the changes
-    - The schema is updated and loaded in the branch
-    - [optional] Transformations/generators are updated to use the new attribute
-    - Data for the new attribute is populated in the branch
-    - The changes are reviewed and eventually merged in a proposed change
+:::success
 
-Any changes can be developed in parrallel and reviewed/merged when ready. This allows for a very flexible and agile way of working, where changes can be made quickly without holding back your production flow!
+- This sets robust data structure that will allow lifecycle management of the service, including updates, decommissioning, and more.
+- Capturing the business logic in the generator allows consistent and repeatable deployments, reducing the risk of human error.
+
+:::
+
+<ReferenceLink title="Want to read how Infrahub can be used to create a service catalog?" url="https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/" />
+
+### Agility in infrastructure management
+
+Some changes in the infrastructure can be complex and require careful planning and testing. Infrahub's version control capabilities allow for these changes to be staged and tested in isolation before being applied to the production environment.
+
+Taking the example of a large network software upgrade:
+    - A branch is created to stage the changes
+    - Any change to the schema could be made in the branch, such as adding a new attribute
+    - Transformations and templates are updated to use the new attribute
+    - Data is populated in the branch
+    - Artifacts are generated to reflect the new state of the infrastructure
+    - Tests are run to ensure the changes work as expected
+    - The changes are collaboratly reviewed in a proposed changed
+    - During the maintenance window the branch is merged and the changes are applied to the production environment
+
+:::success
+
+- Branching allows for complex changes to be prepared in advance without holding back your production, reducing the risk of downtime or errors.
+- The proposed change process enables collaboration and review, while the integrated CI pipeline ensures that changes are tested and artifacts are generated.
+
+:::
