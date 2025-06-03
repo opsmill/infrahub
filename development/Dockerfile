@@ -2,6 +2,7 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.12
+ARG POETRY_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED 1
@@ -24,13 +25,15 @@ RUN apt-get update && \
     tee /etc/apt/sources.list.d/docker.list > /dev/null && \
     apt-get update && \
     apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
-    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - && \
+    curl -sSL https://install.python-poetry.org | POETRY_VERSION=$POETRY_VER python3 - && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 RUN poetry config virtualenvs.create false
+# Poetry 2.1 workaround
+ENV POETRY_VIRTUALENVS_CREATE=false
 
 # ****************************************************************
 # STAGE : Frontend

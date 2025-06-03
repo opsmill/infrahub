@@ -1,11 +1,11 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.2.11"
+version = "1.2.12"
 requires-python = ">=3.9"
 
 [tool.poetry]
 name = "infrahub-testcontainers"
-version = "1.2.11"
+version = "1.2.12"
 description = "Testcontainers instance for Infrahub to easily build integration tests"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -23,10 +23,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/haproxy.cfg", "infrahub_testcontainers/prometheus.yml"]
+include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/docker-compose-cluster.test.yml", "infrahub_testcontainers/haproxy.cfg", "infrahub_testcontainers/prometheus.yml"]
+
 
 [tool.setuptools.package-data]
-infrahub_testcontainers = ["docker-compose.test.yml", "haproxy.cfg", "prometheus.yml"]
+infrahub_testcontainers = ["docker-compose.test.yml", "docker-compose-cluster.test.yml", "haproxy.cfg", "prometheus.yml"]
 
 [tool.poetry.plugins."pytest11"]
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"

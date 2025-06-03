@@ -30,7 +30,9 @@ env:
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
 
 jobs:
-   # ------------------------------------------ Check Files Changes  ------------------------------------------
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
+  # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
     runs-on: ubuntu-latest
@@ -61,7 +63,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
 
- # ------------------------------------------ All Linter  ------------------------------------------
+  # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -160,7 +162,7 @@ jobs:
 
   infrahub-testcontainers-check:
     if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
-    needs: ["files-changed"]
+    needs: ["prepare-environment", "files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -176,7 +178,7 @@ jobs:
 
       - name: "Setup Python environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
 
@@ -403,13 +405,14 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.testcontainers == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
+      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -508,7 +511,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -521,7 +524,7 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
           pip install invoke toml
@@ -624,7 +627,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -638,7 +641,7 @@ jobs:
           python-version: "3.12"
       - name: "Setup Python environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
       - name: "Install dependencies"
@@ -704,6 +707,7 @@ jobs:
       run:
         working-directory: ./frontend/app
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -723,6 +727,7 @@ jobs:
           - name: E2E-testing-playwright
             env:
               INFRAHUB_DB_TYPE: neo4j
+              POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           # - name: E2E-testing-playwright-nats
           #   env:
           #     INFRAHUB_DB_TYPE: neo4j
