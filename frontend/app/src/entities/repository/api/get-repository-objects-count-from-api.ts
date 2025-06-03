@@ -17,14 +17,14 @@ query REPOSITORY_OBJECTS_COUNT($nodeIds: [ID]){
 }
 `;
 
-export interface GetTaskCountFromApiParams extends BranchContextParams {
+export interface GetRepositoryObjectsCountFromApiParams extends BranchContextParams {
   nodeIds: Array<string>;
 }
 
 export function getRepositoryObjectsCountFromApi({
   nodeIds,
   branchName,
-}: GetTaskCountFromApiParams) {
+}: GetRepositoryObjectsCountFromApiParams) {
   return graphqlClient.query({
     query: REPOSITORY_OBJECTS_COUNT,
     variables: {
