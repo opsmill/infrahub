@@ -6,10 +6,10 @@ import TabItem from '@theme/TabItem';
 <Tabs>
 {%- for kind, params in kinds.items() | sort %}
 <TabItem value="{{ kind }}">
-| Parameter | Default | Required |
-| --------- | ------- | -------- |
+| Parameter | Default |
+| --------- | ------- |
 {%   for name, info in params.items() -%}
-| {{ name }} | {{ info.default | default(False) }} | {{ info.required | default(False) }} |
+| {{ name }} | {{ info.default | default(False) }} |
 {%   endfor -%}
 </TabItem>
 {%- endfor %}
