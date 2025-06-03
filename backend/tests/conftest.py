@@ -65,6 +65,8 @@ from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_p
 ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
+pytest.register_assert_rewrite("tests.db_snapshot")
+
 
 def pytest_addoption(parser):
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
