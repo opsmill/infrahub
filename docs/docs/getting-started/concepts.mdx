@@ -23,14 +23,14 @@ Example schemas can be found:
 - In other OpsMill-provided [demo repositories](https://github.com/opsmill?q=demo&type=all&language=&sort=)
 - Via the Infrahub community
 
-The schema can be loaded in to Infrahub using one of these two methods:
+The schema can be loaded into Infrahub using one of these two methods:
 
-- Using [`infrahubctl schema load`]($(base_url)infrahubctl/infrahubctl-load) command - This is recommended way for development or quick testing purposes.
+- Using [`infrahubctl schema load`]($(base_url)infrahubctl/infrahubctl-load) command - This is the recommended way for development or quick testing purposes.
 - Using Infrahub Git integration - This is the recommended way for production deployments as it offers better version control and collaboration features.
 
 Once the schema is loaded, it's stored and version controlled in the graph database, and distributed to all containers acting as Infrahub API Servers.
 
-Changes to the schema can be done at any time, and it's best practice to make schema changes in a branch to allow for testing before implementation.
+Changes to the schema can be made at any time, and it's best practice to make schema changes in a branch to allow for testing before implementation.
 
 <ReferenceLink title="Learn more about schema" url="../topics/schema" />
 
@@ -100,7 +100,7 @@ Infrahub supports CI processes by running checks on proposed changes during the 
 
 ## Conclusion
 
-Those concepts are tightly integrated and work together to cover any use cases in the infrastructure management space.
+These concepts are tightly integrated and work together to address a wide range of use cases in infrastructure management.
 
 ### Design-driven automation / Service Catalog
 
@@ -108,7 +108,7 @@ Having a flexible schema opens up new possibilities not previously available. In
 
 Downstream objects are linked to the generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
 
-Taking the example of a new service that needs to be deployed:
+For example, when deploying a new service:
     - A branch is created to stage the changes
     - A generator runs and creates the needed objects according to the business logic
     - A transformation runs to create the needed configuration files
@@ -116,8 +116,8 @@ Taking the example of a new service that needs to be deployed:
 
 :::success
 
-- This sets robust data structure that will allow lifecycle management of the service, including updates, decommissioning, and more.
-- Capturing the business logic in the generator allows consistent and repeatable deployments, reducing the risk of human error.
+- This sets up a robust data structure that will allow lifecycle management of the service, including updates, decommissioning, and more.
+- Capturing business logic in the generator enables consistent and repeatable deployments, reducing the risk of human error.
 
 :::
 
@@ -127,15 +127,15 @@ Taking the example of a new service that needs to be deployed:
 
 Some changes in the infrastructure can be complex and require careful planning and testing. Infrahub's version control capabilities allow for these changes to be staged and tested in isolation before being applied to the production environment.
 
-Taking the example of a large network software upgrade:
+For example, during a large network software upgrade:
     - A branch is created to stage the changes
-    - Any change to the schema could be made in the branch, such as adding a new attribute
+    - Any changes to the schema can be made in the branch, such as adding a new attribute
     - Transformations and templates are updated to use the new attribute
     - Data is populated in the branch
     - Artifacts are generated to reflect the new state of the infrastructure
     - Tests are run to ensure the changes work as expected
-    - The changes are collaboratly reviewed in a proposed changed
-    - During the maintenance window the branch is merged and the changes are applied to the production environment
+    - The changes are collaboratively reviewed in a proposed change
+    - During the maintenance window, the branch is merged and the changes are applied to the production environment
 
 :::success
 

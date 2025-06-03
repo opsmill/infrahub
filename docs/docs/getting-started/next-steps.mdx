@@ -3,7 +3,7 @@ title: Next Steps
 ---
 import ReferenceLink from "../../src/components/Card";
 
-You know more about the project now. On this page, we'll guide you through the key steps to run and develop your own instance of Infrahub.
+Now that you know more about the project, this page will guide you through the key steps to run and develop your own instance of Infrahub.
 
 ## 1. Installation
 
@@ -21,7 +21,7 @@ Make sure your machine meets the hardware requirements for running Infrahub. Fin
 
 <ReferenceLink title="Infrahub Installation Guide" url="../guides/installation"/>
 
-Additionally, you might want to install the Infrahub CLI tool on your laptop. This comes as a python package and provides a command-line interface to interact with your Infrahub instance. The CLI is useful for loading data, managing schemas, and performing other administrative tasks.
+Additionally, you might want to install the Infrahub CLI tool on your laptop. This is a Python package that provides a command-line interface to interact with your Infrahub instance. The CLI is useful for loading data, managing schemas, and performing other administrative tasks.
 
 <ReferenceLink title="Infrahub CTL Installation Guide" url="$(base_url)python-sdk/guides/installation#all"/>
 
@@ -29,7 +29,7 @@ Additionally, you might want to install the Infrahub CLI tool on your laptop. Th
 
 Everything starts with data. The schema defines the shape of your data and drives the rest of the system.
 
-Starting from a blank page might feel overwhelming, also some parts are quite common in many organizations, so why reinvent the wheel? To address this challenge OpsMill and the community are sharing and maintaining a collection of schema in the **Schema Library**.
+Starting from a blank page might feel overwhelming, also some parts are quite common in many organizations, so why reinvent the wheel? To address this challenge OpsMill and the community are sharing and maintaining a collection of schema in the [**Schema Library**](https://github.com/opsmill/schema-library).
 
 This is the perfect starting point to quickly scaffold a schema that will cover the common parts of your infrastructure data. You can also reference it to craft your own custom schema!
 
@@ -39,7 +39,7 @@ This is the perfect starting point to quickly scaffold a schema that will cover 
 
 With a schema in place, it's time to bring in some data. If you have existing systems that hold your infrastructure data, we provide you the tool to sync them with Infrahub.
 
-At the moment **Infrahub Sync** supports the following adapters:
+At the moment [**Infrahub Sync**](https://github.com/opsmill/infrahub-sync) supports the following adapters:
 - Ip Fabric
 - LibreNMS
 - Nautobot
@@ -75,7 +75,7 @@ infrahubctl object load city_data.yml
 
 ## 4. Initialize a git repository
 
-The git repository will be used to store any file needed to capture the intended state of your infrastructure, such as the schema, templates, python scripts...
+The git repository will be used to store any files needed to capture the intended state of your infrastructure, such as the schema, templates, Python scripts, etc.
 
 Infrahub offers a native integration with git, allowing you to connect your repository and consume the files to run data transformations, generators, and more.
 
@@ -101,10 +101,10 @@ At this point, you have a running Infrahub instance with a schema, some data loa
 :::
 
 From here, depending on your use case and goals, you can:
-- [**Create your own schema**](../guides/create-schema) - Extand the existing schema to fit your organization's needs.
+- [**Create your own schema**](../guides/create-schema) - Extend the existing schema to fit your organization's needs.
 - [**Generate artifacts**](../guides/artifact) - Use transformations to create meaningful files from your data such as startup configurations, documentation, cabling plans and more.
 - [**Build generators**](../guides/generator) - Automate the creation of infrastructure objects based on templates and user inputs.
-- [**Deploy artifacts to the field using Ansible**]($(base_url)ansible) - Push outputs to where they're needed and apply your intended state to your infrastructure. You can also use other tools like [Nornir]($(base_url)nornir) to deploy your artifacts.
+- [**Deploy artifacts to the field using Ansible**]($(base_url)ansible) - Deploy outputs where they're needed and apply your intended state to your infrastructure. You can also use other tools like [Nornir]($(base_url)nornir) to deploy your artifacts.
 
 If you need guidance with which feature to explore next or how to implement a specific use case, feel free to reach out to the community on our [Discord server](https://discord.gg/opsmill) or book a meeting with OpsMill.
 
