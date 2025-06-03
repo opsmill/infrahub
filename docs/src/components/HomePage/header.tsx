@@ -25,7 +25,7 @@ export default function HomepageHeader() {
                 <div className={styles.containerFlexWrap}>
                     <Link
                         className={clsx(styles.heroButton, "button button--primary button--lg")}
-                        to="https://www.google.com/"
+                        to="getting-started/quick-start"
                     >
                         {translate({
                             id: 'home.header.docs',
@@ -40,7 +40,7 @@ export default function HomepageHeader() {
                     >
                         {translate({
                             id: 'home.header.sandbox',
-                            message: 'Explore Live Demo',
+                            message: 'Infrahub Sandbox',
                         })}
                         <ArrowRightIcon />
                     </Link>
