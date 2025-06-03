@@ -16,12 +16,7 @@ import {
   getObjectAttributes,
   getObjectRelationships,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import {
-  ObjectDetailsTab,
-  ObjectTaskTab,
-  RelationshipTab,
-  RepositoryObjectsTab,
-} from "@/entities/nodes/object/ui/object-tabs";
+import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectTabManager } from "@/entities/nodes/relationships/ui/object-tab-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
@@ -29,9 +24,11 @@ import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.
 import { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
+import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";

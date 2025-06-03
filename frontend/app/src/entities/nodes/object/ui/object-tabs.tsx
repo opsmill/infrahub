@@ -1,10 +1,6 @@
-import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
-import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
-import { useGetRepositoryObjectsCount } from "@/entities/repository/domain/get-repository-objects-count.query";
 import { RelationshipSchema } from "@/entities/schema/types";
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -66,42 +62,4 @@ export function RelationshipTab({
 
 export interface TaskTabProps extends Omit<LinkProps, "to"> {
   objectId: string;
-}
-
-export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
-  const { isPending, data: taskCount } = useGetTaskCount({ nodeId: objectId });
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-
-  const { pathname } = useLocation();
-
-  return (
-    <ObjectDetailsTab
-      isActive={qspTab === TASK_TAB}
-      to={constructPath(pathname, [{ name: QSP.TAB, value: TASK_TAB }])}
-      {...props}
-    >
-      Tasks
-      {isPending && <Spinner />}
-      <Badge className="font-medium rounded-full text-gray-80">{taskCount}</Badge>
-    </ObjectDetailsTab>
-  );
-}
-
-export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
-  const { isPending, data: objectsCount } = useGetRepositoryObjectsCount({ nodeId: objectId });
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-
-  const { pathname } = useLocation();
-
-  return (
-    <ObjectDetailsTab
-      isActive={qspTab === TASK_TAB}
-      to={constructPath(pathname, [{ name: QSP.TAB, value: REPOSITORY_OBJECTS_TAB }])}
-      {...props}
-    >
-      Objects
-      {isPending && <Spinner />}
-      <Badge className="font-medium rounded-full text-gray-80">{objectsCount}</Badge>
-    </ObjectDetailsTab>
-  );
 }
