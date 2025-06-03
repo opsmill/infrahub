@@ -6,6 +6,7 @@ import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-ob
 import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
+import { Node } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 import { Icon } from "@iconify-icon/react";
