@@ -11,6 +11,17 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.12](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.12) - 2025-06-03
+
+### Fixed
+
+- Remove uniqueness constraint on generic templates to support upsert mutations ([#6478](https://github.com/opsmill/infrahub/issues/6478))
+- Add a migration to clean up duplicated data from improper merges of branches containing node schemas with an updated kind or inheritance ([#6502](https://github.com/opsmill/infrahub/issues/6502))
+- Update the cypher query that saves a diff to use less memory. ([#6568](https://github.com/opsmill/infrahub/issues/6568))
+- Add missing database session instantiations
+- Display generic relationships with cardinality one in the object detail view.
+- Fixes schema migration to add new attributes, so that it no longer adds that attribute to nodes that have been deleted. Includes a migration to clean up those illegal edges.
+
 ## [Infrahub - v1.2.11](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.11) - 2025-05-23
 
 ### Added
