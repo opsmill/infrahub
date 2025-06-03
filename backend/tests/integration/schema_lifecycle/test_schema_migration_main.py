@@ -116,6 +116,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
                                 },
                                 "removed": {},
                             },
+                            "uniqueness_constraints": None,
+                            "human_friendly_id": None,
                         },
                         "removed": {},
                     },
