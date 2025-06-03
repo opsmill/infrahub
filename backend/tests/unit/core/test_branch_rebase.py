@@ -12,7 +12,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub.services import InfrahubServices, WorkflowLocalExecution
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 
 async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
