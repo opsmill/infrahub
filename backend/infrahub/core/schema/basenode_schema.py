@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import keyword
 import os
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
@@ -490,7 +491,61 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
 
+    def _update_element_names(
+        self, element_list: list[str] | None, name_update_map: dict[str, str]
+    ) -> list[str] | None:
+        if not element_list:
+            return element_list
+        updated_element_list = []
+        for element in element_list:
+            current_schema_path = self.parse_schema_path(path=element)
+            current_field_name = current_schema_path.field_name
+            if not current_field_name or current_field_name not in name_update_map:
+                updated_element_list.append(element)
+                continue
+            new_field_name = name_update_map[current_field_name]
+            new_element_str = current_schema_path.to_string(field_name_override=new_field_name)
+            updated_element_list.append(new_element_str)
+        return updated_element_list
+
+    def handle_field_name_changes(self, other: BaseNodeSchema) -> None:
+        properties_to_update = [self.uniqueness_constraints, self.human_friendly_id, self.display_labels, self.order_by]
+        if not any(p for p in properties_to_update):
+            return
+
+        chronological_names = defaultdict(list)
+        for field in self.attributes + self.relationships:
+            if not field.id:
+                continue
+            chronological_names[field.id].append(field.name)
+        for field in other.attributes + other.relationships:
+            if not field.id:
+                continue
+            chronological_names[field.id].append(field.name)
+        field_name_map = {v[0]: v[-1] for v in chronological_names.values() if len(v) > 1}
+
+        if self.uniqueness_constraints:
+            updated_constraints = []
+            for constraint in self.uniqueness_constraints:
+                updated_constraint = self._update_element_names(element_list=constraint, name_update_map=field_name_map)
+                if updated_constraint:
+                    updated_constraints.append(updated_constraint)
+            self.uniqueness_constraints = updated_constraints
+        if self.human_friendly_id:
+            self.human_friendly_id = self._update_element_names(
+                element_list=self.human_friendly_id, name_update_map=field_name_map
+            )
+        if self.display_labels:
+            self.display_labels = self._update_element_names(
+                element_list=self.display_labels, name_update_map=field_name_map
+            )
+        if self.order_by:
+            self.order_by = self._update_element_names(element_list=self.order_by, name_update_map=field_name_map)
+
     def update(self, other: HashableModel) -> Self:
+        if isinstance(other, BaseNodeSchema):
+            self.handle_field_name_changes(other=other)
+
         super().update(other=other)
 
         # Allow to specify empty string to remove existing fields values
@@ -527,6 +582,24 @@ class SchemaAttributePath:
     attribute_schema: AttributeSchema | None = None
     attribute_property_name: str | None = None
 
+    def __str__(self) -> str:
+        return self.to_string()
+
+    def to_string(self, field_name_override: str | None = None) -> str:
+        str_path = ""
+        if self.relationship_schema:
+            str_path += field_name_override or self.relationship_schema.name
+        if self.attribute_schema:
+            if str_path:
+                str_path += "__"
+                attr_name = self.attribute_schema.name
+            else:
+                attr_name = field_name_override or self.attribute_schema.name
+            str_path += attr_name
+        if self.attribute_property_name:
+            str_path += f"__{self.attribute_property_name}"
+        return str_path
+
     @property
     def is_type_attribute(self) -> bool:
         return bool(self.attribute_schema and not self.related_schema and not self.relationship_schema)
@@ -538,6 +611,14 @@ class SchemaAttributePath:
     @property
     def has_property(self) -> bool:
         return bool(self.attribute_property_name)
+
+    @property
+    def field_name(self) -> str | None:
+        if self.relationship_schema:
+            return self.relationship_schema.name
+        if self.attribute_schema:
+            return self.attribute_schema.name
+        return None
 
     @property
     def active_relationship_schema(self) -> RelationshipSchema:

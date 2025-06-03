@@ -21,7 +21,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
             "include_in_menu": True,
             "label": "Person",
             "attributes": [
-                {"name": "name", "kind": "Text"},
+                {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "height", "kind": "Number", "optional": True},
             ],
