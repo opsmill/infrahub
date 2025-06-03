@@ -32,6 +32,8 @@ RUN apt-get update && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 RUN poetry config virtualenvs.create false
+# Poetry 2.1 workaround
+ENV POETRY_VIRTUALENVS_CREATE=false
 
 # ****************************************************************
 # STAGE : Frontend

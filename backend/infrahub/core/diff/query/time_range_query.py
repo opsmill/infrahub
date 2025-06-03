@@ -37,7 +37,6 @@ class EnrichedDiffTimeRangeQuery(Query):
             "from_time": self.from_time.to_string(),
             "to_time": self.to_time.to_string(),
         }
-        # ruff: noqa: E501
         query = """
         // get the roots of all diffs in the query
         MATCH (diff_root:DiffRoot)

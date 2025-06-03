@@ -91,7 +91,7 @@ class SchemaBranch:
             self.templates = data.get("templates", {})
 
     @classmethod
-    def validate(cls, data: Any) -> Self:  # noqa: ARG003
+    def validate(cls, data: Any) -> Self:
         if isinstance(data, cls):
             return data
         if isinstance(data, dict):
@@ -453,7 +453,7 @@ class SchemaBranch:
         if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
-        fields: dict[str, str | None | dict[str, None]] = {}
+        fields: dict[str, str | dict[str, None] | None] = {}
         if isinstance(node, GenericSchema):
             for child_node_name in node.used_by:
                 child_node = self.get(name=child_node_name, duplicate=False)
@@ -2022,7 +2022,11 @@ class SchemaBranch:
             )
 
             parent_hfid = f"{relationship.name}__template_name__value"
-            if relationship.kind == RelationshipKind.PARENT and parent_hfid not in template_schema.human_friendly_id:
+            if (
+                not isinstance(template_schema, GenericSchema)
+                and relationship.kind == RelationshipKind.PARENT
+                and parent_hfid not in template_schema.human_friendly_id
+            ):
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
@@ -2058,7 +2062,6 @@ class SchemaBranch:
                 include_in_menu=False,
                 display_labels=["template_name__value"],
                 human_friendly_id=["template_name__value"],
-                uniqueness_constraints=[["template_name__value"]],
                 attributes=[template_name_attr],
             )
 
@@ -2077,7 +2080,6 @@ class SchemaBranch:
                 human_friendly_id=["template_name__value"],
                 uniqueness_constraints=[["template_name__value"]],
                 inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
-                default_filter="template_name__value",
                 attributes=[template_name_attr],
                 relationships=[
                     RelationshipSchema(

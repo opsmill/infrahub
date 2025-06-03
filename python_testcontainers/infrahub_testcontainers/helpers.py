@@ -63,14 +63,21 @@ class TestInfrahubDocker:
         return "main"
 
     @pytest.fixture(scope="class")
+    def deployment_type(self, request: pytest.FixtureRequest) -> str | None:
+        return request.config.getoption(name="infrahub_deployment_type", default=None)
+
+    @pytest.fixture(scope="class")
     def infrahub_compose(
         self,
         tmp_directory: Path,
         remote_repos_dir: Path,  # initialize repository before running docker compose to fix permissions issues # noqa: ARG002
         remote_backups_dir: Path,  # noqa: ARG002
         infrahub_version: str,
+        deployment_type: str | None,
     ) -> InfrahubDockerCompose:
-        return InfrahubDockerCompose.init(directory=tmp_directory, version=infrahub_version)
+        return InfrahubDockerCompose.init(
+            directory=tmp_directory, version=infrahub_version, deployment_type=deployment_type
+        )
 
     @pytest.fixture(scope="class")
     def infrahub_app(self, request: pytest.FixtureRequest, infrahub_compose: InfrahubDockerCompose) -> dict[str, int]:

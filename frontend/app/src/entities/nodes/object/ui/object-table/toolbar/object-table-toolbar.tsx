@@ -25,8 +25,8 @@ export function ObjectTableToolbar({
       className={classNames(
         "fixed bottom-10 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap",
         "text backdrop-blur-lg px-1.5 shadow-lg rounded-xl border border-neutral-300 text-sm",
-        "data-[entering]:animate-in data-[entering]:fade-in-0 data-[entering]:zoom-in-95 data-[entering]:slide-in-from-left-1/2",
-        "data-[exiting]:duration-300 data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[exiting]:zoom-out-95 data-[exiting]:slide-out-to-left-1/2",
+        "data-[entering]:animate-in data-[entering]:fade-in-0 data-[entering]:zoom-in-95 data-[entering]:slide-in-from-bottom-1/2",
+        "data-[exiting]:duration-300 data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[exiting]:zoom-out-95 data-[exiting]:slide-out-to-bottom-1/2",
         "flex items-center gap-1.5 outline-none"
       )}
     >

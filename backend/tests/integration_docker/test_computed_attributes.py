@@ -28,7 +28,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
     @pytest.fixture(scope="class")
     def schema_computed_tshirt(self) -> dict:
-        with Path(CURRENT_DIRECTORY / "test_files/computed_tshirt.yml").open(encoding="utf-8") as file:  # noqa: ASYNC230
+        with Path(CURRENT_DIRECTORY / "test_files/computed_tshirt.yml").open(encoding="utf-8") as file:
             return yaml.safe_load(file.read())
 
     async def test_load_schema(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:

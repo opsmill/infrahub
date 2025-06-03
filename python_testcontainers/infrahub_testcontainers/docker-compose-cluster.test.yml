@@ -1,0 +1,321 @@
+---
+# yamllint disable rule:line-length
+# The following environment variables are part of the Infrahub configuration options.
+# For detailed information on these configuration options, please refer to the Infrahub documentation:
+# https://docs.infrahub.app/reference/configuration
+x-neo4j-config-common: &neo4j-config-common
+  NEO4J_AUTH: neo4j/admin
+  NEO4J_dbms_security_procedures_unrestricted: apoc.*
+  NEO4J_dbms_security_auth__minimum__password__length: 4
+  NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+  NEO4J_server_backup_enabled: true
+  NEO4J_metrics_prometheus_enabled: true
+  NEO4J_server_metrics_filter: '*'
+  NEO4J_server_cluster_system__database__mode: PRIMARY
+  NEO4J_initial_server_mode__constraint: PRIMARY
+  NEO4J_dbms_cluster_discovery_endpoints: database:5000,database-core2:5000,database-core3:5000
+  NEO4J_initial_dbms_default__primaries__count: 3
+  NEO4J_dbms_memory_heap_initial__size: ${INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE}
+  NEO4J_dbms_memory_heap_max__size: ${INFRAHUB_TESTING_DB_HEAP_MAX_SIZE}
+  NEO4J_server_memory_pagecache_size: ${INFRAHUB_TESTING_DB_PAGECACHE_SIZE}
+
+
+services:
+  message-queue:
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: infrahub
+      RABBITMQ_DEFAULT_PASS: infrahub
+    healthcheck:
+      test: rabbitmq-diagnostics -q check_port_connectivity
+      interval: 5s
+      timeout: 30s
+      retries: 10
+      start_period: 3s
+    ports:
+      - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
+
+  cache:
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  infrahub-server-lb:
+    image: haproxy:3.1-alpine
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    depends_on:
+      infrahub-server:
+        condition: service_started
+    healthcheck:
+      test: wget -O /dev/null http://127.0.0.1:8000/api/config || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
+
+  database:
+    deploy:
+      resources:
+        limits:
+          cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
+          memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:5.20.0-enterprise}"
+    restart: unless-stopped
+    environment:
+      <<: *neo4j-config-common
+      NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2004
+      NEO4J_server_backup_listen__address: 0.0.0.0:6362
+      NEO4J_server_discovery_advertised__address: database:5000
+      NEO4J_server_cluster_advertised__address: database:6000
+      NEO4J_server_cluster_raft_advertised__address: database:7000
+      NEO4J_server_bolt_advertised__address: database:7687
+      NEO4J_server_http_advertised__address: database:7474
+      NEO4J_server_https_advertised__address: database:7473
+    volumes:
+      - "database_data:/data"
+      - "database_logs:/logs"
+      - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    ports:
+      - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
+      - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
+
+  database-core2:
+    deploy:
+      resources:
+        limits:
+          cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
+          memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:5.20.0-enterprise}"
+    environment:
+      <<: *neo4j-config-common
+      NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2005
+      NEO4J_server_backup_listen__address: 0.0.0.0:6363
+      NEO4J_server_discovery_advertised__address: database-core2:5000
+      NEO4J_server_cluster_advertised__address: database-core2:6000
+      NEO4J_server_cluster_raft_advertised__address: database-core2:7000
+      NEO4J_server_bolt_advertised__address: database-core2:7687
+      NEO4J_server_http_advertised__address: database-core2:7474
+      NEO4J_server_https_advertised__address: database-core2:7473
+    volumes:
+      - "./plugins:/plugins"
+      - "database_data_core2:/data"
+      - "database_logs_core2:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 40
+      start_period: 30s
+    labels:
+      infrahub_role: "database"
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${JOB_NAME:-unknown}"
+    ports:
+      - "${INFRAHUB_TESTING_DATABASE_PORT:-0}:6363"
+
+  database-core3:
+    deploy:
+      resources:
+        limits:
+          cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
+          memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:5.20.0-enterprise}"
+    environment:
+      <<: *neo4j-config-common
+      NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2006
+      NEO4J_server_backup_listen__address: 0.0.0.0:6364
+      NEO4J_server_discovery_advertised__address: database-core3:5000
+      NEO4J_server_cluster_advertised__address: database-core3:6000
+      NEO4J_server_cluster_raft_advertised__address: database-core3:7000
+      NEO4J_server_bolt_advertised__address: database-core3:7687
+      NEO4J_server_http_advertised__address: database-core3:7474
+      NEO4J_server_https_advertised__address: database-core3:7473
+    volumes:
+      - "./plugins:/plugins"
+      - "database_data_core3:/data"
+      - "database_logs_core3:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 40
+      start_period: 30s
+    labels:
+      infrahub_role: "database"
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${JOB_NAME:-unknown}"
+    ports:
+      - "${INFRAHUB_TESTING_DATABASE_PORT:-0}:6364"
+
+  task-manager:
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
+    depends_on:
+      task-manager-db:
+        condition: service_healthy
+    environment:
+      PREFECT_UI_ENABLED: "${INFRAHUB_TESTING_PREFECT_UI_ENABLED}" # enabling UI requires permissions, run container as root to enable UI
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
+
+  task-manager-db:
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infrahub-server:
+    deploy:
+      mode: replicated
+      replicas: ${INFRAHUB_TESTING_API_SERVER_COUNT}
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: ${INFRAHUB_TESTING_DOCKER_ENTRYPOINT}
+    environment:
+      INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS}
+      INFRAHUB_DB_PROTOCOL: ${INFRAHUB_TESTING_DB_PROTOCOL:-neo4j}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE: ${INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE}
+      INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN}
+      INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
+      PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
+      # Tracing
+      INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
+      INFRAHUB_TRACE_EXPORTER_ENDPOINT:
+      INFRAHUB_TRACE_EXPORTER_PROTOCOL: ${INFRAHUB_TRACE_EXPORTER_PROTOCOL:-grpc}
+      INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
+      INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
+      OTEL_RESOURCE_ATTRIBUTES:
+    depends_on:
+      database:
+        condition: service_healthy
+      database-core2:
+        condition: service_healthy
+      database-core3:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      task-manager:
+        condition: service_healthy
+    volumes:
+      - "storage_data:/opt/infrahub/storage"
+    tty: true
+    healthcheck:
+      test: curl -s -f -o /dev/null http://localhost:8000/api/config || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  task-worker:
+    deploy:
+      mode: replicated
+      replicas: ${INFRAHUB_TESTING_TASK_WORKER_COUNT}
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: prefect worker start --type ${INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE} --pool infrahub-worker --with-healthcheck
+    environment:
+      INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL}
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_TESTING_GIT_REPOSITORIES_DIRECTORY}
+      INFRAHUB_API_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
+      INFRAHUB_ADDRESS: ${INFRAHUB_TESTING_ADDRESS}
+      INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_TESTING_INTERNAL_ADDRESS}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS:-database}
+      INFRAHUB_DB_PROTOCOL: ${INFRAHUB_TESTING_DB_PROTOCOL:-neo4j}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_TIMEOUT: ${INFRAHUB_TESTING_TIMEOUT}
+      PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
+      # Tracing
+      INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
+      INFRAHUB_TRACE_EXPORTER_ENDPOINT:
+      INFRAHUB_TRACE_EXPORTER_PROTOCOL: ${INFRAHUB_TRACE_EXPORTER_PROTOCOL:-grpc}
+      INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
+      INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
+      OTEL_RESOURCE_ATTRIBUTES:
+    depends_on:
+      - infrahub-server
+    volumes:
+      - "./${INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY}"
+    tty: true
+
+  cadvisor:
+    image: "${CADVISOR_DOCKER_IMAGE:-gcr.io/cadvisor/cadvisor:v0.51.0}"
+    command:
+      - -disable_root_cgroup_stats=true
+      - -docker_only=true
+      - -store_container_labels=false
+      - -whitelisted_container_labels=com.docker.compose.project
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "${INFRAHUB_TESTING_CADVISOR_PORT:-0}:8080"
+
+  scraper:
+    image: "${SCRAPER_DOCKER_IMAGE:-victoriametrics/victoria-metrics:v1.110.0}"
+    volumes:
+      - vmdata:/victoria-metrics-data
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--promscrape.config=/etc/prometheus/prometheus.yml"
+    ports:
+      - ${INFRAHUB_TESTING_SCRAPER_PORT:-0}:8428
+    healthcheck:
+      test: wget -qO- http://127.0.0.1:8428/-/healthy
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  database_data:
+  database_logs:
+  database_data_core2:
+  database_logs_core2:
+  database_data_core3:
+  database_logs_core3:
+  storage_data:
+  workflow_db:
+  vmdata:

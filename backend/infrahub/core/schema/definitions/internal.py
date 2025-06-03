@@ -82,7 +82,7 @@ class SchemaAttribute(BaseModel):
 
     @property
     def optional_in_model(self) -> bool:
-        if self.optional and self.default_value is None and self.default_factory is None or self.default_to_none:
+        if (self.optional and self.default_value is None and self.default_factory is None) or self.default_to_none:
             return True
 
         return False

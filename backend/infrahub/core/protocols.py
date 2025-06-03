@@ -455,6 +455,7 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     node_attribute: String
     start_range: Integer
     end_range: Integer
+    pool_type: Enum
 
 
 class CoreObjectPermission(CoreBasePermission):
