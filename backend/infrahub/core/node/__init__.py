@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
+    NumberPoolType,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -328,6 +329,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             node_attribute=attribute.schema.name,
             start_range=number_pool_parameters.start_range,
             end_range=number_pool_parameters.end_range,
+            pool_type=NumberPoolType.SCHEMA.value,
         )
         await number_pool.save(db=db)
         # Do a lookup of the number pool to get the correct mapped type from the registry

@@ -1,11 +1,11 @@
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { ReactElement } from "react";
+import { ReactNode } from "react";
 
 type tNoData = {
   className?: string;
-  message?: string;
-  icon?: ReactElement;
+  message?: ReactNode;
+  icon?: ReactNode;
   hideIcon?: boolean;
 };
 

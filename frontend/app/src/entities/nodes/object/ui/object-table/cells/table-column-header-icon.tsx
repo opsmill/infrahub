@@ -3,7 +3,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { Icon } from "@iconify-icon/react";
 
-const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
+export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Text: "mdi:text",
   TextArea: "mdi:text-box-outline",
   Number: "mdi:numeric",
