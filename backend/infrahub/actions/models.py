@@ -23,7 +23,7 @@ from infrahub.workflows.catalogue import (
     REMOVE_ADD_NODE_FROM_GROUP,
 )
 
-from .constants import BranchScope, ValueMatch
+from .constants import BranchScope, MemberAction, MemberUpdate, RelationshipMatch, ValueMatch
 
 
 class EventGroupMember(BaseModel):
@@ -40,7 +40,7 @@ class CoreGeneratorAction(CoreAction):
 
 
 class CoreGroupAction(CoreAction):
-    add_members: bool
+    member_action: MemberAction
     group_id: str
 
 
@@ -52,7 +52,7 @@ class CoreTriggerRule(BaseModel):
 
 
 class CoreGroupTriggerRule(CoreTriggerRule):
-    members_added: bool
+    member_update: MemberUpdate
     group_id: str
     group_kind: str
 
@@ -70,7 +70,7 @@ class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
 
 class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
     relationship_name: str
-    added: bool
+    modification_type: RelationshipMatch
     peer: str | None
 
 
@@ -135,14 +135,16 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
                         match_related["infrahub.attribute.value_previous"] = match.value_previous or ""
 
             elif isinstance(match, CoreNodeTriggerRelationshipMatch):
-                peer_status = "added" if match.added else "removed"
                 match_related = {
                     "prefect.resource.role": "infrahub.node.relationship_update",
                     "infrahub.field.name": match.relationship_name,
-                    "infrahub.relationship.peer_status": peer_status,
                 }
                 if isinstance(match.peer, str):
                     match_related["infrahub.relationship.peer_id"] = match.peer
+
+                if match.modification_type != RelationshipMatch.UPDATED:
+                    match_related["infrahub.relationship.peer_status"] = match.modification_type.value.name
+
             related_matches.append(match_related)
 
         event_trigger.match_related = related_matches or {}
@@ -164,7 +166,7 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
                 },
             )
         elif isinstance(trigger_rule.action, CoreGroupAction):
-            if trigger_rule.action.add_members:
+            if trigger_rule.action.member_action == MemberAction.ADD_MEMBER:
                 flow = ACTION_ADD_NODE_TO_GROUP
             else:
                 flow = REMOVE_ADD_NODE_FROM_GROUP
@@ -198,7 +200,7 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
     ) -> Self:
         event_trigger = EventTrigger()
 
-        if trigger_rule.members_added:
+        if trigger_rule.member_update == MemberUpdate.ADDED:
             event_trigger.events.add(GroupMemberAddedEvent.event_name)
         else:
             event_trigger.events.add(GroupMemberRemovedEvent.event_name)

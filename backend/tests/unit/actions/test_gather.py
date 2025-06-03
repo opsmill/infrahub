@@ -250,7 +250,7 @@ async def test_gather_trigger_gather_trigger_action_rules_node_relationship(
         ],
     )
 
-    relationship_match.added.value = False
+    relationship_match.modification_type.value = "removed"
     await relationship_match.save(db=db)
 
     triggers = await gather_trigger_action_rules(db=db)
@@ -357,7 +357,7 @@ async def test_gather_trigger_gather_trigger_action_rules_group_generators(
     action = automation.actions[0]
     assert action.parameters["generator_definition_id"] == generator_definition.id
 
-    group_trigger.members_added.value = False
+    group_trigger.member_update.value = "removed"
     group_trigger.branch_scope.value = "other_branches"
     await group_trigger.save(db=db)
 

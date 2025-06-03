@@ -2,7 +2,7 @@ from typing import Any
 
 from infrahub.core.constants import InfrahubKind
 
-from .constants import BranchScope, ValueMatch
+from .constants import BranchScope, MemberAction, MemberUpdate, RelationshipMatch, ValueMatch
 from .models import (
     CoreAction,
     CoreGeneratorAction,
@@ -35,14 +35,14 @@ def _parse_graphql_node(data: dict[str, Any]) -> CoreTriggerRule | None:
     action = _parse_graphql_action_response(data=data["action"]["node"])
     match typename:
         case "CoreGroupTriggerRule":
-            members_added = data["members_added"]["value"]
+            member_update = MemberUpdate.from_value(data["member_update"]["value"])
             group_id = data["group"]["node"]["id"]
             group_kind = data["group"]["node"]["__typename"]
             return CoreGroupTriggerRule(
                 name=name,
                 branch_scope=branch_scope,
                 action=action,
-                members_added=members_added,
+                member_update=member_update,
                 group_id=group_id,
                 group_kind=group_kind,
                 active=active,
@@ -70,9 +70,9 @@ def _parse_graphql_action_response(data: dict[str, Any]) -> CoreAction:
             generator_id = data["generator"]["node"]["id"]
             return CoreGeneratorAction(generator_id=generator_id)
         case "CoreGroupAction":
-            add_members = data["add_members"]["value"]
+            member_action = MemberAction.from_value(data["member_action"]["value"])
             group_id = data["group"]["node"]["id"]
-            return CoreGroupAction(add_members=add_members, group_id=group_id)
+            return CoreGroupAction(member_action=member_action, group_id=group_id)
 
     raise NotImplementedError(f"{typename} is not a valid CoreAction")
 
@@ -96,7 +96,7 @@ def _parse_node_trigger_matches(data: list[dict[str, Any]]) -> list[CoreNodeTrig
                 matches.append(
                     CoreNodeTriggerRelationshipMatch(
                         relationship_name=node["relationship_name"]["value"],
-                        added=node["added"]["value"],
+                        modification_type=RelationshipMatch.from_value(node["modification_type"]["value"]),
                         peer=node["peer"]["value"],
                     )
                 )
