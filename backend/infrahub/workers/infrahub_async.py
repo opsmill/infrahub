@@ -24,12 +24,11 @@ from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
-from infrahub.workers.dependencies import set_component_type
+from infrahub.workers.dependencies import get_message_bus, set_component_type
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
@@ -195,13 +194,6 @@ class InfrahubWorkerAsync(BaseWorker):
             else WorkflowLocalExecution()
         )
 
-    async def _init_message_bus(self, component_type: ComponentType) -> InfrahubMessageBus:
-        return config.OVERRIDE.message_bus or (
-            await InfrahubMessageBus.new_from_driver(
-                component_type=component_type, driver=config.SETTINGS.broker.driver
-            )
-        )
-
     async def _init_cache(self) -> InfrahubCache:
         return config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
 
@@ -209,7 +201,7 @@ class InfrahubWorkerAsync(BaseWorker):
         client = await self._init_infrahub_client(client=client)
         database = await self._init_database()
         workflow = await self._init_workflow()
-        message_bus = await self._init_message_bus(component_type=self.component_type)
+        message_bus = await get_message_bus()
         cache = await self._init_cache()
 
         service = await InfrahubServices.new(
