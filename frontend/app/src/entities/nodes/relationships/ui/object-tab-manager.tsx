@@ -29,7 +29,7 @@ export function ObjectTabManager({ parentNodeSchema, objectDetailsData }: Object
   }
 
   if (qspTab === REPOSITORY_OBJECTS_TAB) {
-    return <RepositoryObjectsManager />;
+    return <RepositoryObjectsManager parentNodeId={objectDetailsData.id} />;
   }
 
   if (qspTab === TASK_TAB && !qspTaskId) {
