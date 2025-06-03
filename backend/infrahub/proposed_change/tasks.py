@@ -254,12 +254,12 @@ async def run_proposed_change_data_integrity_check(
     """Triggers a data integrity validation check on the provided proposed change to start."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    async with service.database.start_transaction() as dbt:
-        destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
+    async with service.database.start_session() as dbs:
+        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
 
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
@@ -1006,11 +1006,11 @@ async def run_proposed_change_pipeline(
 
     await _gather_repository_repository_diffs(repositories=repositories, service=service)
 
-    async with service.database.start_transaction() as dbt:
-        destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
+    async with service.database.start_session() as dbs:
+        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
     diff_summary = await service.client.get_diff_summary(branch=model.source_branch)
