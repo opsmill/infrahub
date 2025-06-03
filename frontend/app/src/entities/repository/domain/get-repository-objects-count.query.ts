@@ -9,7 +9,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export function getRepositoryObjectsCountQueryOption(params: GetRepositoryObjectsCountParams) {
   return queryOptions({
-    queryKey: [params.branchName, "objects", params.nodeId, "objects", "count"],
+    queryKey: [params.branchName, "objects", params.nodeId, "count"],
     queryFn: () => getRepositoryObjectsCount(params),
   });
 }
