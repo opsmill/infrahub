@@ -1,1 +1,0 @@
-Update the migration to add a new attribute so that it no longer adds that attribute to nodes that have been deleted. Includes a migration to clean up those illegal edges.

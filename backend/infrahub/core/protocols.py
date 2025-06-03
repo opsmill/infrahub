@@ -403,12 +403,12 @@ class CoreGraphQLQueryGroup(CoreGroup):
 
 
 class CoreGroupAction(CoreAction):
-    add_members: Boolean
+    member_action: Dropdown
     group: RelationshipManager
 
 
 class CoreGroupTriggerRule(CoreTriggerRule):
-    members_added: Boolean
+    member_update: Dropdown
     group: RelationshipManager
 
 
@@ -440,7 +440,7 @@ class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
 
 class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
     relationship_name: String
-    added: Boolean
+    modification_type: Dropdown
     peer: StringOptional
 
 
