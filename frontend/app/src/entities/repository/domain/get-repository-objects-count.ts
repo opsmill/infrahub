@@ -18,5 +18,5 @@ export const getRepositoryObjectsCount: GetRepositoryObjectsCount = async ({
     nodeIds: [nodeId],
   });
 
-  return data.CoreRepositoryGroup.count;
+  return data.CoreRepositoryGroup.edges?.[0]?.node?.members?.count;
 };

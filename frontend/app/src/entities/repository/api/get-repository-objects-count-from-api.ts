@@ -5,7 +5,14 @@ import { gql } from "@apollo/client";
 const REPOSITORY_OBJECTS_COUNT = gql`
 query REPOSITORY_OBJECTS_COUNT($nodeIds: [ID]){
   CoreRepositoryGroup(repository__ids: $nodeIds){
-    count
+    edges{
+      node{
+        display_label
+        members{
+          count
+        }
+      }
+    }
   }
 }
 `;
