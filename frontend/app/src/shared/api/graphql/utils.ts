@@ -5,6 +5,7 @@ import { Filter } from "@/shared/hooks/useFilters";
 type AddAttributesToRequestOptions = {
   withMetadata?: boolean;
   withPermissions?: boolean;
+  relationshipFragment?: Record<string, string>;
 };
 
 type QueryAsJSON = { [key: string]: boolean | QueryAsJSON };
@@ -66,13 +67,14 @@ export const addAttributesToRequest = (
 
 export const addRelationshipsToRequest = (
   relationships: Array<RelationshipSchema>,
-  { withMetadata }: AddAttributesToRequestOptions = {}
+  { relationshipFragment, withMetadata }: AddAttributesToRequestOptions = {}
 ) => {
   const baseFragment = {
     node: {
       id: true,
       hfid: true,
       display_label: true,
+      ...(relationshipFragment ?? {}),
     },
     ...(withMetadata && {
       properties: {

@@ -6,7 +6,7 @@ from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
-from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
+from infrahub.services import InfrahubServices
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.webhook.gather import gather_trigger_webhook
 

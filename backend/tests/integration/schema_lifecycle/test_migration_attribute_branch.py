@@ -12,6 +12,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
@@ -56,6 +57,11 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
 
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
+
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
             db=db, name="renault", description="Groupe Renault is a French multinational automobile manufacturer"
@@ -86,6 +92,11 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
+
+        deleted_chuck = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
+        await deleted_chuck.new(db=db, name="Deleted Chuck", height=175, description="He's not here")
+        await deleted_chuck.save(db=db)
+        await deleted_chuck.delete(db=db)
 
         mercedes = await Node.init(schema=MANUFACTURER_KIND_01, db=db, branch=branch1)
         await mercedes.new(
@@ -128,8 +139,10 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         objs = {
             "john": john.id,
+            "deleted_bob": deleted_bob.id,
             "jane": jane.id,
             "richard": richard.id,
+            "deleted_chuck": deleted_chuck.id,
             "honda": honda.id,
             "renault": renault.id,
             "mercedes": mercedes.id,
@@ -325,6 +338,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert {"name": "firstname", "value": "Jane"} in janes_event["attributes"]
         assert {"name": "description", "value": "The famous Jane Doe"} in janes_event["attributes"]
 
+        await verify_no_edges_added_after_node_delete(db=db)
+
     async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
         branch = await client.branch.merge(branch_name=self.branch1.name)
         assert branch
@@ -345,6 +360,10 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert jane.lastname.value is None  # type: ignore[attr-defined]
         assert not hasattr(jane, "height")
         assert not hasattr(jane, "name")
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
 
 
 QUERY_EVENT = """

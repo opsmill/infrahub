@@ -1,12 +1,14 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
-from prefect.client.orchestration import PrefectClient
+from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.events.schemas.automations import Automation
 
+from infrahub import lock
+from infrahub.database import InfrahubDatabase
 from infrahub.trigger.models import TriggerDefinition
 
 from .models import TriggerSetupReport, TriggerType
@@ -25,6 +27,28 @@ def compare_automations(target: AutomationCore, existing: Automation) -> bool:
     existing_dump = existing.model_dump(exclude_defaults=True, exclude_none=True, exclude={"id"})
 
     return target_dump == existing_dump
+
+
+@task(name="trigger-setup-specific", task_run_name="Setup triggers of a specific kind", cache_policy=NONE)  # type: ignore[arg-type]
+async def setup_triggers_specific(
+    gatherer: Callable[[InfrahubDatabase | None], Awaitable[list[TriggerDefinition]]],
+    trigger_type: TriggerType,
+    db: InfrahubDatabase | None = None,
+) -> TriggerSetupReport:
+    async with lock.registry.get(
+        name=f"configure-action-rules-{trigger_type.value}", namespace="trigger-rules", local=False
+    ):
+        if db:
+            async with db.start_session(read_only=True) as dbs:
+                triggers = await gatherer(dbs)
+        else:
+            triggers = await gatherer(db)
+        async with get_client(sync_client=False) as prefect_client:
+            return await setup_triggers(
+                client=prefect_client,
+                triggers=triggers,
+                trigger_type=trigger_type,
+            )  # type: ignore[misc]
 
 
 @task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)  # type: ignore[arg-type]

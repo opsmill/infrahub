@@ -179,7 +179,7 @@ jobs:
 
       - name: "Setup Python environment"
         run: |
-          pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
 
@@ -525,7 +525,7 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
           pip install invoke toml
@@ -642,7 +642,7 @@ jobs:
           python-version: "3.12"
       - name: "Setup Python environment"
         run: |
-          pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
       - name: "Install dependencies"

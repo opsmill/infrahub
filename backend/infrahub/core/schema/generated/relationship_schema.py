@@ -12,7 +12,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
-)  # noqa: TC001
+)
 from infrahub.core.models import HashableModel
 
 
@@ -71,6 +71,11 @@ class GeneratedRelationshipSchema(HashableModel):
     max_count: int = Field(
         default=0,
         description="Defines the maximum objects allowed on the other side of the relationship.",
+        json_schema_extra={"update": "validate_constraint"},
+    )
+    common_relatives: list[str] | None = Field(
+        default=None,
+        description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
         json_schema_extra={"update": "validate_constraint"},
     )
     order_weight: int | None = Field(

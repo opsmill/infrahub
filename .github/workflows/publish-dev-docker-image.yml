@@ -24,14 +24,9 @@ on:
         description: additional image tag
         default: ''
         required: false
-  pull_request:
-    types:
-      - labeled
-      - synchronize
 
 jobs:
   meta_data:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'cd/preview')
     runs-on:
       group: huge-runners
     outputs:
@@ -41,7 +36,7 @@ jobs:
       short_ref: ${{ steps.short_ref.outputs.short_ref }}
     steps:
       - name: Set GIT ref
-        run: echo "ref=${{ inputs.commit == '' && (github.event.pull_request.head.sha == '' && github.sha || github.event.pull_request.head.sha) || inputs.commit }} " >> $GITHUB_OUTPUT
+        run: echo "ref=${{ inputs.commit == '' && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
         id: ref
       - name: Set GIT short ref
         run: echo "short_ref=$(echo ${{ steps.ref.outputs.ref }} | cut -c1-7)" >> $GITHUB_OUTPUT
@@ -62,8 +57,7 @@ jobs:
             latest=false
 
 
-  publish-docker-image-dispatch:
-    if: github.event_name == 'workflow_dispatch'
+  publish-docker-image:
     uses: ./.github/workflows/ci-docker-image.yml
     needs: meta_data
     secrets: inherit
@@ -74,16 +68,3 @@ jobs:
       tags: ${{needs.meta_data.outputs.tags}}
       labels: ${{needs.meta_data.outputs.labels}}
       platforms: ${{ inputs.platforms }}
-
-  publish-docker-image-pr:
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'cd/preview')
-    uses: ./.github/workflows/ci-docker-image.yml
-    needs: meta_data
-    secrets: inherit
-    with:
-      publish: true
-      version: dev-${{ needs.meta_data.outputs.short_ref }}
-      ref: ${{ needs.meta_data.outputs.ref }}
-      tags: ${{ needs.meta_data.outputs.tags }}
-      labels: ${{ needs.meta_data.outputs.labels }}
-      platforms: "linux/amd64"

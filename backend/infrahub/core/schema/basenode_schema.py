@@ -386,7 +386,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not self.display_labels:
             return None
 
-        fields: dict[str, str | None | dict[str, None]] = {}
+        fields: dict[str, str | dict[str, None] | None] = {}
         for item in self.display_labels:
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
@@ -401,7 +401,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not self.human_friendly_id:
             return None
 
-        fields: dict[str, str | None | dict[str, None]] = {}
+        fields: dict[str, str | dict[str, None] | None] = {}
         for item in self.human_friendly_id:
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields

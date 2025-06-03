@@ -46,7 +46,7 @@ async def gather_trigger_action_rules(db: InfrahubDatabase) -> list[ActionTrigge
                                         },
                                         "... on CoreNodeTriggerRelationshipMatch": {
                                             "relationship_name": {"value": None},
-                                            "added": {"value": None},
+                                            "modification_type": {"value": None},
                                             "peer": {"value": None},
                                         },
                                     }
@@ -54,7 +54,7 @@ async def gather_trigger_action_rules(db: InfrahubDatabase) -> list[ActionTrigge
                             },
                         },
                         "... on CoreGroupTriggerRule": {
-                            "members_added": {"value": None},
+                            "member_update": {"value": None},
                             "group": {
                                 "node": {
                                     "id": None,
@@ -68,7 +68,7 @@ async def gather_trigger_action_rules(db: InfrahubDatabase) -> list[ActionTrigge
                                 "id": None,
                                 "name": {"value": None},
                                 "... on CoreGroupAction": {
-                                    "add_members": {"value": None},
+                                    "member_action": {"value": None},
                                     "group": {
                                         "node": {
                                             "id": None,

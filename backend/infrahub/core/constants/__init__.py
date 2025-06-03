@@ -112,6 +112,11 @@ class AccountType(InfrahubStringEnum):
     Git = "Git"
 
 
+class NumberPoolType(InfrahubStringEnum):
+    USER = "User"
+    SCHEMA = "Schema"
+
+
 class AccountStatus(InfrahubStringEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"

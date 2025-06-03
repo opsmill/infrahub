@@ -5,10 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from prefect.events.actions import RunDeployment
-from prefect.events.schemas.automations import (
-    Automation,  # noqa: TC002
-    Posture,
-)
+from prefect.events.schemas.automations import Automation, Posture
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
@@ -27,6 +24,10 @@ class TriggerSetupReport(BaseModel):
     updated: list[TriggerDefinition] = Field(default_factory=list)
     deleted: list[Automation] = Field(default_factory=list)
     unchanged: list[TriggerDefinition] = Field(default_factory=list)
+
+    @property
+    def in_use_count(self) -> int:
+        return len(self.created + self.updated + self.unchanged)
 
 
 class TriggerType(str, Enum):

@@ -7,13 +7,14 @@ from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
+from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ..queries.resource_manager import PoolAllocatedNode
 from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
@@ -234,6 +235,14 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             number_pool, result = await super().mutate_update(
                 info=info, data=data, branch=branch, database=dbt, node=node
             )
+
+            if number_pool.pool_type.value.value == NumberPoolType.SCHEMA.value and (  # type: ignore[attr-defined]
+                "start_range" in data.keys() or "end_range" in data.keys()
+            ):
+                raise ValidationError(
+                    input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+                )
+
             if number_pool.start_range.value > number_pool.end_range.value:  # type: ignore[attr-defined]
                 raise ValidationError(input_value="start_range can't be larger than end_range")
 
@@ -257,18 +266,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             branch=branch,
         )
 
-        active_branches = registry.schema.get_branches()
-        violating_branches = []
-        for active_branch in active_branches:
-            try:
-                schema = registry.schema.get(name=number_pool.node.value, branch=active_branch)
-            except SchemaNotFoundError:
-                continue
-
-            if number_pool.node_attribute.value in schema.attribute_names:
-                attribute = schema.get_attribute(name=number_pool.node_attribute.value)
-                if attribute.kind == "NumberPool":
-                    violating_branches.append(active_branch)
+        violating_branches = get_branches_with_schema_number_pool(
+            kind=number_pool.node.value, attribute_name=number_pool.node_attribute.value
+        )
 
         if violating_branches:
             raise ValidationError(

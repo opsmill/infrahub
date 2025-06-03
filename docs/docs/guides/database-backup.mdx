@@ -2,7 +2,9 @@
 title: Database backup and restore
 ---
 
-# Database backup and restore examples
+import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
+
+# Standalone database backup and restore examples
 
 This is a guide on how to backup and restore your database using an Infrahub command line tool.
 Please [see this topic](../topics/database-backup) for the requirements for using the tool and an explanation of how it works.
@@ -43,3 +45,256 @@ python -m utilities.db_backup neo4j restore /infrahub_backups --database-cypher-
 ```
 
 In this example, I am restoring `.backup` files that exist in the `/infrahub_backups` directory and my Infrahub database container uses a non-standard port for cypher access: `9876` instead of `7687`.
+
+# Cluster Database backup and restore examples  
+
+<EnterpriseBadge />
+
+## Cluster topology
+
+| Node             | Role     |
+|------------------|----------|
+| `database`       | Leader   |
+| `database-core2` | Follower |
+| `database-core3` | Follower |
+
+## Context
+
+We are going to back up the Neo4j database from `database-core2` and restore it on `database-core3`, after having dropped the Neo4j database cluster-wide.
+
+:::caution Important
+Always run backup/restore commands as the `neo4j` user inside the container to avoid permission issues with the data files.
+:::
+
+## Step 1: Create backup from database-core2
+
+```bash
+docker exec -it -u neo4j infrahub-database-core2-1 bash
+mkdir -p backups
+neo4j-admin database backup --to-path=backups/
+ls backups
+# Output should include:
+# neo4j-2025-03-24T19-57-18.backup
+```
+
+## Step 2: Copy the backup to database-core3
+
+```bash
+docker cp infrahub-database-core2-1:/var/lib/neo4j/backups/neo4j-2025-03-24T19-57-18.backup \
+  infrahub-database-core3-1:/var/lib/neo4j/neo4j-2025-03-24T19-57-18.backup
+```
+
+## Step 3: drop the Neo4j database across the cluster
+
+Connect to any node
+
+```bash
+cypher-shell -d system -u neo4j
+DROP DATABASE neo4j;
+SHOW SERVERS;
+```
+
+<center>
+![drop database](../media/guides/database_backup_restore_step3.png)
+</center>
+
+## Step 4: Clean residual data on database-core3
+
+Connect to the container:
+
+```bash
+docker exec -it -u neo4j infrahub-database-core3-1 bash
+```
+
+Remove any existing data to avoid corruption:
+
+```bash
+rm -rf /data/databases/neo4j
+rm -rf /data/transactions/neo4j
+```
+
+Then restart the container to ensure a clean state:
+
+```bash
+docker restart infrahub-database-core3-1
+```
+
+## Step 5: Restore the backup on database-core3
+
+Reconnect to the container:
+
+```bash
+docker exec -it -u neo4j infrahub-database-core3-1 bash
+```
+
+Run the restore command:
+
+```bash
+neo4j-admin database restore \
+  --from-path=/var/lib/neo4j/neo4j-2025-03-24T19-57-18.backup neo4j
+```
+
+<center>
+![Restore database](../media/guides/database_backup_restore_step3.png)
+</center>
+
+## Step 6: Identify the seed instance id
+
+Connect via Cypher shell (on the system database):
+
+```bash
+cypher-shell -d system -u neo4j
+```
+
+Run:
+
+```bash
+SHOW SERVERS;
+```
+
+⚠️ **Note** :
+> Find the `serverId` corresponding to infrahub-database-core3-1.
+>> For example: d05fce79-e63e-485a-9ce7-1abbf9d18fce.
+
+<center>
+![Seed database](../media/guides/database_backup_restore_step5.png)
+</center>
+
+## Step 7: recreate the Neo4j database from the seed
+
+Run the following Cypher command:
+
+```bash
+CREATE DATABASE neo4j
+TOPOLOGY 3 PRIMARIES
+OPTIONS {
+  existingData: 'use',
+  existingDataSeedInstance: 'd05fce79-e63e-485a-9ce7-1abbf9d18fce'
+};
+```
+
+<center>
+![Choose seed database](../media/guides/database_backup_restore_step7.png)
+</center>
+
+## Step 8: Verify cluster sync
+
+Check that the database is coming online:
+
+```bash
+SHOW DATABASES;
+```
+
+<center>
+![Online database](../media/guides/database_backup_restore_step8_1.png)
+</center>
+
+Then validate cluster sync status:
+
+```bash
+SHOW SERVERS;
+```
+
+<center>
+![Status sync servers](../media/guides/database_backup_restore_step8_2.png)
+</center>
+
+All nodes should eventually show the Neo4j database as online.
+
+## 📝 Notes
+
+- If any node shows as **dirty** or **offline**, check the logs and ensure that the file `/data/databases/neo4j/neostore` exists.
+- Restoring the database on a single node does **not** automatically register it with the cluster.
+  You **must** run the `CREATE DATABASE ... OPTIONS { existingData: 'use' }` command to register the restored data properly.
+
+# Restore a database cluster backup on a standalone instance (for debug)
+
+## Context
+
+We are taking a backup from a Neo4j cluster and restoring it on a standalone local Neo4j instance (non-clustered), for the purpose of debugging and data analysis in a safe, isolated environment.
+
+## Step 1: Backup from a cluster node  <EnterpriseBadge />
+
+The backup was created from a cluster node (either follower or leader) using:
+
+```bash
+neo4j-admin database backup --to-path=backups/
+# Resulting file: neo4j-2025-03-24T19-57-18.backup
+```
+
+## Step 2: Copy the backup to database
+
+```bash
+docker cp neo4j-2025-03-24T19-57-18.backup \
+  infrahub-database-1:/var/lib/neo4j/neo4j-2025-03-24T19-57-18.backup
+```
+
+## Step 3: prepare the local Neo4j instance
+
+Connect to the container:
+
+```bash
+docker exec -it -u neo4j infrahub-database-1 bash
+```
+
+Clean any existing Neo4j database (optional but recommended):
+
+```bash
+rm -rf /data/databases/neo4j
+rm -rf /data/transactions/neo4j
+```
+
+Drop the Neo4j Database
+
+```bash
+cypher-shell -d system -u neo4j
+DROP DATABASE neo4j;
+SHOW SERVERS;
+```
+
+<center>
+![Choose seed database](../media/guides/database_backup_restore_step7.png)
+</center>
+
+## Step 4. Restore the backup
+
+Run the restore command from the directory where the backup file is located:
+
+```bash
+neo4j-admin database restore \
+  --from-path=/var/lib/neo4j/neo4j-2025-03-24T19-57-18.backup neo4j
+```
+
+## Step 5: recreate the Neo4j database
+
+Run the following Cypher command:
+
+```bash
+CREATE DATABASE neo4j
+```
+
+## Step 6: Verify the status
+
+Check that the database is coming online:
+
+```bash
+SHOW DATABASES;
+```
+
+<center>
+![Choose seed database](../media/guides/database_backup_restore_standalone_step6_1.png)
+</center>
+
+Then validate database status:
+
+```bash
+SHOW SERVERS;
+```
+
+<center>
+![Choose seed database](../media/guides/database_backup_restore_standalone_step6_2.png)
+</center>
+
+## 📝 Notes
+
+- This process *restores only data* — not cluster roles, replication, or configuration.

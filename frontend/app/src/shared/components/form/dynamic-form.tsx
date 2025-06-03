@@ -14,6 +14,7 @@ import NumberField from "@/shared/components/form/fields/number.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import RelationshipHierarchicalField from "@/shared/components/form/fields/relationship-hierarchical.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
+import RelationshipParentConstraintField from "@/shared/components/form/fields/relationship-parent-constraint.field";
 import RelationshipField from "@/shared/components/form/fields/relationship.field";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
@@ -128,6 +129,10 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       if (props.relationship.cardinality === "many") {
         const { type, ...otherProps } = props;
         return <RelationshipManyField {...otherProps} />;
+      }
+
+      if (props.relationship.common_relatives) {
+        return <RelationshipParentConstraintField {...props} />;
       }
 
       return <RelationshipField {...props} />;

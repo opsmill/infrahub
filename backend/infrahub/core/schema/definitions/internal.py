@@ -82,7 +82,7 @@ class SchemaAttribute(BaseModel):
 
     @property
     def optional_in_model(self) -> bool:
-        if self.optional and self.default_value is None and self.default_factory is None or self.default_to_none:
+        if (self.optional and self.default_value is None and self.default_factory is None) or self.default_to_none:
             return True
 
         return False
@@ -752,6 +752,14 @@ relationship_schema = SchemaNode(
             description="Defines the maximum objects allowed on the other side of the relationship.",
             default_value=0,
             optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="common_relatives",
+            kind="List",
+            internal_kind=str,
+            optional=True,
+            description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(

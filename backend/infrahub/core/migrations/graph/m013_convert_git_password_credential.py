@@ -77,7 +77,6 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
 
         self.params["rel_identifier"] = "gitrepository__credential"
 
-        # ruff: noqa: E501
         query = """
         // --------------------------------
         // Identify the git repositories to convert
@@ -194,7 +193,6 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
 
         self.params["current_time"] = self.at.to_string()
 
-        # ruff: noqa: E501
         query = """
         // --------------------------------
         // Identify the git repositories to convert

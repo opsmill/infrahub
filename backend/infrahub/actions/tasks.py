@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from infrahub_sdk.graphql import Mutation
 from prefect import flow
-from prefect.client.orchestration import get_client
 
-from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerType
-from infrahub.trigger.setup import setup_triggers
+from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workflows.utils import add_tags
 
 from .gather import gather_trigger_action_rules
@@ -101,14 +99,9 @@ async def run_generator_group_event(
 async def configure_action_rules(
     service: InfrahubServices,
 ) -> None:
-    async with lock.registry.get(name="configure-action-rules", namespace="trigger-rules", local=False):
-        triggers = await gather_trigger_action_rules(db=service.database)
-        async with get_client(sync_client=False) as prefect_client:
-            await setup_triggers(
-                client=prefect_client,
-                triggers=triggers,
-                trigger_type=TriggerType.ACTION_TRIGGER_RULE,
-            )  # type: ignore[misc]
+    await setup_triggers_specific(
+        gatherer=gather_trigger_action_rules, trigger_type=TriggerType.ACTION_TRIGGER_RULE, db=service.database
+    )  # type: ignore[misc]
 
 
 async def _run_generator(

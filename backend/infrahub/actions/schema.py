@@ -1,4 +1,11 @@
-from infrahub.actions.constants import BranchScope, NodeAction, ValueMatch
+from infrahub.actions.constants import (
+    BranchScope,
+    MemberAction,
+    MemberUpdate,
+    NodeAction,
+    RelationshipMatch,
+    ValueMatch,
+)
 from infrahub.core.constants import AllowOverrideType, BranchSupportType, InfrahubKind
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -28,14 +35,14 @@ core_trigger_rule = GenericSchema(
             kind="Text",
             description="The name of the trigger rule",
             unique=True,
-            order_weight=1000,
+            order_weight=100,
         ),
         Attr(
             name="description",
             kind="Text",
             description="A longer description to define the purpose of this trigger",
             optional=True,
-            order_weight=2000,
+            order_weight=200,
         ),
         Attr(
             name="active",
@@ -43,7 +50,7 @@ core_trigger_rule = GenericSchema(
             description="Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger",
             optional=False,
             default_value=True,
-            order_weight=2000,
+            order_weight=200,
         ),
         Attr(
             name="branch_scope",
@@ -52,7 +59,7 @@ core_trigger_rule = GenericSchema(
             choices=BranchScope.available_types(),
             default_value=BranchScope.DEFAULT_BRANCH.value.name,
             optional=False,
-            order_weight=2000,
+            order_weight=200,
             allow_override=AllowOverrideType.NONE,
         ),
     ],
@@ -65,7 +72,7 @@ core_trigger_rule = GenericSchema(
             kind=RelKind.ATTRIBUTE,
             cardinality=Cardinality.ONE,
             optional=False,
-            order_weight=10000,
+            order_weight=1000,
         ),
     ],
 )
@@ -89,14 +96,14 @@ core_action = GenericSchema(
             description="Short descriptive name",
             kind="Text",
             unique=True,
-            order_weight=1000,
+            order_weight=100,
         ),
         Attr(
             name="description",
             description="A detailed description of the action",
             kind="Text",
             optional=True,
-            order_weight=2000,
+            order_weight=200,
         ),
     ],
     relationships=[
@@ -108,7 +115,7 @@ core_action = GenericSchema(
             cardinality=Cardinality.MANY,
             identifier="core_action__core_triggerrule",
             optional=True,
-            order_weight=10000,
+            order_weight=1000,
         ),
     ],
 )
@@ -132,7 +139,7 @@ core_node_trigger_match = GenericSchema(
             cardinality=Cardinality.ONE,
             optional=False,
             identifier="core_node_trigger_match__core_trigger_rule",
-            order_weight=10000,
+            order_weight=1000,
         ),
     ],
 )
@@ -161,7 +168,7 @@ core_generator_action = NodeSchema(
             cardinality=Cardinality.ONE,
             identifier="core_generator_action__generator_definition",
             optional=False,
-            order_weight=4000,
+            order_weight=400,
         ),
     ],
 )
@@ -182,13 +189,14 @@ core_group_action = NodeSchema(
     inherit_from=[InfrahubKind.ACTION],
     attributes=[
         Attr(
-            name="add_members",
-            kind="Boolean",
+            name="member_action",
+            kind="Dropdown",
             description="Defines if the action should add or remove members from a group when triggered",
+            choices=MemberAction.available_types(),
+            default_value=MemberAction.ADD_MEMBER.value.name,
             unique=False,
             optional=False,
-            default_value=True,
-            order_weight=3000,
+            order_weight=300,
         ),
     ],
     relationships=[
@@ -200,7 +208,7 @@ core_group_action = NodeSchema(
             cardinality=Cardinality.ONE,
             identifier="core_action__group",
             optional=False,
-            order_weight=4000,
+            order_weight=400,
         ),
     ],
 )
@@ -227,7 +235,7 @@ core_node_trigger_rule = NodeSchema(
             description="The kind of node to match against",
             unique=False,
             optional=False,
-            order_weight=3000,
+            order_weight=300,
         ),
         Attr(
             name="mutation_action",
@@ -236,7 +244,7 @@ core_node_trigger_rule = NodeSchema(
             enum=NodeAction.available_types(),
             unique=False,
             optional=False,
-            order_weight=4000,
+            order_weight=400,
         ),
     ],
     relationships=[
@@ -248,7 +256,7 @@ core_node_trigger_rule = NodeSchema(
             cardinality=Cardinality.MANY,
             optional=True,
             identifier="core_node_trigger_match__core_trigger_rule",
-            order_weight=8000,
+            order_weight=800,
         ),
     ],
 )
@@ -270,7 +278,7 @@ core_node_trigger_attribute_match = NodeSchema(
             description="The attribue to match against",
             unique=False,
             optional=False,
-            order_weight=1000,
+            order_weight=100,
         ),
         Attr(
             name="value",
@@ -278,7 +286,7 @@ core_node_trigger_attribute_match = NodeSchema(
             description="The value the attribute is updated to",
             unique=False,
             optional=True,
-            order_weight=2000,
+            order_weight=200,
         ),
         Attr(
             name="value_previous",
@@ -286,7 +294,7 @@ core_node_trigger_attribute_match = NodeSchema(
             description="The previous value of the targeted attribute",
             unique=False,
             optional=True,
-            order_weight=3000,
+            order_weight=300,
         ),
         Attr(
             name="value_match",
@@ -295,7 +303,7 @@ core_node_trigger_attribute_match = NodeSchema(
             choices=ValueMatch.available_types(),
             default_value=ValueMatch.VALUE.value.name,
             optional=False,
-            order_weight=5000,
+            order_weight=500,
         ),
     ],
     relationships=[],
@@ -318,16 +326,17 @@ core_node_trigger_relationship_match = NodeSchema(
             description="The name of the relationship to match against",
             unique=False,
             optional=False,
-            order_weight=1000,
+            order_weight=100,
         ),
         Attr(
-            name="added",
-            kind="Boolean",
-            description="Indicates if the relationship was added or removed",
-            unique=False,
+            name="modification_type",
+            kind="Dropdown",
+            description="Indicates if the relationship was added or removed or just updated in any way",
+            choices=RelationshipMatch.available_types(),
+            default_value=RelationshipMatch.ADDED.value.name,
             optional=False,
-            default_value=True,
-            order_weight=2000,
+            order_weight=200,
+            allow_override=AllowOverrideType.NONE,
         ),
         Attr(
             name="peer",
@@ -335,7 +344,7 @@ core_node_trigger_relationship_match = NodeSchema(
             description="The node_id of the relationship peer to match against",
             unique=False,
             optional=True,
-            order_weight=3000,
+            order_weight=300,
         ),
     ],
     relationships=[],
@@ -358,13 +367,13 @@ core_group_trigger_rule = NodeSchema(
     inherit_from=[InfrahubKind.TRIGGERRULE],
     attributes=[
         Attr(
-            name="members_added",
-            kind="Boolean",
+            name="member_update",
+            kind="Dropdown",
             description="Indicate if the match should be for when members are added or removed",
-            unique=False,
+            choices=MemberUpdate.available_types(),
+            default_value=MemberUpdate.ADDED.value.name,
             optional=False,
-            default_value=True,
-            order_weight=3000,
+            order_weight=300,
         ),
     ],
     relationships=[
@@ -376,7 +385,7 @@ core_group_trigger_rule = NodeSchema(
             cardinality=Cardinality.ONE,
             identifier="core_group_trigger__group",
             optional=False,
-            order_weight=4000,
+            order_weight=400,
         ),
     ],
 )

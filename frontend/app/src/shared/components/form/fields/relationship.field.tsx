@@ -43,11 +43,15 @@ const getParentRelationship = (peer?: string) => {
   return parentRelationship;
 };
 
-export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
+export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {
+  parentDisabled?: boolean;
+  defaultParent?: Node | null;
+}
 
 // Select kind (select 2 steps) if needed
 const RelationshipField = ({
   defaultValue,
+  defaultParent,
   description,
   label,
   name,
@@ -57,6 +61,7 @@ const RelationshipField = ({
   options,
   parent,
   relationship,
+  schema,
   ...props
 }: RelationshipFieldProps) => {
   const generics = useAtomValue(genericSchemasAtom);
@@ -65,7 +70,8 @@ const RelationshipField = ({
   const [selectedGeneric, setSelectedGeneric] = useState<Node | null>(
     parent ? options?.find((option) => option.id === parent) : null
   );
-  const [selectedParent, setSelectedParent] = useState<Node | null>(null);
+
+  const [selectedParent, setSelectedParent] = useState<Node | null | undefined>(defaultParent);
 
   const generic = generics.find((generic) => generic.kind === relationship.peer);
 
@@ -75,6 +81,7 @@ const RelationshipField = ({
 
   const kind = parentRelationship?.peer;
   const parentRelationshipSchema = schemaList.find((schema) => schema.kind === kind);
+
   const parentRelationshipAttribute = parentRelationshipSchema?.relationships?.find(
     (relationship) => {
       if (parentRelationship?.direction === "bidirectional") {
@@ -122,6 +129,10 @@ const RelationshipField = ({
 
   if (currentParent && !selectedParent) {
     setSelectedParent(currentParent);
+  }
+
+  if (defaultParent && !selectedParent) {
+    setSelectedParent(defaultParent);
   }
 
   if (generic) {
@@ -324,7 +335,7 @@ const RelationshipField = ({
                     {...props}
                     value={selectedParent}
                     peer={parentRelationship?.peer}
-                    disabled={props.disabled}
+                    disabled={props.parentDisabled || props.disabled}
                     onChange={setSelectedParent}
                     className="mt-1"
                   />

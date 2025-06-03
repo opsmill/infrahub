@@ -1,6 +1,7 @@
 from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
+    NumberPoolType,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -185,6 +186,14 @@ core_number_pool = NodeSchema(
         ),
         Attr(
             name="end_range", kind="Number", optional=False, description="The end range for the pool", order_weight=6000
+        ),
+        Attr(
+            name="pool_type",
+            kind="Text",
+            description="Defines how this number pool was created",
+            default_value=NumberPoolType.USER.value,
+            enum=NumberPoolType.available_types(),
+            read_only=True,
         ),
     ],
 )

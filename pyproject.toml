@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.3.0b1"
+version = "1.3.0b2"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -292,13 +292,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.query.standard_node"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query.subquery"
 disable_error_code = [
     "arg-type",
@@ -553,12 +546,9 @@ ignore = [
     "RUF010",  # Use explicit conversion flag
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",  # Prefer `next(...)` over single element slice
-    "RUF021",  # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
-    "RUF036",  # `None` not at the end of the type annotation.
     "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
     "RUF052",  # Local dummy variable `_meta` is accessed
-    "RUF100",  # [*] Unused `noqa` directive (non-enabled: `INP001`)
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",    # Probable insecure usage of temporary file or directory

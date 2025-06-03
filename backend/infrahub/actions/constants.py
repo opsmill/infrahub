@@ -46,6 +46,93 @@ class BranchScope(Enum):
         raise NotImplementedError(f"The defined value {value} doesn't match a branch scope")
 
 
+class MemberAction(Enum):
+    ADD_MEMBER = DropdownChoice(
+        name="add_member",
+        label="Add member",
+        description="Add impacted member to the selected group",
+        color="#86efac",
+    )
+    REMOVE_MEMBER = DropdownChoice(
+        name="remove_member",
+        label="Remove member",
+        description="Remove impacted member from the selected group",
+        color="#fef08a",
+    )
+
+    @classmethod
+    def available_types(cls) -> list[DropdownChoice]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]
+
+    @classmethod
+    def from_value(cls, value: str) -> MemberAction:
+        for member in cls.__members__:
+            if value == cls.__members__[member].value.name:
+                return cls.__members__[member]
+
+        raise NotImplementedError(f"The defined value {value} doesn't match a member action")
+
+
+class MemberUpdate(Enum):
+    ADDED = DropdownChoice(
+        name="added",
+        label="Added",
+        description="Trigger when members are added to this group",
+        color="#86efac",
+    )
+    REMOVED = DropdownChoice(
+        name="removed",
+        label="Removed",
+        description="Trigger when members are removed from this group",
+        color="#fef08a",
+    )
+
+    @classmethod
+    def available_types(cls) -> list[DropdownChoice]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]
+
+    @classmethod
+    def from_value(cls, value: str) -> MemberUpdate:
+        for member in cls.__members__:
+            if value == cls.__members__[member].value.name:
+                return cls.__members__[member]
+
+        raise NotImplementedError(f"The defined value {value} doesn't match a MemberUpdate")
+
+
+class RelationshipMatch(Enum):
+    ADDED = DropdownChoice(
+        name="added",
+        label="Added",
+        description="Check if the selected relationship was added",
+        color="#86efac",
+    )
+    REMOVED = DropdownChoice(
+        name="removed",
+        label="Removed",
+        description="Check if the selected relationship was removed",
+        color="#fef08a",
+    )
+    UPDATED = DropdownChoice(
+        name="updated",
+        label="Updated",
+        description="Check if the selected relationship was updated, added or removed.",
+        color="#e5e7eb",
+    )
+
+    @classmethod
+    def available_types(cls) -> list[DropdownChoice]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]
+
+    @classmethod
+    def from_value(cls, value: str) -> RelationshipMatch:
+        for member in cls.__members__:
+            if value == cls.__members__[member].value.name:
+                return cls.__members__[member]
+
+        raise NotImplementedError(f"The defined value {value} doesn't match a RelationshipMatch")
+
+
 class ValueMatch(Enum):
     VALUE = DropdownChoice(
         name="value",
