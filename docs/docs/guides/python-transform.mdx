@@ -6,21 +6,21 @@ import TabItem from '@theme/TabItem';
 
 # Creating a Python transform
 
-Within Infrahub a [Transform](../topics/transformation) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
+Within Infrahub a [Transform](../topics/transformation) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the Transform using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
 
 The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
 
 1. Identify the relevant data you want to extract from the database using a [GraphQL query](../topics/graphql), that can take an input parameter to filter the data
 2. Write a Python script that use the GraphQL query to read information from the system and transforms the data into a new format
-3. Create an entry for the transform within an .infrahub.yml file.
+3. Create an entry for the Transform within an .infrahub.yml file.
 4. Create a Git repository
-5. Test the transform with infrahubctl
+5. Test the Transform with infrahubctl
 6. Add the repository to Infrahub as an external repository
-7. Validate that the transform works by using the transform API endpoint
+7. Validate that the Transform works by using the Transform API endpoint
 
 ## 1. Loading a schema
 
-In this guide we are going to work with a very simplistic network device model. I won't provide a transform that is very useful, the goal is instead to show how the transforms are created. Once you have mastered the basics you will be ready to go on to create more advanced transforms.
+In this guide we are going to work with a very simplistic network device model. I won't provide a Transform that is very useful, the goal is instead to show how the transforms are created. Once you have mastered the basics you will be ready to go on to create more advanced transforms.
 
 ```yaml
 ---
@@ -129,7 +129,7 @@ Response to the tags query:
 }
 ```
 
-While it would be possible to create a transform that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+While it would be possible to create a Transform that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
 Create a local directory on your computer.
 
@@ -164,9 +164,9 @@ Here the query will require an input parameter called `$name` what will refer to
 }
 ```
 
-## 2. Create the Python transform file
+## 2. Create the Python Transform file
 
-The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config.py`:
+The next step is to create the actual Python transform. The Transform is a Python class that inherits from InfrahubTransform from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config.py`:
 
 ```python
 from infrahub_sdk.transforms import InfrahubTransform
@@ -187,7 +187,7 @@ class DeviceConfigTransform(InfrahubTransform):
         }
 ```
 
-The example is simplistic in terms of what we do with the data, but all of the important parts of a transform exist here.
+The example is simplistic in terms of what we do with the data, but all of the important parts of a Transform exist here.
 
 1. We import the InfrahubTransform class.
 
@@ -211,9 +211,9 @@ Here we need to note the name of the class as we will need it later, optionally 
 
 The query part refers to the the query that we will define in the `.infrahub.yml` repository configuration file later in the guide.
 
-With this configuration the endpoint of our transform will be [http://localhost:8000/api/transform/python/device_config_transform](http://localhost:8000/api/transform/python/device_config_transform).
+With this configuration the endpoint of our Transform will be [http://localhost:8000/api/transform/python/device_config_transform](http://localhost:8000/api/transform/python/device_config_transform).
 
-4. The transform method
+4. The Transform method
 
 ```python
     async def transform(self, data):
@@ -227,11 +227,11 @@ With this configuration the endpoint of our transform will be [http://localhost:
         }
 ```
 
-When running the transform the `data` input variable will consist of the response to the query we created. In this case we return a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
+When running the Transform the `data` input variable will consist of the response to the query we created. In this case we return a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
 
 :::info
 
-If you are unsure of the format of the data you can set a debug marker when testing the transform with infrahubctl:
+If you are unsure of the format of the data you can set a debug marker when testing the Transform with infrahubctl:
 
 ```python
     async def transform(self, data):
@@ -263,7 +263,7 @@ queries:
 
 <Tabs>
   <TabItem value="Python transform" default>
-    Two parts here are required, first the `name` of the transform which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name `DeviceConfigTransform` instead of the default `Transform`.
+    Two parts here are required, first the `name` of the Transform which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name `DeviceConfigTransform` instead of the default `Transform`.
   </TabItem>
   <TabItem value="Queries">
     Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
@@ -280,7 +280,7 @@ Within the `device_config_render` folder you should now have 3 files:
 * `device_config.py`: Contains the Python code for the transform
 * `.infrahub.yml`: Contains the definition for the transform
 
-Before we can test our transform we must add the files to a local Git repository.
+Before we can test our Transform we must add the files to a local Git repository.
 
 ```shell
 git init --initial-branch=main
@@ -288,7 +288,7 @@ git add .
 git commit -m "First commit"
 ```
 
-## 5. Test the transform using infrahubctl
+## 5. Test the Transform using infrahubctl
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
 
@@ -298,7 +298,7 @@ device_config_transform (device_config.py::DeviceConfigTransform)
 ```
 
 :::info
-Trying to run the transform with just the name will produce an error.
+Trying to run the Transform with just the name will produce an error.
 
 ```shell title="❯ infrahubctl transform device_config_transform"
 {'message': "Variable '$name' of required type 'String!' was not provided.", 'locations': [{'line': 1, 'column': 19}]}
@@ -308,7 +308,7 @@ Here we can see that our query is missing the required input for `$name` which i
 
 :::
 
-Run the transform and specify the variable name along with the tag we want to target.
+Run the Transform and specify the variable name along with the tag we want to target.
 
 ```json title="❯ infrahubctl transform device_config_transform name=switch2"
 {
@@ -323,9 +323,9 @@ We have now successfully created a transform. Most of the transforms you will cr
 
 In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository) in order to sync the repository you created and make it available within Infrahub.
 
-## 7. Accessing the transform from the API
+## 7. Accessing the Transform from the API
 
-Once the repository is synced to Infrahub you can access the transform from the API:
+Once the repository is synced to Infrahub you can access the Transform from the API:
 
 ```json title="❯ curl http://localhost:8000/api/transform/python/device_config_transform?name=switch2"
 {
