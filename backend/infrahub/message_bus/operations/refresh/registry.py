@@ -11,7 +11,7 @@ async def branches(message: messages.RefreshRegistryBranches, service: InfrahubS
         service.log.info("Ignoring refresh registry refresh request originating from self", worker=WORKER_IDENTITY)
         return
 
-    async with service.database.start_session() as db:
+    async with service.database.start_session(read_only=True) as db:
         await refresh_branches(db=db)
 
     await service.component.refresh_schema_hash()
@@ -26,6 +26,6 @@ async def rebased_branch(message: messages.RefreshRegistryRebasedBranch, service
 
     async with lock.registry.local_schema_lock():
         service.log.info("Refreshing rebased branch")
-        registry.branch[message.branch] = await registry.branch_object.get_by_name(
-            name=message.branch, db=service.database
-        )
+
+        async with service.database.start_session(read_only=True) as db:
+            registry.branch[message.branch] = await registry.branch_object.get_by_name(name=message.branch, db=db)

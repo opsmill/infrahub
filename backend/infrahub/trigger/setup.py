@@ -5,13 +5,26 @@ from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
+from prefect.events.schemas.automations import Automation
 
 from infrahub.trigger.models import TriggerDefinition
 
-from .models import TriggerType
+from .models import TriggerSetupReport, TriggerType
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+
+def compare_automations(target: AutomationCore, existing: Automation) -> bool:
+    """Compare an AutomationCore with an existing Automation object to identify if they are identical or not
+
+    Return True if the target is identical to the existing automation
+    """
+
+    target_dump = target.model_dump(exclude_defaults=True, exclude_none=True)
+    existing_dump = existing.model_dump(exclude_defaults=True, exclude_none=True, exclude={"id"})
+
+    return target_dump == existing_dump
 
 
 @task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)  # type: ignore[arg-type]
@@ -19,13 +32,16 @@ async def setup_triggers(
     client: PrefectClient,
     triggers: list[TriggerDefinition],
     trigger_type: TriggerType | None = None,
-) -> None:
+    force_update: bool = False,
+) -> TriggerSetupReport:
     log = get_run_logger()
 
+    report = TriggerSetupReport()
+
     if trigger_type:
-        log.info(f"Setting up triggers of type {trigger_type.value}")
+        log.debug(f"Setting up triggers of type {trigger_type.value}")
     else:
-        log.info("Setting up all triggers")
+        log.debug("Setting up all triggers")
 
     # -------------------------------------------------------------
     # Retrieve existing Deployments and Automation from the server
@@ -38,23 +54,24 @@ async def setup_triggers(
         )
     }
     deployments_mapping: dict[str, UUID] = {name: item.id for name, item in deployments.items()}
-    existing_automations = {item.name: item for item in await client.read_automations()}
 
     # If a trigger type is provided, narrow down the list of existing triggers to know which one to delete
+    existing_automations: dict[str, Automation] = {}
     if trigger_type:
-        trigger_automations = [
-            item.name for item in await client.read_automations() if item.name.startswith(trigger_type.value)
-        ]
+        existing_automations = {
+            item.name: item for item in await client.read_automations() if item.name.startswith(trigger_type.value)
+        }
     else:
-        trigger_automations = [item.name for item in await client.read_automations()]
+        existing_automations = {item.name: item for item in await client.read_automations()}
 
     trigger_names = [trigger.generate_name() for trigger in triggers]
+    automation_names = list(existing_automations.keys())
 
-    log.debug(f"{len(trigger_automations)} existing triggers ({trigger_automations})")
-    log.debug(f"{len(trigger_names)}  triggers to configure ({trigger_names})")
+    log.debug(f"{len(automation_names)} existing triggers ({automation_names})")
+    log.debug(f"{len(trigger_names)} triggers to configure ({trigger_names})")
 
-    to_delete = set(trigger_automations) - set(trigger_names)
-    log.debug(f"{len(trigger_names)} triggers to delete ({to_delete})")
+    to_delete = set(automation_names) - set(trigger_names)
+    log.debug(f"{len(to_delete)} triggers to delete ({to_delete})")
 
     # -------------------------------------------------------------
     # Create or Update all triggers
@@ -71,11 +88,16 @@ async def setup_triggers(
         existing_automation = existing_automations.get(trigger.generate_name(), None)
 
         if existing_automation:
-            await client.update_automation(automation_id=existing_automation.id, automation=automation)
-            log.info(f"{trigger.generate_name()} Updated")
+            if force_update or not compare_automations(target=automation, existing=existing_automation):
+                await client.update_automation(automation_id=existing_automation.id, automation=automation)
+                log.info(f"{trigger.generate_name()} Updated")
+                report.updated.append(trigger)
+            else:
+                report.unchanged.append(trigger)
         else:
             await client.create_automation(automation=automation)
             log.info(f"{trigger.generate_name()} Created")
+            report.created.append(trigger)
 
     # -------------------------------------------------------------
     # Delete Triggers that shouldn't be there
@@ -86,5 +108,19 @@ async def setup_triggers(
         if not existing_automation:
             continue
 
+        report.deleted.append(existing_automation)
         await client.delete_automation(automation_id=existing_automation.id)
         log.info(f"{item_to_delete} Deleted")
+
+    if trigger_type:
+        log.info(
+            f"Processed triggers of type {trigger_type.value}: "
+            f"{len(report.created)} created, {len(report.updated)} updated, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
+        )
+    else:
+        log.info(
+            f"Processed all triggers: "
+            f"{len(report.created)} created, {len(report.updated)} updated, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
+        )
+
+    return report

@@ -92,6 +92,7 @@ class NodeAttributesFromDB:
 class PeerInfo:
     uuid: str
     kind: str
+    db_id: str
 
 
 class NodeQuery(Query):
@@ -412,9 +413,32 @@ class NodeDeleteQuery(NodeQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
 
+        if self.branch.is_global or self.branch.is_default:
+            node_query_match = """
+            MATCH (n:Node { uuid: $uuid })
+            OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH n WHERE delete_edge IS NULL
+            """
+        else:
+            node_filter, node_filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
+            node_query_match = """
+                MATCH (n:Node { uuid: $uuid })
+                CALL {
+                    WITH n
+                    MATCH (n)-[r:IS_PART_OF]->(:Root)
+                    WHERE %(node_filter)s
+                    RETURN r.status = "active" AS is_active
+                    ORDER BY r.from DESC
+                    LIMIT 1
+                }
+                WITH n WHERE is_active = TRUE
+                """ % {"node_filter": node_filter}
+            self.params.update(node_filter_params)
+        self.add_to_query(node_query_match)
+
         query = """
         MATCH (root:Root)
-        MATCH (n:Node { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 
@@ -649,51 +673,118 @@ class NodeListGetRelationshipsQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    def __init__(self, ids: list[str], relationship_identifiers: list[str] | None = None, **kwargs):
+    def __init__(
+        self,
+        ids: list[str],
+        outbound_identifiers: list[str] | None = None,
+        inbound_identifiers: list[str] | None = None,
+        bidirectional_identifiers: list[str] | None = None,
+        **kwargs,
+    ):
         self.ids = ids
-        self.relationship_identifiers = relationship_identifiers
+        self.outbound_identifiers = outbound_identifiers
+        self.inbound_identifiers = inbound_identifiers
+        self.bidirectional_identifiers = bidirectional_identifiers
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["relationship_identifiers"] = self.relationship_identifiers
+        self.params["outbound_identifiers"] = self.outbound_identifiers
+        self.params["inbound_identifiers"] = self.inbound_identifiers
+        self.params["bidirectional_identifiers"] = self.bidirectional_identifiers
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        AND all(r IN relationships(paths_in) WHERE (%(filters)s))
-        AND n.uuid <> peer.uuid
-        RETURN n, rel, peer, r1, r2, "inbound" as direction
-        UNION
-        MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        AND all(r IN relationships(paths_out) WHERE (%(filters)s))
-        AND n.uuid <> peer.uuid
-        RETURN n, rel, peer, r1, r2, "outbound" as direction
-        UNION
-        MATCH (n:Node) WHERE n.uuid IN $ids
-        MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
-        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
-        AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
-        AND n.uuid <> peer.uuid
-        RETURN n, rel, peer, r1, r2, "bidirectional" as direction
+        CALL {
+            WITH n
+            MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
+            WHERE ($inbound_identifiers IS NULL OR rel.name in $inbound_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL {
+                WITH n, rel, peer
+                MATCH (n)<-[r:IS_RELATED]-(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)<-[r:IS_RELATED]-(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "inbound" as direction
+            UNION
+            WITH n
+            MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
+            WHERE ($outbound_identifiers IS NULL OR rel.name in $outbound_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL {
+                WITH n, rel, peer
+                MATCH (n)-[r:IS_RELATED]->(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)-[r:IS_RELATED]->(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "outbound" as direction
+            UNION
+            WITH n
+            MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
+            WHERE ($bidirectional_identifiers IS NULL OR rel.name in $bidirectional_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL {
+                WITH n, rel, peer
+                MATCH (n)-[r:IS_RELATED]->(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)<-[r:IS_RELATED]-(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "bidirectional" as direction
+        }
+        RETURN DISTINCT n_uuid, rel_name, peer_uuid, direction
         """ % {"filters": rels_filter}
-
         self.add_to_query(query)
-
-        self.return_labels = ["n", "rel", "peer", "r1", "r2", "direction"]
+        self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
 
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
         gpn = GroupedPeerNodes()
-        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
-            node_id = result.get("n").get("uuid")
-            rel_name = result.get("rel").get("name")
-            peer_id = result.get("peer").get("uuid")
+        for result in self.get_results():
+            node_id = result.get("n_uuid")
+            rel_name = result.get("rel_name")
+            peer_id = result.get("peer_uuid")
             direction = str(result.get("direction"))
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,
@@ -1338,7 +1429,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -1371,6 +1462,10 @@ class NodeGetHierarchyQuery(Query):
             UNWIND peers_with_duplicates AS pwd
             RETURN DISTINCT pwd AS peer
         }
+        """ % {"filter": filter_str, "branch_filter": branch_filter}
+
+        if not self.branch.is_default:
+            query += """
         CALL {
             WITH n, peer
             MATCH path = (n)%(filter)s(peer)
@@ -1381,10 +1476,14 @@ class NodeGetHierarchyQuery(Query):
             LIMIT 1
         }
         WITH peer1 as peer, is_active
-        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        else:
+            query += """
+        WITH peer
+            """
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"]
+        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
@@ -1394,7 +1493,8 @@ class NodeGetHierarchyQuery(Query):
             if clean_filters.get("id", None):
                 self.params["peer_ids"].append(clean_filters.get("id"))
 
-        self.add_to_query("WHERE " + " AND ".join(where_clause))
+        if where_clause:
+            self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
@@ -1477,4 +1577,5 @@ class NodeGetHierarchyQuery(Query):
             yield PeerInfo(
                 uuid=peer_node.get("uuid"),
                 kind=peer_node.get("kind"),
+                db_id=peer_node.element_id,
             )

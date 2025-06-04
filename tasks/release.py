@@ -262,7 +262,7 @@ def get_enum_mappings() -> dict:
         TraceTransportProtocol,
         WorkflowDriver,
     )
-    from infrahub.database.constants import DatabaseType
+    from infrahub.constants.database import DatabaseType
 
     enum_mappings = {}
 

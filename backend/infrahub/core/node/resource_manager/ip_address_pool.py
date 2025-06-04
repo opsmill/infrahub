@@ -81,11 +81,15 @@ class CoreIPAddressPool(Node):
         return node
 
     async def get_next(self, db: InfrahubDatabase, prefixlen: int | None = None) -> IPAddressType:
-        # Measure utilization of all prefixes identified as resources
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
 
-        for resource in resources.values():
+        try:
+            weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
+        except AttributeError:
+            weighted_resources = list(resources.values())
+
+        for resource in weighted_resources:
             ip_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
             prefix_length = prefixlen or ip_prefix.prefixlen
 

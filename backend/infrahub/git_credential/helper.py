@@ -3,9 +3,9 @@ import sys
 
 import typer
 from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk.protocols import CoreGenericRepository
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
 
 logging.getLogger("httpx").setLevel(logging.ERROR)
 app = typer.Typer()
@@ -51,7 +51,7 @@ def get(
         raise typer.Exit(1) from exc
 
     client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
-    repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
+    repo = client.get(kind=CoreGenericRepository.__name__, location__value=location)
 
     if not repo:
         print("Repository not found in the database.")

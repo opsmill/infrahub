@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
@@ -170,7 +171,7 @@ class StandardWebhook(Webhook):
     def _assign_headers(self, uuid: UUID | None = None, at: Timestamp | None = None) -> None:
         message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
         timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-        payload = self._payload or {}
+        payload = json.dumps(self._payload or {})
         unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
         signature = self._sign(data=unsigned_data)
 
@@ -204,6 +205,7 @@ class TransformWebhook(Webhook):
     transform_class: str = Field(...)
     transform_file: str = Field(...)
     transform_timeout: int = Field(...)
+    convert_query_response: bool = Field(...)
 
     async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
         repo: InfrahubReadOnlyRepository | InfrahubRepository
@@ -229,6 +231,7 @@ class TransformWebhook(Webhook):
             branch_name=branch,
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",
+            convert_query_response=self.convert_query_response,
             data={"data": data, **context.model_dump()},
             client=service.client,
         )  # type: ignore[misc]
@@ -247,4 +250,5 @@ class TransformWebhook(Webhook):
             transform_class=transform.class_name.value,
             transform_file=transform.file_path.value,
             transform_timeout=transform.timeout.value,
+            convert_query_response=transform.convert_query_response.value or False,
         )

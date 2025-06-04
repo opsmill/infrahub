@@ -2,6 +2,8 @@ query PersonWithTheirCars($name: String!) {
   TestingPerson(name__value: $name) {
     edges {
       node {
+        id
+        __typename
         name {
           value
         }
@@ -11,6 +13,8 @@ query PersonWithTheirCars($name: String!) {
         cars {
           edges {
             node {
+              id
+              __typename
               name {
                 value
               }

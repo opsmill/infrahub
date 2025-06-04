@@ -58,12 +58,12 @@ test.describe("/objects/CoreWebhook", () => {
           .click();
 
         await expect(page.getByText("Activities", { exact: true })).toBeVisible();
-        await expect(page.getByText("Loading...")).toBeHidden();
+        await expect(page.getByTestId("activities-panel").getByText("Loading...")).toBeHidden();
 
         while (await page.getByText("No activity found for this").isVisible()) {
           await page.reload();
           await expect(page.getByText("Activities", { exact: true })).toBeVisible();
-          await expect(page.getByText("Loading...")).toBeHidden();
+          await expect(page.getByTestId("activities-panel").getByText("Loading...")).toBeHidden();
         }
         await expect(page.getByText("NameAnsible EDA")).toBeVisible();
         await expect(page.getByText("View all activities")).toBeVisible();

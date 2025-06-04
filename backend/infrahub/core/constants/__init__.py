@@ -150,6 +150,7 @@ class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     APPLICATION_YAML = "application/yaml"
     APPLICATION_XML = "application/xml"
+    APPLICATION_HCL = "application/hcl"
     TEXT_PLAIN = "text/plain"
     TEXT_MARKDOWN = "text/markdown"
     TEXT_CSV = "text/csv"

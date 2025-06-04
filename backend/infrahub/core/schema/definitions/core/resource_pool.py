@@ -32,6 +32,26 @@ core_resource_pool = GenericSchema(
     ],
 )
 
+core_weighted_pool_resource = GenericSchema(
+    name="WeightedPoolResource",
+    namespace="Core",
+    label="Weighted Pool Resource",
+    description="Resource to be used in a pool, its weight is used to determine its priority on allocation.",
+    include_in_menu=False,
+    branch=BranchSupportType.AWARE,
+    generate_profile=False,
+    attributes=[
+        Attr(
+            name="allocation_weight",
+            label="Weight",
+            description="Weight determines allocation priority, resources with higher values are selected first.",
+            kind="Number",
+            optional=True,
+            order_weight=10000,
+        )
+    ],
+)
+
 core_ip_prefix_pool = NodeSchema(
     name="IPPrefixPool",
     namespace="Core",

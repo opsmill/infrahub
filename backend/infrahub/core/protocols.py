@@ -209,6 +209,10 @@ class CoreWebhook(CoreNode):
     validate_certificates: BooleanOptional
 
 
+class CoreWeightedPoolResource(CoreNode):
+    allocation_weight: IntegerOptional
+
+
 class LineageOwner(CoreNode):
     pass
 
@@ -478,6 +482,7 @@ class CoreTransformJinja2(CoreTransformation):
 class CoreTransformPython(CoreTransformation):
     file_path: String
     class_name: String
+    convert_query_response: BooleanOptional
 
 
 class CoreUserValidator(CoreValidator):

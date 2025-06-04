@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -109,6 +110,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await starbuck.new(db=db, name="Kara", height=175, description="Starbuck", homeworld="Caprica")
         await starbuck.save(db=db)
 
+        deleted_person = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_person.new(db=db, name="Deleted", height=175, homeworld="Caprica")
+        await deleted_person.save(db=db)
+        await deleted_person.delete(db=db)
+
         gaius = await Node.init(schema=PERSON_KIND, db=db)
         await gaius.new(db=db, name="Gaius", height=155, description="'Scientist'", homeworld="Aerilon")
         await gaius.save(db=db)
@@ -204,3 +210,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         error = response["errors"][0]
         assert "Node-level 'inherit_from' constraint violation on schema 'SchemaNode'" in error["message"]
         assert "The error relates to field inherit_from=['TestingHumanoid']." in error["message"]
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

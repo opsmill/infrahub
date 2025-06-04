@@ -139,11 +139,6 @@ export const relationshipsForDetailsView: { one: RelationshipKind[]; many: Relat
   many: ["Attribute", "Parent"],
 };
 
-export const relationshipsForTabs: { one: RelationshipKind[]; many: RelationshipKind[] } = {
-  one: [],
-  many: ["Generic", "Component", "Hierarchy", "Template"],
-};
-
 export const RELATIONSHIP_VIEW_BLACKLIST = [
   "member_of_groups",
   "subscriber_of_groups",

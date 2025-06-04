@@ -23,7 +23,7 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
-from infrahub.database.constants import DatabaseType
+from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 
 if TYPE_CHECKING:
@@ -269,6 +269,7 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    policy: str | None = Field(default=None, description="Routing policy for database connections")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -292,6 +293,14 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+
+    @property
+    def database_uri(self) -> str:
+        """Constructs the database URI based on the configuration settings."""
+        base_uri = f"{self.protocol}://{self.address}:{self.port}"
+        if self.policy is not None:
+            return f"{base_uri}?policy={self.policy}"
+        return base_uri
 
     @property
     def database_name(self) -> str:

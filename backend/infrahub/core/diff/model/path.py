@@ -82,6 +82,21 @@ def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
 
 
 @dataclass
+class NodeIdentifier:
+    """Uniquely identifying nodes that have had their kind or inheritance updated requires all of these fields"""
+
+    uuid: str
+    kind: str
+    db_id: str
+
+    def __hash__(self) -> int:
+        return hash(f"{self.uuid}:{self.kind}:{self.db_id}")
+
+    def __str__(self) -> str:
+        return f"{self.kind} '{self.uuid}' ({self.db_id})"
+
+
+@dataclass
 class NodeDiffFieldSummary:
     kind: str
     attribute_names: set[str] = field(default_factory=set)
@@ -307,18 +322,26 @@ class ParentNodeInfo:
 
 @dataclass
 class EnrichedDiffNode(BaseSummary):
-    uuid: str
-    kind: str
+    identifier: NodeIdentifier
     label: str
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
     relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
 
     def __hash__(self) -> int:
-        return hash(self.uuid)
+        return hash(self.identifier)
+
+    @property
+    def uuid(self) -> str:
+        return self.identifier.uuid
+
+    @property
+    def kind(self) -> str:
+        return self.identifier.kind
 
     @property
     def num_properties(self) -> int:
@@ -402,11 +425,11 @@ class EnrichedDiffNode(BaseSummary):
     @classmethod
     def from_calculated_node(cls, calculated_node: DiffNode) -> EnrichedDiffNode:
         return EnrichedDiffNode(
-            uuid=calculated_node.uuid,
-            kind=calculated_node.kind,
+            identifier=calculated_node.identifier,
             label="",
             changed_at=calculated_node.changed_at,
             action=calculated_node.action,
+            is_node_kind_migration=calculated_node.is_node_kind_migration,
             attributes={
                 EnrichedDiffAttribute.from_calculated_attribute(calculated_attribute=attr)
                 for attr in calculated_node.attributes
@@ -473,24 +496,24 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
                 nodes_with_parent_uuids |= {child_n.uuid for child_n in r.nodes}
         return {node for node in self.nodes if node.uuid not in nodes_with_parent_uuids}
 
-    def get_node(self, node_uuid: str) -> EnrichedDiffNode:
+    def get_node(self, node_identifier: NodeIdentifier) -> EnrichedDiffNode:
         for n in self.nodes:
-            if n.uuid == node_uuid:
+            if n.identifier == node_identifier:
                 return n
-        raise ValueError(f"No node {node_uuid} in diff root")
+        raise ValueError(f"No node {node_identifier} in diff root")
 
-    def has_node(self, node_uuid: str) -> bool:
+    def has_node(self, node_identifier: NodeIdentifier) -> bool:
         try:
-            self.get_node(node_uuid=node_uuid)
+            self.get_node(node_identifier=node_identifier)
             return True
         except ValueError:
             return False
 
-    def get_node_map(self, node_uuids: set[str] | None = None) -> dict[str, EnrichedDiffNode]:
+    def get_node_map(self, node_uuids: set[str] | None = None) -> dict[NodeIdentifier, EnrichedDiffNode]:
         node_map = {}
         for node in self.nodes:
-            if node_uuids is None or node.uuid in node_uuids:
-                node_map[node.uuid] = node
+            if node_uuids is None or node.identifier.uuid in node_uuids:
+                node_map[node.identifier] = node
         return node_map
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
@@ -521,49 +544,6 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
             tracking_id=tracking_id,
             nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
         )
-
-    def add_parent(
-        self,
-        node_id: str,
-        parent_id: str,
-        parent_kind: str,
-        parent_label: str,
-        parent_rel_name: str,
-        parent_rel_identifier: str,
-        parent_rel_cardinality: RelationshipCardinality,
-        parent_rel_label: str = "",
-    ) -> EnrichedDiffNode:
-        node = self.get_node(node_uuid=node_id)
-        if not self.has_node(node_uuid=parent_id):
-            parent = EnrichedDiffNode(
-                uuid=parent_id,
-                kind=parent_kind,
-                label=parent_label,
-                action=DiffAction.UNCHANGED,
-                changed_at=None,
-            )
-            self.nodes.add(parent)
-
-        else:
-            parent = self.get_node(node_uuid=parent_id)
-
-        if node.has_relationship(name=parent_rel_name):
-            rel = node.get_relationship(name=parent_rel_name)
-            rel.nodes.add(parent)
-        else:
-            node.relationships.add(
-                EnrichedDiffRelationship(
-                    name=parent_rel_name,
-                    identifier=parent_rel_identifier,
-                    label=parent_rel_label,
-                    cardinality=parent_rel_cardinality,
-                    changed_at=None,
-                    action=DiffAction.UNCHANGED,
-                    nodes={parent},
-                )
-            )
-
-        return parent
 
 
 @dataclass
@@ -650,6 +630,14 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
     def branch_node_uuids(self) -> set[str]:
         return {n.uuid for n in self.diff_branch_diff.nodes}
 
+    @property
+    def base_node_identifiers(self) -> set[NodeIdentifier]:
+        return {n.identifier for n in self.base_branch_diff.nodes}
+
+    @property
+    def branch_node_identifiers(self) -> set[NodeIdentifier]:
+        return {n.identifier for n in self.diff_branch_diff.nodes}
+
 
 @dataclass
 class CalculatedDiffs:
@@ -697,12 +685,20 @@ class DiffRelationship:
 
 @dataclass
 class DiffNode:
-    uuid: str
-    kind: str
+    identifier: NodeIdentifier
     changed_at: Timestamp
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     attributes: list[DiffAttribute] = field(default_factory=list)
     relationships: list[DiffRelationship] = field(default_factory=list)
+
+    @property
+    def uuid(self) -> str:
+        return self.identifier.uuid
+
+    @property
+    def kind(self) -> str:
+        return self.identifier.kind
 
 
 @dataclass
@@ -779,6 +775,10 @@ class DatabasePath:
     @property
     def node_db_id(self) -> str:
         return self.node_node.element_id
+
+    @property
+    def node_labels(self) -> frozenset[str]:
+        return self.node_node.labels
 
     @property
     def node_kind(self) -> str:

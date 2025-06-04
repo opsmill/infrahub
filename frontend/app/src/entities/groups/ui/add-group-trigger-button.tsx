@@ -1,6 +1,6 @@
 import { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupForm from "@/entities/groups/ui/add-group-form";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { Permission } from "@/entities/permission/types";
 import { NodeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -25,9 +25,7 @@ export default function AddGroupTriggerButton({
 }: AddGroupTriggerButtonProps) {
   const [isAddGroupFormOpen, setIsAddGroupFormOpen] = useState(false);
 
-  const { data } = useObjectDetails(schema, objectId);
-
-  const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
+  const { data: objectDetailsData } = useGetObject({ objectSchema: schema, objectId });
 
   return (
     <>

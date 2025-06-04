@@ -8,6 +8,7 @@ import {
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 
@@ -49,7 +50,7 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
       to={getObjectDetailsUrl(node.__typename, node.id)}
       className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
     >
-      <Icon icon={schema.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
+      <Icon icon={getSchemaIcon(schema)} className="mr-1 text-custom-blue-800" />
       {getNodeLabel(node)}
     </LinkButton>
   );

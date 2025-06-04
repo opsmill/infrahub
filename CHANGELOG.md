@@ -11,6 +11,83 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.12](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.12) - 2025-06-03
+
+### Fixed
+
+- Remove uniqueness constraint on generic templates to support upsert mutations ([#6478](https://github.com/opsmill/infrahub/issues/6478))
+- Add a migration to clean up duplicated data from improper merges of branches containing node schemas with an updated kind or inheritance ([#6502](https://github.com/opsmill/infrahub/issues/6502))
+- Update the cypher query that saves a diff to use less memory. ([#6568](https://github.com/opsmill/infrahub/issues/6568))
+- Add missing database session instantiations
+- Display generic relationships with cardinality one in the object detail view.
+- Fixes schema migration to add new attributes, so that it no longer adds that attribute to nodes that have been deleted. Includes a migration to clean up those illegal edges.
+
+## [Infrahub - v1.2.11](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.11) - 2025-05-23
+
+### Added
+
+- Add the `CoreWeightedPoolResource` generic to better control which resource should be used when allocating from a pool. The higher the weight of the resource, the more likely it is to be selected for allocation.
+
+### Changed
+
+- The scrollbar in the infinite scroll tables, is now only visible when your mouse hovers the table.
+
+### Fixed
+
+- Fix a problem in the logic to calculate a diff that could cause it to quit too early under certain unlikely circumstances
+- Fixes an issue where the next page of data was loaded even when the infinite scroll table wasn't scrolled.
+
+## [Infrahub - v1.2.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.10) - 2025-05-13
+
+### Added
+<!-- vale off -->
+- Added the ability to use alternative value types for all attribute types with computed attributes. For attributes of type IPHost or Dropdown you can now access the `ip` or `label` fields and not only the `value` field. ([#5769](https://github.com/opsmill/infrahub/issues/5769))
+- Computed Attribute of kind Jinja will only be recalculated during a schema update if the template itself has been updated.
+<!-- vale on -->
+
+### Fixed
+
+- Fixes an issue where the signature of a webhook event was calculated wrongly. ([#6323](https://github.com/opsmill/infrahub/issues/6323))
+- Display "dissociate" action only if possible on relationships table's row actions
+- Fixed an issue where it wasn't possible to have a high number of choices in the Dropdown schema kinds. Previously the payload was limited to 4096 characters.
+- Prevent creating duplicate edges on the database when adding a relationship to or deleting a relationship from a node that had its kind or inheritance updated
+- Update diff and merge logic to correctly support nodes that have had their kind migrated on a branch
+
+## [Infrahub - v1.2.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.9) - 2025-05-07
+
+### Added
+
+- Added the `INFRAHUB_TESTING_SCHEMA_STRICT_MODE` environment variable to allow users to control `INFRAHUB_SCHEMA_STRICT_MODE` when using `infrahub-testcontainers`.
+- Improved the performance of the core database class used throughout the backend by factoring out the classes used for creating and removing indexes.
+
+### Changed
+
+- Sped up computed attribute mutation by changing the node query to only request the required attributes from the database. This change will provide performance improvements for the background processing of computed attributes. ([#6403](https://github.com/opsmill/infrahub/issues/6403))
+
+### Fixed
+
+- Deleting a branch now correctly deletes nodes with agnostic relationships. This typically fixes an issue after deleting a branch where an object had been created on this branch through a ResourceManager ([#5463](https://github.com/opsmill/infrahub/issues/5463))
+- Fixed `textarea` values display in the object details view. ([#6400](https://github.com/opsmill/infrahub/issues/6400))
+- Added inherited kinds of a node as templates to fix GraphQL schema when inheritance is involved. ([#6415](https://github.com/opsmill/infrahub/issues/6415))
+- Fixed an issue with computed attribute that would trigger multiple updates after a schema change if the attribute reference multiple kind of nodes.
+- Updated the date formatting to include the year for dates before the current year, and ensure consistency between the list and detail views.
+
+## [Infrahub - v1.2.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.8) - 2025-05-01
+
+### Added
+
+- Added support for "convert_query_response" for Python transforms. The feature works the same was as with Generators. Note any non default branch will need to be rebased after this upgrade. ([#6383](https://github.com/opsmill/infrahub/issues/6383))
+- Enabled HCL syntax highlighting for artifacts.
+
+### Fixed
+
+- Improved performance when retrieving nodes that have thousands of relationships.
+- Improved performance of the Git credential helper.
+
+### Housekeeping
+
+- Background performance improvements due to Prefect 3.3.7 upgrade.
+
 ## [Infrahub - v1.2.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.7) - 2025-04-28
 
 ### Security

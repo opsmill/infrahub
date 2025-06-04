@@ -5,10 +5,12 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.query.relationship import (
     RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
@@ -24,6 +26,7 @@ from infrahub.core.relationship import Relationship
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
+from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class DummyRelationshipQuery(RelationshipQuery):
@@ -149,12 +152,15 @@ async def test_query_RelationshipCreateQuery(
     )
     await query.execute(db=db)
 
-    # We should have 2 paths between t1 and p1
-    # First for the relationship, Second via the branch
+    # We should have 1 path between t1 and p1
     paths = await get_paths_between_nodes(
-        db=db, source_id=tag_blue_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
     )
-    assert len(paths) == 2
+    assert len(paths) == 1
 
 
 async def test_query_RelationshipCreateQuery_w_node_property(
@@ -190,6 +196,58 @@ async def test_query_RelationshipCreateQuery_w_node_property(
     assert len(paths) == 1
 
 
+async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+):
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    person_schema = schema.get(name="TestPerson")
+    person_schema.name = "GreatPerson"
+    new_person_kind = "TestGreatPerson"
+    assert person_schema.kind == new_person_kind
+    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    rel_schema = person_schema.get_relationship("tags")
+    migrated_person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
+    query = await RelationshipCreateQuery.init(
+        db=db,
+        source=migrated_person_jack,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=Relationship,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+
+    # We should have 1 path between tag_blue and migrated_person_jack
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=migrated_person_jack.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 1
+
+    # We should have 0 path between tag_blue and person_jack_main
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 0
+    await verify_no_duplicate_paths(db=db)
+
+
 async def test_query_RelationshipDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
@@ -211,10 +269,12 @@ async def test_query_RelationshipDeleteQuery(
 
     rel_data = RelationshipPeerData(
         source_id=person_jack_tags_main.id,
+        source_db_id=person_jack_tags_main.db_id,
+        source_kind=person_jack_tags_main.get_kind(),
         branch=branch.name,
         peer_id=tag_blue_main.id,
-        peer_kind=tag_blue_main.get_kind(),
         peer_db_id=tag_blue_main.db_id,
+        peer_kind=tag_blue_main.get_kind(),
         rel_node_id=rel_node.get("uuid"),
         rel_node_db_id=rel_node.element_id,
         rels=[RelData.from_db(rel) for rel in paths[0][0]._relationships],
@@ -278,6 +338,8 @@ async def test_query_RelationshipDeleteQuery(
 
     rel_data = RelationshipPeerData(
         source_id=person_jack_tags_main.id,
+        source_db_id=person_jack_tags_main.db_id,
+        source_kind=person_jack_tags_main.get_kind(),
         branch=branch.name,
         peer_id=tag_blue_main.id,
         peer_kind=tag_blue_main.get_kind(),
@@ -313,6 +375,55 @@ async def test_query_RelationshipDeleteQuery(
         relationships=["IS_RELATED"],
     )
     assert len(paths) == 8
+
+
+async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 1
+
+    # migrate person kind
+    person_schema.name = "NewPerson"
+    person_schema.namespace = "Test2"
+    assert person_schema.kind == "Test2NewPerson"
+    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get(name="TestPerson", branch=branch),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
+        ),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
+    tag_rels = await migrated_jack.tags.get_relationships(db=db)
+    assert len(tag_rels) == 2
+    blue_tag_rels = [tag_rel for tag_rel in tag_rels if tag_rel.peer_id == tag_blue_main.id]
+    assert len(blue_tag_rels) == 1
+    blue_tag_rel = blue_tag_rels[0]
+
+    query = await RelationshipDeleteQuery.init(
+        db=db,
+        source=migrated_jack,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=blue_tag_rel,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+    await verify_no_duplicate_paths(db=db)
 
 
 async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node):
@@ -741,6 +852,92 @@ async def test_query_RelationshipDataDeleteQuery(
     )
 
     assert len(paths) == 4
+
+
+async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
+    db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_tags_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    rel_schema = person_schema.get_relationship("tags")
+
+    # migrate person kind
+    person_schema.name = "NewPerson"
+    person_schema.namespace = "Test2"
+    assert person_schema.kind == "Test2NewPerson"
+    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get(name="TestPerson", branch=branch),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
+        ),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
+    # Query the existing relationship in RelationshipPeerData format
+    query1 = await RelationshipGetPeerQuery.init(
+        db=db,
+        source=migrated_jack,
+        schema=rel_schema,
+        rel=Relationship(schema=rel_schema, branch=branch, node=migrated_jack),
+    )
+    await query1.execute(db=db)
+    peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
+
+    # Delete the relationship
+    query2 = await RelationshipDataDeleteQuery.init(
+        db=db,
+        branch=branch,
+        source=migrated_jack,
+        data=peers_database[tag_blue_main.id],
+        schema=rel_schema,
+        rel=Relationship,
+    )
+    await query2.execute(db=db)
+    await verify_no_duplicate_paths(db=db)
+
+    # migrate tag kind
+    tag_schema = registry.schema.get("BuiltinTag", branch=branch)
+    tag_schema.name = "NewTag"
+    tag_schema.namespace = "Builtin2"
+    assert tag_schema.kind == "Builtin2NewTag"
+    registry.schema.set(name="Builtin2NewTag", schema=tag_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get(name="BuiltinTag", branch=branch),
+        new_node_schema=tag_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Builtin2NewTag", field_name="namespace"
+        ),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    # delete other tag relationship
+    rel_schema.peer = "Builtin2NewTag"
+    migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
+    # Query the existing relationship in RelationshipPeerData format
+    query1 = await RelationshipGetPeerQuery.init(
+        db=db,
+        source=migrated_jack,
+        schema=rel_schema,
+        rel=Relationship(schema=rel_schema, branch=branch, node=migrated_jack),
+    )
+    await query1.execute(db=db)
+    peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
+
+    # Delete the relationship
+    query2 = await RelationshipDataDeleteQuery.init(
+        db=db,
+        branch=branch,
+        source=migrated_jack,
+        data=peers_database[tag_red_main.id],
+        schema=rel_schema,
+        rel=Relationship,
+    )
+    await query2.execute(db=db)
+    await verify_no_duplicate_paths(db=db)
 
 
 async def test_query_RelationshipCountPerNodeQuery(

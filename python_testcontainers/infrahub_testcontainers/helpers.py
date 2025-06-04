@@ -1,5 +1,6 @@
 import os
 import subprocess  # noqa: S404
+import warnings
 from pathlib import Path
 
 import pytest
@@ -60,18 +61,31 @@ class TestInfrahubDocker:
         return "main"
 
     @pytest.fixture(scope="class")
+    def deployment_type(self, request: pytest.FixtureRequest) -> str | None:
+        return request.config.getoption(name="infrahub_deployment_type", default=None)
+
+    @pytest.fixture(scope="class")
     def infrahub_compose(
         self,
         tmp_directory: Path,
         remote_repos_dir: Path,  # initialize repository before running docker compose to fix permissions issues # noqa: ARG002
         remote_backups_dir: Path,  # noqa: ARG002
         infrahub_version: str,
+        deployment_type: str | None,
     ) -> InfrahubDockerCompose:
-        return InfrahubDockerCompose.init(directory=tmp_directory, version=infrahub_version)
+        return InfrahubDockerCompose.init(
+            directory=tmp_directory, version=infrahub_version, deployment_type=deployment_type
+        )
 
     @pytest.fixture(scope="class")
     def infrahub_app(self, request: pytest.FixtureRequest, infrahub_compose: InfrahubDockerCompose) -> dict[str, int]:
+        tests_failed_before_class = request.session.testsfailed
+
         def cleanup() -> None:
+            tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
+            if tests_failed_during_class > 0:
+                stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
+                warnings.warn(f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}", stacklevel=2)
             infrahub_compose.stop()
 
         request.addfinalizer(cleanup)

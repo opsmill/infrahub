@@ -12,6 +12,10 @@ class CheckArtifactCreate(BaseModel):
     content_type: str = Field(..., description="Content type of the artifact")
     transform_type: str = Field(..., description="The type of transform associated with this artifact")
     transform_location: str = Field(..., description="The transforms location within the repository")
+    convert_query_response: bool = Field(
+        default=False,
+        description="Indicate if the query response should be converted to InfrahubNode objects for Python transforms",
+    )
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the Repository")
     repository_kind: str = Field(..., description="The kind of the Repository")

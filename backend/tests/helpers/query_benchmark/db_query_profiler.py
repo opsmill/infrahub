@@ -9,9 +9,9 @@ import pandas as pd
 from neo4j import Record
 
 from infrahub.config import SETTINGS
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core.query import QueryType
 from infrahub.database import InfrahubDatabase
-from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
 

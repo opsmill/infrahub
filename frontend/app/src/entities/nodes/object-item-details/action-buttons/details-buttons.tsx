@@ -15,7 +15,7 @@ import RepositoryActionMenu from "@/entities/repository/ui/repository-action-men
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
@@ -106,7 +106,11 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
       >
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditModal(false)}
-          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey.includes("objects"),
+            });
+          }}
           objectid={objectDetailsData.id!}
           objectname={schema.kind!}
         />

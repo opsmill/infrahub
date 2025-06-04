@@ -32,6 +32,7 @@ from ..factories import (
     EnrichedRelationshipGroupFactory,
     EnrichedRootFactory,
 )
+from ..get_one_node import get_one_diff_node
 from .base import DiffRepositoryTestBase
 
 
@@ -281,14 +282,20 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
             )
 
-        parent_node = EnrichedNodeFactory.build()
+        parent_node = EnrichedNodeFactory.build(
+            is_node_kind_migration=False,
+        )
         middle_parent_rel = EnrichedRelationshipGroupFactory.build(nodes={parent_node})
         other_middle_rels = {EnrichedRelationshipGroupFactory.build() for _ in range(2)}
-        middle_node = EnrichedNodeFactory.build(relationships={middle_parent_rel} | other_middle_rels)
+        middle_node = EnrichedNodeFactory.build(
+            is_node_kind_migration=False, relationships={middle_parent_rel} | other_middle_rels
+        )
         leaf_middle_rel = EnrichedRelationshipGroupFactory.build(nodes={middle_node})
         other_leaf_rels = {EnrichedRelationshipGroupFactory.build() for _ in range(2)}
-        leaf_node = EnrichedNodeFactory.build(relationships={leaf_middle_rel} | other_leaf_rels)
-        other_nodes = {EnrichedNodeFactory.build() for _ in range(2)}
+        leaf_node = EnrichedNodeFactory.build(
+            is_node_kind_migration=False, relationships={leaf_middle_rel} | other_leaf_rels
+        )
+        other_nodes = {EnrichedNodeFactory.build(is_node_kind_migration=False) for _ in range(2)}
         this_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name="diff",
@@ -553,7 +560,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         diff_nodes = self._build_nodes(num_nodes=5, num_sub_fields=2)
         for diff_node in list(diff_nodes)[:3]:
             same_kind_diff_node = self.build_diff_node(num_sub_fields=3, no_recurse=True)
-            same_kind_diff_node.kind = diff_node.kind
+            same_kind_diff_node.identifier.kind = diff_node.identifier.kind
             same_attr_names = random.sample([a.name for a in diff_node.attributes], k=min(len(diff_node.attributes), 2))
             for attr_diff, attr_name in zip(list(same_kind_diff_node.attributes)[:2], same_attr_names, strict=False):
                 attr_diff.name = attr_name
@@ -996,11 +1003,11 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
         )
 
-        retrieved_child = retrieved_diff.get_node(child_node.uuid)
+        retrieved_child = get_one_diff_node(diff_root=retrieved_diff, node_uuid=child_node.uuid)
         retrieved_parent_rel = retrieved_child.get_relationship(name=parent_rel.name)
         assert {n.uuid for n in retrieved_parent_rel.nodes} == {n.uuid for n in parent_rel.nodes}
         assert retrieved_child == child_node
-        retrieved_removed_parent = retrieved_diff.get_node(removed_parent.uuid)
+        retrieved_removed_parent = get_one_diff_node(diff_root=retrieved_diff, node_uuid=removed_parent.uuid)
         assert retrieved_removed_parent == removed_parent
 
         assert retrieved_diff.exists_on_database is True

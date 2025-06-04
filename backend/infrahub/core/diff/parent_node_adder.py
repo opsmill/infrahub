@@ -2,14 +2,13 @@ from dataclasses import dataclass, field
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 
-from .model.path import EnrichedDiffNode, EnrichedDiffRelationship, EnrichedDiffRoot
+from .model.path import EnrichedDiffNode, EnrichedDiffRelationship, EnrichedDiffRoot, NodeIdentifier
 
 
 @dataclass
 class ParentNodeAddRequest:
-    node_id: str
-    parent_id: str
-    parent_kind: str
+    node_identifier: NodeIdentifier
+    parent_identifier: NodeIdentifier
     parent_label: str
     parent_rel_name: str
     parent_rel_identifier: str
@@ -20,7 +19,7 @@ class ParentNodeAddRequest:
 class DiffParentNodeAdder:
     def __init__(self) -> None:
         self._diff_root: EnrichedDiffRoot | None = None
-        self._node_map: dict[str, EnrichedDiffNode] = {}
+        self._node_map: dict[NodeIdentifier, EnrichedDiffNode] = {}
 
     def initialize(self, enriched_diff_root: EnrichedDiffRoot) -> None:
         self._diff_root = enriched_diff_root
@@ -31,33 +30,32 @@ class DiffParentNodeAdder:
             raise RuntimeError("Must call initialize before using")
         return self._diff_root
 
-    def get_node(self, node_uuid: str) -> EnrichedDiffNode:
-        return self._node_map[node_uuid]
+    def get_node(self, identifier: NodeIdentifier) -> EnrichedDiffNode:
+        return self._node_map[identifier]
 
-    def has_node(self, node_uuid: str) -> bool:
-        return node_uuid in self._node_map
+    def has_node(self, identifier: NodeIdentifier) -> bool:
+        return identifier in self._node_map
 
     def add_node(self, node: EnrichedDiffNode) -> None:
-        if node.uuid in self._node_map:
+        if node.identifier in self._node_map:
             return
-        self._node_map[node.uuid] = node
+        self._node_map[node.identifier] = node
         self.get_root().nodes.add(node)
 
     def add_parent(self, parent_request: ParentNodeAddRequest) -> EnrichedDiffNode:
         if not self._diff_root:
             raise RuntimeError("Must call initialize before using")
-        node = self.get_node(node_uuid=parent_request.node_id)
-        if not self.has_node(node_uuid=parent_request.parent_id):
+        node = self.get_node(identifier=parent_request.node_identifier)
+        if not self.has_node(identifier=parent_request.parent_identifier):
             parent = EnrichedDiffNode(
-                uuid=parent_request.parent_id,
-                kind=parent_request.parent_kind,
+                identifier=parent_request.parent_identifier,
                 label=parent_request.parent_label,
                 action=DiffAction.UNCHANGED,
                 changed_at=None,
             )
             self.add_node(parent)
         else:
-            parent = self.get_node(node_uuid=parent_request.parent_id)
+            parent = self.get_node(identifier=parent_request.parent_identifier)
 
         try:
             rel = node.get_relationship(name=parent_request.parent_rel_name)

@@ -23,7 +23,7 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
-from infrahub.core.graph.index import node_indexes, rel_indexes
+from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
 from infrahub.core.graph.schema import (
     GRAPH_SCHEMA,
     GraphAttributeProperties,
@@ -48,6 +48,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
+from infrahub.database.memgraph import IndexManagerMemgraph
+from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
@@ -59,6 +61,7 @@ from .patch import patch_app
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
     from infrahub.database import InfrahubDatabase
+    from infrahub.database.index import IndexManagerBase
 
 app = AsyncTyper()
 app.add_typer(patch_app, name="patch")
@@ -249,14 +252,20 @@ async def index(
 
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
-    dbdriver.manager.index.init(nodes=node_indexes, rels=rel_indexes)
+    if dbdriver.db_type is DatabaseType.MEMGRAPH:
+        index_manager: IndexManagerBase = IndexManagerMemgraph(db=dbdriver)
+    index_manager = IndexManagerNeo4j(db=dbdriver)
+
+    if config.SETTINGS.experimental_features.value_db_index:
+        node_indexes.append(attr_value_index)
+    index_manager.init(nodes=node_indexes, rels=rel_indexes)
 
     if action == IndexAction.ADD:
-        await dbdriver.manager.index.add()
+        await index_manager.add()
     elif action == IndexAction.DROP:
-        await dbdriver.manager.index.drop()
+        await index_manager.drop()
 
-    indexes = await dbdriver.manager.index.list()
+    indexes = await index_manager.list()
 
     console = Console()
 
@@ -412,7 +421,7 @@ async def update_core_schema(
             update_db=True,
         )
         default_branch.update_schema_hash()
-        rprint("The Core Schema has been updated")
+        rprint("The Core Schema has been updated, make sure to rebase any open branches after the upgrade")
         if debug:
             rprint(f"New schema hash: {default_branch.active_schema_hash.main}")
         await default_branch.save(db=dbt)

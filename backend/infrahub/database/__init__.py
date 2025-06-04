@@ -26,16 +26,14 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config, lock
+from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .constants import DatabaseType, Neo4jRuntime
-from .memgraph import DatabaseManagerMemgraph
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
-from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -157,11 +155,6 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
-
-        if self.db_type == DatabaseType.NEO4J:
-            self.manager = DatabaseManagerNeo4j(db=self)
-        elif self.db_type == DatabaseType.MEMGRAPH:
-            self.manager = DatabaseManagerMemgraph(db=self)
 
     def __del__(self) -> None:
         if not self._session or not self._is_session_local or self._session.closed():
@@ -483,8 +476,6 @@ async def validate_database(
 
 
 async def get_db(retry: int = 0) -> AsyncDriver:
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
-
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
@@ -492,11 +483,14 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
     driver = AsyncGraphDatabase.driver(
-        URI,
+        config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
-        notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
+        notifications_disabled_categories=[
+            NotificationDisabledCategory.UNRECOGNIZED,
+            NotificationDisabledCategory.DEPRECATION,  # TODO: Remove me with 1.3
+        ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
 

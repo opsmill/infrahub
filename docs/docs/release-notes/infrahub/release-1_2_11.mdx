@@ -1,0 +1,52 @@
+---
+title: Release 1.2.11
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.11</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>May 23rd, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #11</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.11](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.11)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.11
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.10 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Add the `CoreWeightedPoolResource` generic to better control which resource should be used when allocating from a pool. The higher the weight of the resource, the more likely it is to be selected for allocation.
+
+### Changed
+
+- The scrollbar in the infinite scroll tables, is now only visible when your mouse hovers the table.
+
+### Fixed
+
+- Fix a problem in the logic to calculate a diff that could cause it to quit too early under certain unlikely circumstances
+- Fixes an issue where the next page of data was loaded even when the infinite scroll table wasn't scrolled.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade
+
+**After the upgrade, it is strongly recommended to rebase any open branches in Infrahub once the system is online again.**

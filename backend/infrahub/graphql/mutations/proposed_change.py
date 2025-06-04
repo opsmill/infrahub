@@ -222,7 +222,7 @@ class ProposedChangeMerge(Mutation):
 
         async with graphql_context.db.start_session() as db:
             proposed_change.state.value = ProposedChangeState.MERGING.value
-            proposed_change.save(db=db)
+            await proposed_change.save(db=db)
 
         if wait_until_completion:
             await graphql_context.service.workflow.execute_workflow(
