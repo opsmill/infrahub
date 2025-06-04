@@ -80,7 +80,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
-        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
     async def test_profile_for_schema_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node):
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
@@ -89,7 +89,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.add(db=db, data=ship_profile)
         await ship_one.profiles.resolve(db=db)
 
-        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
     async def test_generic_profile_allowed(self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node):
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
@@ -98,7 +98,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.add(db=db, data=space_object_profile)
         await ship_one.profiles.resolve(db=db)
 
-        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
     async def test_wrong_profile_not_allowed(self, db: InfrahubDatabase, ship_one: Node):
         wrong_profile = await Node.init(db=db, schema="ProfileTestOtherGeneric")
@@ -111,7 +111,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.resolve(db=db)
 
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
         assert "is of kind ProfileTestOtherGeneric" in exc.value.message
         assert "only ['ProfileTestGenericSpaceObject', 'ProfileTestShip'] are allowed" in exc.value.message
@@ -128,7 +128,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.resolve(db=db)
 
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
         assert "is of kind ProfileTestGenericSpaceObject" in exc.value.message
         assert "only ['ProfileTestShip'] are allowed" in exc.value.message
@@ -144,4 +144,4 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.resolve(db=db)
 
         with pytest.raises(ValidationError, match="TestShip does not allow profiles"):
-            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)

@@ -946,6 +946,7 @@ async def test_schema_branch_validate_kinds_peer():
 async def test_schema_branch_validate_kinds_common_relatives():
     schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
     lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = None
     lag_interface_schema.relationships[0].common_relatives = ["doesnotexist"]
     schema_with_lag.nodes.append(lag_interface_schema)
 

@@ -26,7 +26,12 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
     def schema(self, default_branch: Branch, register_internal_schema: SchemaBranch) -> SchemaRoot:
         schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
         schema_with_lag.nodes[0].generate_template = False
-        schema_with_lag.nodes.append(LAG_INTERFACE)
+
+        lag_node_schema = copy.deepcopy(LAG_INTERFACE)
+        lag_node_schema.relationships[0].common_parent = None
+        lag_node_schema.relationships[0].common_relatives = ["device"]
+        schema_with_lag.nodes.append(lag_node_schema)
+
         return schema_with_lag
 
     @pytest.fixture(scope="class")

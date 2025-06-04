@@ -132,7 +132,7 @@ LAG_INTERFACE = NodeSchema(
             optional=True,
             peer=TestKind.PHYSICAL_INTERFACE,
             cardinality=RelationshipCardinality.MANY,
-            common_relatives=["device"],
+            common_parent="device",
         )
     ],
 )
