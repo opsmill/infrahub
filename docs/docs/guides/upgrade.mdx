@@ -40,8 +40,15 @@ docker compose run infrahub-server infrahub upgrade
 
 # Restart the instance
 docker compose up -d
-
 ```
+
+:::note
+
+Old Docker images of Infrahub may remain on your machine and consume disk space after an upgrade. To free up space and keep disk usage under control, consider removing unused images.
+
+You can do this with: `docker image prune -a`
+
+:::
 
 </TabItem>
 <TabItem value="helm" label="Helm">
@@ -114,6 +121,14 @@ docker compose run infrahub-server infrahub upgrade
 # Restart the instance
 docker compose up -d
 ```
+
+:::note
+
+Old Docker images of Infrahub may remain on your machine and consume disk space after an upgrade. To free up space and keep disk usage under control, consider removing unused images.
+
+You can do this with: `docker image prune -a`
+
+:::
 
 </TabItem>
 <TabItem value="helm" label="Helm">
