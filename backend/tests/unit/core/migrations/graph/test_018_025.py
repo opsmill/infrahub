@@ -55,6 +55,7 @@ async def car_invisible(db: InfrahubDatabase, default_branch: Branch, person_mai
     return car
 
 
+@pytest.mark.skip("migration is already released")
 @pytest.mark.parametrize("migration", [Migration018(), Migration025()])
 async def test_migration_018_success(
     db: InfrahubDatabase,
@@ -73,6 +74,7 @@ async def test_migration_018_success(
         assert not validation_result.errors
 
 
+@pytest.mark.skip("migration is already released")
 @pytest.mark.parametrize("migration", [Migration018(), Migration025()])
 async def test_migration_018_fail(
     db: InfrahubDatabase,

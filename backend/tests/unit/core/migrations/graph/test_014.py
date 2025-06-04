@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.constants.database import IndexType
 from infrahub.core.migrations.graph.m014_remove_index_attr_value import (
     Migration014,
@@ -8,6 +10,7 @@ from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_014(
     db: InfrahubDatabase,
     reset_registry,

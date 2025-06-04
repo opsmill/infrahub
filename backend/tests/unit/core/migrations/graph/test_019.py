@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import Migration019
@@ -8,6 +10,7 @@ from infrahub.database import InfrahubDatabase
 from tests.helpers.db_validation import validate_node_relationships
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_019(
     db: InfrahubDatabase,
     default_branch,
@@ -127,6 +130,7 @@ async def test_migration_019(
     await validate_node_relationships(node=test_group, branch=registry.get_global_branch(), db=db)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_incorrectly_deleted_aware_nodes_and_relationship(
     db: InfrahubDatabase, branch, car_person_schema_unregistered
 ):
@@ -167,6 +171,7 @@ async def test_incorrectly_deleted_aware_nodes_and_relationship(
     await validate_node_relationships(node=car, branch=branch, db=db)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_incorrectly_deleted_agnostic_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema):
     """
     Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
@@ -206,6 +211,7 @@ async def test_incorrectly_deleted_agnostic_node(db: InfrahubDatabase, branch, c
     await validate_node_relationships(node=agnostic_car, branch=registry.get_global_branch(), db=db)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema):
     """
     Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being

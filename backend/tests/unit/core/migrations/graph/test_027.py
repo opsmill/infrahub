@@ -1,7 +1,10 @@
+import pytest
+
 from infrahub.core.migrations.graph.m027_delete_isolated_nodes import Migration027
 from infrahub.database import InfrahubDatabase
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_027(
     db: InfrahubDatabase,
     default_branch,

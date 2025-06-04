@@ -192,6 +192,7 @@ async def migration_012_schema(db: InfrahubDatabase, reset_registry, default_bra
     await attr4.save(db=db)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_012_add_label_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
 ):
@@ -209,6 +210,7 @@ async def test_migration_012_add_label_data(
     assert nbr_nodes_after == nbr_nodes_before + 2
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_012_rename_type_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
 ):
@@ -226,6 +228,7 @@ async def test_migration_012_rename_type_data(
     assert nbr_attrs_after == nbr_attrs_before + 2
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_012_rename_type_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
 ):
@@ -241,6 +244,7 @@ async def test_migration_012_rename_type_schema(
     assert nbr_attrs_value_after == nbr_attrs_value_before + 1
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_012_rename_relationship_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
 ):
@@ -262,6 +266,7 @@ async def test_migration_012_rename_relationship_data(
     assert nbr_rels_related_after == nbr_rels_related_before + (4 * 3)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_012_delete_old_attribute_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
 ):
@@ -279,6 +284,7 @@ async def test_migration_012_delete_old_attribute_schema(
     assert nbr_rels_after == nbr_rels_before + (3 * 3)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_012(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
 ):

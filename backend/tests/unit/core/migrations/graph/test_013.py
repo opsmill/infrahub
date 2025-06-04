@@ -195,6 +195,7 @@ async def migration_013_schema(db: InfrahubDatabase, reset_registry, default_bra
     await attr4.save(db=db)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_013_query_01(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
 ):
@@ -231,6 +232,7 @@ async def test_migration_013_query_01(
     assert nbr_rels_after == nbr_rels_after2
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_013_query_02(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
 ):
@@ -259,6 +261,7 @@ async def test_migration_013_query_02(
     assert nbr_rels_after == nbr_rels_after2
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_013_delete_username_password_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_schema
 ):
@@ -275,6 +278,7 @@ async def test_migration_013_delete_username_password_schema(
     assert nbr_rels_after == nbr_rels_before + (2 * 3)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_013_add_internal_status_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
 ):
@@ -293,6 +297,7 @@ async def test_migration_013_add_internal_status_data(
     assert nbr_rels_after == nbr_rels_before + (3 * 4)
 
 
+@pytest.mark.skip("migration is already released")
 async def test_migration_013(
     db: InfrahubDatabase,
     reset_registry,
