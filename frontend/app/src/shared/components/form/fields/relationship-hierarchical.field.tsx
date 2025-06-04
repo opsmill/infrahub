@@ -1,4 +1,3 @@
-import { POOLS_PEER } from "@/entities/ipam/constants";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import {
   RelationshipHierarchicalInput,
@@ -11,7 +10,9 @@ import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
+  PoolSource,
 } from "@/shared/components/form/type";
+import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
@@ -35,11 +36,18 @@ export default function RelationshipHierarchicalField({
       defaultValue={defaultValue}
       render={({ field }) => {
         const fieldData: FormRelationshipValue = field.value;
+        const value: RelationshipNode | RelationshipNode[] | null =
+          fieldData.value && "from_pool" in fieldData.value
+            ? {
+                id: fieldData.value.from_pool.id,
+                display_label: "Allocated by pool",
+                __typename: (fieldData.source as PoolSource).kind,
+              }
+            : fieldData.value;
 
-        const peer = props.relationship.peer;
-        const { schema, isNode } = useSchema(peer);
-        const canSelectFromPool =
-          isNode && !!schema.inherit_from?.some((from) => POOLS_PEER.includes(from));
+        const { peer } = props.relationship;
+        const { schema: peerSchema } = useSchema(peer);
+        const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
         const onChange = (newValue: RelationshipNode | RelationshipNode[] | PoolValue | null) => {
@@ -62,20 +70,25 @@ export default function RelationshipHierarchicalField({
                   <RelationshipHierarchicalManyInput
                     {...field}
                     peer={peer}
-                    value={fieldData.value as RelationshipNode[] | null}
+                    value={value as RelationshipNode[] | null}
                     onChange={onChange}
                   />
                 ) : (
                   <RelationshipHierarchicalInput
                     {...field}
                     peer={props.relationship.peer}
-                    value={fieldData.value as RelationshipNode | null}
+                    value={value as RelationshipNode | null}
                     onChange={onChange}
                   />
                 )}
               </FormInput>
-              {canSelectFromPool && (
-                <PoolSelect peer={peer} selectedPoolId={selectedPoolId} onChange={onChange} />
+
+              {props.relationship.cardinality === "one" && poolKind && (
+                <PoolSelect
+                  poolKind={poolKind}
+                  selectedPoolId={selectedPoolId}
+                  onChange={onChange}
+                />
               )}
             </div>
 
