@@ -1,38 +1,48 @@
-import { POOLS_DICTIONNARY } from "@/entities/ipam/constants";
-import { getDropdownOptions } from "@/entities/nodes/api/dropdownOptions";
-import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-} from "@/shared/components/ui/combobox";
+import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
 export interface PoolSelectProps {
-  peer: string;
+  poolKind: string;
   selectedPoolId: string | null;
   onChange: (value: PoolValue | null) => void;
+  peerSchema: ModelSchema;
 }
 
-export function PoolSelect({ peer, onChange, selectedPoolId }: PoolSelectProps) {
+export function PoolSelect({ peerSchema, poolKind, onChange, selectedPoolId }: PoolSelectProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const poolPeer = POOLS_DICTIONNARY[peer];
-  const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
-  const poolsQuery = gql`
-    ${poolsQueryString}
-  `;
-  const [loadPoolList, { loading: isPoolListLoading, data: poolsData }] = useLazyQuery(poolsQuery);
+  const filterQuery = React.useMemo<
+    { default_address_type__value: string } | { default_prefix_type__value: string } | undefined
+  >(() => {
+    if (isGenericSchema(peerSchema)) {
+      return undefined;
+    }
+
+    switch (poolKind) {
+      case IP_ADDRESS_POOL: {
+        return {
+          default_address_type__value: peerSchema.kind as string,
+        };
+      }
+      case IP_PREFIX_POOL: {
+        return {
+          default_prefix_type__value: peerSchema.kind as string,
+        };
+      }
+      default: {
+        return undefined;
+      }
+    }
+  }, [peerSchema, poolKind]);
 
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
@@ -48,44 +58,25 @@ export function PoolSelect({ peer, onChange, selectedPoolId }: PoolSelectProps) 
         </PopoverTrigger>
       </Tooltip>
 
-      <ComboboxContent align="end" fitTriggerWidth={false} onOpenAutoFocus={() => loadPoolList()}>
-        <ComboboxList>
-          {!isPoolListLoading && <ComboboxEmpty>No pools found</ComboboxEmpty>}
-
-          {!isPoolListLoading &&
-            poolsData &&
-            (poolsData[poolPeer] as RelationshipManyType).edges
-              .map((edge) => edge.node)
-              .filter((node): node is Node => !!node)
-              .map((pool) => {
-                return (
-                  <ComboboxItem
-                    key={pool.id}
-                    value={pool.id}
-                    keywords={[pool.display_label]}
-                    selectedValue={selectedPoolId}
-                    onSelect={() => {
-                      if (selectedPoolId === pool.id) {
-                        onChange(null);
-                      } else {
-                        onChange({
-                          from_pool: {
-                            id: pool.id,
-                            name: pool.display_label,
-                            kind: pool.__typename,
-                          },
-                        });
-                      }
-                      setIsOpen(false);
-                    }}
-                  >
-                    <span className="truncate">{pool.display_label}</span>
-                  </ComboboxItem>
-                );
-              })}
-
-          {isPoolListLoading && <Spinner className="flex justify-center m-2" />}
-        </ComboboxList>
+      <ComboboxContent align="end" fitTriggerWidth={false}>
+        <RelationshipComboboxList
+          onSelect={(pool) => {
+            if (selectedPoolId === pool.id) {
+              onChange(null);
+            } else {
+              onChange({
+                from_pool: {
+                  id: pool.id,
+                  name: pool.display_label,
+                  kind: pool.__typename,
+                },
+              });
+            }
+            setIsOpen(false);
+          }}
+          peer={poolKind}
+          filterQuery={filterQuery}
+        />
       </ComboboxContent>
     </Combobox>
   );
