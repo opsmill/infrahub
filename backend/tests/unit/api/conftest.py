@@ -9,6 +9,7 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_message_bus
 from infrahub.workflows.initialization import setup_task_manager
 
 
@@ -31,10 +32,11 @@ def admin_headers():
 
 
 @pytest.fixture
-def rpc_bus(helper):
+def rpc_bus(helper, dependency_provider):
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
     config.OVERRIDE.message_bus = bus
+    dependency_provider.override(build_message_bus, lambda: bus)
     yield bus
     config.OVERRIDE.message_bus = original
 
