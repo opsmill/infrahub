@@ -83,9 +83,10 @@ export default function RelationshipHierarchicalField({
                 )}
               </FormInput>
 
-              {props.relationship.cardinality === "one" && poolKind && (
+              {props.relationship.cardinality === "one" && poolKind && peerSchema && (
                 <PoolSelect
                   poolKind={poolKind}
+                  peerSchema={peerSchema}
                   selectedPoolId={selectedPoolId}
                   onChange={onChange}
                 />

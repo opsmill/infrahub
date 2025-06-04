@@ -379,9 +379,10 @@ const RelationshipField = ({
                   />
                 </FormInput>
 
-                {poolKind && (
+                {poolKind && peerSchema && (
                   <PoolSelect
                     poolKind={poolKind}
+                    peerSchema={peerSchema}
                     selectedPoolId={selectedPoolId}
                     onChange={onChange}
                   />
