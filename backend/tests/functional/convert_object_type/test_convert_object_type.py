@@ -111,9 +111,7 @@ class TestConvertObjectType(TestInfrahubApp):
 
         mapping = {
             "name": InputForDestField(source_field="name"),
-            "height": InputForDestField(source_field="height"),
             "age": InputForDestField(data=InputDataForDestField(attribute_value=25)),
-            "favorite_car": InputForDestField(source_field="favorite_car"),
             "worst_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
             "fastest_cars": InputForDestField(source_field="fastest_cars"),
             "slowest_cars": InputForDestField(data=InputDataForDestField(peers_ids=[car_1.id])),
