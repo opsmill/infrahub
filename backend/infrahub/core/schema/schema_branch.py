@@ -983,7 +983,7 @@ class SchemaBranch:
         if not node.has_parent_relationship:
             raise ValueError(
                 f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but node does not have a parent relationship"
-            ) from None
+            )
 
         try:
             parent_rel = peer_schema.get_relationship(name=rel.common_parent)
@@ -995,7 +995,7 @@ class SchemaBranch:
         if parent_rel.kind != RelationshipKind.PARENT:
             raise ValueError(
                 f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent} is not of kind 'parent'"
-            ) from None
+            )
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
