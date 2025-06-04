@@ -16,7 +16,6 @@ class ConvertObjectTypeInput(InputObjectType):
     node_id = String(required=True)
     target_kind = String(required=True)
     fields_mapping = GenericScalar(required=True)  # keys are destination attributes/relationships names.
-    branch = String(required=True)
 
 
 class ConvertObjectType(Mutation):
@@ -45,9 +44,9 @@ class ConvertObjectType(Mutation):
             fields_mapping[field] = InputForDestField(**input_for_dest_field_str)
 
         node_to_convert = await NodeManager.get_one(
-            id=str(data.node_id), db=graphql_context.db, branch=str(data.branch)
+            id=str(data.node_id), db=graphql_context.db, branch=graphql_context.branch
         )
-        target_schema = registry.get_node_schema(name=str(data.target_kind), branch=data.branch)
+        target_schema = registry.get_node_schema(name=str(data.target_kind), branch=graphql_context.branch)
         new_node = await convert_object_type(
             node=node_to_convert,
             target_schema=target_schema,

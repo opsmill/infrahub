@@ -14,8 +14,8 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
         response = await client.schema.load(schemas=[schemas_conversion])
         assert len(response.errors) == 0, response.errors
 
-        query = """ query($source_kind: String!, $target_kind: String!, $branch: String!) {
-                FieldsMappingTypeConversion(source_kind: $source_kind, target_kind: $target_kind, branch: $branch) {
+        query = """ query($source_kind: String!, $target_kind: String!) {
+                FieldsMappingTypeConversion(source_kind: $source_kind, target_kind: $target_kind) {
                     mapping
                 }
             }
@@ -24,10 +24,10 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
         response = await client.execute_graphql(
             query=query,
             variables={
-                "branch": "main",
                 "source_kind": "TestconvPerson1",
                 "target_kind": "TestconvPerson2",
             },
+            branch_name="main",
         )
 
         assert response == {
@@ -97,11 +97,10 @@ class TestConvertObjectType(TestInfrahubApp):
         await jack_1.save()
 
         query = """
-            mutation($node_id: String!, $target_kind: String!, $branch: String!, $fields_mapping: GenericScalar!) {
+            mutation($node_id: String!, $target_kind: String!, $fields_mapping: GenericScalar!) {
                 ConvertObjectType(data: {
                         node_id: $node_id,
                         target_kind: $target_kind,
-                        branch: $branch,
                         fields_mapping: $fields_mapping
                     }) {
                         ok
@@ -126,11 +125,11 @@ class TestConvertObjectType(TestInfrahubApp):
         response = await client.execute_graphql(
             query=query,
             variables={
-                "branch": "main",
                 "node_id": str(jack_1.id),
                 "fields_mapping": mapping_dict,
                 "target_kind": "TestconvPerson2",
             },
+            branch_name="main",
         )
         assert response["ConvertObjectType"]["ok"] is True
         res_node = response["ConvertObjectType"]["node"]
