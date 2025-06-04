@@ -25,7 +25,7 @@ export default function HomepageHeader() {
                 <div className={styles.containerFlexWrap}>
                     <Link
                         className={clsx(styles.heroButton, "button button--primary button--lg")}
-                        to="getting-started/quick-start"
+                        to="getting-started/overview"
                     >
                         {translate({
                             id: 'home.header.docs',
@@ -36,7 +36,7 @@ export default function HomepageHeader() {
                     </Link>
                     <Link
                         className={clsx(styles.heroButton, "button button--secondary button--lg")}
-                        to="https://demo.infrahub.app/"
+                        to="https://sandbox.infrahub.app/"
                     >
                         {translate({
                             id: 'home.header.sandbox',
