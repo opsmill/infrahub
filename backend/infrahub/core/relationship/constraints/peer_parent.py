@@ -38,7 +38,7 @@ class RelationshipPeerParentConstraint(RelationshipManagerConstraintInterface):
         if len(parents) != 1:
             raise ValidationError(
                 f"All the elements of the '{relm.name}' relationship on node {node.id} ({node.get_kind()}) must have the same parent "
-                "for the node"
+                "as the node"
             )
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
