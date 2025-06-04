@@ -1,15 +1,31 @@
 import React from "react";
 
+function oldSchoolCopy(text: string) {
+  const tempTextArea = document.createElement("textarea");
+  tempTextArea.value = text;
+  document.body.appendChild(tempTextArea);
+  tempTextArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(tempTextArea);
+}
+
+const COPIED_FEEDBACK_DURATION = 2000;
+
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
 
   const copyToClipboard = React.useCallback(async (value: string) => {
+    function confirmCopied() {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
+    }
+
     try {
       await navigator.clipboard.writeText(value);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000); // Reset copied state after 2 seconds
-    } catch (error) {
-      console.error("Failed to copy: ", error);
+      confirmCopied();
+    } catch {
+      oldSchoolCopy(value);
+      confirmCopied();
     }
   }, []);
 

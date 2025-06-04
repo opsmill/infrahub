@@ -581,6 +581,11 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+      - name: status
+        peer: StatusGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
   - name: LocationType
     namespace: Choice
     description: "A type of Location"
