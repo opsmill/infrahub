@@ -12,6 +12,8 @@ from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
 import ujson
+from fast_depends import Provider
+from fast_depends import dependency_provider as provider
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
@@ -105,6 +107,11 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def dependency_provider() -> Provider:
+    return provider
 
 
 @pytest.fixture(scope="module")
