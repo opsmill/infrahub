@@ -132,7 +132,7 @@ export const NodeRelationshipMatchForm = ({
         },
       });
 
-      if (currentObject) {
+      if (currentObject?.id) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match updated!"} />, {
           toastId: "alert-success-node-relationship-match-updated",
         });

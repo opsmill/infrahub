@@ -122,7 +122,7 @@ export const NodeAttributeMatchForm = ({
         },
       });
 
-      if (currentObject) {
+      if (currentObject?.id) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match updated!"} />, {
           toastId: "alert-success-node-attribute-match-updated",
         });
