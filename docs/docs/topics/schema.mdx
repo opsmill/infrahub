@@ -1015,3 +1015,26 @@ Most changes to an existing schema are supported but there are a few properties 
 
 * When updating the identifier on a relationship, the existing relationships won't be impacted or updated even if it was the last relationship using a given identifier. [ISSUE-2472](https://github.com/opsmill/infrahub/issues/2472)
 * Updating Nodes when Generics are updated [ISSUE-5793](https://github.com/opsmill/infrahub/issues/5793)
+
+## Schema strict mode
+
+By default, Infrahub operates in schema strict mode. This means that all the schema validators will be run every time we make a schema change, or when the CI pipeline runs schema validation checks.
+
+There are certain scenarios, where Infrahub introduces new schema validators in new versions. This may happen because new features are introduced or because we didn't have a validator in place for certain scenarios. This may mean that you have to make changes to the existing data or schema in your instance of Infrahub before you can upgrade to a newer version. In some situations it might not be possible to make these changes immediately.
+
+For this reason we allow you to disable schema strict mode, using the `INFRAHUB_SCHEMA_STRICT_MODE` environment variable.
+
+The following schema validators will be disabled when the environment variable `INFRAHUB_SCHEMA_STRICT_MODE` is set to `false`:
+
+* relationships same parent constraint validator
+* `min_length` less than `max_length` attribute parameter validator
+* `min_value` less than `max_value` attribute parameter validator
+* HFID uses only unique attribute validator
+
+We recommend that you re-enable schema strict mode, after you were able to make the required schema or data changes.
+
+:::info
+
+Schema strict mode should only be disable temporarily to ease the process of upgrading when new schema validations have been introduced. We recommend that you re-enable schema strict mode as quickly as possible.
+
+:::
