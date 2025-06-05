@@ -17,7 +17,10 @@ export interface ObjectTabManagerProps {
   objectSchema: ModelSchema;
   objectDetailsData: NodeObject;
 }
-export function ObjectTabManager({ objectSchema, objectDetailsData }: ObjectTabManagerProps) {
+export function ObjectDetailsTabContent({
+  objectSchema,
+  objectDetailsData,
+}: ObjectTabManagerProps) {
   const { pathname } = location;
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);

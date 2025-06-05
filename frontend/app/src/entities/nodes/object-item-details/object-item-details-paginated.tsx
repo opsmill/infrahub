@@ -18,7 +18,7 @@ import {
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
-import { ObjectTabManager } from "@/entities/nodes/relationships/ui/object-tab-manager";
+import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { NodeObject } from "@/entities/nodes/types";
@@ -223,7 +223,9 @@ export default function ObjectItemDetails({
         </div>
       )}
 
-      {qspTab && <ObjectTabManager objectSchema={schema} objectDetailsData={objectDetailsData} />}
+      {qspTab && (
+        <ObjectDetailsTabContent objectSchema={schema} objectDetailsData={objectDetailsData} />
+      )}
 
       <SlideOver
         title={
