@@ -10,7 +10,6 @@ from infrahub.utils import InfrahubStringEnum
 
 class NodeAction(InfrahubStringEnum):
     CREATED = "created"
-    DELETED = "deleted"
     UPDATED = "updated"
 
 
