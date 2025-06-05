@@ -125,3 +125,39 @@ class RelationshipPeerChecker(ConstraintCheckerInterface):
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
         return grouped_data_paths_list
+
+
+class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
+    name = "relationship_constraints_peer_parent_validator"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+        pass
+
+    async def get_paths(self) -> GroupedDataPaths:
+        grouped_data_paths = GroupedDataPaths()
+
+        # PLACEHOLDER
+
+        return grouped_data_paths
+
+
+class RelationshipPeerParentChecker(ConstraintCheckerInterface):
+    query_classes = [RelationshipPeerParentValidatorQuery]
+
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
+        self.db = db
+        self.branch = branch
+
+    @property
+    def name(self) -> str:
+        return "relationship.common_parent.update"
+
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == self.name  # and config.SETTINGS.main.schema_strict_mode
+
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:  # noqa: ARG002
+        grouped_data_paths_list: list[GroupedDataPaths] = []
+
+        # PLACEHOLDER
+
+        return grouped_data_paths_list
