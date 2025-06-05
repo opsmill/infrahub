@@ -1,15 +1,5 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
-/**
-  * Creating a sidebar enables you to:
-  - create an ordered group of docs
-  - render a sidebar for each doc of that group
-  - provide next/previous navigation
-
-  The sidebars can be generated from the filesystem, or explicitly defined here.
-
-  Create as many sidebars as you want.
- */
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     "home",
@@ -24,48 +14,6 @@ const sidebars: SidebarsConfig = {
         'getting-started/concepts',
       ],
     },
-    // {
-    //   type: 'category',
-    //   label: 'Infrahub Overview',
-    //   link: { type: 'doc', id: 'overview/readme' },
-    //   items: [
-    //     'overview/interfaces',
-    //     'overview/schema',
-    //     'overview/data',
-    //     'overview/transformations',
-    //     'overview/versioning',
-    //     'overview/generators',
-    //     'overview/integrations',
-    //   ],
-    // },
-    // {
-    //   type: 'category',
-    //   label: 'Tutorials',
-    //   link: {
-    //     type: 'generated-index',
-    //     slug: 'tutorials'
-    //   },
-    //   items: [
-    //     {
-    //       type: 'category',
-    //       label: 'Getting started',
-    //       link: { type: 'doc', id: 'tutorials/getting-started/readme' },
-    //       items: [
-    //         'tutorials/getting-started/introduction-to-infrahub',
-    //         'tutorials/getting-started/schema',
-    //         'tutorials/getting-started/creating-an-object',
-    //         'tutorials/getting-started/branches',
-    //         'tutorials/getting-started/historical-data',
-    //         'tutorials/getting-started/lineage-information',
-    //         'tutorials/getting-started/resource-manager',
-    //         'tutorials/getting-started/git-integration',
-    //         'tutorials/getting-started/rendering-configuration',
-    //         'tutorials/getting-started/graphql-query',
-    //         'tutorials/getting-started/graphql-mutation'
-    //       ],
-    //     },
-    //   ],
-    // },
     {
       type: 'category',
       label: 'Guides',

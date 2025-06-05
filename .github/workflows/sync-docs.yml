@@ -27,7 +27,6 @@ jobs:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           path: target-repo
 
-      # FIXME: There is some readme.mdx file in the target repo that is not being removed
       - name: Sync folders
         run: |
           # Remove existing files in target repo
@@ -39,13 +38,6 @@ jobs:
           cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
-
-          # FIXME: Not sure to understand why it's needed
-          # sed -i "/docsSidebar/,/\],/ s/'readme',/'introduction\/readme',/" target-repo/docs/sidebars.ts
-          # mkdir target-repo/docs/docs/introduction
-          # mv target-repo/docs/docs/readme.mdx target-repo/docs/docs/introduction/
-          # sed -i '/^title: Introduction/i sidebar_label: Introduction' target-repo/docs/docs/introduction/readme.mdx
-          # sed -i 's|](\./|](/|g' target-repo/docs/docs/introduction/readme.mdx
 
           # Commit and push changes to target repository
           cd target-repo
