@@ -25,7 +25,7 @@ Additionally, you might want to install the Infrahub CLI tool on your laptop. Th
 
 <ReferenceLink title="Infrahub CTL Installation Guide" url="$(base_url)python-sdk/guides/installation#all"/>
 
-## 2. The Schema
+## 2. The schema
 
 Everything starts with data. The schema defines the shape of your data and drives the rest of the system.
 
@@ -35,12 +35,13 @@ This is the perfect starting point to quickly scaffold a schema that will cover 
 
 <ReferenceLink title="Consume the schema library" url="$(base_url)schema-library"/>
 
-## 3. Load Data
+## 3. Load data
 
 With a schema in place, it's time to bring in some data. If you have existing systems that hold your infrastructure data, we provide you the tool to sync them with Infrahub.
 
 At the moment [**Infrahub Sync**](https://github.com/opsmill/infrahub-sync) supports the following adapters:
 
+<!-- vale off -->
 - IP Fabric
 - LibreNMS
 - Nautobot
@@ -48,6 +49,7 @@ At the moment [**Infrahub Sync**](https://github.com/opsmill/infrahub-sync) supp
 - Observium
 - Peering Manager
 - Slurp'it
+<!-- vale on -->
 
 <ReferenceLink title="Sync data from external system using Infrahub Sync" url="$(base_url)sync"/>
 
@@ -82,7 +84,7 @@ Infrahub offers a native integration with git, allowing you to connect your repo
 
 The most important file is the `.infrahub.yml` file, which defines how Infrahub should behave and what files to consume.
 
-You will need to push this repository to a remote location that Infrahub can access. It doesn't have to be a public repository as Infrahub supports authentication with private repositories. Depending on the provider you use (e.g., GitHub, GitLab, Bitbucket), the process may vary slightly, but the general steps are the same:
+You will need to push this repository to a remote location that Infrahub can access. It doesn't have to be a public repository as Infrahub supports authentication with private repositories. Depending on the provider you use (for example: GitHub, GitLab, Bitbucket), the process may vary slightly, but the general steps are the same:
 
 1. Create a new repository on your preferred git hosting service.
 2. Clone the repository to your local machine.
