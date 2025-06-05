@@ -62,6 +62,9 @@ test.describe("Node Trigger - ", () => {
       await page.getByRole("option", { name: "Node Trigger Attribute Match" }).click();
       await page.getByRole("combobox", { name: "Attribute Name *" }).click();
       await page.getByRole("option", { name: "Name" }).locator("div").nth(1).click();
+      await expect(
+        page.getByRole("combobox").filter({ hasText: "new node trigger rule" })
+      ).toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Node attribute match created!")).toBeVisible();
     });
@@ -74,6 +77,9 @@ test.describe("Node Trigger - ", () => {
       await page.getByRole("option", { name: "Site" }).click();
       await page.getByRole("combobox", { name: "Peer" }).click();
       await page.getByRole("option", { name: "atl1" }).click();
+      await expect(
+        page.getByRole("combobox").filter({ hasText: "new node trigger rule" })
+      ).toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Node relationship match created!")).toBeVisible();
     });
