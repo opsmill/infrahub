@@ -131,7 +131,7 @@ export const DynamicInput = (props: DynamicFieldProps) => {
         return <RelationshipManyField {...otherProps} />;
       }
 
-      if (props.relationship.common_relatives) {
+      if (props.relationship.common_parent) {
         return <RelationshipParentConstraintField {...props} />;
       }
 
