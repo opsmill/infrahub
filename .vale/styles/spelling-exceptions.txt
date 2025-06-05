@@ -109,6 +109,7 @@ Postgresql
 Prefetch
 profile_name
 pseudocode
+psutil
 PyPI
 query_peers
 rebase
