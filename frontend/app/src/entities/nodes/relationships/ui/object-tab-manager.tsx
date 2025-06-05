@@ -1,12 +1,12 @@
 import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
+import { NodeObject } from "@/entities/nodes/types";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
 import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-objects-manager";
 import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
-import { Node } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 import { Icon } from "@iconify-icon/react";
@@ -14,11 +14,10 @@ import { useRef } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export interface ObjectTabManagerProps {
-  parentNodeSchema: ModelSchema;
-  objectDetailsData: Node;
-  relationshipName: string;
+  objectSchema: ModelSchema;
+  objectDetailsData: NodeObject;
 }
-export function ObjectTabManager({ parentNodeSchema, objectDetailsData }: ObjectTabManagerProps) {
+export function ObjectTabManager({ objectSchema, objectDetailsData }: ObjectTabManagerProps) {
   const { pathname } = location;
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -61,7 +60,7 @@ export function ObjectTabManager({ parentNodeSchema, objectDetailsData }: Object
   if (qspTab !== TASK_TAB) {
     return (
       <ObjectRelationshipsManager
-        parentNodeSchema={parentNodeSchema}
+        parentNodeSchema={objectSchema}
         parentNodeId={objectDetailsData.id}
         relationshipName={qspTab}
       />

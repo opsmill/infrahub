@@ -223,9 +223,7 @@ export default function ObjectItemDetails({
         </div>
       )}
 
-      {qspTab && (
-        <ObjectTabManager parentNodeSchema={schema} objectDetailsData={objectDetailsData} />
-      )}
+      {qspTab && <ObjectTabManager objectSchema={schema} objectDetailsData={objectDetailsData} />}
 
       <SlideOver
         title={
