@@ -1,6 +1,6 @@
 import { NodeObject } from "@/entities/nodes/types";
+import { getMatchParentFromApi } from "@/entities/triggers/api/get-match-parent-from-api";
 import { ContextParams } from "@/shared/api/types";
-import { getMatchParentFromApi } from "../api/get-match-parent-from-api";
 
 export type GetMatchParentParams = ContextParams & {
   objectId: string;

@@ -1,8 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import {
-  GetMatchParentParams,
-  getMatchParent,
-} from "@/entities/nodes/object/domain/get-match-parent";
+import { GetMatchParentParams, getMatchParent } from "@/entities/triggers/domain/get-match-parent";
 import { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";

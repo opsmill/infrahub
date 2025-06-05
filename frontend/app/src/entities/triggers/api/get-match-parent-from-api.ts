@@ -1,3 +1,4 @@
+import { NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
@@ -15,7 +16,7 @@ export const getMatchParentFromApi = async ({
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: "GetMatchParent",
-      CoreNodeTriggerRule: {
+      [NODE_TRIGGER_RULE]: {
         __args: {
           matches__ids: [objectId],
         },

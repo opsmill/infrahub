@@ -22,8 +22,8 @@ import { toast } from "react-toastify";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetMatchParent } from "@/entities/nodes/object/domain/get-match-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { useGetMatchParent } from "@/entities/triggers/domain/get-match-parent.query";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -33,7 +33,7 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
 import { useEffect, useState } from "react";
-import { NODE_TRIGGER_RELATIONSHIP } from "../constants";
+import { NODE_TRIGGER_RELATIONSHIP_MATCH } from "../constants";
 
 interface NodeRelationshipMatchFormProps extends NodeFormProps {}
 
@@ -103,7 +103,7 @@ export const NodeRelationshipMatchForm = ({
 
       const mutationString = currentObject?.id
         ? updateObjectWithId({
-            kind: NODE_TRIGGER_RELATIONSHIP,
+            kind: NODE_TRIGGER_RELATIONSHIP_MATCH,
             data: stringifyWithoutQuotes({
               id: currentObject.id,
               ...newObject,
@@ -113,7 +113,7 @@ export const NodeRelationshipMatchForm = ({
             }),
           })
         : createObject({
-            kind: NODE_TRIGGER_RELATIONSHIP,
+            kind: NODE_TRIGGER_RELATIONSHIP_MATCH,
             data: stringifyWithoutQuotes({
               ...newObject,
               peer: newObject?.peer?.id && {
@@ -146,7 +146,7 @@ export const NodeRelationshipMatchForm = ({
 
       if (onSuccess)
         await onSuccess(
-          result?.data?.[`${NODE_TRIGGER_RELATIONSHIP}${currentObject ? "Update" : "Create"}`]
+          result?.data?.[`${NODE_TRIGGER_RELATIONSHIP_MATCH}${currentObject ? "Update" : "Create"}`]
         );
     } catch (error: unknown) {
       console.error("An error occurred while creating the object: ", error);
