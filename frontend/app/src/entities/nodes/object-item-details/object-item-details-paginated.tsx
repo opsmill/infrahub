@@ -27,7 +27,7 @@ import { Permission } from "@/entities/permission/types";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -62,9 +62,8 @@ export default function ObjectItemDetails({
   const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [genericList] = useAtom(genericSchemasAtom);
-  const isTaskTarget = !isGenericSchema(schema) && !!schema.inherit_from?.includes(TASK_TARGET);
-  const isRepository =
-    !isGenericSchema(schema) && !!schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND);
+  const isTaskTarget = isOfKind(TASK_TARGET, schema);
+  const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, schema);
 
   if ((schemaList?.length || genericList?.length) && !schema) {
     // If there is no schema nor generics, go to home page
