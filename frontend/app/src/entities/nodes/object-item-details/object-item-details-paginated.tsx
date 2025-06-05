@@ -111,8 +111,8 @@ export default function ObjectItemDetails({
               );
             })}
 
-            {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id as string} />}
-            {isRepository && <RepositoryObjectsTab objectId={objectDetailsData.id as string} />}
+            {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id} />}
+            {isRepository && <RepositoryObjectsTab objectId={objectDetailsData.id} />}
           </div>
           <ActionButtons
             schema={schema}
