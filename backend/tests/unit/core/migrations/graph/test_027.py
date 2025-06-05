@@ -1,4 +1,3 @@
-
 from infrahub.core.migrations.graph.m027_delete_isolated_nodes import Migration027
 from infrahub.database import InfrahubDatabase
 

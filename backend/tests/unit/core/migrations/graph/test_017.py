@@ -1,4 +1,3 @@
-
 from infrahub.core import registry
 from infrahub.core.migrations.graph import Migration017
 from infrahub.database import InfrahubDatabase

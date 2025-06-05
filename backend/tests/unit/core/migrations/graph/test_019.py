@@ -1,4 +1,3 @@
-
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import Migration019

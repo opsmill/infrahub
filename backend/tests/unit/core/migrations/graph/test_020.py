@@ -1,4 +1,3 @@
-
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m020_duplicate_edges import Migration020
 from infrahub.core.node import Node
