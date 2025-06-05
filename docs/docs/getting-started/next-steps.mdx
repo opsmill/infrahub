@@ -40,7 +40,8 @@ This is the perfect starting point to quickly scaffold a schema that will cover 
 With a schema in place, it's time to bring in some data. If you have existing systems that hold your infrastructure data, we provide you the tool to sync them with Infrahub.
 
 At the moment [**Infrahub Sync**](https://github.com/opsmill/infrahub-sync) supports the following adapters:
-- Ip Fabric
+
+- IP Fabric
 - LibreNMS
 - Nautobot
 - Netbox
@@ -82,6 +83,7 @@ Infrahub offers a native integration with git, allowing you to connect your repo
 The most important file is the `.infrahub.yml` file, which defines how Infrahub should behave and what files to consume.
 
 You will need to push this repository to a remote location that Infrahub can access. It doesn't have to be a public repository as Infrahub supports authentication with private repositories. Depending on the provider you use (e.g., GitHub, GitLab, Bitbucket), the process may vary slightly, but the general steps are the same:
+
 1. Create a new repository on your preferred git hosting service.
 2. Clone the repository to your local machine.
 3. Create a `.infrahub.yml` file in the root of the repository.
@@ -101,6 +103,7 @@ At this point, you have a running Infrahub instance with a schema, some data loa
 :::
 
 From here, depending on your use case and goals, you can:
+
 - [**Create your own schema**](../guides/create-schema) - Extend the existing schema to fit your organization's needs.
 - [**Generate artifacts**](../guides/artifact) - Use transformations to create meaningful files from your data such as startup configurations, documentation, cabling plans and more.
 - [**Build generators**](../guides/generator) - Automate the creation of infrastructure objects based on templates and user inputs.
