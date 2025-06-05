@@ -16,12 +16,9 @@ const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps)
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const { schema } = useSchema(objectKind);
 
-  console.log("props.schema: ", props.schema);
-  console.log("props.schema.common_parent: ", props.schema.common_parent);
   const parentRelationionshipSchema = schema?.relationships?.find((relationship) => {
     return relationship.name === props.schema.common_parent;
   });
-  console.log("parentRelationionshipSchema: ", parentRelationionshipSchema);
 
   const { data, isPending } = useGetObject({
     objectId: objectid,
