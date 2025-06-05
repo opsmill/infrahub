@@ -9,7 +9,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -113,6 +113,51 @@ def test_number_pool_read_only() -> None:
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
         ValidationError, match="TestNumberAttribute.assigned_number is a NumberPool it has to be a read_only attribute"
+    ):
+        schema_branch.process()
+
+
+def test_number_pool_override_generic() -> None:
+    node_schema_definition: dict[str, Any] = {
+        "name": "NumberAttribute",
+        "namespace": "Test",
+        "inherit_from": ["BaseNumberAttribute"],
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {
+                "name": "number",
+                "kind": "NumberPool",
+                "optional": False,
+                "unique": True,
+                "read_only": True,
+                "parameters": {"start_range": 16, "end_range": 25},
+            },
+        ],
+    }
+    node_schema = NodeSchema(**node_schema_definition)
+    generic_node_schema_definition: dict[str, Any] = {
+        "name": "NumberAttribute",
+        "namespace": "Base",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {
+                "name": "number",
+                "kind": "NumberPool",
+                "optional": False,
+                "unique": True,
+                "read_only": True,
+                "parameters": {"start_range": 10, "end_range": 25},
+            },
+        ],
+    }
+    generic_schema = GenericSchema(**generic_node_schema_definition)
+
+    schema = SchemaRoot(nodes=[node_schema], generics=[generic_schema])
+    schema_branch = SchemaBranch(cache={})
+    schema_branch.load_schema(schema=schema)
+    with pytest.raises(
+        ValidationError,
+        match="Overriding 'TestNumberAttribute.number' NumberPool attribute from generic 'BaseNumberAttribute' is not supported",
     ):
         schema_branch.process()
 
