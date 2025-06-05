@@ -421,12 +421,14 @@ async def _validate_peer_parents(
         db=graphql_context.db, name=rel_schema.common_parent
     )
     if not source_node_parent:
+        # If the schema is properly validated we are not expecting this to happen
         raise ValidationError(f"Node {source_node.id} ({source_node.get_kind()!r}) does not have a parent peer")
 
     parents: set[str] = {source_node_parent.id}
     for peer in peers.values():
         peer_parent = await peer.get_parent_relationship_peer(db=graphql_context.db, name=rel_schema.common_parent)
         if not peer_parent:
+            # If the schema is properly validated we are not expecting this to happen
             raise ValidationError(f"Peer {peer.id} ({peer.get_kind()!r}) does not have a parent peer")
         parents.add(peer_parent.id)
 
