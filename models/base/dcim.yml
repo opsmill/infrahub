@@ -326,6 +326,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        common_parent: device
   - name: LagInterfaceL3
     namespace: Infra
     description: "Network Layer 3 Lag Interface"
@@ -346,6 +347,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Generic
+        common_parent: device
       - name: ip_addresses
         peer: IpamIPAddress
         optional: true
@@ -386,6 +388,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        common_parent: device
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -426,6 +429,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Generic
+        common_parent: device
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -590,6 +594,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+  # --------------------  MLAG  --------------------
   - name: MlagDomain
     namespace: Infra
     description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
@@ -656,7 +661,7 @@ nodes:
         optional: false
         cardinality: many
         identifier: mlag_member_lag_interface
-
+  # --------------------  Patch Panel  --------------------
   - name: PatchPanel
     label: Patch Panel
     description: A Patch Panel used for managing network cable connections in a data center or telecom setup.
