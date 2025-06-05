@@ -22,7 +22,7 @@ import { toast } from "react-toastify";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetMatchParent } from "@/entities/nodes/object/domain/get-match-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -33,7 +33,6 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
 import { NODE_TRIGGER_RELATIONSHIP } from "../constants";
 
 interface NodeRelationshipMatchFormProps extends NodeFormProps {}
@@ -48,9 +47,7 @@ export const NodeRelationshipMatchForm = ({
 }: NodeRelationshipMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
-  const { objectKind, objectid } = useParams();
-  const { schema } = useSchema(objectKind);
-  const { data, isPending } = useGetObject({ objectSchema: schema, objectId: objectid });
+  const { data, isPending } = useGetMatchParent({ objectId: currentObject?.id as string });
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
@@ -192,6 +189,7 @@ interface NodeRelationshipFieldProps {
 
 const NodeRelationshipField = ({ schemaFields, kind, isLoading }: NodeRelationshipFieldProps) => {
   const { schema } = useSchema(kind);
+  console.log("schema: ", schema);
   const [peerKind, setPeerKind] = useState<string | null>(null);
   const form = useFormContext();
 
