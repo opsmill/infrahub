@@ -258,6 +258,12 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+      - name: bgp_sessions
+        peer: InfraBGPSession
+        identifier: device__bgp_session
+        optional: true
+        cardinality: many
+        kind: Component
       - name: asn
         peer: InfraAutonomousSystem
         optional: true
@@ -608,7 +614,7 @@ nodes:
         cardinality: many
         peer: InfraDevice
         kind: Attribute
-        optional: false
+        optional: true
       - name: peer_interfaces
         cardinality: many
         peer: InfraLagInterfaceL2

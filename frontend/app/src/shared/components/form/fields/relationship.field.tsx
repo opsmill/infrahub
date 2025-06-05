@@ -1,4 +1,3 @@
-import { POOLS_PEER } from "@/entities/ipam/constants";
 import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import {
@@ -15,6 +14,7 @@ import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
+import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
@@ -355,10 +355,9 @@ const RelationshipField = ({
         render={({ field }) => {
           const fieldData: FormRelationshipValue = field.value;
 
-          const peer = relationship?.peer;
-          const { schema, isNode } = useSchema(peer);
-          const canSelectFromPool =
-            isNode && !!schema.inherit_from?.some((from) => POOLS_PEER.includes(from));
+          const { peer } = relationship;
+          const { schema: peerSchema } = useSchema(peer);
+          const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
           const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
           const onChange = (newValue: Node | PoolValue | null) => {
@@ -390,8 +389,14 @@ const RelationshipField = ({
                     parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                   />
                 </FormInput>
-                {canSelectFromPool && (
-                  <PoolSelect peer={peer} selectedPoolId={selectedPoolId} onChange={onChange} />
+
+                {poolKind && peerSchema && (
+                  <PoolSelect
+                    poolKind={poolKind}
+                    peerSchema={peerSchema}
+                    selectedPoolId={selectedPoolId}
+                    onChange={onChange}
+                  />
                 )}
               </div>
               <FormMessage />

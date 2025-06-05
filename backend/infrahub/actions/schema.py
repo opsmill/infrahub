@@ -1,4 +1,11 @@
-from infrahub.actions.constants import BranchScope, NodeAction, ValueMatch
+from infrahub.actions.constants import (
+    BranchScope,
+    MemberAction,
+    MemberUpdate,
+    NodeAction,
+    RelationshipMatch,
+    ValueMatch,
+)
 from infrahub.core.constants import AllowOverrideType, BranchSupportType, InfrahubKind
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -182,12 +189,13 @@ core_group_action = NodeSchema(
     inherit_from=[InfrahubKind.ACTION],
     attributes=[
         Attr(
-            name="add_members",
-            kind="Boolean",
+            name="member_action",
+            kind="Dropdown",
             description="Defines if the action should add or remove members from a group when triggered",
+            choices=MemberAction.available_types(),
+            default_value=MemberAction.ADD_MEMBER.value.name,
             unique=False,
             optional=False,
-            default_value=True,
             order_weight=300,
         ),
     ],
@@ -263,6 +271,7 @@ core_node_trigger_attribute_match = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=["CoreNodeTriggerMatch"],
+    display_labels=["attribute_name__value"],
     attributes=[
         Attr(
             name="attribute_name",
@@ -311,6 +320,7 @@ core_node_trigger_relationship_match = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=["CoreNodeTriggerMatch"],
+    display_labels=["relationship_name__value", "modification_type__value"],
     attributes=[
         Attr(
             name="relationship_name",
@@ -321,13 +331,14 @@ core_node_trigger_relationship_match = NodeSchema(
             order_weight=100,
         ),
         Attr(
-            name="added",
-            kind="Boolean",
-            description="Indicates if the relationship was added or removed",
-            unique=False,
+            name="modification_type",
+            kind="Dropdown",
+            description="Indicates if the relationship was added or removed or just updated in any way",
+            choices=RelationshipMatch.available_types(),
+            default_value=RelationshipMatch.ADDED.value.name,
             optional=False,
-            default_value=True,
             order_weight=200,
+            allow_override=AllowOverrideType.NONE,
         ),
         Attr(
             name="peer",
@@ -358,12 +369,12 @@ core_group_trigger_rule = NodeSchema(
     inherit_from=[InfrahubKind.TRIGGERRULE],
     attributes=[
         Attr(
-            name="members_added",
-            kind="Boolean",
+            name="member_update",
+            kind="Dropdown",
             description="Indicate if the match should be for when members are added or removed",
-            unique=False,
+            choices=MemberUpdate.available_types(),
+            default_value=MemberUpdate.ADDED.value.name,
             optional=False,
-            default_value=True,
             order_weight=300,
         ),
     ],

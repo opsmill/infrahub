@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Self
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -13,7 +14,21 @@ class NodeAction(InfrahubStringEnum):
     UPDATED = "updated"
 
 
-class BranchScope(Enum):
+class DropdownEnum(Enum):
+    @classmethod
+    def available_types(cls) -> list[DropdownChoice]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]
+
+    @classmethod
+    def from_value(cls, value: str) -> Self:
+        for member in cls.__members__:
+            if value == cls.__members__[member].value.name:
+                return cls.__members__[member]
+
+        raise NotImplementedError(f"The defined value {value} doesn't match a value of {cls.__class__.__name__}")
+
+
+class BranchScope(DropdownEnum):
     ALL_BRANCHES = DropdownChoice(
         name="all_branches",
         label="All Branches",
@@ -33,20 +48,59 @@ class BranchScope(Enum):
         color="#e5e7eb",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
 
-    @classmethod
-    def from_value(cls, value: str) -> BranchScope:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
+class MemberAction(DropdownEnum):
+    ADD_MEMBER = DropdownChoice(
+        name="add_member",
+        label="Add member",
+        description="Add impacted member to the selected group",
+        color="#86efac",
+    )
+    REMOVE_MEMBER = DropdownChoice(
+        name="remove_member",
+        label="Remove member",
+        description="Remove impacted member from the selected group",
+        color="#fef08a",
+    )
 
-        raise NotImplementedError(f"The defined value {value} doesn't match a branch scope")
+
+class MemberUpdate(DropdownEnum):
+    ADDED = DropdownChoice(
+        name="added",
+        label="Added",
+        description="Trigger when members are added to this group",
+        color="#86efac",
+    )
+    REMOVED = DropdownChoice(
+        name="removed",
+        label="Removed",
+        description="Trigger when members are removed from this group",
+        color="#fef08a",
+    )
 
 
-class ValueMatch(Enum):
+class RelationshipMatch(DropdownEnum):
+    ADDED = DropdownChoice(
+        name="added",
+        label="Added",
+        description="Check if the selected relationship was added",
+        color="#86efac",
+    )
+    REMOVED = DropdownChoice(
+        name="removed",
+        label="Removed",
+        description="Check if the selected relationship was removed",
+        color="#fef08a",
+    )
+    UPDATED = DropdownChoice(
+        name="updated",
+        label="Updated",
+        description="Check if the selected relationship was updated, added or removed.",
+        color="#e5e7eb",
+    )
+
+
+class ValueMatch(DropdownEnum):
     VALUE = DropdownChoice(
         name="value",
         label="Value",
@@ -66,21 +120,12 @@ class ValueMatch(Enum):
         color="#e5e7eb",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
-
-    @classmethod
-    def from_value(cls, value: str) -> ValueMatch:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
-
-        raise NotImplementedError(f"The defined value {value} doesn't match a ValueMatch")
-
 
 NODES_THAT_TRIGGER_ACTION_RULES_SETUP = [
+    InfrahubKind.GENERATORACTION,
     InfrahubKind.GROUPACTION,
     InfrahubKind.GROUPTRIGGERRULE,
     InfrahubKind.NODETRIGGERRULE,
+    InfrahubKind.NODETRIGGERATTRIBUTEMATCH,
+    InfrahubKind.NODETRIGGERRELATIONSHIPMATCH,
 ]

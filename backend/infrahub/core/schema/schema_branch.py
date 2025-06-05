@@ -975,6 +975,28 @@ class SchemaBranch:
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
+    def _validate_common_parent(self, node: NodeSchema, rel: RelationshipSchema) -> None:
+        if not rel.common_parent:
+            return
+
+        peer_schema = self.get(name=rel.peer, duplicate=False)
+        if not node.has_parent_relationship:
+            raise ValueError(
+                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but node does not have a parent relationship"
+            )
+
+        try:
+            parent_rel = peer_schema.get_relationship(name=rel.common_parent)
+        except ValueError as exc:
+            raise ValueError(
+                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent}' does not exist"
+            ) from exc
+
+        if parent_rel.kind != RelationshipKind.PARENT:
+            raise ValueError(
+                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent} is not of kind 'parent'"
+            )
+
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
             node = self.get_node(name=name, duplicate=False)
@@ -997,6 +1019,9 @@ class SchemaBranch:
                     raise ValueError(
                         f"{node.kind}: Relationship {rel.name!r} is referring an invalid peer {rel.peer!r}"
                     ) from None
+
+                self._validate_common_parent(node=node, rel=rel)
+
                 if rel.common_relatives:
                     peer_schema = self.get(name=rel.peer, duplicate=False)
                     for common_relatives_rel_name in rel.common_relatives:

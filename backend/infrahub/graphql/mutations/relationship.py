@@ -85,6 +85,7 @@ class RelationshipAdd(Mutation):
         nodes = await _validate_peers(info=info, data=data)
         await _validate_permissions(info=info, source_node=source, peers=nodes)
         await _validate_peer_types(info=info, data=data, source_node=source, peers=nodes)
+        await _validate_peer_parents(info=info, data=data, source_node=source, peers=nodes)
 
         # This has to be done after validating the permissions
         await apply_external_context(graphql_context=graphql_context, context_input=context)
@@ -404,6 +405,37 @@ async def _validate_peer_types(
                     raise ValidationError(
                         f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
                     )
+
+
+async def _validate_peer_parents(
+    info: GraphQLResolveInfo, data: RelationshipNodesInput, source_node: Node, peers: dict[str, Node]
+) -> None:
+    relationship_name = str(data.name)
+    rel_schema = source_node.get_schema().get_relationship(name=relationship_name)
+    if not rel_schema.common_parent:
+        return
+
+    graphql_context: GraphqlContext = info.context
+
+    source_node_parent = await source_node.get_parent_relationship_peer(
+        db=graphql_context.db, name=rel_schema.common_parent
+    )
+    if not source_node_parent:
+        # If the schema is properly validated we are not expecting this to happen
+        raise ValidationError(f"Node {source_node.id} ({source_node.get_kind()!r}) does not have a parent peer")
+
+    parents: set[str] = {source_node_parent.id}
+    for peer in peers.values():
+        peer_parent = await peer.get_parent_relationship_peer(db=graphql_context.db, name=rel_schema.common_parent)
+        if not peer_parent:
+            # If the schema is properly validated we are not expecting this to happen
+            raise ValidationError(f"Peer {peer.id} ({peer.get_kind()!r}) does not have a parent peer")
+        parents.add(peer_parent.id)
+
+    if len(parents) > 1:
+        raise ValidationError(
+            f"Cannot relate {source_node.id!r} to '{relationship_name}' peers that do not have the same parent"
+        )
 
 
 async def _collect_current_peers(

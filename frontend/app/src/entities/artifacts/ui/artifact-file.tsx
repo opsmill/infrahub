@@ -1,4 +1,5 @@
 import { ArtifactContentType } from "@/entities/artifacts/types";
+import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
 import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
 import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
 import { fetchStream } from "@/shared/api/rest/fetch";
@@ -44,12 +45,14 @@ function FileLayout({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 export interface FileHeaderProps extends HTMLAttributes<HTMLDivElement> {
   artifactId: string;
   fileContent: string;
+  fileUrl: string;
   contentType: ArtifactContentType;
 }
 
 function FileHeader({
   artifactId,
   fileContent,
+  fileUrl,
   contentType = "text/plain",
   className,
   ...props
@@ -59,6 +62,9 @@ function FileHeader({
   return (
     <div className={classNames("flex items-center gap-1", className)} {...props}>
       <span className="grow font-medium px-1">{config.label}</span>
+      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+        <ArtifactFileButton className="leading-4">Raw</ArtifactFileButton>
+      </a>
       <ArtifactFileDownload
         contentType={contentType}
         fileName={`${artifactId}.${config.extension}`}
@@ -143,7 +149,12 @@ export const ArtifactFile = ({ artifactId, url, contentType }: ArtifactFileProps
 
   return (
     <FileLayout>
-      <FileHeader artifactId={artifactId} fileContent={fileContent} contentType={contentType} />
+      <FileHeader
+        artifactId={artifactId}
+        fileUrl={url}
+        fileContent={fileContent}
+        contentType={contentType}
+      />
       <FileContent contentType={contentType} fileContent={fileContent} />
     </FileLayout>
   );

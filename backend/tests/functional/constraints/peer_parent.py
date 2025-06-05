@@ -21,17 +21,12 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class TestPeerRelativesConstraint(TestInfrahubApp):
+class TestPeerParentConstraint(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
     def schema(self, default_branch: Branch, register_internal_schema: SchemaBranch) -> SchemaRoot:
         schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
         schema_with_lag.nodes[0].generate_template = False
-
-        lag_node_schema = copy.deepcopy(LAG_INTERFACE)
-        lag_node_schema.relationships[0].common_parent = None
-        lag_node_schema.relationships[0].common_relatives = ["device"]
-        schema_with_lag.nodes.append(lag_node_schema)
-
+        schema_with_lag.nodes.append(LAG_INTERFACE)
         return schema_with_lag
 
     @pytest.fixture(scope="class")
@@ -113,10 +108,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
 
         with pytest.raises(GraphQLError) as exc:
             await lag.save()
-        assert (
-            "must have the same set of peers for their 'TestingPhysicalInterface.device' relationship"
-            in exc.value.errors[0]["message"]
-        )
+        assert "must have the same parent as the node" in exc.value.errors[0]["message"]
 
     async def test_create_lag_branch(
         self, db: InfrahubDatabase, data: dict[str, Node], client: InfrahubClient, default_branch: Branch
@@ -158,7 +150,4 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
 
         with pytest.raises(GraphQLError) as exc:
             await lag.save()
-        assert (
-            "must have the same set of peers for their 'TestingPhysicalInterface.device' relationship"
-            in exc.value.errors[0]["message"]
-        )
+        assert "must have the same parent as the node" in exc.value.errors[0]["message"]
