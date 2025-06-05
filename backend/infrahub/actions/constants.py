@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Self
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -13,7 +14,21 @@ class NodeAction(InfrahubStringEnum):
     UPDATED = "updated"
 
 
-class BranchScope(Enum):
+class DropdownEnum(Enum):
+    @classmethod
+    def available_types(cls) -> list[DropdownChoice]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]
+
+    @classmethod
+    def from_value(cls, value: str) -> Self:
+        for member in cls.__members__:
+            if value == cls.__members__[member].value.name:
+                return cls.__members__[member]
+
+        raise NotImplementedError(f"The defined value {value} doesn't match a value of {cls.__class__.__name__}")
+
+
+class BranchScope(DropdownEnum):
     ALL_BRANCHES = DropdownChoice(
         name="all_branches",
         label="All Branches",
@@ -33,20 +48,8 @@ class BranchScope(Enum):
         color="#e5e7eb",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
 
-    @classmethod
-    def from_value(cls, value: str) -> BranchScope:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
-
-        raise NotImplementedError(f"The defined value {value} doesn't match a branch scope")
-
-
-class MemberAction(Enum):
+class MemberAction(DropdownEnum):
     ADD_MEMBER = DropdownChoice(
         name="add_member",
         label="Add member",
@@ -60,20 +63,8 @@ class MemberAction(Enum):
         color="#fef08a",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
 
-    @classmethod
-    def from_value(cls, value: str) -> MemberAction:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
-
-        raise NotImplementedError(f"The defined value {value} doesn't match a member action")
-
-
-class MemberUpdate(Enum):
+class MemberUpdate(DropdownEnum):
     ADDED = DropdownChoice(
         name="added",
         label="Added",
@@ -87,20 +78,8 @@ class MemberUpdate(Enum):
         color="#fef08a",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
 
-    @classmethod
-    def from_value(cls, value: str) -> MemberUpdate:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
-
-        raise NotImplementedError(f"The defined value {value} doesn't match a MemberUpdate")
-
-
-class RelationshipMatch(Enum):
+class RelationshipMatch(DropdownEnum):
     ADDED = DropdownChoice(
         name="added",
         label="Added",
@@ -120,20 +99,8 @@ class RelationshipMatch(Enum):
         color="#e5e7eb",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
 
-    @classmethod
-    def from_value(cls, value: str) -> RelationshipMatch:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
-
-        raise NotImplementedError(f"The defined value {value} doesn't match a RelationshipMatch")
-
-
-class ValueMatch(Enum):
+class ValueMatch(DropdownEnum):
     VALUE = DropdownChoice(
         name="value",
         label="Value",
@@ -153,21 +120,12 @@ class ValueMatch(Enum):
         color="#e5e7eb",
     )
 
-    @classmethod
-    def available_types(cls) -> list[DropdownChoice]:
-        return [cls.__members__[member].value for member in list(cls.__members__)]
-
-    @classmethod
-    def from_value(cls, value: str) -> ValueMatch:
-        for member in cls.__members__:
-            if value == cls.__members__[member].value.name:
-                return cls.__members__[member]
-
-        raise NotImplementedError(f"The defined value {value} doesn't match a ValueMatch")
-
 
 NODES_THAT_TRIGGER_ACTION_RULES_SETUP = [
+    InfrahubKind.GENERATORACTION,
     InfrahubKind.GROUPACTION,
     InfrahubKind.GROUPTRIGGERRULE,
     InfrahubKind.NODETRIGGERRULE,
+    InfrahubKind.NODETRIGGERATTRIBUTEMATCH,
+    InfrahubKind.NODETRIGGERRELATIONSHIPMATCH,
 ]
