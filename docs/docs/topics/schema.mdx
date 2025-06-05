@@ -816,6 +816,36 @@ query {
 }
 ```
 
+### Common parent relationships
+
+When defining relationships between nodes, you can ensure that related nodes share the same parent using the `common_parent` property.
+
+This is particularly useful for components that must belong to the same parent entity.
+
+```yaml {8} showLineNumbers
+- name: LagInterfaceL3
+  [...]
+  relationships:
+    - name: members
+      peer: InfraInterfaceL3
+      optional: true
+      cardinality: many
+      kind: Generic
+      common_parent: device
+```
+
+In this example, the `common_parent: device` property ensures that all members of this relationship must have the same device as their parent.
+
+This prevents users from adding interfaces from different devices to the same LAG interface group.
+
+:::warning Limitations
+
+* The parent relationship name must be the same on both sides of the relationship
+* Only standard parent relationships are supported (hierarchical parent relationships are not supported)
+* The parent relationship must be of kind `Parent` (and cardinality `one`)
+
+:::
+
 ### Menu
 
 The position of a model in the frontend sidebar menu, is controlled by the schema itself.
