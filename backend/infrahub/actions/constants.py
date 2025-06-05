@@ -33,19 +33,19 @@ class BranchScope(DropdownEnum):
         name="all_branches",
         label="All Branches",
         description="All branches",
-        color="#fef08a",
+        color="#4cd964",
     )
     DEFAULT_BRANCH = DropdownChoice(
         name="default_branch",
         label="Default Branch",
         description="Only the default branch",
-        color="#86efac",
+        color="#5ac8fa",
     )
     OTHER_BRANCHES = DropdownChoice(
         name="other_branches",
         label="Other Branches",
         description="All branches except the default branch",
-        color="#e5e7eb",
+        color="#ff2d55",
     )
 
 
@@ -54,13 +54,13 @@ class MemberAction(DropdownEnum):
         name="add_member",
         label="Add member",
         description="Add impacted member to the selected group",
-        color="#86efac",
+        color="#4cd964",
     )
     REMOVE_MEMBER = DropdownChoice(
         name="remove_member",
         label="Remove member",
         description="Remove impacted member from the selected group",
-        color="#fef08a",
+        color="#ff2d55",
     )
 
 
@@ -69,13 +69,13 @@ class MemberUpdate(DropdownEnum):
         name="added",
         label="Added",
         description="Trigger when members are added to this group",
-        color="#86efac",
+        color="#4cd964",
     )
     REMOVED = DropdownChoice(
         name="removed",
         label="Removed",
         description="Trigger when members are removed from this group",
-        color="#fef08a",
+        color="#ff2d55",
     )
 
 
@@ -84,19 +84,19 @@ class RelationshipMatch(DropdownEnum):
         name="added",
         label="Added",
         description="Check if the selected relationship was added",
-        color="#86efac",
+        color="#4cd964",
     )
     REMOVED = DropdownChoice(
         name="removed",
         label="Removed",
         description="Check if the selected relationship was removed",
-        color="#fef08a",
+        color="#ff2d55",
     )
     UPDATED = DropdownChoice(
         name="updated",
         label="Updated",
         description="Check if the selected relationship was updated, added or removed.",
-        color="#e5e7eb",
+        color="#5ac8fa",
     )
 
 
@@ -105,19 +105,19 @@ class ValueMatch(DropdownEnum):
         name="value",
         label="Value",
         description="Match against the current value",
-        color="#fef08a",
+        color="#4cd964",
     )
     VALUE_PREVIOUS = DropdownChoice(
         name="value_previous",
         label="Value Previous",
         description="Match against the previous value",
-        color="#86efac",
+        color="#ff2d55",
     )
     VALUE_FULL = DropdownChoice(
         name="value_full",
         label="Full value match",
         description="Match against both the current and previous values",
-        color="#e5e7eb",
+        color="#5ac8fa",
     )
 
 
