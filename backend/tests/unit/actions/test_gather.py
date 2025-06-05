@@ -270,7 +270,7 @@ async def test_gather_trigger_gather_trigger_action_rules_node_relationship(
     )
 
     main_node_trigger_rule.branch_scope.value = "other_branches"
-    main_node_trigger_rule.mutation_action.value = "deleted"
+    main_node_trigger_rule.mutation_action.value = "updated"
     await main_node_trigger_rule.save(db=db)
 
     triggers = await gather_trigger_action_rules(db=db)
@@ -278,7 +278,7 @@ async def test_gather_trigger_gather_trigger_action_rules_node_relationship(
     automation = triggers[0]
 
     assert automation.trigger == EventTrigger(
-        events={"infrahub.node.deleted"},
+        events={"infrahub.node.updated"},
         match={"infrahub.node.kind": "TestCar", "infrahub.branch.name": "!main"},
         match_related=[
             {

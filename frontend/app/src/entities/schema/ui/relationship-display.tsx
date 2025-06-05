@@ -43,8 +43,8 @@ export const RelationshipDisplay = ({
         <PropertyRow title="Peer" value={<ModelDisplay kinds={[relationship.peer]} />} />
         <PropertyRow title="Peer identifier" value={relationship.identifier} />
         <PropertyRow
-          title="Common relatives"
-          value={<ListDisplay items={relationship.common_relatives} />}
+          title="Common parent"
+          value={<ListDisplay items={relationship.common_parent} />}
         />
         <PropertyRow title="Cardinality" value={relationship.cardinality} />
         <PropertyRow title="Direction" value={relationship.direction} />

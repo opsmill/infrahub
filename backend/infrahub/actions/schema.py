@@ -271,6 +271,7 @@ core_node_trigger_attribute_match = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=["CoreNodeTriggerMatch"],
+    display_labels=["attribute_name__value"],
     attributes=[
         Attr(
             name="attribute_name",
@@ -319,6 +320,7 @@ core_node_trigger_relationship_match = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=["CoreNodeTriggerMatch"],
+    display_labels=["relationship_name__value", "modification_type__value"],
     attributes=[
         Attr(
             name="relationship_name",

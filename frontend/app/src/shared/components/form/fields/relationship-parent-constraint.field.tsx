@@ -16,13 +16,8 @@ const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps)
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const { schema } = useSchema(objectKind);
 
-  const relationshipSchema = schema?.relationships?.find((relationship) => {
-    return relationship.name === qspTab;
-  });
-  const { schema: peerSchema } = useSchema(relationshipSchema?.peer);
-
-  const peerRelationshipSchema = peerSchema?.relationships.find((relationship) => {
-    return relationship.kind === "Parent";
+  const parentRelationionshipSchema = schema?.relationships?.find((relationship) => {
+    return relationship.name === props.schema.common_parent;
   });
 
   const { data, isPending } = useGetObject({
@@ -30,18 +25,8 @@ const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps)
     objectSchema: schema,
     getRelationshipsVisible: (relationships: RelationshipSchema[]): RelationshipSchema[] => {
       return relationships.filter((relationship) => {
-        return relationship.name === qspTab;
+        return relationship.name === parentRelationionshipSchema?.name;
       });
-    },
-    relationshipFragment: {
-      [peerRelationshipSchema?.name]: {
-        node: {
-          id: true,
-          display_label: true,
-          hfid: true,
-          __typename: true,
-        },
-      },
     },
   });
 
@@ -53,17 +38,13 @@ const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps)
     return <LoadingIndicator />;
   }
 
-  const currentRelationshipPeers = data?.[qspTab]?.edges;
+  const currentRelationshipPeer = data?.[parentRelationionshipSchema?.name]?.node;
 
-  if (!currentRelationshipPeers?.length) {
+  if (!currentRelationshipPeer) {
     return <RelationshipField {...props} />;
   }
 
-  const firstRelationshipPeer = currentRelationshipPeers[0].node;
-
-  const defaultParent = firstRelationshipPeer[peerRelationshipSchema?.name]?.node;
-
-  return <RelationshipField {...props} defaultParent={defaultParent} parentDisabled />;
+  return <RelationshipField {...props} defaultParent={currentRelationshipPeer} parentDisabled />;
 };
 
 export default RelationshipParentConstraintField;

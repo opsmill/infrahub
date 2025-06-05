@@ -58,7 +58,7 @@ class RelationshipPeerRelativesConstraint(RelationshipManagerConstraintInterface
                     f"for their '{node.schema.kind}.{relationship_name}' relationship"
                 )
 
-    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
         if relm.schema.cardinality != RelationshipCardinality.MANY or not relm.schema.common_relatives:
             return
 
