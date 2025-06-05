@@ -1,4 +1,3 @@
-import pytest
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
@@ -48,7 +47,6 @@ RETURN node_id, collect(branch) AS branches
     return response
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_030(
     db: InfrahubDatabase,
     person_tag_schema,

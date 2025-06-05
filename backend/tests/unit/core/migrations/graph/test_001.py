@@ -1,11 +1,9 @@
-import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.migrations.graph import Migration001
 from infrahub.database import InfrahubDatabase
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_001_no_version(db: InfrahubDatabase, reset_registry, delete_all_nodes_in_db):
     query_init_root = """
     CREATE (root:Root { uuid: "%(uuid)s", default_branch: "main" })
@@ -21,7 +19,6 @@ async def test_migration_001_no_version(db: InfrahubDatabase, reset_registry, de
     assert not validation_result.errors
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_001_initial_version(db: InfrahubDatabase, reset_registry, delete_all_nodes_in_db):
     query_init_root = """
     CREATE (root:Root { uuid: "%(uuid)s", graph_version: 0, default_branch: "main" })
@@ -37,7 +34,6 @@ async def test_migration_001_initial_version(db: InfrahubDatabase, reset_registr
     assert not validation_result.errors
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_001_validate(db: InfrahubDatabase, reset_registry, delete_all_nodes_in_db):
     root_id = str(UUIDT().new())
 

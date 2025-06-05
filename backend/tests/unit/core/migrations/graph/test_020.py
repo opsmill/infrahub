@@ -1,4 +1,3 @@
-import pytest
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m020_duplicate_edges import Migration020
@@ -11,7 +10,6 @@ from infrahub.database import InfrahubDatabase
 class TestDuplicateEdgesDeleted:
     the_value = 122
 
-    @pytest.mark.skip("migration is already released")
     async def test_duplicate_edges_migration(self, db: InfrahubDatabase, car_person_schema: SchemaBranch) -> None:
         unchanged_node = await Node.init(db=db, schema="TestPerson")
         await unchanged_node.new(db=db, name="Unchanged", height=self.the_value)

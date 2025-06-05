@@ -1,11 +1,9 @@
-import pytest
 
 from infrahub.core import registry
 from infrahub.core.migrations.graph import Migration017
 from infrahub.database import InfrahubDatabase
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_017(
     db: InfrahubDatabase,
     default_branch,

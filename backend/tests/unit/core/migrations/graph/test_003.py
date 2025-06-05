@@ -32,7 +32,6 @@ async def migration_003_data(db: InfrahubDatabase, reset_registry, default_branc
     await rel2.save(db=db)
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_003_query1(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
 ):
@@ -49,7 +48,6 @@ async def test_migration_003_query1(
     assert nbr_rels_after == nbr_rels_before + 1
 
 
-@pytest.mark.skip("migration is already released")
 async def test_migration_003(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
 ):
