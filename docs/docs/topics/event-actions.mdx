@@ -15,29 +15,31 @@ By creating multiple rules and actions, you can build automated workflows.
 
 ### Adding devices to active group
 
-```mermaid
-graph LR
-    A[Device Updated] --> B{status = "active"?}
-    B -->|Yes| C[Add to active-devices group]
-    C --> D[Group member added event]
-    D --> E[Run generator for new member]
-```
+**Workflow:**
 
-1. **Node trigger rule**
+1. Device is updated → status changed to "active"
+2. Node trigger rule detects the change
+3. Group action adds device to "active-devices" group
+4. Group member added event is generated
+5. Generator action runs for the new member
+
+**Implementation:**
+
+1. **Node Trigger Rule**
    * Matches `infrahub.node.updated` events when a device's `status` changes to "active"
    * Executes a group action to add the device to the "active-devices" group
 
-2. **Group trigger rule**
+2. **Group Trigger Rule**
    * Matches `infrahub.group.member_added` events for the "active-devices" group
    * Runs a generator definition targeting the newly added member
 
 ### Removing devices from active group
 
-```mermaid
-graph LR
-    A[Device Updated] --> B{status changed from "active"?}
-    B -->|Yes| C[Remove from active-devices group]
-```
+**Workflow:**
+
+1. Device is updated → status changed from "active"
+2. Node trigger rule detects the change
+3. Group action removes device from "active-devices" group
 
 ## Trigger rules
 
@@ -56,6 +58,36 @@ When setting up a node trigger rule:
 2. Create match filters for specific attributes or relationships
 3. Set the trigger to active when configuration is complete
 
+#### Match filters
+
+::: info
+By default, a trigger rule will match any change for the given mutation type (added/updated/deleted).
+You can define additional filters by adding match conditions.
+
+**All conditions must be satisfied** - Match filters use logical AND, not OR
+
+:::
+
+**Attribute matches** - Filter based on:
+
+* New value - Match the attribute's value after the change
+* Previous value - Match the attribute's value before the change
+* Both - Match both before and after values for transition detection
+
+**Relationship matches** - Filter based on:
+
+* Modification type - Choose whether the relationship was added, removed, or modified
+* Peer - Specify which node type/instance should be on the other side of the relationship
+
+:::info Example
+
+To trigger only when a device's status changes from "inactive" to "active", create an attribute match with:
+
+* Previous value = "inactive"
+* New value = "active"
+
+:::
+
 :::success Best Practice
 The trigger needs to be marked as active before it starts to filter on events
 
@@ -70,3 +102,22 @@ Actions are nodes that inherit from the `CoreAction` generic:
 |-------------|-------------|--------|
 | `CoreGeneratorAction` | Runs a generator definition | Uses impacted objects as input |
 | `CoreGroupAction` | Modifies group membership | Adds or removes members from a group |
+
+:::info Use Cases
+
+**Automated Nodes grouping**
+
+When a node with a specific attribute or relationship is created, automatically add it to a group:
+1. Create a Group Action to add nodes to a group
+2. Create a Node Trigger Rule for node creation
+3. Add an attribute or relationship match to detect the specific condition
+4. Configure it to run your Group Action when the condition is met
+
+**Automated resource creation**
+
+When an object is added to a group (or when a attribute changes), automatically create related resources:
+1. Create a Generator Action linked to your resource creation generator
+2. Create a Group Trigger Rule for the group
+3. Configure it to run your Generator Action when a member is added
+
+:::

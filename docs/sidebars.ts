@@ -70,6 +70,7 @@ const sidebars: SidebarsConfig = {
         'guides/computed-attributes',
         'guides/resource-manager',
         'guides/accounts-permissions',
+        'guides/events-rules-actions',
         'guides/groups',
         'guides/generator',
         'guides/repository',
