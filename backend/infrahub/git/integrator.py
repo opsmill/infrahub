@@ -188,22 +188,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             if config_file:
                 await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-
                 await self.import_all_graphql_query(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )  # type: ignore[misc]
-
                 await self.import_objects(
                     branch_name=infrahub_branch_name,
                     commit=commit,
                     config_file=config_file,
                 )  # type: ignore[misc]
-                await self.import_objects(
-                    branch_name=infrahub_branch_name,
-                    commit=commit,
-                    config_file=config_file,
-                )  # type: ignore[misc]
-
                 await self.import_all_python_files(  # type: ignore[call-overload]
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )  # type: ignore[misc]

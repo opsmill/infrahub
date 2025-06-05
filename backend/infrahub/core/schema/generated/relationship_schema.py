@@ -73,10 +73,15 @@ class GeneratedRelationshipSchema(HashableModel):
         description="Defines the maximum objects allowed on the other side of the relationship.",
         json_schema_extra={"update": "validate_constraint"},
     )
+    common_parent: str | None = Field(
+        default=None,
+        description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+        json_schema_extra={"update": "allowed"},
+    )
     common_relatives: list[str] | None = Field(
         default=None,
         description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
-        json_schema_extra={"update": "validate_constraint"},
+        json_schema_extra={"update": "allowed"},
     )
     order_weight: int | None = Field(
         default=None,

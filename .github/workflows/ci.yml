@@ -200,6 +200,17 @@ jobs:
             exit 1
           fi
 
+  infrahub-testcontainers-poetry-check:
+    if: |
+      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    uses: "./.github/workflows/poetry-check.yml"
+    with:
+      directory: "./python_testcontainers"
+
   # TODO NEED TO REVISIT THIS ONE
   # python-sdk-poetry-check:
   #   if: |
