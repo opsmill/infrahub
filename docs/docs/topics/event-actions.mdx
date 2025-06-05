@@ -103,21 +103,25 @@ Actions are nodes that inherit from the `CoreAction` generic:
 | `CoreGeneratorAction` | Runs a generator definition | Uses impacted objects as input |
 | `CoreGroupAction` | Modifies group membership | Adds or removes members from a group |
 
-:::info Use Cases
+:::info
 
-**Automated Nodes grouping**
+## Use cases
+
+### Automated nodes grouping**
 
 When a node with a specific attribute or relationship is created, automatically add it to a group:
-1. Create a Group Action to add nodes to a group
-2. Create a Node Trigger Rule for node creation
-3. Add an attribute or relationship match to detect the specific condition
-4. Configure it to run your Group Action when the condition is met
 
-**Automated resource creation**
+1. Create a group action to add nodes to a group
+2. Create a node trigger rule for node creation
+3. Add an attribute or relationship match to detect the specific condition
+4. Configure it to run your group action when the condition is met
+
+### Automated resource creation**
 
 When an object is added to a group (or when a attribute changes), automatically create related resources:
-1. Create a Generator Action linked to your resource creation generator
-2. Create a Group Trigger Rule for the group
-3. Configure it to run your Generator Action when a member is added
+
+1. Create a generator action linked to your resource creation generator
+2. Create a group trigger rule for the group
+3. Configure it to run your generator action when a member is added
 
 :::
