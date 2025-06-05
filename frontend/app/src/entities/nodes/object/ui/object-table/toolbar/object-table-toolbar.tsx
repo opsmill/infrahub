@@ -43,7 +43,7 @@ export function ObjectTableToolbar({
 
       {renderMore && (
         <>
-          <ToolbarDivider />
+          {renderMore({ selectedRows }) && <ToolbarDivider />}
           {renderMore({ selectedRows })}
         </>
       )}
