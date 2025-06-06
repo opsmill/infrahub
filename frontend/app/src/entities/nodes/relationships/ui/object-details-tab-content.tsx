@@ -13,14 +13,14 @@ import { Icon } from "@iconify-icon/react";
 import { useRef } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-export interface ObjectTabManagerProps {
+export interface ObjectDetailsTabContentProps {
   objectSchema: ModelSchema;
   objectDetailsData: NodeObject;
 }
 export function ObjectDetailsTabContent({
   objectSchema,
   objectDetailsData,
-}: ObjectTabManagerProps) {
+}: ObjectDetailsTabContentProps) {
   const { pathname } = location;
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
