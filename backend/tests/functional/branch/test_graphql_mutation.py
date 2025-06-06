@@ -210,7 +210,7 @@ class TestBranchMutations(TestInfrahubApp):
 
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_obj)
-        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_obj)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_obj)  # type: ignore[call-overload]
 
         query = Mutation(
             mutation="BranchValidate",

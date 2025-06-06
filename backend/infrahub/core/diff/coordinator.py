@@ -92,7 +92,7 @@ class DiffCoordinator:
     ) -> None:
         # we are updating a diff that tracks the full lifetime of a branch
         if not name and not from_time and not to_time:
-            await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+            await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)  # type: ignore[call-overload]
             return
 
         if from_time:
@@ -105,7 +105,7 @@ class DiffCoordinator:
             to_timestamp = Timestamp()
         if not name:
             raise ValidationError("diff with specified time range requires a name")
-        await self.create_or_update_arbitrary_timeframe_diff(
+        await self.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_timestamp,

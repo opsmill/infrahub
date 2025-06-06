@@ -110,7 +110,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
         source_branch = await registry.get_branch(db=dbs, branch=message.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
-        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)  # type: ignore[call-overload]
 
     diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
     await set_diff_summary_cache(pipeline_id=message.pipeline_id, diff_summary=diff_summary, cache=service.cache)

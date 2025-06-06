@@ -46,7 +46,7 @@ async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices
         diff_branch = await registry.get_branch(db=db, branch=branch_name)
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
-        await diff_coordinator.recalculate(base_branch=base_branch, diff_branch=diff_branch, diff_id=diff_id)
+        await diff_coordinator.recalculate(base_branch=base_branch, diff_branch=diff_branch, diff_id=diff_id)  # type: ignore[call-overload]
 
 
 @flow(name="diff-refresh-all", flow_run_name="Recreate all diffs for branch {branch_name}")

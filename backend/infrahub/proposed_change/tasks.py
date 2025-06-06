@@ -222,7 +222,7 @@ async def run_proposed_change_data_integrity_check(
         component_registry = get_component_registry()
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
-        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)  # type: ignore[call-overload]
 
 
 @flow(

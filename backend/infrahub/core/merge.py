@@ -180,7 +180,7 @@ class BranchMerger:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
         log.info("Updating diff for merge")
-        await self.diff_coordinator.update_branch_diff(
+        await self.diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
             base_branch=self.destination_branch, diff_branch=self.source_branch
         )
         log.info("Diff updated for merge")
