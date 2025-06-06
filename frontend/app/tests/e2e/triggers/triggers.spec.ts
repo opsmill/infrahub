@@ -56,8 +56,8 @@ test.describe("Node Trigger - ", () => {
 
   test("should create new matches", async ({ page }) => {
     await test.step("access the matches", async () => {
-      await page.getByRole("link", { name: "new node trigger rule" }).click();
-      await expect(page.getByText("Namenew node trigger rule")).toBeVisible();
+      await page.getByRole("link", { name: "test node trigger rule" }).click();
+      await expect(page.getByText("Nametest node trigger rule")).toBeVisible();
       await page.getByRole("link", { name: "Matches" }).click();
       await expect(page.getByText("No Node Trigger Match found")).toBeVisible();
     });
@@ -69,14 +69,13 @@ test.describe("Node Trigger - ", () => {
       await page.getByRole("combobox", { name: "Attribute Name *" }).click();
       await page.getByRole("option", { name: "Name" }).locator("div").nth(1).click();
       await expect(
-        page.getByRole("combobox").filter({ hasText: "new node trigger rule" })
+        page.getByRole("combobox").filter({ hasText: "test node trigger rule" })
       ).toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Node attribute match created!")).toBeVisible();
     });
 
     await test.step("create a relationship match", async () => {
-      await page.getByRole("link", { name: "Matches" }).click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByText("Node Trigger Relationship Match Core").click();
@@ -85,7 +84,7 @@ test.describe("Node Trigger - ", () => {
       await page.getByRole("combobox", { name: "Peer" }).click();
       await page.getByRole("option", { name: "atl1" }).click();
       await expect(
-        page.getByRole("combobox").filter({ hasText: "new node trigger rule" })
+        page.getByRole("combobox").filter({ hasText: "test node trigger rule" })
       ).toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Node relationship match created!")).toBeVisible();
