@@ -1044,11 +1044,7 @@ class SchemaBranch:
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
-                if (
-                    attribute.kind == "NumberPool"
-                    and isinstance(attribute.parameters, NumberPoolParameters)
-                    and not attribute.parameters.number_pool_id
-                ):
+                if attribute.kind == "NumberPool" and isinstance(attribute.parameters, NumberPoolParameters):
                     self._validate_number_pool_parameters(
                         node_schema=node_schema, attribute=attribute, number_pool_parameters=attribute.parameters
                     )
@@ -1064,7 +1060,7 @@ class SchemaBranch:
                 f"{node_schema.kind}.{attribute.name} is a NumberPool it has to be a read_only attribute"
             )
 
-        if attribute.inherited:
+        if attribute.inherited and not number_pool_parameters.number_pool_id:
             generics_with_attribute = []
             for generic_name in node_schema.inherit_from:
                 generic_schema = self.get_generic(name=generic_name, duplicate=False)
@@ -1078,9 +1074,16 @@ class SchemaBranch:
                 raise ValidationError(
                     f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic"
                 )
+        elif not attribute.inherited:
+            for generic_name in node_schema.inherit_from:
+                generic_schema = self.get_generic(name=generic_name, duplicate=False)
+                if attribute.name in generic_schema.attribute_names:
+                    raise ValidationError(
+                        f"Overriding '{node_schema.kind}.{attribute.name}' NumberPool attribute from generic '{generic_name}' is not supported"
+                    )
 
-        else:
-            number_pool_parameters.number_pool_id = str(uuid4())
+            if not number_pool_parameters.number_pool_id:
+                number_pool_parameters.number_pool_id = str(uuid4())
 
     def validate_computed_attributes(self) -> None:
         self.computed_attributes = ComputedAttributes()
