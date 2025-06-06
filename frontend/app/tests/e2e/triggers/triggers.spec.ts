@@ -19,32 +19,38 @@ test.describe("Node Trigger - ", () => {
 
   test("should create a node trigger", async ({ page }) => {
     await test.step("access form", async () => {
-      await page.goto(`/objects/CoreNodeTriggerRule?brach=${BRANCH_NAME}`);
+      await page.goto(`/objects/CoreTriggerRule?brach=${BRANCH_NAME}`);
       await page.getByTestId("create-object-button").click();
     });
 
     await test.step("fill and validate form", async () => {
-      await page.getByRole("textbox", { name: "Name *" }).fill("new node trigger rule");
+      await page.getByRole("combobox", { name: "Select an object type" }).click();
+      await page.getByRole("option", { name: "Node Trigger Rule Core" }).click();
+      await page.getByRole("textbox", { name: "Name *" }).fill("test node trigger rule");
+      await page.getByRole("combobox", { name: "Node Kind *" }).click();
+      await page.getByRole("option", { name: "Device Infra" }).click();
       await page.getByRole("combobox", { name: "Mutation Action *" }).click();
       await page.getByRole("option", { name: "created" }).click();
       await page.getByRole("combobox", { name: "Kind", exact: true }).click();
       await page.getByRole("option", { name: "Group Action Core" }).click();
       await page.getByRole("combobox", { name: "Group Action *" }).click();
       await page.getByRole("button", { name: "+ Add new Group Action" }).click();
-      await page.getByRole("textbox", { name: "Name *" }).fill("new group action");
+      await page.getByRole("textbox", { name: "Name *" }).fill("test group action");
       await page.getByRole("combobox", { name: "Kind" }).click();
       await page.getByRole("option", { name: "Standard Group Core" }).click();
       await page.getByRole("combobox", { name: "Standard Group *" }).click();
       await page.getByRole("button", { name: "+ Add new Standard Group" }).click();
-      await page.getByRole("textbox", { name: "Name *" }).fill("new group");
-      await page.getByRole("combobox", { name: "Node Kind *" }).click();
-      await page.getByRole("option", { name: "Device Infra" }).click();
+      await page.getByRole("textbox", { name: "Name *" }).fill("test standard group");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("StandardGroup created")).toBeVisible();
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("GroupAction created")).toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("ensure the creation is correct", async () => {
       await expect(page.getByText("NodeTriggerRule created")).toBeVisible();
-      await expect(page.getByRole("link", { name: "new node trigger rule" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "test node trigger rule" })).toBeVisible();
     });
   });
 
