@@ -66,7 +66,11 @@ Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pull
 
 Objects to be loaded as part of an external repository can be defined in file(s) as described [here]($(base_url)/python-sdk/topics/object_file). The objects must also be explicitly identified in the `.infrahub.yml` file under `objects`. 
 
+:::info
+
 The order defined in the `.infrahub.yml` file is maintained. If a folder is defined in the list, the folders/files within the folder are loaded in alphabetical order. This means that if you have a dependency between objects, you must ensure that the dependent object is defined before the object that depends on it.
+
+:::
 <details>
   <summary>Example</summary>
 
