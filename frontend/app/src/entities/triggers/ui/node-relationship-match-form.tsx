@@ -183,6 +183,7 @@ const NodeRelationshipField = ({ schemaFields }: NodeRelationshipFieldProps) => 
 
   const { schema } = useSchema(NODE_TRIGGER_RULE);
   const selectedTriggerField: FormAttributeValue = form.watch("trigger");
+  const selectedRelationshipField: FormAttributeValue = form.watch("relationship_name");
 
   const { data, isPending } = useGetObject({
     objectId: selectedTriggerField.value?.id,
@@ -190,8 +191,6 @@ const NodeRelationshipField = ({ schemaFields }: NodeRelationshipFieldProps) => 
   });
 
   const [peerKind, setPeerKind] = useState<string | null>(null);
-
-  const selectedRelationshipField: FormAttributeValue = form.watch("relationship_name");
 
   const relationshipField = schemaFields.find((field) => {
     return field.name === "relationship_name";
@@ -221,7 +220,7 @@ const NodeRelationshipField = ({ schemaFields }: NodeRelationshipFieldProps) => 
     });
 
     setPeerKind(relationshipSchema?.peer ?? null);
-  }, [selectedRelationshipField?.value]);
+  }, [selectedRelationshipField?.value, data?.node_kind?.value]);
 
   if (isPending) {
     return (
