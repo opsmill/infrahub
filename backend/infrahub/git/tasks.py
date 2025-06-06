@@ -696,6 +696,7 @@ async def trigger_internal_checks(
         if (
             existing_validator.typename == InfrahubKind.REPOSITORYVALIDATOR
             and existing_validator.repository.id == model.repository
+            and existing_validator.label.value == validator_name
         ):
             previous_validator = existing_validator
 
