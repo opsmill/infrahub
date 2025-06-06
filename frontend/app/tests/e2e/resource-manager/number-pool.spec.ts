@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/resource-manager - Resource Manager", () => {
   test.describe.configure({ mode: "serial" });
@@ -41,5 +42,13 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByRole("cell", { name: "number pool test" }).first()).toBeVisible();
     await expect(page.getByText("Node *")).not.toBeVisible();
     await expect(page.getByText("Attribute *")).not.toBeVisible();
+  });
+
+  test("numberpool attribute kind resource manager", async ({ page }) => {
+    await page.goto("/resource-manager");
+    await expect(page.getByRole("link", { name: "InfraService." })).toBeVisible();
+    await page.getByRole("link", { name: "InfraService." }).click();
+    await page.getByRole("link", { name: "View", exact: true }).click();
+    await saveScreenshotForDocs(page, "numberpool_attribute_kind_resource_manager");
   });
 });
