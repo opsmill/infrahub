@@ -237,19 +237,26 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
         raise ValueError("Unable to find a relationship of kind 'parent'")
 
     def _get_peer_parent_relationship(
-        self, node_schema: NodeSchema | GenericSchema, schema_branch: SchemaBranch
+        self, relationship: RelationshipSchema, schema_branch: SchemaBranch
     ) -> RelationshipSchema:
-        relationship_to_check = None
-        for relationship in node_schema.relationships:
-            if relationship.common_parent:
-                relationship_to_check = relationship
-                break
+        peer_schema = schema_branch.get(name=relationship.peer, duplicate=False)
 
-        peer_schema = schema_branch.get(name=relationship_to_check.peer, duplicate=False)
+        # Should not happen as the schema has been validated
+        if not relationship.common_parent:
+            raise ValueError(
+                f"{relationship.name} with peer {relationship.peer} has `common_parent={relationship.common_parent}`"
+            )
+
         return peer_schema.get_relationship(name=relationship.common_parent)
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
+
+        relationship = self._get_relationship(node_schema=request.node_schema)
+        parent_relationship = self._get_parent_relationship(node_schema=request.node_schema)
+        peer_parent_relationship = self._get_peer_parent_relationship(
+            relationship=relationship, schema_branch=request.schema_branch
+        )
 
         for query_class in self.query_classes:
             query = await query_class.init(
@@ -257,11 +264,9 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
                 branch=self.branch,
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
-                relationship=self._get_relationship(node_schema=request.node_schema),
-                parent_relationship=self._get_parent_relationship(node_schema=request.node_schema),
-                peer_parent_relationship=self._get_peer_parent_relationship(
-                    node_schema=request.node_schema, schema_branch=request.schema_branch
-                ),
+                relationship=relationship,
+                parent_relationship=parent_relationship,
+                peer_parent_relationship=peer_parent_relationship,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
