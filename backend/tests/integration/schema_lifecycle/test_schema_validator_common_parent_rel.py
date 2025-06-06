@@ -45,7 +45,7 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         response = await client.schema.load(schemas=[schema_lag_interface], branch="test")
         assert not response.errors
 
-    async def test_step_03_create_devices(self, client: InfrahubClient) -> None:
+    async def test_step_04_create_devices(self, client: InfrahubClient) -> None:
         for name in ["device_1", "device_2"]:
             device = await client.create(
                 branch="test", kind=TestKind.DEVICE, name=name, manufacturer="Foo", weight=10, airflow="Front to rear"
@@ -62,7 +62,7 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
                 )
                 await interface.save()
 
-    async def test_step04_create_lag_with_all_interfaces(self, client: InfrahubClient) -> None:
+    async def test_step05_create_lag_with_all_interfaces(self, client: InfrahubClient) -> None:
         device = await client.get(branch="test", kind=TestKind.DEVICE, name__value="device_1")
         await device.interfaces.fetch()
         lag = await client.create(
@@ -70,13 +70,13 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         )
         await lag.save()
 
-    async def test_step05_set_constraint_to_lag(
+    async def test_step06_set_constraint_to_lag(
         self, client: InfrahubClient, schema_constrained_lag_interface: dict[str, Any]
     ) -> None:
         response = await client.schema.load(schemas=[schema_constrained_lag_interface], branch="test")
         assert not response.errors
 
-    async def test_step06_create_lag_with_relationship_add(self, client: InfrahubClient) -> None:
+    async def test_step07_create_lag_with_relationship_add(self, client: InfrahubClient) -> None:
         device = await client.get(branch="test", kind=TestKind.DEVICE, name__value="device_2")
         await device.interfaces.fetch()
         lag = await client.create(
@@ -111,7 +111,7 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
 
         assert {n.device.id for n in nodes} == {device.id}
 
-    async def test_step07_incorrectly_update_lag(self, client: InfrahubClient) -> None:
+    async def test_step08_incorrectly_update_lag(self, client: InfrahubClient) -> None:
         device1 = await client.get(branch="test", kind=TestKind.DEVICE, name__value="device_1")
         device2 = await client.get(branch="test", kind=TestKind.DEVICE, name__value="device_2")
         await device2.interfaces.fetch()

@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import PathType, RelationshipKind
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import GenericSchema
 
 from ..interface import ConstraintCheckerInterface
-from ..shared import (
-    RelationshipSchemaValidatorQuery,
-)
+from ..shared import RelationshipSchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.node_schema import NodeSchema
+    from infrahub.core.schema.relationship_schema import RelationshipSchema
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
     from ..model import SchemaConstraintValidatorRequest
@@ -130,13 +131,77 @@ class RelationshipPeerChecker(ConstraintCheckerInterface):
 class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_parent_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
-        pass
+    def __init__(
+        self,
+        relationship: RelationshipSchema,
+        parent_relationship: RelationshipSchema,
+        peer_parent_relationship: RelationshipSchema,
+        **kwargs: Any,
+    ):
+        super().__init__(**kwargs)
+
+        self.params["parent_relationship_id"] = parent_relationship.identifier
+        self.params["peer_parent_relationship_id"] = peer_parent_relationship.identifier
+        self.params["common_parent_relationship_id"] = relationship.identifier
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
+        self.params.update(branch_params)
+
+        query = """
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
+            MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
+            WHERE all(r in relationships(path) WHERE %(branch_filter)s)
+            RETURN path as full_path, n as active_node
+            ORDER BY rroot.branch_level DESC, rroot.from DESC
+            LIMIT 1
+        }
+        WITH full_path, active_node
+        WHERE all(r in relationships(full_path) WHERE r.status = "active")
+        MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $parent_relationship_id })-[rrel2:IS_RELATED]-(parent:Node)
+        WHERE all(r in relationships(path) WHERE %(branch_filter)s AND r.status = "active")
+        CALL (active_node) {
+            MATCH (active_node)-[:IS_RELATED]-(r:Relationship {name: $common_parent_relationship_id })-[:IS_RELATED]-(peer:Node)
+            WITH DISTINCT active_node, peer
+            MATCH (active_node)-[r1:IS_RELATED]-(r:Relationship {name: $common_parent_relationship_id })-[r2:IS_RELATED]-(peer:Node)
+            WHERE all(r in [r1, r2] WHERE %(branch_filter)s AND r.status = "active")
+            WITH peer, r1.status = "active" AND r2.status = "active" AS is_active
+            ORDER BY peer.uuid, r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC, is_active DESC
+            WITH peer, head(collect(is_active)) AS is_active
+            WHERE is_active = TRUE
+            RETURN peer
+        }
+        CALL (peer) {
+            MATCH (peer:Node)-[r1:IS_RELATED]-(r:Relationship {name: $peer_parent_relationship_id})-[r2:IS_RELATED]-(peer_parent:Node)
+            WHERE all(r IN [r1, r2] WHERE %(branch_filter)s AND r.status = "active")
+            RETURN peer_parent, r1.branch AS branch_name
+            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
+            LIMIT 1
+        }
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+
+        self.add_to_query(query)
+        self.return_labels = ["active_node.uuid", "parent.uuid", "peer.uuid", "peer_parent.uuid", "branch_name"]
 
     async def get_paths(self) -> GroupedDataPaths:
         grouped_data_paths = GroupedDataPaths()
 
-        # PLACEHOLDER
+        for result in self.results:
+            parent_uuid = str(result.get("parent.uuid"))
+            peer_parent_uuid = str(result.get("peer_parent.uuid"))
+
+            if parent_uuid != peer_parent_uuid:
+                grouped_data_paths.add_data_path(
+                    DataPath(
+                        branch=str(result.get("branch_name")),
+                        path_type=PathType.NODE,
+                        node_id=str(result.get("active_node.uuid")),
+                        field_name=self.relationship_schema.name,
+                        peer_id=str(result.get("peer.uuid")),
+                        kind=self.node_schema.kind,
+                    )
+                )
 
         return grouped_data_paths
 
@@ -155,9 +220,50 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name  # and config.SETTINGS.main.schema_strict_mode
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:  # noqa: ARG002
+    def _get_relationship(self, node_schema: NodeSchema | GenericSchema) -> RelationshipSchema:
+        for relationship in node_schema.relationships:
+            if relationship.common_parent:
+                return relationship
+
+        # Should not happen as the schema has been validated
+        raise ValueError("Unable to find a relationship with 'common_parent' set")
+
+    def _get_parent_relationship(self, node_schema: NodeSchema | GenericSchema) -> RelationshipSchema:
+        for relationship in node_schema.relationships:
+            if relationship.kind == RelationshipKind.PARENT:
+                return relationship
+
+        # Should not happen as the schema has been validated
+        raise ValueError("Unable to find a relationship of kind 'parent'")
+
+    def _get_peer_parent_relationship(
+        self, node_schema: NodeSchema | GenericSchema, schema_branch: SchemaBranch
+    ) -> RelationshipSchema:
+        relationship_to_check = None
+        for relationship in node_schema.relationships:
+            if relationship.common_parent:
+                relationship_to_check = relationship
+                break
+
+        peer_schema = schema_branch.get(name=relationship_to_check.peer, duplicate=False)
+        return peer_schema.get_relationship(name=relationship.common_parent)
+
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
 
-        # PLACEHOLDER
+        for query_class in self.query_classes:
+            query = await query_class.init(
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                relationship=self._get_relationship(node_schema=request.node_schema),
+                parent_relationship=self._get_parent_relationship(node_schema=request.node_schema),
+                peer_parent_relationship=self._get_peer_parent_relationship(
+                    node_schema=request.node_schema, schema_branch=request.schema_branch
+                ),
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
 
         return grouped_data_paths_list
