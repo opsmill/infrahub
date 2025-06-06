@@ -9,8 +9,9 @@ from infrahub.core.migrations.graph.m023_deduplicate_cardinality_one_relationshi
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
-
 # redis is required as we will call `initialization` later
+
+
 async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, redis):
     """
     Reproduce corrupted state where two nodes would be connected by multiple relationships while relationship
