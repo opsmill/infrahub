@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { ObjectDetailsTab, TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
-import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
-import { useGetRepositoryObjectsCount } from "@/entities/repository/domain/get-repository-objects-count.query";
+import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
+import { REPOSITORY_GROUP, REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -9,7 +9,12 @@ import { useLocation } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
-  const { isPending, data: objectsCount } = useGetRepositoryObjectsCount({ nodeId: objectId });
+  const { isPending, data: objectsCount } = useGetRelationshipCount({
+    objectId,
+    objectKind: REPOSITORY_GROUP,
+    relationshipName: "members",
+    filter: "repository__ids",
+  });
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
 
   const { pathname } = useLocation();
@@ -22,7 +27,9 @@ export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
     >
       Objects
       {isPending && <Spinner />}
-      <Badge className="font-medium rounded-full text-gray-80">{objectsCount}</Badge>
+      {!isPending && (
+        <Badge className="font-medium rounded-full text-gray-80">{objectsCount}</Badge>
+      )}
     </ObjectDetailsTab>
   );
 }
