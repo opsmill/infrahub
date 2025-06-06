@@ -22,7 +22,7 @@ export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
     >
       Tasks
       {isPending && <Spinner />}
-      <Badge className="font-medium rounded-full text-gray-80">{taskCount}</Badge>
+      {!isPending && <Badge className="font-medium rounded-full text-gray-80">{taskCount}</Badge>}
     </ObjectDetailsTab>
   );
 }

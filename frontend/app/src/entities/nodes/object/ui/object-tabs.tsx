@@ -55,7 +55,9 @@ export function RelationshipTab({
     >
       {relationshipSchema.label}
       {isPending && <Spinner />}
-      <Badge className="font-medium rounded-full text-gray-80">{relationshipCount}</Badge>
+      {!isPending && (
+        <Badge className="font-medium rounded-full text-gray-80">{relationshipCount}</Badge>
+      )}
     </ObjectDetailsTab>
   );
 }
