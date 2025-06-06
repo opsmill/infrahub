@@ -166,7 +166,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
             MATCH (active_node)-[:IS_RELATED]-(r:Relationship {name: $common_parent_relationship_id })-[:IS_RELATED]-(peer:Node)
             WITH DISTINCT active_node, peer
             MATCH (active_node)-[r1:IS_RELATED]-(r:Relationship {name: $common_parent_relationship_id })-[r2:IS_RELATED]-(peer:Node)
-            WHERE all(r in [r1, r2] WHERE %(branch_filter)s AND r.status = "active")
+            WHERE all(r in [r1, r2] WHERE %(branch_filter)s)
             WITH peer, r1.status = "active" AND r2.status = "active" AS is_active
             ORDER BY peer.uuid, r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC, is_active DESC
             WITH peer, head(collect(is_active)) AS is_active
