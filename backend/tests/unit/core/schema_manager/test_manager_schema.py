@@ -1034,13 +1034,14 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     ["uniqueness_constraints", "unique_attributes", "expected_constraints", "expected_unique_attributes"],
     [
         (None, [], None, []),
-        (None, ["name"], [["name__value"]], ["name"]),
+        # name is on the generic and we don't add inherited unique attribute to the uniqueness constraints
+        (None, ["name"], None, ["name"]),
         ([["name__value"]], ["name"], [["name__value"]], ["name"]),
         ([["name__value"]], [], [["name__value"]], ["name"]),
         ([["name__value"]], ["breed"], [["name__value"], ["breed__value"]], ["name", "breed"]),
         ([["name__value", "owner"]], ["breed"], [["name__value", "owner"], ["breed__value"]], ["breed"]),
-        ([["owner"]], ["name"], [["owner"], ["name__value"]], ["name"]),
-        (None, ["name", "color"], [["color__value"], ["name__value"]], ["name", "color"]),
+        ([["owner"]], ["name"], [["owner"]], ["name"]),
+        (None, ["name", "color"], [["color__value"]], ["name", "color"]),
         ([["color__value"], ["name__value"]], [], [["color__value"], ["name__value"]], ["name", "color"]),
     ],
 )
