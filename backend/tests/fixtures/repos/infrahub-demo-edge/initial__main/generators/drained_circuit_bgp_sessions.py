@@ -11,7 +11,7 @@ class Generator(InfrahubGenerator):
         circuits = data["InfraCircuit"]["edges"]
 
         for circuit in circuits:
-            id = circuit["node"]["id"]
+            id = circuit["node"]["id"]  # noqa: F841
             status: str = circuit["node"]["status"]["value"]
 
             if status != "maintenance":

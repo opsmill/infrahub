@@ -21,7 +21,7 @@ class Generator(InfrahubGenerator):
             vendor_id: str = circuit["node"]["vendor_id"]["value"]
 
             # Manage description
-            description: str = f"{circuit_id} - ({provider.upper()}{' x '+vendor_id.upper() if vendor_id else ''})"
+            description: str = f"{circuit_id} - ({provider.upper()}{' x ' + vendor_id.upper() if vendor_id else ''})"
 
             for i in range(1, 3):
                 data = {

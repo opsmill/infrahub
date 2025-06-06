@@ -11,7 +11,7 @@ class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
 
         backbone_links_per_site = defaultdict(lambda: defaultdict(int))
 
-        if data["InfraCircuit"]["edges"]:
+        if data["InfraCircuit"]["edges"]:  # noqa: PLR1702
             circuits = data["InfraCircuit"]["edges"]
 
             for circuit in circuits:

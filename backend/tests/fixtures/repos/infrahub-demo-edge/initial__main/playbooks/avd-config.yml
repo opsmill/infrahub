@@ -1,6 +1,7 @@
+---
 - name: Query Interfaces information with the query_graphql module
   hosts: platform_eos
-  gather_facts: no
+  gather_facts: false
   vars:
     ansible_connection: httpapi
     ansible_network_os: eos
