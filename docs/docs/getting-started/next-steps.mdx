@@ -1,0 +1,116 @@
+---
+title: Next Steps
+---
+import ReferenceLink from "../../src/components/Card";
+
+Now that you know more about the project, this page will guide you through the key steps to run and develop your own instance of Infrahub.
+
+## 1. Installation
+
+Infrahub supports multiple installation options. Choose the one that best fits your environment:
+
+- **Docker Compose**: A quick way to run Infrahub on any machine with Docker installed.
+- **Kubernetes**: Ideal for running in production or cloud environments.
+- **Invoke**: Clone the repository and run it locally for development purposes.
+
+:::note Hardware Requirements
+
+Make sure your machine meets the hardware requirements for running Infrahub. Find the requirements in the [related topic](../topics/hardware-requirements.mdx).
+
+:::
+
+<ReferenceLink title="Infrahub Installation Guide" url="../guides/installation"/>
+
+Additionally, you might want to install the Infrahub CLI tool on your laptop. This is a Python package that provides a command-line interface to interact with your Infrahub instance. The CLI is useful for loading data, managing schemas, and performing other administrative tasks.
+
+<ReferenceLink title="Infrahub CTL Installation Guide" url="$(base_url)python-sdk/guides/installation#all"/>
+
+## 2. The schema
+
+Everything starts with data. The schema defines the shape of your data and drives the rest of the system.
+
+Starting from a blank page might feel overwhelming, also some parts are quite common in many organizations, so why reinvent the wheel? To address this challenge OpsMill and the community are sharing and maintaining a collection of schema in the [**Schema Library**](https://github.com/opsmill/schema-library).
+
+This is the perfect starting point to quickly scaffold a schema that will cover the common parts of your infrastructure data. You can also reference it to craft your own custom schema!
+
+<ReferenceLink title="Use examples from the schema library" url="$(base_url)schema-library"/>
+
+## 3. Load data
+
+With a schema in place, it's time to bring in some data. If you have existing systems that hold your infrastructure data, we provide you the tool to sync them with Infrahub.
+
+At the moment [**Infrahub Sync**](https://github.com/opsmill/infrahub-sync) supports the following adapters:
+
+<!-- vale off -->
+- IP Fabric
+- LibreNMS
+- Nautobot
+- Netbox
+- Observium
+- Peering Manager
+- Slurp'it
+<!-- vale on -->
+
+<ReferenceLink title="Sync data from external system using Infrahub Sync" url="$(base_url)sync"/>
+
+Alternatively, you can describe your data in a structured YAML format and load it directly into Infrahub. This is useful for initial data seeding or for small datasets.
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: LocationCity
+  data:
+    - name: denver
+      shortname: den1
+    - name: paris
+      shortname: par1
+```
+
+You can then load this data using the Infrahub CLI:
+
+```bash
+infrahubctl object load city_data.yml
+```
+
+<ReferenceLink title="Load data from YAML files" url="$(base_url)infrahubctl/infrahubctl-object"/>
+
+## 4. Initialize a git repository
+
+The git repository will be used to store any files needed to capture the intended state of your infrastructure, such as the schema, templates, Python scripts, etc.
+
+Infrahub offers a native integration with git, allowing you to connect your repository and consume the files to run data transformations, generators, and more.
+
+The most important file is the `.infrahub.yml` file, which defines how Infrahub should behave and what files to consume.
+
+You will need to push this repository to a remote location that Infrahub can access. It doesn't have to be a public repository as Infrahub supports authentication with private repositories. Depending on the provider you use (for example: GitHub, GitLab, Bitbucket), the process may vary slightly, but the general steps are the same:
+
+1. Create a new repository on your preferred git hosting service.
+2. Clone the repository to your local machine.
+3. Create a `.infrahub.yml` file in the root of the repository.
+4. Push the repository to the remote location.
+5. Create a "Infrahub" access token with the required permissions to access the repository.
+
+Then you can connect the repository to Infrahub using the Infrahub CLI or the web interface!
+
+<ReferenceLink title="Connect a repository to Infrahub" url="../guides/repository"/>
+
+## Going Further
+
+:::success
+
+At this point, you have a running Infrahub instance with a schema, some data loaded and a git repository ready to be used. Congratulations! You are now ready to explore the next steps in your Infrahub journey.
+
+:::
+
+From here, depending on your use case and goals, you can:
+
+- [**Create your own schema**](../guides/create-schema) - Extend the existing schema to fit your organization's needs.
+- [**Generate artifacts**](../guides/artifact) - Use transformations to create meaningful files from your data such as startup configurations, documentation, cabling plans and more.
+- [**Build generators**](../guides/generator) - Automate the creation of infrastructure objects based on templates and user inputs.
+- [**Deploy artifacts to the field using Ansible**]($(base_url)ansible) - Deploy outputs where they're needed and apply your intended state to your infrastructure. You can also use other tools like [Nornir]($(base_url)nornir) to deploy your artifacts.
+
+If you need guidance with which feature to explore next or how to implement a specific use case, feel free to reach out to the community on our [Discord server](https://discord.gg/opsmill) or book a meeting with OpsMill.
+
+<ReferenceLink title="Book a meeting with OpsMill" url="https://cal.com/team/opsmill/meet" openInNewTab />
