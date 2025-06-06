@@ -55,7 +55,12 @@ test.describe("Node Trigger - ", () => {
   });
 
   test("should create new matches", async ({ page }) => {
+    await test.step("access list view", async () => {
+      await page.goto(`/objects/CoreTriggerRule?brach=${BRANCH_NAME}`);
+    });
+
     await test.step("access the matches", async () => {
+      await expect(page.getByRole("link", { name: "test node trigger rule" })).toBeVisible();
       await page.getByRole("link", { name: "test node trigger rule" }).click();
       await expect(page.getByText("Nametest node trigger rule")).toBeVisible();
       await page.getByRole("link", { name: "Matches" }).click();
