@@ -1,0 +1,19 @@
+version: "1.0"
+infrahub_tests:
+  - resource: PythonTransform
+    resource_name: oc_bgp_neighbors
+    tests:
+      - name: oc_bgp
+        expect: PASS
+        spec:
+          kind: python-transform-unit-process
+          directory: python_transforms/oc_bgp
+
+  - resource: PythonTransform
+    resource_name: OCInterfaces
+    tests:
+      - name: oc_interfaces
+        expect: PASS
+        spec:
+          kind: python-transform-unit-process
+          directory: python_transforms/oc_interfaces

@@ -1,0 +1,14 @@
+# topology documentation: http://containerlab.srlinux.dev/lab-examples/min-clos/
+name: test_crpd
+
+topology:
+  nodes:
+    crpd:
+      kind: juniper_crpd
+      image: crpd:22.2R1.9
+    srl:
+      kind: srl
+      image: ghcr.io/nokia/srlinux
+
+  links:
+    - endpoints: ["srl:e1-1", "crpd:eth1"]

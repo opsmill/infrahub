@@ -1,0 +1,30 @@
+- name: Query Interfaces information with the query_graphql module
+  hosts: platform_eos
+  gather_facts: no
+  vars:
+    ansible_connection: httpapi
+    ansible_network_os: eos
+    ansible_httpapi_use_ssl: true
+    ansible_httpapi_validate_certs: false
+    ansible_become: true
+    ansible_become_method: enable
+    ansible_user: admin
+    ansible_password: admin
+
+  tasks:
+    - name: Query Artifact
+      opsmill.infrahub.artifact_fetch:
+        artifact_name: "Config variables for Arista AVD"
+        target_id: "{{ id }}"
+        api_endpoint: "http://localhost:8000"
+        token: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      register: artifact
+
+    - name: Set artifacts as facts
+      set_fact:
+        {"{{ item.key }}": "{{ item.value }}"}
+      loop: "{{ artifact.json | dict2items }}"
+
+    - name: Generate configs
+      import_role:
+        name: arista.avd.eos_cli_config_gen
