@@ -161,6 +161,16 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         return updated_schema
 
     @pytest.fixture(scope="class")
+    def schema_person_06_delete_unique_generic_field(
+        self, schema_person_05_delete_original_unique_fields
+    ) -> dict[str, Any]:
+        """Update the human friendly ID to remove the deleted unique_attr field"""
+        updated_schema = {**schema_person_05_delete_original_unique_fields}
+        # has to be updated manually
+        updated_schema["human_friendly_id"] = ["tax_id__value"]
+        return updated_schema
+
+    @pytest.fixture(scope="class")
     def schema_step_01(
         self,
         schema_generic_01,
@@ -204,9 +214,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_06(self, schema_generic_06_delete_unique_field) -> dict[str, Any]:
+    def schema_step_06(
+        self, schema_person_06_delete_unique_generic_field, schema_generic_06_delete_unique_field
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
+            "nodes": [schema_person_06_delete_unique_generic_field],
             "generics": [schema_generic_06_delete_unique_field],
         }
 
@@ -356,7 +369,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 ("name__value",),
                 ("tax_id__value",),
                 ("name__value", "tax_id__value", "best_friend"),
-                ("unique_attr__value",),
             ]
         )
         assert updated_person_schema.human_friendly_id == [
@@ -438,7 +450,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 ("real_name__value",),
                 ("tax_id__value",),
                 ("real_name__value", "tax_id__value", "best_friend"),
-                ("unique_attr__value",),
             ]
         )
         assert updated_person_schema.human_friendly_id == [
@@ -503,7 +514,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 ("height__value",),
                 ("tax_id__value",),
                 ("tax_id__value", "best_friend"),
-                ("unique_attr__value",),
             ]
         )
         assert updated_person_schema.human_friendly_id == [
@@ -544,7 +554,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                                     "unique_attr": {"added": {}, "changed": {"state": None}, "removed": {}},
                                 },
                                 "removed": {},
-                            }
+                            },
+                            "human_friendly_id": None,
                         },
                         "removed": {},
                     },
@@ -577,7 +588,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         )
         assert updated_person_schema.human_friendly_id == [
             "tax_id__value",
-            "best_friend__unique_attr__value",
         ]
         assert updated_person_schema.display_labels == ["tax_id__value", "height__value"]
         assert updated_person_schema.order_by == ["height__value"]
