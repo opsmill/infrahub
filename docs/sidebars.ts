@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'guides/create-schema',
         'guides/import-schema',
         'guides/menu',
+        'guides/object-load',
         'guides/computed-attributes',
         'guides/resource-manager',
         'guides/accounts-permissions',
