@@ -152,14 +152,14 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         query = """
         MATCH (n:%(node_kind)s)
         CALL (n) {
-            MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
-            WHERE all(r in relationships(path) WHERE %(branch_filter)s)
-            RETURN path as full_path, n as active_node
-            ORDER BY rroot.branch_level DESC, rroot.from DESC
+            MATCH path = (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s)
+            RETURN n as active_node, r.status = "active" AS is_active
+            ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH full_path, active_node
-        WHERE all(r in relationships(full_path) WHERE r.status = "active")
+        WITH active_node, is_active
+        WHERE is_active = TRUE
         MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $parent_relationship_id })-[rrel2:IS_RELATED]-(parent:Node)
         WHERE all(r in relationships(path) WHERE %(branch_filter)s AND r.status = "active")
         CALL (active_node) {
