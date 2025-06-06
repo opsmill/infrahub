@@ -3,11 +3,17 @@ title: Overview
 description: An Introduction to Infrahub's Vision, Core Features, and Infrastructure Data Management Approach.
 ---
 
-Infrahub from [OpsMill](https://opsmill.com) takes a new approach to Infrastructure Management by providing a new generation datastore to organize and control all the data that defines how infrastructure should run. Infrahub offers a central hub to manage the data, templates, and playbooks that power your infrastructure. It combines the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
+Infrahub from [OpsMill](https://opsmill.com) takes a new approach to Infrastructure Management by providing a modern datastore to organize and control all the data that defines how infrastructure should run. Infrahub offers a central hub to manage the data and code that powers your infrastructure. It combines the version control and branch management capabilities similar to Git with the flexible data model and UI of a graph database.
+
+With Infrahub, you can:
+
+- **Unify All Your Data**: Model services, synchronize infrastructure data, and manage intent in a fully customizable schema with no constraints.
+- **Version and Validate**: Version and validate everything from design through deploy with native continuous integration tools.
+- **Deploy Flexibly**: Use whatever configuration automation and deployment validation tools you want via Infrahub integrations.
 
 ![Infrahub architecture](./../media/overview.excalidraw.svg)
 
-Infrahub acts as a central hub to manage all of the information and code that powers your infrastructure. At its heart, Infrahub is built on 3 fundamental pillars:
+At its heart, Infrahub is built on 3 fundamental pillars:
 
 - **A Flexible Schema**: A model of the infrastructure and the relation between the objects in the model, that is easily extensible.
 - **Version Control**: Natively integrated into the graph database, enabling new capabilities such as branching, diffing, and merging data directly in the database.
@@ -63,7 +69,7 @@ More information can be found in the [Python SDK]($(base_url)python-sdk/introduc
 
 ### Git
 
-One of the three pillars Infrahub is built on is the idea of having unified storage for data and files. The data is stored in the graph database and the files are stored in Git.
+One of the three pillars Infrahub is built on is the idea of having unified storage for data and code. The data is stored in the graph database and the code is stored in Git.
 
 When integrating a Git repository with Infrahub, the Task worker will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
 
@@ -84,9 +90,9 @@ When a schema has been loaded into Infrahub, data can be populated or synced thr
 
 Infrahub provides [data lineage and metadata](../topics/metadata.mdx) for tracking the origin and ownership of the data, and how the data changes and moves over time. When data comes from other systems and creates objects in the Infrahub database, those objects will have attributes such as its source and whether it is read-only, allowing for unidirectional sync from other sources of truth.
 
-## Integrations
+## Deployment
 
-Infrahub offers robust integrations with both Ansible and Nornir, which facilitate the automation and management of infrastructure tasks.
+While Infrahub stores data and uses transformations to generate configuration artifacts, it does not directly deploy configurations to devices. Instead, it integrates with tools like Nornir and Ansible, or triggers external orchestration platforms via webhooks for event-driven workflows.
 
 These integrations transform Infrahub into a centralized source of truth for infrastructure data, leveraging the automation capabilities of Ansible and Nornir to streamline management and ensure efficiency and precision.
 
@@ -98,8 +104,12 @@ This integration is provided through the [`opsmill.infrahub` Ansible Collection]
 
 Nornir is a Python-based automation framework primarily used for network automation. The [Infrahub plugin for Nornir](https://docs.infrahub.app/nornir/) enables Infrahub to serve as an inventory source, providing a streamlined solution for managing network devices and configurations.
 
+### Webhooks
+
+Infrahub can trigger outbound [webhooks](../topics/webhooks.mdx) as part of its event-driven automation workflows. These webhooks can be configured to notify or trigger actions in external orchestration platforms whenever changes occur to relevant data or artifacts within Infrahub. This allows seamless integration into larger automation pipelines.
+
 ### Key features
 
 - **Inventory Management**: Infrahub can dynamically generate and update inventories for Ansible and Nornir, ensuring that the latest state of infrastructure is always used.
 - **Automation**: By leveraging each framework's automation capabilities, users can execute complex infrastructure management tasks directly using Infrahub data.
-- **Configuration Deployment**: These integrations ensure that configurations managed by Infrahub are consistent across the infrastructure by applying them through Ansible or Nornir.
+- **Configuration Deployment**: These integrations ensure that configurations managed by Infrahub are consistent across the infrastructure by applying them through Ansible, Nornir or webhooks.

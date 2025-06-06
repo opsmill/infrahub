@@ -18,7 +18,7 @@ export default function HomepageHeader() {
                 <p className="hero__subtitle">
                     {translate({
                         id: 'home.header.subtitle',
-                        message: "Simplify Infrastructure Automation",
+                        message: "Infrastructure Data Management Platform",
                     })}
                 </p>
 
