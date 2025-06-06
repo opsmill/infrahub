@@ -832,6 +832,25 @@ This is particularly useful for components that must belong to the same parent e
       cardinality: many
       kind: Generic
       common_parent: device
+    - name: device
+      peer: InfraDevice
+      kind: Parent
+      optional: false
+      cardinality: one
+- name: InterfaceL3
+  [...]
+  relationships:
+    - name: lag
+      peer: InfraLagInterfaceL3
+      optional: true
+      cardinality: one
+      kind: Generic
+      common_parent: device
+    - name: device
+      peer: InfraDevice
+      kind: Parent
+      optional: false
+      cardinality: one
 ```
 
 :::info Important
