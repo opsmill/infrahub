@@ -13,7 +13,7 @@ export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
     objectId,
     objectKind: REPOSITORY_GROUP,
     relationshipName: "members",
-    filter: "repository__ids",
+    queryFilter: "repository__ids",
   });
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
 
