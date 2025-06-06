@@ -65,20 +65,20 @@ export function RelationshipTable({
         data={flatData}
         isLoading={isLoading}
         renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
-        toolbarActions={({ selectedRows }) => {
-          if (!isDissociateAllowed) {
-            return null;
-          }
-
-          return (
-            <ToolbarDissociateAction
-              objectId={parentId}
-              relationshipIds={selectedRows.map((row) => row.id)}
-              relationshipName={relationshipName}
-              relationshipLabel="all selected rows"
-            />
-          );
-        }}
+        toolbarActions={
+          isDissociateAllowed
+            ? ({ selectedRows }) => {
+                return (
+                  <ToolbarDissociateAction
+                    objectId={parentId}
+                    relationshipIds={selectedRows.map((row) => row.id)}
+                    relationshipName={relationshipName}
+                    relationshipLabel="all selected rows"
+                  />
+                );
+              }
+            : undefined
+        }
       />
     </InfiniteScroll>
   );
