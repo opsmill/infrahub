@@ -30,7 +30,6 @@ export function useGetRelationshipCount(
   params: UseGetRelationshipCountParams,
   config: UseGetRelationshipCountOptions = {}
 ) {
-  console.log("params: ", params);
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 

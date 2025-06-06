@@ -9,7 +9,6 @@ export type GetRelationshipCountParams = GetRelationshipCountFromApiParams;
 export type GetRelationshipCount = (params: GetRelationshipCountParams) => Promise<number>;
 
 export const getRelationshipCount: GetRelationshipCount = async (params) => {
-  console.log("params: ", params);
   const { data, error } = await getRelationshipCountFromApi(params);
 
   if (error) throw error;

@@ -16,7 +16,6 @@ const getRelationshipCountQuery = ({
   relationshipName,
   filter,
 }: getRelationshipCountQueryParams) => {
-  console.log("filter: ", filter);
   const query = {
     query: {
       __name: `getRelationshipCount_${objectKind}_${relationshipName}`,
@@ -47,7 +46,6 @@ export const getRelationshipCountFromApi = async ({
   atDate,
   ...params
 }: GetRelationshipCountFromApiParams) => {
-  console.log("params: ", params);
   return graphqlClient.query({
     query: getRelationshipCountQuery(params),
     context: {
