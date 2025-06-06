@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub import config
 from infrahub.core.constants import PathType, RelationshipKind
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import GenericSchema
@@ -218,7 +219,7 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
         return "relationship.common_parent.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name == self.name  # and config.SETTINGS.main.schema_strict_mode
+        return request.constraint_name == self.name and config.SETTINGS.main.schema_strict_mode
 
     def _get_relationship(self, node_schema: NodeSchema | GenericSchema) -> RelationshipSchema:
         for relationship in node_schema.relationships:
