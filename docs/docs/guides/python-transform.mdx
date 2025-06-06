@@ -69,6 +69,14 @@ mutation CreateDevice {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
+:::info Convert query to Infrahub SDK objects
+We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
+
+This allows you to manage the returned data with helper methods on the SDK objects such as `save`, `fetch`, etc. on the returned data rather than having to build a payload to send back to Infrahub to manage the objects.
+
+Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
+:::
+
 <Tabs groupId="convertResponse">
   <TabItem value="Non-converted query response">
 ```graphql

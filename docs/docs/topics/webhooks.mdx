@@ -23,6 +23,8 @@ Custom webhooks might be useful in situations where the endpoint needs a specifi
 
 The data passed into a normal Python transformation will typically be the result of the GraphQL query, but webhooks execute the transform by passing in the webhook data instead.
 
+Currently, it is **required** to define a GraphQL query to be defined on a transform regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
+
 :::
 
 Webhooks can be configured to trigger on specific event types, such as:
