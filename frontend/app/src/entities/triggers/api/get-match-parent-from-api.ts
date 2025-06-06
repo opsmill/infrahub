@@ -2,40 +2,40 @@ import { NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export type GetMatchParentParams = ContextParams & {
+const GET_MATCH_PARENT = gql`
+query GetMatchParent($objectsId: [ID]) {
+  [${NODE_TRIGGER_RULE}]: {
+    __args: {
+      matches__ids: $objectsId,
+      },
+      edges: {
+        node: {
+          id
+          node_kind: {
+            value
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
+export interface GetMatchParentParams extends ContextParams {
   objectId: string;
-};
+}
 
 export const getMatchParentFromApi = async ({
   branchName,
   atDate,
   objectId,
 }: GetMatchParentParams) => {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: "GetMatchParent",
-      [NODE_TRIGGER_RULE]: {
-        __args: {
-          matches__ids: [objectId],
-        },
-        edges: {
-          node: {
-            id: true,
-            node_kind: {
-              value: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const query = gql(queryString);
-
   return graphqlClient.query({
-    query,
+    query: GET_MATCH_PARENT,
+    variables: {
+      objectsId: [objectId],
+    },
     context: {
       branch: branchName,
       date: atDate,
