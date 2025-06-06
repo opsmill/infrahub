@@ -52,11 +52,13 @@ export function RelationshipTable({
 
   const isLoading = isPending || isFetchingNextPage;
 
-  const isDissociateAllowed = canDissociateRelationship({
-    parentSchema,
-    relationshipName,
-    relationshipsCount: flatData.length,
-  });
+  const isDissociateAllowed =
+    parentSchema &&
+    canDissociateRelationship({
+      parentSchema,
+      relationshipName,
+      relationshipsCount: flatData.length,
+    });
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
