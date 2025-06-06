@@ -834,6 +834,12 @@ This is particularly useful for components that must belong to the same parent e
       common_parent: device
 ```
 
+:::info Important
+
+You need to define it on the **two** sides of the relationship.
+
+:::
+
 In this example, the `common_parent: device` property ensures that all members of this relationship must have the same device as their parent.
 
 This prevents users from adding interfaces from different devices to the same LAG interface group.
