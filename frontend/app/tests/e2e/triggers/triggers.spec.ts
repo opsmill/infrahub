@@ -76,6 +76,7 @@ test.describe("Node Trigger - ", () => {
     });
 
     await test.step("create a relationship match", async () => {
+      await page.getByRole("link", { name: "Matches" }).click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByText("Node Trigger Relationship Match Core").click();
