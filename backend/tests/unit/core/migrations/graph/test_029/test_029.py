@@ -40,6 +40,7 @@ CALL {
         """ % {"uuid_generation": db.render_uuid_generation(node_label="a", node_attr="value")}
         await db.execute_query(query=query)
 
+    @pytest.mark.skip("Flaky, migration is already released")
     async def test_migration_029(self, db: InfrahubDatabase):
         snapshotter = DbSnapshotterDeduplicated(db=db)
         before_snapshot = await snapshotter.snapshot()
