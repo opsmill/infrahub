@@ -153,7 +153,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         MATCH (n:%(node_kind)s)
         CALL (n) {
             MATCH path = (root:Root)<-[r:IS_PART_OF]-(n)
-            WHERE %(branch_filter)s)
+            WHERE %(branch_filter)s
             RETURN n as active_node, r.status = "active" AS is_active
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
