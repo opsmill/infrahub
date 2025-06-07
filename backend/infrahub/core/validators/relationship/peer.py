@@ -139,6 +139,8 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
     ):
         super().__init__(**kwargs)
 
+        self.relationship = relationship
+
         self.params["peer_relationship_id"] = relationship.identifier
         self.params["parent_relationship_id"] = parent_relationship.identifier
         self.params["peer_parent_relationship_id"] = peer_parent_relationship.identifier
@@ -194,11 +196,11 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
                 grouped_data_paths.add_data_path(
                     DataPath(
                         branch=str(result.get("branch_name")),
-                        path_type=PathType.NODE,
-                        node_id=str(result.get("active_node.uuid")),
-                        field_name=self.relationship_schema.name,
-                        peer_id=str(result.get("peer.uuid")),
-                        kind=self.node_schema.kind,
+                        path_type=PathType.RELATIONSHIP_ONE,
+                        node_id=str(result.get("peer.uuid")),
+                        field_name=self.relationship.name,
+                        peer_id=str(result.get("peer_parent.uuid")),
+                        kind=self.relationship.peer,
                     )
                 )
 
