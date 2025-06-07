@@ -12,9 +12,7 @@ from ..shared import RelationshipSchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema.node_schema import NodeSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
     from ..model import SchemaConstraintValidatorRequest
@@ -221,42 +219,15 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name and config.SETTINGS.main.schema_strict_mode
 
-    def _get_relationship(self, node_schema: NodeSchema | GenericSchema) -> RelationshipSchema:
-        for relationship in node_schema.relationships:
-            if relationship.common_parent:
-                return relationship
-
-        # Should not happen as the schema has been validated
-        raise ValueError("Unable to find a relationship with 'common_parent' set")
-
-    def _get_parent_relationship(self, node_schema: NodeSchema | GenericSchema) -> RelationshipSchema:
-        for relationship in node_schema.relationships:
-            if relationship.kind == RelationshipKind.PARENT:
-                return relationship
-
-        # Should not happen as the schema has been validated
-        raise ValueError("Unable to find a relationship of kind 'parent'")
-
-    def _get_peer_parent_relationship(
-        self, relationship: RelationshipSchema, schema_branch: SchemaBranch
-    ) -> RelationshipSchema:
-        peer_schema = schema_branch.get(name=relationship.peer, duplicate=False)
-
-        # Should not happen as the schema has been validated
-        if not relationship.common_parent:
-            raise ValueError(
-                f"{relationship.name} with peer {relationship.peer} has `common_parent={relationship.common_parent}`"
-            )
-
-        return peer_schema.get_relationship(name=relationship.common_parent)
-
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
 
-        relationship = self._get_relationship(node_schema=request.node_schema)
-        parent_relationship = self._get_parent_relationship(node_schema=request.node_schema)
-        peer_parent_relationship = self._get_peer_parent_relationship(
-            relationship=relationship, schema_branch=request.schema_branch
+        relationship = request.node_schema.get_relationship(name=request.schema_path.field_name)
+        parent_relationship = next(
+            iter(request.node_schema.get_relationships_of_kind(relationship_kinds=[RelationshipKind.PARENT]))
+        )
+        peer_parent_relationship = request.schema_branch.get(name=relationship.peer, duplicate=False).get_relationship(
+            name=relationship.common_parent
         )
 
         for query_class in self.query_classes:
