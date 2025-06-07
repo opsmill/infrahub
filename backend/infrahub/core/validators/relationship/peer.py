@@ -222,7 +222,14 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
 
+        if not request.schema_path.field_name:
+            return grouped_data_paths_list
+
         relationship = request.node_schema.get_relationship(name=request.schema_path.field_name)
+        if not relationship.common_parent:
+            # Should not happen if schema validation was done properly
+            return grouped_data_paths_list
+
         parent_relationship = next(
             iter(request.node_schema.get_relationships_of_kind(relationship_kinds=[RelationshipKind.PARENT]))
         )
