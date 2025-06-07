@@ -138,6 +138,34 @@ async def test_query_invalid_lag(db: InfrahubDatabase, branch: Branch, data_inva
     assert len(all_paths) == 4
 
 
+async def test_query_deleted_lag_members(db: InfrahubDatabase, branch: Branch, data_invalid_lag: dict[str, Node]):
+    lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
+    interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
+
+    for lag in [data_invalid_lag["d_1_lag"], data_invalid_lag["d_2_lag"]]:
+        await lag.members.update(db=db, data=None)
+        await lag.members.save(db=db)
+
+        assert not await lag.members.get_peers(db=db)
+
+    query = await RelationshipPeerParentValidatorQuery.init(
+        db=db,
+        branch=branch,
+        node_schema=lag_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.RELATIONSHIP, schema_kind=lag_schema.kind, field_name="members"
+        ),
+        relationship=lag_schema.get_relationship(name="members"),
+        parent_relationship=lag_schema.get_relationship(name="device"),
+        peer_parent_relationship=interface_schema.get_relationship(name="device"),
+    )
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_paths = grouped_paths.get_all_data_paths()
+    assert len(all_paths) == 0
+
+
 async def test_validator(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, data_invalid_lag: dict[str, Node]
 ):
