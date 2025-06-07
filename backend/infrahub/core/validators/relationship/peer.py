@@ -139,9 +139,9 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
     ):
         super().__init__(**kwargs)
 
+        self.params["peer_relationship_id"] = relationship.identifier
         self.params["parent_relationship_id"] = parent_relationship.identifier
         self.params["peer_parent_relationship_id"] = peer_parent_relationship.identifier
-        self.params["common_parent_relationship_id"] = relationship.identifier
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
@@ -161,9 +161,9 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $parent_relationship_id })-[rrel2:IS_RELATED]-(parent:Node)
         WHERE all(r in relationships(path) WHERE %(branch_filter)s AND r.status = "active")
         CALL (active_node) {
-            MATCH (active_node)-[:IS_RELATED]-(r:Relationship {name: $common_parent_relationship_id })-[:IS_RELATED]-(peer:Node)
+            MATCH (active_node)-[:IS_RELATED]-(r:Relationship {name: $peer_relationship_id })-[:IS_RELATED]-(peer:Node)
             WITH DISTINCT active_node, peer
-            MATCH (active_node)-[r1:IS_RELATED]-(r:Relationship {name: $common_parent_relationship_id })-[r2:IS_RELATED]-(peer:Node)
+            MATCH (active_node)-[r1:IS_RELATED]-(r:Relationship {name: $peer_relationship_id })-[r2:IS_RELATED]-(peer:Node)
             WHERE all(r in [r1, r2] WHERE %(branch_filter)s)
             WITH peer, r1.status = "active" AND r2.status = "active" AS is_active
             ORDER BY peer.uuid, r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC, is_active DESC
