@@ -503,7 +503,6 @@ ignore = [
     "G",        # flake8-logging-format
     "RSE",      # flake8-raise
     "BLE",      # flake8-blind-except (BLE)
-    "A",        # flake8-builtins
     "PD",       # pandas-vet
     "FAST002",  # FastAPI dependency without `Annotated`
 
@@ -587,6 +586,17 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.ruff.lint.flake8-builtins]
+ignorelist = [
+    "id",
+    # Review and update builtin shadowing below this line
+    "filter",
+    "format",
+    "input",
+    "property",
+    "type",
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["infrahub"]
