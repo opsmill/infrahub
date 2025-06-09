@@ -377,6 +377,10 @@ class DiffRepository:
         await query.execute(db=self.db)
         return query.get_summary()
 
+    async def delete_all_diff_roots(self) -> None:
+        query = await EnrichedDiffDeleteQuery.init(db=self.db)
+        await query.execute(db=self.db)
+
     async def delete_diff_roots(self, diff_root_uuids: list[str]) -> None:
         query = await EnrichedDiffDeleteQuery.init(db=self.db, enriched_diff_root_uuids=diff_root_uuids)
         await query.execute(db=self.db)
