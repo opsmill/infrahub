@@ -495,6 +495,24 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             r.exists_on_database = False
         assert set(retrieved) == set(diffs)
 
+    async def test_delete_all_diffs(self, diff_repository: DiffRepository, reset_database):
+        diffs: list[EnrichedDiffRoot] = []
+        for _ in range(5):
+            nodes = self._build_nodes(num_nodes=2, num_sub_fields=1)
+            enriched_diff = EnrichedRootFactory.build(nodes=nodes)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
+            diffs.append(enriched_diff)
+
+        await diff_repository.delete_all_diff_roots()
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+        )
+        assert len(retrieved) == 0
+
     async def test_get_by_tracking_id(self, diff_repository: DiffRepository, reset_database):
         branch_tracking_id = BranchTrackingId(name=self.diff_branch_name)
         name_tracking_id = NameTrackingId(name="an very cool diff")
