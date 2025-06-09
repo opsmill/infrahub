@@ -140,14 +140,48 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         super().__init__(**kwargs)
 
         self.relationship = relationship
-
-        self.params["peer_relationship_id"] = relationship.identifier
-        self.params["parent_relationship_id"] = parent_relationship.identifier
-        self.params["peer_parent_relationship_id"] = peer_parent_relationship.identifier
+        self.parent_relationship = parent_relationship
+        self.peer_parent_relationship = peer_parent_relationship
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
+        self.params["peer_relationship_id"] = self.relationship.identifier
+        self.params["parent_relationship_id"] = self.parent_relationship.identifier
+        self.params["peer_parent_relationship_id"] = self.peer_parent_relationship.identifier
+
+        parent_arrows = self.parent_relationship.get_query_arrows()
+        parent_match = (
+            "MATCH (active_node)%(lstart)s[r1:IS_RELATED]%(lend)s"
+            "(rel:Relationship { name: $parent_relationship_id })%(rstart)s[r2:IS_RELATED]%(rend)s(parent:Node)"
+        ) % {
+            "lstart": parent_arrows.left.start,
+            "lend": parent_arrows.left.end,
+            "rstart": parent_arrows.right.start,
+            "rend": parent_arrows.right.end,
+        }
+
+        peer_parent_arrows = self.relationship.get_query_arrows()
+        peer_match = (
+            "MATCH (active_node)%(lstart)s[r1:IS_RELATED]%(lend)s"
+            "(r:Relationship {name: $peer_relationship_id })%(rstart)s[r2:IS_RELATED]%(rend)s(peer:Node)"
+        ) % {
+            "lstart": peer_parent_arrows.left.start,
+            "lend": peer_parent_arrows.left.end,
+            "rstart": peer_parent_arrows.right.start,
+            "rend": peer_parent_arrows.right.end,
+        }
+
+        peer_parent_arrows = self.peer_parent_relationship.get_query_arrows()
+        peer_parent_match = (
+            "MATCH (peer:Node)%(lstart)s[r1:IS_RELATED]%(lend)s"
+            "(r:Relationship {name: $peer_parent_relationship_id})%(rstart)s[r2:IS_RELATED]%(rend)s(peer_parent:Node)"
+        ) % {
+            "lstart": peer_parent_arrows.left.start,
+            "lend": peer_parent_arrows.left.end,
+            "rstart": peer_parent_arrows.right.start,
+            "rend": peer_parent_arrows.right.end,
+        }
 
         query = """
         MATCH (n:%(node_kind)s)
@@ -160,12 +194,12 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         WITH active_node, is_active
         WHERE is_active = TRUE
-        MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $parent_relationship_id })-[rrel2:IS_RELATED]-(parent:Node)
-        WHERE all(r in relationships(path) WHERE %(branch_filter)s AND r.status = "active")
+        %(parent_match)s
+        WHERE all(r in [r1, r2] WHERE %(branch_filter)s AND r.status = "active")
         CALL (active_node) {
-            MATCH (active_node)-[:IS_RELATED]-(r:Relationship {name: $peer_relationship_id })-[:IS_RELATED]-(peer:Node)
+            %(peer_match)s
             WITH DISTINCT active_node, peer
-            MATCH (active_node)-[r1:IS_RELATED]-(r:Relationship {name: $peer_relationship_id })-[r2:IS_RELATED]-(peer:Node)
+            %(peer_match)s
             WHERE all(r in [r1, r2] WHERE %(branch_filter)s)
             WITH peer, r1.status = "active" AND r2.status = "active" AS is_active
             ORDER BY peer.uuid, r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC, is_active DESC
@@ -174,13 +208,25 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
             RETURN peer
         }
         CALL (peer) {
-            MATCH (peer:Node)-[r1:IS_RELATED]-(r:Relationship {name: $peer_parent_relationship_id})-[r2:IS_RELATED]-(peer_parent:Node)
-            WHERE all(r IN [r1, r2] WHERE %(branch_filter)s AND r.status = "active")
-            RETURN peer_parent, r1.branch AS branch_name
-            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
+            %(peer_parent_match)s
+            WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
+            WITH peer_parent, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
+            WITH peer_parent, r1.branch AS branch_name, is_active
+            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC, is_active DESC
             LIMIT 1
+            WITH peer_parent, branch_name
+            WHERE is_active = TRUE
+            RETURN peer_parent, branch_name
         }
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        WITH DISTINCT active_node, parent, peer, peer_parent, branch_name
+        WHERE parent.uuid <> peer_parent.uuid
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kind": self.node_schema.kind,
+            "parent_match": parent_match,
+            "peer_match": peer_match,
+            "peer_parent_match": peer_parent_match,
+        }
 
         self.add_to_query(query)
         self.return_labels = ["active_node.uuid", "parent.uuid", "peer.uuid", "peer_parent.uuid", "branch_name"]
@@ -189,20 +235,16 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         grouped_data_paths = GroupedDataPaths()
 
         for result in self.results:
-            parent_uuid = str(result.get("parent.uuid"))
-            peer_parent_uuid = str(result.get("peer_parent.uuid"))
-
-            if parent_uuid != peer_parent_uuid:
-                grouped_data_paths.add_data_path(
-                    DataPath(
-                        branch=str(result.get("branch_name")),
-                        path_type=PathType.RELATIONSHIP_ONE,
-                        node_id=str(result.get("peer.uuid")),
-                        field_name=self.relationship.name,
-                        peer_id=str(result.get("peer_parent.uuid")),
-                        kind=self.relationship.peer,
-                    )
+            grouped_data_paths.add_data_path(
+                DataPath(
+                    branch=str(result.get("branch_name")),
+                    path_type=PathType.RELATIONSHIP_ONE,
+                    node_id=str(result.get("peer.uuid")),
+                    field_name=self.peer_parent_relationship.name,
+                    peer_id=str(result.get("peer_parent.uuid")),
+                    kind=self.relationship.peer,
                 )
+            )
 
         return grouped_data_paths
 

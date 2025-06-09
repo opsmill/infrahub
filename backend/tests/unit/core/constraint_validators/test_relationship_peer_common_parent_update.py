@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath
+from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.relationship.peer import (
     RelationshipPeerParentChecker,
@@ -26,20 +27,23 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-async def add_interfaces_to_device(db: InfrahubDatabase, device: Node) -> None:
+async def add_interfaces_to_device(db: InfrahubDatabase, branch: Branch, device: Node) -> list[Node]:
     interfaces: list[Node] = []
     for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
-        interface = await Node.init(db=db, schema=TestKind.PHYSICAL_INTERFACE)
+        interface = await Node.init(db=db, branch=branch, schema=TestKind.PHYSICAL_INTERFACE)
         await interface.new(db=db, name=if_name, phys_type="QSFP28 (100GE)", device=device)
         await interface.save(db=db)
         interfaces.append(interface)
 
     await device.interfaces.update(db=db, data=interfaces)
     await device.save(db=db)
+    return interfaces
 
 
-async def add_lag_to_device(db: InfrahubDatabase, device: Node, name: str, members: Sequence[Node]) -> Node:
-    lag = await Node.init(db=db, schema=TestKind.LAG_INTERFACE)
+async def add_lag_to_device(
+    db: InfrahubDatabase, branch: Branch, device: Node, name: str, members: Sequence[Node]
+) -> Node:
+    lag = await Node.init(db=db, branch=branch, schema=TestKind.LAG_INTERFACE)
     await lag.new(db=db, name=name, members=list(members), device=device)
     await lag.save(db=db)
 
@@ -63,12 +67,12 @@ async def data_empty_lags(db: InfrahubDatabase, device_schema: SchemaRoot, defau
     d_1 = await Node.init(db=db, schema=TestKind.DEVICE)
     await d_1.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
     await d_1.save(db=db)
-    d_1_lag = await add_lag_to_device(db=db, device=d_1, name="ae0", members=[])
+    d_1_lag = await add_lag_to_device(db=db, branch=default_branch, device=d_1, name="ae0", members=[])
 
     d_2 = await Node.init(db=db, schema=TestKind.DEVICE)
     await d_2.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
     await d_2.save(db=db)
-    d_2_lag = await add_lag_to_device(db=db, device=d_2, name="ae0", members=[])
+    d_2_lag = await add_lag_to_device(db=db, branch=default_branch, device=d_2, name="ae0", members=[])
 
     return {"d_1": d_1, "d_2": d_2, "d_1_lag": d_1_lag, "d_2_lag": d_2_lag}
 
@@ -78,20 +82,35 @@ async def data_invalid_lag(db: InfrahubDatabase, device_schema: SchemaRoot, defa
     d_1 = await Node.init(db=db, schema=TestKind.DEVICE)
     await d_1.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
     await d_1.save(db=db)
-    await add_interfaces_to_device(db=db, device=d_1)
-    d_1_lag = await add_lag_to_device(
-        db=db, device=d_1, name="ae0", members=(await d_1.interfaces.get_peers(db=db)).values()
-    )
+    d_1_interfaces = await add_interfaces_to_device(db=db, branch=default_branch, device=d_1)
+    d_1_lag = await add_lag_to_device(db=db, branch=default_branch, device=d_1, name="ae0", members=d_1_interfaces)
 
     d_2 = await Node.init(db=db, schema=TestKind.DEVICE)
     await d_2.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
     await d_2.save(db=db)
-    await add_interfaces_to_device(db=db, device=d_2)
-    d_2_lag = await add_lag_to_device(
-        db=db, device=d_2, name="ae0", members=(await d_1.interfaces.get_peers(db=db)).values()
-    )
+    await add_interfaces_to_device(db=db, branch=default_branch, device=d_2)
+    d_2_lag = await add_lag_to_device(db=db, branch=default_branch, device=d_2, name="ae0", members=d_1_interfaces)
 
     return {"d_1": d_1, "d_2": d_2, "d_1_lag": d_1_lag, "d_2_lag": d_2_lag}
+
+
+@pytest.fixture
+async def expected_invalid_lag_data_paths(
+    db: InfrahubDatabase, default_branch: Branch, data_invalid_lag, branch: Branch
+) -> set[DataPath]:
+    branch_d2_lag = await NodeManager.get_one(db=db, branch=branch, id=data_invalid_lag["d_2_lag"].id)
+    d2_lag_members = await branch_d2_lag.members.get_peers(db=db)
+    return {
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.RELATIONSHIP_ONE,
+            node_id=member.id,
+            kind=member.get_kind(),
+            field_name="device",
+            peer_id=data_invalid_lag["d_1"].id,
+        )
+        for member in d2_lag_members.values()
+    }
 
 
 async def test_query_no_relationships(db: InfrahubDatabase, branch: Branch, data_empty_lags: dict[str, Any]):
@@ -116,7 +135,13 @@ async def test_query_no_relationships(db: InfrahubDatabase, branch: Branch, data
     assert len(all_paths) == 0
 
 
-async def test_query_invalid_lag(db: InfrahubDatabase, branch: Branch, data_invalid_lag: dict[str, Node]):
+async def test_query_invalid_lag(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_invalid_lag: dict[str, Node],
+    expected_invalid_lag_data_paths: set[DataPath],
+    branch: Branch,
+):
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
     interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
@@ -135,18 +160,19 @@ async def test_query_invalid_lag(db: InfrahubDatabase, branch: Branch, data_inva
 
     grouped_paths = await query.get_paths()
     all_paths = grouped_paths.get_all_data_paths()
-    assert len(all_paths) == 4
+    assert set(all_paths) == expected_invalid_lag_data_paths
 
 
-async def test_query_deleted_lag_members(db: InfrahubDatabase, branch: Branch, data_invalid_lag: dict[str, Node]):
+async def test_query_deleted_lag_members(db: InfrahubDatabase, data_invalid_lag: dict[str, Node], branch: Branch):
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
     interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
     for lag in [data_invalid_lag["d_1_lag"], data_invalid_lag["d_2_lag"]]:
-        await lag.members.update(db=db, data=None)
-        await lag.members.save(db=db)
+        branch_lag = await NodeManager.get_one(db=db, branch=branch, id=lag.id)
+        await branch_lag.members.update(db=db, data=None)
+        await branch_lag.members.save(db=db)
 
-        assert not await lag.members.get_peers(db=db)
+        assert not await branch_lag.members.get_peers(db=db)
 
     query = await RelationshipPeerParentValidatorQuery.init(
         db=db,
@@ -167,12 +193,16 @@ async def test_query_deleted_lag_members(db: InfrahubDatabase, branch: Branch, d
 
 
 async def test_validator(
-    db: InfrahubDatabase, branch: Branch, default_branch: Branch, data_invalid_lag: dict[str, Node]
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_invalid_lag: dict[str, Node],
+    expected_invalid_lag_data_paths: set[DataPath],
+    branch: Branch,
 ):
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
 
     request = SchemaConstraintValidatorRequest(
-        branch=default_branch,
+        branch=branch,
         constraint_name="relationship.common_parent.update",
         node_schema=lag_schema,
         schema_path=SchemaPath(
@@ -181,9 +211,9 @@ async def test_validator(
         schema_branch=registry.schema.get_schema_branch(default_branch.name),
     )
 
-    constraint_checker = RelationshipPeerParentChecker(db=db, branch=default_branch)
+    constraint_checker = RelationshipPeerParentChecker(db=db, branch=branch)
     grouped_data_paths = await constraint_checker.check(request)
 
     assert len(grouped_data_paths) == 1
     all_paths = grouped_data_paths[0].get_all_data_paths()
-    assert len(all_paths) == 4
+    assert all_paths

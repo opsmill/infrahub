@@ -63,6 +63,20 @@ class DataPath(InfrahubPath):
     peer_id: str | None = Field(default=None, description="")
     value: Any | None = Field(default=None, description="Optional value of the resource")
 
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.branch,
+                self.path_type,
+                self.node_id,
+                self.kind,
+                self.field_name,
+                self.property_name,
+                self.peer_id,
+                self.value,
+            )
+        )
+
     @property
     def resource_type(self) -> PathResourceType:
         return PathResourceType.DATA
