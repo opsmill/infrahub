@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 
 class StandardNode(BaseModel):
-    id: Optional[str] = None
-    uuid: Optional[UUID] = None
+    id: str | None = None
+    uuid: UUID | str | None = None
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
