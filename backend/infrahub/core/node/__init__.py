@@ -541,17 +541,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     relationship_attribute: RelationshipManager = getattr(
                         self, attribute_path.active_relationship_schema.name
                     )
-                    peer = await relationship_attribute.get_peer(db=db, raise_on_error=True)
+                    if peer := await relationship_attribute.get_peer(db=db, raise_on_error=False):
+                        related_node = await registry.manager.get_one_by_id_or_default_filter(
+                            db=db,
+                            id=peer.id,
+                            kind=attribute_path.active_relationship_schema.peer,
+                            branch=self._branch.name,
+                        )
 
-                    related_node = await registry.manager.get_one_by_id_or_default_filter(
-                        db=db, id=peer.id, kind=attribute_path.active_relationship_schema.peer, branch=self._branch.name
-                    )
-
-                    attribute: BaseAttribute = getattr(
-                        getattr(related_node, attribute_path.active_attribute_schema.name),
-                        attribute_path.active_attribute_property_name,
-                    )
-                    variables[variable] = attribute
+                        attribute: BaseAttribute = getattr(
+                            getattr(related_node, attribute_path.active_attribute_schema.name),
+                            attribute_path.active_attribute_property_name,
+                        )
+                        variables[variable] = attribute
+                    else:
+                        variables[variable] = None
 
                 elif attribute_path.is_type_attribute:
                     attribute = getattr(
