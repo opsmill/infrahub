@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'guides/create-schema',
         'guides/import-schema',
         'guides/menu',
+        'guides/object-load',
         'guides/computed-attributes',
         'guides/resource-manager',
         'guides/accounts-permissions',
@@ -120,7 +121,14 @@ const sidebars: SidebarsConfig = {
         'topics/repository',
         'topics/resource-manager',
         'topics/resources-testing-framework',
-        'topics/schema',
+        {
+          type: 'category',
+          label: 'Schema',
+          items: [
+            'topics/schema',
+            'topics/schema-attr-kind-number-pool',
+          ],
+        },
         'topics/tasks',
         'topics/transformation',
         'topics/version-control',
@@ -218,6 +226,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_2_12',
             'release-notes/infrahub/release-1_2_11',
             'release-notes/infrahub/release-1_2_10',
             'release-notes/infrahub/release-1_2_9',

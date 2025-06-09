@@ -962,3 +962,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
             relm.validate()
+
+    async def get_parent_relationship_peer(self, db: InfrahubDatabase, name: str) -> Node | None:
+        """When a node has a parent relationship of a given name, this method returns the peer of that relationship."""
+        relationship = self.get_schema().get_relationship(name=name)
+        if relationship.kind != RelationshipKind.PARENT:
+            raise ValueError(f"Relationship '{name}' is not of kind 'parent'")
+
+        relm: RelationshipManager = getattr(self, name)
+        return await relm.get_peer(db=db)

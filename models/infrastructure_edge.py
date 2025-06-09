@@ -1200,6 +1200,16 @@ async def create_backbone_connectivity(
             f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
         )
         await intf_site2_obj.save()
+        bb_service = await client.create(
+            kind="InfraBackBoneService",
+            name=f"BKB: {backbone_link.site1} <-> {backbone_link.site2}",
+            circuit_id=backbone_link.circuit,
+            internal_circuit_id=vendor_id.upper(),
+            provider=provider,
+            site_a=backbone_link.site1,
+            site_b=backbone_link.site2,
+        )
+        await bb_service.save(allow_upsert=True)
 
         log.debug(
             f" - Connected '{backbone_link.site1_device}::{intf_site1.name.value}' <> '{backbone_link.site2_device}::{intf_site2.name.value}'"

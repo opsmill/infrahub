@@ -1,33 +1,35 @@
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { DynamicInput } from "@/shared/components/form/dynamic-form";
+import { LabelFormField } from "@/shared/components/form/fields/common";
+import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
-import { DynamicDropdownFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import {
+  DynamicDropdownFieldProps,
+  FormAttributeValue,
+  FormFieldValue,
+} from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { DropdownOption } from "@/shared/components/inputs/dropdown";
+import { Skeleton } from "@/shared/components/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { FieldValues, useForm } from "react-hook-form";
+import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
-
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { DynamicInput } from "@/shared/components/form/dynamic-form";
-import { LabelFormField } from "@/shared/components/form/fields/common";
-import DropdownField from "@/shared/components/form/fields/dropdown.field";
-import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
-import { DropdownOption } from "@/shared/components/inputs/dropdown";
-import { Skeleton } from "@/shared/components/skeleton";
-import { useParams } from "react-router";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH } from "../constants";
 
 interface NodeAttributeMatchFormProps extends NodeFormProps {}
 
@@ -41,9 +43,6 @@ export const NodeAttributeMatchForm = ({
 }: NodeAttributeMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
-  const { objectKind, objectid } = useParams();
-  const { schema } = useSchema(objectKind);
-  const { data, isPending } = useGetObject({ objectSchema: schema, objectId: objectid });
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
@@ -123,7 +122,7 @@ export const NodeAttributeMatchForm = ({
         },
       });
 
-      if (currentObject) {
+      if (currentObject?.id) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match updated!"} />, {
           toastId: "alert-success-node-attribute-match-updated",
         });
@@ -145,11 +144,7 @@ export const NodeAttributeMatchForm = ({
   return (
     <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <NodeAttributeField
-          field={attributeField}
-          kind={data?.node_kind?.value}
-          isLoading={isPending}
-        />
+        <NodeAttributeField field={attributeField} />
 
         {fields.map((field) => {
           return <DynamicInput key={field.name} {...field} />;
@@ -170,15 +165,23 @@ export const NodeAttributeMatchForm = ({
 };
 
 interface NodeAttributeFieldProps {
-  kind?: string;
-  isLoading?: boolean;
   field?: DynamicDropdownFieldProps;
 }
 
-const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps) => {
-  const { schema } = useSchema(kind);
+const NodeAttributeField = ({ field }: NodeAttributeFieldProps) => {
+  const form = useFormContext();
 
-  if (isLoading) {
+  const { schema } = useSchema(NODE_TRIGGER_RULE);
+  const selectedTriggerField: FormAttributeValue = form.watch("trigger");
+
+  const { data, isPending } = useGetObject({
+    objectId: selectedTriggerField.value?.id,
+    objectSchema: schema,
+  });
+
+  const { schema: peerSchema } = useSchema(data?.node_kind?.value);
+
+  if (isPending) {
     return (
       <div className="space-y-2">
         <LabelFormField
@@ -193,12 +196,19 @@ const NodeAttributeField = ({ field, kind, isLoading }: NodeAttributeFieldProps)
   }
 
   const attributeOptions: Array<DropdownOption> =
-    schema?.attributes?.map((attribute) => {
+    peerSchema?.attributes?.map((attribute) => {
       return {
         value: attribute.name,
         label: attribute.label ?? attribute.name,
       };
     }) ?? [];
 
-  return <DropdownField {...field} name="attribute_name" items={attributeOptions} />;
+  return (
+    <DropdownField
+      {...field}
+      key={data?.node_kind?.value}
+      name="attribute_name"
+      items={attributeOptions}
+    />
+  );
 };

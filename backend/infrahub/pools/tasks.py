@@ -4,8 +4,9 @@ from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
-from infrahub.core.constants import NumberPoolType
+from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
@@ -54,3 +55,62 @@ async def validate_schema_number_pools(
         elif not defined_on_branches:
             log.info(f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema")
             await schema_number_pool.delete(db=service.database)
+
+    existing_pool_ids = [pool.id for pool in schema_number_pools]
+    for registry_branch in registry.schema.get_branches():
+        schema_branch = service.database.schema.get_schema_branch(name=registry_branch)
+
+        for generic_name in schema_branch.generic_names:
+            generic_node = schema_branch.get_generic(name=generic_name, duplicate=False)
+            for attribute_name in generic_node.attribute_names:
+                attribute = generic_node.get_attribute(name=attribute_name)
+                if isinstance(attribute.parameters, NumberPoolParameters) and attribute.parameters.number_pool_id:
+                    if attribute.parameters.number_pool_id not in existing_pool_ids:
+                        await _create_number_pool(
+                            service=service,
+                            number_pool_id=attribute.parameters.number_pool_id,
+                            pool_node=generic_node.kind,
+                            pool_attribute=attribute_name,
+                            start_range=attribute.parameters.start_range,
+                            end_range=attribute.parameters.end_range,
+                        )
+                        existing_pool_ids.append(attribute.parameters.number_pool_id)
+
+        for node_name in schema_branch.node_names:
+            node = schema_branch.get_node(name=node_name, duplicate=False)
+            for attribute_name in node.attribute_names:
+                attribute = node.get_attribute(name=attribute_name)
+                if isinstance(attribute.parameters, NumberPoolParameters) and attribute.parameters.number_pool_id:
+                    if attribute.parameters.number_pool_id not in existing_pool_ids:
+                        await _create_number_pool(
+                            service=service,
+                            number_pool_id=attribute.parameters.number_pool_id,
+                            pool_node=node.kind,
+                            pool_attribute=attribute_name,
+                            start_range=attribute.parameters.start_range,
+                            end_range=attribute.parameters.end_range,
+                        )
+                        existing_pool_ids.append(attribute.parameters.number_pool_id)
+
+
+async def _create_number_pool(
+    service: InfrahubServices,
+    number_pool_id: str,
+    pool_node: str,
+    pool_attribute: str,
+    start_range: int,
+    end_range: int,
+) -> None:
+    async with service.database.start_session() as dbs:
+        number_pool = await Node.init(db=dbs, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
+        await number_pool.new(
+            db=dbs,
+            id=number_pool_id,
+            name=f"{pool_node}.{pool_attribute} [{number_pool_id}]",
+            node=pool_node,
+            node_attribute=pool_attribute,
+            start_range=start_range,
+            end_range=end_range,
+            pool_type=NumberPoolType.SCHEMA.value,
+        )
+        await number_pool.save(db=dbs)

@@ -101,6 +101,8 @@ async def convert_object_type(
         deleted_node_out_rels_peer_ids = await get_out_rels_peers_ids(node=node, db=dbt)
         deleted_node_unidir_rels_peer_ids = await get_unidirectional_rels_peers_ids(node=node, db=dbt, branch=branch)
 
+        # Delete the node, so we delete relationships with peers as well, which might temporarily break cardinality constraints
+        # but they should be restored when creating the new node.
         deleted_nodes = await NodeManager.delete(db=dbt, branch=branch, nodes=[node], cascade_delete=False)
         if len(deleted_nodes) != 1:
             raise ValueError(f"Deleted {len(deleted_nodes)} nodes instead of 1")

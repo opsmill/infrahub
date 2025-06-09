@@ -755,12 +755,19 @@ relationship_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="common_parent",
+            kind="Text",
+            optional=True,
+            description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="common_relatives",
             kind="List",
             internal_kind=str,
             optional=True,
             description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="order_weight",
