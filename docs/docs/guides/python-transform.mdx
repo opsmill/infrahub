@@ -406,22 +406,6 @@ queries:
 
 See [this topic](../topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
-## 4. Create a Git repository
-
-Within the `device_config_render` folder you should now have 3 files:
-
-* `device_config.gql`: Contains the GraphQL query
-* `device_config.py`: Contains the Python code for the transform
-* `.infrahub.yml`: Contains the definition for the transform
-
-Before we can test our Transform we must add the files to a local Git repository.
-
-```shell
-git init --initial-branch=main
-git add .
-git commit -m "First commit"
-```
-
 ## 5. Test the Transform using infrahubctl
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
@@ -457,9 +441,9 @@ We have now successfully created a transform. Most of the transforms you will cr
 
 Within the `device_config_render` folder you should now have 3 files:
 
-- `device_config_render/device_config.gql`: Contains the GraphQL query
-- `device_config_render/device_config.py`: Contains the Python code for the transform
-- `.infrahub.yml`: Contains the definition for the transform
+* `device_config_render/device_config.gql`: Contains the GraphQL query
+* `device_config_render/device_config.py`: Contains the Python code for the transform
+* `.infrahub.yml`: Contains the definition for the transform
 
 Before we can test our transform we must add the files to a local Git repository.
 
