@@ -124,6 +124,7 @@ schema_mapping
 scrollbar
 scrollable
 sdk
+Streamlit
 subcommand
 subnet
 subtyping
