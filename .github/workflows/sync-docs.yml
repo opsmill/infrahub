@@ -29,19 +29,17 @@ jobs:
 
       - name: Sync folders
         run: |
+          # Remove existing files in target repo
           rm -rf target-repo/.vale/*
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
+
+          # Copy files from source repo to target repo
           cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
 
-          sed -i "/docsSidebar/,/\],/ s/'readme',/'introduction\/readme',/" target-repo/docs/sidebars.ts
-          mkdir target-repo/docs/docs/introduction
-          mv target-repo/docs/docs/readme.mdx target-repo/docs/docs/introduction/
-          sed -i '/^title: Introduction/i sidebar_label: Introduction' target-repo/docs/docs/introduction/readme.mdx
-          sed -i 's|](\./|](/|g' target-repo/docs/docs/introduction/readme.mdx
-
+          # Commit and push changes to target repository
           cd target-repo
           git config user.name github-actions
           git config user.email github-actions@github.com
