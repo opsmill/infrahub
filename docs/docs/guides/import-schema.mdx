@@ -5,7 +5,7 @@ title: Import Schema file
 import CodeBlock from "@theme/CodeBlock";
 import import_infrastructureExtensionRackYaml from '!!raw-loader!../../../models/examples/extension_rack.yml';
 
-# Schema file
+# Schema files
 
 The recommended way to manage and load a schema is to create a schema file in YAML format. With a schema file it's possible to:
 
@@ -50,10 +50,10 @@ infrahubctl schema load <path to schema file or a directory> <path to schema fil
 
 ### Git integration
 
-You can defined a schema in an [external repository](../topics/repository).
+You can define a schema in an [external repository](../topics/repository).
 The schemas that should be loaded must be declared in the ``.infrahub.yml`` file, under schemas.
 
-Individual files and directory are both supported.
+Individual files and directories are both supported.
 
 ```yaml
 ---

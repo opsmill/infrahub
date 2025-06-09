@@ -1,5 +1,5 @@
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -30,7 +30,7 @@ export default function MetaDetailsTooltip({
     {
       name: "Source",
       value: source ? (
-        <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
+        <Link to={getObjectDetailsUrl(source.__typename, source.id)}>
           {isFromProfile ? (
             <Badge variant="green" className="font-normal hover:underline">
               <Icon icon="mdi:shape-plus-outline" className="mr-1" />
@@ -55,9 +55,7 @@ export default function MetaDetailsTooltip({
     {
       name: "Owner",
       value: owner ? (
-        <Link to={constructPath(`/objects/${owner.__typename}/${owner.id}`)}>
-          {owner.display_label}
-        </Link>
+        <Link to={getObjectDetailsUrl(owner.__typename, owner.id)}>{owner.display_label}</Link>
       ) : (
         "-"
       ),

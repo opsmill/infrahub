@@ -72,7 +72,7 @@ After merging the branch `update-ethernet1`, regenerate the configuration for `a
 
 ## Generate other payloads using Python
 
-As powerful as Jinja templates are, sometimes it’s both cleaner and simpler to work directly in code. An Infrahub Python Transformation lets you do exactly that. Where a Jinja2 transform combines a GraphQL query together with a Jinja template, the Python Transformation combines a GraphQL query with code. You might use a Python Transform instead of a Jinja2 Transformation when you need to return structured data as opposed to a classic text-based configuration file.
+As powerful as Jinja templates are, sometimes it’s both cleaner and simpler to work directly in code. An Infrahub Python Transformation lets you do exactly that. Where a Jinja2 Transform combines a GraphQL query together with a Jinja template, the Python Transformation combines a GraphQL query with code. You might use a Python Transform instead of a Jinja2 Transformation when you need to return structured data as opposed to a classic text-based configuration file.
 
 From the repository `infrahub-demo-edge` we imported a Python Transformation to render a configuration in the OpenConfig format. In this example, we want to generate OpenConfig interface data.
 
@@ -86,6 +86,6 @@ Breaking this URL down into components gives us:
 
 - `http://localhost:8000/api/transform/python`: the base URL of Infrahub together with the Python Transformation endpoint.
 - `OCInterfaces`: the name of the Python Transformation.
-- `?device=ord1-edge1&branch=main`: the query string that provides a list of arguments for the GraphQL query. In this case the name of the device. Together with `branch` to show that we want to run the transform against a specific branch within Infrahub.
+- `?device=ord1-edge1&branch=main`: the query string that provides a list of arguments for the GraphQL query. In this case the name of the device. Together with `branch` to show that we want to run the Transform against a specific branch within Infrahub.
 
 Render the OpenConfig interface payload by going to this URL (linked from the above example URL): [generate the OpenConfig Interface payload for `ord1-edge1` on the branch `main`](http://localhost:8000/api/transform/python/OCInterfaces?device=ord1-edge1&branch=main)
