@@ -73,7 +73,7 @@ class DataPath(InfrahubPath):
                 self.field_name,
                 self.property_name,
                 self.peer_id,
-                self.value,
+                str(self.value),
             )
         )
 
