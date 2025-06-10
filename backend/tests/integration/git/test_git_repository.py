@@ -145,7 +145,7 @@ class TestInfrahubClient:
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
 
         queries = await client.all(kind=CoreGraphQLQuery)
-        assert len(queries) == 5
+        assert len(queries) == 10
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
