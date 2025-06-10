@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
 from uuid import uuid4
 
+from prefect import flow
+
 from infrahub import lock
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -22,7 +25,6 @@ from .model.path import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
 
     from .calculator import DiffCalculator
@@ -301,6 +303,11 @@ class DiffCoordinator:
         force_branch_refresh: Literal[False] = ...,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]: ...
 
+    @flow(  # type: ignore[misc]
+        name="update-diff",
+        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+        validate_parameters=False,
+    )
     async def _update_diffs(
         self,
         base_branch: Branch,
