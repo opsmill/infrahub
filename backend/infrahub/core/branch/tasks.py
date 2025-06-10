@@ -68,7 +68,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
             service=service,
         )
 
-        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)  # type: ignore[call-overload]
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
         async for _ in diff_repository.get_all_conflicts_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         ):
@@ -394,7 +394,7 @@ async def _get_diff_root(
     base_branch: Branch,
     target_from: Timestamp,
 ) -> EnrichedDiffRoot:
-    default_branch_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+    default_branch_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
         base_branch=base_branch,
         diff_branch=base_branch,
         from_time=target_from,

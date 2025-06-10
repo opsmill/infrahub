@@ -92,7 +92,7 @@ class DiffCoordinator:
     ) -> None:
         # we are updating a diff that tracks the full lifetime of a branch
         if not name and not from_time and not to_time:
-            await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)  # type: ignore[call-overload]
+            await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
             return
 
         if from_time:
@@ -105,7 +105,7 @@ class DiffCoordinator:
             to_timestamp = Timestamp()
         if not name:
             raise ValidationError("diff with specified time range requires a name")
-        await self.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+        await self.create_or_update_arbitrary_timeframe_diff(
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_timestamp,
@@ -119,10 +119,6 @@ class DiffCoordinator:
             lock_name += "__incremental"
         return lock_name
 
-    @flow(
-        name="update_branch_diff",
-        flow_run_name="Update full diff for {base_branch.name} - {diff_branch.name}",
-    )
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRootMetadata:
         log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         incremental_lock_name = self._get_lock_name(
@@ -164,10 +160,6 @@ class DiffCoordinator:
             log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
-    @flow(
-        name="upsert_arbitrary_diff",
-        flow_run_name="Update arbitrary diff for {base_branch.name} - {diff_branch.name}",
-    )
     async def create_or_update_arbitrary_timeframe_diff(
         self,
         base_branch: Branch,
@@ -198,10 +190,6 @@ class DiffCoordinator:
             log.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
-    @flow(
-        name="recalculate_diff",
-        flow_run_name="Recalculate diff ({diff_id}) for {base_branch.name} - {diff_branch.name}",
-    )
     async def recalculate(
         self,
         base_branch: Branch,
@@ -315,6 +303,10 @@ class DiffCoordinator:
         force_branch_refresh: Literal[False] = ...,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]: ...
 
+    @flow(  # type: ignore[misc]
+        name="update-diff",
+        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+    )
     async def _update_diffs(
         self,
         base_branch: Branch,

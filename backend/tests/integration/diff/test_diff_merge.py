@@ -111,7 +111,7 @@ class TestDiffMerge(TestInfrahubApp):
         base_branch: Branch,
         diff_branch: Branch,
     ) -> EnrichedDiffRoot:
-        enriched_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=base_branch, diff_branch=diff_branch
         )
         return await diff_repository.get_one(

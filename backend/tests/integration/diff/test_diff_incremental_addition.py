@@ -198,7 +198,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repository: DiffRepository,
         data_01_remove_on_main,
     ) -> None:
-        enriched_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
         enriched_diff = await diff_repository.get_one(
@@ -276,14 +276,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         initial_dataset,
         data_02_previous_owner_on_branch,
     ) -> None:
-        incremental_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
         incremental_diff = await diff_repository.get_one(
             diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
         )
         await self.validate_diff_data_02(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
@@ -364,7 +364,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repository: DiffRepository,
         data_03_new_peer_on_main,
     ) -> None:
-        incremental_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
         incremental_diff = await diff_repository.get_one(
@@ -373,7 +373,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         await self.validate_diff_data_03(
             db=db, default_branch=default_branch, enriched_diff=incremental_diff, initial_dataset=initial_dataset
         )
-        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
@@ -453,14 +453,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repository: DiffRepository,
         data_04_update_previous_owner_protected_on_branch,
     ) -> None:
-        incremental_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
         incremental_diff = await diff_repository.get_one(
             diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
         )
         await self.validate_diff_data_04(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
@@ -534,14 +534,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repository: DiffRepository,
         data_05_remove_previous_owner_on_branch,
     ) -> None:
-        incremental_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
         incremental_diff = await diff_repository.get_one(
             diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
         )
         await self.validate_diff_data_05(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
@@ -611,14 +611,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repository: DiffRepository,
         data_06_remove_previous_owner_on_main_again,
     ) -> None:
-        incremental_diff_metadata = await diff_coordinator.update_branch_diff(  # type: ignore[call-overload]
+        incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
         )
         incremental_diff = await diff_repository.get_one(
             diff_branch_name=incremental_diff_metadata.diff_branch_name, diff_id=incremental_diff_metadata.uuid
         )
         await self.validate_diff_data_06(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
-        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(  # type: ignore[call-overload]
+        full_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
