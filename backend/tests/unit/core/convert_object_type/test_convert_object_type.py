@@ -144,46 +144,40 @@ class TestConvertObjectType(TestInfrahubApp):
             )
 
     async def test_raise_on_break_mandatory_relationship(
-        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_mandatory_owner, default_branch
+        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_mandatory_owner, branch
     ) -> None:
         # Add a mandatory relationship between TestPerson1 and TestCar, that would no longer exist after converting a TestPerson1 to a TestPerson2.
-        res = await client.schema.load(schemas=[schema_conversion_mandatory_owner], branch=default_branch.name)
+        res = await client.schema.load(schemas=[schema_conversion_mandatory_owner], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
         jack_1 = await create_and_save(
             db=db,
             schema="TestmoPerson1",
-            name=f"Jack-{default_branch.name}",
-            branch=default_branch,
+            name=f"Jack-{branch.name}",
+            branch=branch,
         )
 
-        car_1 = await create_and_save(
-            db=db, schema="TestmoCar", name="car_1", branch=default_branch, mandatory_owner=jack_1
-        )
+        car_1 = await create_and_save(db=db, schema="TestmoCar", name="car_1", branch=branch, mandatory_owner=jack_1)
 
         # Refresh jack_1 now that we added a bag
         jack_1 = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=jack_1.id, kind="TestmoPerson1", prefetch_relationships=True, branch=default_branch
+            db=db, id=jack_1.id, kind="TestmoPerson1", prefetch_relationships=True, branch=branch
         )
 
         mapping = {
             "name": InputForDestField(source_field="name"),
         }
 
-        person_2_schema = registry.get_node_schema(name="TestmoPerson2", branch=default_branch)
+        person_2_schema = registry.get_node_schema(name="TestmoPerson2", branch=branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at mandatory_owner"):
-            await convert_object_type(
-                node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
-            )
+            await convert_object_type(node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch)
 
         # And make sure it works when setting a new owner to the car
         mapping = {
             "name": InputForDestField(source_field="name"),
             "my_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
         }
-        await convert_object_type(
-            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
-        )
+        await convert_object_type(node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch)
 
     async def test_raise_on_break_mandatory_unidirectional_relationship(
         self,

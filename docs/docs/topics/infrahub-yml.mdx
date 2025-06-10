@@ -10,6 +10,8 @@ An external repository can be used to link the following Infrahub objects to an 
 
 - [GraphQL Query](../topics/graphql)
 - [Schema](../topics/schema)
+- [Menu](../guides/menu)
+- [Object File](../guides/object-load)
 - [Jinja2 Transform](../topics/transformation#rendered-file-jinja2-plugin)
 - [Python Transformation](../topics/transformation#transformpython-python-plugin)
 - [Artifact Definition](../topics/artifact)
@@ -59,6 +61,40 @@ Schemas to be loaded as part of an external repository can be defined in file(s)
 </details>
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
+
+## Objects
+
+Objects to be loaded as part of an external repository can be defined in file(s) as described [here]($(base_url)/python-sdk/topics/object_file). The objects must also be explicitly identified in the `.infrahub.yml` file under `objects`.
+
+:::info
+
+The order defined in the `.infrahub.yml` file is maintained. If a folder is defined in the list, the folders/files within the folder are loaded in alphabetical order. This means that if you have a dependency between objects, you must ensure that the dependent object is defined before the object that depends on it.
+
+:::
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  objects:
+    - objects/locations.yml
+    - objects/devices
+  ```
+
+</details>
+
+## Menus
+
+Menus to be loaded as part of an external repository can be defined in file(s) as described [here](../guides/menu). The menus must also be explicitly identified in the `.infrahub.yml` file under `menus`.
+
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  menus:
+    - menus/base.yml
+  ```
+
+</details>
 
 ## Jinja2 transformation {#transform-jinja-2}
 

@@ -583,6 +583,9 @@ CALL (n_uuid, vertex_element_ids) {
 
 class DbSnapshotterDeduplicated:
     """
+    DOES NOT WORK QUITE RIGHT FOR SOME RELATIONSHIPS TOUCHING MULTIPLE NODES WITH THE SAME UUID
+    NEEDS INVESTIGATION BEFORE BEING USED ANYWHERE
+
     Captures the state of all nodes, attributes, and relationships on the database, removing duplicated edges/vertices
 
     NOTES:

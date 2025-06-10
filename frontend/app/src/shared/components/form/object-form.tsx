@@ -24,7 +24,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
 import {
   NODE_TRIGGER_ATTRIBUTE_MATCH,
-  NODE_TRIGGER_RELATIONSHIP,
+  NODE_TRIGGER_RELATIONSHIP_MATCH,
 } from "@/entities/triggers/constants";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
@@ -128,7 +128,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <NodeAttributeMatchForm schema={schema} {...props} />;
   }
 
-  if (kind === NODE_TRIGGER_RELATIONSHIP) {
+  if (kind === NODE_TRIGGER_RELATIONSHIP_MATCH) {
     return <NodeRelationshipMatchForm schema={schema} {...props} />;
   }
 

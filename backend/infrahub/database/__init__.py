@@ -498,7 +498,6 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates=trusted_certificates,
         notifications_disabled_categories=[
             NotificationDisabledCategory.UNRECOGNIZED,
-            NotificationDisabledCategory.DEPRECATION,  # TODO: Remove me with 1.3
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
