@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 class StandardNode(BaseModel):
     id: Optional[str] = None
-    uuid: Optional[str] = None
+    uuid: Optional[UUID] = None
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
@@ -61,7 +61,7 @@ class StandardNode(BaseModel):
 
         return annotation_origin or field.annotation
 
-    def get_uuid(self) -> str:
+    def get_uuid(self) -> UUID:
         if self.uuid:
             return self.uuid
 

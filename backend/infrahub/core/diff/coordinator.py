@@ -306,6 +306,7 @@ class DiffCoordinator:
     @flow(  # type: ignore[misc]
         name="update-diff",
         flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+        validate_parameters=False,
     )
     async def _update_diffs(
         self,
