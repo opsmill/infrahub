@@ -36,8 +36,8 @@
     "@codemirror/state": "^6.5.2",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.37.1",
-    "@graphiql/plugin-explorer": "^3.2.5",
-    "@graphiql/toolkit": "^0.11.1",
+    "@graphiql/plugin-explorer": "^4.0.6",
+    "@graphiql/toolkit": "^0.11.3",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
     "@iconify-icon/react": "^3.0.0",
@@ -63,7 +63,7 @@
     "cm6-theme-basic-light": "^0.2.0",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
-    "graphiql": "^3.8.3",
+    "graphiql": "^4.1.2",
     "graphql": "^16.11.0",
     "handlebars": "^4.7.8",
     "jotai": "^2.12.5",
@@ -125,23 +125,10 @@
     "vitest-browser-react": "^0.2.0"
   },
   "overrides": {
-    "@graphiql/plugin-explorer": {
-      "react": "19.1.0",
-      "react-dom": "19.1.0"
-    },
-    "graphiql": {
-      "react": "19.1.0",
-      "react-dom": "19.1.0"
-    },
     "graphiql-explorer": {
       "graphql": "^16.11.0",
       "react": "19.1.0",
       "react-dom": "19.1.0"
-    },
-    "cm6-graphql": {
-      "@codemirror/language": "^6.11.1",
-      "@codemirror/state": "^6.5.2",
-      "@codemirror/view": "^6.37.1"
     },
     "react-syntax-highlighter": {
       "prismjs": "^1.30.0"
