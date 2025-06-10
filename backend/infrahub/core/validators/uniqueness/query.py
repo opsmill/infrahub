@@ -5,10 +5,12 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.query import Query, QueryType
 
+from .model import QueryAttributePathValued, QueryRelationshipPathValued
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
-    from .model import NodeUniquenessQueryRequest
+    from .model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
 
 
 class NodeUniqueAttributeConstraintQuery(Query):
@@ -244,3 +246,154 @@ class NodeUniqueAttributeConstraintQuery(Query):
             "attr_value",
             "relationship_identifier",
         ]
+
+
+class UniquenessValidationQuery(Query):
+    name = "uniqueness_constraint_validation"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        query_request: NodeUniquenessQueryRequestValued,
+        **kwargs: Any,
+    ) -> None:
+        self.query_request = query_request
+        super().__init__(**kwargs)
+
+    def _build_attr_subquery(
+        self, attr_path: QueryAttributePathValued, index: int, branch_filter: str
+    ) -> tuple[str, dict[str, str | int | float | bool]]:
+        attr_name_var = f"attr_name_{index}"
+        attr_value_var = f"attr_value_{index}"
+        attribute_query = """
+CALL (node) {
+    MATCH (node)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
+    WHERE %(branch_filter)s
+    WITH attr, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH attr, is_active
+    LIMIT 1
+    WITH attr, is_active
+    WHERE is_active = TRUE
+    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+    WHERE %(branch_filter)s
+    WITH r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    WITH r
+    WHERE r.status = "active"
+    RETURN 1 AS is_match_%(index)s
+}
+        """ % {
+            "attr_name_var": attr_name_var,
+            "attr_value_var": attr_value_var,
+            "branch_filter": branch_filter,
+            "index": index,
+        }
+        params: dict[str, str | int | float | bool] = {
+            attr_name_var: attr_path.attribute_name,
+            attr_value_var: attr_path.value,
+        }
+        return attribute_query, params
+
+    def _build_rel_subquery(
+        self, rel_path: QueryRelationshipPathValued, index: int, branch_filter: str
+    ) -> tuple[str, dict[str, str | int | float | bool]]:
+        params: dict[str, str | int | float | bool] = {}
+        rel_attr_query = ""
+        if rel_path.attribute_name and rel_path.attribute_value:
+            attr_name_var = f"attr_name_{index}"
+            attr_value_var = f"attr_value_{index}"
+            rel_attr_query = """
+    MATCH (peer)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
+    WHERE %(branch_filter)s
+    WITH attr, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH attr, is_active
+    LIMIT 1
+    WITH attr, is_active
+    WHERE is_active = TRUE
+    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+    WHERE %(branch_filter)s
+    WITH r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    WITH r
+    WHERE r.status = "active"
+            """ % {"attr_name_var": attr_name_var, "attr_value_var": attr_value_var, "branch_filter": branch_filter}
+            params[attr_name_var] = rel_path.attribute_name
+            params[attr_value_var] = rel_path.attribute_value
+        query_arrows = rel_path.relationship_schema.get_query_arrows()
+        rel_name_var = f"rel_name_{index}"
+        peer_where = f"WHERE {branch_filter}"
+        if rel_path.peer_id:
+            peer_id_var = f"peer_id_{index}"
+            peer_where += f"AND peer.uuid = ${peer_id_var}"
+            params[peer_id_var] = rel_path.peer_id
+        relationship_query = """
+CALL (node) {
+    MATCH (node)%(lstart)s[r:IS_RELATED]%(lend)s(rel:Relationship {name: $%(rel_name_var)s})
+    WHERE %(branch_filter)s
+    WITH rel, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH rel, is_active
+    LIMIT 1
+    WITH rel, is_active
+    WHERE is_active = TRUE
+    MATCH (rel)%(rstart)s[r:IS_RELATED]%(rend)s(peer:Node)
+    %(peer_where)s
+    WITH peer, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH peer, is_active
+    LIMIT 1
+    WITH peer, is_active
+    WHERE is_active = TRUE
+%(rel_attr_query)s
+    RETURN 1 AS is_match_%(index)s
+    LIMIT 1
+}
+        """ % {
+            "rel_name_var": rel_name_var,
+            "lstart": query_arrows.left.start,
+            "lend": query_arrows.left.end,
+            "rstart": query_arrows.right.start,
+            "rend": query_arrows.right.end,
+            "peer_where": peer_where,
+            "rel_attr_query": rel_attr_query,
+            "branch_filter": branch_filter,
+            "index": index,
+        }
+        params[rel_name_var] = rel_path.relationship_schema.get_identifier()
+        return relationship_query, params
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
+        subqueries = []
+        for index, schema_path in enumerate(self.query_request.unique_valued_paths):
+            if isinstance(schema_path, QueryAttributePathValued):
+                subquery, params = self._build_attr_subquery(
+                    attr_path=schema_path, index=index, branch_filter=branch_filter
+                )
+            else:
+                subquery, params = self._build_rel_subquery(
+                    rel_path=schema_path, index=index, branch_filter=branch_filter
+                )
+            subqueries.append(subquery)
+            self.params.update(params)
+
+        full_query = """
+MATCH(node:%(kind)s)
+%(subqueries)s
+        """ % {"kind": self.query_request.kind, "subqueries": "\n".join(subqueries)}
+        self.add_to_query(full_query)
+        self.return_labels = ["node.uuid AS node_uuid", "node.kind AS node_kind"]
+
+    def get_violation_nodes(self) -> list[tuple[str, str]]:
+        violation_tuples = []
+        for result in self.results:
+            violation_tuples.append(
+                (result.get_as_type("node_uuid", return_type=str), result.get_as_type("node_kind", return_type=str))
+            )
+        return violation_tuples
