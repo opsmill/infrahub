@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 
 class StandardNode(BaseModel):
-    id: str | None = None
-    uuid: UUID | str | None = None
+    id: Optional[str] = None
+    uuid: Optional[UUID] = None
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
@@ -110,7 +110,7 @@ class StandardNode(BaseModel):
         node = result.get("n")
 
         self.id = node.element_id
-        self.uuid = node["uuid"]
+        self.uuid = UUID(node["uuid"])
 
         return True
 
