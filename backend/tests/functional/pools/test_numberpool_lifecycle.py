@@ -16,6 +16,7 @@ from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.tasks import validate_schema_number_pools
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
+from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -43,7 +44,7 @@ node_schema_definition: dict[str, Any] = {
 }
 
 
-class TestMutationGenerator(TestInfrahubApp):
+class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
@@ -56,18 +57,24 @@ class TestMutationGenerator(TestInfrahubApp):
     ) -> None:
         bus_simulator.service._cache = RedisCache()
 
-        schema = {"version": "1.0", "nodes": [node_schema_definition]}
+        schema = {
+            "version": "1.0",
+            "generics": [SNOW_TASK.to_dict()],
+            "nodes": [node_schema_definition, SNOW_INCIDENT.to_dict(), SNOW_REQUEST.to_dict()],
+        }
         schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
         assert not schema_load_response.errors
 
-    async def test_numberpool_assignment(
+    async def test_numberpool_assignment_direct_node(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch
     ) -> None:
-        assert True
+        service = await InfrahubServices.new(database=db)
+        context = InfrahubContext.init(
+            branch=default_branch,
+            account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
+        )
 
-        incident_1 = await Node.init(db=db, schema="TestNumberAttribute")
-        await incident_1.new(db=db, name="The first thing")
-        await incident_1.save(db=db)
+        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
 
         test_schema = registry.schema.get_node_schema(name="TestNumberAttribute")
         test_attribute = test_schema.get_attribute(name="assigned_number")
@@ -80,6 +87,10 @@ class TestMutationGenerator(TestInfrahubApp):
             id=number_pool_id,
         )
         assert number_pool_pre.start_range.value == 10
+
+        incident_1 = await Node.init(db=db, schema="TestNumberAttribute")
+        await incident_1.new(db=db, name="The first thing")
+        await incident_1.save(db=db)
 
         initial_branches = get_branches_with_schema_number_pool(
             kind="TestNumberAttribute", attribute_name="assigned_number"
@@ -94,11 +105,57 @@ class TestMutationGenerator(TestInfrahubApp):
         after_purge = get_branches_with_schema_number_pool(kind="TestNumberAttribute", attribute_name="assigned_number")
         assert after_purge == []
 
+        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+
+        with pytest.raises(NodeNotFoundError):
+            await NodeManager.find_object(
+                db=db,
+                kind=CoreNumberPool,
+                id=number_pool_id,
+            )
+
+    async def test_numberpool_assignment_from_generic(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch
+    ) -> None:
         service = await InfrahubServices.new(database=db)
         context = InfrahubContext.init(
             branch=default_branch,
             account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
         )
+
+        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+
+        test_schema = registry.schema.get_node_schema(name="SnowIncident")
+        test_attribute = test_schema.get_attribute(name="number")
+        assert isinstance(test_attribute.parameters, NumberPoolParameters)
+        number_pool_id = test_attribute.parameters.number_pool_id
+
+        number_pool_pre = await NodeManager.find_object(
+            db=db,
+            kind=CoreNumberPool,
+            id=number_pool_id,
+        )
+        assert number_pool_pre.start_range.value == 1
+
+        incident_1 = await Node.init(db=db, schema="SnowIncident")
+        await incident_1.new(db=db, title="The very first incident")
+        await incident_1.save(db=db)
+
+        initial_branches = get_branches_with_schema_number_pool(kind="SnowTask", attribute_name="number")
+
+        assert initial_branches == ["main"]
+        snow_task = SNOW_TASK.to_dict()
+        snow_task["state"] = "absent"
+        snow_request = SNOW_REQUEST.to_dict()
+        snow_request["state"] = "absent"
+        snow_incident = SNOW_INCIDENT.to_dict()
+        snow_incident["state"] = "absent"
+        schema = {"version": "1.0", "generics": [snow_task], "nodes": [snow_request, snow_incident]}
+        schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
+        assert not schema_load_response.errors
+
+        after_purge = get_branches_with_schema_number_pool(kind="SnowTask", attribute_name="number")
+        assert after_purge == []
 
         await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
 

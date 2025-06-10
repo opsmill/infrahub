@@ -1,0 +1,166 @@
+---
+title: Importing Objects from a file
+---
+
+# Object files
+
+An Object file is a YAML file that allows you to manage data to be loaded in Infrahub based on your own custom schema. It provides a declarative way to define and manage resources in your Infrahub instance.
+
+Object files work well for models that don't change too often and/or that need to be tracked in Git. Examples include: Groups, tags, Users, etc.
+
+The goal of this guide is to show you how you define and load an object file.
+
+## Loading an example schema into Infrahub
+
+We assume that you have an empty instance of Infrahub started.
+
+Save the following schema into a file on your disk.
+
+The schema contains the following nodes:
+
+- A location hierarchy with a Country and a Site
+- A network device with a relation to network interfaces and a site
+- A network interface with a relation to a network device
+
+```yaml
+---
+version: "1.0"
+generics:
+  - name: Generic
+    namespace: Location
+    include_in_menu: false
+    hierarchical: true
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+nodes:
+  - name: Country
+    namespace: Location
+    inherit_from:
+      - LocationGeneric
+    parent: ""
+    children: LocationSite
+  - name: Site
+    namespace: Location
+    inherit_from:
+      - LocationGeneric
+    parent: LocationCountry
+    children: ""
+    relationships:
+      - name: devices
+        kind: Generic
+        peer: NetworkDevice
+        cardinality: many
+        optional: true
+  - name: Device
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+    relationships:
+      - name: site
+        kind: Attribute
+        cardinality: one
+        optional: true
+        peer: LocationSite
+      - name: interfaces
+        kind: Component
+        cardinality: many
+        optional: true
+        peer: NetworkInterface
+  - name: Interface
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+    relationships:
+      - name: device
+        kind: Parent
+        optional: false
+        cardinality: one
+        peer: NetworkDevice
+```
+
+Load the schema into Infrahub using the following command
+
+```bash
+infrahubctl schema load /path/to/schema.yml
+```
+
+In the web interface you will now see that all the nodes defined in the schema are available in the top section of the menu.
+
+## Defining a object file
+
+Our goal is to define data that can be loaded into Infrahub based on the schema we just defined. We will create an object file that defines a Country and a Site.
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: LocationCountry
+  data:
+    - name: United Kingdom
+      children:
+        kind: LocationSite
+        data:
+          - name: Stonehenge Visitor Centre
+          - name: Tower of London
+          - name: Edinburgh Castle
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkDevice
+  data:
+    - name: sw01-svc01
+      site: Stonehenge Visitor Centre
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkInterface
+  data:
+    - name: eth0
+      device: sw01-svc01
+    - name: eth1
+      device: sw01-svc01
+    - name: eth2
+      device: sw01-svc01
+    - name: eth3
+      device: sw01-svc01
+    - name: eth4
+      device: sw01-svc01
+    - name: eth5
+      device: sw01-svc01
+```
+
+> Note that these definitions can be in separate files but for simplicity we have put them all in one file using `---` to separate the different objects.
+
+For a more detailed information on the structure and relationship management within an object file, visit the [SDK Object File]($(base_url)python-sdk/topics/object_file) docs.
+
+## Loading a object file
+
+You can load the object files into Infrahub using `object` subcommand of the `infrahubctl` utility.
+
+Load the objects into Infrahub using the following command
+
+```bash
+infrahubctl object load /path/to/objects.yml
+```
+
+More information on `infrahubctl` command line utility can be found [here]($(base_url)infrahubctl/infrahubctl).
+More information on the `object` subcommand can be found [here]($(base_url)infrahubctl/infrahubctl-object).
+
+Objects can also be loaded into Infrahub using the git repository integration. To do this, you need to add the object file to the `.infrahub.yml` details can be seen in the [.infrahub.yml](../topics/infrahub-yml#objects) documentation.
+
+:::info
+
+Loading objects using git or via the command line will load folders/files in alphabetical order.
+
+:::

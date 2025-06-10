@@ -1,0 +1,143 @@
+---
+title: Home
+slug: /
+hide_table_of_contents: true
+hide_title: true
+---
+import HomepageHeader from "../src/components/HomePage/header.tsx";
+import HomePageCard from "../src/components/HomePage/card.tsx";
+
+<HomepageHeader />
+
+## Getting started
+
+<div className="row">
+    <HomePageCard
+        title="Overview"
+        svgPath="/img/favicon.ico"
+        description="An introduction to Infrahub's vision, core features, and infrastructure data management approach."
+        link="getting-started/overview"
+    />
+    <HomePageCard
+        title="Quick Start"
+        svgPath="/img/favicon.ico"
+        description="Want to see Infrahub in action? This guide will help you get started quickly."
+        link="getting-started/quick-start"
+    />
+    <HomePageCard title="Concepts"
+        svgPath="/img/favicon.ico"
+        description="Learn about Infrahub's core concepts and how to combine them to deliver advanced use cases."
+        link="getting-started/concepts"
+    />
+</div>
+
+## Using Infrahub
+
+<div className="row">
+    <HomePageCard
+        title="Load Schemas"
+        svgPath="/img/favicon.ico"
+        description="How to manage and load schemas."
+        link="guides/import-schema"
+    />
+    <HomePageCard
+        title="Git Repository"
+        svgPath="/img/favicon.ico"
+        description="Connect your Git repository to Infrahub."
+        link="guides/repository"
+    />
+    <HomePageCard title="Resource Manager"
+        svgPath="/img/favicon.ico"
+        description="Organizing and handling resources within Infrahub."
+        link="guides/resource-manager"
+    />
+</div>
+
+## Developing with Infrahub
+
+<div className="row">
+    <HomePageCard
+        title="Python SDK"
+        svgPath="/img/python.svg"
+        description="Develop custom scripts and integrations with Infrahub."
+        link="$(base_url)python-sdk/introduction"
+    />
+    <HomePageCard
+        title="Transformations"
+        svgPath="/img/favicon.ico"
+        description="Transform your data using Python or Jinja."
+        link="topics/transformation"
+    />
+    <HomePageCard title="Generators"
+        svgPath="/img/favicon.ico"
+        description="Create consistent infrastructure objects using generators."
+        link="topics/generator"
+    />
+</div>
+
+## Managing Infrahub
+
+<div className="row">
+    <HomePageCard
+        title="Version Upgrade"
+        svgPath="/img/favicon.ico"
+        description="Easily upgrade to the latest version of Infrahub."
+        link="guides/upgrade"
+    />
+    <HomePageCard
+        title="Backup and Restore"
+        svgPath="/img/favicon.ico"
+        description="Back up your data and restore it when necessary."
+        link="guides/database-backup"
+    />
+    <HomePageCard title="Configuring SSO"
+        svgPath="/img/favicon.ico"
+        description="Simplify user access with Single Sign-On integration."
+        link="guides/sso"
+    />
+</div>
+
+## Integrations
+
+<div className="row">
+    <HomePageCard
+        title="Ansible"
+        svgPath="/img/ansible.svg"
+        description="OpsMill maintains the `opsmill.infrahub` Ansible Collection."
+        link="$(base_url)ansible"
+    />
+    <HomePageCard
+        title="Nornir"
+        svgPath="/img/nornir.png"
+        description="Infrahub can be used as an inventory source for Nornir."
+        link="$(base_url)nornir"
+    />
+    <HomePageCard
+        title="Infrahub Sync"
+        svgPath="/img/sync.svg"
+        description="A versatile Python package for synchronizing data between source and destination systems. Examples: NetBox, Nautobot, Slurp'it, IP Fabric, Peering Manager"
+        link="$(base_url)sync"
+    />
+</div>
+
+## Find support
+
+<div className="row">
+    <HomePageCard
+        title="Join Discord"
+        svgPath="/img/discord.png"
+        description="Connect with the community and get real-time support."
+        link="https://discord.gg/opsmill"
+    />
+    <HomePageCard
+        title="Report a Bug on GitHub"
+        svgPath="/img/github.png"
+        description="Submit issues or contribute to improving Infrahub."
+        link="https://github.com/opsmill/infrahub"
+    />
+    <HomePageCard title="Book a Meeting"
+        svgPath="/img/favicon.ico"
+        description="Schedule a session with the automation experts on the OpsMill team."
+        link="https://cal.com/team/opsmill/meet"
+    />
+</div>
