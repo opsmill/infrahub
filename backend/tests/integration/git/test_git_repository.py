@@ -178,6 +178,14 @@ class TestInfrahubClient:
     async def test_import_all_python_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
     ):
+        for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
+            obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
+            await obj.new(
+                db=db,
+                name=group,
+            )
+            await obj.save(db=db)
+
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
         assert config_file
