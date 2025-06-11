@@ -13,13 +13,13 @@ import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { isElementInViewport } from "@/shared/utils/element";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router";
-import { isElementInViewport } from "@/shared/utils/element";
 
 export const HIDE_AUTO_GENERATED_FILTER: Filter = { name: "group_type__value", value: "default" };
 
