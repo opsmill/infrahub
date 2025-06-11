@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
+import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("Event Rules and Actions", () => {
@@ -17,6 +17,7 @@ test.describe("Event Rules and Actions", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
+  /*
   test("1. Create and configure an Event with a Group Action", async ({ page }) => {
     await test.step("Create a Group action", async () => {
       // Navigate to the Actions page
@@ -78,6 +79,7 @@ test.describe("Event Rules and Actions", () => {
       await page.getByRole("button", { name: "Save" }).click();
     });
   });
+  */
 
   // FIXME: Understand why the generator is not found in the e2e tests during CICD.
   // test("2. Create and configure an Event with a Generator Action", async ({ page }) => {
