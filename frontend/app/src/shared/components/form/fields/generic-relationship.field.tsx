@@ -1,7 +1,10 @@
 import { NodeObject } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
+import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -11,11 +14,8 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { use, useState } from "react";
-import { RelationshipInput } from "../../inputs/relationship-one";
-import { FormField, FormInput, FormMessage } from "../../ui/form";
-import { DynamicRelationshipFieldProps } from "../type";
-import { updateRelationshipFieldValue } from "../utils/updateFormFieldValue";
 import { LabelFormField } from "./common";
 
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
