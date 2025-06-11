@@ -12,6 +12,7 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
+import { FormContextProvider } from "@/shared/components/form/utils/form-context";
 import { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
@@ -137,45 +138,43 @@ export function RelationshipsButtons({
         open={showAddDrawer}
         setOpen={setShowAddDrawer}
       >
-        {relationshipSchemaData?.kind === "Component" &&
-        peerRelationshipSchema?.kind === "Parent" &&
-        peerRelationshipSchema.optional === false ? (
-          <ObjectForm
-            onSuccess={async () => {
-              await handleRefetch();
-              setShowAddDrawer(false);
-            }}
-            onCancel={() => {
-              setShowAddDrawer(false);
-            }}
-            currentObject={{
-              [peerRelationshipSchema.name]: {
-                node: objectDetailsData,
-              },
-            }}
-            kind={relationshipSchemaData?.peer!}
-          />
-        ) : (
-          <DynamicForm
-            fields={[
-              {
-                name: "relation",
-                label: relationshipSchema?.label!,
-                type: "relationship",
-                relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-                schema: relationshipSchemaData,
-                options,
-              },
-            ]}
-            onSubmit={async ({ relation }) => {
-              await handleSubmit({ relation: relation?.value });
-            }}
-            onCancel={() => {
-              setShowAddDrawer(false);
-            }}
-            className="w-full p-4"
-          />
-        )}
+        <FormContextProvider parentSchema={parentSchema} parentData={objectDetailsData}>
+          {parentSchema &&
+          relationshipSchemaData?.kind === "Component" &&
+          peerRelationshipSchema?.kind === "Parent" &&
+          peerRelationshipSchema.optional === false ? (
+            <ObjectForm
+              onSuccess={async () => {
+                await handleRefetch();
+                setShowAddDrawer(false);
+              }}
+              onCancel={() => {
+                setShowAddDrawer(false);
+              }}
+              kind={relationshipSchemaData?.peer!}
+            />
+          ) : (
+            <DynamicForm
+              fields={[
+                {
+                  name: "relation",
+                  label: relationshipSchema?.label!,
+                  type: "relationship",
+                  relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
+                  schema: relationshipSchemaData,
+                  options,
+                },
+              ]}
+              onSubmit={async ({ relation }) => {
+                await handleSubmit({ relation: relation?.value });
+              }}
+              onCancel={() => {
+                setShowAddDrawer(false);
+              }}
+              className="w-full p-4"
+            />
+          )}
+        </FormContextProvider>
       </SlideOver>
     </>
   );
