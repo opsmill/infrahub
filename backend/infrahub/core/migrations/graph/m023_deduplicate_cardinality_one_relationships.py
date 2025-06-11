@@ -52,7 +52,7 @@ class DedupCardinalityOneRelsQuery(Query):
         # of a one-to-many BIDIR relationship.
         query = """
 
-        CALL {
+        CALL () {
             MATCH (rel_node: Relationship)-[edge:IS_RELATED]->(n: Node)<-[edge_2:IS_RELATED]-(rel_node_2: Relationship {name: rel_node.name})
             WHERE rel_node.name in $rel_one_identifiers_inbound[n.kind]
                 AND edge.branch = edge_2.branch
@@ -64,7 +64,7 @@ class DedupCardinalityOneRelsQuery(Query):
             DETACH DELETE rel_node
         }
 
-        CALL {
+        CALL () {
             MATCH (rel_node_3: Relationship)<-[edge_3:IS_RELATED]-(n: Node)-[edge_4:IS_RELATED]->(rel_node_4: Relationship {name: rel_node_3.name})
             WHERE rel_node_3.name in $rel_one_identifiers_outbound[n.kind]
                 AND edge_3.branch = edge_4.branch

@@ -29,7 +29,7 @@ CREATE (:Branch {name: "branch-9176", is_default: FALSE, is_global: FALSE, branc
         await db.execute_query(query=query)
         # export does not include AttributeValue.value or Boolean.value, we need to set those for the snapshot
         query = """
-CALL {
+CALL () {
     MATCH (a:AttributeValue)
     RETURN a
     UNION
