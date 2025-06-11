@@ -535,12 +535,12 @@ class PerformHardDeletes(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
-CALL {
+CALL () {
     MATCH (n)
     WHERE n.to_delete = TRUE
     DETACH DELETE n
 }
-CALL {
+CALL () {
     MATCH ()-[e]-()
     WHERE e.to_delete = TRUE
     DELETE e
