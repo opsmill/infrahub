@@ -114,7 +114,7 @@ const RelationshipField = (fieldProps: RelationshipFieldProps) => {
   }
 
   if (isPeerGeneric) {
-    return <GenericRelationship {...fieldProps} kind={relationship?.peer} />;
+    return <GenericRelationship {...fieldProps} />;
   }
 
   return (

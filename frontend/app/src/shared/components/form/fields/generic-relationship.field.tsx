@@ -1,4 +1,3 @@
-import { NodeObject } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { FormContext } from "@/shared/components/form/utils/form-context";
@@ -21,7 +20,6 @@ import { LabelFormField } from "./common";
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
   defaultParent?: Node | null;
-  kind: string;
 }
 
 export const GenericRelationship = ({
@@ -37,16 +35,15 @@ export const GenericRelationship = ({
   parent,
   relationship,
   schema,
-  kind,
   ...props
 }: GenericRelationshipFieldProps) => {
   const formContext = use(FormContext);
 
-  const { schema: peerSchema } = useSchema(kind);
+  const { schema: peerSchema } = useSchema(relationship?.peer);
 
-  const [selectedGeneric, setSelectedGeneric] = useState<NodeObject | null>(
-    parent ? options?.find((option) => option.id === parent) : null
-  );
+  const defaultSelectedGeneric = parent ? options?.find((option) => option.id === parent) : null;
+
+  const [selectedGeneric, setSelectedGeneric] = useState<Node | null>(defaultSelectedGeneric);
   const [selectedParent, setSelectedParent] = useState<Node | null | undefined>(defaultParent);
 
   const genericOptions = (peerSchema.used_by || [])
