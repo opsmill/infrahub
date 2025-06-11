@@ -3,6 +3,7 @@ from __future__ import annotations
 from prefect import flow
 from prefect.logging import get_run_logger
 
+from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
@@ -10,6 +11,8 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.exceptions import NodeNotFoundError
+from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
@@ -101,16 +104,23 @@ async def _create_number_pool(
     start_range: int,
     end_range: int,
 ) -> None:
-    async with service.database.start_session() as dbs:
-        number_pool = await Node.init(db=dbs, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
-        await number_pool.new(
-            db=dbs,
-            id=number_pool_id,
-            name=f"{pool_node}.{pool_attribute} [{number_pool_id}]",
-            node=pool_node,
-            node_attribute=pool_attribute,
-            start_range=start_range,
-            end_range=end_range,
-            pool_type=NumberPoolType.SCHEMA.value,
-        )
-        await number_pool.save(db=dbs)
+    lock_definition = NumberPoolLockDefinition(pool_id=number_pool_id)
+    async with lock.registry.get(name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False):
+        async with service.database.start_session() as dbs:
+            try:
+                await registry.manager.get_one_by_id_or_default_filter(
+                    db=dbs, id=str(number_pool_id), kind=CoreNumberPool
+                )
+            except NodeNotFoundError:
+                number_pool = await Node.init(db=dbs, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
+                await number_pool.new(
+                    db=dbs,
+                    id=number_pool_id,
+                    name=f"{pool_node}.{pool_attribute} [{number_pool_id}]",
+                    node=pool_node,
+                    node_attribute=pool_attribute,
+                    start_range=start_range,
+                    end_range=end_range,
+                    pool_type=NumberPoolType.SCHEMA.value,
+                )
+                await number_pool.save(db=dbs)
