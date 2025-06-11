@@ -60,8 +60,8 @@ When setting up a node trigger rule:
 
 #### Match filters
 
-::: info
-By default, a trigger rule will match any change for the given mutation type (added/updated/deleted).
+:::info 
+By default, a trigger rule will match any change for the given mutation type (added/updated).
 You can define additional filters by adding match conditions.
 
 **All conditions must be satisfied** - Match filters use logical AND, not OR
@@ -107,7 +107,7 @@ Actions are nodes that inherit from the `CoreAction` generic:
 
 ## Use cases
 
-### Automated nodes grouping**
+### Automated nodes grouping
 
 When a node with a specific attribute or relationship is created, automatically add it to a group:
 
@@ -116,7 +116,7 @@ When a node with a specific attribute or relationship is created, automatically 
 3. Add an attribute or relationship match to detect the specific condition
 4. Configure it to run your group action when the condition is met
 
-### Automated resource creation**
+### Automated resource creation
 
 When an object is added to a group (or when a attribute changes), automatically create related resources:
 
