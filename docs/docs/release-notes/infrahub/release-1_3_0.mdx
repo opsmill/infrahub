@@ -1,0 +1,173 @@
+---
+title: Release 1.3.0
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.3.0</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>June 11th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Amsterdam</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.3.0](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.3.0)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.3.0
+
+We're excited to announce the release of Infrahub 1.3.0!
+
+This version brings powerful new features designed to streamline your operations and enhance control of your data, as well as new automation possibilities. Our focus for this release is empowering you with greater flexibility and efficiency in managing your infrastructure data.
+
+## Key Highlights
+
+### Action System
+
+Infrahub 1.3.0 unveils a brand new Action System that lets you automate routine tasks based on system events. Define triggers to automatically add or remove nodes from groups, or even run generator definitions, bringing a new level of dynamism to your infrastructure management.
+
+We will add additional actions in future releases.
+
+### Load Data from Git Repositories
+
+Infrahub can now automatically load data from object YAML files stored in an external Git repository. This new capability streamlines data ingestion, allowing you to manage your infrastructure data in version control, and Infrahub will keep itself updated. This is similar to how you would import data using object files using the `infrahubctl object load` command.
+
+### Load menu files from Git Repositories
+
+Expanding on our Git integration, Infrahub can now also automatically load menu configuration files from external Git repositories.
+
+### Add Parameters as a New Schema Option for Attribute Kinds
+
+Gain finer control over your attribute values with the introduction of attribute parameters. This allows you to define more precise constraints for attribute kinds like Text, TextArea, Number, and the new NumberPool, such as setting minimum/maximum lengths for text attributes or minimum/maximum values for number attributes.
+
+With the release of this feature the `min_length` and `max_length` option for attributes has been deprecated and will be phased out in a future release.
+
+### Added NumberPool Attribute Kind
+
+A new NumberPool attribute kind has been added, providing a way to dynamically assign a number to the attribute from an automatically created NumberPool. This read-only and mandatory attribute ensures unique and controlled numbering for your critical data.
+
+### Bulk operations
+
+The Infrahub frontend now supports bulk operations, allowing you to manage large datasets more efficiently and actions on multiple items simultaneously. These bulk operations have been added:
+
+- bulk deletion of objects
+- manage group membership of multiple objects
+
+### IPAM UI
+
+We've made significant improvements to the IPAM user interface, including updating it to use our standard table component and implementing various performance enhancements. This results in a more consistent and faster experience when managing your IP addresses and prefixes.
+
+### Same parent constraint for relationships
+
+You can now define a Same Parent Constraint on a relationship of a node. This powerful new feature enforces that any node you want to add to a relationship must have a relationship to the same parent as the node to which you are adding the relationship. A common example would be a LAG interface on a device. You would want to make sure that the member interfaces that you can add to the LAG interface are interfaces on the same device.
+
+### Upgrades for Neo4j
+
+We've upgraded our Neo4j support to version 2025.03.0, ensuring Infrahub leverages the latest advancements for improved performance and reliability.
+
+## Changelog
+
+The complete list of changes can always be found in the CHANGELOG.md file in the Infrahub Git repository.
+
+### Added
+
+- On object list views, the number of objects now changes when you apply filters in list views. ([#object-count](https://github.com/opsmill/infrahub/issues/object-count))
+- Add bulk delete for objects and relationships
+  Improve object list loader ([#2932](https://github.com/opsmill/infrahub/issues/2932))
+- Add `parameters` field with support for min, max and excluded values for Number attributes. ([#2967](https://github.com/opsmill/infrahub/issues/2967))
+- Add `common_parent` relationship list property to be able to enforce nodes to have the same set of peers for each of the listed relationship names. For example, in a schema composed of `Device`, `Interface` and `LinkAggregationInterface`nodes, a relationship named `members` for LAGs that makes sure that all the interfaces in a LAG belong to the same device can be defined like this:
+
+  ```yaml
+  - name: members
+    peer: ExampleInterface
+    kind: Component
+    cardinality: many
+    optional: true
+    common_parent:
+      - device
+  ```
+
+  ([#3709](https://github.com/opsmill/infrahub/issues/3709))
+- Add new parameters field with support for regular expressions, minimum length, and maximum length to Text and TextArea attributes. ([#4246](https://github.com/opsmill/infrahub/issues/4246))
+- On artifact details page, added a link "Raw" to open raw artifact file in a new tab. ([#6513](https://github.com/opsmill/infrahub/issues/6513))
+- Display repository objects in a dedicated tab ([#6598](https://github.com/opsmill/infrahub/issues/6598))
+- Added an event system that lets you setup trigger rules to match against events within the system and fire actions when these events occur. With this feature in place you can automatically add or remove members to groups, or execute a generator.
+- Improved the design and accessibility of the menu in the object view
+- We added row selection functionality to the table view. Users can now select multiple rows then:
+  - add them to groups via the new "Add to groups" button.
+  - remove them from groups via the new "Remove from groups" button.
+  - delete them via the "Delete" button
+  - dissociate selected rows on relationship list view via the new "Dissociate" button.
+
+### Changed
+
+- Updated IPAM UI components to use standard UI components
+
+### Fixed
+
+- Allow for missing optional relationships for computed attributes ([#6426](https://github.com/opsmill/infrahub/issues/6426))
+- Added missing branch info to group events ([#6435](https://github.com/opsmill/infrahub/issues/6435))
+- Resolved performance issue in the IPAM view
+- Resolved an issue where the copy to clipboard did not work on insecure (HTTP) URLs. ([#6467](https://github.com/opsmill/infrahub/issues/6467))
+- Ensure GraphQL schema is refreshed after a branch rebase ([#6561](https://github.com/opsmill/infrahub/issues/6561))
+- Fixed an error preventing pool selection from being listed when peer has a custom namespace
+- Hide pool selection on relationship of cardinality many (it'll be added later) ([#6581](https://github.com/opsmill/infrahub/issues/6581))
+- Fixed a performance issue with the hierarchical tree view causing long load times, due to over fetching of data
+
+## Migration guide
+
+The process to migrate your instance of Infrahub to the latest version may vary depending on your deployment of Infrahub.
+However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
+
+Please ensure you have a **backup of your Infrahub environment** prior to attempting any migration or upgrade activities.
+
+### Migration of an Infrahub instance
+
+**First**, update the Infrahub version running in your environment.
+
+Below are some example ways to get the latest version of Infrahub in your environment.
+
+- For deployments via Docker Compose, update your container version by updating the `VERSION` environment variable and relaunch:
+  - `export VERSION="1.3.0"; docker compose pull && docker compose up -d`
+- For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
+
+**Second**, once you have gotten the desired version of Infrahub in your environment, please run the following commands.
+
+> Note: If you are running Infrahub in Docker/K8s, these commands need to run from a container where Infrahub is installed.
+
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+
+**Finally**, restart all instances of Infrahub.
+
+### Migration of a dev or demo instance
+
+If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
+The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command.
+
+> **Warning: All data will be lost, please make sure to backup everything you need before running this command.**
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
