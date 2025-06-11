@@ -7,6 +7,7 @@ import {
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
@@ -14,6 +15,7 @@ import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
+import { FormContext } from "@/shared/components/form/utils/form-context";
 import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
@@ -31,7 +33,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { store } from "@/shared/stores";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { use, useState } from "react";
 
 const getParentRelationship = (peer?: string) => {
   if (!peer) return;
@@ -64,6 +66,9 @@ const RelationshipField = ({
   schema,
   ...props
 }: RelationshipFieldProps) => {
+  const formContext = use(FormContext);
+  console.log("formContext: ", formContext);
+
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
 
@@ -78,6 +83,7 @@ const RelationshipField = ({
   const parentRelationship = generic
     ? getParentRelationship(selectedGeneric?.id)
     : getParentRelationship(relationship?.peer);
+  console.log("parentRelationship: ", parentRelationship);
 
   const kind = parentRelationship?.peer;
   const parentRelationshipSchema = schemaList.find((schema) => schema.kind === kind);
@@ -133,6 +139,10 @@ const RelationshipField = ({
 
   if (defaultParent && !selectedParent) {
     setSelectedParent(defaultParent);
+  }
+
+  if (isOfKind(parentRelationship?.peer, formContext.parentSchema) && !selectedParent) {
+    setSelectedParent(formContext.parentData);
   }
 
   if (generic) {
