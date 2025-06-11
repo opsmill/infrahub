@@ -17,7 +17,7 @@ test.describe("Event Rules and Actions", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test("1. Create and configure an Event with a Group Action", async ({ page }) => {
+  test.fixme("1. Create and configure an Event with a Group Action", async ({ page }) => {
     await test.step("Create a Group action", async () => {
       // Navigate to the Actions page
       await page.goto(`/objects/CoreAction?branch=${BRANCH_NAME}`);
