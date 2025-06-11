@@ -1,11 +1,12 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
-import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/entities/ipam/ipam-tree/utils";
+import { EMPTY_TREE, updateTreeData } from "@/entities/ipam/ipam-tree/utils";
 import {
   objectAncestorsQuery,
   objectChildrenQuery,
   objectTopLevelTreeQuery,
 } from "@/entities/nodes/api/objectTreeQuery";
+import { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
@@ -83,7 +84,7 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
       return treeWithTopLevelPrefixesOnly;
     }
 
-    const ancestors: Array<{ node: PrefixNode }> = currentObjectData.node.ancestors.edges;
+    const ancestors = currentObjectData.node.ancestors.edges;
     const orderedAncestors: typeof ancestors = [];
 
     const traverseHierarchy = (map: typeof ancestors, parentId: string | null) => {
@@ -211,13 +212,13 @@ const ObjectTreeItem = ({ element }: TreeItemProps) => {
 };
 
 export const formatResponseDataForTreeView = (data: {
-  edges: Array<{ node: PrefixNode }>;
+  edges: Array<{ node: any }>;
 }): TreeItemProps["element"][] => {
   return data.edges.map(({ node }) => ({
     id: node.id,
     name: node.display_label,
     parent: node.parent.node?.id ?? TREE_ROOT_ID,
-    children: node.children?.edges?.map(({ node }) => node.id) ?? [],
+    children: node.children?.edges?.map(({ node }: { node: NodeCore }) => node.id) ?? [],
     isBranch: node.children.count > 0,
     metadata: {
       kind: node.__typename,
