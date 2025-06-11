@@ -67,7 +67,6 @@ const RelationshipField = ({
   ...props
 }: RelationshipFieldProps) => {
   const formContext = use(FormContext);
-  console.log("formContext: ", formContext);
 
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
@@ -83,7 +82,6 @@ const RelationshipField = ({
   const parentRelationship = generic
     ? getParentRelationship(selectedGeneric?.id)
     : getParentRelationship(relationship?.peer);
-  console.log("parentRelationship: ", parentRelationship);
 
   const kind = parentRelationship?.peer;
   const parentRelationshipSchema = schemaList.find((schema) => schema.kind === kind);
