@@ -5,6 +5,7 @@ infrahub_tests:
     resource_name: "device_startup"
     tests:
       - name: "baseline"
+        expect: PASS
         spec:
           kind: "jinja2-transform-unit-render"
           directory: device_startup/baseline
@@ -14,19 +15,3 @@ infrahub_tests:
         spec:
           kind: "jinja2-transform-unit-render"
           directory: device_startup/missing_interfaces
-
-  - resource: PythonTransform
-    resource_name: oc_bgp
-    tests:
-      - name: oc_bgp
-        spec:
-          kind: python-transform-unit-process
-          directory: python_transforms/oc_bgp
-
-  - resource: PythonTransform
-    resource_name: oc_interfaces
-    tests:
-      - name: oc_interfaces
-        spec:
-          kind: python-transform-unit-process
-          directory: python_transforms/oc_interfaces
