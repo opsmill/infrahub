@@ -136,11 +136,12 @@ export const GenericRelationship = ({
         }}
       />
 
-      {selectedGeneric && parentRelationship && (
+      {parentRelationship && (
         <FormField
           key={`${name}_parent`}
           name={`${name}_parent`}
           defaultValue={defaultValue}
+          disabled={!selectedGeneric && !parentRelationship}
           render={({ field }) => {
             return (
               <div className="relative flex flex-col space-y-1">
@@ -167,44 +168,44 @@ export const GenericRelationship = ({
           }}
         />
       )}
-      {selectedGeneric && (
-        <FormField
-          key={name}
-          name={name}
-          rules={rules}
-          render={({ field }) => {
-            const fieldData = field.value;
 
-            return (
-              <div className="relative flex flex-col space-y-1">
-                <LabelFormField
-                  label={selectedGeneric?.display_label || "Node"}
-                  unique={unique}
-                  required={!!rules?.required}
-                  description={description}
-                  variant="small"
+      <FormField
+        key={name}
+        name={name}
+        rules={rules}
+        disabled={!selectedGeneric}
+        render={({ field }) => {
+          const fieldData = field.value;
+
+          return (
+            <div className="relative flex flex-col space-y-1">
+              <LabelFormField
+                label={selectedGeneric?.display_label || "Node"}
+                unique={unique}
+                required={!!rules?.required}
+                description={description}
+                variant="small"
+              />
+              <FormInput>
+                <RelationshipInput
+                  {...field}
+                  {...props}
+                  options={undefined}
+                  value={fieldData?.value}
+                  onChange={(newValue) => {
+                    field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+                  }}
+                  peer={selectedGeneric?.id}
+                  parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                  disabled={props.disabled || !selectedGeneric?.id}
+                  className="mt-2"
                 />
-                <FormInput>
-                  <RelationshipInput
-                    {...field}
-                    {...props}
-                    options={undefined}
-                    value={fieldData?.value}
-                    onChange={(newValue) => {
-                      field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
-                    }}
-                    peer={selectedGeneric?.id}
-                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
-                    disabled={props.disabled || !selectedGeneric?.id}
-                    className="mt-2"
-                  />
-                </FormInput>
-                <FormMessage />
-              </div>
-            );
-          }}
-        />
-      )}
+              </FormInput>
+              <FormMessage />
+            </div>
+          );
+        }}
+      />
     </div>
   );
 };
