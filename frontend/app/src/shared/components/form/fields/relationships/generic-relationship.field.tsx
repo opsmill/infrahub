@@ -15,6 +15,7 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
+import { Input } from "@/shared/components/ui/input";
 import { useState } from "react";
 
 interface GenericOption extends Node {
@@ -85,6 +86,8 @@ export const GenericRelationshipField = ({
     }
   }
 
+  console.log("selectedGeneric: ", selectedGeneric);
+
   return (
     <div className="space-y-2">
       <LabelFormField
@@ -154,7 +157,6 @@ export const GenericRelationshipField = ({
           key={`${name}_parent`}
           name={`${name}_parent`}
           defaultValue={defaultValue}
-          disabled={!selectedGeneric && !parentRelationship}
           render={({ field }) => {
             return (
               <div className="relative flex flex-col space-y-1">
@@ -186,9 +188,26 @@ export const GenericRelationshipField = ({
         key={name}
         name={name}
         rules={rules}
-        disabled={!selectedGeneric}
+        disabled={!selectedGeneric?.id}
         render={({ field }) => {
           const fieldData = field.value;
+
+          if (!selectedGeneric?.id) {
+            return (
+              <div className="relative flex flex-col space-y-1">
+                <LabelFormField
+                  label={selectedGeneric?.display_label ?? "Node"}
+                  unique={unique}
+                  required={!!rules?.required}
+                  description={description}
+                  variant="small"
+                />
+                <FormInput>
+                  <Input disabled className="mt-2" />
+                </FormInput>
+              </div>
+            );
+          }
 
           return (
             <div className="relative flex flex-col space-y-1">
