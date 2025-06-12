@@ -104,7 +104,6 @@
         "noEmptyBlockStatements": "off",
         "noEvolvingTypes": "off",
         "noExplicitAny": "off",
-        "noExportsInTest": "off",
         "noGlobalIsNan": "off",
         "noImplicitAnyLet": "off",
         "noReactSpecificProps": "off",
