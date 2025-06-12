@@ -239,7 +239,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
 
 
 async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch):
-    _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
+    _ = await create_and_save(db=db, branch=branch, schema="TestPerson", name="Jack", bag="bag-jacks")
 
     # Make sure correct raised error is raised while violating uniqueness constraint of a non hfid-related attribute.
     query = """
