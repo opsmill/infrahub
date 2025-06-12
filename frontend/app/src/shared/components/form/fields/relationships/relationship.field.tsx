@@ -20,9 +20,9 @@ export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {
 }
 
 interface GetDefaultParentParams {
-  defaultParent: Node | null | undefined;
-  currentParent: Node | null | undefined;
-  parentPeer: string | undefined;
+  defaultParent?: Node | null;
+  currentParent?: Node | null;
+  parentPeer?: string;
   formContext: FormContextType;
 }
 
