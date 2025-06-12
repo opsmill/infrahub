@@ -105,7 +105,6 @@ export const RelationshipInput = React.forwardRef<
         onOpenAutoFocus={() => {
           setOffset(0);
           setShouldAggregate(false);
-          console.log("LOAD");
           loadRelationshipList();
         }}
       >

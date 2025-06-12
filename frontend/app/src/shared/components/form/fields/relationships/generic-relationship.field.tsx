@@ -86,8 +86,6 @@ export const GenericRelationshipField = ({
     }
   }
 
-  console.log("selectedGeneric: ", selectedGeneric);
-
   return (
     <div className="space-y-2">
       <LabelFormField
