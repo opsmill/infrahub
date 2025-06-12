@@ -710,14 +710,14 @@ class DiffMergeRollbackQuery(Query):
         // ---------------------------
         // reset to times on target branch
         // ---------------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH ()-[r_to {to: $at, branch: $target_branch}]-()
             SET r_to.to = NULL
         }
         // ---------------------------
         // reset from times on target branch
         // ---------------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH ()-[r_from {from: $at, branch: $target_branch}]-()
             DELETE r_from
         }
