@@ -319,12 +319,17 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert parent_event["InfrahubEvent"]["count"] == 1
         parent_id = parent_event["InfrahubEvent"]["edges"][0]["node"]["id"]
 
-        mutation_events = await client.execute_graphql(
-            query=QUERY_EVENT,
-            variables={
-                "parent__ids": [parent_id],
-            },
-        )
+        for _ in range(10):
+            mutation_events = await client.execute_graphql(
+                query=QUERY_EVENT,
+                variables={
+                    "parent__ids": [parent_id],
+                },
+            )
+            if mutation_events["InfrahubEvent"]["count"] == 5:
+                break
+            await asyncio.sleep(1)
+
         assert mutation_events["InfrahubEvent"]["count"] == 5
 
         janes_events = [
