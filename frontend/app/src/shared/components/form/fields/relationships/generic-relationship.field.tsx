@@ -1,6 +1,7 @@
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { LabelFormField } from "@/shared/components/form/fields/common";
 import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
-import { FormContext } from "@/shared/components/form/utils/form-context";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
@@ -14,15 +15,20 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { use, useState } from "react";
-import { LabelFormField } from "./common";
+import { useState } from "react";
+
+interface GenericOption extends Node {
+  id: string;
+  display_label: string;
+  badge: string;
+}
 
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
   defaultParent?: Node | null;
 }
 
-export const GenericRelationship = ({
+export const GenericRelationshipField = ({
   defaultValue,
   defaultParent,
   description,
@@ -37,16 +43,16 @@ export const GenericRelationship = ({
   schema,
   ...props
 }: GenericRelationshipFieldProps) => {
-  const formContext = use(FormContext);
-
-  const { schema: peerSchema } = useSchema(relationship?.peer);
+  const { schema: peerSchema, isGeneric } = useSchema(relationship?.peer);
 
   const defaultSelectedGeneric = parent ? options?.find((option) => option.id === parent) : null;
 
-  const [selectedGeneric, setSelectedGeneric] = useState<Node | null>(defaultSelectedGeneric);
-  const [selectedParent, setSelectedParent] = useState<Node | null | undefined>(defaultParent);
+  const [selectedGeneric, setSelectedGeneric] = useState<GenericOption | null>(
+    defaultSelectedGeneric as GenericOption | null
+  );
+  const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
 
-  const genericOptions = (peerSchema.used_by || [])
+  const genericOptions = (isGeneric ? (peerSchema?.used_by ?? []) : [])
     .map((name: string) => {
       const { schema: relatedSchema } = useSchema(name);
 
@@ -57,19 +63,26 @@ export const GenericRelationship = ({
           badge: relatedSchema.namespace,
         };
       }
+
+      return null;
     })
-    .filter((n) => !!n);
+    .filter((n): n is GenericOption => n !== null);
 
   const parentRelationship = getParentRelationship(selectedGeneric?.id);
 
   // Select the first option if the only available
   if (genericOptions?.length === 1 && !selectedGeneric) {
-    setSelectedGeneric(genericOptions[0]);
+    setSelectedGeneric(genericOptions[0] ?? null);
   }
 
   // Select the kind after building the options from generics
   if (parent && !selectedGeneric && genericOptions?.length) {
-    setSelectedGeneric(genericOptions?.find((option) => option.id === parent));
+    const foundOption: GenericOption | undefined = genericOptions.find(
+      (option: GenericOption) => option.id === parent
+    );
+    if (foundOption) {
+      setSelectedGeneric(foundOption);
+    }
   }
 
   return (
@@ -111,7 +124,7 @@ export const GenericRelationship = ({
                 <ComboboxContent>
                   <ComboboxList>
                     <ComboboxEmpty>No schema found.</ComboboxEmpty>
-                    {genericOptions.map((item) => {
+                    {genericOptions.map((item: GenericOption) => {
                       return (
                         <ComboboxItem
                           key={item.id}
@@ -155,10 +168,10 @@ export const GenericRelationship = ({
                 <FormInput>
                   <RelationshipInput
                     {...field}
-                    value={selectedParent}
+                    value={selectedParent ?? null}
                     peer={parentRelationship.peer}
                     disabled={props.disabled || !selectedGeneric?.id}
-                    onChange={setSelectedParent}
+                    onChange={(value) => setSelectedParent(value as Node | null)}
                     className="mt-2"
                   />
                 </FormInput>
@@ -180,7 +193,7 @@ export const GenericRelationship = ({
           return (
             <div className="relative flex flex-col space-y-1">
               <LabelFormField
-                label={selectedGeneric?.display_label || "Node"}
+                label={selectedGeneric?.display_label ?? "Node"}
                 unique={unique}
                 required={!!rules?.required}
                 description={description}
@@ -195,7 +208,7 @@ export const GenericRelationship = ({
                   onChange={(newValue) => {
                     field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                   }}
-                  peer={selectedGeneric?.id}
+                  peer={selectedGeneric?.id ?? ""}
                   parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                   disabled={props.disabled || !selectedGeneric?.id}
                   className="mt-2"

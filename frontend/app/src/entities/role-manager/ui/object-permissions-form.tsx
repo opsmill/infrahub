@@ -20,7 +20,7 @@ import { toast } from "react-toastify";
 
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
-import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
+import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NameSelect } from "@/shared/components/form/name-select";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/shared/components/form/utils/validation";

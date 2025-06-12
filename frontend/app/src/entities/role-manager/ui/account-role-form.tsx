@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
-import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
+import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";

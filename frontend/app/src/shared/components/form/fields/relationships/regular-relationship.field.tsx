@@ -1,121 +1,41 @@
-import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
-import { FormContext } from "@/shared/components/form/utils/form-context";
 import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
-
-import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { gql } from "@apollo/client";
-import { use, useState } from "react";
-import { GenericRelationship } from "./generic-relationship.field";
+import { useState } from "react";
 
-export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {
+export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
   defaultParent?: Node | null;
+  parentRelationship?: any;
 }
 
-// Select kind (select 2 steps) if needed
-const RelationshipField = (fieldProps: RelationshipFieldProps) => {
-  const {
-    defaultValue,
-    defaultParent,
-    description,
-    label,
-    name,
-    rules,
-    unique,
-    type,
-    options,
-    parent,
-    relationship,
-    schema,
-    ...props
-  } = fieldProps;
-
-  const formContext = use(FormContext);
-
-  const [selectedParent, setSelectedParent] = useState<Node | null | undefined>(defaultParent);
-
-  const { isGeneric: isPeerGeneric } = useSchema(relationship.peer);
-
-  const parentRelationship = getParentRelationship(relationship?.peer);
-
-  const { schema: parentRelationshipSchema } = useSchema(parentRelationship?.peer);
-
-  const parentRelationshipAttribute = parentRelationshipSchema?.relationships?.find(
-    (relationship) => {
-      if (parentRelationship?.direction === "bidirectional") {
-        return relationship.identifier === parentRelationship?.identifier;
-      }
-
-      if (parentRelationship?.direction === "inbound") {
-        return (
-          relationship.direction === "outbound" &&
-          relationship.identifier === parentRelationship?.identifier
-        );
-      }
-
-      if (parentRelationship?.direction === "outbound") {
-        return (
-          relationship.direction === "inbound" &&
-          relationship.identifier === parentRelationship?.identifier
-        );
-      }
-
-      return false;
-    }
-  );
-
-  const id = defaultValue?.value?.id;
-
-  const queryString = getRelationshipParent({
-    kind: relationship?.peer,
-    attribute: `${parentRelationshipAttribute?.name}__ids`,
-    id,
-  });
-
-  const query =
-    relationship?.peer && parentRelationshipAttribute?.name && id
-      ? gql`
-          ${queryString}
-        `
-      : gql`
-          query {
-            ok
-          }
-        `;
-
-  const { data } = useQuery(query, { skip: !parentRelationshipSchema?.kind || !id });
-
-  const currentParent = data && kind && data[kind]?.edges[0]?.node;
-
-  if (currentParent && !selectedParent) {
-    setSelectedParent(currentParent);
-  }
-
-  if (defaultParent && !selectedParent) {
-    setSelectedParent(defaultParent);
-  }
-
-  if (isOfKind(parentRelationship?.peer, formContext.parentSchema) && !selectedParent) {
-    setSelectedParent(formContext.parentData);
-  }
-
-  if (isPeerGeneric) {
-    return <GenericRelationship {...fieldProps} />;
-  }
+export const RegularRelationshipField = ({
+  defaultValue,
+  defaultParent,
+  description,
+  label,
+  name,
+  rules,
+  unique,
+  type,
+  options,
+  parent,
+  relationship,
+  schema,
+  parentRelationship,
+  ...props
+}: RegularRelationshipFieldProps) => {
+  const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
 
   return (
     <div className="space-y-2">
@@ -150,7 +70,9 @@ const RelationshipField = (fieldProps: RelationshipFieldProps) => {
                     value={selectedParent}
                     peer={parentRelationship?.peer}
                     disabled={props.parentDisabled || props.disabled}
-                    onChange={setSelectedParent}
+                    onChange={(value: Node | PoolValue | null) =>
+                      setSelectedParent(value as Node | null)
+                    }
                     className="mt-1"
                   />
                 </FormInput>
@@ -220,5 +142,3 @@ const RelationshipField = (fieldProps: RelationshipFieldProps) => {
     </div>
   );
 };
-
-export default RelationshipField;
