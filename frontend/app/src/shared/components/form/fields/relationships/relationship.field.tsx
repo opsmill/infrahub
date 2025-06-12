@@ -45,7 +45,11 @@ const getDefaultParent = ({
     return currentParent;
   }
 
-  if (parentPeer && isOfKind(parentPeer, formContext.parentSchema as ModelSchema)) {
+  if (
+    parentPeer &&
+    formContext.parentSchema &&
+    isOfKind(parentPeer, formContext.parentSchema as ModelSchema)
+  ) {
     return convertNodeObjectToNode(formContext.parentData);
   }
 
