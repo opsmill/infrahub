@@ -710,7 +710,9 @@ class SchemaBranch:
                 ):
                     unique_attrs_in_constraints.add(schema_attribute_path.attribute_schema.name)
 
-            unique_attrs_in_attrs = {attr_schema.name for attr_schema in node_schema.unique_attributes}
+            unique_attrs_in_attrs = {
+                attr_schema.name for attr_schema in node_schema.unique_attributes if not attr_schema.inherited
+            }
             if unique_attrs_in_attrs == unique_attrs_in_constraints:
                 continue
 
@@ -822,11 +824,16 @@ class SchemaBranch:
                     ) from exc
 
     def _is_attr_combination_unique(
-        self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None
+        self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None, unique_attribute_names: list[str]
     ) -> bool:
         """
-        Return whether at least one combination of any length of `attrs_paths` is equal to a uniqueness constraint.
+        Return whether at least one combination of any length of `attrs_paths` is unique
         """
+        if unique_attribute_names:
+            for attr_path in attrs_paths:
+                for unique_attr_name in unique_attribute_names:
+                    if attr_path.startswith(unique_attr_name):
+                        return True
 
         if not uniqueness_constraints:
             return False
@@ -868,9 +875,14 @@ class SchemaBranch:
             if config.SETTINGS.main.schema_strict_mode:
                 # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
                 for related_schema, attrs_paths in rel_schemas_to_paths.values():
-                    if not self._is_attr_combination_unique(attrs_paths, related_schema.uniqueness_constraints):
+                    if not self._is_attr_combination_unique(
+                        attrs_paths=attrs_paths,
+                        uniqueness_constraints=related_schema.uniqueness_constraints,
+                        unique_attribute_names=[a.name for a in related_schema.unique_attributes],
+                    ):
                         raise ValidationError(
-                            f"HFID of {node_schema.kind} refers peer {related_schema.kind} with a non-unique combination of attributes {attrs_paths}"
+                            f"HFID of {node_schema.kind} refers to peer {related_schema.kind}"
+                            f" with a non-unique combination of attributes {attrs_paths}"
                         )
 
     def validate_required_relationships(self) -> None:
