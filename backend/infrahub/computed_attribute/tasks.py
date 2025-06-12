@@ -15,7 +15,7 @@ from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
-from infrahub.trigger.setup import setup_triggers
+from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -304,36 +304,30 @@ async def computed_attribute_setup_jinja2(
             await add_tags(branches=[branch_name])
             await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
 
-        triggers = await gather_trigger_computed_attribute_jinja2()
-
+        report: TriggerSetupReport = await setup_triggers_specific(
+            gatherer=gather_trigger_computed_attribute_jinja2, trigger_type=TriggerType.COMPUTED_ATTR_JINJA2
+        )  # type: ignore[misc]
         # Configure all ComputedAttrJinja2Trigger in Prefect
-        async with get_client(sync_client=False) as prefect_client:
-            report: TriggerSetupReport = await setup_triggers(
-                client=prefect_client,
-                triggers=triggers,
-                trigger_type=TriggerType.COMPUTED_ATTR_JINJA2,
-                force_update=False,
-            )  # type: ignore[misc]
 
-            # Since we can have multiple trigger per NodeKind
-            # we need to extract the list of unique node that should be processed
-            unique_nodes: set[tuple[str, str, str]] = {
-                (trigger.branch, trigger.computed_attribute.kind, trigger.computed_attribute.attribute.name)  # type: ignore[attr-defined]
-                for trigger in report.updated + report.created
-            }
-            for branch, kind, attribute_name in unique_nodes:
-                if event_name != BranchDeletedEvent.event_name and branch == branch_name:
-                    await service.workflow.submit_workflow(
-                        workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
-                        context=context,
-                        parameters={
-                            "branch_name": branch,
-                            "computed_attribute_name": attribute_name,
-                            "computed_attribute_kind": kind,
-                        },
-                    )
+        # Since we can have multiple trigger per NodeKind
+        # we need to extract the list of unique node that should be processed
+        unique_nodes: set[tuple[str, str, str]] = {
+            (trigger.branch, trigger.computed_attribute.kind, trigger.computed_attribute.attribute.name)  # type: ignore[attr-defined]
+            for trigger in report.updated + report.created
+        }
+        for branch, kind, attribute_name in unique_nodes:
+            if event_name != BranchDeletedEvent.event_name and branch == branch_name:
+                await service.workflow.submit_workflow(
+                    workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                    context=context,
+                    parameters={
+                        "branch_name": branch,
+                        "computed_attribute_name": attribute_name,
+                        "computed_attribute_kind": kind,
+                    },
+                )
 
-        log.info(f"{len(triggers)} Computed Attribute for Jinja2 automation configuration completed")
+        log.info(f"{report.in_use_count} Computed Attribute for Jinja2 automation configuration completed")
 
 
 @flow(

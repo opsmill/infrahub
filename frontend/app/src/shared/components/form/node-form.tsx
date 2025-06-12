@@ -35,12 +35,13 @@ export type NodeFormProps = {
   className?: string;
   schema: NodeSchema | ProfileSchema;
   profiles?: ProfileData[];
-  onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;
   objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
+  onSuccess?: (newObject: any) => void;
+  onCancel?: (newObject: any) => void;
 };
 
 export const NodeForm = ({

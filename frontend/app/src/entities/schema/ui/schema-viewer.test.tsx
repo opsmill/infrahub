@@ -36,6 +36,11 @@ describe("Schema Visualizer Component", () => {
             kind: "Jinja2",
             jinja2_template: "test",
           },
+          parameters: {
+            regex: "test-regex",
+            min_length: 1,
+            max_length: 10,
+          },
         },
       ],
     });
@@ -49,6 +54,43 @@ describe("Schema Visualizer Component", () => {
     // THEN
     await expect.element(component.getByText("random-id")).toBeVisible();
     await expect.element(component.getByText("CoreTransformJinja2")).toBeVisible();
+    await expect.element(component.getByText("test-regex")).toBeVisible();
+    await expect.element(component.getByText("Min length1")).toBeVisible();
+    await expect.element(component.getByText("Max length10")).toBeVisible();
+  });
+
+  test("renders attributes with number pool correctly", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        {
+          id: "random-id",
+          name: "attribute",
+          kind: "NumberPool",
+          optional: false,
+          read_only: false,
+          parameters: {
+            number_pool_id: "random-pool-id",
+            start_range: 10,
+            end_range: 100,
+          },
+        },
+      ],
+    });
+
+    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("attribute NumberPool").click();
+
+    // THEN
+    await expect.element(component.getByText("random-pool-id")).toBeVisible();
+    await expect.element(component.getByText("Number pool")).toBeVisible();
+    await expect.element(component.getByText("Start range10")).toBeVisible();
+    await expect.element(component.getByText("End range100")).toBeVisible();
   });
 
   test("renders jinja template correctly", async () => {

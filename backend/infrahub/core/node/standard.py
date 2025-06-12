@@ -210,7 +210,12 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def get_list(
-        cls, db: InfrahubDatabase, limit: int = 1000, ids: list[str] | None = None, name: str | None = None, **kwargs
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
     ) -> list[Self]:
         query: Query = await StandardNodeGetListQuery.init(
             db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs

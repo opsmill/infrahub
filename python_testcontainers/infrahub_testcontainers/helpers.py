@@ -1,9 +1,11 @@
 import os
 import subprocess  # noqa: S404
+import uuid
 import warnings
 from pathlib import Path
 
 import pytest
+from prefect.client.orchestration import PrefectClient
 
 from infrahub_testcontainers import __version__ as infrahub_version
 
@@ -39,8 +41,8 @@ class TestInfrahubDocker:
 
     @pytest.fixture(scope="class")
     def tmp_directory(self, tmpdir_factory: pytest.TempdirFactory) -> Path:
-        directory = Path(str(tmpdir_factory.getbasetemp().strpath))
-        return directory
+        name = f"{self.__class__.__name__.lower()}_{uuid.uuid4().hex}"
+        return Path(str(tmpdir_factory.mktemp(name)))
 
     @pytest.fixture(scope="class")
     def remote_repos_dir(self, tmp_directory: Path) -> Path:
@@ -105,3 +107,7 @@ class TestInfrahubDocker:
     @pytest.fixture(scope="class")
     def task_manager_port(self, infrahub_app: dict[str, int]) -> int:
         return infrahub_app["task-manager"]
+
+    @pytest.fixture(scope="class")
+    def prefect_client(self, task_manager_port: int) -> PrefectClient:
+        return PrefectClient(api=f"http://localhost:{task_manager_port}/api/")

@@ -100,7 +100,9 @@ async def gather_python_transform_attributes(
     name="gather-trigger-computed-attribute-jinja2",
     cache_policy=NONE,
 )
-async def gather_trigger_computed_attribute_jinja2() -> list[ComputedAttrJinja2TriggerDefinition]:
+async def gather_trigger_computed_attribute_jinja2(
+    db: InfrahubDatabase | None = None,  # noqa: ARG001 Needed to have a common function signature for gathering functions
+) -> list[ComputedAttrJinja2TriggerDefinition]:
     log = get_run_logger()
 
     # Build a list of all branches to process based on which branch is different from main

@@ -31,6 +31,12 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
+from infrahub.core.schema.attribute_parameters import (
+    AttributeParameters,
+    NumberAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
@@ -47,7 +53,7 @@ class SchemaAttribute(BaseModel):
     kind: str
     description: str
     extra: ExtraField
-    internal_kind: type[Any] | GenericAlias | None = None
+    internal_kind: type[Any] | GenericAlias | list[type[Any]] | None = None
     regex: str | None = None
     unique: bool | None = None
     optional: bool | None = None
@@ -76,7 +82,7 @@ class SchemaAttribute(BaseModel):
 
     @property
     def optional_in_model(self) -> bool:
-        if self.optional and self.default_value is None and self.default_factory is None or self.default_to_none:
+        if (self.optional and self.default_value is None and self.default_factory is None) or self.default_to_none:
             return True
 
         return False
@@ -92,6 +98,9 @@ class SchemaAttribute(BaseModel):
     def object_kind(self) -> str:
         if isinstance(self.internal_kind, GenericAlias):
             return str(self.internal_kind)
+
+        if isinstance(self.internal_kind, list):
+            return " | ".join([internal_kind.__name__ for internal_kind in self.internal_kind])
 
         if self.internal_kind and self.kind == "List":
             return f"list[{self.internal_kind.__name__}]"
@@ -506,21 +515,21 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="regex",
             kind="Text",
-            description="Regex uses to limit the characters allowed in for the attributes.",
+            description="Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="max_length",
             kind="Number",
-            description="Set a maximum number of characters allowed for a given attribute.",
+            description="Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="min_length",
             kind="Number",
-            description="Set a minimum number of characters allowed for a given attribute.",
+            description="Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
@@ -616,6 +625,20 @@ attribute_schema = SchemaNode(
             default_value=AllowOverrideType.ANY,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="parameters",
+            kind="JSON",
+            internal_kind=[
+                AttributeParameters,
+                TextAttributeParameters,
+                NumberAttributeParameters,
+                NumberPoolParameters,
+            ],
+            optional=True,
+            description="Extra parameters specific to this kind of attribute",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            default_factory="AttributeParameters",
         ),
         SchemaAttribute(
             name="deprecation",
@@ -730,6 +753,21 @@ relationship_schema = SchemaNode(
             default_value=0,
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="common_parent",
+            kind="Text",
+            optional=True,
+            description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="common_relatives",
+            kind="List",
+            internal_kind=str,
+            optional=True,
+            description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="order_weight",

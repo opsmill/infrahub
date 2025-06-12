@@ -107,6 +107,18 @@ export const PropertyRow = ({
   );
 };
 
+export const PropertyTitle = ({
+  title,
+}: {
+  title: string;
+}) => {
+  return (
+    <dl className="flex justify-between items-start gap-4 text-sm font-semibold p-2 py-3">
+      <dt>{title}</dt>
+    </dl>
+  );
+};
+
 export const TabStyled = ({ className, ...props }: TabProps) => (
   <Tab
     className={({ isSelected }) =>
@@ -153,6 +165,20 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
           {kind}
         </Badge>
       ))}
+    </div>
+  );
+};
+
+export const ListDisplay = ({ items }: { items?: string[] }) => {
+  return (
+    <div className="space-y-1 flex flex-col items-end">
+      {items?.map((item, index) => {
+        return (
+          <Badge variant={"gray-outline"} key={`${item}_${index}`}>
+            {item}
+          </Badge>
+        );
+      })}
     </div>
   );
 };

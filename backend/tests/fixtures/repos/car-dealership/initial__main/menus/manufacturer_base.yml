@@ -1,0 +1,15 @@
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Testing
+      name: Manufacturer
+      label: Manufacturer
+      kind: TestingManufacturer
+      children:
+        data:
+          - namespace: Testing
+            name: Car
+            label: Car
+            kind: TestingCar

@@ -1200,6 +1200,16 @@ async def create_backbone_connectivity(
             f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
         )
         await intf_site2_obj.save()
+        bb_service = await client.create(
+            kind="InfraBackBoneService",
+            name=f"BKB: {backbone_link.site1} <-> {backbone_link.site2}",
+            circuit_id=backbone_link.circuit,
+            internal_circuit_id=vendor_id.upper(),
+            provider=provider,
+            site_a=backbone_link.site1,
+            site_b=backbone_link.site2,
+        )
+        await bb_service.save(allow_upsert=True)
 
         log.debug(
             f" - Connected '{backbone_link.site1_device}::{intf_site1.name.value}' <> '{backbone_link.site2_device}::{intf_site2.name.value}'"
@@ -1273,7 +1283,7 @@ async def create_bgp_mesh(client: InfrahubClient, log: logging.Logger, branch: s
 
 async def generate_site_vlans(
     client: InfrahubClient,
-    log: logging.Logger,  # noqa: ARG001
+    log: logging.Logger,
     branch: str,
     site: Site,
     site_id: int,
@@ -2245,7 +2255,7 @@ async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: 
 
 
 async def map_permissions_to_roles(
-    client: InfrahubClient,  # noqa: ARG001
+    client: InfrahubClient,
     log: logging.Logger,  # noqa: ARG001
     branch: str,  # noqa: ARG001
     batch: InfrahubBatch,
@@ -2306,7 +2316,7 @@ async def map_permissions_to_roles(
 
 
 async def map_user_and_roles_to_groups(
-    client: InfrahubClient,  # noqa: ARG001
+    client: InfrahubClient,
     log: logging.Logger,  # noqa: ARG001
     branch: str,  # noqa: ARG001
     batch: InfrahubBatch,

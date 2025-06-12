@@ -63,6 +63,20 @@ class DataPath(InfrahubPath):
     peer_id: str | None = Field(default=None, description="")
     value: Any | None = Field(default=None, description="Optional value of the resource")
 
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.branch,
+                self.path_type,
+                self.node_id,
+                self.kind,
+                self.field_name,
+                self.property_name,
+                self.peer_id,
+                str(self.value),
+            )
+        )
+
     @property
     def resource_type(self) -> PathResourceType:
         return PathResourceType.DATA
@@ -125,7 +139,7 @@ class SchemaPath(InfrahubPath):
         if self.field_name:
             identifier += f"/{self.field_name}"
 
-        if self.property_name and not self.path_type == SchemaPathType.NODE:
+        if self.property_name and self.path_type != SchemaPathType.NODE:
             identifier += f"/{self.property_name}"
 
         return identifier

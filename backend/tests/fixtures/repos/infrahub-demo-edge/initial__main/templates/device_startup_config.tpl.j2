@@ -31,16 +31,18 @@ management api netconf
 !
 {% for intf in data.InfraDevice.edges[0].node.interfaces.edges %}
 {%   if intf.node.name.value != ns.management_intf_name and intf.node.name.value != ns.loopback_intf_name %}
-interface {{ intf.node.name.value }} 
+interface {{ intf.node.name.value }}
 {%   if intf.node["description"]["value"] %}
    description {{ intf.node["description"]["value"] }}
 {%   else %}
    description role: {{ intf.node.role.value }}
 {%   endif %}
+{%   if "mtu" in intf.node and intf.node["mtu"]["value"] %}
+   mtu {{ intf.node["mtu"]["value"] }}
+{%   endif %}
 {%   if not intf.node["enabled"]["value"] %}
    shutdown
 {%   endif %}
-
 {%   if intf.node["ip_addresses"] %}
 {%     for ip in intf.node["ip_addresses"]["edges"] %}
    ip address {{ ip.node["address"]["value"] }}

@@ -51,7 +51,6 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         def render_sub_query_per_rel_type(rel_type: str, rel_def: FieldInfo) -> str:
             subquery = [
                 "WITH peer_node, rb, active_attr",
-                "WITH peer_node, rb, active_attr",
                 f'WHERE type(rb) = "{rel_type}"',
             ]
             if rel_def.default.direction.value == "outbound":
@@ -75,8 +74,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         MATCH (node:%(node_kind)s)
         WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
         AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
             RETURN node as n1, r as r1
@@ -86,8 +84,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         WITH n1 as active_node, r1 as rb
         WHERE rb.status = "active"
         // Find all the attributes that need to be updated
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as r1, attr as attr1
@@ -98,8 +95,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         WHERE rb.status = "active"
         WITH active_attr
         MATCH (active_attr)-[]-(peer)
-        CALL {
-            WITH active_attr, peer
+        CALL (active_attr, peer) {
             MATCH (active_attr)-[r]-(peer)
             WHERE %(branch_filter)s
             RETURN active_attr as a1, r as r1, peer as p1
@@ -108,7 +104,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         }
         WITH a1 as active_attr, r1 as rb, p1 as peer_node
         WHERE rb.status = "active"
-        CALL {
+        CALL (peer_node, rb, active_attr) {
             %(sub_query_all)s
         }
         WITH p2 as peer_node, rb, active_attr

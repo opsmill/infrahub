@@ -29,6 +29,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
@@ -38,6 +39,7 @@ from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
 from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema.device import LAG_INTERFACE
 
 from .conftest import _get_schema_by_kind
 
@@ -939,6 +941,95 @@ async def test_schema_branch_validate_kinds_peer():
         schema.validate_kinds()
 
     assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
+
+
+async def test_schema_branch_validate_kinds_common_relatives():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = None
+    lag_interface_schema.relationships[0].common_relatives = ["doesnotexist"]
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' set 'common_relatives' with invalid relationship from "
+        "'TestingPhysicalInterface'"
+    )
+
+
+async def test_schema_branch_validate_common_parent():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.validate_kinds()
+
+
+async def test_schema_branch_validate_common_parent_without_valid_parent():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.get(name=TestKind.LAG_INTERFACE, duplicate=False).get_relationship("device").kind = RelationshipKind.GENERIC
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but node does not have a parent relationship"
+    )
+
+
+async def test_schema_branch_validate_common_parent_invalid_relationship_name():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "foo"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.foo' does not exist"
+    )
+
+
+async def test_schema_branch_validate_common_parent_invalid_relationship_kind():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False).get_relationship(
+        "device"
+    ).kind = RelationshipKind.GENERIC
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.device is not of kind 'parent'"
+    )
 
 
 async def test_schema_branch_validate_kinds_inherit():
@@ -2604,6 +2695,66 @@ async def test_load_schema(
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+
+@pytest.mark.parametrize(
+    "attr_details",
+    [
+        {
+            "parameters": {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+        },
+        {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+        {
+            "parameters": {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+            "regex": "old",
+            "min_length": 1,
+            "max_length": 2,
+        },
+    ],
+)
+async def test_load_schema_with_parameters(
+    db: InfrahubDatabase, reset_registry, register_internal_models_schema, default_branch: Branch, attr_details
+):
+    color_attr_dict = {
+        "name": "color",
+        "kind": "Text",
+        "label": "Color",
+        "default_value": "#444444",
+    }
+    color_attr_dict.update(attr_details)
+
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Criticality",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "include_in_menu": True,
+                "attributes": [
+                    color_attr_dict,
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    loaded_schema = await registry.schema.load_schema(db=db, branch=default_branch.name)
+
+    crit_schema = loaded_schema.get("TestCriticality", duplicate=False)
+    color_attr_schema = crit_schema.get_attribute("color")
+    assert isinstance(color_attr_schema.parameters, TextAttributeParameters)
+    assert color_attr_schema.parameters.regex == "^#[0-9a-f]{0,6}$"
+    assert color_attr_schema.parameters.min_length == 7
+    assert color_attr_schema.parameters.max_length == 7
+    assert color_attr_schema.regex == "^#[0-9a-f]{0,6}$"
+    assert color_attr_schema.min_length == 7
+    assert color_attr_schema.max_length == 7
 
 
 async def test_load_schemas(

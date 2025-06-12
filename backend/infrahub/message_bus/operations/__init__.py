@@ -3,11 +3,8 @@ from prefect import Flow
 
 from infrahub.message_bus import RPCErrorResponse, messages
 from infrahub.message_bus.operations import (
-    check,
-    finalize,
     git,
     refresh,
-    requests,
     send,
 )
 from infrahub.message_bus.types import MessageTTL
@@ -15,16 +12,11 @@ from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
 
 COMMAND_MAP = {
-    "check.generator.run": check.generator.run,
-    "finalize.validator.execution": finalize.validator.execution,
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
-    "request.generator_definition.check": requests.generator_definition.check,
-    "request.proposed_change.pipeline": requests.proposed_change.pipeline,
-    "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "send.echo.request": send.echo.request,
 }
 

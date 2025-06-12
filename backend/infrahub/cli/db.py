@@ -326,7 +326,7 @@ async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check
                 root_node.graph_version = migration.minimum_version + 1
                 await root_node.save(db=db)
 
-        if not execution_result.success or validation_result and not validation_result.success:
+        if not execution_result.success or (validation_result and not validation_result.success):
             rprint(f"Migration: {migration.name} {FAILED_BADGE}")
             for error in execution_result.errors:
                 rprint(f"  {error}")
@@ -449,7 +449,7 @@ async def selected_export_cmd(
     ctx: typer.Context,
     kinds: list[str] = typer.Option([], help="Node kinds to export"),  # noqa: B008
     uuids: list[str] = typer.Option([], help="UUIDs of nodes to export"),  # noqa: B008
-    query_limit: int = typer.Option(1000, help="Maximum batch size of export query"),  # noqa: B008
+    query_limit: int = typer.Option(1000, help="Maximum batch size of export query"),
     export_dir: Path = typer.Option(Path("infrahub-exports"), help="Path of directory to save exports"),  # noqa: B008
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
@@ -489,11 +489,10 @@ WITH n
 ORDER BY %(id_func)s(n)
 SKIP toInteger($offset)
 LIMIT toInteger($limit)
-CALL {
+CALL (n) {
     // --------------
     // get all the nodes and edges linked to this node up to 2 steps away, excluding IS_PART_OF
     // --------------
-    WITH n
     MATCH (n)-[r1]-(v1)-[r2]-(v2)
     WHERE type(r1) <> "IS_PART_OF"
     WITH collect([v1, v2]) AS vertex_pairs, collect([r1, r2]) AS edge_pairs

@@ -1,4 +1,4 @@
-query {
+query topology_info {
   InfraDevice {
     edges {
       node {

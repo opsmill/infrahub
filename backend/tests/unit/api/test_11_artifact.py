@@ -73,7 +73,7 @@ class TestArtifact11(TestInfrahubApp):
         )
         await artifact.save(db=db)
 
-        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content='{"test": true}'.encode())
+        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=b'{"test": true}')
 
         return artifact
 

@@ -9,7 +9,7 @@ from prefect.logging import get_run_logger
 
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.path import SchemaPath  # noqa: TC001
-from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TC001
+from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import (
     SchemaConstraintValidatorRequest,

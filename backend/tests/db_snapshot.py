@@ -240,8 +240,7 @@ class DeduplicatedNodesQuery(Query):
 // group all the Nodes by their UUID and sorted labels to deduplicate them
 // ---------
 MATCH (n:Node)
-CALL {
-    WITH n
+CALL (n) {
     WITH labels(n) AS n_labels
     UNWIND n_labels AS n_label
     WITH n_label
@@ -253,8 +252,7 @@ WITH n.uuid AS n_uuid, sorted_labels, collect(%(id_func)s(n)) AS vertex_element_
 // for each Node group get the active and deleted times for IS_PART_OF edges on each branch
 // only include a deleted time if every Node active on the branch is also deleted
 // ---------
-CALL {
-    WITH n_uuid, vertex_element_ids
+CALL (n_uuid, vertex_element_ids) {
     MATCH (n:Node {uuid: n_uuid})-[e:IS_PART_OF]->(:Root)
     WHERE %(id_func)s(n) IN vertex_element_ids
     WITH DISTINCT n_uuid, vertex_element_ids, e.branch AS branch
@@ -278,8 +276,7 @@ CALL {
             ELSE deleted_at
         END
     ) AS latest_deleted
-    CALL {
-        WITH n_uuid, branch, vertex_element_ids
+    CALL (n_uuid, branch, vertex_element_ids) {
         MATCH (n:Node {uuid: n_uuid})-[is_part_of_e:IS_PART_OF {branch: branch}]->(:Root)
         WHERE %(id_func)s(n) IN vertex_element_ids
         WITH n, is_part_of_e
@@ -301,8 +298,7 @@ WITH n_uuid, sorted_labels, vertex_element_ids,
 //   get the active and deleted times for each property on each branch
 //   only include a deleted time if every active property of the same type on the branch is also deleted
 // ---------
-CALL {
-    WITH n_uuid, vertex_element_ids
+CALL (n_uuid, vertex_element_ids) {
     MATCH (n:Node {uuid: n_uuid})
     WHERE %(id_func)s(n) IN vertex_element_ids
     MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[property_e]->(value_peer)
@@ -311,8 +307,7 @@ CALL {
     // ---------
     // is this property for this value of this attribute name deleted on this branch
     // ---------
-    CALL {
-        WITH n_uuid, vertex_element_ids, branch, attr_name, property_type, property_value
+    CALL (n_uuid, vertex_element_ids, branch, attr_name, property_type, property_value) {
         MATCH (n:Node {uuid: n_uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute {name: attr_name})
         WHERE %(id_func)s(n) IN vertex_element_ids
         WITH DISTINCT branch, property_type, property_value, attr
@@ -329,8 +324,7 @@ CALL {
     // ---------
     // earliest active time for this value of this property for this attribute name on this branch
     // ---------
-    CALL {
-        WITH n_uuid, vertex_element_ids, branch, attr_name, property_type, property_value
+    CALL (n_uuid, vertex_element_ids, branch, attr_name, property_type, property_value) {
         MATCH (n:Node {uuid: n_uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute {name: attr_name})
         WHERE %(id_func)s(n) IN vertex_element_ids
         WITH DISTINCT branch, property_type, property_value, attr
@@ -344,8 +338,7 @@ CALL {
     // ---------
     // latest deleted time for this value of this property for this attribute name on this branch
     // ---------
-    CALL {
-        WITH n_uuid, vertex_element_ids, branch, attr_name, property_type, property_value
+    CALL (n_uuid, vertex_element_ids, branch, attr_name, property_type, property_value) {
         MATCH (n:Node {uuid: n_uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute {name: attr_name})
         WHERE %(id_func)s(n) IN vertex_element_ids
         WITH DISTINCT branch, property_type, property_value, attr
@@ -376,8 +369,7 @@ CALL {
 //   only include a deleted time if every active property of the same type on the branch is also deleted
 //   account for direction in uniqueness determination
 // ---------
-CALL {
-    WITH n_uuid, vertex_element_ids
+CALL (n_uuid, vertex_element_ids) {
     // ------------
     // Get the default and global branch names
     // ------------
@@ -398,8 +390,7 @@ CALL {
     AND e1.branch = e2.branch
     AND e1.status = e2.status
     // make sure both n and peer are active on this branch
-    CALL {
-        WITH default_branch, global_branch, n, peer, e1
+    CALL (default_branch, global_branch, n, peer, e1) {
         WITH default_branch, global_branch, n, peer, e1.branch AS branch, e1.status AS status
         MATCH (b:Branch {name: branch})
         OPTIONAL MATCH (n)-[n_is_part_of:IS_PART_OF]-(:Root)
@@ -461,8 +452,7 @@ CALL {
             ELSE deleted_at
         END
     ) AS latest_deleted
-    CALL {
-        WITH default_branch, global_branch, n_uuid, vertex_element_ids, branch, rel_name, peer_uuid, direction, property_type, property_value
+    CALL (default_branch, global_branch, n_uuid, vertex_element_ids, branch, rel_name, peer_uuid, direction, property_type, property_value) {
         // ---------
         // determine if the combination is active by looking for any active path
         // ---------

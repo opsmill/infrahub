@@ -18,6 +18,8 @@ Below is the list of all available options to define a Relationship in the schem
 | [**allow_override**](#allow_override) | Attribute | Type of allowed override for the relationship. | False |
 | [**branch**](#branch) | Attribute | Type of branch support for the relatioinship, if not defined it will be determine based both peers. | False |
 | [**cardinality**](#cardinality) | Attribute | Defines how many objects are expected on the other side of the relationship. | False |
+| [**common_parent**](#common_parent) | Attribute | Name of a parent relationship on the peer schema that must share the same related object with the object's parent. | False |
+| [**common_relatives**](#common_relatives) | Attribute | List of relationship names on the peer schema for which all objects must share the same set of peers. | False |
 | [**deprecation**](#deprecation) | Attribute | Mark relationship as deprecated and provide a user-friendly message to display | False |
 | [**description**](#description) | Attribute | Short description of the relationship. | False |
 | [**direction**](#direction) | Attribute | Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side. | False |
@@ -72,6 +74,28 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** | many |
 | **Constraints** |  |
 | **Accepted Values** | `one` `many`  |
+
+### common_parent
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | common_parent |
+| **Kind** | `Text` |
+| **Description** | Name of a parent relationship on the peer schema that must share the same related object with the object's parent. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### common_relatives
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | common_relatives |
+| **Kind** | `List` |
+| **Description** | List of relationship names on the peer schema for which all objects must share the same set of peers. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
 
 ### deprecation
 

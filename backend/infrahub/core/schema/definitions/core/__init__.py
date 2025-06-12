@@ -1,5 +1,17 @@
 from typing import Any
 
+from infrahub.actions.schema import (
+    core_action,
+    core_generator_action,
+    core_group_action,
+    core_group_trigger_rule,
+    core_node_trigger_attribute_match,
+    core_node_trigger_match,
+    core_node_trigger_relationship_match,
+    core_node_trigger_rule,
+    core_trigger_rule,
+)
+
 from ...generic_schema import GenericSchema
 from ...node_schema import NodeSchema
 from .account import (
@@ -16,7 +28,13 @@ from .check import core_check_definition
 from .core import core_node, core_task_target
 from .generator import core_generator_definition, core_generator_instance
 from .graphql_query import core_graphql_query
-from .group import core_generator_group, core_graphql_query_group, core_group, core_standard_group
+from .group import (
+    core_generator_group,
+    core_graphql_query_group,
+    core_group,
+    core_repository_group,
+    core_standard_group,
+)
 from .ipam import builtin_ip_address, builtin_ip_prefix, builtin_ipam, core_ipam_namespace
 from .lineage import lineage_owner, lineage_source
 from .menu import generic_menu_item, menu_item
@@ -69,6 +87,9 @@ from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
 
 core_models_mixed: dict[str, list] = {
     "generics": [
+        core_action,
+        core_trigger_rule,
+        core_node_trigger_match,
         core_node,
         lineage_owner,
         core_profile_schema_definition,
@@ -97,12 +118,19 @@ core_models_mixed: dict[str, list] = {
     ],
     "nodes": [
         menu_item,
+        core_group_action,
         core_standard_group,
         core_generator_group,
         core_graphql_query_group,
+        core_repository_group,
         builtin_tag,
         core_account,
         core_account_token,
+        core_generator_action,
+        core_group_trigger_rule,
+        core_node_trigger_rule,
+        core_node_trigger_attribute_match,
+        core_node_trigger_relationship_match,
         core_password_credential,
         core_refresh_token,
         core_proposed_change,

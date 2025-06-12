@@ -112,6 +112,11 @@ class AccountType(InfrahubStringEnum):
     Git = "Git"
 
 
+class NumberPoolType(InfrahubStringEnum):
+    USER = "User"
+    SCHEMA = "Schema"
+
+
 class AccountStatus(InfrahubStringEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
@@ -144,6 +149,11 @@ class BranchConflictKeep(InfrahubStringEnum):
 class AllowOverrideType(InfrahubStringEnum):
     NONE = "none"
     ANY = "any"
+
+
+class RepositoryObjects(InfrahubStringEnum):
+    OBJECT = "object"
+    MENU = "menu"
 
 
 class ContentType(InfrahubStringEnum):

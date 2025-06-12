@@ -5,10 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from prefect.events.actions import RunDeployment
-from prefect.events.schemas.automations import (
-    Automation,  # noqa: TC002
-    Posture,
-)
+from prefect.events.schemas.automations import Automation, Posture
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
@@ -28,8 +25,13 @@ class TriggerSetupReport(BaseModel):
     deleted: list[Automation] = Field(default_factory=list)
     unchanged: list[TriggerDefinition] = Field(default_factory=list)
 
+    @property
+    def in_use_count(self) -> int:
+        return len(self.created + self.updated + self.unchanged)
+
 
 class TriggerType(str, Enum):
+    ACTION_TRIGGER_RULE = "action_trigger_rule"
     BUILTIN = "builtin"
     WEBHOOK = "webhook"
     COMPUTED_ATTR_JINJA2 = "computed_attr_jinja2"
@@ -38,10 +40,15 @@ class TriggerType(str, Enum):
     # OBJECT = "object"
 
 
+def _match_related_dict() -> dict:
+    # Make Mypy happy as match related is a dict[str, Any] | list[dict[str, Any]]
+    return {}
+
+
 class EventTrigger(BaseModel):
     events: set = Field(default_factory=set)
     match: dict[str, Any] = Field(default_factory=dict)
-    match_related: dict[str, Any] = Field(default_factory=dict)
+    match_related: dict[str, Any] | list[dict[str, Any]] = Field(default_factory=_match_related_dict)
 
     def get_prefect(self) -> PrefectEventTrigger:
         return PrefectEventTrigger(
@@ -49,9 +56,19 @@ class EventTrigger(BaseModel):
             expect=self.events,
             within=timedelta(0),
             match=ResourceSpecification(self.match),
-            match_related=ResourceSpecification(self.match_related),
+            match_related=self.related_resource_specification,
             threshold=1,
         )
+
+    @property
+    def related_resource_specification(self) -> ResourceSpecification | list[ResourceSpecification]:
+        if isinstance(self.match_related, dict):
+            return ResourceSpecification(self.match_related)
+
+        if len(self.match_related) == 1:
+            return ResourceSpecification(self.match_related[0])
+
+        return [ResourceSpecification(related_match) for related_match in self.match_related]
 
 
 class ExecuteWorkflow(BaseModel):

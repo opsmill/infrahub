@@ -1,4 +1,4 @@
-query($device: String!) {
+query device_startup_info ($device: String!) {
   InfraDevice(name__value: $device) {
     edges {
       node {
@@ -26,8 +26,11 @@ query($device: String!) {
               enabled {
                 value
               }
+              mtu {
+                value
+              }
               role {
-                  value
+                value
               }
               ... on InfraInterfaceL3 {
                 ip_addresses {
@@ -43,7 +46,6 @@ query($device: String!) {
             }
           }
         }
-
       }
     }
   }

@@ -1,39 +1,77 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import {
+  ObjectTableSelectionToolbarProps,
+  ObjectTableToolbar,
+} from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
+import { NodeObject } from "@/entities/nodes/types";
+import {
+  ColumnDef,
+  ColumnOrderState,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import React from "react";
 
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+  columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
   data: Array<T>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
+  toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
 }
 
-export function DataTable<T extends object>({
+export function DataTable<T extends NodeObject>({
+  columnOrder,
   columns,
   data,
   isLoading,
   renderEmpty,
+  toolbarActions,
   ...props
 }: DataTableProps<T>) {
+  const { isAuthenticated } = useAuth();
+
   const table = useReactTable({
     columns,
     data,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
+    getRowId: (row) => row.id,
+    state: {
+      columnOrder,
+    },
   });
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      table.toggleAllRowsSelected(false);
+    }
+  }, [isAuthenticated]);
 
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
   const style = React.useMemo<React.CSSProperties>(
     () => ({
-      gridTemplateColumns: `repeat(${allHeaders.length - 1}, minmax(auto, 1fr)) 2.5rem`,
+      gridTemplateColumns: `repeat(${allHeaders.length - 2}, auto) 1fr 2.5rem`,
     }),
     [allHeaders.length]
   );
 
+  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
+
   return (
     <div className="grid content-start" style={style} {...props}>
+      {selectedRows.length > 0 && (
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={table.resetRowSelection}
+          renderMore={toolbarActions}
+        />
+      )}
+
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),

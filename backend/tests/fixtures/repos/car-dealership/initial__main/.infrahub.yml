@@ -98,3 +98,11 @@ queries:
     file_path: "generators/cartags.gql"
   - name: person_with_cars
     file_path: "templates/person_with_cars.gql"
+
+objects:
+  - "objects/persons.yml"
+  - "objects/manufacturers.yml"
+
+menus:
+  - "menus/person_base.yml"
+  - "menus/manufacturer_base.yml"

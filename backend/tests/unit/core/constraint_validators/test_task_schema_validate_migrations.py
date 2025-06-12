@@ -26,7 +26,7 @@ async def test_schema_validate_migrations(
     schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
     person_schema = schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
     schema.set(name="TestPerson", schema=person_schema)
 
     constraints = [

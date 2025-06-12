@@ -2,16 +2,16 @@ import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
 import { GraphiQL } from "graphiql";
 import { useAtomValue } from "jotai";
+import { StringParam, useQueryParam } from "use-query-params";
 
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
-import { QSP } from "@/config/qsp";
-import "@graphiql/plugin-explorer/dist/style.css";
-import "graphiql/graphiql.min.css";
-import { StringParam, useQueryParam } from "use-query-params";
+import "graphiql/style.css";
+import "@graphiql/plugin-explorer/style.css";
 
 const fetcher =
   (url: string): Fetcher =>

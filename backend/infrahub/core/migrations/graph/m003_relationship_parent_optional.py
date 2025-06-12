@@ -26,8 +26,7 @@ class Migration003Query01(Query):
         query = """
         MATCH path = (av2:AttributeValue)-[:HAS_VALUE]-(:Attribute {name: "optional"})-[:HAS_ATTRIBUTE]-(n:SchemaRelationship)-[:HAS_ATTRIBUTE]-(:Attribute {name: "kind"})-[:HAS_VALUE]-(av1:AttributeValue)
         WHERE av1.value = "Parent" AND av2.value = true AND all(r IN relationships(path) WHERE ( %(filters)s ))
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path22 = (av22:AttributeValue)-[r22:HAS_VALUE]-(a2:Attribute {name: "optional"})-[:HAS_ATTRIBUTE]-(n:SchemaRelationship)-[:HAS_ATTRIBUTE]-(:Attribute {name:"kind"})-[:HAS_VALUE]-(av11:AttributeValue)
             WHERE av11.value = "Parent" AND av22.value = true AND all(r IN relationships(path22) WHERE ( %(filters)s ))
             RETURN av22 as av2_sub, r22, a2, path22 as path2

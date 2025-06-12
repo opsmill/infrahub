@@ -497,6 +497,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                                     "generic_attr_text": {
                                         "added": {},
                                         "changed": {
+                                            "parameters": {"added": {}, "changed": {"regex": None}, "removed": {}},
                                             "regex": None,
                                             "inherited": None,
                                             "order_weight": None,
@@ -644,7 +645,13 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                                 "changed": {
                                     "generic_attr_text": {
                                         "added": {},
-                                        "changed": {"id": None, "inherited": None, "regex": None, "order_weight": None},
+                                        "changed": {
+                                            "id": None,
+                                            "inherited": None,
+                                            "regex": None,
+                                            "order_weight": None,
+                                            "parameters": {"added": {}, "changed": {"regex": None}, "removed": {}},
+                                        },
                                         "removed": {},
                                     },
                                 },
@@ -1226,8 +1233,7 @@ WITH schema_node, ns_value.value + name_value.value AS node_kind
 MATCH (schema_node)-[:IS_RELATED]-(:Relationship {name: "schema__node__relationships"})-[:IS_RELATED]-(:SchemaRelationship)
     -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(rnv:AttributeValue)
 WITH DISTINCT schema_node, node_kind, rnv
-CALL {
-    WITH schema_node, rnv
+CALL (schema_node, rnv) {
     MATCH path = (schema_node)-[r1:IS_RELATED]-(:Relationship {name: "schema__node__relationships"})-[r2:IS_RELATED]-(:SchemaRelationship)
         -[r3:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r4:HAS_VALUE]->(rnv)
     WHERE all(r IN relationships(path) WHERE %(branch_filter)s)
@@ -1242,8 +1248,7 @@ WITH schema_node, node_kind, collect(rnv.value) AS relationship_names
 MATCH (schema_node)-[:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[:IS_RELATED]-(:SchemaAttribute)
     -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(anv:AttributeValue)
 WITH DISTINCT schema_node, node_kind, relationship_names, anv
-CALL {
-    WITH schema_node, anv
+CALL (schema_node, anv) {
     MATCH path = (schema_node)-[r1:IS_RELATED]-(:Relationship {name: "schema__node__attributes"})-[r2:IS_RELATED]-(:SchemaAttribute)
         -[r3:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r4:HAS_VALUE]->(anv)
     WHERE all(r IN relationships(path) WHERE %(branch_filter)s)

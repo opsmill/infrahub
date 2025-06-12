@@ -42,8 +42,7 @@ WITH DISTINCT n, delete_branch, delete_time, added_e, peer
 // ------------
 // get the branched_from for the branch on which the node was deleted
 // ------------
-CALL {
-    WITH added_e
+CALL (added_e) {
     MATCH (b:Branch {name: added_e.branch})
     RETURN b.branched_from AS added_e_branched_from
 }

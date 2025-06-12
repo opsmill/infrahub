@@ -129,15 +129,13 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
         default: {
           const { processErrorMessage } = operation.getContext();
 
-          if (!graphQLError.message) return;
-
-          if (processErrorMessage) {
-            return processErrorMessage(graphQLError.message);
+          if (graphQLError.message && processErrorMessage) {
+            processErrorMessage(graphQLError.message);
+          } else if (graphQLError.message) {
+            toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
+              toastId: "alert-error",
+            });
           }
-
-          toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
-            toastId: "alert-error",
-          });
         }
       }
     }

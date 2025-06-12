@@ -61,7 +61,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
     def render_match(self) -> str:
         query = """
         // Find all the active nodes
-        CALL {
+        CALL () {
             MATCH (node:%(node_kind)s)
             WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
                 AND NOT exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $new_attr.name }))

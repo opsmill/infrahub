@@ -62,6 +62,12 @@ class BuiltinIPPrefix(CoreNode):
     children: RelationshipManager
 
 
+class CoreAction(CoreNode):
+    name: String
+    description: StringOptional
+    triggers: RelationshipManager
+
+
 class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
@@ -148,6 +154,10 @@ class CoreMenu(CoreNode):
     children: RelationshipManager
 
 
+class CoreNodeTriggerMatch(CoreNode):
+    trigger: RelationshipManager
+
+
 class CoreObjectComponentTemplate(CoreNode):
     template_name: String
 
@@ -187,6 +197,14 @@ class CoreTransformation(CoreNode):
     query: RelationshipManager
     repository: RelationshipManager
     tags: RelationshipManager
+
+
+class CoreTriggerRule(CoreNode):
+    name: String
+    description: StringOptional
+    active: Boolean
+    branch_scope: Dropdown
+    action: RelationshipManager
 
 
 class CoreValidator(CoreNode):
@@ -326,6 +344,10 @@ class CoreFileThread(CoreThread):
     repository: RelationshipManager
 
 
+class CoreGeneratorAction(CoreAction):
+    generator: RelationshipManager
+
+
 class CoreGeneratorCheck(CoreCheck):
     instance: String
 
@@ -380,6 +402,16 @@ class CoreGraphQLQueryGroup(CoreGroup):
     query: RelationshipManager
 
 
+class CoreGroupAction(CoreAction):
+    member_action: Dropdown
+    group: RelationshipManager
+
+
+class CoreGroupTriggerRule(CoreTriggerRule):
+    member_update: Dropdown
+    group: RelationshipManager
+
+
 class CoreIPAddressPool(CoreResourcePool, LineageSource):
     default_address_type: String
     default_prefix_length: IntegerOptional
@@ -399,11 +431,31 @@ class CoreMenuItem(CoreMenu):
     pass
 
 
+class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
+    attribute_name: String
+    value: StringOptional
+    value_previous: StringOptional
+    value_match: Dropdown
+
+
+class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
+    relationship_name: String
+    modification_type: Dropdown
+    peer: StringOptional
+
+
+class CoreNodeTriggerRule(CoreTriggerRule):
+    node_kind: String
+    mutation_action: Enum
+    matches: RelationshipManager
+
+
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
     start_range: Integer
     end_range: Integer
+    pool_type: Enum
 
 
 class CoreObjectPermission(CoreBasePermission):
@@ -444,6 +496,11 @@ class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository,
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     default_branch: String
     commit: StringOptional
+
+
+class CoreRepositoryGroup(CoreGroup):
+    content: Dropdown
+    repository: RelationshipManager
 
 
 class CoreRepositoryValidator(CoreValidator):

@@ -1,7 +1,11 @@
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
+import { Link } from "@/shared/components/ui/link";
+import { formatNumberDisplay } from "@/shared/utils/number";
 import { ComputedAttributeDisplay } from "./computed-attribute-display";
-import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
+import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styled";
 
 export const AttributeDisplay = ({
   attribute,
@@ -29,6 +33,7 @@ export const AttributeDisplay = ({
         <PropertyRow title="Label" value={attribute.label} />
         <PropertyRow title="Description" value={attribute.description} />
         <PropertyRow title="Inherited" value={attribute.inherited} />
+        <PropertyRow title="Default value" value={attribute.default_value as any} />
       </div>
 
       <div>
@@ -39,15 +44,11 @@ export const AttributeDisplay = ({
       </div>
 
       <div>
-        <PropertyRow title="Default value" value={attribute.default_value as any} />
-        <PropertyRow title="Max length" value={attribute.max_length} />
-        <PropertyRow title="Min length" value={attribute.min_length} />
-        <PropertyRow title="Regex" value={attribute.regex} />
-      </div>
-      <div>
         <PropertyRow title="Branch" value={attribute.branch} />
         <PropertyRow title="Order weight" value={attribute.order_weight} />
       </div>
+
+      <AttributeParameters attribute={attribute} />
     </AccordionStyled>
   );
 };
@@ -85,4 +86,51 @@ const ChoicesRow = ({
       })}
     </div>
   );
+};
+
+const AttributeParameters = ({
+  attribute,
+}: { attribute: components["schemas"]["AttributeSchema-Output"] }) => {
+  if (attribute.kind === "Text") {
+    return (
+      <div>
+        <PropertyTitle title="Parameters" />
+
+        <div className="pl-4">
+          <PropertyRow title="Regex" value={attribute.parameters?.regex} />
+          <PropertyRow title="Min length" value={attribute.parameters?.min_length} />
+          <PropertyRow title="Max length" value={attribute.parameters?.max_length} />
+        </div>
+      </div>
+    );
+  }
+
+  if (attribute.kind === "NumberPool") {
+    return (
+      <div>
+        <PropertyTitle title="Parameters" />
+
+        <div className="pl-4">
+          <PropertyRow
+            title="Number pool"
+            value={
+              <Link to={constructPath(`/resource-manager/${attribute.parameters?.number_pool_id}`)}>
+                <NodeLabel id={attribute.parameters?.number_pool_id} />
+              </Link>
+            }
+          />
+          <PropertyRow
+            title="Start range"
+            value={formatNumberDisplay(attribute.parameters?.start_range)}
+          />
+          <PropertyRow
+            title="End range"
+            value={formatNumberDisplay(attribute.parameters?.end_range)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };

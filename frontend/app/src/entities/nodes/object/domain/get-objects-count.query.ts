@@ -5,16 +5,16 @@ import { useAtomValue } from "jotai";
 import { GetObjectsCountParams, getObjectsCount } from "./get-objects-count";
 
 export function getObjectsCountQueryOptions({
-  schemaKind,
+  objectKind,
   filters,
   branchName,
   atDate,
 }: GetObjectsCountParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", schemaKind, "count", JSON.stringify(filters)],
+    queryKey: [branchName, atDate, "objects", objectKind, "count", JSON.stringify(filters)],
     queryFn: async () => {
       return getObjectsCount({
-        schemaKind,
+        objectKind,
         branchName,
         atDate,
         filters,

@@ -23,12 +23,11 @@ MATCH (node_with_dup_edges:Node)-[edge]-(peer)
 WITH node_with_dup_edges, type(edge) AS edge_type, edge.status AS edge_status, edge.branch AS edge_branch, peer, count(*) AS num_dup_edges
 WHERE num_dup_edges > 1
 WITH DISTINCT node_with_dup_edges, edge_type, edge_branch, peer
-CALL {
+CALL (node_with_dup_edges, edge_type, edge_branch, peer) {
     // ------------
     // Get the earliest active and deleted edges for this branch
     // ------------
-    WITH node_with_dup_edges, edge_type, edge_branch, peer
-    OPTIONAL MATCH (node_with_dup_edges)-[active_edge {branch: edge_branch, status: "active"}]-(peer)
+    OPTIONAL MATCH (node_with_dup_edges)-[active_edge {branch: edge_branch, status: "active"}]->(peer)
     WHERE type(active_edge) = edge_type
     WITH node_with_dup_edges, edge_type, edge_branch, peer, active_edge
     ORDER BY active_edge.from ASC
@@ -40,9 +39,8 @@ CALL {
     // ------------
     // Plan one active edge update with correct from and to times
     // ------------
-    CALL {
-        WITH node_with_dup_edges, edge_type, edge_branch, peer, active_from, deleted_from
-        OPTIONAL MATCH (node_with_dup_edges)-[active_e {branch: edge_branch, status: "active"}]-(peer)
+    CALL (node_with_dup_edges, edge_type, edge_branch, peer, active_from, deleted_from) {
+        OPTIONAL MATCH (node_with_dup_edges)-[active_e {branch: edge_branch, status: "active"}]->(peer)
         WHERE type(active_e) = edge_type
         WITH node_with_dup_edges, edge_type, edge_branch, peer, active_from, deleted_from, active_e
         ORDER BY %(id_func_name)s(active_e)
@@ -60,9 +58,8 @@ CALL {
     // ------------
     // Plan deletes for all the other active edges of this type on this branch
     // ------------
-    CALL {
-        WITH node_with_dup_edges, edge_type, edge_branch, peer
-        OPTIONAL MATCH (node_with_dup_edges)-[active_e {branch: edge_branch, status: "active"}]-(peer)
+    CALL (node_with_dup_edges, edge_type, edge_branch, peer) {
+        OPTIONAL MATCH (node_with_dup_edges)-[active_e {branch: edge_branch, status: "active"}]->(peer)
         WHERE type(active_e) = edge_type
         WITH node_with_dup_edges, peer, active_e
         ORDER BY %(id_func_name)s(active_e)
@@ -82,9 +79,8 @@ CALL {
     // ------------
     // Plan one deleted edge update with correct from time
     // ------------
-    CALL {
-        WITH node_with_dup_edges, edge_type, edge_branch, peer, deleted_from
-        OPTIONAL MATCH (node_with_dup_edges)-[deleted_e {branch: edge_branch, status: "deleted"}]-(peer)
+    CALL (node_with_dup_edges, edge_type, edge_branch, peer, deleted_from) {
+        OPTIONAL MATCH (node_with_dup_edges)-[deleted_e {branch: edge_branch, status: "deleted"}]->(peer)
         WHERE type(deleted_e) = edge_type
         WITH node_with_dup_edges, edge_type, edge_branch, peer, deleted_from, deleted_e
         ORDER BY %(id_func_name)s(deleted_e)
@@ -102,9 +98,8 @@ CALL {
     // ------------
     // Plan deletes for all the other deleted edges of this type on this branch
     // ------------
-    CALL {
-        WITH node_with_dup_edges, edge_type, edge_branch, peer
-        OPTIONAL MATCH (node_with_dup_edges)-[deleted_e {branch: edge_branch, status: "deleted"}]-(peer)
+    CALL (node_with_dup_edges, edge_type, edge_branch, peer) {
+        OPTIONAL MATCH (node_with_dup_edges)-[deleted_e {branch: edge_branch, status: "deleted"}]->(peer)
         WHERE type(deleted_e) = edge_type
         WITH node_with_dup_edges, peer, deleted_e
         ORDER BY %(id_func_name)s(deleted_e)

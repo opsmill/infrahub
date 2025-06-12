@@ -106,7 +106,7 @@ jobs:
         with:
           submodules: true
       - name: "Setup environment"
-        run: "pip install ruff==0.11.0"
+        run: "pip install ruff==0.11.9"
       - name: "Linting: ruff check"
         run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
@@ -115,7 +115,8 @@ jobs:
   markdown-lint:
     if: |
       needs.files-changed.outputs.documentation == 'true' ||
-      needs.files-changed.outputs.release == 'true'
+      needs.files-changed.outputs.release == 'true' ||
+      needs.files-changed.outputs.github_workflows
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
@@ -125,7 +126,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v19
+        uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           config: .markdownlint.yaml
           globs: |
@@ -198,6 +199,17 @@ jobs:
             echo "The version of infrahub-testcontainers must match the version of infrahub"
             exit 1
           fi
+
+  infrahub-testcontainers-poetry-check:
+    if: |
+      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    uses: "./.github/workflows/poetry-check.yml"
+    with:
+      directory: "./python_testcontainers"
 
   # TODO NEED TO REVISIT THIS ONE
   # python-sdk-poetry-check:

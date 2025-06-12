@@ -58,15 +58,14 @@ class CleanUpDuplicatedUuidVertices(Query):
             r_arrow = ">"
 
         query = """
-    CALL {
+    CALL (vertex_to_keep, edge_type, branch, peer, earliest_active_time, latest_deleted_time, all_edges_deleted, edge_to_copy) {
         // ------------
         // get or create the active %(edge_type)s edge
         // ------------
-        WITH vertex_to_keep, edge_type, branch, peer, earliest_active_time, latest_deleted_time, all_edges_deleted, edge_to_copy
-        WITH vertex_to_keep, edge_type, branch, peer, earliest_active_time, latest_deleted_time, all_edges_deleted, edge_to_copy
+        WITH edge_type
         WHERE edge_type = "%(edge_type)s"
         MERGE (vertex_to_keep)%(l_arrow)s-[active_edge:%(edge_type)s {branch: branch, status: "active"}]-%(r_arrow)s(peer)
-        WITH active_edge, edge_to_copy, earliest_active_time, latest_deleted_time, all_edges_deleted
+        WITH active_edge
         LIMIT 1
         SET active_edge.to_delete = NULL
         SET active_edge.from = earliest_active_time
@@ -96,15 +95,14 @@ class CleanUpDuplicatedUuidVertices(Query):
             l_arrow = ""
             r_arrow = ">"
         subquery = """
-    CALL {
+    CALL (vertex_to_keep, edge_type, branch, peer, latest_deleted_time, edge_to_copy) {
         // ------------
         // create the deleted %(edge_type)s edge
         // ------------
-        WITH vertex_to_keep, edge_type, branch, peer, latest_deleted_time, edge_to_copy
-        WITH vertex_to_keep, edge_type, branch, peer, latest_deleted_time, edge_to_copy
+        WITH edge_type
         WHERE edge_type = "%(edge_type)s"
         MERGE (vertex_to_keep)%(l_arrow)s-[deleted_edge:%(edge_type)s {branch: branch, status: "deleted"}]-%(r_arrow)s(peer)
-        WITH deleted_edge, latest_deleted_time, edge_to_copy
+        WITH deleted_edge
         LIMIT 1
         SET deleted_edge.to_delete = NULL
         SET deleted_edge.from = latest_deleted_time
@@ -144,10 +142,8 @@ class CleanUpDuplicatedUuidVertices(Query):
 //------------
 // Get every %(direction)s branch, edge_type, peer element_id combinations touching vertices with this uuid/labels combination
 //------------
-CALL {
-    WITH n_uuid, vertex_element_ids, element_id_to_keep
-    CALL {
-        WITH n_uuid, vertex_element_ids
+CALL (n_uuid, vertex_element_ids, element_id_to_keep) {
+    CALL (n_uuid, vertex_element_ids) {
         MATCH (n:%(vertex_label)s {uuid: n_uuid})
         WHERE %(id_func_name)s(n) IN vertex_element_ids
         MATCH (n)%(l_arrow)s-[e]-%(r_arrow)s(peer)
@@ -157,8 +153,7 @@ CALL {
     //------------
     // Are all of the edges with these with this branch/edge_type/peer_element_id combination deleted?
     //------------
-    CALL {
-        WITH n_uuid, vertex_element_ids, branch, edge_type, peer_element_id
+    CALL (n_uuid, vertex_element_ids, branch, edge_type, peer_element_id) {
         // nodes with this edge_type/branch/peer combo
         MATCH (node_with_edge:%(vertex_label)s {uuid: n_uuid})%(l_arrow)s-[e {branch: branch}]-%(r_arrow)s(peer)
         WHERE %(id_func_name)s(node_with_edge) IN vertex_element_ids
@@ -181,8 +176,7 @@ CALL {
     //------------
     // What is the earliest active time for this branch/edge_type/peer_element_id/UUID/labels combination?
     //------------
-    CALL {
-        WITH n_uuid, vertex_element_ids, branch, edge_type, peer_element_id
+    CALL (n_uuid, vertex_element_ids, branch, edge_type, peer_element_id) {
         MATCH (n {uuid: n_uuid})%(l_arrow)s-[e {branch: branch, status: "active"}]-%(r_arrow)s(peer)
         WHERE %(id_func_name)s(n) IN vertex_element_ids
         AND type(e) = edge_type
@@ -194,8 +188,7 @@ CALL {
     //------------
     // What is the latest deleted time for this branch/edge_type/peer_element_id/UUID/labels combination?
     //------------
-    CALL {
-        WITH n_uuid, vertex_element_ids, branch, edge_type, peer_element_id, all_edges_deleted
+    CALL (n_uuid, vertex_element_ids, branch, edge_type, peer_element_id, all_edges_deleted) {
         OPTIONAL MATCH (n {uuid: n_uuid})%(l_arrow)s-[e {branch: branch}]-%(r_arrow)s(peer)
         WHERE all_edges_deleted = TRUE
         AND %(id_func_name)s(n) IN vertex_element_ids
@@ -211,9 +204,10 @@ CALL {
     // ------------
     // Add the %(direction)s edges to the node we are keeping, if necessary
     // ------------
-    CALL {
-        WITH n_uuid, vertex_element_ids, element_id_to_keep, branch, edge_type, peer_element_id, all_edges_deleted,
-            earliest_active_time, latest_deleted_time
+    CALL (
+        n_uuid, vertex_element_ids, element_id_to_keep, branch, edge_type, peer_element_id, all_edges_deleted,
+        earliest_active_time, latest_deleted_time
+    ) {
         // get the node we are keeping
         MATCH (vertex_to_keep {uuid: n_uuid})
         WHERE %(id_func_name)s(vertex_to_keep) = element_id_to_keep
@@ -221,25 +215,22 @@ CALL {
         MATCH (n {uuid: n_uuid})%(l_arrow)s-[]-%(r_arrow)s(peer)
         WHERE %(id_func_name)s(n) IN vertex_element_ids
         AND %(id_func_name)s(peer) = peer_element_id
-        WITH n_uuid, vertex_element_ids, element_id_to_keep, vertex_to_keep, branch, edge_type, peer, all_edges_deleted,
-            earliest_active_time, latest_deleted_time
+        WITH peer, vertex_to_keep
         LIMIT 1
         // ------------
         // mark all other edges for this branch/edge_type/peer combination as to be deleted
         // we will unmark any to keep later
         // ------------
-        CALL {
-            WITH n_uuid, branch, peer, vertex_element_ids, edge_type
+        CALL (n_uuid, branch, peer, vertex_element_ids, edge_type) {
             OPTIONAL MATCH (n {uuid: n_uuid})%(l_arrow)s-[edge_to_delete {branch: branch}]-%(r_arrow)s(peer)
             WHERE %(id_func_name)s(n) IN vertex_element_ids
             AND type(edge_to_delete) = edge_type
             SET edge_to_delete.to_delete = TRUE
         }
-        CALL {
+        CALL (n_uuid, branch, vertex_element_ids, edge_type, peer) {
             // ------------
             // get the edge to copy
             // ------------
-            WITH n_uuid, branch, vertex_element_ids, edge_type, peer
             MATCH (n {uuid: n_uuid})%(l_arrow)s-[e {branch: branch, status: "active"}]-%(r_arrow)s(peer)
             WHERE %(id_func_name)s(n) IN vertex_element_ids
             AND type(e) = edge_type
@@ -251,8 +242,7 @@ CALL {
         // ------------
         // conditionally create the deleted edges
         // ------------
-        WITH n_uuid, vertex_element_ids, vertex_to_keep, branch, edge_type, peer, all_edges_deleted,
-            latest_deleted_time, edge_to_copy
+        WITH vertex_to_keep, peer, edge_to_copy
         WHERE all_edges_deleted = TRUE
         %(deleted_edge_subqueries)s
     }
@@ -283,8 +273,7 @@ ORDER BY node_uuid ASC
 MATCH (n:%(vertex_label)s {uuid: node_uuid})
 WITH node_uuid, n, %(id_func_name)s(n) AS element_id
 ORDER BY node_uuid ASC, element_id ASC
-CALL {
-    WITH n
+CALL (n) {
     WITH labels(n) AS n_labels
     UNWIND n_labels AS n_label
     WITH n_label
@@ -309,8 +298,7 @@ LIMIT $limit
 //------------
 // Which node are we going to keep for this UUID/labels combination?
 //------------
-CALL {
-    WITH vertex_element_ids
+CALL (vertex_element_ids) {
     UNWIND vertex_element_ids AS element_id
     WITH element_id
     ORDER BY element_id ASC
@@ -377,11 +365,10 @@ WITH
 WITH node_with_dup_edges, edge_type, edge_status, edge_branch, peer, is_outbound, count(*) AS num_dup_edges
 WHERE num_dup_edges > 1
 WITH DISTINCT node_with_dup_edges, edge_type, edge_branch, peer, is_outbound
-CALL {
+CALL (node_with_dup_edges, edge_type, edge_branch, peer, is_outbound) {
     // ------------
     // Get the earliest active and deleted edges for this branch
     // ------------
-    WITH node_with_dup_edges, edge_type, edge_branch, peer, is_outbound
     OPTIONAL MATCH (node_with_dup_edges)-[active_edge {branch: edge_branch, status: "active"}]-(peer)
     WHERE type(active_edge) = edge_type
     AND (%(id_func_name)s(startNode(active_edge)) = %(id_func_name)s(node_with_dup_edges) OR is_outbound = FALSE)
@@ -397,8 +384,7 @@ CALL {
     // ensure one active edge with correct from and to times
     // set the others to be deleted
     // ------------
-    CALL {
-        WITH node_with_dup_edges, edge_type, edge_branch, peer, is_outbound, active_from, deleted_from
+    CALL (node_with_dup_edges, edge_type, edge_branch, peer, is_outbound, active_from, deleted_from) {
         OPTIONAL MATCH (node_with_dup_edges)-[active_e {branch: edge_branch, status: "active"}]-(peer)
         WHERE type(active_e) = edge_type
         AND (%(id_func_name)s(startNode(active_e)) = %(id_func_name)s(node_with_dup_edges) OR is_outbound = FALSE)
@@ -414,8 +400,7 @@ CALL {
     // ensure one deleted edge with correct from time, if necessary
     // set the others to be deleted
     // ------------
-    CALL {
-        WITH node_with_dup_edges, edge_type, edge_branch, peer, is_outbound, deleted_from
+    CALL (node_with_dup_edges, edge_type, edge_branch, peer, is_outbound, deleted_from) {
         MATCH (node_with_dup_edges)-[deleted_e {branch: edge_branch, status: "deleted"}]-(peer)
         WHERE type(deleted_e) = edge_type
         AND (%(id_func_name)s(startNode(deleted_e)) = %(id_func_name)s(node_with_dup_edges) OR is_outbound = FALSE)
@@ -467,11 +452,9 @@ WITH DISTINCT default_branch, global_branch, r_uuid
 // Find any IS_RELATED edges on the duplicate Relationships that link to deleted Nodes,
 //   accounting for if the edge was added on a branch after the Node was deleted on main
 // ------------
-CALL {
-    WITH default_branch, global_branch, r_uuid
+CALL (default_branch, global_branch, r_uuid) {
     MATCH (:Relationship {uuid: r_uuid})-[is_related:IS_RELATED]-(n:Node)
-    CALL {
-        WITH is_related
+    CALL (is_related) {
         MATCH (b:Branch {name: is_related.branch})
         RETURN b.branched_from AS edge_branched_from_time
     }
@@ -483,7 +466,7 @@ CALL {
     // ------------
     // before the active IS_RELATED edge's from time, then delete the edge
     // ------------
-    WITH default_branch, global_branch, is_related, edge_branched_from_time, is_part_of, CASE
+    WITH is_related, edge_branched_from_time, is_part_of, CASE
         WHEN is_part_of.status = "deleted" THEN is_part_of.from
         ELSE is_part_of.to
     END AS node_deleted_time
@@ -492,8 +475,7 @@ CALL {
     DELETE is_related
 }
 MATCH (rel:Relationship {uuid: r_uuid})
-CALL {
-    WITH rel
+CALL (rel) {
     OPTIONAL MATCH (rel)-[:IS_RELATED]-(n:Node)
     WITH DISTINCT n
     RETURN count(*) AS num_peers
@@ -553,12 +535,12 @@ class PerformHardDeletes(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
-CALL {
+CALL () {
     MATCH (n)
     WHERE n.to_delete = TRUE
     DETACH DELETE n
 }
-CALL {
+CALL () {
     MATCH ()-[e]-()
     WHERE e.to_delete = TRUE
     DELETE e

@@ -96,8 +96,7 @@ class EnrichedDiffGetQuery(Query):
         // -------------------------------------
         // Retrieve Parents
         // -------------------------------------
-        CALL {
-            WITH diff_node
+        CALL (diff_node) {
             OPTIONAL MATCH parents_path = (diff_node)-[:DIFF_HAS_RELATIONSHIP|DIFF_HAS_NODE*1..%(max_depth)s]->(:DiffNode)
             RETURN parents_path
             ORDER BY size(nodes(parents_path)) DESC
@@ -112,8 +111,7 @@ class EnrichedDiffGetQuery(Query):
         // -------------------------------------
         // Retrieve Attributes
         // -------------------------------------
-        CALL {
-            WITH diff_node
+        CALL (diff_node) {
             OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute)
             WITH diff_attribute
             OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_property:DiffProperty)
@@ -126,8 +124,7 @@ class EnrichedDiffGetQuery(Query):
         // -------------------------------------
         // Retrieve Relationships
         // -------------------------------------
-        CALL {
-            WITH diff_node
+        CALL (diff_node) {
             OPTIONAL MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship)
             WITH diff_relationship
             OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(diff_rel_element:DiffRelationshipElement)

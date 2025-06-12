@@ -288,7 +288,10 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                                 "changed": {
                                     "name": {
                                         "added": {},
-                                        "changed": {"regex": None},
+                                        "changed": {
+                                            "parameters": {"added": {}, "changed": {"regex": None}, "removed": {}},
+                                            "regex": None,
+                                        },
                                         "removed": {},
                                     },
                                 },

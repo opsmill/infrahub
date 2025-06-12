@@ -36,6 +36,7 @@ jobs:
         include:
           - name: From 1.1.0
             source_version: 1.1.0
+            neo4j_image: "neo4j:5.20.0-enterprise"
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
@@ -72,21 +73,28 @@ jobs:
     # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
         run: invoke demo.pull
+        env:
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
       - name: Initialize Demo
         id: init-demo
         run: invoke demo.start demo.load-infra-schema
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
       - name: Check Demo Status
         run: invoke demo.status
+        env:
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
       - name: Load Infra Data
         run: invoke demo.load-infra-data
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
       - name: Run infra data patch scripts
         run: invoke demo.run-infra-patch-scripts
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
       - name: Stop Demo
         run: invoke demo.stop
 

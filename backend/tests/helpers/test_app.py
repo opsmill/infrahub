@@ -83,7 +83,7 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> AsyncGenerator[InfrahubServices, None]:
+    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")

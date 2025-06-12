@@ -6,6 +6,35 @@ from .models import WorkerPoolDefinition, WorkflowDefinition
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
 
+ACTION_ADD_NODE_TO_GROUP = WorkflowDefinition(
+    name="action-add-node-to-group",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="add_node_to_group",
+)
+
+ACTION_RUN_GENERATOR = WorkflowDefinition(
+    name="action-run-generator",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="run_generator",
+)
+
+ACTION_RUN_GENERATOR_GROUP_EVENT = WorkflowDefinition(
+    name="action-run-generator-group-event",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="run_generator_group_event",
+)
+
+
+CONFIGURE_ACTION_RULES = WorkflowDefinition(
+    name="configure-action-rules",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="configure_action_rules",
+)
+
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
     type=WorkflowType.USER,
@@ -66,6 +95,13 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+REMOVE_ADD_NODE_FROM_GROUP = WorkflowDefinition(
+    name="action-remove-node-from-group",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="remove_node_from_group",
+)
+
 REQUEST_GENERATOR_RUN = WorkflowDefinition(
     name="generator-run",
     type=WorkflowType.USER,
@@ -74,11 +110,27 @@ REQUEST_GENERATOR_RUN = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+RUN_GENERATOR_AS_CHECK = WorkflowDefinition(
+    name="run-generator-as-check",
+    type=WorkflowType.USER,
+    module="infrahub.proposed_change.tasks",
+    function="run_generator_as_check",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="request-generator-definition-run",
     type=WorkflowType.CORE,
     module="infrahub.generators.tasks",
     function="request_generator_definition_run",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_GENERATOR_DEFINITION_CHECK = WorkflowDefinition(
+    name="request-generator-definition-check",
+    type=WorkflowType.CORE,
+    module="infrahub.proposed_change.tasks",
+    function="request_generator_definition_check",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -190,6 +242,14 @@ BRANCH_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_MERGED = WorkflowDefinition(
+    name="branch-merged",
+    type=WorkflowType.CORE,
+    module="infrahub.branch.tasks",
+    function="branch_merged",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     name="branch-merge-post-process",
     type=WorkflowType.CORE,
@@ -197,7 +257,6 @@ BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     function="post_process_branch_merge",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
-
 
 BRANCH_MERGE_MUTATION = WorkflowDefinition(
     name="merge-branch-mutation",
@@ -338,6 +397,21 @@ GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+REQUEST_PROPOSED_CHANGE_PIPELINE = WorkflowDefinition(
+    name="proposed-changed-pipeline",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_pipeline",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS = WorkflowDefinition(
+    name="proposed-changed-refresh-artifacts",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="refresh_artifacts",
+)
+
 REQUEST_PROPOSED_CHANGE_RUN_GENERATORS = WorkflowDefinition(
     name="proposed-changed-run-generator",
     type=WorkflowType.INTERNAL,
@@ -431,6 +505,14 @@ GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
     function="run_check_merge_conflicts",
 )
 
+SCHEMA_UPDATED = WorkflowDefinition(
+    name="schema-updated",
+    type=WorkflowType.CORE,
+    module="infrahub.schema.tasks",
+    function="schema_updated",
+)
+
+
 TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
     name="trigger-configure-all",
     type=WorkflowType.CORE,
@@ -439,14 +521,26 @@ TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
 )
 
 
+VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
+    name="validate-schema-number-pools",
+    type=WorkflowType.CORE,
+    module="infrahub.pools.tasks",
+    function="validate_schema_number_pools",
+)
+
+
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
+    ACTION_ADD_NODE_TO_GROUP,
+    ACTION_RUN_GENERATOR,
+    ACTION_RUN_GENERATOR_GROUP_EVENT,
     ANONYMOUS_TELEMETRY_SEND,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
     BRANCH_MERGE,
+    BRANCH_MERGED,
     BRANCH_MERGE_MUTATION,
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
@@ -456,6 +550,7 @@ workflows = [
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
+    CONFIGURE_ACTION_RULES,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
@@ -477,17 +572,23 @@ workflows = [
     IPAM_RECONCILIATION,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    REMOVE_ADD_NODE_FROM_GROUP,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
+    REQUEST_GENERATOR_DEFINITION_CHECK,
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_PIPELINE,
+    REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
+    RUN_GENERATOR_AS_CHECK,
     SCHEMA_APPLY_MIGRATION,
+    SCHEMA_UPDATED,
     SCHEMA_VALIDATE_MIGRATION,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
@@ -496,6 +597,7 @@ workflows = [
     TRIGGER_GENERATOR_DEFINITION_RUN,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+    VALIDATE_SCHEMA_NUMBER_POOLS,
     WEBHOOK_CONFIGURE_ALL,
     WEBHOOK_CONFIGURE_ONE,
     WEBHOOK_DELETE_AUTOMATION,
