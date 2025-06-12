@@ -255,9 +255,11 @@ class UniquenessValidationQuery(Query):
     def __init__(
         self,
         query_request: NodeUniquenessQueryRequestValued,
+        node_ids_to_exclude: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.query_request = query_request
+        self.node_ids_to_exclude = node_ids_to_exclude
         super().__init__(**kwargs)
 
     def _build_attr_subquery(
@@ -367,6 +369,7 @@ CALL (node) {
         return relationship_query, params
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["node_ids_to_exclude"] = self.node_ids_to_exclude
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -385,6 +388,7 @@ CALL (node) {
 
         full_query = """
 MATCH(node:%(kind)s)
+WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude
 %(subqueries)s
         """ % {"kind": self.query_request.kind, "subqueries": "\n".join(subqueries)}
         self.add_to_query(full_query)
