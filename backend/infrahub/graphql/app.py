@@ -88,6 +88,8 @@ GQL_STOP = "stop"
 ContextValue = Any | Callable[[HTTPConnection], Any]
 RootValue = Any
 
+subscription_tasks = set()
+
 
 class InfrahubGraphQLApp:
     def __init__(
@@ -446,7 +448,9 @@ class InfrahubGraphQLApp:
 
         asyncgen = cast(AsyncGenerator[Any, None], result)
         subscriptions[operation_id] = asyncgen
-        asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
+        task = asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
+        subscription_tasks.add(task)
+        task.add_done_callback(subscription_tasks.discard)
         return []
 
     async def _observe_subscription(
