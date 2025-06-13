@@ -72,12 +72,15 @@ kubectl rollout restart deployment/infrahub-infrahub-server
 <TabItem value="devdemo" label="Dev/Demo">
 
 ```bash
+# Ensure you pull the latest opsmill/infrahub repo
+git pull
+
 # Stop the current instance
 invoke demo.stop
 
 # Rebuild and run migrations
-invoke demo.build
-invoke demo.migrate
+invoke demo.pull
+invoke demo.upgrade
 
 # Restart the instance
 invoke demo.start

@@ -925,7 +925,7 @@ export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): A
 };
 
 export const generateRelationshipSchema = (
-  overrides: Partial<RelationshipSchema>
+  overrides?: Partial<RelationshipSchema>
 ): RelationshipSchema => ({
   id: "test-id",
   state: "present",
