@@ -9,6 +9,7 @@ from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import InfrahubError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
@@ -70,6 +71,15 @@ class BranchCreate(Mutation):
 
         model = BranchCreateModel(**data)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+        if model.origin_branch:
+            if model.origin_branch == model.name:
+                raise InfrahubError(f"A branch cannot originate from itself: {model.name}")
+            origin_branch_obj = await Branch.get_by_name(db=graphql_context.db, name=model.origin_branch)
+            if not origin_branch_obj:
+                raise InfrahubError(f"Origin branch '{model.origin_branch}' does not exist.")
+
+
+
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
