@@ -164,6 +164,8 @@ class InfrahubServices:
     async def shutdown(self) -> None:
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
+        if self._cache is not None:
+            await self._cache.close_connection()
 
     async def send(self, message: InfrahubMessage, delay: MessageTTL | None = None, is_retry: bool = False) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
