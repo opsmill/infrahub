@@ -370,7 +370,7 @@ CALL (node) {
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["node_ids_to_exclude"] = self.node_ids_to_exclude
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         subqueries = []
