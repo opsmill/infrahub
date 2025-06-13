@@ -76,8 +76,8 @@ kubectl rollout restart deployment/infrahub-infrahub-server
 invoke demo.stop
 
 # Rebuild and run migrations
-invoke demo.build
-invoke demo.migrate
+invoke demo.pull
+invoke demo.upgrade
 
 # Restart the instance
 invoke demo.start
