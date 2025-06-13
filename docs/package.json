@@ -15,11 +15,12 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.7.0",
-    "@docusaurus/preset-classic": "^3.7.0",
+    "@docusaurus/core": "^3.8.1",
+    "@docusaurus/preset-classic": "^3.8.1",
     "@easyops-cn/docusaurus-search-local": "^0.44.5",
     "@mdx-js/react": "^3.0.1",
     "clsx": "^2.1.1",
+    "image-size": "^0.6.3",
     "prism-react-renderer": "^2.4.0",
     "raw-loader": "^4.0.2",
     "react": "^18.3.1",
@@ -27,25 +28,14 @@
     "react-player": "^2.16.0"
   },
   "devDependencies": {
-    "@docusaurus/eslint-plugin": "^3.7.0",
-    "@docusaurus/module-type-aliases": "^3.7.0",
+    "@docusaurus/eslint-plugin": "^3.8.1",
+    "@docusaurus/module-type-aliases": "^3.8.1",
     "@docusaurus/tsconfig": "^3.7.0",
     "@docusaurus/types": "^3.7.0",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
     "eslint": "^8.56.0",
     "typescript": "~5.6.2"
-  },
-  "overrides": {
-    "@docusaurus/core": {
-      "image-size": "1.2.1"
-    },
-    "@docusaurus/preset-classic": {
-      "image-size": "1.2.1"
-    },
-    "@easyops-cn/docusaurus-search-local": {
-      "image-size": "1.2.1"
-    }
   },
   "browserslist": {
     "production": [
