@@ -96,7 +96,7 @@ test.describe("Node Trigger - ", () => {
     });
   });
 
-  test.skip("should update the matches", async ({ page }) => {
+  test.fixme("should update the matches", async ({ page }) => {
     await test.step("update an attribute match", async () => {
       // The current test id cannot be used for relationsip actions cell
       await page.getByTestId("actions-cell-18462734-cb04-6ee7-3350-c5155d7058b7").click();
