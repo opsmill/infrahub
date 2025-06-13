@@ -22,7 +22,7 @@ jobs:
     env:
       SUBMODULE_PATH: python_sdk
       SDK_VERSION: ${{ github.event.client_payload.version }}
-      BRANCH_NAME: ${{ matrix.branch-name}}-${SUBMODULE_PATH}-${SDK_VERSION}
+      BRANCH_NAME: ${{ matrix.branch-name }}-python_sdk-${{ github.event.client_payload.version }}
 
 
     steps:
