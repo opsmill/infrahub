@@ -25,7 +25,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.generator import generate_node_mutation_events
-from infrahub.exceptions import HFIDViolatedError, InitializationError
+from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
@@ -384,7 +384,23 @@ class InfrahubMutationMixin:
             if len(exc.matching_nodes_ids) > 1:
                 raise RuntimeError(f"Multiple {schema_name} nodes have the same hfid") from exc
             node_id = list(exc.matching_nodes_ids)[0]
-            node = await NodeManager.get_one(db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True)
+
+            try:
+                node = await NodeManager.get_one(
+                    db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True
+                )
+            except NodeNotFoundError as exc:
+                if branch.is_default:
+                    raise
+                raise NodeNotFoundError(
+                    node_type=exc.node_type,
+                    identifier=exc.identifier,
+                    branch_name=branch.name,
+                    message=(
+                        f"Node {exc.identifier} / {exc.node_type} uses this human-friendly ID, but does not exist on"
+                        f" this branch. Please rebase this branch to access {exc.identifier} / {exc.node_type}"
+                    ),
+                ) from exc
             updated_obj, mutation = await cls._call_mutate_update(
                 info=info,
                 data=data,

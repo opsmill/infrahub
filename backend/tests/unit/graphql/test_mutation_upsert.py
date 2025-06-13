@@ -1,5 +1,6 @@
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -638,3 +639,37 @@ async def test_with_constructed_hfid_with_numbers(
         "description": {"value": "Here is the update"},
         "id": first_ticket.id,
     }
+
+
+async def test_upsert_node_on_branch_with_hfid_on_default(db: InfrahubDatabase, default_branch, car_person_schema):
+    # create a node on the default branch after the branch is created
+    branch = await create_branch(branch_name="test-branch", db=db)
+    person = await create_and_save(db=db, branch=default_branch, schema="TestPerson", name="John", height=182)
+
+    # try to upsert a node on the branch with a matching hfid
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: { value: "John"}, height: {value: 183}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert (
+        f"Node {person.id} / TestPerson uses this human-friendly ID, but does not exist on this branch"
+        in result.errors[0].message
+    )
+    assert f"Please rebase this branch to access {person.id} / TestPerson" in result.errors[0].message
