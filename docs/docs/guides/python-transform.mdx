@@ -67,7 +67,7 @@ mutation CreateDevice {
 }
 ```
 
-The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
+The next step is to create a query that returns the data we just created.
 
 :::info Convert query to Infrahub SDK objects
 We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
@@ -214,7 +214,7 @@ Response to the query:
   </TabItem>
 </Tabs>
 
-While it would be possible to create a transform that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+While it would be possible to create a transform that targets all devices, the goal is to be able to perform a transformation on a single device. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
 Create a local directory on your computer.
 
@@ -222,7 +222,100 @@ Create a local directory on your computer.
 mkdir device_config_render
 ```
 
-Then save the above query as a text file named `device_config_render/device_config.gql`.
+Then save the query below as a text file named `device_config_render/device_config.gql` to target a specific device.
+
+<Tabs groupId="convertResponse">
+  <TabItem value="Non-converted query response">
+```graphql
+query DeviceQuery($name: String!) {
+  NetworkDevice(name__value: $name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Response to the query:
+
+```json
+{
+  "data": {
+    "NetworkDevice": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "switch1"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="Converted query response">
+    Here we must provide `__typename` and `id` within the query so the SDK can convert the query to the correct type and properly store within the SDK.
+
+```graphql
+query DeviceQuery($name: String!) {
+  NetworkDevice(name__value: $name) {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Response to the query:
+
+```json
+{
+  "data": {
+    "NetworkDevice": {
+      "edges": [
+        {
+          "node": {
+            "__typename": "NetworkDevice",
+            "id": "184907fb-8fd7-b580-300f-c51502251311",
+            "name": {
+              "value": "switch1"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
 
 The query will require an input parameter called `$name` what will refer to the name of each device. When we want to query for device switch1, the input variables to the query would look like this:
 
@@ -238,8 +331,8 @@ The next step is to create the actual Python transform. The transform is a Pytho
 
 <Tabs groupId="convertResponse">
   <TabItem value="Non-converted query response">
-```python
     <!-- vale Infrahub.spelling = NO -->
+```python
 from infrahub_sdk.transforms import InfrahubTransform
 class DeviceConfigTransform(InfrahubTransform):
     query = "device_config_query"
@@ -294,7 +387,7 @@ Here we need to note the name of the class as we will need it later, optionally 
 
 The query part refers to the the query that we will define in the `.infrahub.yml` repository configuration file later in the guide.
 
-With this configuration, the endpoint of our transform will be [http://localhost:8000/api/transform/python/device_config_transform](http://localhost:8000/api/transform/python/device_config_transform).
+With this configuration, the endpoint of our transform will be [http://localhost:8000/api/transform/python/device_config_json](http://localhost:8000/api/transform/python/device_config_json).
 
 4. The Transform method
 
@@ -369,7 +462,7 @@ See [this topic](../topics/infrahub-yml) for a full explanation of everything th
 # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
 ---
 python_transforms:
-  - name: device_config_transform
+  - name: device_config_json
     class_name: DeviceConfigTransform
     file_path: "device_config_render/device_config.py"
 queries:
@@ -384,7 +477,7 @@ queries:
 # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
 ---
 python_transforms:
-  - name: device_config_transform
+  - name: device_config_json
     class_name: DeviceConfigTransform
     convert_query_response: true
     file_path: "device_config_render/device_config.py"
@@ -412,13 +505,13 @@ Using infrahubctl you can first verify that the `.infrahub.yml` file is formatte
 
 ```shell title="❯ infrahubctl transform --list"
 Python transforms defined in repository: 1
-device_config_transform (device_config.py::DeviceConfigTransform)
+device_config_json (device_config.py::DeviceConfigTransform)
 ```
 
 :::info
 Trying to run the transform with just the transform name will produce an error.
 
-```shell title="❯ infrahubctl transform device_config_transform"
+```shell title="❯ infrahubctl transform device_config_json"
 {'message': "Variable '$name' of required type 'String!' was not provided.", 'locations': [{'line': 1, 'column': 19}]}
 ```
 
@@ -428,7 +521,7 @@ Here we can see that our query is missing the required input for `$name` which i
 
 Run the Transform and specify the variable name along with the tag we want to target.
 
-```json title="❯ infrahubctl transform device_config_transform name=switch2"
+```json title="❯ infrahubctl transform device_config_json name=switch2"
 {
   "device_description": "*This is device switch2*",
   "device_hostname": "switch2"
@@ -461,14 +554,14 @@ In order to avoid having the same instructions over and over please refer to the
 
 Once the repository is synced to Infrahub you can access the Transform from the API:
 
-```json title="❯ curl http://localhost:8000/api/transform/python/device_config_transform?name=switch2"
+```json title="❯ curl http://localhost:8000/api/transform/python/device_config_json?name=switch2"
 {
   "device_hostname":"switch2",
   "device_description":"*This is device switch2*"
 }
 ```
 
-```json title="❯ curl http://localhost:8000/api/transform/python/device_config_transform?name=switch3"
+```json title="❯ curl http://localhost:8000/api/transform/python/device_config_json?name=switch3"
 {
   "device_hostname":"switch3",
   "device_description":"*This is device switch3*"

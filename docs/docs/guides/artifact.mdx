@@ -2,19 +2,21 @@
 title: Creating an Artifact
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import VideoPlayer from '../../src/components/VideoPlayer';
 
 # Creating an artifact in Infrahub
 
-:::note
+:::warning
 
-This guide has the assumption that you followed the [Creating a Jinja Rendered File (Transform)](./jinja2-transform.mdx) or [Creating a Python transform](./python-transform.mdx) guide. This is a prerequisite.
+This guide has the assumption that you have followed either the [Creating a Jinja Rendered File (Transform)](./jinja2-transform.mdx) or [Creating a Python transform](./python-transform.mdx) guide.
 
 :::
 
 The goal of this guide is to define an artifact for a Jinja rendered Transform or Python Transform in Infrahub. We will be using the following steps.
 
-1. Modifying the schema
+1. Modifying the schema for `NetworkDevice` to inherit from `CoreArtifactTarget`
 2. Creating a group and adding member nodes
 2. Creating an artifact definition
 3. Accessing the artifacts
@@ -48,14 +50,14 @@ nodes:
 We then have to load the modified schema definition into Infrahub.
 
 ```bash
-infrahubctl schema load /tmp/schema.yml
+infrahubctl schema load /path/to/schema.yml
 ```
 
 ## Creating a group and adding members
 
 We need to create a group for every Artifact Definition that we will define. An artifact will be generated for every member that is part of that group.
 
-Create a Standard Group with the name `DeviceGroup` and add `NetworkDevice` `switch1`, `switch2` and `switch3` as a member.
+Create a Standard Group with the name `DeviceGroup` and add `switch1`, `switch2` and `switch3` as a members.
 
 More information can be found in the [Creating a group guide](./groups.mdx).
 
@@ -65,10 +67,12 @@ More information can be found in the [Creating a group guide](./groups.mdx).
 
 ## Creating an artifact definition
 
-In the last step we need to define an Artifact definition, which groups together a [transformation](../topics/transformation.mdx) with a target group and forms the definition of the artifact. Artifact definitions can be created via the Web Interface, via GraphQL or via a [Git repository](../topics/repository.mdx). In this guide we will be using the Git repository.
+For the last step, we need to define an Artifact definition, which groups together a [transformation](../topics/transformation.mdx) with a target group and forms the definition of the artifact. Artifact definitions can be created via the Web Interface, via GraphQL or via a [Git repository](../topics/repository.mdx). In this guide we will be using the Git repository.
 
 Add the following contents to the end of the `.infrahub.yml` file at the root of the `device_config_render` repository.
 
+<Tabs groupId="Transforms">
+<TabItem value="Jinja2 Transform">
 ```yaml
 artifact_definitions:
   - name: "device_configuration"
@@ -79,6 +83,20 @@ artifact_definitions:
     targets: "DeviceGroup"
     transformation: "device_config_transform"
 ```
+</TabItem>
+<TabItem value="Python Transform">
+```yaml
+artifact_definitions:
+  - name: "device_configuration"
+    artifact_name: "Device configuration json"
+    parameters:
+      name: "name__value"
+    content_type: "application/json"
+    targets: "DeviceGroup"
+    transformation: "device_config_json"
+```
+</TabItem>
+</Tabs>
 
 This defines an artifact with the following properties:
 
