@@ -16,9 +16,8 @@ async def test_file_get(git_fixture_repo: InfrahubRepository, helper, dependency
     )
 
     bus_simulator = await helper.get_message_bus_simulator()
-    dependency_provider.override(build_message_bus, lambda: bus_simulator)
+    with dependency_provider.scope(build_message_bus, lambda: bus_simulator):
+        reply = await bus_simulator.rpc(message=message, response_class=messages.GitFileGetResponse)
 
-    reply = await bus_simulator.rpc(message=message, response_class=messages.GitFileGetResponse)
-
-    assert reply.passed
-    assert reply.data.content == "Someone will read this from Git."
+        assert reply.passed
+        assert reply.data.content == "Someone will read this from Git."

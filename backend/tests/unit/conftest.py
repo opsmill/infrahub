@@ -3013,8 +3013,8 @@ def workflow_local(dependency_provider: Provider):
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
-    dependency_provider.override(build_workflow, lambda: workflow)
-    yield workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 

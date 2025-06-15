@@ -69,22 +69,26 @@ class TestInfrahubApp(TestInfrahub):
         return provider
 
     @pytest.fixture(scope="class")
-    async def bus_simulator(self, db: InfrahubDatabase, dependency_provider: Provider) -> BusSimulator:
+    async def bus_simulator(
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[BusSimulator, None]:
         # Creating another service object to get service correctly initialized is a hack.
         # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
         # or ideally properly patch production code responsible for Bus instantiation instead
         bus = BusSimulator()
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
-        dependency_provider.override(build_message_bus, lambda: bus)
-        return bus
+        with dependency_provider.scope(build_message_bus, lambda: bus):
+            yield bus
 
     @pytest.fixture(scope="class")
-    async def memory_cache(self, db: InfrahubDatabase, dependency_provider: Provider) -> MemoryCache:
+    async def memory_cache(
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[MemoryCache, None]:
         cache = MemoryCache()
         config.OVERRIDE.cache = cache
-        dependency_provider.override(build_cache, lambda: cache)
-        return cache
+        with dependency_provider.scope(build_cache, lambda: cache):
+            yield cache
 
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_local(
@@ -94,8 +98,8 @@ class TestInfrahubApp(TestInfrahub):
         workflow = WorkflowLocalExecution()
         await setup_task_manager()
         config.OVERRIDE.workflow = workflow
-        dependency_provider.override(build_workflow, lambda: workflow)
-        yield workflow
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
@@ -159,8 +163,8 @@ class TestInfrahubApp(TestInfrahub):
         )
 
         service._client = sdk_client
-        dependency_provider.override(build_client, lambda: sdk_client)
-        return sdk_client
+        with dependency_provider.scope(build_client, lambda: sdk_client):
+            yield sdk_client
 
     @pytest.fixture(scope="class")
     async def initialize_registry(

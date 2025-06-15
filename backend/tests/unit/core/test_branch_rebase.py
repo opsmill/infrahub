@@ -99,21 +99,20 @@ async def test_branch_rebase_diff_conflict(
     car_camry_main,
 ):
     # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
-    dependency_provider.override(build_database, lambda: db)
+    with dependency_provider.scope(build_database, lambda: db):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+        car_main.name.value += "-main"
+        await car_main.save(db=db)
+        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+        car_branch.name.value += "-branch"
+        await car_branch.save(db=db)
 
-    branch2 = await create_branch(db=db, branch_name="branch2")
-    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
-    car_main.name.value += "-main"
-    await car_main.save(db=db)
-    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
-    car_branch.name.value += "-branch"
-    await car_branch.save(db=db)
-
-    with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
-        await rebase_branch(
-            branch=branch2.name,
-            context=InfrahubContext.init(
-                branch=default_branch,
-                account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
-            ),
-        )
+        with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
+            await rebase_branch(
+                branch=branch2.name,
+                context=InfrahubContext.init(
+                    branch=default_branch,
+                    account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+                ),
+            )

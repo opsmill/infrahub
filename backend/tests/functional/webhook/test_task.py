@@ -280,17 +280,16 @@ class TestWebhookTasks(TestInfrahubApp):
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=200),
         )
-        dependency_provider.override(build_http_service, lambda: http)
-
-        await webhook_process(
-            webhook_id=webhook1.id,
-            webhook_name="Webhook1",
-            webhook_kind="CoreStandardWebhook",
-            event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
-            event_type="infrahub.branch.created",
-            event_occured_at="2025-02-28T08:37:09.969Z",
-            event_payload=BRANCH_CREATED_PAYLOAD,
-        )
+        with dependency_provider.scope(build_http_service, lambda: http):
+            await webhook_process(
+                webhook_id=webhook1.id,
+                webhook_name="Webhook1",
+                webhook_kind="CoreStandardWebhook",
+                event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
+                event_type="infrahub.branch.created",
+                event_occured_at="2025-02-28T08:37:09.969Z",
+                event_payload=BRANCH_CREATED_PAYLOAD,
+            )
 
     async def test_process_standard_webhook_failure(
         self,
@@ -306,9 +305,8 @@ class TestWebhookTasks(TestInfrahubApp):
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=404),
         )
-        dependency_provider.override(build_http_service, lambda: http)
 
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(httpx.HTTPStatusError), dependency_provider.scope(build_http_service, lambda: http):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",

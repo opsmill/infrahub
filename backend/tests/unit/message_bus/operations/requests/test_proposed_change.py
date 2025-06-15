@@ -276,40 +276,39 @@ async def test_schema_integrity(
     person_john_main: Node,
 ):
     cache = MemoryCache()
-    dependency_provider.override(build_cache, lambda: cache)
+    with dependency_provider.scope(build_cache, lambda: cache):
+        branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
-    branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
+        person = await Node.init(db=db, schema="TestPerson", branch=branch2)
+        await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+        await person.save(db=db)
 
-    person = await Node.init(db=db, schema="TestPerson", branch=branch2)
-    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
-    await person.save(db=db)
+        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        person_schema = branch2_schema.get(name="TestPerson")
+        name_attr = person_schema.get_attribute(name="name")
+        name_attr.parameters.regex = r"^[A-Z]+$"
+        branch2_schema.set(name="TestPerson", schema=person_schema)
 
-    branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
-    person_schema = branch2_schema.get(name="TestPerson")
-    name_attr = person_schema.get_attribute(name="name")
-    name_attr.parameters.regex = r"^[A-Z]+$"
-    branch2_schema.set(name="TestPerson", schema=person_schema)
+        await set_diff_summary_cache(
+            pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
+        )
 
-    await set_diff_summary_cache(
-        pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
-    )
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
 
-    await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
+        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        assert len(checks) == 1
+        check = checks[0]
+        assert check.conclusion.value.value == "failure"
 
-    checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
-    assert len(checks) == 1
-    check = checks[0]
-    assert check.conclusion.value.value == "failure"
-
-    assert check.conflicts.value == [
-        {
-            "branch": "placeholder",
-            "id": person_john_main.id,
-            "kind": "TestPerson",
-            "name": "schema/TestPerson/name/parameters.regex",
-            "path": "schema/TestPerson/name/parameters.regex",
-            "type": ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
-            # ruff: noqa: E501
-            "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
-        }
-    ]
+        assert check.conflicts.value == [
+            {
+                "branch": "placeholder",
+                "id": person_john_main.id,
+                "kind": "TestPerson",
+                "name": "schema/TestPerson/name/parameters.regex",
+                "path": "schema/TestPerson/name/parameters.regex",
+                "type": ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
+                # ruff: noqa: E501
+                "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
+            }
+        ]

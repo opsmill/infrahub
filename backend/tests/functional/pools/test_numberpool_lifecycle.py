@@ -56,11 +56,10 @@ class TestMutationGenerator(TestInfrahubApp):
         prefect_test_fixture,
         dependency_provider,
     ) -> None:
-        dependency_provider.override(build_cache, RedisCache)
-
-        schema = {"version": "1.0", "nodes": [node_schema_definition]}
-        schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
-        assert not schema_load_response.errors
+        with dependency_provider.scope(build_cache, RedisCache):
+            schema = {"version": "1.0", "nodes": [node_schema_definition]}
+            schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
+            assert not schema_load_response.errors
 
     async def test_numberpool_assignment(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch

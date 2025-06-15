@@ -414,19 +414,18 @@ async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger,
 
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
-    dependency_provider.override(build_message_bus, lambda: bus)
+    with dependency_provider.scope(build_message_bus, lambda: bus):
+        queue = await bus.channel.get_queue(f"{bus.settings.namespace}.rpcs")
+        callback = partial(on_callback, message_bus=bus)
+        await queue.consume(callback, no_ack=True)
 
-    queue = await bus.channel.get_queue(f"{bus.settings.namespace}.rpcs")
-    callback = partial(on_callback, message_bus=bus)
-    await queue.consume(callback, no_ack=True)
+        response = await bus.rpc(
+            message=messages.SendEchoRequest(message="You can reply to this message"),
+            response_class=SendEchoRequestResponse,
+        )
+        await service.shutdown()
 
-    response = await bus.rpc(
-        message=messages.SendEchoRequest(message="You can reply to this message"),
-        response_class=SendEchoRequestResponse,
-    )
-    await service.shutdown()
-
-    assert response.data.response == "Reply to: You can reply to this message"
+        assert response.data.response == "Reply to: You can reply to this message"
 
 
 async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:

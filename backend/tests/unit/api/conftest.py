@@ -36,8 +36,8 @@ def rpc_bus(helper, dependency_provider):
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
     config.OVERRIDE.message_bus = bus
-    dependency_provider.override(build_message_bus, lambda: bus)
-    yield bus
+    with dependency_provider.scope(build_message_bus, lambda: bus):
+        yield bus
     config.OVERRIDE.message_bus = original
 
 
@@ -47,8 +47,8 @@ async def workflow_local(dependency_provider):
     workflow = WorkflowLocalExecution()
     await setup_task_manager()
     config.OVERRIDE.workflow = workflow
-    dependency_provider.override(build_workflow, lambda: workflow)
-    yield workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 

@@ -246,11 +246,12 @@ async def local_services(db: InfrahubDatabase, dependency_provider) -> InfrahubS
     message_bus = BusRecorder()
     workflow = WorkflowLocalExecution()
 
-    dependency_provider.override(build_database, lambda: db)
-    dependency_provider.override(build_message_bus, lambda: message_bus)
-    dependency_provider.override(build_workflow, lambda: workflow)
-
-    return await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow)
+    with (
+        dependency_provider.scope(build_database, lambda: db),
+        dependency_provider.scope(build_message_bus, lambda: message_bus),
+        dependency_provider.scope(build_workflow, lambda: workflow),
+    ):
+        yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow)
 
 
 async def test_branch_delete(
