@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
 from prefect import flow
-from prefect.client.orchestration import get_client
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
@@ -13,9 +13,9 @@ from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
-from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
+from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -61,10 +61,10 @@ async def process_transform(
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
     context: InfrahubContext,  # noqa: ARG001
-    service: InfrahubServices,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
+    client = get_client()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
@@ -77,7 +77,7 @@ async def process_transform(
         return
 
     for attribute_name, transform_attribute in transform_attributes.items():
-        transform = await service.client.get(
+        transform = await client.get(
             kind=CoreTransformPython,
             branch=branch_name,
             id=transform_attribute.transform,
@@ -88,7 +88,7 @@ async def process_transform(
         if not transform:
             continue
 
-        repo_node = await service.client.get(
+        repo_node = await client.get(
             kind=str(transform.repository.peer.typename),
             branch=branch_name,
             id=transform.repository.peer.id,
@@ -96,14 +96,14 @@ async def process_transform(
         )
 
         repo = await get_initialized_repo(
-            client=service.client,
+            client=client,
             repository_id=transform.repository.peer.id,
             name=transform.repository.peer.name.value,
             repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
         )  # type: ignore[misc]
 
-        data = await service.client.query_gql_query(
+        data = await client.query_gql_query(
             name=transform.query.peer.name.value,
             branch_name=branch_name,
             variables={"id": object_id},
@@ -112,22 +112,17 @@ async def process_transform(
         )
 
         transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout.value)(
+            client=client,
             branch_name=branch_name,
             commit=repo_node.commit.value,
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
-            client=service.client,
             convert_query_response=transform.convert_query_response.value,
         )  # type: ignore[misc]
 
-        await service.client.execute_graphql(
+        await client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
-            variables={
-                "id": object_id,
-                "kind": node_kind,
-                "attribute": attribute_name,
-                "value": transformed_data,
-            },
+            variables={"id": object_id, "kind": node_kind, "attribute": attribute_name, "value": transformed_data},
             branch_name=branch_name,
         )
 
@@ -141,14 +136,13 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: InfrahubContext,
-    service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name])
 
-    nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
+    nodes = await get_client().all(kind=computed_attribute_kind, branch=branch_name)
 
     for node in nodes:
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
             parameters={
@@ -172,9 +166,9 @@ async def computed_attribute_jinja2_update_value(
     node_kind: str,
     attribute_name: str,
     template: Jinja2Template,
-    service: InfrahubServices,
 ) -> None:
     log = get_run_logger()
+    client = get_client()
 
     await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
 
@@ -183,14 +177,9 @@ async def computed_attribute_jinja2_update_value(
         log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
         return
 
-    await service.client.execute_graphql(
+    await client.execute_graphql(
         query=UPDATE_ATTRIBUTE,
-        variables={
-            "id": obj.node_id,
-            "kind": node_kind,
-            "attribute": attribute_name,
-            "value": value,
-        },
+        variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
         branch_name=branch_name,
     )
     log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
@@ -207,10 +196,10 @@ async def process_jinja2(
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: InfrahubContext,  # noqa: ARG001
-    service: InfrahubServices,
     updated_fields: list[str] | None = None,
 ) -> None:
     log = get_run_logger()
+    client = get_client()
 
     await add_tags(branches=[branch_name])
     updates: list[str] = updated_fields or []
@@ -240,14 +229,14 @@ async def process_jinja2(
 
         for id_filter in computed_macro.node_filters:
             query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
-            response = await service.client.execute_graphql(query=query, branch_name=branch_name)
+            response = await client.execute_graphql(query=query, branch_name=branch_name)
             output = attribute_graphql.parse_response(response=response)
             found.extend(output)
 
         if not found:
             log.debug("No nodes found that requires updates")
 
-        batch = await service.client.create_batch()
+        batch = await client.create_batch()
         for node in found:
             batch.add(
                 task=computed_attribute_jinja2_update_value,
@@ -256,7 +245,6 @@ async def process_jinja2(
                 node_kind=node_schema.kind,
                 attribute_name=computed_macro.attribute.name,
                 template=jinja_template,
-                service=service,
             )
 
         _ = [response async for _, response in batch.execute()]
@@ -271,15 +259,16 @@ async def trigger_update_jinja2_computed_attributes(
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: InfrahubContext,
-    service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name])
 
+    client = get_client()
+
     # NOTE we only need the id of the nodes, we need to ooptimize the query here
-    nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
+    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
 
     for node in nodes:
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
             context=context,
             parameters={
@@ -295,14 +284,16 @@ async def trigger_update_jinja2_computed_attributes(
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-    service: InfrahubServices, context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
+    context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session() as db:
         log = get_run_logger()
 
         if branch_name:
             await add_tags(branches=[branch_name])
-            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
+            component = await get_component()
+            await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_computed_attribute_jinja2, trigger_type=TriggerType.COMPUTED_ATTR_JINJA2
@@ -317,7 +308,7 @@ async def computed_attribute_setup_jinja2(
         }
         for branch, kind, attribute_name in unique_nodes:
             if event_name != BranchDeletedEvent.event_name and branch == branch_name:
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
@@ -335,20 +326,20 @@ async def computed_attribute_setup_jinja2(
     flow_run_name="Setup computed attributes for Python transforms in task-manager",
 )
 async def computed_attribute_setup_python(
-    service: InfrahubServices,
     context: InfrahubContext,
     branch_name: str | None = None,
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
 ) -> None:
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session() as db:
         log = get_run_logger()
 
         branch_name = branch_name or registry.default_branch
-
         if branch_name:
             await add_tags(branches=[branch_name])
-            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
+            component = await get_component()
+            await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
 
@@ -368,7 +359,7 @@ async def computed_attribute_setup_python(
         for branch, kind, attribute_name in unique_nodes:
             if event_name != BranchDeletedEvent.event_name and branch == branch_name:
                 log.info(f"Triggering update for {kind}.{attribute_name} on {branch}")
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
@@ -378,7 +369,7 @@ async def computed_attribute_setup_python(
                     },
                 )
 
-        async with get_client(sync_client=False) as prefect_client:
+        async with get_prefect_client(sync_client=False) as prefect_client:
             await setup_triggers(
                 client=prefect_client,
                 triggers=triggers_python,
@@ -405,11 +396,10 @@ async def query_transform_targets(
     node_kind: str,  # noqa: ARG001
     object_id: str,
     context: InfrahubContext,
-    service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    targets = await service.client.execute_graphql(
+    targets = await get_client().execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}, branch_name=branch_name
     )
 
@@ -425,7 +415,7 @@ async def query_transform_targets(
     for subscriber in subscribers:
         if subscriber.kind in nodes_with_computed_attributes:
             for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                     context=context,
                     parameters={

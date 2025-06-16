@@ -2,6 +2,8 @@ from pathlib import Path
 from typing import AsyncGenerator, Generator
 
 import pytest
+from fast_depends import Provider
+from fast_depends import dependency_provider as provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
@@ -25,7 +27,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_cache, build_client, build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 
 from .test_client import InfrahubTestClient
@@ -61,25 +65,41 @@ class TestInfrahubApp(TestInfrahub):
         return str(UUIDT())
 
     @pytest.fixture(scope="class")
+    def dependency_provider(self) -> Provider:
+        return provider
+
+    @pytest.fixture(scope="class")
     async def bus_simulator(
-        self,
-        db: InfrahubDatabase,
-    ) -> BusSimulator:
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[BusSimulator, None]:
         # Creating another service object to get service correctly initialized is a hack.
         # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
         # or ideally properly patch production code responsible for Bus instantiation instead
         bus = BusSimulator()
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
-        return bus
+        with dependency_provider.scope(build_message_bus, lambda: bus):
+            yield bus
+
+    @pytest.fixture(scope="class")
+    async def memory_cache(
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[MemoryCache, None]:
+        cache = MemoryCache()
+        config.OVERRIDE.cache = cache
+        with dependency_provider.scope(build_cache, lambda: cache):
+            yield cache
 
     @pytest.fixture(scope="class", autouse=True)
-    async def workflow_local(self, prefect: Generator[str, None, None]) -> AsyncGenerator[WorkflowLocalExecution, None]:
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager()
         config.OVERRIDE.workflow = workflow
-        yield workflow
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
@@ -118,7 +138,12 @@ class TestInfrahubApp(TestInfrahub):
 
     @pytest.fixture(scope="class")
     async def client(
-        self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator, service: InfrahubServices
+        self,
+        test_client: InfrahubTestClient,
+        api_token: str,
+        bus_simulator: BusSimulator,
+        service: InfrahubServices,
+        dependency_provider: Provider,
     ) -> InfrahubClient:
         config = Config(
             api_token=api_token,
@@ -138,7 +163,8 @@ class TestInfrahubApp(TestInfrahub):
         )
 
         service._client = sdk_client
-        return sdk_client
+        with dependency_provider.scope(build_client, lambda: sdk_client):
+            yield sdk_client
 
     @pytest.fixture(scope="class")
     async def initialize_registry(

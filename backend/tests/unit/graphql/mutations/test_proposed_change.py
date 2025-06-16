@@ -5,6 +5,7 @@ from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
 from infrahub.auth import AccountSession, AuthType
+from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -18,7 +19,9 @@ from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
@@ -269,60 +272,68 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         session_first_account: AccountSession,
         session_admin: AccountSession,
         client: InfrahubClient,
+        dependency_provider,
     ):
-        service = await InfrahubServices.new(
-            database=db,
-            message_bus=BusRecorder(),
-            workflow=WorkflowLocalExecution(),
-            cache=MemoryCache(),
-            client=client,
-        )
-        async with get_client(sync_client=False) as prefect_client:
-            await setup_worker_pools(client=prefect_client)
-            await setup_deployments(prefect_client)
+        with dependency_provider.scope(build_client, lambda: client):
+            cache = MemoryCache()
+            message_bus = BusRecorder()
+            service = await InfrahubServices.new(
+                database=db,
+                message_bus=message_bus,
+                workflow=WorkflowLocalExecution(),
+                cache=cache,
+                client=client,
+                component=InfrahubComponent(
+                    cache=cache, db=db, message_bus=message_bus, component_type=ComponentType.NONE
+                ),
+            )
 
-        registry.permission_backends = [LocalPermissionBackend()]
+            async with get_client(sync_client=False) as prefect_client:
+                await setup_worker_pools(client=prefect_client)
+                await setup_deployments(prefect_client)
 
-        branch_name = "merge-proposed-change-perm"
-        branch = await create_branch(branch_name=branch_name, db=db)
-        await service.cache.set(
-            key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=branch.active_schema_hash.main,
-            expires=KVTTL.TWO_HOURS,
-        )
-        await service.cache.set(
-            key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=Timestamp().to_string(),
-            expires=KVTTL.FIFTEEN,
-        )
-        await service.component.refresh_heartbeat()
+            registry.permission_backends = [LocalPermissionBackend()]
 
-        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-        await proposed_change.new(
-            db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
-        )
-        await proposed_change.save(db=db)
+            branch_name = "merge-proposed-change-perm"
+            branch = await create_branch(branch_name=branch_name, db=db)
+            await service.cache.set(
+                key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+                value=branch.active_schema_hash.main,
+                expires=KVTTL.TWO_HOURS,
+            )
+            await service.cache.set(
+                key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+                value=Timestamp().to_string(),
+                expires=KVTTL.FIFTEEN,
+            )
+            await service.component.refresh_heartbeat()
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_first_account,
-            service=service,
-        )
+            proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+            await proposed_change.new(
+                db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+            )
+            await proposed_change.save(db=db)
 
-        assert update_status.errors
-        assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
+            update_status = await graphql_mutation(
+                query=UPDATE_PROPOSED_CHANGE,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "state": "merged"},
+                account_session=session_first_account,
+                service=service,
+            )
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_admin,
-            service=service,
-        )
+            assert update_status.errors
+            assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
 
-        assert not update_status.errors
+            update_status = await graphql_mutation(
+                query=UPDATE_PROPOSED_CHANGE,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "state": "merged"},
+                account_session=session_admin,
+                service=service,
+            )
+
+            assert not update_status.errors
 
 
 async def test_create_thread(

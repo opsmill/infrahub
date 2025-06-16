@@ -102,7 +102,9 @@ class NATSMessageBus(InfrahubMessageBus):
 
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
-                    await execute_message(routing_key=message.subject, message_body=message.data, service=self.service)
+                    await execute_message(
+                        routing_key=message.subject, message_body=message.data, message_bus=self.service.message_bus
+                    )
                 else:
                     self.service.log.error("Invalid message received", message=f"{message!r}")
         finally:
@@ -121,7 +123,7 @@ class NATSMessageBus(InfrahubMessageBus):
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
                     delay = await execute_message(
-                        routing_key=message.subject, message_body=message.data, service=self.service
+                        routing_key=message.subject, message_body=message.data, message_bus=self.service.message_bus
                     )
                     if delay:
                         return await message.nak(delay / 1000)

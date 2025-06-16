@@ -18,17 +18,19 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.workflow import InfrahubWorkflow
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
-from infrahub.workers.dependencies import get_message_bus, set_component_type
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_component,
+    get_database,
+    get_message_bus,
+    get_workflow,
+    set_component_type,
+)
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
@@ -143,8 +145,7 @@ class InfrahubWorkerAsync(BaseWorker):
         entrypoint: str = configuration._related_objects["deployment"].entrypoint
 
         file_path, flow_name = entrypoint.split(":")
-        file_path.replace("/", ".")
-        module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
+        module_path = file_path.removeprefix("backend/").removesuffix(".py").replace("/", ".")
         flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
         inject_service_parameter(func=flow_func, parameters=flow_run.parameters, service=self.service)
         flow_run_logger.debug("Validating parameters")
@@ -155,10 +156,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
-        return InfrahubWorkerAsyncResult(
-            status_code=0,
-            identifier=str(flow_run.id),
-        )
+        return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
     def _init_logger(self) -> None:
         """Initialize loggers to use the API handle provided by Prefect."""
@@ -184,32 +182,16 @@ class InfrahubWorkerAsync(BaseWorker):
 
         return client
 
-    async def _init_database(self) -> InfrahubDatabase:
-        return InfrahubDatabase(driver=await get_db(retry=1))
-
-    async def _init_workflow(self) -> InfrahubWorkflow:
-        return config.OVERRIDE.workflow or (
-            WorkflowWorkerExecution()
-            if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
-            else WorkflowLocalExecution()
-        )
-
-    async def _init_cache(self) -> InfrahubCache:
-        return config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
-
     async def _init_services(self, client: InfrahubClient) -> None:
         client = await self._init_infrahub_client(client=client)
-        database = await self._init_database()
-        workflow = await self._init_workflow()
-        message_bus = await get_message_bus()
-        cache = await self._init_cache()
 
         service = await InfrahubServices.new(
-            cache=cache,
+            cache=await get_cache(),
             client=client,
-            database=database,
-            message_bus=message_bus,
-            workflow=workflow,
+            database=await get_database(),
+            message_bus=await get_message_bus(),
+            workflow=get_workflow(),
+            component=await get_component(),
             component_type=self.component_type,
         )
 
