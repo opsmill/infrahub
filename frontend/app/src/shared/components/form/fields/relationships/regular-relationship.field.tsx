@@ -12,6 +12,7 @@ import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { useState } from "react";
+import { useDefaultParent } from "./get-default-parent.query";
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
@@ -19,9 +20,8 @@ export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldP
   parentRelationship?: any;
 }
 
-export const RegularRelationshipField = ({
+export const NodeRelationshipField = ({
   defaultValue,
-  defaultParent,
   description,
   label,
   name,
@@ -35,6 +35,12 @@ export const RegularRelationshipField = ({
   parentRelationship,
   ...props
 }: RegularRelationshipFieldProps) => {
+  const defaultParent = useDefaultParent({
+    peer: relationship.peer,
+    defaultValue,
+    parentRelationship,
+  });
+
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
 
   return (

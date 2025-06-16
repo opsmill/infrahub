@@ -17,6 +17,7 @@ import {
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { useState } from "react";
+import { useDefaultParent } from "./get-default-parent.query";
 
 interface GenericOption extends Node {
   id: string;
@@ -26,12 +27,10 @@ interface GenericOption extends Node {
 
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
-  defaultParent?: Node | null;
 }
 
 export const GenericRelationshipField = ({
   defaultValue,
-  defaultParent,
   description,
   label,
   name,
@@ -51,6 +50,14 @@ export const GenericRelationshipField = ({
   const [selectedGeneric, setSelectedGeneric] = useState<GenericOption | null>(
     defaultSelectedGeneric as GenericOption | null
   );
+
+  const parentRelationship = getParentRelationship(selectedGeneric?.id);
+
+  const defaultParent = useDefaultParent({
+    defaultValue,
+    parentRelationship,
+  });
+
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
 
   const genericOptions = (isGeneric ? (peerSchema?.used_by ?? []) : [])
@@ -68,8 +75,6 @@ export const GenericRelationshipField = ({
       return null;
     })
     .filter((n): n is GenericOption => n !== null);
-
-  const parentRelationship = getParentRelationship(selectedGeneric?.id);
 
   // Select the first option if the only available
   if (genericOptions?.length === 1 && !selectedGeneric) {
