@@ -63,21 +63,6 @@ class WorkflowDefinition(BaseModel):
         payload: dict[str, Any] = {"name": self.name, "entrypoint": self.entrypoint, "tags": self.get_tags()}
         if self.type == WorkflowType.CORE:
             payload["version"] = __version__
-        # if self.type == WorkflowType.USER:
-        #     # This is not supposed to be necessary, I think, but without this the worker just crashes when it processes flows
-        #     payload["pull_steps"] = [
-        #         {
-        #             "prefect.deployments.steps.set_working_directory": {
-        #                 "directory": config.SETTINGS.workflow.worker_working_directory
-        #             }
-        #         }
-        #     ]
-        #     payload["job_variables"] = {
-        #         "env": {
-        #             "INFRAHUB_ADDRESS": config.SETTINGS.main.internal_address,
-        #             "INFRAHUB_API_TOKEN": config.SETTINGS.initial.admin_token,
-        #         }
-        #     }
         if self.cron:
             payload["schedules"] = [DeploymentScheduleCreate(schedule=CronSchedule(cron=self.cron))]
 

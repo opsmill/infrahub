@@ -291,7 +291,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
         for generator in generators
     ]
 
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=await get_cache())
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for generator_definition in generator_definitions:
@@ -373,7 +373,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     schema_diff = dest_schema.diff(other=candidate_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=await get_cache())
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
         schema=candidate_schema, diff_summary=diff_summary
     )
@@ -1121,7 +1121,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     artifact_definitions = _parse_artifact_definitions(
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id, cache=await get_cache())
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for artifact_definition in artifact_definitions:

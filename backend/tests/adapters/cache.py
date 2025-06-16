@@ -26,4 +26,4 @@ class MemoryCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None:
-        pass
+        """"""
