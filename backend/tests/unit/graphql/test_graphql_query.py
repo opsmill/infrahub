@@ -1654,7 +1654,6 @@ async def test_query_filter_relationship_id(
         ('mylist__value: "one", level__value: 2', ["obj2"]),
         ('mylist__values: ["one"]', ["obj1", "obj2", "obj3"]),
         ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
-        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
         ('mylist__values: ["one", 5]', ["obj1", "obj2", "obj3", "obj4"]),
         ("mylist__value: true", ["obj3"]),
         ("mylist__values: [true]", ["obj3"]),
