@@ -47,6 +47,8 @@ R = TypeVar("R")
 
 log = get_logger()
 
+SUPPORTED_DATABASE_VERSION = "Neo4j/2025.03"
+
 
 @dataclass
 class QueryConfig:
@@ -467,6 +469,11 @@ async def validate_database(
     """
 
     try:
+        server_version = (await driver.get_server_info()).agent
+        # We use partial match so that patch versions are still supported
+        if SUPPORTED_DATABASE_VERSION not in server_version:
+            raise Exception(f"Neo4j version not supported: {server_version} - {SUPPORTED_DATABASE_VERSION} is required")
+
         session = driver.session(database=database_name)
         await session.run("SHOW TRANSACTIONS")
         validated_database[database_name] = True
