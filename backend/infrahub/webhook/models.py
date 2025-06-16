@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -21,10 +21,11 @@ from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 if TYPE_CHECKING:
     from httpx import Response
+    from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython, CoreWebhook
 
     from infrahub.core.protocols import CoreWebhook as CoreWebhookNode
-    from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.http import InfrahubHTTP
 
 
 class WebhookTriggerDefinition(TriggerDefinition):
@@ -104,9 +105,8 @@ class EventContext(BaseModel):
 
         return cls(
             id=event_id,
-            branch=branch_info.get("name")
-            if branch_info and branch_info.get("name") != registry.get_global_branch().name
-            else None,
+            # We use `GLOBAL_BRANCH_NAME` constant instead of `registry.get_global_branch().name` to the flow from depending on the registry
+            branch=branch_info.get("name") if branch_info and branch_info.get("name") != GLOBAL_BRANCH_NAME else None,
             account_id=account_info.get("account_id"),
             occured_at=event_occured_at,
             event=event_type,
@@ -122,7 +122,7 @@ class Webhook(BaseModel):
     _payload: Any = None
     _headers: dict[str, Any] | None = None
 
-    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:  # noqa: ARG002
+    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:  # noqa: ARG002
         self._payload = {"data": data, **context.model_dump()}
 
     def _assign_headers(self) -> None:
@@ -133,13 +133,15 @@ class Webhook(BaseModel):
     def webhook_type(self) -> str:
         return self.__class__.__name__
 
-    async def prepare(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
-        await self._prepare_payload(data=data, context=context, service=service)
+    async def prepare(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
+        await self._prepare_payload(data=data, context=context, client=client)
         self._assign_headers()
 
-    async def send(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> Response:
-        await self.prepare(data=data, context=context, service=service)
-        return await service.http.post(url=self.url, json=self.get_payload(), headers=self._headers)
+    async def send(
+        self, data: dict[str, Any], context: EventContext, http_service: InfrahubHTTP, client: InfrahubClient
+    ) -> Response:
+        await self.prepare(data=data, context=context, client=client)
+        return await http_service.post(url=self.url, json=self.get_payload(), headers=self._headers)
 
     def get_payload(self) -> dict[str, Any]:
         return self._payload
@@ -207,16 +209,14 @@ class TransformWebhook(Webhook):
     transform_timeout: int = Field(...)
     convert_query_response: bool = Field(...)
 
-    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
+    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
         repo: InfrahubReadOnlyRepository | InfrahubRepository
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(
-                id=self.repository_id, name=self.repository_name, client=service.client
+                id=self.repository_id, name=self.repository_name, client=client
             )
         else:
-            repo = await InfrahubRepository.init(
-                id=self.repository_id, name=self.repository_name, client=service.client
-            )
+            repo = await InfrahubRepository.init(id=self.repository_id, name=self.repository_name, client=client)
 
         branch = context.branch or repo.default_branch
         commit = repo.get_commit_value(branch_name=branch)
@@ -227,7 +227,7 @@ class TransformWebhook(Webhook):
             location=f"{self.transform_file}::{self.transform_class}",
             convert_query_response=self.convert_query_response,
             data={"data": data, **context.model_dump()},
-            client=service.client,
+            client=client,
         )  # type: ignore[misc]
 
     @classmethod

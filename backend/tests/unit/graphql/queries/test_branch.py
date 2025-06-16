@@ -7,9 +7,15 @@ from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 
-class TestBranchuQuery(TestInfrahubApp):
+class TestBranchQuery(TestInfrahubApp):
     async def test_branch_query(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin, client, service
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
     ):
         create_branch_query = """
         mutation {

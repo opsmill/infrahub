@@ -9,7 +9,7 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_message_bus
+from infrahub.workers.dependencies import build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
 
 
@@ -36,18 +36,19 @@ def rpc_bus(helper, dependency_provider):
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
     config.OVERRIDE.message_bus = bus
-    dependency_provider.override(build_message_bus, lambda: bus)
-    yield bus
+    with dependency_provider.scope(build_message_bus, lambda: bus):
+        yield bus
     config.OVERRIDE.message_bus = original
 
 
 @pytest.fixture
-async def workflow_local():
+async def workflow_local(dependency_provider):
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     await setup_task_manager()
     config.OVERRIDE.workflow = workflow
-    yield workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 

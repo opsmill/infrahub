@@ -32,12 +32,9 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_message_bus, set_component_type
+from infrahub.workers.dependencies import get_cache, get_component, get_message_bus, get_workflow, set_component_type
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -55,26 +52,27 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
+    component_type = ComponentType.API_SERVER
+    set_component_type(component_type=component_type)
+
     # Initialize database Driver and load local registry
     database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
     build_component_registry()
 
-    workflow = config.OVERRIDE.workflow or (
-        WorkflowWorkerExecution()
-        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
-        else WorkflowLocalExecution()
-    )
+    workflow = get_workflow()
     component_type = ComponentType.API_SERVER
     set_component_type(component_type=component_type)
     message_bus = await get_message_bus()
 
-    cache = config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
+    cache = await get_cache()
+    component = await get_component()
     service = await InfrahubServices.new(
         cache=cache,
         database=database,
         message_bus=message_bus,
         workflow=workflow,
+        component=component,
         component_type=component_type,
     )
     initialize_lock(service=service)

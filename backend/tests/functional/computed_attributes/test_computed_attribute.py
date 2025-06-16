@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubServices
     from tests.adapters.message_bus import BusSimulator
 
 
@@ -129,7 +128,6 @@ class TestComputedAttribute(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         context: InfrahubContext,
-        service: InfrahubServices,
     ) -> None:
         tshirt_1 = await client.get(kind="TestingTShirt", id=data["t1"].id)
         assert (
@@ -150,7 +148,6 @@ class TestComputedAttribute(TestInfrahubApp):
             computed_attribute_name="description",
             updated_fields=["color"],
             context=context,
-            service=service,
         )
 
         tshirt_updated = await client.get(kind="TestingTShirt", id=data["t1"].id)
@@ -165,7 +162,6 @@ class TestComputedAttribute(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         context: InfrahubContext,
-        service: InfrahubServices,
     ) -> None:
         # As we currently don't have a way to trigger on events within these tests we fire the automated workflow
         # manually
@@ -181,7 +177,6 @@ class TestComputedAttribute(TestInfrahubApp):
             computed_attribute_name="pitch",
             computed_attribute_kind="TestingTShirt",
             context=context,
-            service=service,
         )
 
         tshirt_first_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)
@@ -195,7 +190,6 @@ class TestComputedAttribute(TestInfrahubApp):
             node_kind="TestingColor",
             object_id=color_obj.id,
             context=context,
-            service=service,
         )
 
         tshirt_altered_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)

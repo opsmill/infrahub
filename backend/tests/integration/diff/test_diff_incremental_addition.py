@@ -17,7 +17,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -68,8 +67,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         await delorean.save(db=db)
         await delorean.previous_owner.update(db=db, data={"id": doc_brown.id, "_relation__is_protected": True})  # type: ignore[attr-defined]
         await delorean.save(db=db)
-
-        bus_simulator.service._cache = RedisCache()
 
         return {
             "doc_brown": doc_brown,

@@ -120,9 +120,7 @@ class TestProposedChange(TestInfrahubApp):
             message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
         )
 
-        repo = await InfrahubRepository.new(
-            id=obj.id, name=file_repo.name, location=file_repo.path, client=client, service=service
-        )
+        repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
         await repo.sync()
 
         result = await graphql_mutation(
@@ -150,20 +148,10 @@ class TestProposedChange(TestInfrahubApp):
             destination_branch="main",
             proposed_change=prepare_proposed_change,
         )
-        bus_pre_data_changes = BusRecorder()
-        fake_log = FakeLogger()
-        service = await InfrahubServices.new(
-            client=client,
-            cache=await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver),
-            log=fake_log,
-            message_bus=bus_pre_data_changes,
-            database=db,
-            workflow=WorkflowLocalExecution(),
-        )
         with patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow:
-            await run_proposed_change_pipeline(model=model, service=service, context=context)
+            await run_proposed_change_pipeline(model=model, context=context)
 
             expected_calls_before_data_changes = [
                 call(
@@ -185,7 +173,7 @@ class TestProposedChange(TestInfrahubApp):
             await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
             await obj.save(db=db)
 
-            await run_proposed_change_pipeline(model=model, service=service, context=context)
+            await run_proposed_change_pipeline(model=model, context=context)
 
             expected_calls_after_data_changes = [
                 call(
@@ -241,7 +229,7 @@ class TestProposedChange(TestInfrahubApp):
         with patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow:
-            await run_generators(model=model, context=context, service=service)
+            await run_generators(model=model, context=context)
 
             expected_calls = [
                 call(

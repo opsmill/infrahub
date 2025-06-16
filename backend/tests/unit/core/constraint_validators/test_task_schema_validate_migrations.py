@@ -1,5 +1,3 @@
-from infrahub_sdk import InfrahubClient
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
@@ -9,9 +7,6 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import InfrahubDatabase
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus.local import BusSimulator
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 
 async def test_schema_validate_migrations(
@@ -36,15 +31,8 @@ async def test_schema_validate_migrations(
         )
     ]
 
-    service = await InfrahubServices.new(
-        message_bus=BusSimulator(), client=InfrahubClient(), workflow=WorkflowLocalExecution(), database=db
-    )
-
     message = SchemaValidateMigrationData(branch=default_branch, schema_branch=schema, constraints=constraints)
-    responses = await schema_validate_migrations(
-        message=message,
-        service=service,
-    )
+    responses = await schema_validate_migrations(message=message)
 
     assert len(responses) == 1
     assert len(responses[0].violations) == 1

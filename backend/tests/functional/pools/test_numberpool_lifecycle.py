@@ -16,6 +16,7 @@ from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.tasks import validate_schema_number_pools
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.workers.dependencies import build_cache
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -53,12 +54,12 @@ class TestMutationGenerator(TestInfrahubApp):
         client: InfrahubClient,
         bus_simulator: BusSimulator,
         prefect_test_fixture,
+        dependency_provider,
     ) -> None:
-        bus_simulator.service._cache = RedisCache()
-
-        schema = {"version": "1.0", "nodes": [node_schema_definition]}
-        schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
-        assert not schema_load_response.errors
+        with dependency_provider.scope(build_cache, RedisCache):
+            schema = {"version": "1.0", "nodes": [node_schema_definition]}
+            schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
+            assert not schema_load_response.errors
 
     async def test_numberpool_assignment(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch
