@@ -1,12 +1,12 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getDefaultParentFromApi } from "@/entities/nodes/relationships/api/get-default-parent-from-api";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { FormContext, FormContextType } from "@/shared/components/form/utils/form-context";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useAtomValue } from "jotai";
 import { use } from "react";
-import { FormContext, FormContextType } from "../../utils/form-context";
-import { getDefaultParentFromApi } from "./get-default-parent-from-api";
 
 type Node = {
   id: string;
