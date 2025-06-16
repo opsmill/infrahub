@@ -541,7 +541,6 @@ ignore = [
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
-    "RUF006",  # Store a reference to the return value of `asyncio.create_task`
     "RUF010",  # Use explicit conversion flag
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",  # Prefer `next(...)` over single element slice

@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
 
+publish_tasks = set()
+
 
 async def _add_request_id(message: InfrahubMessage) -> None:
     log_data = get_log_data()
@@ -223,7 +225,9 @@ class NATSMessageBus(InfrahubMessageBus):
                     # Delayed retries are directly handled in the callback using Nack
                     return
                 # Use asyncio task for delayed publish since NATS does not support that out of the box
-                asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
+                task = asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
+                publish_tasks.add(task)
+                task.add_done_callback(publish_tasks.discard)
                 return
 
             for enricher in self.message_enrichers:
