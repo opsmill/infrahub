@@ -257,12 +257,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
 
         if isinstance(schema.parameters, NumberAttributeParameters):
-            min_value = schema.parameters.min_value
-            if min_value is not None and value < min_value:
-                raise ValidationError({name: f"{value} is lower than the minimum allowed value {min_value!r}"})
-            max_value = schema.parameters.max_value
-            if max_value is not None and value > max_value:
-                raise ValidationError({name: f"{value} is higher than the maximum allowed value {max_value!r}"})
+            schema.parameters.check_valid_value(value=value, name=name)
 
         if schema.enum:
             try:
