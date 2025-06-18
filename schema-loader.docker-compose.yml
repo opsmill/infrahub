@@ -1,0 +1,28 @@
+---
+# yamllint disable rule:line-length
+services:
+  schema-loader:
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.3.0}"
+    restart: "no"
+    depends_on:
+      infrahub-server:
+        condition: service_healthy
+    environment:
+      INFRAHUB_API_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
+      INFRAHUB_ADDRESS: ${INFRAHUB_ADDRESS:-http://infrahub-server:8000}
+      INFRAHUB_SCHEMA_URLS: ${INFRAHUB_SCHEMA_URLS:-https://raw.githubusercontent.com/opsmill/schema-library/refs/heads/main/base/dcim.yml https://raw.githubusercontent.com/opsmill/schema-library/refs/heads/main/base/ipam.yml https://raw.githubusercontent.com/opsmill/schema-library/refs/heads/main/base/location.yml https://raw.githubusercontent.com/opsmill/schema-library/refs/heads/main/base/organization.yml}
+    command: >
+      sh -c "
+        echo 'Infrahub is ready, downloading schema files...';
+        mkdir -p /tmp/schemas;
+        i=0;
+        for url in $$INFRAHUB_SCHEMA_URLS; do
+          i=$$((i + 1));
+          filepath=\"/tmp/schemas/schema_$$i.yml\";
+          echo \"Downloading \$$url to \$$filepath\";
+          curl -o \"\$$filepath\" \"\$$url\" || exit 1;
+        done;
+        echo 'Loading all schemas in one command...';
+        infrahubctl schema load /tmp/schemas/ &&
+        echo 'All schemas loaded successfully!';
+      "
