@@ -1,7 +1,7 @@
 ---
 applyTo: '/docs/**'
 ---
-Instruction: Generate a complete MDX file by selecting and filling the correct template based on the file path. Apply suggestions to the corresponding mdx file in the /docs folder.
+Instruction: Generate a complete MDX file by selecting and filling the correct template based on the file path. Apply suggestions to the corresponding mdx file in the /docs/docs folder.
 
 Role: Expert technical writer and MDX generator.
 
