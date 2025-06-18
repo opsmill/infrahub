@@ -31,6 +31,7 @@ from infrahub.helpers import hash_password
 
 from ..types import ATTRIBUTE_TYPES, LARGE_ATTRIBUTE_TYPES
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
+from .schema.attribute_parameters import NumberAttributeParameters
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -254,6 +255,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if max_length := schema.get_max_length():
             if len(value) > max_length:
                 raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
+
+        if isinstance(schema.parameters, NumberAttributeParameters):
+            schema.parameters.check_valid_value(value=value, name=name)
 
         if schema.enum:
             try:
