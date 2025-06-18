@@ -1,0 +1,94 @@
+---
+title: "AI Agent Guide Template"
+description: "Template for creating guides to feed AI agents about InfraHub"
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Overview
+
+Infrahub is a platform for managing infrastructure data with a focus on [key features/capabilities]. This guide provides essential information for AI agents to understand and work with InfraHub.
+
+## Core concepts
+
+- **Resources**: [Brief explanation of resources in InfraHub]
+- **Schemas**: [Brief explanation of schemas]
+- **Relationships**: [Brief explanation of how resources relate to each other]
+
+## Operations
+
+### Querying data
+
+<Tabs>
+  <TabItem value="ui" label="UI" default>
+    1. Navigate to the search bar in the top navigation
+    2. Enter your query using the [specific syntax/format]
+    3. [Additional UI steps as needed]
+
+    ![Screenshot of query interface](/img/screenshots/query-interface.png)
+  </TabItem>
+  <TabItem value="code" label="Code">
+    ```python
+    # Example code for querying data
+    from infrahub import Client
+
+    client = Client(url="https://your-infrahub-instance.com", token="your-token")
+    result = client.query("""
+      # GraphQL query here
+    """)
+    ```
+  </TabItem>
+  <TabItem value="cli" label="CLI">
+    ```bash
+    # Example CLI command
+    infrahubctl query "your query here"
+    ```
+  </TabItem>
+</Tabs>
+
+### Creating resources
+
+<Tabs>
+  <TabItem value="ui" label="UI" default>
+    1. Navigate to [specific section] in the UI
+    2. Click the "Create" button
+    3. [Additional UI steps]
+
+    ![Screenshot of creation interface](/img/screenshots/create-resource.png)
+  </TabItem>
+  <TabItem value="code" label="Code">
+    ```python
+    # Example code for creating resources
+    from infrahub import Client
+
+    client = Client(url="https://your-infrahub-instance.com", token="your-token")
+    # Resource creation code
+    ```
+  </TabItem>
+  <TabItem value="cli" label="CLI">
+    ```bash
+    # Example CLI command
+    infrahubctl create resource --name "example" --type "device"
+    ```
+  </TabItem>
+</Tabs>
+
+## Best practices
+
+- [Best practice 1]
+- [Best practice 2]
+- [Best practice 3]
+
+## Known limitations
+
+| Issues | Solution |
+|-------|----------|
+| [Common issue 1] | [Solution 1] |
+| [Common issue 2] | [Solution 2] |
+
+## Additional resources
+
+- [Link to API documentation]
+- [Link to examples repository]
+- [Other relevant resources]
