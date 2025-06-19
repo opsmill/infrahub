@@ -331,7 +331,6 @@ disable_error_code = [
     "attr-defined",
     "assignment",
     "func-returns-value",
-    "return-value",
     "var-annotated",
 ]
 
