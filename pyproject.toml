@@ -222,7 +222,6 @@ disable_error_code = [
     "attr-defined",
     "list-item",
     "no-redef",
-    "no-untyped-def",
     "override",
     "return",
     "union-attr",
