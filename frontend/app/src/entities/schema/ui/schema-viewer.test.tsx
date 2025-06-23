@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { render } from "../../../../tests/components/render";
-import { generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateAttributeSchema, generateNodeSchema } from "../../../../tests/fake/schema";
 import { SchemaViewer } from "./schema-viewer";
 
 describe("Schema Visualizer Component", () => {
@@ -38,6 +38,7 @@ describe("Schema Visualizer Component", () => {
           },
           parameters: {
             regex: "test-regex",
+            state: "present",
             min_length: 1,
             max_length: 10,
           },
@@ -65,18 +66,20 @@ describe("Schema Visualizer Component", () => {
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "Attribute",
           kind: "NumberPool",
           optional: false,
           read_only: false,
           parameters: {
+            state: "present",
             number_pool_id: "random-pool-id",
             start_range: 10,
             end_range: 100,
           },
-        },
+        }),
       ],
     });
 
@@ -84,7 +87,7 @@ describe("Schema Visualizer Component", () => {
 
     // WHEN
     await component.getByText("Attributes").click();
-    await component.getByText("attribute NumberPool").click();
+    await component.getByText("Attribute NumberPool").click();
 
     // THEN
     await expect.element(component.getByText("random-pool-id")).toBeVisible();
@@ -99,9 +102,10 @@ describe("Schema Visualizer Component", () => {
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "attribute",
           kind: "Text",
           optional: false,
           read_only: false,
@@ -109,7 +113,7 @@ describe("Schema Visualizer Component", () => {
             kind: "Jinja2",
             jinja2_template: "{{ name__value | upper }}",
           },
-        },
+        }),
       ],
     });
 
@@ -131,9 +135,10 @@ describe("Schema Visualizer Component", () => {
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "attribute",
           kind: "Text",
           optional: false,
           read_only: false,
@@ -141,7 +146,7 @@ describe("Schema Visualizer Component", () => {
             kind: "TransformPython",
             transform: "test-transform",
           },
-        },
+        }),
       ],
     });
 
