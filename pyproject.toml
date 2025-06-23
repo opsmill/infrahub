@@ -398,7 +398,6 @@ module = "infrahub.graphql.mutations.proposed_change"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "no-untyped-def",
     "union-attr",
 ]
 
