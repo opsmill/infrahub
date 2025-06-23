@@ -1,13 +1,17 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
-def _get_schema_by_kind(full_schema, kind):
+def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
         if schema_kind == kind:
             return schema_dict
+
+    pytest.fail(reason="Unable to find schema for kind")
 
 
 @pytest.fixture

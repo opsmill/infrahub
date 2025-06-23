@@ -959,6 +959,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
 
+        return None
+
     async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
         return (
