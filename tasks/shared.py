@@ -54,7 +54,7 @@ CACHE_DOCKER_IMAGE = os.getenv(
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
-PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
+PYTHON_VER = os.getenv("PYTHON_VER", "3.13")
 
 PWD = Path.cwd()
 

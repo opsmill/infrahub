@@ -12,6 +12,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 packages = [
@@ -21,7 +22,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.12, < 3.13"
+python = "^3.12, < 3.14"
 neo4j = "~5.28"
 neo4j-rust-ext = "~5.28"
 pydantic = "~2.10"
