@@ -15,10 +15,11 @@ import {
 import { store } from "@/shared/stores";
 
 type GetRelationshipDefaultValueParams = {
-  relationshipData: RelationshipType | undefined;
-  objectTemplate: NodeObject | null | undefined;
+  relationshipData?: RelationshipType;
+  objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   relationshipName?: string;
+  parentData?: NodeObject | null;
 };
 
 export const getRelationshipDefaultValue = ({
@@ -26,6 +27,7 @@ export const getRelationshipDefaultValue = ({
   relationshipData,
   objectTemplate,
   relationshipName,
+  parentData,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
   if (isFilterForm) {
     return { source: null, value: null };
@@ -33,6 +35,15 @@ export const getRelationshipDefaultValue = ({
 
   if (relationshipData) {
     return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
+  }
+
+  if (parentData) {
+    return {
+      source: {
+        type: "user",
+      },
+      value: parentData,
+    };
   }
 
   return (
