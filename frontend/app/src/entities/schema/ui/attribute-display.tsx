@@ -92,7 +92,7 @@ const AttributeParameters = ({
   attribute,
 }: { attribute: components["schemas"]["AttributeSchema-Output"] }) => {
   if (attribute.kind === "Text") {
-    const parameters = attribute.parameters as components["schemas"]["TextAttributeParameters"]
+    const parameters = attribute.parameters as components["schemas"]["TextAttributeParameters"];
     return (
       <div>
         <PropertyTitle title="Parameters" />
@@ -107,7 +107,7 @@ const AttributeParameters = ({
   }
 
   if (attribute.kind === "Number") {
-    const parameters = attribute.parameters as components["schemas"]["NumberAttributeParameters"]
+    const parameters = attribute.parameters as components["schemas"]["NumberAttributeParameters"];
     return (
       <div>
         <PropertyTitle title="Parameters" />
@@ -118,11 +118,11 @@ const AttributeParameters = ({
           <PropertyRow title="Excluded values" value={parameters.excluded_values} />
         </div>
       </div>
-    )
+    );
   }
 
   if (attribute.kind === "NumberPool") {
-    const parameters = attribute.parameters as components["schemas"]["NumberPoolParameters"]
+    const parameters = attribute.parameters as components["schemas"]["NumberPoolParameters"];
     return (
       <div>
         <PropertyTitle title="Parameters" />
@@ -132,18 +132,12 @@ const AttributeParameters = ({
             title="Number pool"
             value={
               <Link to={constructPath(`/resource-manager/${parameters.number_pool_id}`)}>
-                <NodeLabel id={parameters.number_pool_id??undefined} />
+                <NodeLabel id={parameters.number_pool_id ?? undefined} />
               </Link>
             }
           />
-          <PropertyRow
-            title="Start range"
-            value={formatNumberDisplay(parameters.start_range)}
-          />
-          <PropertyRow
-            title="End range"
-            value={formatNumberDisplay(parameters.end_range)}
-          />
+          <PropertyRow title="Start range" value={formatNumberDisplay(parameters.start_range)} />
+          <PropertyRow title="End range" value={formatNumberDisplay(parameters.end_range)} />
         </div>
       </div>
     );
