@@ -18,6 +18,7 @@ import {
   FormAttributeValue,
   FormFieldValue,
 } from "@/shared/components/form/type";
+import { FormContext } from "@/shared/components/form/utils/form-context";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -30,7 +31,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
@@ -46,6 +47,7 @@ export const NodeRelationshipMatchForm = ({
 }: NodeRelationshipMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
+  const { parentData } = use(FormContext);
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
@@ -84,6 +86,7 @@ export const NodeRelationshipMatchForm = ({
       relationshipData: currentObject?.trigger as RelationshipType | undefined,
       relationshipName: "trigger",
       objectTemplate,
+      parentData,
     }),
   };
 
