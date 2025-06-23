@@ -320,7 +320,6 @@ disable_error_code = [
     "attr-defined",
     "index",
     "operator",
-    "return-value",
     "union-attr",
     "valid-type",
     "var-annotated",

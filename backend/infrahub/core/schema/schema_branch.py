@@ -118,7 +118,7 @@ class SchemaBranch:
     def template_names(self) -> list[str]:
         return list(self.templates.keys())
 
-    def get_all_kind_id_map(self, nodes_and_generics_only: bool = False) -> dict[str, str]:
+    def get_all_kind_id_map(self, nodes_and_generics_only: bool = False) -> dict[str, str | None]:
         kind_id_map = {}
         if nodes_and_generics_only:
             names = self.node_names + self.generic_names_without_templates
@@ -440,7 +440,7 @@ class SchemaBranch:
         return list(all_schemas.values())
 
     def get_schemas_by_rel_identifier(self, identifier: str) -> list[MainSchemaTypes]:
-        nodes: list[RelationshipSchema] = []
+        nodes: list[MainSchemaTypes] = []
         for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=node_name, duplicate=False)
             rel = node.get_relationship_by_identifier(id=identifier, raise_on_error=False)
