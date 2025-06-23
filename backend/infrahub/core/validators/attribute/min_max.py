@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub import config
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
@@ -94,7 +95,10 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        grouped_data_paths_list: list[GroupedDataPaths] = []
+        # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
+        if not config.SETTINGS.main.schema_strict_mode:
+            return []
+
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
@@ -106,8 +110,9 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
             and attribute_schema.parameters.max_value is None
             and attribute_schema.parameters.excluded_values is None
         ):
-            return grouped_data_paths_list
+            return []
 
+        grouped_data_paths_list: list[GroupedDataPaths] = []
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
