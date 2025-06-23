@@ -70,7 +70,9 @@ log = get_logger()
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
-    def __init_subclass_with_meta__(cls, _meta=None, default_filter=None, **options) -> None:
+    def __init_subclass_with_meta__(
+        cls, _meta: BaseNodeOptions | None = None, default_filter: None = None, **options: dict[str, Any]
+    ) -> None:
         if not _meta:
             _meta = BaseNodeOptions(cls)
 
@@ -958,6 +960,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for relationship in self._schema.relationships:
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
+
+        return None
 
     async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
