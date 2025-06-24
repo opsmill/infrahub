@@ -91,6 +91,10 @@ export const GenericRelationshipField = ({
     }
   }
 
+  if (!selectedParent && defaultParent) {
+    setSelectedParent(defaultParent);
+  }
+
   return (
     <div className="space-y-2">
       <LabelFormField
