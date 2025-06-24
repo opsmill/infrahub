@@ -234,7 +234,7 @@ async def cancel_proposed_changes_branch(branch_name: str) -> None:
         await cancel_proposed_change(proposed_change=proposed_change, client=get_client())
 
 
-@task(name="Cancel a propose change", description="Cancel a propose change", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="Cancel a proposed change", description="Cancel a proposed change", cache_policy=NONE)  # type: ignore[arg-type]
 async def cancel_proposed_change(proposed_change: CoreProposedChange, client: InfrahubClient) -> None:
     await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
@@ -260,10 +260,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
-@flow(
-    name="proposed-changed-run-generator",
-    flow_run_name="Run generators",
-)
+@flow(name="proposed-changed-run-generator", flow_run_name="Run generators")
 async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
@@ -450,10 +447,7 @@ async def _get_proposed_change_schema_integrity_constraints(
     return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
 
 
-@flow(
-    name="proposed-changed-repository-checks",
-    flow_run_name="Process user defined checks",
-)
+@flow(name="proposed-changed-repository-checks", flow_run_name="Process user defined checks")
 async def repository_checks(model: RequestProposedChangeRepositoryChecks, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
