@@ -349,6 +349,7 @@ CALL (node) {
             params[attr_value_var] = rel_path.attribute_value
         query_arrows = rel_path.relationship_schema.get_query_arrows()
         rel_name_var = f"rel_name_{index}"
+        # long path MATCH is required to hit an index on the peer or AttributeValue of the peer
         first_match = (
             "MATCH (node:%(node_kind)s)%(lstart)s[:IS_RELATED]%(lend)s(:Relationship {name: $%(rel_name_var)s})%(rstart)s[:IS_RELATED]%(rend)s"
             % {
