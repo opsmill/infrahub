@@ -44,7 +44,7 @@ class Migration031(InternalSchemaMigration):
 
         branches = await Branch.get_list(db=db)
         for branch in branches:  # noqa
-            for schema in db.schema.get_full().values():
+            for schema in db.schema.get_full(branch=branch).values():
                 if not isinstance(schema, (NodeSchema, GenericSchema)):
                     continue
 
