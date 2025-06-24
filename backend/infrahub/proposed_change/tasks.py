@@ -251,12 +251,12 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     database = await get_database()
-    async with database.start_transaction() as dbt:
-        destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
+    async with database.start_session() as dbs:
+        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
 
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
@@ -989,11 +989,11 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     await _gather_repository_repository_diffs(repositories=repositories, client=client)
 
     database = await get_database()
-    async with database.start_transaction() as dbt:
-        destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
+    async with database.start_session() as dbs:
+        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
     client = get_client()
