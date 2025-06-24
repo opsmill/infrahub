@@ -1,14 +1,13 @@
 import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
-import { buildRelationshipSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema.test";
 import { describe, expect, it } from "vitest";
-import { generateNodeSchema } from "../../../../../tests/fake/schema";
+import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
 describe("getFormFieldFromRelationship", () => {
   const schema = generateNodeSchema();
 
   it("returns no fields that are read only", () => {
     // GIVEN
-    const relationshipSchema = buildRelationshipSchema({ read_only: true });
+    const relationshipSchema = generateRelationshipSchema({ read_only: true });
 
     // WHEN
     const fields = getFormFieldFromRelationship({
@@ -23,10 +22,10 @@ describe("getFormFieldFromRelationship", () => {
     // THEN
     expect(fields).toMatchObject({
       defaultValue: { source: null, value: null },
-      description: "relationship many input for testing and development",
+      description: undefined,
       disabled: true,
-      label: "Tagone",
-      name: "tagone",
+      label: "Relationship test",
+      name: "test_relationship",
       parent: undefined,
       relationship: relationshipSchema,
       rules: {

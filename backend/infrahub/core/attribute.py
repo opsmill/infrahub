@@ -492,6 +492,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if changelog.has_updates:
             return changelog
 
+        return None
+
     async def to_graphql(
         self,
         db: InfrahubDatabase,

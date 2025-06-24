@@ -1,0 +1,127 @@
+---
+title: Event Rules and Actions
+---
+
+The event framework allows you to respond to [events](/topics/events) as they occur within Infrahub by defining filter conditions and triggering actions.
+By creating multiple rules and actions, you can build automated workflows.
+
+## How it works
+
+1. **Define trigger rules** that match specific events
+2. **Set filter conditions** to narrow down which events should trigger actions
+3. **Configure actions** to execute when conditions are met
+
+## Example workflows
+
+### Adding devices to active group
+
+**Workflow:**
+
+1. Device is updated → status changed to "active"
+2. Node trigger rule detects the change
+3. Group action adds device to "active-devices" group
+4. Group member added event is generated
+5. Generator action runs for the new member
+
+**Implementation:**
+
+1. **Node Trigger Rule**
+   * Matches `infrahub.node.updated` events when a device's `status` changes to "active"
+   * Executes a group action to add the device to the "active-devices" group
+
+2. **Group Trigger Rule**
+   * Matches `infrahub.group.member_added` events for the "active-devices" group
+   * Runs a generator definition targeting the newly added member
+
+### Removing devices from active group
+
+**Workflow:**
+
+1. Device is updated → status changed from "active"
+2. Node trigger rule detects the change
+3. Group action removes device from "active-devices" group
+
+## Trigger rules
+
+Trigger rules are nodes that inherit from the `CoreTriggerRule` generic and match against specific event types:
+
+| Rule Type | Description | Use Case |
+|-----------|-------------|----------|
+| `CoreNodeTriggerRule` | Filters on mutations to specific nodes | Match changes to attributes or relationships |
+| `CoreGroupTriggerRule` | Filters on changes to specific groups | Match when members are added or removed |
+
+### Configuring node trigger rule
+
+When setting up a node trigger rule:
+
+1. Select the node kind to match against
+2. Create match filters for specific attributes or relationships
+3. Set the trigger to active when configuration is complete
+
+#### Match filters
+
+:::info
+By default, a trigger rule will match any change for the given mutation type (added/updated).
+You can define additional filters by adding match conditions.
+
+**All conditions must be satisfied** - Match filters use logical AND, not OR
+
+:::
+
+**Attribute matches** - Filter based on:
+
+* New value - Match the attribute's value after the change
+* Previous value - Match the attribute's value before the change
+* Both - Match both before and after values for transition detection
+
+**Relationship matches** - Filter based on:
+
+* Modification type - Choose whether the relationship was added, removed, or modified
+* Peer - Specify which node type/instance should be on the other side of the relationship
+
+:::info Example
+
+To trigger only when a device's status changes from "inactive" to "active", create an attribute match with:
+
+* Previous value = "inactive"
+* New value = "active"
+
+:::
+
+:::success Best Practice
+The trigger needs to be marked as active before it starts to filter on events
+
+Keep the trigger inactive until you've configured all match conditions to prevent premature execution.
+:::
+
+## Actions
+
+Actions are nodes that inherit from the `CoreAction` generic:
+
+| Action Type | Description | Effect |
+|-------------|-------------|--------|
+| `CoreGeneratorAction` | Runs a generator definition | Uses impacted objects as input |
+| `CoreGroupAction` | Modifies group membership | Adds or removes members from a group |
+
+:::info
+
+## Use cases
+
+### Automated nodes grouping
+
+When a node with a specific attribute or relationship is created, automatically add it to a group:
+
+1. Create a group action to add nodes to a group
+2. Create a node trigger rule for node creation
+3. Add an attribute or relationship match to detect the specific condition
+4. Configure it to run your group action when the condition is met
+
+### Automated resource creation
+
+When an object is added to a group (or when a attribute changes), automatically create related resources:
+
+1. Create a generator action linked to your resource creation generator
+2. Create a group trigger rule for the group
+3. Configure it to run your generator action when a member is added
+
+:::

@@ -1,0 +1,37 @@
+query drained_circuit_bgp_sessions($circuit_id: String!) {
+  InfraCircuit(circuit_id__value: $circuit_id) {
+    edges {
+      node @expand {
+        __typename
+        id
+        provider {
+          node {
+            __typename
+            id
+          }
+        }
+        status {
+          value
+        }
+        endpoints {
+          count
+          edges {
+            node {
+              __typename
+              id
+            }
+          }
+        }
+        bgp_sessions {
+          count
+          edges {
+            node {
+              __typename
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+}

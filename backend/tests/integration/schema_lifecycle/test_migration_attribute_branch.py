@@ -214,6 +214,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                                 },
                                 "removed": {},
                             },
+                            "human_friendly_id": None,
+                            "uniqueness_constraints": None,
                         },
                         "removed": {},
                     },
@@ -238,6 +240,14 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         # Check if the branch has been properly updated
         branches = await client.branch.all()
         assert branches[self.branch1.name].has_schema_changes is True
+
+        # Check schema properties
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=self.branch1)
+        updated_person_schema = schema_branch.get(name=PERSON_KIND)
+        assert updated_person_schema.uniqueness_constraints == [["firstname__value"]]
+        assert updated_person_schema.human_friendly_id == ["firstname__value"]
+        assert updated_person_schema.display_labels is None
+        assert updated_person_schema.order_by is None
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
         persons = await registry.manager.query(
@@ -319,12 +329,17 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert parent_event["InfrahubEvent"]["count"] == 1
         parent_id = parent_event["InfrahubEvent"]["edges"][0]["node"]["id"]
 
-        mutation_events = await client.execute_graphql(
-            query=QUERY_EVENT,
-            variables={
-                "parent__ids": [parent_id],
-            },
-        )
+        for _ in range(10):
+            mutation_events = await client.execute_graphql(
+                query=QUERY_EVENT,
+                variables={
+                    "parent__ids": [parent_id],
+                },
+            )
+            if mutation_events["InfrahubEvent"]["count"] == 5:
+                break
+            await asyncio.sleep(1)
+
         assert mutation_events["InfrahubEvent"]["count"] == 5
 
         janes_events = [

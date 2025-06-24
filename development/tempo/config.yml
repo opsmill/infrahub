@@ -21,7 +21,6 @@ ingester:
   complete_block_timeout: 12h
 
 compactor:
-  replicas: 1
   compaction:
     block_retention: 96h
 

@@ -17,7 +17,7 @@ from .node.inherit_from import NodeInheritFromChecker
 from .node.relationship import NodeRelationshipAddChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
-from .relationship.peer import RelationshipPeerChecker
+from .relationship.peer import RelationshipPeerChecker, RelationshipPeerParentChecker
 from .uniqueness.checker import UniquenessChecker
 
 CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
@@ -42,6 +42,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "relationship.optional.update": RelationshipOptionalChecker,
     "relationship.min_count.update": RelationshipCountChecker,
     "relationship.max_count.update": RelationshipCountChecker,
+    "relationship.common_parent.update": RelationshipPeerParentChecker,
     "node.inherit_from.update": NodeInheritFromChecker,
     "node.uniqueness_constraints.update": UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,

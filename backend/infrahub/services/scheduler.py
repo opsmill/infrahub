@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
+background_tasks = set()
+
 
 @dataclass
 class Schedule:
@@ -56,7 +58,9 @@ class InfrahubScheduler:
 
     async def start_schedule(self) -> None:
         for schedule in self.schedules:
-            asyncio.create_task(self.run_schedule(schedule=schedule), name=f"scheduled_task_{schedule.name}")
+            task = asyncio.create_task(self.run_schedule(schedule=schedule), name=f"scheduled_task_{schedule.name}")
+            background_tasks.add(task)
+            task.add_done_callback(background_tasks.discard)
 
     async def shutdown(self) -> None:
         self.running = False

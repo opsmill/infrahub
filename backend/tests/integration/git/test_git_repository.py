@@ -145,7 +145,7 @@ class TestInfrahubClient:
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
 
         queries = await client.all(kind=CoreGraphQLQuery)
-        assert len(queries) == 5
+        assert len(queries) == 10
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
@@ -178,6 +178,14 @@ class TestInfrahubClient:
     async def test_import_all_python_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
     ):
+        for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
+            obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
+            await obj.new(
+                db=db,
+                name=group,
+            )
+            await obj.save(db=db)
+
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
         assert config_file

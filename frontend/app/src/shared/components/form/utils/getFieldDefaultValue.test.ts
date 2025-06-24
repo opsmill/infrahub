@@ -14,12 +14,13 @@ import {
 import { store } from "@/shared/stores";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  generateAttributeSchema,
   generateGenericSchema,
   generateNodeSchema,
   generateProfileSchema,
+  generateRelationshipSchema,
   generateTemplateSchema,
 } from "../../../../../tests/fake/schema";
-import { buildAttributeSchema, buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 
 describe("getFieldDefaultValue", () => {
   beforeEach(() => {
@@ -41,7 +42,7 @@ describe("getFieldDefaultValue", () => {
   describe("when source is the user", () => {
     it("returns current object field's value when value is not from profile", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateRelationshipSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -76,7 +77,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns current object field's value when value is not from profile and is null", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -111,7 +112,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns current object field's value when value is not from profile and is 0", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -148,7 +149,7 @@ describe("getFieldDefaultValue", () => {
   describe("when source is profile", () => {
     it("returns profile's value when it exists, current object value is not found", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -180,7 +181,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns profile's value when it exists, current object field is found and is from profile", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -218,7 +219,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns schema's value when profile value is null", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -245,7 +246,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns profile's value when it exists and value is 0", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
 
       const profiles = [
         {
@@ -452,7 +453,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns schema's default value when it exists if the value is null", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema();
+      const fieldSchema = generateAttributeSchema();
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema });
@@ -468,7 +469,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns schema's default value when current value has is_default: true", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+      const fieldSchema = generateAttributeSchema({ default_value: "my-default-value" });
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -493,7 +494,7 @@ describe("getFieldDefaultValue", () => {
 
   it("returns null if field is an relationship and no object field value is provided", () => {
     // GIVEN
-    const fieldSchema = buildRelationshipSchema();
+    const fieldSchema = generateRelationshipSchema();
 
     // WHEN
     const defaultValue = getFieldDefaultValue({ fieldSchema });
@@ -505,7 +506,7 @@ describe("getFieldDefaultValue", () => {
   describe("when source is template", () => {
     it("returns template value when provided", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
       const objectTemplate: NodeObject = {
         id: "template-id" as any,
         __typename: "FakeTemplate" as any,
@@ -532,7 +533,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns null value when template field value is null", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
       const objectTemplate: NodeObject = {
         id: "template-id" as any,
         __typename: "FakeTemplate" as any,
@@ -554,9 +555,12 @@ describe("getFieldDefaultValue", () => {
       });
     });
 
-    it("retuns template when source is template", () => {
+    it("returns template when source is template", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+      const fieldSchema = generateAttributeSchema({
+        name: "field1",
+        default_value: "my-default-value",
+      });
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -588,7 +592,10 @@ describe("getFieldDefaultValue", () => {
   describe("when source is pool", () => {
     it("returns object value when assigned from a pool", () => {
       // GIVEN
-      const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+      const fieldSchema = generateAttributeSchema({
+        name: "field1",
+        default_value: "my-default-value",
+      });
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -606,7 +613,12 @@ describe("getFieldDefaultValue", () => {
 
       // THEN
       expect(defaultValue).to.deep.equal({
-        source: { type: "pool", id: "pool-id", label: "Fake pool", kind: "FakePool" },
+        source: {
+          type: "pool",
+          id: "pool-id",
+          label: "Fake pool",
+          kind: "FakePool",
+        },
         value: "my-default-value",
       });
     });

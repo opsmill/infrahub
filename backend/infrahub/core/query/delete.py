@@ -21,7 +21,7 @@ class DeleteAfterTimeQuery(Query):
         // ---------------------
         // Reset edges with to time after timestamp
         // ---------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH (p)-[r]-(q)
             WHERE r.to > $timestamp
             SET r.to = NULL
@@ -33,7 +33,7 @@ class DeleteAfterTimeQuery(Query):
             // ---------------------
             // Delete edges with from time after timestamp timestamp
             // ---------------------
-            CALL {
+            CALL () {
                 OPTIONAL MATCH (p)-[r]->(q)
                 WHERE r.from > $timestamp
                 DELETE r
@@ -49,7 +49,7 @@ class DeleteAfterTimeQuery(Query):
             // ---------------------
             // Delete edges with from time after timestamp timestamp
             // ---------------------
-            CALL {
+            CALL () {
                 OPTIONAL MATCH (p)-[r]->(q)
                 WHERE r.from > $timestamp
                 DELETE r

@@ -94,7 +94,8 @@ async def test_schema_constraints(human_friendly_id, uniqueness_constraints, sho
 
     if should_raise:
         with pytest.raises(
-            ValidationError, match=r"HFID of TestCar refers peer TestPerson with a non-unique combination of attributes"
+            ValidationError,
+            match=r"HFID of TestCar refers to peer TestPerson with a non-unique combination of attributes",
         ):
             schema_branch.load_schema(schema=schema_root)
             schema_branch.process()
