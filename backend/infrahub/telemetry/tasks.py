@@ -34,7 +34,7 @@ async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
 @task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
 async def gather_feature_information() -> dict[str, int]:
     database = await get_database()
-    async with database.start_session(read_only=False) as db:
+    async with database.start_session(read_only=True) as db:
         data = {}
         features_to_count = [
             InfrahubKind.ARTIFACT,

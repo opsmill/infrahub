@@ -70,7 +70,7 @@ async def schema_path_validate(
     schema_branch: SchemaBranch,
     database: InfrahubDatabase,
 ) -> SchemaValidatorPathResponseData:
-    async with database.start_session(read_only=False) as db:
+    async with database.start_session(read_only=True) as db:
         constraint_request = SchemaConstraintValidatorRequest(
             branch=branch,
             constraint_name=constraint_name,
