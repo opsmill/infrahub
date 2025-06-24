@@ -156,3 +156,4 @@ yamllint
 YouTube
 vscode
 VSCode
+Slurp'it
