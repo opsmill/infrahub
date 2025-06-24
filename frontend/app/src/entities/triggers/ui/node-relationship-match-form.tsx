@@ -47,7 +47,7 @@ export const NodeRelationshipMatchForm = ({
 }: NodeRelationshipMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
-  const { parentData } = use(FormContext);
+  const { parentData, parentSchema } = use(FormContext);
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
@@ -86,7 +86,9 @@ export const NodeRelationshipMatchForm = ({
       relationshipData: currentObject?.trigger as RelationshipType | undefined,
       relationshipName: "trigger",
       objectTemplate,
+      schema: props.schema,
       parentData,
+      parentSchema,
     }),
   };
 

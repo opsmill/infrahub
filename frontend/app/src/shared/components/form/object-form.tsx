@@ -33,8 +33,9 @@ import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+import { FormContext } from "@/shared/components/form/utils/form-context";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, use } from "react";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;
@@ -60,6 +61,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
 
 const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   const { schema, isNode, isGeneric } = useSchema(kind);
+  const { parentSchema, parentData } = use(FormContext);
 
   if (!schema) {
     return (
@@ -87,60 +89,116 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   if ([REPOSITORY_KIND, READONLY_REPOSITORY_KIND].includes(kind)) {
     return (
       <Suspense fallback={<LoadingIndicator className="mt-4" />}>
-        <RepositoryForm schema={schema} {...props} />
+        <RepositoryForm
+          schema={schema}
+          parentSchema={parentSchema}
+          parentData={parentData}
+          {...props}
+        />
       </Suspense>
     );
   }
 
   if (kind === NUMBER_POOL_OBJECT) {
-    return <NumberPoolForm {...props} />;
+    return <NumberPoolForm parentSchema={parentSchema} parentData={parentData} {...props} />;
   }
 
   if (kind === ACCOUNT_OBJECT) {
-    return <AccountForm {...props} />;
+    return <AccountForm parentSchema={parentSchema} parentData={parentData} {...props} />;
   }
 
   if (kind === ACCOUNT_GROUP_OBJECT) {
-    return <AccountGroupForm {...props} />;
+    return <AccountGroupForm parentSchema={parentSchema} parentData={parentData} {...props} />;
   }
 
   if (kind === ACCOUNT_ROLE_OBJECT) {
-    return <AccountRoleForm {...props} />;
+    return <AccountRoleForm parentSchema={parentSchema} parentData={parentData} {...props} />;
   }
 
   if (kind === GLOBAL_PERMISSION_OBJECT) {
-    return <GlobalPermissionForm {...props} />;
+    return <GlobalPermissionForm parentSchema={parentSchema} parentData={parentData} {...props} />;
   }
 
   if (kind === OBJECT_PERMISSION_OBJECT) {
-    return <ObjectPermissionForm {...props} />;
+    return <ObjectPermissionForm parentSchema={parentSchema} parentData={parentData} {...props} />;
   }
 
   if (kind === IP_ADDRESS_POOL) {
-    return <IpAddressPoolForm schema={schema} {...props} />;
+    return (
+      <IpAddressPoolForm
+        schema={schema}
+        parentSchema={parentSchema}
+        parentData={parentData}
+        {...props}
+      />
+    );
   }
 
   if (kind === IP_PREFIX_POOL) {
-    return <IpPrefixPoolForm schema={schema} {...props} />;
+    return (
+      <IpPrefixPoolForm
+        schema={schema}
+        parentSchema={parentSchema}
+        parentData={parentData}
+        {...props}
+      />
+    );
   }
 
   if (kind === NODE_TRIGGER_ATTRIBUTE_MATCH) {
-    return <NodeAttributeMatchForm schema={schema} {...props} />;
+    return (
+      <NodeAttributeMatchForm
+        schema={schema}
+        parentSchema={parentSchema}
+        parentData={parentData}
+        {...props}
+      />
+    );
   }
 
   if (kind === NODE_TRIGGER_RELATIONSHIP_MATCH) {
-    return <NodeRelationshipMatchForm schema={schema} {...props} />;
+    return (
+      <NodeRelationshipMatchForm
+        schema={schema}
+        parentSchema={parentSchema}
+        parentData={parentData}
+        {...props}
+      />
+    );
   }
 
   if (isGeneric) {
-    return <GenericObjectForm genericSchema={schema} {...props} />;
+    return (
+      <GenericObjectForm
+        genericSchema={schema}
+        parentSchema={parentSchema}
+        parentData={parentData}
+        {...props}
+      />
+    );
   }
 
   if (isNode && schema.generate_profile) {
-    return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
+    return (
+      <NodeWithProfileForm
+        schema={schema}
+        profiles={currentProfiles}
+        parentSchema={parentSchema}
+        parentData={parentData}
+        {...props}
+      />
+    );
   }
 
-  return <NodeForm schema={schema} profiles={currentProfiles} {...props} />;
+  return (
+    <NodeForm
+      schema={schema}
+      profiles={currentProfiles}
+      parentSchema={parentSchema}
+      parentData={parentData}
+      {...props}
+    />
+  );
 };
 
 export default ObjectForm;

@@ -11,21 +11,27 @@ import { getRelationshipParent } from "@/shared/components/form/utils/getRelatio
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isMaxCount, isMinCount, isRequired } from "@/shared/components/form/utils/validation";
 
+interface GetFormFieldsProps {
+  auth?: AuthContextType;
+  isFilterForm: boolean;
+  relationshipSchema: RelationshipSchema;
+  relationshipData: RelationshipType;
+  objectTemplate?: NodeObject | null;
+  schema: ModelSchema;
+  parentSchema: ModelSchema;
+  parentData?: NodeObject | null;
+}
+
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
   relationshipData,
   objectTemplate,
   isFilterForm = false,
   schema,
+  parentSchema,
+  parentData,
   auth,
-}: {
-  auth: AuthContextType | undefined;
-  isFilterForm: boolean;
-  relationshipSchema: RelationshipSchema;
-  relationshipData: RelationshipType | undefined;
-  objectTemplate: NodeObject | null | undefined;
-  schema: ModelSchema;
-}): DynamicRelationshipFieldProps => {
+}: GetFormFieldsProps): DynamicRelationshipFieldProps => {
   const label = relationshipSchema.label ?? relationshipSchema.name;
   const relationshipTemplate = objectTemplate?.[relationshipSchema.name] as
     | NodeRelationship
@@ -39,6 +45,9 @@ export const getFormFieldFromRelationship = ({
       objectTemplate,
       isFilterForm,
       relationshipName: relationshipSchema.name,
+      schema,
+      parentSchema,
+      parentData,
     }),
     description: relationshipSchema.description ?? undefined,
     disabled: isFieldDisabled({

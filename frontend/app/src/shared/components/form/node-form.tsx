@@ -54,6 +54,8 @@ export const NodeForm = ({
   isFilterForm,
   onSubmit,
   isUpdate,
+  parentSchema,
+  parentData,
   ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -85,6 +87,8 @@ export const NodeForm = ({
     isFilterForm,
     pools: numberPools,
     isUpdate,
+    parentSchema,
+    parentData,
   });
 
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {

@@ -22,11 +22,17 @@ const RepositoryForm = ({
   currentObject,
   onSubmit,
   onCancel,
+  ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
-  const fields = getFormFieldsFromSchema({ auth, schema, initialObject: currentObject });
+  const fields = getFormFieldsFromSchema({
+    auth,
+    initialObject: currentObject,
+    schema,
+    ...props,
+  });
 
   const gitUrlFieldProps = fields.find(({ name }) => name === "location");
 

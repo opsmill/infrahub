@@ -29,6 +29,8 @@ export const getFormFieldsFromSchema = ({
   isFilterForm,
   pools = [],
   isUpdate,
+  parentSchema,
+  parentData,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
     ...(schema.attributes ?? []),
@@ -45,6 +47,8 @@ export const getFormFieldsFromSchema = ({
         objectTemplate,
         isFilterForm: !!isFilterForm,
         schema,
+        parentSchema,
+        parentData,
       });
     }
 
