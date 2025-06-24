@@ -150,5 +150,4 @@ class NATSCache(InfrahubCache):
         await self._get_kv(key).put(key=key, value=value.encode())
         return True
 
-    async def close_connection(self) -> None:
-        """"""
+    async def close_connection(self) -> None: ...

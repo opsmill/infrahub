@@ -25,5 +25,4 @@ class MemoryCache(InfrahubCache):
         self.storage[key] = value
         return True
 
-    async def close_connection(self) -> None:
-        """"""
+    async def close_connection(self) -> None: ...
