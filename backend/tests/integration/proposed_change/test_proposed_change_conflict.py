@@ -21,7 +21,6 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
 from infrahub.proposed_change.constants import ProposedChangeState
-from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -95,7 +94,6 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         await jesko.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
         repo_path, repo_name = car_dealership_copy
         FileRepo(name=repo_name, local_repo_base_path=repo_path, sources_directory=git_repos_source_dir_module_scope)
         client_repository = await client.create(

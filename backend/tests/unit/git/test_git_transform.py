@@ -35,7 +35,7 @@ potum
 album
 magnum
 """
-    response = await transform_render_jinja2_template(message=message, service=init_service)
+    response = await transform_render_jinja2_template(message=message)
     assert response == expected_response
 
 
@@ -56,7 +56,7 @@ async def test_git_transform_jinja2_missing(
     )
 
     with pytest.raises(RepositoryFileNotFoundError) as exc:
-        await transform_render_jinja2_template(message=message, service=init_service)
+        await transform_render_jinja2_template(message=message)
 
     assert "Unable to find the file" in exc.value.message
 
@@ -82,7 +82,7 @@ async def test_git_transform_jinja2_invalid(
     )
 
     with pytest.raises(TransformError) as exc:
-        await transform_render_jinja2_template(message=message, service=init_service)
+        await transform_render_jinja2_template(message=message)
 
     assert "Encountered unknown tag" in exc.value.message
 
@@ -104,5 +104,5 @@ async def test_transform_python_success(
         convert_query_response=False,
     )
 
-    response = await transform_python(message=message, service=init_service)
+    response = await transform_python(message=message)
     assert response == {"key": "abcabc", "answer": 42}

@@ -50,6 +50,7 @@ from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.log import get_logger
+from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -62,7 +63,6 @@ if TYPE_CHECKING:
 
     from infrahub.artifacts.models import CheckArtifactCreate
     from infrahub.git.models import RequestArtifactGenerate
-    from infrahub.services import InfrahubServices
 
 
 class ArtifactGenerateResult(BaseModel):
@@ -141,8 +141,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """
 
     @classmethod
-    async def init(cls, service: InfrahubServices, commit: str | None = None, **kwargs: Any) -> Self:
-        self = cls(service=service, **kwargs)
+    async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
+        self = cls(**kwargs)
         log = get_logger()
         try:
             self.validate_local_directories()
@@ -216,7 +216,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             raise error
 
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
-        await self.service.event.send(
+        event_service = await get_event_service()
+        await event_service.send(
             CommitUpdatedEvent(
                 commit=commit,
                 repository_name=self.name,
@@ -1264,7 +1265,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 infrahub_node=InfrahubNode,
             )
             return await transform.run(data=data)
-
         except ModuleNotFoundError as exc:
             error_msg = f"Unable to load the transform file {location}"
             log.error(error_msg)
@@ -1314,11 +1314,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             artifact_content = await self.execute_python_transform.with_options(
                 timeout_seconds=transformation.timeout.value
             )(
+                client=self.sdk,
                 branch_name=branch_name,
                 commit=commit,
                 location=transformation_location,
                 data=response,
-                client=self.sdk,
                 convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[misc]
 
@@ -1374,11 +1374,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )  # type: ignore[misc]
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
+                client=self.sdk,
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,
                 data=response,
-                client=self.sdk,
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[misc]
 
@@ -1421,7 +1421,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             storage_id_previous=previous_storage_id,
         )
 
-        await self.service.event.send(event=event)
+        event_service = await get_event_service()
+        await event_service.send(event=event)
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
 
