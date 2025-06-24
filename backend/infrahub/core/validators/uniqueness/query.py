@@ -263,11 +263,18 @@ class UniquenessValidationQuery(Query):
         super().__init__(**kwargs)
 
     def _build_attr_subquery(
-        self, attr_path: QueryAttributePathValued, index: int, branch_filter: str
+        self, node_kind: str, attr_path: QueryAttributePathValued, index: int, branch_filter: str, is_first_query: bool
     ) -> tuple[str, dict[str, str | int | float | bool]]:
         attr_name_var = f"attr_name_{index}"
         attr_value_var = f"attr_value_{index}"
+        if is_first_query:
+            first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
+        else:
+            first_query_filter = ""
         attribute_query = """
+MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+%(first_query_filter)s
+WITH DISTINCT node
 CALL (node) {
     MATCH (node)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
     WHERE %(branch_filter)s
@@ -287,6 +294,8 @@ CALL (node) {
     RETURN 1 AS is_match_%(index)s
 }
         """ % {
+            "first_query_filter": first_query_filter,
+            "node_kind": node_kind,
             "attr_name_var": attr_name_var,
             "attr_value_var": attr_value_var,
             "branch_filter": branch_filter,
@@ -299,10 +308,16 @@ CALL (node) {
         return attribute_query, params
 
     def _build_rel_subquery(
-        self, rel_path: QueryRelationshipPathValued, index: int, branch_filter: str
+        self,
+        node_kind: str,
+        rel_path: QueryRelationshipPathValued,
+        index: int,
+        branch_filter: str,
+        is_first_query: bool,
     ) -> tuple[str, dict[str, str | int | float | bool]]:
         params: dict[str, str | int | float | bool] = {}
         rel_attr_query = ""
+        rel_attr_match = ""
         if rel_path.attribute_name and rel_path.attribute_value:
             attr_name_var = f"attr_name_{index}"
             attr_value_var = f"attr_value_{index}"
@@ -323,16 +338,47 @@ CALL (node) {
     WITH r
     WHERE r.status = "active"
             """ % {"attr_name_var": attr_name_var, "attr_value_var": attr_value_var, "branch_filter": branch_filter}
+            rel_attr_match = (
+                "-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})"
+                % {
+                    "attr_value_var": attr_value_var,
+                }
+            )
             params[attr_name_var] = rel_path.attribute_name
             params[attr_value_var] = rel_path.attribute_value
         query_arrows = rel_path.relationship_schema.get_query_arrows()
         rel_name_var = f"rel_name_{index}"
+        first_match = (
+            "MATCH (node:%(node_kind)s)%(lstart)s[:IS_RELATED]%(lend)s(:Relationship {name: $%(rel_name_var)s})%(rstart)s[:IS_RELATED]%(rend)s"
+            % {
+                "node_kind": node_kind,
+                "lstart": query_arrows.left.start,
+                "lend": query_arrows.left.end,
+                "rstart": query_arrows.right.start,
+                "rend": query_arrows.right.end,
+                "rel_name_var": rel_name_var,
+            }
+        )
         peer_where = f"WHERE {branch_filter}"
         if rel_path.peer_id:
             peer_id_var = f"peer_id_{index}"
             peer_where += f"AND peer.uuid = ${peer_id_var}"
             params[peer_id_var] = rel_path.peer_id
-        relationship_query = """
+            first_match += "(:Node {uuid: $%(peer_id_var)s})" % {"peer_id_var": peer_id_var}
+        else:
+            first_match += "(:Node)"
+        if rel_attr_match:
+            first_match += rel_attr_match
+        if is_first_query:
+            first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
+        else:
+            first_query_filter = ""
+        relationship_query = f"""
+{first_match}
+{first_query_filter}
+WITH DISTINCT node
+        """
+        relationship_query += """
 CALL (node) {
     MATCH (node)%(lstart)s[r:IS_RELATED]%(lend)s(rel:Relationship {name: $%(rel_name_var)s})
     WHERE %(branch_filter)s
@@ -375,22 +421,27 @@ CALL (node) {
 
         subqueries = []
         for index, schema_path in enumerate(self.query_request.unique_valued_paths):
+            is_first_query = index == 0
             if isinstance(schema_path, QueryAttributePathValued):
                 subquery, params = self._build_attr_subquery(
-                    attr_path=schema_path, index=index, branch_filter=branch_filter
+                    node_kind=self.query_request.kind,
+                    attr_path=schema_path,
+                    index=index,
+                    branch_filter=branch_filter,
+                    is_first_query=is_first_query,
                 )
             else:
                 subquery, params = self._build_rel_subquery(
-                    rel_path=schema_path, index=index, branch_filter=branch_filter
+                    node_kind=self.query_request.kind,
+                    rel_path=schema_path,
+                    index=index,
+                    branch_filter=branch_filter,
+                    is_first_query=is_first_query,
                 )
             subqueries.append(subquery)
             self.params.update(params)
 
-        full_query = """
-MATCH(node:%(kind)s)
-WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude
-%(subqueries)s
-        """ % {"kind": self.query_request.kind, "subqueries": "\n".join(subqueries)}
+        full_query = "\n".join(subqueries)
         self.add_to_query(full_query)
         self.return_labels = ["node.uuid AS node_uuid", "node.kind AS node_kind"]
 
