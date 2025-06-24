@@ -61,10 +61,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     build_component_registry()
 
     workflow = get_workflow()
-    component_type = ComponentType.API_SERVER
-    set_component_type(component_type=component_type)
     message_bus = await get_message_bus()
-
     cache = await get_cache()
     component = await get_component()
     service = await InfrahubServices.new(
