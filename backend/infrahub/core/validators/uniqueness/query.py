@@ -363,10 +363,11 @@ CALL (node) {
         peer_where = f"WHERE {branch_filter}"
         if rel_path.peer_id:
             peer_id_var = f"peer_id_{index}"
-            peer_where += f"AND peer.uuid = ${peer_id_var}"
+            peer_where += f" AND peer.uuid = ${peer_id_var}"
             params[peer_id_var] = rel_path.peer_id
             first_match += "(:Node {uuid: $%(peer_id_var)s})" % {"peer_id_var": peer_id_var}
         else:
+            peer_where += " AND peer.uuid <> node.uuid"
             first_match += "(:Node)"
         if rel_attr_match:
             first_match += rel_attr_match
