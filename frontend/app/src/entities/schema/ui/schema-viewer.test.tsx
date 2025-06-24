@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { render } from "../../../../tests/components/render";
-import { generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateAttributeSchema, generateNodeSchema } from "../../../../tests/fake/schema";
 import { SchemaViewer } from "./schema-viewer";
 
-describe("Schema Visualizer Component", () => {
-  test("renders viewer correctly", async () => {
+describe("SchemaViewer Component", () => {
+  test("displays node description", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       name: "Node",
@@ -12,7 +12,7 @@ describe("Schema Visualizer Component", () => {
       description: "Test Node description",
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // THEN
     await expect
@@ -20,15 +20,16 @@ describe("Schema Visualizer Component", () => {
       .toBeVisible();
   });
 
-  test("renders attributes correctly", async () => {
+  test("displays text attribute details", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "attribute",
           kind: "Text",
           optional: false,
           read_only: false,
@@ -38,14 +39,15 @@ describe("Schema Visualizer Component", () => {
           },
           parameters: {
             regex: "test-regex",
+            state: "present",
             min_length: 1,
             max_length: 10,
           },
-        },
+        }),
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -59,32 +61,34 @@ describe("Schema Visualizer Component", () => {
     await expect.element(component.getByText("Max length10")).toBeVisible();
   });
 
-  test("renders attributes with number pool correctly", async () => {
+  test("displays number pool attribute details", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "Attribute",
           kind: "NumberPool",
           optional: false,
           read_only: false,
           parameters: {
+            state: "present",
             number_pool_id: "random-pool-id",
             start_range: 10,
             end_range: 100,
           },
-        },
+        }),
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
-    await component.getByText("attribute NumberPool").click();
+    await component.getByText("Attribute NumberPool").click();
 
     // THEN
     await expect.element(component.getByText("random-pool-id")).toBeVisible();
@@ -93,15 +97,51 @@ describe("Schema Visualizer Component", () => {
     await expect.element(component.getByText("End range100")).toBeVisible();
   });
 
-  test("renders jinja template correctly", async () => {
+  test("displays number attribute details", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "Attribute",
+          kind: "Number",
+          optional: false,
+          read_only: false,
+          parameters: {
+            state: "present",
+            min_value: -10,
+            max_value: 100,
+            excluded_values: "1,2,3",
+          },
+        }),
+      ],
+    });
+
+    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute Number").click();
+
+    // THEN
+    await expect.element(component.getByText("Min value-10")).toBeVisible();
+    await expect.element(component.getByText("Max value100")).toBeVisible();
+    await expect.element(component.getByText("Excluded values1,2,3")).toBeVisible();
+  });
+
+  test("displays Jinja2 template details", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        generateAttributeSchema({
+          id: "random-id",
+          name: "attribute",
+          label: "attribute",
           kind: "Text",
           optional: false,
           read_only: false,
@@ -109,11 +149,11 @@ describe("Schema Visualizer Component", () => {
             kind: "Jinja2",
             jinja2_template: "{{ name__value | upper }}",
           },
-        },
+        }),
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -125,15 +165,16 @@ describe("Schema Visualizer Component", () => {
     await expect.element(component.getByText("{{ name__value | upper }}").first()).toBeVisible();
   });
 
-  test("renders json transform correctly", async () => {
+  test("displays Python transform details", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       name: "Node",
       namespace: "Test",
       attributes: [
-        {
+        generateAttributeSchema({
           id: "random-id",
           name: "attribute",
+          label: "attribute",
           kind: "Text",
           optional: false,
           read_only: false,
@@ -141,11 +182,11 @@ describe("Schema Visualizer Component", () => {
             kind: "TransformPython",
             transform: "test-transform",
           },
-        },
+        }),
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
+    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();

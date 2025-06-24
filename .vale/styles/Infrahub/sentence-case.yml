@@ -55,7 +55,9 @@ exceptions:
   - JWT
   - Namespace
   - NATS
+  - Neo4j
   - Node
+  - NumberPool
   - OAuth2
   - OIDC
   - Open ID Connect
@@ -65,6 +67,7 @@ exceptions:
   - RabbitMQ
   - REST
   - RFile
+  - Schema
   - SDK
   - Single sign-on
   - SSO
