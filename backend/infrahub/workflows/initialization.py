@@ -25,23 +25,6 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             description=worker.description,
         )
 
-        # if worker.worker_type == WorkerType.PROCESS:
-        #     wp.base_job_template = {
-        #         "job_configuration": {"env": "{{ env }}", "working_dir": "{{ working_dir }}"},
-        #         "variables": {
-        #             "type": "object",
-        #             "properties": {
-        #                 "env": {"type": "object", "default": {"INFRAHUB_ADDRESS": "", "INFRAHUB_API_TOKEN": ""}},
-        #                 "working_dir": {"type": "string", "default": "/tmp"},
-        #                 "command": {"type": ["string", "null"], "default": None},
-        #                 "labels": {"type": "object", "default": {}},
-        #                 "name": {"type": ["string", "null"], "default": None},
-        #                 "stream_output": {"type": "boolean", "default": True},
-        #             },
-        #             "required": [],
-        #         },
-        #     }
-
         try:
             await client.create_work_pool(work_pool=wp, overwrite=True)
             log.info(f"Work pool {worker.name} created successfully ... ")
