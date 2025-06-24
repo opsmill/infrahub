@@ -88,6 +88,10 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
         return "attribute.number.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
+        if not config.SETTINGS.main.schema_strict_mode:
+            return False
+
         return request.constraint_name in (
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_VALUE_UPDATE.value,
@@ -95,10 +99,6 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
-        if not config.SETTINGS.main.schema_strict_mode:
-            return []
-
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
