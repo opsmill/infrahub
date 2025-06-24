@@ -339,8 +339,9 @@ CALL (node) {
     WHERE r.status = "active"
             """ % {"attr_name_var": attr_name_var, "attr_value_var": attr_value_var, "branch_filter": branch_filter}
             rel_attr_match = (
-                "-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})"
+                "-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})"
                 % {
+                    "attr_name_var": attr_name_var,
                     "attr_value_var": attr_value_var,
                 }
             )
