@@ -6,6 +6,7 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.initialization import initialization
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult, SchemaMigration
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import GenericSchema, NodeSchema
@@ -13,6 +14,7 @@ from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.validators.attribute.min_max import AttributeNumberChecker
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
+from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.types import Number
 
@@ -40,11 +42,17 @@ class Migration031(InternalSchemaMigration):
         if not config.SETTINGS.main.schema_strict_mode:
             return MigrationResult()
 
+        # load schemas from database into registry
+        initialize_lock()
+        await initialization(db=db)
+
         node_id_to_error_message = {}
 
         branches = await Branch.get_list(db=db)
         for branch in branches:  # noqa
-            for schema in db.schema.get_full(branch=branch).values():
+            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+            for node_schema_kind in schema_branch.node_names:
+                schema = schema_branch.get_node(name=node_schema_kind, duplicate=False)
                 if not isinstance(schema, (NodeSchema, GenericSchema)):
                     continue
 
