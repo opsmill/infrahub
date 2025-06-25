@@ -57,7 +57,6 @@ export const GenericRelationshipField = ({
     defaultValue,
     parentRelationship,
   });
-  console.log("defaultParent: ", defaultParent);
 
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
 
