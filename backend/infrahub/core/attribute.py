@@ -256,7 +256,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if len(value) > max_length:
                 raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
 
-        if isinstance(schema.parameters, NumberAttributeParameters):
+        # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
+        if config.SETTINGS.main.schema_strict_mode and isinstance(schema.parameters, NumberAttributeParameters):
             schema.parameters.check_valid_value(value=value, name=name)
 
         if schema.enum:
