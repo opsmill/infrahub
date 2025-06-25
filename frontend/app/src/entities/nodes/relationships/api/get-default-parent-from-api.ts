@@ -1,5 +1,5 @@
 import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
@@ -26,7 +26,7 @@ export const getDefaultParentFromApi = ({
   branchName,
   atDate,
 }: GetDefaultParentFromApiParams) => {
-  const { schema: parentRelationshipSchema } = useSchema(parentRelationship?.peer);
+  const { schema: parentRelationshipSchema } = getSchema(parentRelationship?.peer);
 
   const parentRelationshipAttribute = parentRelationshipSchema?.relationships?.find(
     (relationship) => {

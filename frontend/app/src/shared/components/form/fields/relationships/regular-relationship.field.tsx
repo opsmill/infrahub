@@ -36,13 +36,17 @@ export const NodeRelationshipField = ({
 }: RegularRelationshipFieldProps) => {
   const parentRelationship = getParentRelationship(relationship.peer);
 
-  const defaultParent = useDefaultParent({
+  const { data: defaultParent } = useDefaultParent({
     peer: relationship.peer,
     defaultValue,
     parentRelationship,
   });
 
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
+
+  if (!selectedParent && defaultParent) {
+    setSelectedParent(defaultParent);
+  }
 
   return (
     <div className="space-y-2">

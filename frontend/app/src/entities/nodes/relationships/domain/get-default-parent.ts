@@ -1,0 +1,79 @@
+import { getDefaultParentFromApi } from "@/entities/nodes/relationships/api/get-default-parent-from-api";
+import { NodeObject } from "@/entities/nodes/types";
+import { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { ContextParams } from "@/shared/api/types";
+import { FormContextType } from "@/shared/components/form/utils/form-context";
+
+type Node = {
+  id: string;
+  display_label: string;
+  __typename: string;
+};
+
+interface DefaultValue {
+  value?: {
+    id?: string;
+  } | null;
+}
+
+interface GetDefaultParentParams {
+  defaultParent?: Node | null;
+  currentParent?: Node | null;
+  parentPeer?: string;
+  formContext: FormContextType;
+}
+
+export interface UseDefaultParentParams {
+  defaultValue?: DefaultValue;
+  parentRelationship?: {
+    peer?: string;
+    direction?: "bidirectional" | "inbound" | "outbound";
+    identifier?: string;
+  };
+}
+
+export interface DefaultParentParams extends UseDefaultParentParams, ContextParams {}
+
+const convertNodeObjectToNode = (nodeObject: NodeObject | null): Node | null => {
+  if (!nodeObject) return null;
+  return {
+    id: nodeObject.id,
+    display_label: nodeObject.display_label || nodeObject.id,
+    __typename: nodeObject.__typename,
+  };
+};
+
+export const getDefaultParent = async ({
+  defaultValue,
+  parentRelationship,
+  parentSchema,
+  parentData,
+  branchName,
+  atDate,
+}: DefaultParentParams) => {
+  const { data, error } = await getDefaultParentFromApi({
+    defaultValue,
+    parentRelationship: parentRelationship || {},
+    branchName,
+    atDate,
+  });
+
+  if (error) throw error;
+
+  const currentParent = data && data[parentRelationship?.peer]?.edges[0]?.node;
+
+  if (currentParent) {
+    return currentParent;
+  }
+
+  if (
+    parentRelationship?.peer &&
+    parentSchema &&
+    isOfKind(parentRelationship?.peer, parentSchema as ModelSchema)
+  ) {
+    return convertNodeObjectToNode(parentData);
+  }
+
+  return null;
+};
