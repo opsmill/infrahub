@@ -58,7 +58,7 @@ export const getDefaultParentFromApi = ({
       : undefined;
 
   if (!parentRelationship?.peer || !parentRelationshipAttribute?.name) {
-    return {};
+    return { data: null, error: null };
   }
 
   const queryString = getRelationshipParent({

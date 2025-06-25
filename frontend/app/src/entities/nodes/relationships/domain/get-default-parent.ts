@@ -17,13 +17,6 @@ interface DefaultValue {
   } | null;
 }
 
-interface GetDefaultParentParams {
-  defaultParent?: Node | null;
-  currentParent?: Node | null;
-  parentPeer?: string;
-  formContext: FormContextType;
-}
-
 export interface UseDefaultParentParams {
   defaultValue?: DefaultValue;
   parentRelationship?: {
@@ -33,7 +26,10 @@ export interface UseDefaultParentParams {
   };
 }
 
-export interface DefaultParentParams extends UseDefaultParentParams, ContextParams {}
+export interface DefaultParentParams
+  extends UseDefaultParentParams,
+    ContextParams,
+    FormContextType {}
 
 const convertNodeObjectToNode = (nodeObject: NodeObject | null): Node | null => {
   if (!nodeObject) return null;
@@ -61,7 +57,8 @@ export const getDefaultParent = async ({
 
   if (error) throw error;
 
-  const currentParent = data && data[parentRelationship?.peer]?.edges[0]?.node;
+  const currentParent =
+    parentRelationship?.peer && data && data[parentRelationship?.peer]?.edges[0]?.node;
 
   if (currentParent) {
     return currentParent;
