@@ -53,7 +53,7 @@ export const GenericRelationshipField = ({
 
   const parentRelationship = getParentRelationship(selectedGeneric?.id);
 
-  const defaultParent = useDefaultParent({
+  const { data: defaultParent } = useDefaultParent({
     defaultValue,
     parentRelationship,
   });
