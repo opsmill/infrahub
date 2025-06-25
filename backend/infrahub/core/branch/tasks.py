@@ -15,6 +15,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
@@ -31,7 +32,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
-from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import (
@@ -65,6 +66,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
             diff_merger=diff_merger,
             diff_repository=diff_repository,
             source_branch=obj,
+            diff_locker=DiffLocker(),
             service=service,
         )
 
@@ -221,14 +223,10 @@ async def merge_branch(
                 diff_merger=diff_merger,
                 diff_repository=diff_repository,
                 source_branch=obj,
+                diff_locker=DiffLocker(),
                 service=service,
             )
-            try:
-                branch_diff = await merger.merge()
-            except Exception as exc:
-                log.exception("Merge failed, beginning rollback")
-                await merger.rollback()
-                raise MergeFailedError(branch_name=branch) from exc
+            branch_diff = await merger.merge()
             await merger.update_schema()
 
         changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
