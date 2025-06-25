@@ -1,4 +1,5 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
@@ -7,17 +8,16 @@ import {
   FormRelationshipValue,
 } from "@/shared/components/form/type";
 import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
+import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { useState } from "react";
-import { useDefaultParent } from "../../../../../entities/nodes/relationships/domain/get-default-parent.query";
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
   defaultParent?: Node | null;
-  parentRelationship?: any;
 }
 
 export const NodeRelationshipField = ({
@@ -32,9 +32,10 @@ export const NodeRelationshipField = ({
   parent,
   relationship,
   schema,
-  parentRelationship,
   ...props
 }: RegularRelationshipFieldProps) => {
+  const parentRelationship = getParentRelationship(relationship.peer);
+
   const defaultParent = useDefaultParent({
     peer: relationship.peer,
     defaultValue,
