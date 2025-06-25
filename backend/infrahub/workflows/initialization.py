@@ -24,6 +24,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             type=worker.worker_type or config.SETTINGS.workflow.default_worker_type,
             description=worker.description,
         )
+
         try:
             await client.create_work_pool(work_pool=wp, overwrite=True)
             log.info(f"Work pool {worker.name} created successfully ... ")

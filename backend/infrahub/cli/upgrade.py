@@ -24,9 +24,6 @@ from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus.local import BusSimulator
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
@@ -61,9 +58,6 @@ async def upgrade_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    service = await InfrahubServices.new(
-        database=dbdriver, message_bus=BusSimulator(), workflow=WorkflowLocalExecution()
-    )
     await initialize_registry(db=dbdriver)
 
     # NOTE add step to validate if the database and the task manager are reachable
@@ -78,7 +72,7 @@ async def upgrade_cmd(
     await migrate_database(db=dbdriver, initialize=False, check=check)
 
     await initialize_internal_schema()
-    await update_core_schema(db=dbdriver, service=service, initialize=False)
+    await update_core_schema(db=dbdriver, initialize=False)
 
     # -------------------------------------------
     # Upgrade Internal Objects, generated and managed by Infrahub
@@ -93,7 +87,7 @@ async def upgrade_cmd(
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
-        await trigger_configure_all(service=service)
+        await trigger_configure_all()
 
     await dbdriver.close()
 

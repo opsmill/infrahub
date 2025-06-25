@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
@@ -62,8 +63,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_workflow
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -160,7 +161,6 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
-        service=await InfrahubServices.new(),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
@@ -3009,11 +3009,12 @@ async def prefix_pool_01(
 
 
 @pytest.fixture
-def workflow_local():
+def workflow_local(dependency_provider: Provider):
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
-    yield workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 

@@ -14,7 +14,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -131,8 +130,6 @@ class TestDiffRebase(TestInfrahubApp):
             manufacturer=omnicorp,
         )
         await ed_209.save(db=db)
-
-        bus_simulator.service._cache = RedisCache()
 
         return {
             "john": john,

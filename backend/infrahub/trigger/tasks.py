@@ -6,16 +6,17 @@ from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
-from infrahub.services import InfrahubServices
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.webhook.gather import gather_trigger_webhook
+from infrahub.workers.dependencies import get_database
 
 from .setup import setup_triggers
 
 
 @flow(name="trigger-configure-all", flow_run_name="Configure all triggers")
-async def trigger_configure_all(service: InfrahubServices) -> None:
-    async with service.database.start_session() as db:
+async def trigger_configure_all() -> None:
+    database = await get_database()
+    async with database.start_session() as db:
         webhook_trigger = await gather_trigger_webhook(db=db)
         computed_attribute_j2_triggers = await gather_trigger_computed_attribute_jinja2()
         (
