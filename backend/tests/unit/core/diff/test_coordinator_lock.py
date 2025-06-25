@@ -7,11 +7,15 @@ import pytest
 from infrahub import config, lock
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
+from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.merger.serializer import DiffMergeSerializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
+from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
 
@@ -160,3 +164,74 @@ class TestDiffCoordinatorLocks:
         assert full_branch_diff.nodes == full_arbitrary_diff.nodes
         # arbitrary diff is calculated separately from the branch-tracking diff
         assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
+
+    async def test_diff_update_blocks_merge(
+        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
+    ):
+        # schema = SchemaRoot(generics=[core_generic_repository])
+        # schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        # default_branch.update_schema_hash()
+        # await default_branch.save(db=db)
+
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+        branch_merger = BranchMerger(
+            db=db,
+            diff_coordinator=diff_coordinator,
+            diff_merger=DiffMerger(
+                db=db,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository,
+                serializer=DiffMergeSerializer(db=db, max_batch_size=50),
+            ),
+            diff_repository=diff_repository,
+            source_branch=diff_branch,
+            diff_locker=DiffLocker(),
+        )
+
+        results = await asyncio.gather(
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            branch_merger.merge(),
+        )
+        assert len(results) == 2
+        assert results[0].to_time == results[1].to_time
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
+        assert results[0].tracking_id == results[1].tracking_id
+
+    async def test_merge_blocks_diff_update(
+        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
+    ):
+        # schema = SchemaRoot(generics=[core_generic_repository])
+        # schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        # default_branch.update_schema_hash()
+        # await default_branch.save(db=db)
+
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+        db2 = InfrahubDatabase(driver=await get_db(retry=5))
+        branch_merger = BranchMerger(
+            db=db2,
+            diff_coordinator=diff_coordinator,
+            diff_merger=DiffMerger(
+                db=db,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository,
+                serializer=DiffMergeSerializer(db=db, max_batch_size=50),
+            ),
+            diff_repository=diff_repository,
+            source_branch=diff_branch,
+            diff_locker=DiffLocker(),
+        )
+
+        results = await asyncio.gather(
+            branch_merger.merge(),
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+        )
+        assert len(results) == 2
+        assert results[0].to_time == results[1].to_time
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
+        assert results[0].tracking_id == results[1].tracking_id
