@@ -17,6 +17,7 @@ export const tokenSchema: NodeSchema = {
   order_by: null,
   uniqueness_constraints: null,
   documentation: null,
+  generate_template: false,
   attributes: [
     {
       id: "17e2a71e-4faa-2e82-3109-c51dff39f069",

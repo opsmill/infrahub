@@ -76,30 +76,32 @@ export const getFormFieldFromAttribute = ({
 
         const attributeKind = attributeSchema.kind as AttributeKind;
 
-        if (attributeKind === ATTRIBUTE_KIND.TEXT) {
-          const attributeParameters = attributeSchema.parameters as TextAttributeParameters;
-          const validation = validateTextAttribute(
-            {
-              isRequired: !attributeSchema.optional,
-              minLength: attributeParameters.min_length,
-              maxLength: attributeParameters.max_length,
-            },
-            formFieldValue.value as string | null
-          );
-          return validation.success || validation.error;
-        }
+        if (attributeSchema.parameters) {
+          if (attributeKind === ATTRIBUTE_KIND.TEXT) {
+            const attributeParameters = attributeSchema.parameters as TextAttributeParameters;
+            const validation = validateTextAttribute(
+              {
+                isRequired: !attributeSchema.optional,
+                minLength: attributeParameters.min_length,
+                maxLength: attributeParameters.max_length,
+              },
+              formFieldValue.value as string | null
+            );
+            return validation.success || validation.error;
+          }
 
-        if (attributeKind === ATTRIBUTE_KIND.NUMBER) {
-          const attributeParameters = attributeSchema.parameters as NumberAttributeParameters;
-          const validation = validateNumberAttribute(
-            {
-              isRequired: !attributeSchema.optional,
-              min: attributeParameters.min_value,
-              max: attributeParameters.max_value,
-            },
-            formFieldValue.value as number | null
-          );
-          return validation.success || validation.error;
+          if (attributeKind === ATTRIBUTE_KIND.NUMBER) {
+            const attributeParameters = attributeSchema.parameters as NumberAttributeParameters;
+            const validation = validateNumberAttribute(
+              {
+                isRequired: !attributeSchema.optional,
+                min: attributeParameters.min_value,
+                max: attributeParameters.max_value,
+              },
+              formFieldValue.value as number | null
+            );
+            return validation.success || validation.error;
+          }
         }
 
         if (attributeSchema.optional) return true;
