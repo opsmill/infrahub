@@ -2,7 +2,15 @@ import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { AttributeKind, AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import {
+  AttributeKind,
+  AttributeSchema,
+  ModelSchema,
+  NumberAttributeParameters,
+  TextAttributeParameters,
+} from "@/entities/schema/types";
+import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
+import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
 import { components } from "@/shared/api/rest/types.generated";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
@@ -63,12 +71,39 @@ export const getFormFieldFromAttribute = ({
         : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
     rules: {
       required: !isFilterForm && !attributeSchema.optional,
-      validate: {
-        required: (formFieldValue: FormFieldValue) => {
-          if (isFilterForm || attributeSchema.optional) return true;
+      validate: (formFieldValue: FormFieldValue) => {
+        if (isFilterForm) return true;
 
-          return isRequired(formFieldValue);
-        },
+        const attributeKind = attributeSchema.kind as AttributeKind;
+
+        if (attributeKind === ATTRIBUTE_KIND.TEXT) {
+          const attributeParameters = attributeSchema.parameters as TextAttributeParameters;
+          const validation = validateTextAttribute(
+            {
+              isRequired: !attributeSchema.optional,
+              minLength: attributeParameters.min_length,
+              maxLength: attributeParameters.max_length,
+            },
+            formFieldValue.value as string | null
+          );
+          return validation.success || validation.error;
+        }
+
+        if (attributeKind === ATTRIBUTE_KIND.NUMBER) {
+          const attributeParameters = attributeSchema.parameters as NumberAttributeParameters;
+          const validation = validateNumberAttribute(
+            {
+              isRequired: !attributeSchema.optional,
+              min: attributeParameters.min_value,
+              max: attributeParameters.max_value,
+            },
+            formFieldValue.value as number | null
+          );
+          return validation.success || validation.error;
+        }
+
+        if (attributeSchema.optional) return true;
+        return isRequired(formFieldValue);
       },
     },
   };

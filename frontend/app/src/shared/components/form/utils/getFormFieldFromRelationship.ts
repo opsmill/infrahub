@@ -1,15 +1,16 @@
-import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import {
+import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
+import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
-import { isMaxCount, isMinCount, isRequired } from "@/shared/components/form/utils/validation";
+import { isRequired } from "@/shared/components/form/utils/validation";
 
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
@@ -52,20 +53,23 @@ export const getFormFieldFromRelationship = ({
     relationship: relationshipSchema,
     rules: {
       required: !isFilterForm && !relationshipSchema.optional,
-      validate: {
-        required: (formFieldValue: FormRelationshipValue) => {
-          if (isFilterForm || relationshipSchema.optional) return true;
+      validate: (formFieldValue: FormRelationshipValue) => {
+        if (isFilterForm) return true;
 
-          return isRequired(formFieldValue) || "Required";
-        },
-        maxCount: (formFieldValue: FormRelationshipValue) => {
-          if (isFilterForm) return true;
-          return isMaxCount(relationshipSchema.max_count)(formFieldValue);
-        },
-        minCount: (formFieldValue: FormRelationshipValue) => {
-          if (isFilterForm) return true;
-          return isMinCount(relationshipSchema.min_count)(formFieldValue);
-        },
+        if (relationshipSchema.cardinality === "many") {
+          const validation = validateRelationshipMany(
+            {
+              isRequired: !relationshipSchema.optional,
+              minCount: relationshipSchema.min_count,
+              maxCount: relationshipSchema.max_count,
+            },
+            formFieldValue.value
+          );
+          return validation.success || validation.error;
+        }
+
+        if (relationshipSchema.optional) return true;
+        return isRequired(formFieldValue) || "Required";
       },
     },
     schema,

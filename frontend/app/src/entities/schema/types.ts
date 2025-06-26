@@ -14,6 +14,9 @@ export type AttributeSchema = components["schemas"]["AttributeSchema-Output"];
 
 export type AttributeKind = (typeof ATTRIBUTE_KIND)[keyof typeof ATTRIBUTE_KIND];
 
+export type TextAttributeParameters = components["schemas"]["TextAttributeParameters"];
+export type NumberAttributeParameters = components["schemas"]["NumberAttributeParameters"];
+
 export type Namespace = {
   name: string;
   user_editable: boolean;
