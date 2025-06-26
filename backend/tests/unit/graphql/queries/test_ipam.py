@@ -110,7 +110,7 @@ async def ip_dataset_02(
         ("net146", 16, "10.0.0.0/16"),
         ("net146", 24, "10.0.0.0/24"),
         ("net142", 26, "10.10.1.64/26"),
-        ("net142", 27, "10.10.1.32/27"),
+        ("net142", None, "10.10.1.32/27"),
     ],
 )
 async def test_ipprefix_nextavailable(
@@ -128,7 +128,7 @@ async def test_ipprefix_nextavailable(
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
-    query($prefix: String!, $prefix_length: Int!) {
+    query($prefix: String!, $prefix_length: Int) {
         IPPrefixGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
             prefix
         }
