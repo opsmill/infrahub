@@ -12,7 +12,7 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
-import { FormContextProvider } from "@/shared/components/form/utils/form-context";
+import { FormContext } from "@/shared/components/form/utils/form-context";
 import { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
@@ -138,7 +138,7 @@ export function RelationshipsButtons({
         open={showAddDrawer}
         setOpen={setShowAddDrawer}
       >
-        <FormContextProvider parentSchema={parentSchema} parentData={objectDetailsData}>
+        <FormContext parentSchema={parentSchema} parentData={objectDetailsData}>
           {parentSchema &&
           relationshipSchemaData?.kind === "Component" &&
           peerRelationshipSchema?.kind === "Parent" &&
@@ -174,7 +174,7 @@ export function RelationshipsButtons({
               className="w-full p-4"
             />
           )}
-        </FormContextProvider>
+        </FormContext>
       </SlideOver>
     </>
   );

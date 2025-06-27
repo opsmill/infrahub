@@ -1,6 +1,6 @@
 import { NodeObject } from "@/entities/nodes/types";
 import { NodeSchema } from "@/entities/schema/types";
-import { ReactNode, createContext } from "react";
+import { ReactNode, createContext, use } from "react";
 
 export interface FormContextType {
   parentSchema: NodeSchema | null;
@@ -16,11 +16,11 @@ export const FormContext = createContext<FormContextType>({
   parentData: null,
 });
 
-export const FormContextProvider = ({ children, parentSchema, parentData }: FormContextProps) => {
-  const value = {
-    parentSchema,
-    parentData,
-  };
+export function useCurrentFormContext() {
+  const context = use(FormContext);
+  if (!context) {
+    throw new Error("useFormContext must be used within a FormContextProvider.");
+  }
 
-  return <FormContext value={value}>{children}</FormContext>;
-};
+  return context;
+}
