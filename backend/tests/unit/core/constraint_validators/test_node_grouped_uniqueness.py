@@ -1,3 +1,4 @@
+from collections import Counter
 from unittest.mock import patch
 
 import pytest
@@ -6,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
-from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
+from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import HFIDViolatedError, ValidationError
 from tests.node_creation import create_and_save
@@ -202,7 +203,7 @@ class TestNodeGroupedUniquenessConstraint:
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
 
     @pytest.mark.parametrize(
-        ["node_constraints", "parent_constraints", "node_query_should_run"],
+        ["node_constraints", "parent_constraints", "expected_number_calls_by_kind"],
         [
             (
                 [
@@ -213,7 +214,7 @@ class TestNodeGroupedUniquenessConstraint:
                     ["nbr_seats__value", "name__value"],
                     ["previous_owner", "nbr_seats__value"],
                 ],
-                False,
+                {"TestCar": 2},
             ),
             (
                 [
@@ -223,7 +224,7 @@ class TestNodeGroupedUniquenessConstraint:
                     ["nbr_seats__value", "name__value"],
                     ["previous_owner", "nbr_seats__value"],
                 ],
-                False,
+                {"TestCar": 2},
             ),
             (
                 [
@@ -233,7 +234,7 @@ class TestNodeGroupedUniquenessConstraint:
                     ["nbr_seats__value", "name__value"],
                     ["previous_owner", "nbr_seats__value"],
                 ],
-                True,
+                {"TestCar": 2, "TestElectricCar": 1},
             ),
             (
                 [
@@ -244,7 +245,7 @@ class TestNodeGroupedUniquenessConstraint:
                     ["nbr_seats__value", "name__value"],
                     ["previous_owner", "nbr_seats__value"],
                 ],
-                True,
+                {"TestCar": 2, "TestElectricCar": 2},
             ),
         ],
     )
@@ -255,7 +256,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_person_generics_data_simple,
         node_constraints: list[list[str]],
         parent_constraints: list[list[str]],
-        node_query_should_run: bool,
+        expected_number_calls_by_kind: dict[str, int],
     ):
         car_node: Node = car_person_generics_data_simple["c1"]
         car_schema = car_node.get_schema()
@@ -267,19 +268,13 @@ class TestNodeGroupedUniquenessConstraint:
 
         # make sure we only use this query once if the constraints overlap
         with patch(
-            "infrahub.core.node.constraints.grouped_uniqueness.NodeUniqueAttributeConstraintQuery",
-            wraps=NodeUniqueAttributeConstraintQuery,
+            "infrahub.core.node.constraints.grouped_uniqueness.UniquenessValidationQuery",
+            wraps=UniquenessValidationQuery,
         ) as wrapped_query:
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
-            if node_query_should_run:
-                assert len(wrapped_query.init.call_args_list) == 2
-            else:
-                assert len(wrapped_query.init.call_args_list) == 1
-            query_kinds = {init_call[1]["query_request"].kind for init_call in wrapped_query.init.call_args_list}
-            if node_query_should_run:
-                assert query_kinds == {car_schema.kind, parent_kind}
-            else:
-                assert query_kinds == {parent_kind}
+            query_kinds = [init_call[1]["query_request"].kind for init_call in wrapped_query.init.call_args_list]
+            number_runs_by_kind = Counter(query_kinds)
+            assert number_runs_by_kind == expected_number_calls_by_kind
 
     async def test_uniqueness_constraint_conflict_relationship_and_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
