@@ -40,6 +40,8 @@ from .queries import (
     AccountPermissions,
     AccountToken,
     BranchQueryList,
+    DeprecatedIPAddressGetNextAvailable,
+    DeprecatedIPPrefixGetNextAvailable,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -74,8 +76,10 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
 
-    IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
-    IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
+    IPAddressGetNextAvailable = DeprecatedIPAddressGetNextAvailable
+    IPPrefixGetNextAvailable = DeprecatedIPPrefixGetNextAvailable
+    InfrahubIPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
+    InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
 

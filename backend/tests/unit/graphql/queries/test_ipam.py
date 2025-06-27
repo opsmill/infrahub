@@ -129,7 +129,7 @@ async def test_ipprefix_nextavailable(
 
     query = """
     query($prefix: String!, $prefix_length: Int) {
-        IPPrefixGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
+        InfrahubIPPrefixGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
             prefix
         }
     }
@@ -144,7 +144,7 @@ async def test_ipprefix_nextavailable(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixGetNextAvailable"]["prefix"] == response
+    assert result.data["InfrahubIPPrefixGetNextAvailable"]["prefix"] == response
 
 
 @pytest.mark.parametrize(
@@ -170,7 +170,7 @@ async def test_ipaddress_nextavailable(
 
     query = """
     query($prefix: String!, $prefix_length: Int) {
-        IPAddressGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
+        InfrahubIPAddressGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
             address
         }
     }
@@ -185,4 +185,4 @@ async def test_ipaddress_nextavailable(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressGetNextAvailable"]["address"] == response
+    assert result.data["InfrahubIPAddressGetNextAvailable"]["address"] == response
