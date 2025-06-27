@@ -4,12 +4,13 @@ import { NodeObject } from "@/entities/nodes/types";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
+import { FormContextType } from "@/shared/components/form/utils/form-context";
 import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
 import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-type GetFormFieldsFromSchema = {
+interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;
   profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType | RelationshipType>;
@@ -18,7 +19,7 @@ type GetFormFieldsFromSchema = {
   isFilterForm?: boolean;
   pools?: Array<NumberPoolData>;
   isUpdate?: boolean;
-};
+}
 
 export const getFormFieldsFromSchema = ({
   schema,

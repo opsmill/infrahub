@@ -1,9 +1,9 @@
 import { NodeObject } from "@/entities/nodes/types";
-import { NodeSchema } from "@/entities/schema/types";
+import { ModelSchema } from "@/entities/schema/types";
 import { ReactNode, createContext, use } from "react";
 
 export interface FormContextType {
-  parentSchema: NodeSchema | null;
+  parentSchema: ModelSchema | null;
   parentData: NodeObject | null;
 }
 
