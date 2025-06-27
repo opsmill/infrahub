@@ -4,7 +4,8 @@ import {
   UseDefaultParentParams,
   getDefaultParent,
 } from "@/entities/nodes/relationships/domain/get-default-parent";
-import { useFormContext } from "@/shared/components/form/utils/form-context";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
+
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
@@ -25,7 +26,7 @@ export function getDefaultParentQueryOptions(params: DefaultParentParams) {
 export function useDefaultParent(params: UseDefaultParentParams) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
-  const formContext = useFormContext();
+  const formContext = useCurrentFormContext();
 
   return useQuery({
     ...getDefaultParentQueryOptions({
