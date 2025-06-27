@@ -6,7 +6,7 @@ import VideoPlayer from '../../src/components/VideoPlayer';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-The goal of this guide is to show you how to create a resource pool, and how you can allocate resources using them.
+The goal of this guide is to show you how to create a resource pool, and how you can allocate resources using them. This includes IP address pools, IP prefix pools, and number pools (such as VLAN ID or ASN pools).
 
 :::note
 
@@ -17,6 +17,14 @@ This guide is using a smaller schema than the demo one provided, but with simila
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=sVU4OKi9_9o' light />
 </center>
+
+## Table of Contents
+
+- [Loading a schema](#loading-a-schema)
+- [Using IP address pool](#using-ip-address-pool)
+- [Using IP prefix pool](#using-ip-prefix-pool)
+- [Using number pool](#using-number-pool)
+- [Branch agnostic resource allocation](#branch-agnostic-resource-allocation)
 
 ## Loading a schema
 
@@ -172,11 +180,11 @@ You can create a prefix (for example, `10.100.0.0/24`) either via the web interf
 
 Next, create a resource manager of kind `CoreIPAddressPool` with the following properties:
 
-* **Name**: My IP address pool
-* **Default Address Type**: `IpamIPAddress` (as defined in your schema)
-* **Default Prefix Length**: 24
-* **Resources**: `10.100.0.0/24`
-* **IP Namespace**: `default`
+- **Name**: My IP address pool
+- **Default Address Type**: `IpamIPAddress` (as defined in your schema)
+- **Default Prefix Length**: 24
+- **Resources**: `10.100.0.0/24`
+- **IP Namespace**: `default`
 
 The `CoreIPAddressPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
 
@@ -372,11 +380,11 @@ We can now create a resource manager of kind `CoreIPPrefixPool`. The kind of the
 
 We will create a `CoreIPPrefixPool` with the following properties:
 
-* **Name**: Customer Service Pool
-* **Default Prefix Type**: `IpamIPPrefix` (as defined in your schema)
-* **Default Prefix Length**: 31
-* **Resources**: `10.100.1.0/24`
-* **IP Namespace**: `default`
+- **Name**: Customer Service Pool
+- **Default Prefix Type**: `IpamIPPrefix` (as defined in your schema)
+- **Default Prefix Length**: 31
+- **Resources**: `10.100.1.0/24`
+- **IP Namespace**: `default`
 
 The `CoreIPPrefixPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
 
@@ -565,11 +573,11 @@ First we need to create a resource manager of kind `CoreNumberPool`. This resour
 
 We will create a `CoreNumberPool` with the following properties:
 
-* **Name**: My VLAN ID Pool
-* **Node**: `IpamVLAN`
-* **Node attribute**: `vlan_id`
-* **Start range**: 100
-* **End range**: 1000
+- **Name**: My VLAN ID Pool
+- **Node**: `IpamVLAN`
+- **Node attribute**: `vlan_id`
+- **Start range**: 100
+- **End range**: 1000
 
 The `CoreNumberPool` can be created using the web interface, or by using this GraphQL mutation.
 
