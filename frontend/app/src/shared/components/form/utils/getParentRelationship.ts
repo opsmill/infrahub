@@ -1,12 +1,10 @@
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { store } from "@/shared/stores";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const getParentRelationship = (peer?: string) => {
   if (!peer) return;
 
-  const nodes = store.get(nodeSchemasAtom);
-  const generics = store.get(genericSchemasAtom);
-  const peerSchema = [...generics, ...nodes].find((schema) => schema.kind === peer);
+  const peerSchema = useSchema(peer);
+
   const parentRelationship = peerSchema?.relationships?.find((rel) => rel.kind === "Parent");
 
   return parentRelationship;
