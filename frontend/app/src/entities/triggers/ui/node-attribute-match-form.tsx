@@ -51,6 +51,8 @@ export const NodeAttributeMatchForm = ({
     ...props,
     initialObject: currentObject,
     isUpdate,
+    parentData,
+    parentSchema,
   });
 
   const attributeField = schemaFields.find((field) => {

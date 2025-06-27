@@ -53,6 +53,8 @@ export const NodeRelationshipMatchForm = ({
     ...props,
     initialObject: currentObject,
     isUpdate,
+    parentData,
+    parentSchema,
   });
 
   const fields = schemaFields.filter((field) => {

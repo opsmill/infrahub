@@ -24,6 +24,7 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 import { LoadingIndicator } from "../loading/loading-indicator";
+import { useCurrentFormContext } from "./utils/form-context";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -54,13 +55,12 @@ export const NodeForm = ({
   isFilterForm,
   onSubmit,
   isUpdate,
-  parentSchema,
-  parentData,
   ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
+  const { parentData, parentSchema } = useCurrentFormContext();
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
 
