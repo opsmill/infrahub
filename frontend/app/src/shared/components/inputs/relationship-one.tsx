@@ -25,7 +25,7 @@ import { inputStyle } from "../ui/style";
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
   onChange: (value: Node | PoolValue | null) => void;
-  peer?: string;
+  peer: string;
   value: Node | PoolValue | null;
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
