@@ -35,7 +35,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { getPermission } from "../../permission/utils";
 
 const STATES = {
-  open: ["open"],
+  open: ["open", "merging"],
   close: ["closed", "merged", "canceled"],
 };
 
