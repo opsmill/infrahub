@@ -219,7 +219,7 @@ export const GenericRelationshipField = ({
                   className="italic"
                 />
                 <FormInput>
-                  <Input disabled />
+                  <Input disabled name="node-placholder" />
                 </FormInput>
               </div>
             );
