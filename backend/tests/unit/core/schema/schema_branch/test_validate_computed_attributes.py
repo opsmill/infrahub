@@ -373,3 +373,35 @@ async def test_schema_computed_attribute_violations(schema_root: SchemaRoot, exp
         schema.process()
 
     assert str(exc.value) == expected_error
+
+
+async def test_valid_datetime_computed_attribute():
+    """Test that DateTime kind is valid for computed attributes."""
+    schema_root = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Person",
+                namespace="Testing",
+                attributes=[
+                    AttributeSchema(
+                        name="start_date",
+                        kind="DateTime",
+                    ),
+                    AttributeSchema(
+                        name="end_date",
+                        kind="DateTime",
+                        read_only=True,
+                        computed_attribute=ComputedAttribute(
+                            kind=ComputedAttributeKind.JINJA2, jinja2_template="{{ start_date__value }}"
+                        ),
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_root)
+    
+    # This should not raise any exception
+    schema.process()
