@@ -1,5 +1,6 @@
-import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import { GenericSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
@@ -13,7 +14,7 @@ import {
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
-import { useAtomValue } from "jotai/index";
+import React from "react";
 import { useState } from "react";
 
 export const FilterKindSelector = ({
@@ -21,18 +22,17 @@ export const FilterKindSelector = ({
   showLabel = true,
 }: { genericSchema: GenericSchema; showLabel?: boolean }) => {
   const [activeFilters] = useFilters();
-  const availableNodes = useAtomValue(nodeSchemasAtom);
-  const availableProfiles = useAtomValue(profileSchemasAtom);
-  const allAvailableSchemas = [...availableNodes, ...availableProfiles];
-
   const selectedKindFilter = activeFilters.find((filter) => filter.name === "kind__value");
-  const compatibleSchemas = (genericSchema.used_by ?? [])
-    .map((kindValue) => {
-      if (!allAvailableSchemas) return null;
-
-      return allAvailableSchemas.find((schema) => schema.kind === kindValue);
-    })
-    .filter((schema) => !!schema);
+  const compatibleSchemas = React.useMemo(
+    () =>
+      (genericSchema.used_by ?? [])
+        .map((kindValue) => {
+          const { schema } = getSchema(kindValue);
+          return schema;
+        })
+        .filter((schema) => !!schema),
+    [genericSchema.kind]
+  );
 
   return (
     <FormField
@@ -45,9 +45,7 @@ export const FilterKindSelector = ({
       render={({ field }) => {
         const [isDropdownOpen, setIsDropdownOpen] = useState(false);
         const currentFieldValue = field.value;
-        const selectedSchema = allAvailableSchemas.find(
-          (schema) => schema.kind === currentFieldValue?.value
-        );
+        const { schema: selectedSchema } = useSchema(currentFieldValue?.value);
 
         return (
           <div className="flex flex-col gap-2">
