@@ -388,11 +388,19 @@ async def test_valid_datetime_computed_attribute():
                         kind="DateTime",
                     ),
                     AttributeSchema(
-                        name="end_date",
+                        name="end_date_jinja2",
                         kind="DateTime",
                         read_only=True,
                         computed_attribute=ComputedAttribute(
                             kind=ComputedAttributeKind.JINJA2, jinja2_template="{{ start_date__value }}"
+                        ),
+                    ),
+                    AttributeSchema(
+                        name="end_date_python",
+                        kind="DateTime",
+                        read_only=True,
+                        computed_attribute=ComputedAttribute(
+                            kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="my_transform"
                         ),
                     ),
                 ],
@@ -403,5 +411,5 @@ async def test_valid_datetime_computed_attribute():
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=schema_root)
     
-    # This should not raise any exception
+    # This should not raise any exception for either Jinja2 or Python computed attributes
     schema.process()
