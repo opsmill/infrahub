@@ -51,6 +51,7 @@ export const generateNodeSchema = (
         allow_override: "any",
         deprecation: null,
         parameters: {
+          state: "present",
           regex: null,
           min_length: null,
           max_length: null,
@@ -79,6 +80,7 @@ export const generateNodeSchema = (
         allow_override: "any",
         deprecation: null,
         parameters: {
+          state: "present",
           regex: null,
           min_length: null,
           max_length: null,
@@ -920,6 +922,10 @@ export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): A
     inherited: false,
     read_only: false,
     deprecation: null,
+    parameters: {
+      id: null,
+      state: "present",
+    },
     ...overrides,
   };
 };

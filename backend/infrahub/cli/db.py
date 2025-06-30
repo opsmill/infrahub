@@ -280,10 +280,10 @@ async def index(
     await dbdriver.close()
 
 
-async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check: bool = False) -> None:
+async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check: bool = False) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
-    This function is expected to run on an empty
+    Returns a boolean indicating whether a migration failed or if all migrations succeeded.
 
     Args:
         db: The database object.
@@ -299,14 +299,14 @@ async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check
 
     if not migrations:
         rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
-        return
+        return True
 
     rprint(
         f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
     )
 
     if check:
-        return
+        return True
 
     for migration in migrations:
         execution_result = await migration.execute(db=db)
@@ -326,7 +326,9 @@ async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check
             if validation_result and not validation_result.success:
                 for error in validation_result.errors:
                     rprint(f"  {error}")
-            break
+            return False
+
+    return True
 
 
 async def initialize_internal_schema() -> None:

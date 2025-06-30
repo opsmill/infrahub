@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field, model_validator
 from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
+from infrahub.exceptions import ValidationError
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -124,16 +125,22 @@ class NumberAttributeParameters(AttributeParameters):
         return ranges
 
     def is_valid_value(self, value: int) -> bool:
+        try:
+            self.check_valid_value(value=value, name="UNUSED")
+        except ValidationError:
+            return False
+        return True
+
+    def check_valid_value(self, value: int, name: str) -> None:
         if self.min_value is not None and value < self.min_value:
-            return False
+            raise ValidationError({name: f"{value} is lower than the minimum allowed value {self.min_value!r}"})
         if self.max_value is not None and value > self.max_value:
-            return False
+            raise ValidationError({name: f"{value} is higher than the maximum allowed value {self.max_value!r}"})
         if value in self.get_excluded_single_values():
-            return False
+            raise ValidationError({name: f"{value} is in the excluded values"})
         for start, end in self.get_excluded_ranges():
             if start <= value <= end:
-                return False
-        return True
+                raise ValidationError({name: f"{value} is in an the excluded range {start}-{end}"})
 
 
 class NumberPoolParameters(AttributeParameters):

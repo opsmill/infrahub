@@ -69,7 +69,12 @@ async def upgrade_cmd(
     # -------------------------------------------
     # Upgrade Infrahub Database and Schema
     # -------------------------------------------
-    await migrate_database(db=dbdriver, initialize=False, check=check)
+
+    if not await migrate_database(db=dbdriver, initialize=False, check=check):
+        # A migration failed, stop the upgrade process
+        rprint("Upgrade cancelled due to migration failure.")
+        await dbdriver.close()
+        return
 
     await initialize_internal_schema()
     await update_core_schema(db=dbdriver, initialize=False)

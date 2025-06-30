@@ -28,29 +28,29 @@ We're excited to announce the release of Infrahub 1.3.0!
 
 This version brings powerful new features designed to streamline your operations and enhance control of your data, as well as new automation possibilities. Our focus for this release is empowering you with greater flexibility and efficiency in managing your infrastructure data.
 
-## Key Highlights
+## Key highlights
 
-### Action System
+### Action system
 
 Infrahub 1.3.0 unveils a brand new Action System that lets you automate routine tasks based on system events. Define triggers to automatically add or remove nodes from groups, or even run generator definitions, bringing a new level of dynamism to your infrastructure management.
 
 We will add additional actions in future releases.
 
-### Load Data from Git Repositories
+### Load data from Git repositories
 
 Infrahub can now automatically load data from object YAML files stored in an external Git repository. This new capability streamlines data ingestion, allowing you to manage your infrastructure data in version control, and Infrahub will keep itself updated. This is similar to how you would import data using object files using the `infrahubctl object load` command.
 
-### Load menu files from Git Repositories
+### Load menu files from Git repositories
 
 Expanding on our Git integration, Infrahub can now also automatically load menu configuration files from external Git repositories.
 
-### Add Parameters as a New Schema Option for Attribute Kinds
+### Add parameters as a new Schema option for attribute kinds
 
 Gain finer control over your attribute values with the introduction of attribute parameters. This allows you to define more precise constraints for attribute kinds like Text, TextArea, Number, and the new NumberPool, such as setting minimum/maximum lengths for text attributes or minimum/maximum values for number attributes.
 
 With the release of this feature the `min_length` and `max_length` option for attributes has been deprecated and will be phased out in a future release.
 
-### Added NumberPool Attribute Kind
+### Added NumberPool attribute kind
 
 A new NumberPool attribute kind has been added, providing a way to dynamically assign a number to the attribute from an automatically created NumberPool. This read-only and mandatory attribute ensures unique and controlled numbering for your critical data.
 
