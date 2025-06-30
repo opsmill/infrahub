@@ -160,7 +160,6 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
     CLI_COMMANDS = (
         ("infrahub.cli.db", "infrahub db", "infrahub-db"),
         ("infrahub.cli.server", "infrahub server", "infrahub-server"),
-        ("infrahub.cli.git_agent", "infrahub git-agent", "infrahub-git-agent"),
     )
 
     print(" - Generate Infrahub CLI documentation")

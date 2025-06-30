@@ -10,7 +10,6 @@ from infrahub.database import InfrahubDatabase, get_db
 from .context import CliContext
 from .db import app as db_app
 from .events import app as events_app
-from .git_agent import app as git_app
 from .server import app as server_app
 from .tasks import app as tasks_app
 from .upgrade import upgrade_cmd
@@ -25,7 +24,6 @@ def common(ctx: typer.Context) -> None:
 
 
 app.add_typer(server_app, name="server")
-app.add_typer(git_app, name="git-agent", hidden=True)
 app.add_typer(db_app, name="db")
 app.add_typer(events_app, name="events", help="Interact with the events system.", hidden=True)
 app.add_typer(tasks_app, name="tasks", hidden=True)

@@ -17,12 +17,6 @@ def test_db_app():
     assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
 
 
-def test_git_agent_app():
-    result = runner.invoke(app, ["git-agent", "--help"])
-    assert result.exit_code == 0
-    assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
-
-
 def test_server_app():
     result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
