@@ -6,6 +6,7 @@ import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemD
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
@@ -44,11 +45,11 @@ export const AccountForm = ({
   });
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject),
-    password: getCurrentFieldValue("password", currentObject),
-    description: getCurrentFieldValue("description", currentObject),
-    label: getCurrentFieldValue("label", currentObject),
-    member_of_groups: groups,
+    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    password: getCurrentFieldValue("password", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    description: getCurrentFieldValue("description", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    label: getCurrentFieldValue("label", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    member_of_groups: groups ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
   const form = useForm<FieldValues>({

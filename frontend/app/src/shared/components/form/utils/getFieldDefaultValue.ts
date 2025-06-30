@@ -5,6 +5,7 @@ import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
 import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   AttributeValueFromPool,
@@ -32,7 +33,7 @@ export const getFieldDefaultValue = ({
 }: GetFieldDefaultValue): FormAttributeValue => {
   // Do not use profiles nor default values in filters
   if (isFilterForm) {
-    return getCurrentFieldValue(fieldSchema.name, initialObject) ?? { source: null, value: null };
+    return getCurrentFieldValue(fieldSchema.name, initialObject) ?? DEFAULT_FORM_FIELD_VALUE;
   }
 
   return (
@@ -40,7 +41,8 @@ export const getFieldDefaultValue = ({
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
     getDefaultValueFromPool(fieldSchema.name, initialObject) ??
     getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
-    getDefaultValueFromSchema(fieldSchema) ?? { source: null, value: null }
+    getDefaultValueFromSchema(fieldSchema) ??
+    DEFAULT_FORM_FIELD_VALUE
   );
 };
 

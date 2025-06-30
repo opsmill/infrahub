@@ -19,6 +19,7 @@ import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
@@ -51,9 +52,9 @@ export const AccountRoleForm = ({
   });
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject),
-    groups,
-    permissions,
+    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    groups: groups ?? DEFAULT_FORM_FIELD_VALUE,
+    permissions: permissions ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
   const form = useForm<FieldValues>({

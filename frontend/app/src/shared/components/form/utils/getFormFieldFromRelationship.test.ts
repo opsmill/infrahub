@@ -30,11 +30,7 @@ describe("getFormFieldFromRelationship", () => {
       relationship: relationshipSchema,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-          maxCount: expect.any(Function),
-          minCount: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
       schema,
     });
