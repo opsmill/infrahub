@@ -13,7 +13,7 @@ class DiffLocker:
             lock_name += "__incremental"
         return lock_name
 
-    async def get_existing_lock(
+    def get_existing_lock(
         self, target_branch_name: str, source_branch_name: str, is_incremental: bool = False
     ) -> lock.InfrahubLock | None:
         name = self.get_lock_name(target_branch_name, source_branch_name, is_incremental)

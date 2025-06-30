@@ -118,7 +118,7 @@ class DiffCoordinator:
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRootMetadata:
         tracking_id = BranchTrackingId(name=diff_branch.name)
         log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
-        existing_incremental_lock = await self.diff_locker.get_existing_lock(
+        existing_incremental_lock = self.diff_locker.get_existing_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
