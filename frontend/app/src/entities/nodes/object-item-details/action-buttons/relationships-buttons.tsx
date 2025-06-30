@@ -138,7 +138,7 @@ export function RelationshipsButtons({
         open={showAddDrawer}
         setOpen={setShowAddDrawer}
       >
-        <FormContext parentSchema={parentSchema} parentData={objectDetailsData}>
+        <FormContext value={{ parentSchema, parentData: objectDetailsData }}>
           {parentSchema &&
           relationshipSchemaData?.kind === "Component" &&
           peerRelationshipSchema?.kind === "Parent" &&
