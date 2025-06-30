@@ -43,7 +43,7 @@ def get_client(client: InfrahubClient = Depends(build_client)) -> InfrahubClient
 
 async def build_database() -> InfrahubDatabase:
     if "database" not in _singletons:
-        _singletons["database"] = InfrahubDatabase(driver=await get_db(retry=1))
+        _singletons["database"] = InfrahubDatabase(driver=await get_db(retry=5))
     return _singletons["database"]
 
 
