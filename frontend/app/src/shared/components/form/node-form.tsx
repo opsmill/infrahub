@@ -41,7 +41,7 @@ export type NodeFormProps = {
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
   onSuccess?: (newObject: any) => void;
-  onCancel?: (newObject: any) => void;
+  onCancel?: () => void;
 };
 
 export const NodeForm = ({

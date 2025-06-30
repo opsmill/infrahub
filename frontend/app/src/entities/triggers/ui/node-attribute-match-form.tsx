@@ -7,6 +7,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -59,28 +60,34 @@ export const NodeAttributeMatchForm = ({
   });
 
   const defaultValues = {
-    attribute_name: getCurrentFieldValue("attribute_name", {
-      attribute_name: currentObject?.attribute_name as AttributeType,
-    }),
-    value: getCurrentFieldValue("value", {
-      value: currentObject?.value as AttributeType,
-    }),
-    value_previous: getCurrentFieldValue("value_previous", {
-      value_previous: currentObject?.value_previous as AttributeType,
-    }),
-    value_match: getCurrentFieldValue("value_match", {
-      value_match: currentObject?.value_match as AttributeType,
-    }),
-    member_of_group: getRelationshipDefaultValue({
-      relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
-      relationshipName: "member_of_group",
-      objectTemplate,
-    }),
-    trigger: getRelationshipDefaultValue({
-      relationshipData: currentObject?.trigger as RelationshipType | undefined,
-      relationshipName: "trigger",
-      objectTemplate,
-    }),
+    attribute_name:
+      getCurrentFieldValue("attribute_name", {
+        attribute_name: currentObject?.attribute_name as AttributeType,
+      }) ?? DEFAULT_FORM_FIELD_VALUE,
+    value:
+      getCurrentFieldValue("value", {
+        value: currentObject?.value as AttributeType,
+      }) ?? DEFAULT_FORM_FIELD_VALUE,
+    value_previous:
+      getCurrentFieldValue("value_previous", {
+        value_previous: currentObject?.value_previous as AttributeType,
+      }) ?? DEFAULT_FORM_FIELD_VALUE,
+    value_match:
+      getCurrentFieldValue("value_match", {
+        value_match: currentObject?.value_match as AttributeType,
+      }) ?? DEFAULT_FORM_FIELD_VALUE,
+    member_of_group:
+      getRelationshipDefaultValue({
+        relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
+        relationshipName: "member_of_group",
+        objectTemplate,
+      }) ?? DEFAULT_FORM_FIELD_VALUE,
+    trigger:
+      getRelationshipDefaultValue({
+        relationshipData: currentObject?.trigger as RelationshipType | undefined,
+        relationshipName: "trigger",
+        objectTemplate,
+      }) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
   const form = useForm<FieldValues>({

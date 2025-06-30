@@ -77,9 +77,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -107,9 +105,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -135,9 +131,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -165,9 +159,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -217,9 +209,7 @@ describe("getFormFieldsFromSchema", () => {
       type: "Dropdown",
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
       items: [
         {
@@ -268,9 +258,7 @@ describe("getFormFieldsFromSchema", () => {
       type: "enum",
       rules: {
         required: true,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
       items: [1, 2, 3],
       field: schema.attributes?.[0],
@@ -331,9 +319,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -390,9 +376,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -437,9 +421,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -484,9 +466,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -544,9 +524,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -604,9 +582,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -664,9 +640,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
@@ -724,9 +698,7 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });

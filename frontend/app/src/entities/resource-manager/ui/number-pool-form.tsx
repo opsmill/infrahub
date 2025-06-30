@@ -56,12 +56,13 @@ export const NumberPoolForm = ({
   const date = useAtomValue(datetimeAtom);
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject),
-    description: getCurrentFieldValue("description", currentObject),
-    node: getCurrentFieldValue("node", currentObject),
-    node_attribute: getCurrentFieldValue("node_attribute", currentObject),
-    start_range: getCurrentFieldValue("start_range", currentObject),
-    end_range: getCurrentFieldValue("end_range", currentObject),
+    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    description: getCurrentFieldValue("description", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    node: getCurrentFieldValue("node", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    node_attribute:
+      getCurrentFieldValue("node_attribute", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    start_range: getCurrentFieldValue("start_range", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    end_range: getCurrentFieldValue("end_range", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
   const form = useForm<FieldValues>({
@@ -166,10 +167,11 @@ const NodeAttributesSelects = () => {
     selectedNode?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
 
   useEffect(() => {
-    if (numberAttributeOptions.length === 1) {
+    const firstAttribute = numberAttributeOptions[0];
+    if (firstAttribute) {
       form.setValue(
         NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-        updateFormFieldValue(numberAttributeOptions[0].name, DEFAULT_FORM_FIELD_VALUE)
+        updateFormFieldValue(firstAttribute.name, DEFAULT_FORM_FIELD_VALUE)
       );
     } else {
       form.resetField(NUMBER_POOL_NODE_ATTRIBUTE_FIELD);
@@ -268,7 +270,7 @@ const NodeAttributesSelects = () => {
                     {numberAttributeOptions.map((attribute) => (
                       <ComboboxItem
                         key={attribute.id}
-                        selectedValue={selectedAttribute?.value}
+                        selectedValue={selectedAttribute?.value?.toString()}
                         value={attribute.name}
                         keywords={[attribute.label as string]}
                         onSelect={() => {
