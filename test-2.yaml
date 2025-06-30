@@ -1,0 +1,316 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    description: "Generic Device object"
+    label: "Device"
+    icon: "mdi:server"
+    default_filter: name__value
+    human_friendly_id: ["name__value"]
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      # - name: computed_description
+      #   kind: Text
+      #   description: Combine various attributes to provide a human frendly description of this device.
+      #   computed_attribute:
+      #     kind: Jinja2
+      #     jinja2_template: "{{ type__value }} device used as {{ role__value }} on {{ site__name__value|lower }}"
+      #   read_only: true
+      #   optional: false
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: core
+            label: Core Router
+            description: "Central part of the network"
+            color: "#7f7fff"
+          - name: edge
+            label: Edge Router
+            description: "Network boundary with external networks"
+            color: "#bf7fbf"
+          - name: cpe
+            label: Customer Premise Equipment
+            description: "Devices located at the customer's premises"
+            color: "#bf7f7f"
+          - name: firewall
+            label: Firewall
+            description: "Ensures network security"
+            color: "#ffa07a"
+          - name: spine
+            label: Spine Router
+            description: "Aggregation router part of a Fabric"
+            color: "#aeeeee"
+          - name: leaf
+            label: Leaf Switch
+            description: "Top of Rack part of a Fabric"
+            color: "#e6e6fa"
+    relationships:
+      - name: site
+        label: Site
+        peer: LocationSite
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 1
+        identifier: "site__devices"
+      - name: interfaces
+        peer: InfraInterface
+        identifier: "device__interface"
+        optional: true
+        cardinality: many
+        kind: Component
+      - name: asn
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: primary_address
+        peer: IpamIPAddress
+        label: Primary IP Address
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: InfraPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: mlag_domain
+        peer: InfraMlagDomain
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: Interface
+    namespace: Infra
+    description: "Generic Network Interface"
+    label: "Interface"
+    include_in_menu: true
+    icon: "mdi:ethernet"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    human_friendly_id: ["device__name__value", "name__value"]
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: speed
+        kind: Number
+      - name: mtu
+        label: MTU
+        default_value: 1500
+        kind: Number
+      - name: enabled
+        kind: Boolean
+        default_value: true
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: backbone
+            label: Backbone
+            description: "Provide main data routes"
+            color: "#6a5acd"
+          - name: upstream
+            label: Upstream
+            description: "Connect to Internet service provider"
+            color: "#9090de"
+          - name: peering
+            label: Peering
+            description: "Connect with other networks via IX"
+            color: "#ffa07a"
+          - name: peer
+            label: Peer
+            description: "Equal-status connections for direct interchange"
+            color: "#faa446"
+          - name: server
+            label: Server
+            description: "Dedicated to interfaces connected to servers"
+            color: "#98b2d1"
+          - name: loopback
+            label: Loopback
+            description: "Internal interface"
+            color: "#93e9be"
+          - name: management
+            label: Management
+            description: "Dedicated network for control and monitoring"
+            color: "#ccc28a"
+          - name: uplink
+            label: Uplink
+            description: "Connect to higher device"
+            color: "#ff6b6b"
+          - name: leaf
+            label: Leaf
+            description: "Connect to leaf device"
+            color: "#e6e6fa"
+          - name: spare
+            label: Spare
+            description: "Reserve resources for future use"
+            color: "#d3d3d3"
+    relationships:
+      - name: device
+        peer: InfraGenericDevice
+        identifier: "device__interface"
+        optional: false
+        cardinality: one
+        order_weight: 1
+        kind: Parent
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+nodes:
+  # --------------------  Device (Platforms, Device, Interfaces)  --------------------
+  - name: Device
+    namespace: Infra
+    inherit_from:
+      - "CoreArtifactTarget"
+      - "InfraGenericDevice"
+  - name: InterfaceL3
+    namespace: Infra
+    description: "Network Layer 3 Interface"
+    label: "Interface L3"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: lacp_rate
+        label: LACP Rate
+        kind: Text
+        enum:
+          - "Fast"
+          - "Normal"
+        default_value: "Normal"
+      - name: lacp_priority
+        label: LACP Priority
+        kind: Number
+        default_value: 32768
+    relationships:
+      - name: ip_addresses
+        peer: IpamIPAddress
+        optional: true
+        cardinality: many
+        kind: Component
+      - name: lag
+        peer: InfraLagInterfaceL3
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: InterfaceL2
+    namespace: Infra
+    description: "Network Layer 2 Interface"
+    label: "Interface L2"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Trunk", "Trunk (ALL)"]
+      - name: lacp_rate
+        label: LACP Rate
+        kind: Text
+        enum:
+          - "Fast"
+          - "Normal"
+        default_value: "Normal"
+      - name: lacp_priority
+        label: LACP Priority
+        kind: Number
+        default_value: 32768
+    relationships:
+      - name: lag
+        peer: InfraLagInterfaceL2
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__untagged_vlan
+      - name: tagged_vlan
+        label: Tagged VLANs
+        peer: InfraVLAN
+        optional: true
+        cardinality: many
+        kind: Attribute
+        identifier: interface_l2__tagged_vlan

@@ -1,0 +1,638 @@
+version: "1.0"
+generics:
+  - id: null
+    state: present
+    name: Interface
+    namespace: Testing
+    description: null
+    label: Interface
+    branch: aware
+    default_filter: name__value
+    human_friendly_id: null
+    display_labels: null
+    include_in_menu: false
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints:
+      - - device
+        - name__value
+    documentation: null
+    attributes:
+      - id: null
+        state: present
+        name: name
+        kind: Text
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+      - id: null
+        state: present
+        name: enabled
+        kind: Boolean
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: true
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+        deprecation: null
+    relationships:
+      - id: null
+        state: present
+        name: device
+        peer: TestingInterfaceHolder
+        kind: Parent
+        label: null
+        description: null
+        identifier: interfaceholder__interfaces
+        cardinality: one
+        min_count: 0
+        max_count: 0
+        common_relatives: null
+        order_weight: null
+        optional: false
+        branch: null
+        inherited: false
+        direction: bidirectional
+        hierarchical: null
+        on_delete: null
+        allow_override: any
+        read_only: false
+        deprecation: null
+    hierarchical: false
+    generate_profile: true
+    generate_template: false
+    used_by: []
+  - id: null
+    state: present
+    name: InterfaceHolder
+    namespace: Testing
+    description: null
+    label: Interface Holder
+    branch: aware
+    default_filter: null
+    human_friendly_id: null
+    display_labels: null
+    include_in_menu: false
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints: null
+    documentation: null
+    attributes: []
+    relationships:
+      - id: null
+        state: present
+        name: interfaces
+        peer: TestingInterface
+        kind: Component
+        label: null
+        description: null
+        identifier: interfaceholder__interfaces
+        cardinality: many
+        min_count: 0
+        max_count: 0
+        common_relatives: null
+        order_weight: null
+        optional: true
+        branch: null
+        inherited: false
+        direction: bidirectional
+        hierarchical: null
+        on_delete: null
+        allow_override: any
+        read_only: false
+        deprecation: null
+    hierarchical: false
+    generate_profile: true
+    generate_template: false
+    used_by: []
+nodes:
+  - id: null
+    state: present
+    name: Device
+    namespace: Testing
+    description: null
+    label: Device
+    branch: aware
+    default_filter: name__value
+    human_friendly_id: null
+    display_labels: null
+    include_in_menu: true
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints: null
+    documentation: null
+    attributes:
+      - id: null
+        state: present
+        name: name
+        kind: Text
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: true
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+      - id: null
+        state: present
+        name: manufacturer
+        kind: Text
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+      - id: null
+        state: present
+        name: height
+        kind: Number
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: 1
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          min_value: null
+          max_value: null
+          excluded_values: null
+        deprecation: null
+      - id: null
+        state: present
+        name: weight
+        kind: Number
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          min_value: null
+          max_value: null
+          excluded_values: null
+        deprecation: null
+      - id: null
+        state: present
+        name: airflow
+        kind: Text
+        enum:
+          - Front to rear
+          - Rear to front
+          - Left to right
+          - Right to left
+          - Side to rear
+          - Rear to side
+          - Bottom to top
+          - Top to bottom
+          - Passive
+          - Mixed
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+      - id: null
+        state: present
+        name: part_number
+        kind: Text
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: true
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+    relationships: []
+    inherit_from:
+      - TestingInterfaceHolder
+    generate_profile: true
+    generate_template: false
+    hierarchy: null
+    parent: null
+    children: null
+  - id: null
+    state: present
+    name: PhysicalInterface
+    namespace: Testing
+    description: null
+    label: Physical Interface
+    branch: aware
+    default_filter: null
+    human_friendly_id: null
+    display_labels: null
+    include_in_menu: true
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints: null
+    documentation: null
+    attributes:
+      - id: null
+        state: present
+        name: phys_type
+        kind: Text
+        enum:
+          - 1000BASE-T (1GE)
+          - 10GBASE-T (20GE)
+          - SFP (1GE)
+          - SFP+ (10GE)
+          - XFP (10GE)
+          - SFP28 (25GE)
+          - SFP56 (50GE)
+          - QSFP+ (40 GE)
+          - QSFP28 (100GE)
+          - Virtual
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+    relationships:
+      - id: null
+        state: present
+        name: sfp
+        peer: TestingSfp
+        kind: Component
+        label: null
+        description: null
+        identifier: null
+        cardinality: one
+        min_count: 0
+        max_count: 0
+        common_relatives: null
+        order_weight: null
+        optional: true
+        branch: null
+        inherited: false
+        direction: bidirectional
+        hierarchical: null
+        on_delete: null
+        allow_override: any
+        read_only: false
+        deprecation: null
+    inherit_from:
+      - TestingInterface
+    generate_profile: true
+    generate_template: false
+    hierarchy: null
+    parent: null
+    children: null
+  - id: null
+    state: present
+    name: VirtualInterface
+    namespace: Testing
+    description: null
+    label: Virtual Interface
+    branch: aware
+    default_filter: null
+    human_friendly_id: null
+    display_labels: null
+    include_in_menu: true
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints: null
+    documentation: null
+    attributes: []
+    relationships: []
+    inherit_from:
+      - TestingInterface
+    generate_profile: true
+    generate_template: false
+    hierarchy: null
+    parent: null
+    children: null
+  - id: null
+    state: present
+    name: Sfp
+    namespace: Testing
+    description: null
+    label: SFP
+    branch: aware
+    default_filter: null
+    human_friendly_id:
+      - phys_type__value
+      - serial_number__value
+    display_labels: null
+    include_in_menu: true
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints:
+      - - phys_type__value
+        - serial_number__value
+    documentation: null
+    attributes:
+      - id: null
+        state: present
+        name: phys_type
+        kind: Text
+        enum:
+          - 1000BASE-T (1GE)
+          - 10GBASE-T (20GE)
+          - SFP (1GE)
+          - SFP+ (10GE)
+          - XFP (10GE)
+          - SFP28 (25GE)
+          - SFP56 (50GE)
+          - QSFP+ (40 GE)
+          - QSFP28 (100GE)
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+      - id: null
+        state: present
+        name: serial_number
+        kind: Text
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: false
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+      - id: null
+        state: present
+        name: part_number
+        kind: Text
+        enum: null
+        computed_attribute: null
+        choices: null
+        regex: null
+        max_length: null
+        min_length: null
+        label: null
+        description: null
+        read_only: false
+        unique: false
+        optional: true
+        branch: null
+        order_weight: null
+        default_value: null
+        inherited: false
+        allow_override: any
+        parameters:
+          id: null
+          state: present
+          regex: null
+          min_length: null
+          max_length: null
+        deprecation: null
+    relationships:
+      - id: null
+        state: present
+        name: interface
+        peer: TestingPhysicalInterface
+        kind: Parent
+        label: null
+        description: null
+        identifier: null
+        cardinality: one
+        min_count: 0
+        max_count: 0
+        common_relatives: null
+        order_weight: null
+        optional: false
+        branch: null
+        inherited: false
+        direction: bidirectional
+        hierarchical: null
+        on_delete: null
+        allow_override: any
+        read_only: false
+        deprecation: null
+    inherit_from: []
+    generate_profile: true
+    generate_template: false
+    hierarchy: null
+    parent: null
+    children: null
+  - id: null
+    state: present
+    name: LinkAggegrationInterface
+    namespace: Testing
+    description: null
+    label: LAG Interface
+    branch: aware
+    default_filter: null
+    human_friendly_id: null
+    display_labels: null
+    include_in_menu: true
+    menu_placement: null
+    icon: null
+    order_by: null
+    uniqueness_constraints: null
+    documentation: null
+    attributes: []
+    relationships:
+      - id: null
+        state: present
+        name: members
+        peer: TestingPhysicalInterface
+        kind: Component
+        label: null
+        description: null
+        identifier: null
+        cardinality: many
+        min_count: 0
+        max_count: 0
+        common_parent: device
+        order_weight: null
+        optional: true
+        branch: null
+        inherited: false
+        direction: bidirectional
+        hierarchical: null
+        on_delete: null
+        allow_override: any
+        read_only: false
+        deprecation: null
+    inherit_from:
+      - TestingInterface
+    generate_profile: true
+    generate_template: false
+    hierarchy: null
+    parent: null
+    children: null
+
