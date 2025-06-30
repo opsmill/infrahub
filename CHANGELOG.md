@@ -11,6 +11,17 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.3.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.2) - 2025-06-30
+
+### Fixed
+
+- Improve performance of uniqueness constraint checks during create/update/upsert mutations by allowing ordering elements from more specific to less specific within a constraint group ([#6377](https://github.com/opsmill/infrahub/issues/6377))
+- Fixed: min/max constraints no longer trigger on empty values when the field is optional. ([#6671](https://github.com/opsmill/infrahub/issues/6671))
+- Object template ([#6724](https://github.com/opsmill/infrahub/issues/6724))
+  - Fixed "Kind" filter in object template list view.
+  - Fixed search in object template selector during creation form
+- Improve performance when calculating a large diff with many added and/or deleted node (>2,000) ([#6751](https://github.com/opsmill/infrahub/issues/6751))
+
 ## [Infrahub - v1.3.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.1) - 2025-06-27
 
 ### Fixed
