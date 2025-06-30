@@ -11,6 +11,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.3.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.1) - 2025-06-27
+
+### Fixed
+
+- Fix bug that could prevent renaming a unique attribute on a schema ([#6147](https://github.com/opsmill/infrahub/issues/6147))
+- Fix a bug where Number attribute min_value/max_value/excluded_values constraints were not enforced during node creation ([#6714](https://github.com/opsmill/infrahub/issues/6714))
+- Display parameters for attribute of kind `Number` in Schema visualizer. ([#6715](https://github.com/opsmill/infrahub/issues/6715))
+
 ## [Infrahub - v1.3.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.0) - 2025-06-12
 
 We're excited to announce the release of Infrahub 1.3.0!

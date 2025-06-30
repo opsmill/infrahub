@@ -1,26 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE
-from infrahub.core.schema import (
-    MainSchemaTypes,
-    SchemaAttributePath,
-    SchemaAttributePathValue,
-)
 from infrahub.core.schema.basenode_schema import (
-    SchemaUniquenessConstraintPath,
     UniquenessConstraintType,
     UniquenessConstraintViolation,
 )
-from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.core.validators.uniqueness.model import (
-    NodeUniquenessQueryRequest,
-    QueryAttributePath,
-    QueryRelationshipAttributePath,
+    NodeUniquenessQueryRequestValued,
+    QueryAttributePathValued,
+    QueryRelationshipPathValued,
 )
-from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
+from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.exceptions import HFIDViolatedError, ValidationError
 
 from .interface import NodeConstraintInterface
@@ -28,8 +21,11 @@ from .interface import NodeConstraintInterface
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.query import QueryResult
     from infrahub.core.relationship.model import RelationshipManager
+    from infrahub.core.schema import (
+        MainSchemaTypes,
+        SchemaAttributePath,
+    )
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -40,72 +36,38 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name)
 
-    async def _build_query_request(
-        self,
-        updated_node: Node,
-        node_schema: MainSchemaTypes,
-        uniqueness_constraint_paths: list[SchemaUniquenessConstraintPath],
-        filters: list[str] | None = None,
-    ) -> NodeUniquenessQueryRequest:
-        query_request = NodeUniquenessQueryRequest(kind=node_schema.kind)
-        for uniqueness_constraint_path in uniqueness_constraint_paths:
-            include_in_query = not filters
-            query_relationship_paths: set[QueryRelationshipAttributePath] = set()
-            query_attribute_paths: set[QueryAttributePath] = set()
-            for attribute_path in uniqueness_constraint_path.attributes_paths:
-                if attribute_path.related_schema and attribute_path.relationship_schema:
-                    if filters and attribute_path.relationship_schema.name in filters:
-                        include_in_query = True
-
-                    relationship_manager: RelationshipManager = getattr(
-                        updated_node, attribute_path.relationship_schema.name
-                    )
-                    related_node = await relationship_manager.get_peer(db=self.db)
-                    related_node_id = related_node.get_id() if related_node else None
-                    query_relationship_paths.add(
-                        QueryRelationshipAttributePath(
-                            identifier=attribute_path.relationship_schema.get_identifier(),
-                            value=related_node_id,
-                        )
-                    )
-                    continue
-                if attribute_path.attribute_schema:
-                    if filters and attribute_path.attribute_schema.name in filters:
-                        include_in_query = True
-                    attribute_name = attribute_path.attribute_schema.name
-                    attribute = getattr(updated_node, attribute_name)
-                    if attribute.is_enum and attribute.value:
-                        attribute_value = attribute.value.value
-                    else:
-                        attribute_value = attribute.value
-                    if attribute_value is None:
-                        attribute_value = NULL_VALUE
-                    query_attribute_paths.add(
-                        QueryAttributePath(
-                            attribute_name=attribute_name,
-                            property_name=attribute_path.attribute_property_name or "value",
-                            value=attribute_value,
-                        )
-                    )
-            if include_in_query:
-                query_request.relationship_attribute_paths |= query_relationship_paths
-                query_request.unique_attribute_paths |= query_attribute_paths
-        return query_request
-
-    async def _get_node_attribute_path_values(
+    async def _get_unique_valued_paths(
         self,
         updated_node: Node,
         path_group: list[SchemaAttributePath],
-    ) -> list[SchemaAttributePathValue]:
-        node_value_combination = []
+        filters: list[str],
+    ) -> list[QueryAttributePathValued | QueryRelationshipPathValued]:
+        # if filters are provided, we need to check if the path group is relevant to the filters
+        if filters:
+            field_names: list[str] = []
+            for schema_attribute_path in path_group:
+                if schema_attribute_path.relationship_schema:
+                    field_names.append(schema_attribute_path.relationship_schema.name)
+                elif schema_attribute_path.attribute_schema:
+                    field_names.append(schema_attribute_path.attribute_schema.name)
+
+            if not set(field_names) & set(filters):
+                return []
+
+        valued_paths: list[QueryAttributePathValued | QueryRelationshipPathValued] = []
         for schema_attribute_path in path_group:
             if schema_attribute_path.relationship_schema:
                 relationship_name = schema_attribute_path.relationship_schema.name
                 relationship_manager: RelationshipManager = getattr(updated_node, relationship_name)
                 related_node = await relationship_manager.get_peer(db=self.db)
                 related_node_id = related_node.get_id() if related_node else None
-                node_value_combination.append(
-                    SchemaAttributePathValue.from_schema_attribute_path(schema_attribute_path, value=related_node_id)
+                valued_paths.append(
+                    QueryRelationshipPathValued(
+                        relationship_schema=schema_attribute_path.relationship_schema,
+                        peer_id=related_node_id,
+                        attribute_name=None,
+                        attribute_value=None,
+                    )
                 )
             elif schema_attribute_path.attribute_schema:
                 attribute_name = schema_attribute_path.attribute_schema.name
@@ -115,85 +77,78 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                     attribute_value = attribute_value.value
                 elif attribute_value is None:
                     attribute_value = NULL_VALUE
-                node_value_combination.append(
-                    SchemaAttributePathValue.from_schema_attribute_path(
-                        schema_attribute_path,
+                valued_paths.append(
+                    QueryAttributePathValued(
+                        attribute_name=attribute_name,
                         value=attribute_value,
                     )
                 )
-        return node_value_combination
-
-    async def _get_violations(
-        self,
-        updated_node: Node,
-        uniqueness_constraint_paths: list[SchemaUniquenessConstraintPath],
-        query_results: Iterable[QueryResult],
-    ) -> list[UniquenessConstraintViolation]:
-        results_index = UniquenessQueryResultsIndex(
-            query_results=query_results, exclude_node_ids={updated_node.get_id()}
-        )
-        violations = []
-        for uniqueness_constraint_path in uniqueness_constraint_paths:
-            # path_group = one constraint (that can contain multiple items)
-            schema_attribute_path_values = await self._get_node_attribute_path_values(
-                updated_node=updated_node, path_group=uniqueness_constraint_path.attributes_paths
-            )
-
-            # constraint cannot be violated if this node is missing any values
-            if any(sapv.value is None for sapv in schema_attribute_path_values):
-                continue
-
-            matching_node_ids = results_index.get_node_ids_for_value_group(schema_attribute_path_values)
-            if not matching_node_ids:
-                continue
-
-            uniqueness_constraint_fields = []
-            for sapv in schema_attribute_path_values:
-                if sapv.relationship_schema:
-                    uniqueness_constraint_fields.append(sapv.relationship_schema.name)
-                elif sapv.attribute_schema:
-                    uniqueness_constraint_fields.append(sapv.attribute_schema.name)
-
-            violations.append(
-                UniquenessConstraintViolation(
-                    nodes_ids=matching_node_ids,
-                    fields=uniqueness_constraint_fields,
-                    typ=uniqueness_constraint_path.typ,
-                )
-            )
-
-        return violations
+        return valued_paths
 
     async def _get_single_schema_violations(
         self,
         node: Node,
         node_schema: MainSchemaTypes,
+        filters: list[str],
         at: Timestamp | None = None,
-        filters: list[str] | None = None,
     ) -> list[UniquenessConstraintViolation]:
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
 
         uniqueness_constraint_paths = node_schema.get_unique_constraint_schema_attribute_paths(
             schema_branch=schema_branch
         )
-        query_request = await self._build_query_request(
-            updated_node=node,
-            node_schema=node_schema,
-            uniqueness_constraint_paths=uniqueness_constraint_paths,
-            filters=filters,
-        )
-        if not query_request:
-            return []
 
-        query = await NodeUniqueAttributeConstraintQuery.init(
-            db=self.db, branch=self.branch, at=at, query_request=query_request, min_count_required=0
-        )
-        await query.execute(db=self.db)
-        return await self._get_violations(
-            updated_node=node,
-            uniqueness_constraint_paths=uniqueness_constraint_paths,
-            query_results=query.get_results(),
-        )
+        violations: list[UniquenessConstraintViolation] = []
+        for uniqueness_constraint_path in uniqueness_constraint_paths:
+            valued_paths = await self._get_unique_valued_paths(
+                updated_node=node,
+                path_group=uniqueness_constraint_path.attributes_paths,
+                filters=filters,
+            )
+
+            if not valued_paths:
+                continue
+
+            # Create the valued query request for this constraint
+            valued_query_request = NodeUniquenessQueryRequestValued(
+                kind=node_schema.kind,
+                unique_valued_paths=valued_paths,
+            )
+
+            # Execute the query
+            query = await UniquenessValidationQuery.init(
+                db=self.db,
+                branch=self.branch,
+                at=at,
+                query_request=valued_query_request,
+                node_ids_to_exclude=[node.get_id()],
+            )
+            await query.execute(db=self.db)
+
+            # Get violation nodes from the query results
+            violation_nodes = query.get_violation_nodes()
+            if not violation_nodes:
+                continue
+
+            # Create violation object
+            uniqueness_constraint_fields = []
+            for valued_path in valued_paths:
+                if isinstance(valued_path, QueryRelationshipPathValued):
+                    uniqueness_constraint_fields.append(valued_path.relationship_schema.name)
+                elif isinstance(valued_path, QueryAttributePathValued):
+                    uniqueness_constraint_fields.append(valued_path.attribute_name)
+
+            matching_node_ids = {node_id for node_id, _ in violation_nodes}
+            if matching_node_ids:
+                violations.append(
+                    UniquenessConstraintViolation(
+                        nodes_ids=matching_node_ids,
+                        fields=uniqueness_constraint_fields,
+                        typ=uniqueness_constraint_path.typ,
+                    )
+                )
+
+        return violations
 
     async def check(self, node: Node, at: Timestamp | None = None, filters: list[str] | None = None) -> None:
         def _frozen_constraints(schema: MainSchemaTypes) -> frozenset[frozenset[str]]:
@@ -218,7 +173,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         if include_node_schema:
             schemas_to_check.append(node_schema)
 
-        violations = []
+        violations: list[UniquenessConstraintViolation] = []
+
         for schema in schemas_to_check:
             schema_filters = list(filters) if filters is not None else []
             for attr_schema in schema.attributes:

@@ -963,6 +963,13 @@ export interface components {
             /** Display Label */
             display_label?: string | null;
         };
+        /** AttributeParameters */
+        AttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+        };
         /** AttributeSchema */
         "AttributeSchema-Input": {
             /**
@@ -999,17 +1006,17 @@ export interface components {
             choices?: components["schemas"]["DropdownChoice"][] | null;
             /**
              * Regex
-             * @description Regex uses to limit the characters allowed in for the attributes.
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
              */
             regex?: string | null;
             /**
              * Max Length
-             * @description Set a maximum number of characters allowed for a given attribute.
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
              */
             max_length?: number | null;
             /**
              * Min Length
-             * @description Set a minimum number of characters allowed for a given attribute.
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
              */
             min_length?: number | null;
             /**
@@ -1063,6 +1070,11 @@ export interface components {
              * @default any
              */
             allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Parameters
+             * @description Extra parameters specific to this kind of attribute
+             */
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1105,17 +1117,17 @@ export interface components {
             choices?: components["schemas"]["DropdownChoice"][] | null;
             /**
              * Regex
-             * @description Regex uses to limit the characters allowed in for the attributes.
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
              */
             regex?: string | null;
             /**
              * Max Length
-             * @description Set a maximum number of characters allowed for a given attribute.
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
              */
             max_length?: number | null;
             /**
              * Min Length
-             * @description Set a minimum number of characters allowed for a given attribute.
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
              */
             min_length?: number | null;
             /**
@@ -1169,6 +1181,11 @@ export interface components {
              * @default any
              */
             allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Parameters
+             * @description Extra parameters specific to this kind of attribute
+             */
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1249,7 +1266,6 @@ export interface components {
              */
             transform?: string | null;
         } & (unknown & unknown);
-        /** ComputedAttribute */
         "ComputedAttribute-Output": Record<string, never>;
         /**
          * ComputedAttributeKind
@@ -1291,6 +1307,11 @@ export interface components {
              * @default false
              */
             graphql_enums: boolean;
+            /**
+             * Value Db Index
+             * @default false
+             */
+            value_db_index: boolean;
         };
         /**
          * GenericSchema
@@ -1540,6 +1561,12 @@ export interface components {
              * @description Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.
              */
             public_url?: string | null;
+            /**
+             * Schema Strict Mode
+             * @description Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.
+             * @default true
+             */
+            schema_strict_mode: boolean;
         };
         /** Menu */
         Menu: {
@@ -1550,11 +1577,30 @@ export interface components {
         };
         /** MenuItemList */
         MenuItemList: {
+            /** Id */
+            id?: string | null;
             /**
-             * Identifier
-             * @description Unique identifier for this menu item
+             * Namespace
+             * @description Namespace of the menu item
              */
-            identifier: string;
+            namespace: string;
+            /**
+             * Name
+             * @description Name of the menu item
+             */
+            name: string;
+            /**
+             * Description
+             * @description Description of the menu item
+             * @default
+             */
+            description: string;
+            /**
+             * Protected
+             * @description Whether the menu item is protected
+             * @default false
+             */
+            protected: boolean;
             /**
              * Label
              * @description Title of the menu item
@@ -1592,6 +1638,8 @@ export interface components {
              * @description Child objects
              */
             children?: components["schemas"]["MenuItemList"][];
+            /** Identifier */
+            readonly identifier: string;
         };
         /**
          * MenuSection
@@ -1736,6 +1784,52 @@ export interface components {
              */
             children?: string | null;
         };
+        /** NumberAttributeParameters */
+        NumberAttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Min Value
+             * @description Set a minimum value allowed.
+             */
+            min_value?: number | null;
+            /**
+             * Max Value
+             * @description Set a maximum value allowed.
+             */
+            max_value?: number | null;
+            /**
+             * Excluded Values
+             * @description List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'
+             */
+            excluded_values?: string | null;
+        };
+        /** NumberPoolParameters */
+        NumberPoolParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * End Range
+             * @description End range for numbers for the associated NumberPool
+             * @default 9223372036854776000
+             */
+            end_range: number;
+            /**
+             * Start Range
+             * @description Start range for numbers for the associated NumberPool
+             * @default 1
+             */
+            start_range: number;
+            /**
+             * Number Pool Id
+             * @description The ID of the numberpool associated with this attribute
+             */
+            number_pool_id?: string | null;
+        };
         /** PasswordCredential */
         PasswordCredential: {
             /**
@@ -1835,6 +1929,16 @@ export interface components {
              * @default 0
              */
             max_count: number;
+            /**
+             * Common Parent
+             * @description Name of a parent relationship on the peer schema that must share the same related object with the object's parent.
+             */
+            common_parent?: string | null;
+            /**
+             * Common Relatives
+             * @description List of relationship names on the peer schema for which all objects must share the same set of peers.
+             */
+            common_relatives?: string[] | null;
             /**
              * Order Weight
              * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
@@ -2023,6 +2127,28 @@ export interface components {
         SchemasLoadAPI: {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
+        };
+        /** TextAttributeParameters */
+        TextAttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Regex
+             * @description Regular expression that attribute value must match if defined
+             */
+            regex?: string | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed.
+             */
+            min_length?: number | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed.
+             */
+            max_length?: number | null;
         };
         /** UploadContentPayload */
         UploadContentPayload: {

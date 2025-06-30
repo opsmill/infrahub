@@ -6,25 +6,6 @@ type tPieChart = {
   onClick?: Function;
 };
 
-// const RADIAN = Math.PI / 180;
-
-// const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
-//   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-//   const x = cx + radius * Math.cos(-midAngle * RADIAN);
-//   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-//   return (
-//     <text
-//       x={x}
-//       y={y}
-//       textAnchor="middle"
-//       dominantBaseline="central"
-//       className="text-xxs fill-custom-white">
-//       {value}
-//     </text>
-//   );
-// };
-
 const renderCustomizedTooltip = (props: any) => {
   const data = props?.payload[0] ?? {};
 

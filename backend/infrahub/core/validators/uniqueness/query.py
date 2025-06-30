@@ -5,10 +5,12 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.query import Query, QueryType
 
+from .model import QueryAttributePathValued, QueryRelationshipPathValued
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
-    from .model import NodeUniquenessQueryRequest
+    from .model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
 
 
 class NodeUniqueAttributeConstraintQuery(Query):
@@ -244,3 +246,212 @@ class NodeUniqueAttributeConstraintQuery(Query):
             "attr_value",
             "relationship_identifier",
         ]
+
+
+class UniquenessValidationQuery(Query):
+    name = "uniqueness_constraint_validation"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        query_request: NodeUniquenessQueryRequestValued,
+        node_ids_to_exclude: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.query_request = query_request
+        self.node_ids_to_exclude = node_ids_to_exclude
+        super().__init__(**kwargs)
+
+    def _build_attr_subquery(
+        self, node_kind: str, attr_path: QueryAttributePathValued, index: int, branch_filter: str, is_first_query: bool
+    ) -> tuple[str, dict[str, str | int | float | bool]]:
+        attr_name_var = f"attr_name_{index}"
+        attr_value_var = f"attr_value_{index}"
+        if is_first_query:
+            first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
+        else:
+            first_query_filter = ""
+        attribute_query = """
+MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+%(first_query_filter)s
+WITH DISTINCT node
+CALL (node) {
+    MATCH (node)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
+    WHERE %(branch_filter)s
+    WITH attr, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH attr, is_active
+    LIMIT 1
+    WITH attr, is_active
+    WHERE is_active = TRUE
+    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+    WHERE %(branch_filter)s
+    WITH r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    WITH r
+    WHERE r.status = "active"
+    RETURN 1 AS is_match_%(index)s
+}
+        """ % {
+            "first_query_filter": first_query_filter,
+            "node_kind": node_kind,
+            "attr_name_var": attr_name_var,
+            "attr_value_var": attr_value_var,
+            "branch_filter": branch_filter,
+            "index": index,
+        }
+        params: dict[str, str | int | float | bool] = {
+            attr_name_var: attr_path.attribute_name,
+            attr_value_var: attr_path.value,
+        }
+        return attribute_query, params
+
+    def _build_rel_subquery(
+        self,
+        node_kind: str,
+        rel_path: QueryRelationshipPathValued,
+        index: int,
+        branch_filter: str,
+        is_first_query: bool,
+    ) -> tuple[str, dict[str, str | int | float | bool]]:
+        params: dict[str, str | int | float | bool] = {}
+        rel_attr_query = ""
+        rel_attr_match = ""
+        if rel_path.attribute_name and rel_path.attribute_value:
+            attr_name_var = f"attr_name_{index}"
+            attr_value_var = f"attr_value_{index}"
+            rel_attr_query = """
+    MATCH (peer)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
+    WHERE %(branch_filter)s
+    WITH attr, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH attr, is_active
+    LIMIT 1
+    WITH attr, is_active
+    WHERE is_active = TRUE
+    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+    WHERE %(branch_filter)s
+    WITH r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    WITH r
+    WHERE r.status = "active"
+            """ % {"attr_name_var": attr_name_var, "attr_value_var": attr_value_var, "branch_filter": branch_filter}
+            rel_attr_match = (
+                "-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})"
+                % {
+                    "attr_name_var": attr_name_var,
+                    "attr_value_var": attr_value_var,
+                }
+            )
+            params[attr_name_var] = rel_path.attribute_name
+            params[attr_value_var] = rel_path.attribute_value
+        query_arrows = rel_path.relationship_schema.get_query_arrows()
+        rel_name_var = f"rel_name_{index}"
+        # long path MATCH is required to hit an index on the peer or AttributeValue of the peer
+        first_match = (
+            "MATCH (node:%(node_kind)s)%(lstart)s[:IS_RELATED]%(lend)s(:Relationship {name: $%(rel_name_var)s})%(rstart)s[:IS_RELATED]%(rend)s"
+            % {
+                "node_kind": node_kind,
+                "lstart": query_arrows.left.start,
+                "lend": query_arrows.left.end,
+                "rstart": query_arrows.right.start,
+                "rend": query_arrows.right.end,
+                "rel_name_var": rel_name_var,
+            }
+        )
+        peer_where = f"WHERE {branch_filter}"
+        if rel_path.peer_id:
+            peer_id_var = f"peer_id_{index}"
+            peer_where += f" AND peer.uuid = ${peer_id_var}"
+            params[peer_id_var] = rel_path.peer_id
+            first_match += "(:Node {uuid: $%(peer_id_var)s})" % {"peer_id_var": peer_id_var}
+        else:
+            peer_where += " AND peer.uuid <> node.uuid"
+            first_match += "(:Node)"
+        if rel_attr_match:
+            first_match += rel_attr_match
+        if is_first_query:
+            first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
+        else:
+            first_query_filter = ""
+        relationship_query = f"""
+{first_match}
+{first_query_filter}
+WITH DISTINCT node
+        """
+        relationship_query += """
+CALL (node) {
+    MATCH (node)%(lstart)s[r:IS_RELATED]%(lend)s(rel:Relationship {name: $%(rel_name_var)s})
+    WHERE %(branch_filter)s
+    WITH rel, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH rel, is_active
+    LIMIT 1
+    WITH rel, is_active
+    WHERE is_active = TRUE
+    MATCH (rel)%(rstart)s[r:IS_RELATED]%(rend)s(peer:Node)
+    %(peer_where)s
+    WITH peer, r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    WITH peer, is_active
+    LIMIT 1
+    WITH peer, is_active
+    WHERE is_active = TRUE
+%(rel_attr_query)s
+    RETURN 1 AS is_match_%(index)s
+    LIMIT 1
+}
+        """ % {
+            "rel_name_var": rel_name_var,
+            "lstart": query_arrows.left.start,
+            "lend": query_arrows.left.end,
+            "rstart": query_arrows.right.start,
+            "rend": query_arrows.right.end,
+            "peer_where": peer_where,
+            "rel_attr_query": rel_attr_query,
+            "branch_filter": branch_filter,
+            "index": index,
+        }
+        params[rel_name_var] = rel_path.relationship_schema.get_identifier()
+        return relationship_query, params
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["node_ids_to_exclude"] = self.node_ids_to_exclude
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
+        self.params.update(branch_params)
+
+        subqueries = []
+        for index, schema_path in enumerate(self.query_request.unique_valued_paths):
+            is_first_query = index == 0
+            if isinstance(schema_path, QueryAttributePathValued):
+                subquery, params = self._build_attr_subquery(
+                    node_kind=self.query_request.kind,
+                    attr_path=schema_path,
+                    index=index,
+                    branch_filter=branch_filter,
+                    is_first_query=is_first_query,
+                )
+            else:
+                subquery, params = self._build_rel_subquery(
+                    node_kind=self.query_request.kind,
+                    rel_path=schema_path,
+                    index=index,
+                    branch_filter=branch_filter,
+                    is_first_query=is_first_query,
+                )
+            subqueries.append(subquery)
+            self.params.update(params)
+
+        full_query = "\n".join(subqueries)
+        self.add_to_query(full_query)
+        self.return_labels = ["node.uuid AS node_uuid", "node.kind AS node_kind"]
+
+    def get_violation_nodes(self) -> list[tuple[str, str]]:
+        violation_tuples = []
+        for result in self.results:
+            violation_tuples.append(
+                (result.get_as_type("node_uuid", return_type=str), result.get_as_type("node_kind", return_type=str))
+            )
+        return violation_tuples
