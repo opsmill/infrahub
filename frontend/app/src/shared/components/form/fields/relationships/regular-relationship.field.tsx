@@ -37,9 +37,14 @@ export const NodeRelationshipField = ({
   const parentRelationship = getParentRelationship(relationship.peer);
 
   const { data: defaultParent } = useDefaultParent({
-    peer: relationship.peer,
     defaultValue,
-    parentRelationship,
+    parentRelationship: parentRelationship
+      ? {
+          peer: parentRelationship.peer,
+          direction: parentRelationship.direction,
+          identifier: parentRelationship.identifier ?? undefined,
+        }
+      : undefined,
   });
 
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);

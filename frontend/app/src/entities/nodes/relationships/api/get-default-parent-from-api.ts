@@ -3,13 +3,8 @@ import { getSchema } from "@/entities/schema/domain/get-schema";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
+import { FormRelationshipValue } from "@/shared/components/form/type";
 import { gql } from "@apollo/client";
-
-interface DefaultValue {
-  value?: {
-    id?: string;
-  } | null;
-}
 
 interface GetDefaultParentFromApiParams extends ContextParams {
   parentRelationship: {
@@ -17,7 +12,7 @@ interface GetDefaultParentFromApiParams extends ContextParams {
     direction?: "bidirectional" | "inbound" | "outbound";
     identifier?: string;
   };
-  defaultValue?: DefaultValue;
+  defaultValue?: FormRelationshipValue;
 }
 
 export const getDefaultParentFromApi = ({

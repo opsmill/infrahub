@@ -3,6 +3,7 @@ import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ContextParams } from "@/shared/api/types";
+import { FormRelationshipValue } from "@/shared/components/form/type";
 import { FormContextType } from "@/shared/components/form/utils/form-context";
 
 type Node = {
@@ -11,14 +12,8 @@ type Node = {
   __typename: string;
 };
 
-interface DefaultValue {
-  value?: {
-    id?: string;
-  } | null;
-}
-
 export interface UseDefaultParentParams {
-  defaultValue?: DefaultValue;
+  defaultValue?: FormRelationshipValue;
   parentRelationship?: {
     peer?: string;
     direction?: "bidirectional" | "inbound" | "outbound";
