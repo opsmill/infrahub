@@ -92,6 +92,9 @@ export const NodeAttributeMatchForm = ({
         relationshipData: currentObject?.trigger as RelationshipType | undefined,
         relationshipName: "trigger",
         objectTemplate,
+        schema: props.schema,
+        parentData,
+        parentSchema,
       }) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
