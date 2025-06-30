@@ -211,7 +211,7 @@ export const GenericRelationshipField = ({
             return (
               <div className="relative flex flex-col space-y-2">
                 <LabelFormField
-                  label={selectedGeneric?.display_label ?? "Please select a kind first"}
+                  label={selectedGeneric?.display_label ?? "Select a kind first"}
                   unique={unique}
                   required={!!rules?.required}
                   description={description}
