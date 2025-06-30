@@ -486,6 +486,7 @@ class DiffQueryParser:
         self._previous_node_field_specifiers = previous_node_field_specifiers or NodeFieldSpecifierMap()
         self._new_node_field_specifiers: NodeFieldSpecifierMap | None = None
         self._current_node_field_specifiers: NodeFieldSpecifierMap | None = None
+        self._diff_node_field_specifiers: NodeFieldSpecifierMap = NodeFieldSpecifierMap()
 
     def get_branches(self) -> set[str]:
         return set(self._final_diff_root_by_branch.keys())
@@ -497,33 +498,17 @@ class DiffQueryParser:
             return self._final_diff_root_by_branch[branch]
         return DiffRoot(from_time=self.from_time, to_time=self.to_time, uuid=str(uuid4()), branch=branch, nodes=[])
 
-    def get_diff_node_field_specifiers(self) -> NodeFieldSpecifierMap:
-        node_field_specifiers_map = NodeFieldSpecifierMap()
-        if self.diff_branch_name not in self._diff_root_by_branch:
-            return node_field_specifiers_map
-        diff_root = self._diff_root_by_branch[self.diff_branch_name]
-        for node in diff_root.nodes_by_identifier.values():
-            for attribute_name in node.attributes_by_name:
-                node_field_specifiers_map.add_entry(node_uuid=node.uuid, kind=node.kind, field_name=attribute_name)
-            for relationship_diff in node.relationships_by_identifier.values():
-                node_field_specifiers_map.add_entry(
-                    node_uuid=node.uuid, kind=node.kind, field_name=relationship_diff.identifier
-                )
-        return node_field_specifiers_map
-
     def get_new_node_field_specifiers(self) -> NodeFieldSpecifierMap:
-        if self._new_node_field_specifiers is not None:
-            return self._new_node_field_specifiers
-        branch_node_specifiers = self.get_diff_node_field_specifiers()
-        self._new_node_field_specifiers = branch_node_specifiers - self._previous_node_field_specifiers
-        return self._new_node_field_specifiers
+        return self._diff_node_field_specifiers - self._previous_node_field_specifiers
 
-    def get_current_node_field_specifiers(self) -> NodeFieldSpecifierMap:
-        if self._current_node_field_specifiers is not None:
-            return self._current_node_field_specifiers
-        new_node_field_specifiers = self.get_new_node_field_specifiers()
-        self._current_node_field_specifiers = self._previous_node_field_specifiers - new_node_field_specifiers
-        return self._current_node_field_specifiers
+    def is_new_node_field_specifier(self, node_uuid: str, kind: str, field_name: str) -> bool:
+        if not self._diff_node_field_specifiers.has_entry(node_uuid=node_uuid, kind=kind, field_name=field_name):
+            return False
+        if self._previous_node_field_specifiers and self._previous_node_field_specifiers.has_entry(
+            node_uuid=node_uuid, kind=kind, field_name=field_name
+        ):
+            return False
+        return True
 
     def read_result(self, query_result: QueryResult) -> None:
         try:
@@ -533,8 +518,6 @@ class DiffQueryParser:
             return
         database_path = DatabasePath.from_cypher_path(cypher_path=path)
         self._parse_path(database_path=database_path)
-        self._current_node_field_specifiers = None
-        self._new_node_field_specifiers = None
 
     def parse(self, include_unchanged: bool = False) -> None:
         self._new_node_field_specifiers = None
@@ -617,11 +600,15 @@ class DiffQueryParser:
         branch_name = database_path.deepest_branch
         from_time = self.from_time
         if branch_name == self.base_branch_name:
-            new_node_field_specifiers = self.get_new_node_field_specifiers()
-            if new_node_field_specifiers.has_entry(
+            if self.is_new_node_field_specifier(
                 node_uuid=diff_node.uuid, kind=diff_node.kind, field_name=attribute_name
             ):
                 from_time = self.diff_branched_from_time
+        else:
+            # Add to diff node field specifiers if this is the diff branch
+            self._diff_node_field_specifiers.add_entry(
+                node_uuid=diff_node.uuid, kind=diff_node.kind, field_name=attribute_name
+            )
         if attribute_name not in diff_node.attributes_by_name:
             diff_node.attributes_by_name[attribute_name] = DiffAttributeIntermediate(
                 uuid=database_path.attribute_id,
@@ -663,11 +650,15 @@ class DiffQueryParser:
             branch_name = database_path.deepest_branch
             from_time = self.from_time
             if branch_name == self.base_branch_name:
-                new_node_field_specifiers = self.get_new_node_field_specifiers()
-                if new_node_field_specifiers.has_entry(
+                if self.is_new_node_field_specifier(
                     node_uuid=diff_node.uuid, kind=diff_node.kind, field_name=relationship_schema.get_identifier()
                 ):
                     from_time = self.diff_branched_from_time
+            else:
+                # Add to diff node field specifiers if this is the diff branch
+                self._diff_node_field_specifiers.add_entry(
+                    node_uuid=diff_node.uuid, kind=diff_node.kind, field_name=relationship_schema.get_identifier()
+                )
             diff_relationship = DiffRelationshipIntermediate(
                 name=relationship_schema.name,
                 cardinality=relationship_schema.cardinality,

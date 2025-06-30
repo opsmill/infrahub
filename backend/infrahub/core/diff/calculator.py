@@ -181,8 +181,11 @@ class DiffCalculator:
         log.info("Diff property-level calculation queries for branch complete")
 
         if base_branch.name != diff_branch.name:
-            current_node_field_specifiers = diff_parser.get_current_node_field_specifiers()
             new_node_field_specifiers = diff_parser.get_new_node_field_specifiers()
+            current_node_field_specifiers = None
+            if previous_node_specifiers is not None:
+                current_node_field_specifiers = previous_node_specifiers - new_node_field_specifiers
+
             base_calculation_request = DiffCalculationRequest(
                 base_branch=base_branch,
                 diff_branch=base_branch,

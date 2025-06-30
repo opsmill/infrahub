@@ -53,7 +53,12 @@ export default function RelationshipManyField({
                 peer={props.relationship.peer}
                 value={fieldData.value as NodeCore[] | null}
                 onChange={(newValue) => {
-                  field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+                  field.onChange(
+                    updateRelationshipFieldValue(
+                      newValue.length > 0 ? newValue : null,
+                      defaultValue
+                    )
+                  );
                 }}
               />
             </FormInput>

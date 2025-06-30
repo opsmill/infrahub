@@ -9,7 +9,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input, InputProps } from "@/shared/components/ui/input";
 
 export interface NumberFieldProps
-  extends Omit<DynamicNumberFieldProps, "type">,
+  extends Omit<DynamicNumberFieldProps, "type" | "onChange">,
     Omit<InputProps, "defaultValue" | "name"> {}
 
 const NumberField = ({
