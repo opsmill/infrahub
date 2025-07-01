@@ -17,12 +17,12 @@ import {
 import { store } from "@/shared/stores";
 
 type GetRelationshipDefaultValueParams = {
-  relationshipData?: RelationshipType;
-  objectTemplate?: NodeObject | null;
+  relationshipData: RelationshipType | undefined;
+  objectTemplate: NodeObject | null | undefined;
   isFilterForm?: boolean;
   relationshipName?: string;
-  schema?: ModelSchema;
-  parentSchema?: ModelSchema;
+  schema?: ModelSchema | null;
+  parentSchema?: ModelSchema | null;
   parentData?: NodeObject | null;
 };
 

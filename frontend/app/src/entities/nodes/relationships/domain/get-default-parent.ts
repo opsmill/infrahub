@@ -1,16 +1,10 @@
 import { getDefaultParentFromApi } from "@/entities/nodes/relationships/api/get-default-parent-from-api";
-import { NodeObject } from "@/entities/nodes/types";
+import { NodeCore, NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ContextParams } from "@/shared/api/types";
 import { FormRelationshipValue } from "@/shared/components/form/type";
 import { FormContextType } from "@/shared/components/form/utils/form-context";
-
-type Node = {
-  id: string;
-  display_label: string;
-  __typename: string;
-};
 
 export interface UseDefaultParentParams {
   defaultValue?: FormRelationshipValue;
@@ -26,7 +20,7 @@ export interface DefaultParentParams
     ContextParams,
     FormContextType {}
 
-const convertNodeObjectToNode = (nodeObject: NodeObject | null): Node | null => {
+const convertNodeObjectToNode = (nodeObject: NodeObject | null): NodeCore | null => {
   if (!nodeObject) return null;
   return {
     id: nodeObject.id,

@@ -56,13 +56,13 @@ export const getDefaultParentFromApi = ({
     return { data: null, error: null };
   }
 
-  const queryString = getRelationshipParent({
-    kind: parentRelationship?.peer,
-    attribute: `${parentRelationshipAttribute?.name}__ids`,
-    id,
-  });
-
-  const query = gql`${queryString}`;
+  const query = gql(
+    getRelationshipParent({
+      kind: parentRelationship?.peer,
+      attribute: `${parentRelationshipAttribute?.name}__ids`,
+      id,
+    })
+  );
 
   return graphqlClient.query({
     query,

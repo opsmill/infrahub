@@ -28,13 +28,13 @@ export function useDefaultParent(params: UseDefaultParentParams) {
   const timeMachineDate = useAtomValue(datetimeAtom);
   const formContext = useCurrentFormContext();
 
-  return useQuery({
-    ...getDefaultParentQueryOptions({
+  return useQuery(
+    getDefaultParentQueryOptions({
       ...params,
       parentSchema: formContext.parentSchema,
       parentData: formContext.parentData,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
-    }),
-  });
+    })
+  );
 }

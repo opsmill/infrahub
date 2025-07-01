@@ -1,14 +1,10 @@
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { ReactNode, createContext, use } from "react";
+import { createContext, use } from "react";
 
 export interface FormContextType {
   parentSchema: ModelSchema | null;
   parentData: NodeObject | null;
-}
-
-export interface FormContextProps extends FormContextType {
-  children: ReactNode;
 }
 
 export const FormContext = createContext<FormContextType>({
