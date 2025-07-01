@@ -51,7 +51,7 @@ export const GenericRelationshipField = ({
     defaultSelectedGeneric as GenericOption | null
   );
 
-  const parentRelationship = getParentRelationship(selectedGeneric?.id);
+  const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
