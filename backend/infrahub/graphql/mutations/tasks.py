@@ -6,6 +6,7 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
@@ -50,6 +51,7 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext, service: 
             diff_merger=diff_merger,
             diff_repository=diff_repository,
             source_branch=obj,
+            diff_locker=DiffLocker(),
             service=service,
         )
         candidate_schema = merger.get_candidate_schema()
