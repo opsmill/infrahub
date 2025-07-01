@@ -19,6 +19,7 @@ import {
   FormAttributeValue,
   FormFieldValue,
 } from "@/shared/components/form/type";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -47,11 +48,14 @@ export const NodeRelationshipMatchForm = ({
 }: NodeRelationshipMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
+  const { parentData, parentSchema } = useCurrentFormContext();
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
     initialObject: currentObject,
     isUpdate,
+    parentData,
+    parentSchema,
   });
 
   const fields = schemaFields.filter((field) => {
@@ -90,6 +94,9 @@ export const NodeRelationshipMatchForm = ({
         relationshipData: currentObject?.trigger as RelationshipType | undefined,
         relationshipName: "trigger",
         objectTemplate,
+        schema: props.schema,
+        parentData,
+        parentSchema,
       }) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 

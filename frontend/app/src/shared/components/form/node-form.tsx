@@ -14,8 +14,10 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
@@ -23,7 +25,6 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import { LoadingIndicator } from "../loading/loading-indicator";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -59,6 +60,7 @@ export const NodeForm = ({
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
+  const { parentData, parentSchema } = useCurrentFormContext();
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
 
@@ -85,6 +87,8 @@ export const NodeForm = ({
     isFilterForm,
     pools: numberPools,
     isUpdate,
+    parentSchema,
+    parentData,
   });
 
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {

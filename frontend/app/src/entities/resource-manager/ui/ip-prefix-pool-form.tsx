@@ -9,6 +9,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { NodeFormProps } from "@/shared/components/form/node-form";
 import { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -28,12 +29,15 @@ export function IpPrefixPoolForm({
 }: IpPrefixPoolFormProps) {
   const { schema: genericPrefixSchema, isGeneric } = useSchema(IP_PREFIX_GENERIC);
   const { currentBranch } = useCurrentBranch();
+  const { parentSchema, parentData } = useCurrentFormContext();
 
   const fields = useMemo(() => {
     const schemaFields = getFormFieldsFromSchema({
       ...props,
       initialObject: currentObject,
       isUpdate,
+      parentSchema,
+      parentData,
     });
 
     if (!genericPrefixSchema || !isGeneric) return schemaFields;

@@ -8,7 +8,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import InputField from "@/shared/components/form/fields/input.field";
-import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
+import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";

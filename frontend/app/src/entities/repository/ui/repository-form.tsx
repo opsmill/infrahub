@@ -4,8 +4,9 @@ import { createObject } from "@/entities/nodes/api/createObject";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
-import RelationshipField from "@/shared/components/form/fields/relationship.field";
+import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Card, CardProps } from "@/shared/components/ui/card";
@@ -22,11 +23,20 @@ const RepositoryForm = ({
   currentObject,
   onSubmit,
   onCancel,
+  ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
-  const fields = getFormFieldsFromSchema({ auth, schema, initialObject: currentObject });
+  const { parentSchema, parentData } = useCurrentFormContext();
+  const fields = getFormFieldsFromSchema({
+    auth,
+    initialObject: currentObject,
+    schema,
+    parentSchema,
+    parentData,
+    ...props,
+  });
 
   const gitUrlFieldProps = fields.find(({ name }) => name === "location");
 
