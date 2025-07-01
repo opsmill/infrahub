@@ -328,4 +328,3 @@ class TestGetMissingFile(TestInfrahubApp):
         assert len(errors) == 1
         assert errors[0]["message"] == f"Unable to find the file at 'car-dealership::{commit}::{missing_file_name}'."
         assert errors[0]["extensions"]["code"] == 404
-aze
