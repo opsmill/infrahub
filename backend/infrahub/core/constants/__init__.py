@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import enum
+from enum import Flag, auto
 
 from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
@@ -78,7 +78,7 @@ class EventType(InfrahubStringEnum):
     VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
 
 
-class PermissionLevel(enum.Flag):
+class PermissionLevel(Flag):
     READ = 1
     WRITE = 2
     ADMIN = 3
@@ -343,10 +343,14 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
-class AttributeDBNodeType(InfrahubStringEnum):
-    DEFAULT = "default"
-    IPHOST = "iphost"
-    IPNETWORK = "ipnetwork"
+class AttributeDBNodeType(Flag):
+    DEFAULT = auto()
+    INDEX_ONLY = auto()
+    IPHOST_ONLY = auto()
+    IPNETWORK_ONLY = auto()
+    INDEXED = DEFAULT | INDEX_ONLY
+    IPHOST = DEFAULT | INDEX_ONLY | IPHOST_ONLY
+    IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
 RESTRICTED_NAMESPACES: list[str] = [

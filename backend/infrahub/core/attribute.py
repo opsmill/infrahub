@@ -72,7 +72,6 @@ class AttributeCreateData(BaseModel):
     is_visible: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
-    node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -624,7 +623,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return changed
 
     def get_db_node_type(self) -> AttributeDBNodeType:
-        return AttributeDBNodeType.DEFAULT
+        if self.get_kind() in LARGE_ATTRIBUTE_TYPES:
+            return AttributeDBNodeType.DEFAULT
+        return AttributeDBNodeType.INDEXED
 
     def get_create_data(self) -> AttributeCreateData:
         branch = self.branch
@@ -635,7 +636,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch = registry.get_global_branch()
             hierarchy_level = 0
         data = AttributeCreateData(
-            node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
             name=self.name,
             type=self.get_kind(),
@@ -946,7 +946,7 @@ class IPNetwork(BaseAttribute):
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPNETWORK
-        return AttributeDBNodeType.DEFAULT
+        return super().get_db_node_type()
 
     def to_db(self) -> dict[str, Any]:
         data = super().to_db()
@@ -1082,7 +1082,7 @@ class IPHost(BaseAttribute):
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPHOST
-        return AttributeDBNodeType.DEFAULT
+        return super().get_db_node_type()
 
     def to_db(self) -> dict[str, Any]:
         data = super().to_db()
