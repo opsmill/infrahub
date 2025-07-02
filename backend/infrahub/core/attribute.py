@@ -29,7 +29,7 @@ from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, upda
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
-from ..types import ATTRIBUTE_TYPES, LARGE_ATTRIBUTE_TYPES
+from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from .schema.attribute_parameters import NumberAttributeParameters
 
@@ -277,7 +277,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             data["value"] = NULL_VALUE
         else:
             serialized_value = self.serialize_value()
-            if isinstance(serialized_value, str) and ATTRIBUTE_TYPES[self.schema.kind] not in LARGE_ATTRIBUTE_TYPES:
+            if isinstance(serialized_value, str) and not is_large_attribute_type(self.schema.kind):
                 # Perform validation here to avoid an extra serialization during validation step.
                 # Standard non-str attributes (integer, boolean) do not exceed limit size related to neo4j indexing.
                 validate_string_length(serialized_value)
@@ -623,7 +623,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return changed
 
     def get_db_node_type(self) -> AttributeDBNodeType:
-        if self.get_kind() in LARGE_ATTRIBUTE_TYPES:
+        if is_large_attribute_type(self.get_kind()):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.query import Query, QueryType
-from infrahub.types import LARGE_ATTRIBUTE_TYPES
+from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -57,7 +57,7 @@ class AttributeAddQuery(Query):
         self.params["is_visible_default"] = True
 
         attr_value_label = GraphAttributeValueNode.get_default_label()
-        if self.attribute_kind not in LARGE_ATTRIBUTE_TYPES:
+        if not is_large_attribute_type(self.attribute_kind):
             attr_value_label += f":{GraphAttributeValueIndexedNode.get_default_label()}"
 
         query = """
