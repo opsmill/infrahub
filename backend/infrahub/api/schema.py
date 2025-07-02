@@ -309,7 +309,7 @@ async def load_schema(
 
     errors: list[str] = []
     for schema in schemas.schemas:
-        errors += schema.validate_namespaces()
+        errors += schema.validate()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
@@ -419,7 +419,7 @@ async def check_schema(
 
     errors: list[str] = []
     for schema in schemas.schemas:
-        errors += schema.validate_namespaces()
+        errors += schema.validate()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))

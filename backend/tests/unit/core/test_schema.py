@@ -249,8 +249,8 @@ def test_dropdown_choice_sort():
     assert active < passive
 
 
-def test_validate_namespaces_with_python_keywords():
-    """Test that validate_namespaces rejects Python keywords in attribute and relationship names."""
+def test_validate_python_keywords_with_attribute_and_relationship():
+    """Test that validate_python_keywords rejects Python keywords in attribute and relationship names."""
     # Test schema with 'from' keyword as attribute name
     SCHEMA_WITH_KEYWORD_ATTR = {
         "nodes": [
@@ -268,7 +268,7 @@ def test_validate_namespaces_with_python_keywords():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ATTR)
-    errors = schema_root.validate_namespaces()
+    errors = schema_root.validate_python_keywords()
     assert len(errors) == 1
     assert "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'" in errors[0]
 
@@ -291,7 +291,7 @@ def test_validate_namespaces_with_python_keywords():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_REL)
-    errors = schema_root.validate_namespaces()
+    errors = schema_root.validate_python_keywords()
     assert len(errors) == 1
     assert "Python keyword 'class' cannot be used as a relationship name on 'TestDevice'" in errors[0]
 
@@ -315,12 +315,12 @@ def test_validate_namespaces_with_python_keywords():
     }
 
     schema_root = SchemaRoot(**SCHEMA_VALID)
-    errors = schema_root.validate_namespaces()
+    errors = schema_root.validate_python_keywords()
     assert len(errors) == 0
 
 
-def test_validate_namespaces_multiple_keywords():
-    """Test that validate_namespaces catches multiple Python keywords."""
+def test_validate_python_keywords_multiple_keywords():
+    """Test that validate_python_keywords catches multiple Python keywords."""
     SCHEMA_WITH_MULTIPLE_KEYWORDS = {
         "nodes": [
             {
@@ -342,7 +342,7 @@ def test_validate_namespaces_multiple_keywords():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_MULTIPLE_KEYWORDS)
-    errors = schema_root.validate_namespaces()
+    errors = schema_root.validate_python_keywords()
     assert len(errors) == 4
 
     # Check that all keywords are caught
@@ -351,3 +351,54 @@ def test_validate_namespaces_multiple_keywords():
     assert "Python keyword 'import' cannot be used as an attribute name" in error_messages
     assert "Python keyword 'class' cannot be used as a relationship name" in error_messages
     assert "Python keyword 'def' cannot be used as a relationship name" in error_messages
+
+
+def test_validate_namespaces_restricted_namespaces_only():
+    """Test that validate_namespaces only validates namespaces, not Python keywords."""
+    SCHEMA_WITH_RESTRICTED_NAMESPACE = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Internal",  # Restricted namespace
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword (should not be caught by validate_namespaces)
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_RESTRICTED_NAMESPACE)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 1
+    assert "Restricted namespace 'Internal' used on 'TestNode'" in errors[0]
+    # Should not contain Python keyword errors
+    assert "Python keyword" not in " ".join(errors)
+
+
+def test_validate_comprehensive():
+    """Test that validate() method catches both namespace and Python keyword issues."""
+    SCHEMA_WITH_BOTH_ISSUES = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Internal",  # Restricted namespace
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_BOTH_ISSUES)
+    errors = schema_root.validate()
+    assert len(errors) == 2
+    
+    error_messages = " ".join(errors)
+    assert "Restricted namespace 'Internal' used on 'TestNode'" in error_messages
+    assert "Python keyword 'from' cannot be used as an attribute name" in error_messages
