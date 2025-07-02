@@ -399,6 +399,7 @@ async def test_valid_datetime_computed_attribute():
                         name="end_date_python",
                         kind="DateTime",
                         read_only=True,
+                        optional=True,
                         computed_attribute=ComputedAttribute(
                             kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="my_transform"
                         ),
