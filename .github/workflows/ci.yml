@@ -728,8 +728,7 @@ jobs:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation != 'true'
+      !contains(needs.*.result, 'cancelled')
     runs-on:
       group: huge-runners
     timeout-minutes: 40
@@ -925,8 +924,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      github.base_ref == 'stable' &&
-      needs.files-changed.outputs.documentation != 'true'
+      github.base_ref == 'stable'
     runs-on:
       group: huge-runners
     steps:
@@ -1000,8 +998,7 @@ jobs:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation != 'true'
+      !contains(needs.*.result, 'cancelled')
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
