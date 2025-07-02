@@ -343,14 +343,10 @@ class GraphQLSchemaManager:
 
     def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
         peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPPREFIX
-        ):
-            return RelatedPrefixNodeInput
+        if peer_schema.is_ip_prefix:
+            return RelatedIPPrefixNodeInput
 
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPADDRESS
-        ):
+        if peer_schema.is_ip_address:
             return RelatedIPAddressNodeInput
 
         return RelatedNodeInput
@@ -530,9 +526,9 @@ class GraphQLSchemaManager:
                 InfrahubKind.NODETRIGGERRELATIONSHIPMATCH: InfrahubTriggerRuleMatchMutation,
             }
 
-            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
+            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix:
                 base_class = InfrahubIPPrefixMutation
-            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address():
+            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address:
                 base_class = InfrahubIPAddressMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)

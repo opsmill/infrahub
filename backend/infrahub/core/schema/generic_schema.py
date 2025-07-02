@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import InfrahubKind
+
 from .generated.genericnode_schema import GeneratedGenericSchema
 
 if TYPE_CHECKING:
@@ -27,6 +29,18 @@ class GenericSchema(GeneratedGenericSchema):
     @property
     def is_template_schema(self) -> bool:
         return False
+
+    @property
+    def is_ip_prefix(self) -> bool:
+        return self.kind == InfrahubKind.IPPREFIX
+
+    @property
+    def is_ip_address(self) -> bool:
+        return self.kind == InfrahubKind.IPADDRESS
+
+    @property
+    def is_ipam_schema(self) -> bool:
+        return self.is_ip_prefix or self.is_ip_address
 
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:  # noqa: ARG002
         if self.hierarchical:

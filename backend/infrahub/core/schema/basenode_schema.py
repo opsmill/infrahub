@@ -56,6 +56,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return False
 
     @property
+    def is_ip_prefix(self) -> bool:
+        return False
+
+    @property
+    def is_ip_address(self) -> bool:
+        return False
+
+    @property
+    def is_ipam_schema(self) -> bool:
+        return False
+
+    @property
     def kind(self) -> str:
         if self.namespace == "Attribute":
             return self.name

@@ -658,7 +658,7 @@ class SchemaBranch:
                     and not (
                         schema_attribute_path.relationship_schema.name == "ip_namespace"
                         and isinstance(node_schema, NodeSchema)
-                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix())
+                        and node_schema.is_ipam_schema
                     )
                 ):
                     raise ValueError(
