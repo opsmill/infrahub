@@ -23,7 +23,7 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
-from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
+from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import (
     GRAPH_SCHEMA,
     GraphAttributeProperties,
@@ -257,8 +257,6 @@ async def index(
         index_manager: IndexManagerBase = IndexManagerMemgraph(db=dbdriver)
     index_manager = IndexManagerNeo4j(db=dbdriver)
 
-    if config.SETTINGS.experimental_features.value_db_index:
-        node_indexes.append(attr_value_index)
     index_manager.init(nodes=node_indexes, rels=rel_indexes)
 
     if action == IndexAction.ADD:

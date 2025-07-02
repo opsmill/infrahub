@@ -18,8 +18,6 @@ node_indexes: list[IndexItem] = [
     IndexItem(name="diff_node_uuid", label="DiffNode", properties=["uuid"], type=IndexType.TEXT),
 ]
 
-attr_value_index = IndexItem(name="attr_value", label="AttributeValue", properties=["value"], type=IndexType.RANGE)
-
 rel_indexes: list[IndexItem] = [
     IndexItem(name="attr_from", label="HAS_ATTRIBUTE", properties=["from"], type=IndexType.RANGE),
     IndexItem(name="attr_branch", label="HAS_ATTRIBUTE", properties=["branch"], type=IndexType.RANGE),
