@@ -118,7 +118,7 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
-    filters, params, matches = await rel.get_query_filter(db=db, filter_name="mytextarea__value", filter_value="alice")
+    filters, params, matches = await rel.get_query_filter(db=db, filter_name="name__value", filter_value="alice")
     expected_response = [
         "(n)",
         "<-[r1:IS_RELATED]-",
