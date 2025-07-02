@@ -247,3 +247,107 @@ def test_dropdown_choice_sort():
     active = DropdownChoice(name="active", color="#AAbb0f")
     passive = DropdownChoice(name="passive", color="#AAbb0f")
     assert active < passive
+
+
+def test_validate_namespaces_with_python_keywords():
+    """Test that validate_namespaces rejects Python keywords in attribute and relationship names."""
+    # Test schema with 'from' keyword as attribute name
+    SCHEMA_WITH_KEYWORD_ATTR = {
+        "nodes": [
+            {
+                "name": "RoutingPolicy",
+                "namespace": "Infra",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ATTR)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 1
+    assert "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'" in errors[0]
+
+    # Test schema with 'class' keyword as relationship name
+    SCHEMA_WITH_KEYWORD_REL = {
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "class", "peer": "TestType", "cardinality": "one", "optional": True},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_REL)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 1
+    assert "Python keyword 'class' cannot be used as a relationship name on 'TestDevice'" in errors[0]
+
+    # Test schema with valid names (no keywords)
+    SCHEMA_VALID = {
+        "nodes": [
+            {
+                "name": "ValidSchema",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "source", "kind": "Text"},  # Not a keyword
+                ],
+                "relationships": [
+                    {"name": "parent", "peer": "TestType", "cardinality": "one", "optional": True},  # Not a keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_VALID)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 0
+
+
+def test_validate_namespaces_multiple_keywords():
+    """Test that validate_namespaces catches multiple Python keywords."""
+    SCHEMA_WITH_MULTIPLE_KEYWORDS = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword
+                    {"name": "import", "kind": "Text"},  # Python keyword
+                ],
+                "relationships": [
+                    {"name": "class", "peer": "TestType", "cardinality": "one", "optional": True},  # Python keyword
+                    {"name": "def", "peer": "TestType", "cardinality": "one", "optional": True},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_MULTIPLE_KEYWORDS)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 4
+
+    # Check that all keywords are caught
+    error_messages = "\n".join(errors)
+    assert "Python keyword 'from' cannot be used as an attribute name" in error_messages
+    assert "Python keyword 'import' cannot be used as an attribute name" in error_messages
+    assert "Python keyword 'class' cannot be used as a relationship name" in error_messages
+    assert "Python keyword 'def' cannot be used as a relationship name" in error_messages

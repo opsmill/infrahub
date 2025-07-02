@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import keyword
 import uuid
 from typing import Any, TypeAlias
 
@@ -76,6 +77,16 @@ class SchemaRoot(BaseModel):
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
+
+            # Check for Python keywords in attribute names
+            for attribute in model.attributes:
+                if keyword.iskeyword(attribute.name):
+                    errors.append(f"Python keyword '{attribute.name}' cannot be used as an attribute name on '{model.kind}'")
+
+            # Check for Python keywords in relationship names
+            for relationship in model.relationships:
+                if keyword.iskeyword(relationship.name):
+                    errors.append(f"Python keyword '{relationship.name}' cannot be used as a relationship name on '{model.kind}'")
 
         return errors
 

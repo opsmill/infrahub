@@ -338,6 +338,26 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
     assert response.status_code == 422
 
 
+async def test_schema_load_endpoint_python_keyword_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    helper,
+):
+    """Test that loading a schema with Python keyword as attribute name fails with proper error."""
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("python_keyword_from.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'" in response.json()["errors"][0]["message"]
+
+
 async def test_schema_load_endpoint_constraints_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
