@@ -79,10 +79,6 @@ class SchemaRoot(BaseModel):
 
         return errors
 
-    def validate(self) -> list[str]:
-        """Basic validation of the schema for namespace issues only."""
-        return self.validate_namespaces()
-
     def generate_uuid(self) -> None:
         """Generate UUID for all nodes, attributes & relationships
         Mainly useful during unit tests."""

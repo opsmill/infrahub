@@ -397,9 +397,9 @@ def test_validate_namespaces_restricted_namespaces_only():
     assert "Python keyword" not in " ".join(errors)
 
 
-def test_validate_comprehensive():
-    """Test that both namespace and Python keyword validation work in the proper context."""
-    # Test that SchemaRoot.validate() only catches namespace issues
+def test_validate_namespaces_and_keyword_separation():
+    """Test that namespace and Python keyword validation work separately in their proper contexts."""
+    # Test that SchemaRoot.validate_namespaces() only catches namespace issues
     SCHEMA_WITH_NAMESPACE_ISSUE = {
         "nodes": [
             {
@@ -416,7 +416,7 @@ def test_validate_comprehensive():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_NAMESPACE_ISSUE)
-    errors = schema_root.validate()
+    errors = schema_root.validate_namespaces()
     assert len(errors) == 1
     assert "Restricted namespace 'Internal' used on 'TestNode'" in errors[0]
     
@@ -438,7 +438,7 @@ def test_validate_comprehensive():
     
     schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ISSUE)
     # SchemaRoot validation should pass (no namespace issues)
-    errors = schema_root.validate()
+    errors = schema_root.validate_namespaces()
     assert len(errors) == 0
     
     # But SchemaBranch validation should catch the Python keyword
