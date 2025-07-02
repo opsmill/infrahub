@@ -112,7 +112,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         """ % {"node_kind": self.query_request.kind}
 
         attr_paths_with_value_subquery = """
-        MATCH attr_path = (start_node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:AttributeValue)
+        MATCH attr_path = (start_node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:AttributeValueIndexed)
         WHERE attr.name in $attribute_names AND attr_value.value in $attr_values
             AND [attr.name, type(r), attr_value.value] in $attr_paths_with_value
         RETURN start_node, attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
@@ -126,7 +126,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         """ % {"node_kind": self.query_request.kind}
 
         relationship_attr_paths_with_value_subquery = """
-        MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
+        MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValueIndexed)
         WHERE relationship_node.name in $relationship_names AND rel_attr_value.value in $relationship_attr_values
             AND [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value
         RETURN start_node, rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
@@ -272,7 +272,7 @@ class UniquenessValidationQuery(Query):
         else:
             first_query_filter = ""
         attribute_query = """
-MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValueIndexed {value: $%(attr_value_var)s})
 %(first_query_filter)s
 WITH DISTINCT node
 CALL (node) {
@@ -330,7 +330,7 @@ CALL (node) {
     LIMIT 1
     WITH attr, is_active
     WHERE is_active = TRUE
-    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})
+    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValueIndexed {value: $%(attr_value_var)s})
     WHERE %(branch_filter)s
     WITH r
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
@@ -339,7 +339,7 @@ CALL (node) {
     WHERE r.status = "active"
             """ % {"attr_name_var": attr_name_var, "attr_value_var": attr_value_var, "branch_filter": branch_filter}
             rel_attr_match = (
-                "-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValue {value: $%(attr_value_var)s})"
+                "-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValueIndexed {value: $%(attr_value_var)s})"
                 % {
                     "attr_name_var": attr_name_var,
                     "attr_value_var": attr_value_var,
