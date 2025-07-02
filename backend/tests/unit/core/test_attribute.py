@@ -467,7 +467,7 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue { value: $attr_description_value })",
+        "(av:AttributeValueIndexed { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
@@ -480,7 +480,7 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue { value: $attr_description_value })",
+        "(av:AttributeValueIndexed { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
@@ -495,7 +495,7 @@ async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue { value: $attr_any_value })",
+        "(av:AttributeValueIndexed { value: $attr_any_value })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_any_value": "test"}
@@ -546,11 +546,28 @@ async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_br
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_name_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue)",
+        "(av:AttributeValueIndexed)",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": ["test1", "test2"]}
     assert matchs == ["av.value IN $attr_name_value"]
+
+
+async def test_get_query_filter_list_attribute(db: InfrahubDatabase, default_branch: Branch):
+    attr_schema = AttributeSchema(name="something", kind="List")
+    filters, params, matchs = await attr_schema.get_query_filter(
+        name="name", filter_name="values", filter_value=["test1", "test2"]
+    )
+    expected_response = [
+        "(n)",
+        "-[:HAS_ATTRIBUTE]-",
+        "(i:Attribute { name: $attr_name_name })",
+        "-[:HAS_VALUE]-",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_name_name": "name", "attr_name_values": '.*("test1"|"test2").*'}
+    assert matchs == ["toString(av.value) =~ $attr_name_values"]
 
 
 async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
@@ -569,7 +586,7 @@ async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_name_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue)",
+        "(av:AttributeValueIndexed)",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": ["thing-two"]}
@@ -857,3 +874,6 @@ def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_va
         data=input_value,
     )
     assert list_attrib.value == input_value
+
+
+# TODO: tests for large attribute types to validate that they are not indexed
