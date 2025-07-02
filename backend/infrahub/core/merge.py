@@ -9,7 +9,7 @@ from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MergeFailedError, ValidationError
 from infrahub.log import get_logger
 
 from ..git.models import GitRepositoryMerge
@@ -18,6 +18,7 @@ from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
+    from infrahub.core.diff.diff_locker import DiffLocker
     from infrahub.core.diff.merger.merger import DiffMerger
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
@@ -39,6 +40,7 @@ class BranchMerger:
         diff_coordinator: DiffCoordinator,
         diff_merger: DiffMerger,
         diff_repository: DiffRepository,
+        diff_locker: DiffLocker,
         destination_branch: Branch | None = None,
         workflow: InfrahubWorkflow | None = None,
     ):
@@ -48,6 +50,7 @@ class BranchMerger:
         self.diff_coordinator = diff_coordinator
         self.diff_merger = diff_merger
         self.diff_repository = diff_repository
+        self.diff_locker = diff_locker
         self.migrations: list[SchemaUpdateMigrationInfo] = []
         self._merge_at = Timestamp()
 
@@ -185,22 +188,34 @@ class BranchMerger:
         )
         log.info("Diff updated for merge")
 
-        errors: list[str] = []
-        async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
-            diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+        log.info("Acquiring lock for merge")
+        async with self.diff_locker.acquire_lock(
+            target_branch_name=self.destination_branch.name,
+            source_branch_name=self.source_branch.name,
+            is_incremental=False,
         ):
-            if conflict.selected_branch is None or conflict.resolvable is False:
-                errors.append(conflict_path)
+            log.info("Lock acquired for merge")
+            try:
+                errors: list[str] = []
+                async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
+                    diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+                ):
+                    if conflict.selected_branch is None or conflict.resolvable is False:
+                        errors.append(conflict_path)
 
-        if errors:
-            raise ValidationError(
-                f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
-            )
+                if errors:
+                    raise ValidationError(
+                        f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
+                    )
 
-        # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
-        # From the Graph or From the repositories
-        self._merge_at = Timestamp(at)
-        branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+                # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
+                # From the Graph or From the repositories
+                self._merge_at = Timestamp(at)
+                branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+            except Exception as exc:
+                log.exception("Merge failed, beginning rollback")
+                await self.rollback()
+                raise MergeFailedError(branch_name=self.source_branch.name) from exc
         await self.merge_repositories()
         return branch_diff
 

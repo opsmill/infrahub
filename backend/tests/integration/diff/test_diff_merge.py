@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -161,7 +163,7 @@ class TestDiffMerge(TestInfrahubApp):
         new_person = await Node.init(db=db, schema=PERSON_KIND)
         await new_person.new(db=db, name="Chuck Berry")
         await new_person.save(db=db)
-        diff_branch = await create_branch(db=db, branch_name="branch2")
+        diff_branch = await create_branch(db=db, branch_name=f"branch-{uuid.uuid4()}")
         if delete_on_branch:
             delete_branch = diff_branch
             update_branch = default_branch
