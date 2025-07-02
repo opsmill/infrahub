@@ -410,6 +410,6 @@ async def test_valid_datetime_computed_attribute():
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=schema_root)
-    
+
     # This should not raise any exception for either Jinja2 or Python computed attributes
     schema.process()
