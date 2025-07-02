@@ -14,6 +14,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.database import InfrahubDatabase
@@ -268,9 +269,13 @@ def test_validate_python_keywords_with_attribute_and_relationship():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ATTR)
-    errors = schema_root.validate_python_keywords()
-    assert len(errors) == 1
-    assert "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'" in errors[0]
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+    
+    assert "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'" in str(exc.value)
 
     # Test schema with 'class' keyword as relationship name
     SCHEMA_WITH_KEYWORD_REL = {
@@ -291,9 +296,13 @@ def test_validate_python_keywords_with_attribute_and_relationship():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_REL)
-    errors = schema_root.validate_python_keywords()
-    assert len(errors) == 1
-    assert "Python keyword 'class' cannot be used as a relationship name on 'TestDevice'" in errors[0]
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+    
+    assert "Python keyword 'class' cannot be used as a relationship name on 'TestDevice'" in str(exc.value)
 
     # Test schema with valid names (no keywords)
     SCHEMA_VALID = {
@@ -315,8 +324,11 @@ def test_validate_python_keywords_with_attribute_and_relationship():
     }
 
     schema_root = SchemaRoot(**SCHEMA_VALID)
-    errors = schema_root.validate_python_keywords()
-    assert len(errors) == 0
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+    
+    # This should not raise any exception
+    schema_branch.process_validate()
 
 
 def test_validate_python_keywords_multiple_keywords():
@@ -342,15 +354,22 @@ def test_validate_python_keywords_multiple_keywords():
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_MULTIPLE_KEYWORDS)
-    errors = schema_root.validate_python_keywords()
-    assert len(errors) == 4
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
 
-    # Check that all keywords are caught
-    error_messages = "\n".join(errors)
-    assert "Python keyword 'from' cannot be used as an attribute name" in error_messages
-    assert "Python keyword 'import' cannot be used as an attribute name" in error_messages
-    assert "Python keyword 'class' cannot be used as a relationship name" in error_messages
-    assert "Python keyword 'def' cannot be used as a relationship name" in error_messages
+    # Should raise ValueError on the first Python keyword encountered
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+    
+    # Check that at least one Python keyword error is caught
+    error_message = str(exc.value)
+    keyword_found = False
+    for keyword in ["from", "import", "class", "def"]:
+        if f"Python keyword '{keyword}' cannot be used as a" in error_message:
+            keyword_found = True
+            break
+    
+    assert keyword_found, f"Expected Python keyword error, got: {error_message}"
 
 
 def test_validate_namespaces_restricted_namespaces_only():
@@ -379,12 +398,34 @@ def test_validate_namespaces_restricted_namespaces_only():
 
 
 def test_validate_comprehensive():
-    """Test that validate() method catches both namespace and Python keyword issues."""
-    SCHEMA_WITH_BOTH_ISSUES = {
+    """Test that both namespace and Python keyword validation work in the proper context."""
+    # Test that SchemaRoot.validate() only catches namespace issues
+    SCHEMA_WITH_NAMESPACE_ISSUE = {
         "nodes": [
             {
                 "name": "TestNode",
                 "namespace": "Internal",  # Restricted namespace
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword (not caught by SchemaRoot.validate)
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_NAMESPACE_ISSUE)
+    errors = schema_root.validate()
+    assert len(errors) == 1
+    assert "Restricted namespace 'Internal' used on 'TestNode'" in errors[0]
+    
+    # Test that SchemaBranch validation catches Python keywords when namespace is valid
+    SCHEMA_WITH_KEYWORD_ISSUE = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Test",  # Valid namespace
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -394,11 +435,17 @@ def test_validate_comprehensive():
             }
         ]
     }
-
-    schema_root = SchemaRoot(**SCHEMA_WITH_BOTH_ISSUES)
-    errors = schema_root.validate()
-    assert len(errors) == 2
     
-    error_messages = " ".join(errors)
-    assert "Restricted namespace 'Internal' used on 'TestNode'" in error_messages
-    assert "Python keyword 'from' cannot be used as an attribute name" in error_messages
+    schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ISSUE)
+    # SchemaRoot validation should pass (no namespace issues)
+    errors = schema_root.validate()
+    assert len(errors) == 0
+    
+    # But SchemaBranch validation should catch the Python keyword
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+    
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+    
+    assert "Python keyword 'from' cannot be used as an attribute name" in str(exc.value)

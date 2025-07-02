@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import keyword
 import uuid
 from typing import Any, TypeAlias
 
@@ -72,37 +71,17 @@ class SchemaRoot(BaseModel):
         raise SchemaNotFoundError(branch_name="undefined", identifier=name)
 
     def validate_namespaces(self) -> list[str]:
-        """Validate that models don't use restricted namespaces."""
         models = self.nodes + self.generics
         errors: list[str] = []
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
-        return errors
-
-    def validate_python_keywords(self) -> list[str]:
-        """Validate that attribute and relationship names don't use Python keywords."""
-        models = self.nodes + self.generics
-        errors: list[str] = []
-        for model in models:
-            # Check for Python keywords in attribute names
-            for attribute in model.attributes:
-                if keyword.iskeyword(attribute.name):
-                    errors.append(f"Python keyword '{attribute.name}' cannot be used as an attribute name on '{model.kind}'")
-
-            # Check for Python keywords in relationship names
-            for relationship in model.relationships:
-                if keyword.iskeyword(relationship.name):
-                    errors.append(f"Python keyword '{relationship.name}' cannot be used as a relationship name on '{model.kind}'")
 
         return errors
 
     def validate(self) -> list[str]:
-        """Comprehensive validation of the schema."""
-        errors: list[str] = []
-        errors.extend(self.validate_namespaces())
-        errors.extend(self.validate_python_keywords())
-        return errors
+        """Basic validation of the schema for namespace issues only."""
+        return self.validate_namespaces()
 
     def generate_uuid(self) -> None:
         """Generate UUID for all nodes, attributes & relationships
