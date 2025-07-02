@@ -11,11 +11,9 @@ applyTo: '**/*.py'
 - Use Pydantic models for dataclasses
 - All python functions should have a docstring
 
-# Formatting and Linting
+## Formatting and Linting
 
 The project is using Use ruff and mypy for type checking and validations.
 
-you can format all python files by running `poetry run invoke format` 
-and you can validate that all files are formatted correctly by running `poetry run invoke lint` 
-
-
+you can format all python files by running `poetry run invoke format`
+and you can validate that all files are formatted correctly by running `poetry run invoke lint`
