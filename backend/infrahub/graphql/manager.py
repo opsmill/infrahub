@@ -57,8 +57,8 @@ from .types import (
     InfrahubObject,
     PaginatedObjectPermission,
     RelatedIPAddressNodeInput,
+    RelatedIPPrefixNodeInput,
     RelatedNodeInput,
-    RelatedPrefixNodeInput,
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
