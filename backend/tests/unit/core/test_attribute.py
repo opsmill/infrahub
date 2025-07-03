@@ -566,7 +566,11 @@ async def test_get_query_filter_list_attribute(db: InfrahubDatabase, default_bra
         "(av:AttributeValue)",
     ]
     assert [str(item) for item in filters] == expected_response
-    assert params == {"attr_name_name": "name", "attr_name_values": '.*("test1"|"test2").*'}
+    assert params == {
+        "attr_name_name": "name",
+        "attr_name_value": ["test1", "test2"],
+        "attr_name_values": '.*("test1"|"test2").*',
+    }
     assert matchs == ["toString(av.value) =~ $attr_name_values"]
 
 
