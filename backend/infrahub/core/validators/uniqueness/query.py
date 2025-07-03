@@ -43,7 +43,6 @@ class NodeUniqueAttributeConstraintQuery(Query):
             items="relationships(active_path)", item_names=["branch", "branch_level"]
         )
 
-        node_schema = db.schema.get(self.query_request.kind, branch=self.branch, duplicate=False)
         attrs_include_large_type = False
         attribute_names = set()
         attr_paths, attr_paths_with_value, attr_values = [], [], []
@@ -54,8 +53,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 raise ValueError(
                     f"{attr_path.property_name} is not a valid property for a uniqueness constraint"
                 ) from exc
-            attr_schema = node_schema.get_attribute(attr_path.attribute_name)
-            if is_large_attribute_type(attr_schema.kind):
+            if is_large_attribute_type(attr_path.attribute_kind):
                 attrs_include_large_type = True
             attribute_names.add(attr_path.attribute_name)
             if attr_path.value:
@@ -75,15 +73,8 @@ class NodeUniqueAttributeConstraintQuery(Query):
         relationship_only_attr_values = []
         relationship_attr_values = []
         relationship_attr_paths_with_value = []
-        rel_attrs_include_large_type = False
         for rel_path in self.query_request.relationship_attribute_paths:
             relationship_names.add(rel_path.identifier)
-            # check if the relationship path attribute is a large type
-            if rel_path.attribute_name and not rel_attrs_include_large_type:
-                rel_schema = node_schema.get_relationship_by_identifier(rel_path.identifier)
-                peer_schema = rel_schema.get_peer_schema(db, branch=self.branch)
-                rel_attr_schema = peer_schema.get_attribute(rel_path.attribute_name)
-                rel_attrs_include_large_type = is_large_attribute_type(rel_attr_schema.kind)
             if rel_path.attribute_name and rel_path.value:
                 relationship_attr_paths_with_value.append(
                     (rel_path.identifier, rel_path.attribute_name, rel_path.value)
@@ -95,12 +86,6 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 relationship_only_attr_paths.append(rel_path.identifier)
                 if rel_path.value:
                     relationship_only_attr_values.append(rel_path.value)
-
-        rel_attr_value_label = (
-            GraphAttributeValueNode.get_default_label()
-            if rel_attrs_include_large_type
-            else GraphAttributeValueIndexedNode.get_default_label()
-        )
 
         if (
             not attr_paths
@@ -152,11 +137,11 @@ class NodeUniqueAttributeConstraintQuery(Query):
         """ % {"node_kind": self.query_request.kind}
 
         relationship_attr_paths_with_value_subquery = """
-        MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:%(rel_attr_value_label)s)
+        MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
         WHERE relationship_node.name in $relationship_names AND rel_attr_value.value in $relationship_attr_values
             AND [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value
         RETURN start_node, rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
-        """ % {"node_kind": self.query_request.kind, "rel_attr_value_label": rel_attr_value_label}
+        """ % {"node_kind": self.query_request.kind}
 
         relationship_only_attr_paths_subquery = """
         MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)

@@ -75,7 +75,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     async def build_query_request(self, schema: MainSchemaTypes) -> NodeUniquenessQueryRequest:
         unique_attr_paths = {
-            QueryAttributePath(attribute_name=attr_schema.name, property_name="value")
+            QueryAttributePath(attribute_name=attr_schema.name, attribute_kind=attr_schema.kind, property_name="value")
             for attr_schema in schema.unique_attributes
         }
         relationship_attr_paths = set()
@@ -92,7 +92,9 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 sub_schema, property_name = get_attribute_path_from_string(path, schema)
                 if isinstance(sub_schema, AttributeSchema):
                     unique_attr_paths.add(
-                        QueryAttributePath(attribute_name=sub_schema.name, property_name=property_name)
+                        QueryAttributePath(
+                            attribute_name=sub_schema.name, attribute_kind=sub_schema.kind, property_name=property_name
+                        )
                     )
                 elif isinstance(sub_schema, RelationshipSchema):
                     relationship_attr_paths.add(
