@@ -24,7 +24,6 @@ from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
@@ -34,7 +33,14 @@ from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_cache, get_component, get_message_bus, get_workflow, set_component_type
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_component,
+    get_database,
+    get_message_bus,
+    get_workflow,
+    set_component_type,
+)
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -56,7 +62,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     set_component_type(component_type=component_type)
 
     # Initialize database Driver and load local registry
-    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database = application.state.db = await get_database()
 
     build_component_registry()
 

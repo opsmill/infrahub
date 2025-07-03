@@ -6,7 +6,6 @@ import yaml
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTransformJinja2, CoreTransformPython
-from starlette.testclient import TestClient
 
 from infrahub import config
 from infrahub.core import registry
@@ -300,7 +299,9 @@ class TestInfrahubClient:
 
 
 class TestGetMissingFile(TestInfrahubApp):
-    async def test_get_missing_file(self, db: InfrahubDatabase, client: InfrahubClient, git_repo_car_dealership):
+    async def test_get_missing_file(
+        self, db: InfrahubDatabase, client: InfrahubClient, git_repo_car_dealership, test_client
+    ):
         # Ideally above tests would rely on `TestInfrahubApp.repo` instead of TestInfrahubClient
         # and we would reuse `TestInfrahubClient.repo` fixture here.
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
@@ -318,16 +319,12 @@ class TestGetMissingFile(TestInfrahubApp):
         )
 
         commit = repo.get_commit_value(branch_name="main")
-        rest_client = TestClient(app)
         missing_file_name = "i_do_not_exist.txt"
-        with rest_client:
-            response = rest_client.get(
-                url=f"/api/file/{repo.id}/{missing_file_name}?commit={commit}",
-                headers={"Authorization": "Token XXXX"},
-            )
-            errors = response.json()["errors"]
-            assert len(errors) == 1
-            assert (
-                errors[0]["message"] == f"Unable to find the file at 'car-dealership::{commit}::{missing_file_name}'."
-            )
-            assert errors[0]["extensions"]["code"] == 404
+        response = await test_client.get(
+            url=f"/api/file/{repo.id}/{missing_file_name}?commit={commit}",
+            headers={"Authorization": "Token XXXX"},
+        )
+        errors = response.json()["errors"]
+        assert len(errors) == 1
+        assert errors[0]["message"] == f"Unable to find the file at 'car-dealership::{commit}::{missing_file_name}'."
+        assert errors[0]["extensions"]["code"] == 404
