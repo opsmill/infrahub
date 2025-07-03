@@ -3,11 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
+from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.query import Query, QueryType
+from infrahub.types import is_large_attribute_type
 
 from .model import QueryAttributePathValued, QueryRelationshipPathValued
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
     from .model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
@@ -40,6 +43,8 @@ class NodeUniqueAttributeConstraintQuery(Query):
             items="relationships(active_path)", item_names=["branch", "branch_level"]
         )
 
+        node_schema = db.schema.get(self.query_request.kind, branch=self.branch, duplicate=False)
+        attrs_include_large_type = False
         attribute_names = set()
         attr_paths, attr_paths_with_value, attr_values = [], [], []
         for attr_path in self.query_request.unique_attribute_paths:
@@ -49,12 +54,20 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 raise ValueError(
                     f"{attr_path.property_name} is not a valid property for a uniqueness constraint"
                 ) from exc
+            attr_schema = node_schema.get_attribute(attr_path.attribute_name)
+            if is_large_attribute_type(attr_schema.kind):
+                attrs_include_large_type = True
             attribute_names.add(attr_path.attribute_name)
             if attr_path.value:
                 attr_paths_with_value.append((attr_path.attribute_name, property_rel_name, attr_path.value))
                 attr_values.append(attr_path.value)
             else:
                 attr_paths.append((attr_path.attribute_name, property_rel_name))
+        attr_value_label = (
+            GraphAttributeValueNode.get_default_label()
+            if attrs_include_large_type
+            else GraphAttributeValueIndexedNode.get_default_label()
+        )
 
         relationship_names = set()
         relationship_attr_paths = []
@@ -62,8 +75,15 @@ class NodeUniqueAttributeConstraintQuery(Query):
         relationship_only_attr_values = []
         relationship_attr_values = []
         relationship_attr_paths_with_value = []
+        rel_attrs_include_large_type = False
         for rel_path in self.query_request.relationship_attribute_paths:
             relationship_names.add(rel_path.identifier)
+            # check if the relationship path attribute is a large type
+            if rel_path.attribute_name and not rel_attrs_include_large_type:
+                rel_schema = node_schema.get_relationship_by_identifier(rel_path.identifier)
+                peer_schema = rel_schema.get_peer_schema(db, branch=self.branch)
+                rel_attr_schema = peer_schema.get_attribute(rel_path.attribute_name)
+                rel_attrs_include_large_type = is_large_attribute_type(rel_attr_schema.kind)
             if rel_path.attribute_name and rel_path.value:
                 relationship_attr_paths_with_value.append(
                     (rel_path.identifier, rel_path.attribute_name, rel_path.value)
@@ -75,6 +95,12 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 relationship_only_attr_paths.append(rel_path.identifier)
                 if rel_path.value:
                     relationship_only_attr_values.append(rel_path.value)
+
+        rel_attr_value_label = (
+            GraphAttributeValueNode.get_default_label()
+            if rel_attrs_include_large_type
+            else GraphAttributeValueIndexedNode.get_default_label()
+        )
 
         if (
             not attr_paths
@@ -112,11 +138,11 @@ class NodeUniqueAttributeConstraintQuery(Query):
         """ % {"node_kind": self.query_request.kind}
 
         attr_paths_with_value_subquery = """
-        MATCH attr_path = (start_node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:AttributeValueIndexed)
+        MATCH attr_path = (start_node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:%(attr_value_label)s)
         WHERE attr.name in $attribute_names AND attr_value.value in $attr_values
             AND [attr.name, type(r), attr_value.value] in $attr_paths_with_value
         RETURN start_node, attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
-        """ % {"node_kind": self.query_request.kind}
+        """ % {"node_kind": self.query_request.kind, "attr_value_label": attr_value_label}
 
         relationship_attr_paths_subquery = """
         MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
@@ -126,11 +152,11 @@ class NodeUniqueAttributeConstraintQuery(Query):
         """ % {"node_kind": self.query_request.kind}
 
         relationship_attr_paths_with_value_subquery = """
-        MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValueIndexed)
+        MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:%(rel_attr_value_label)s)
         WHERE relationship_node.name in $relationship_names AND rel_attr_value.value in $relationship_attr_values
             AND [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value
         RETURN start_node, rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
-        """ % {"node_kind": self.query_request.kind}
+        """ % {"node_kind": self.query_request.kind, "rel_attr_value_label": rel_attr_value_label}
 
         relationship_only_attr_paths_subquery = """
         MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)
@@ -262,8 +288,30 @@ class UniquenessValidationQuery(Query):
         self.node_ids_to_exclude = node_ids_to_exclude
         super().__init__(**kwargs)
 
+    def _is_attribute_large_type(self, db: InfrahubDatabase, node_kind: str, attribute_name: str) -> bool:
+        """Determine if an attribute is a large type that should use AttributeValue instead of AttributeValueIndexed."""
+        node_schema = db.schema.get(node_kind, branch=self.branch, duplicate=False)
+        attr_schema = node_schema.get_attribute(attribute_name)
+        return is_large_attribute_type(attr_schema.kind)
+
+    def _is_relationship_attribute_large_type(
+        self, db: InfrahubDatabase, node_kind: str, relationship_schema: RelationshipSchema, attribute_name: str
+    ) -> bool:
+        """Determine if a relationship attribute is a large type that should use AttributeValue instead of AttributeValueIndexed."""
+        node_schema = db.schema.get(node_kind, branch=self.branch, duplicate=False)
+        rel_schema = node_schema.get_relationship_by_identifier(relationship_schema.get_identifier())
+        peer_schema = rel_schema.get_peer_schema(db, branch=self.branch)
+        rel_attr_schema = peer_schema.get_attribute(attribute_name)
+        return is_large_attribute_type(rel_attr_schema.kind)
+
     def _build_attr_subquery(
-        self, node_kind: str, attr_path: QueryAttributePathValued, index: int, branch_filter: str, is_first_query: bool
+        self,
+        node_kind: str,
+        attr_path: QueryAttributePathValued,
+        index: int,
+        branch_filter: str,
+        is_first_query: bool,
+        is_large_type: bool,
     ) -> tuple[str, dict[str, str | int | float | bool]]:
         attr_name_var = f"attr_name_{index}"
         attr_value_var = f"attr_value_{index}"
@@ -271,8 +319,16 @@ class UniquenessValidationQuery(Query):
             first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
         else:
             first_query_filter = ""
+
+        # Determine the appropriate label based on attribute type
+        attr_value_label = (
+            GraphAttributeValueNode.get_default_label()
+            if is_large_type
+            else GraphAttributeValueIndexedNode.get_default_label()
+        )
+
         attribute_query = """
-MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValueIndexed {value: $%(attr_value_var)s})
+MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:%(attr_value_label)s {value: $%(attr_value_var)s})
 %(first_query_filter)s
 WITH DISTINCT node
 CALL (node) {
@@ -300,6 +356,7 @@ CALL (node) {
             "attr_value_var": attr_value_var,
             "branch_filter": branch_filter,
             "index": index,
+            "attr_value_label": attr_value_label,
         }
         params: dict[str, str | int | float | bool] = {
             attr_name_var: attr_path.attribute_name,
@@ -314,6 +371,7 @@ CALL (node) {
         index: int,
         branch_filter: str,
         is_first_query: bool,
+        is_large_type: bool,
     ) -> tuple[str, dict[str, str | int | float | bool]]:
         params: dict[str, str | int | float | bool] = {}
         rel_attr_query = ""
@@ -321,6 +379,14 @@ CALL (node) {
         if rel_path.attribute_name and rel_path.attribute_value:
             attr_name_var = f"attr_name_{index}"
             attr_value_var = f"attr_value_{index}"
+
+            # Determine the appropriate label based on relationship attribute type
+            rel_attr_value_label = (
+                GraphAttributeValueNode.get_default_label()
+                if is_large_type
+                else GraphAttributeValueIndexedNode.get_default_label()
+            )
+
             rel_attr_query = """
     MATCH (peer)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
     WHERE %(branch_filter)s
@@ -330,19 +396,25 @@ CALL (node) {
     LIMIT 1
     WITH attr, is_active
     WHERE is_active = TRUE
-    MATCH (attr)-[r:HAS_VALUE]->(:AttributeValueIndexed {value: $%(attr_value_var)s})
+    MATCH (attr)-[r:HAS_VALUE]->(:%(rel_attr_value_label)s {value: $%(attr_value_var)s})
     WHERE %(branch_filter)s
     WITH r
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
     WITH r
     WHERE r.status = "active"
-            """ % {"attr_name_var": attr_name_var, "attr_value_var": attr_value_var, "branch_filter": branch_filter}
+            """ % {
+                "attr_name_var": attr_name_var,
+                "attr_value_var": attr_value_var,
+                "branch_filter": branch_filter,
+                "rel_attr_value_label": rel_attr_value_label,
+            }
             rel_attr_match = (
-                "-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:AttributeValueIndexed {value: $%(attr_value_var)s})"
+                "-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:%(rel_attr_value_label)s {value: $%(attr_value_var)s})"
                 % {
                     "attr_name_var": attr_name_var,
                     "attr_value_var": attr_value_var,
+                    "rel_attr_value_label": rel_attr_value_label,
                 }
             )
             params[attr_name_var] = rel_path.attribute_name
@@ -426,20 +498,34 @@ CALL (node) {
         for index, schema_path in enumerate(self.query_request.unique_valued_paths):
             is_first_query = index == 0
             if isinstance(schema_path, QueryAttributePathValued):
+                is_large_type = self._is_attribute_large_type(
+                    db=db, node_kind=self.query_request.kind, attribute_name=schema_path.attribute_name
+                )
                 subquery, params = self._build_attr_subquery(
                     node_kind=self.query_request.kind,
                     attr_path=schema_path,
                     index=index,
                     branch_filter=branch_filter,
                     is_first_query=is_first_query,
+                    is_large_type=is_large_type,
                 )
             else:
+                is_large_type = False
+                # For relationship attributes, only check if large type if attribute_name is provided
+                if schema_path.attribute_name is not None:
+                    is_large_type = self._is_relationship_attribute_large_type(
+                        db=db,
+                        node_kind=self.query_request.kind,
+                        relationship_schema=schema_path.relationship_schema,
+                        attribute_name=schema_path.attribute_name,
+                    )
                 subquery, params = self._build_rel_subquery(
                     node_kind=self.query_request.kind,
                     rel_path=schema_path,
                     index=index,
                     branch_filter=branch_filter,
                     is_first_query=is_first_query,
+                    is_large_type=is_large_type,
                 )
             subqueries.append(subquery)
             self.params.update(params)
