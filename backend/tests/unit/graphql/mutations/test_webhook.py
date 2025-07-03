@@ -219,6 +219,43 @@ async def test_update_description_only(
     assert updated_webhook.event_type.value.value == "infrahub.node.created"
 
 
+async def test_upsert_webhook(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch) -> None:
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPSERT_WEBHOOK,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "my-upserted-webhook",
+            "description": "I was created",
+            "url": "http://localhost:8200/webhook",
+            "shared_key": "very-secret",
+        },
+    )
+    assert not result.errors
+    assert result.data
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPSERT_WEBHOOK,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "my-upserted-webhook",
+            "description": "I was updated",
+            "url": "http://localhost:8200/webhook",
+            "shared_key": "very-secret",
+        },
+    )
+    assert not result.errors
+    assert result.data
+    webhook_id = result.data["CoreStandardWebhookUpsert"]["object"]["id"]
+    webhook = await NodeManager.get_one_by_id_or_default_filter(db=db, id=webhook_id, kind=CoreStandardWebhook)
+    assert webhook.name.value == "my-upserted-webhook"
+    assert webhook.description.value == "I was updated"
+
+
 CREATE_WEBHOOK = """
 mutation CreateWebhook(
     $event_type: String
@@ -260,5 +297,43 @@ mutation UpdateWebhook(
       id
     }
   }
+}
+"""
+
+UPSERT_WEBHOOK = """
+mutation UpsertWebhook(
+    $shared_key: String
+    $description: String
+    $name: String!
+    $url: String
+
+)   {
+    CoreStandardWebhookUpsert(
+        data: {
+            shared_key: {
+                value: $shared_key
+            }
+            description: {
+                value: $description
+            }
+            name: {
+                value: $name
+            }
+            url: {
+                value: $url
+            }
+        }
+    ){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+            description {
+                value
+            }
+        }
+    }
 }
 """
