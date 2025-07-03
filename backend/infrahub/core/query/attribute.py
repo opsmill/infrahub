@@ -265,27 +265,17 @@ async def default_attribute_query_filter(
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name == "values" and isinstance(filter_value, list):
+        query_filter.extend(
+            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=[attribute_value_label]))
+        )
         if attribute_kind and attribute_kind == "List":
-            query_filter.extend(
-                (
-                    QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]),
-                    QueryNode(name="av", labels=[attribute_value_label]),
-                )
-            )
             query_params[f"{param_prefix}_{filter_name}"] = build_regex_attrs(values=filter_value)
             query_where.append(f"toString(av.value) =~ ${param_prefix}_{filter_name}")
+        elif support_profiles:
+            query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
         else:
-            query_filter.extend(
-                (
-                    QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]),
-                    QueryNode(name="av", labels=[attribute_value_label]),
-                )
-            )
-            if support_profiles:
-                query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
-            else:
-                query_where.append(f"av.value IN ${param_prefix}_value")
-            query_params[f"{param_prefix}_value"] = filter_value
+            query_where.append(f"av.value IN ${param_prefix}_value")
+        query_params[f"{param_prefix}_value"] = filter_value
 
     elif filter_name == "version":
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))

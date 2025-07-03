@@ -10,7 +10,6 @@ from infrahub.types import is_large_attribute_type
 from .model import QueryAttributePathValued, QueryRelationshipPathValued
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
     from .model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
@@ -279,16 +278,6 @@ class UniquenessValidationQuery(Query):
         attr_schema = node_schema.get_attribute(attribute_name)
         return is_large_attribute_type(attr_schema.kind)
 
-    def _is_relationship_attribute_large_type(
-        self, db: InfrahubDatabase, node_kind: str, relationship_schema: RelationshipSchema, attribute_name: str
-    ) -> bool:
-        """Determine if a relationship attribute is a large type that should use AttributeValue instead of AttributeValueIndexed."""
-        node_schema = db.schema.get(node_kind, branch=self.branch, duplicate=False)
-        rel_schema = node_schema.get_relationship_by_identifier(relationship_schema.get_identifier())
-        peer_schema = rel_schema.get_peer_schema(db, branch=self.branch)
-        rel_attr_schema = peer_schema.get_attribute(attribute_name)
-        return is_large_attribute_type(rel_attr_schema.kind)
-
     def _build_attr_subquery(
         self,
         node_kind: str,
@@ -356,7 +345,7 @@ CALL (node) {
         index: int,
         branch_filter: str,
         is_first_query: bool,
-        is_large_type: bool,
+        is_large_type: bool = False,
     ) -> tuple[str, dict[str, str | int | float | bool]]:
         params: dict[str, str | int | float | bool] = {}
         rel_attr_query = ""
@@ -495,22 +484,12 @@ CALL (node) {
                     is_large_type=is_large_type,
                 )
             else:
-                is_large_type = False
-                # For relationship attributes, only check if large type if attribute_name is provided
-                if schema_path.attribute_name is not None:
-                    is_large_type = self._is_relationship_attribute_large_type(
-                        db=db,
-                        node_kind=self.query_request.kind,
-                        relationship_schema=schema_path.relationship_schema,
-                        attribute_name=schema_path.attribute_name,
-                    )
                 subquery, params = self._build_rel_subquery(
                     node_kind=self.query_request.kind,
                     rel_path=schema_path,
                     index=index,
                     branch_filter=branch_filter,
                     is_first_query=is_first_query,
-                    is_large_type=is_large_type,
                 )
             subqueries.append(subquery)
             self.params.update(params)

@@ -874,6 +874,3 @@ def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_va
         data=input_value,
     )
     assert list_attrib.value == input_value
-
-
-# TODO: tests for large attribute types to validate that they are not indexed
