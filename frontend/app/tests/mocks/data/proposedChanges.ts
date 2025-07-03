@@ -1,7 +1,9 @@
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
+
 export const proposedChangesDetails = {
   id: "ce7e8cd8-45bd-41fa-b6b9-02097eb69274",
   display_label: "test",
-  __typename: "CoreProposedChange",
+  __typename: PROPOSED_CHANGE_OBJECT,
   _updated_at: "2023-08-23T11:48:28.896430+00:00",
   name: { value: "test", __typename: "TextAttribute" },
   source_branch: { value: "jfk1-update-edge-ips", __typename: "TextAttribute" },

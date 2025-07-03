@@ -1,3 +1,4 @@
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
 import { permissionsAllow } from "./permissions";
 
 export const artifactThreadSchema = [
@@ -130,7 +131,7 @@ export const artifactThreadSchema = [
       {
         id: "17a28ecc-abd1-f0c0-3876-c51693b29195",
         name: "change",
-        peer: "CoreProposedChange",
+        peer: PROPOSED_CHANGE_OBJECT,
         kind: "Parent",
         direction: "bidirectional",
         label: "Change",
@@ -1093,7 +1094,7 @@ export const artifactThreadSchema = [
         name: "change__ids",
         kind: "Text",
         enum: null,
-        object_kind: "CoreProposedChange",
+        object_kind: PROPOSED_CHANGE_OBJECT,
         description: null,
       },
       {

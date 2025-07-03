@@ -1,3 +1,5 @@
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
+
 export const proposedChangesId = "1cec1fe9-fcc4-4f5b-af30-9d661de65bd8";
 
 export const conversationMocksSchema = [
@@ -51,7 +53,7 @@ export const conversationMocksSchema = [
       {
         id: "2932e32a-c666-42b0-a4b6-1c949cd4b000",
         name: "change",
-        peer: "CoreProposedChange",
+        peer: PROPOSED_CHANGE_OBJECT,
         kind: "Parent",
         label: "Change",
         description: null,
@@ -198,7 +200,7 @@ export const conversationMocksSchema = [
         name: "change__id",
         kind: "Object",
         enum: null,
-        object_kind: "CoreProposedChange",
+        object_kind: PROPOSED_CHANGE_OBJECT,
         description: null,
       },
     ],
