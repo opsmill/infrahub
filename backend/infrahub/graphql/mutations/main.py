@@ -376,8 +376,8 @@ class InfrahubMutationMixin:
             return updated_obj, mutation, False
 
         try:
-            dict_data.pop("hfid", "unused")  # `hfid` is invalid for creation.
-            created_obj, mutation = await cls.mutate_create(info=info, data=dict_data, branch=branch)
+            data.pop("hfid", None)  # `hfid` is invalid for creation.
+            created_obj, mutation = await cls.mutate_create(info=info, data=data, branch=branch)
             return created_obj, mutation, True
         except HFIDViolatedError as exc:
             # Only the HFID constraint has been violated, it means the node exists and we can update without rerunning constraints
