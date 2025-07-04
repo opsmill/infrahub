@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Self
 
-from graphene import Boolean, Field, InputObjectType, Mutation, String
+from graphene import Boolean, Enum, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.account import GlobalPermission
@@ -13,11 +13,13 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
+from infrahub.proposed_change import constants as proposed_change_constants
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
@@ -27,6 +29,8 @@ from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
+
+ProposedChangeApprovalDecision = Enum.from_enum(proposed_change_constants.ProposedChangeApprovalDecision)
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
@@ -190,6 +194,39 @@ class ProposedChangeRequestRunCheck(Mutation):
                 parameters={"model": request_proposed_change_model},
                 context=graphql_context.get_context(),
             )
+
+        return {"ok": True}
+
+
+class ProposedChangeReviewInput(InputObjectType):
+    id = String(required=True, description="The ID of the proposed change to review.")
+    decision = ProposedChangeApprovalDecision(required=True, description="The decision for the proposed change review.")
+
+
+class ProposedChangeReview(Mutation):
+    class Arguments:
+        data = ProposedChangeReviewInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: ProposedChangeReviewInput,
+    ) -> dict[str, bool]:
+        graphql_context: GraphqlContext = info.context
+
+        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+            id=str(data.id), kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
+        )
+        state = ProposedChangeState(proposed_change.state.value.value)
+        state.validate_review()
+
+        created_by = await proposed_change.created_by.get_peer(db=graphql_context.db)
+        if created_by and created_by.id == graphql_context.active_account_session.account_id:
+            raise ValidationError(input_value="You cannot review your own proposed changes")
 
         return {"ok": True}
 
