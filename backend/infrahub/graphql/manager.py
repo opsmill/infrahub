@@ -908,7 +908,8 @@ class GraphQLSchemaManager:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
             filters["partial_match"] = graphene.Boolean()
 
-            if schema.is_ipam_schema:
+            if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+                # This is only available for IPAM generics
                 filters["include_available"] = graphene.Boolean()
 
         if not top_level:

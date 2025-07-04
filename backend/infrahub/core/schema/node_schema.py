@@ -39,10 +39,6 @@ class NodeSchema(GeneratedNodeSchema):
         """Return whether a node is a derivative of built-in IP addreses."""
         return InfrahubKind.IPADDRESS in self.inherit_from
 
-    @property
-    def is_ipam_schema(self) -> bool:
-        return self.is_ip_prefix or self.is_ip_address
-
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Perform checks specific to inheritance from Generics.
 

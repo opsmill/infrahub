@@ -38,10 +38,6 @@ class GenericSchema(GeneratedGenericSchema):
     def is_ip_address(self) -> bool:
         return self.kind == InfrahubKind.IPADDRESS
 
-    @property
-    def is_ipam_schema(self) -> bool:
-        return self.is_ip_prefix or self.is_ip_address
-
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:  # noqa: ARG002
         if self.hierarchical:
             return self
