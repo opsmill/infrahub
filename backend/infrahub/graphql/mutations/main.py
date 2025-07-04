@@ -376,7 +376,7 @@ class InfrahubMutationMixin:
             return updated_obj, mutation, False
 
         try:
-            data.pop("hfid", None)  # `hfid` is invalid for creation.
+            dict_data.pop("hfid", None)  # `hfid` is invalid for creation.
             created_obj, mutation = await cls.mutate_create(info=info, data=data, branch=branch)
             return created_obj, mutation, True
         except HFIDViolatedError as exc:
