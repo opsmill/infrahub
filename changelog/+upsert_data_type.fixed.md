@@ -1,0 +1,1 @@
+Fixed TypeError in upsert mutation when handling hfid field by using dict_data instead of data object directly
