@@ -35,7 +35,13 @@ from .group import (
     core_repository_group,
     core_standard_group,
 )
-from .ipam import builtin_ip_address, builtin_ip_prefix, builtin_ipam, core_ipam_namespace
+from .ipam import (
+    builtin_ip_address,
+    builtin_ip_prefix,
+    builtin_ipam,
+    core_ipam_namespace,
+    internal_ipam_ip_range_available,
+)
 from .lineage import lineage_owner, lineage_source
 from .menu import generic_menu_item, menu_item
 from .permission import (
@@ -172,6 +178,7 @@ core_models_mixed: dict[str, list] = {
         core_object_permission,
         core_account_role,
         core_account_group,
+        internal_ipam_ip_range_available,
     ],
 }
 
