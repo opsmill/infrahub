@@ -4,12 +4,22 @@ from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubStringEnum
 
 
+class ProposedChangeApprovalDecision(InfrahubStringEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class ProposedChangeState(InfrahubStringEnum):
     OPEN = "open"
     MERGED = "merged"
     MERGING = "merging"
     CLOSED = "closed"
     CANCELED = "canceled"
+
+    @property
+    def is_completed(self) -> bool:
+        """Check if the proposed change is in a completed state."""
+        return self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED, ProposedChangeState.MERGING]
 
     def validate_state_check_run(self) -> None:
         if self == ProposedChangeState.OPEN:
@@ -18,9 +28,15 @@ class ProposedChangeState(InfrahubStringEnum):
         raise ValidationError(input_value="Unable to trigger check on proposed changes that aren't in the open state")
 
     def validate_editability(self) -> None:
-        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED, ProposedChangeState.MERGED]:
+        if self.is_completed:
             raise ValidationError(
                 input_value=f"A proposed change in the {self.value} state is not allowed to be updated"
+            )
+
+    def validate_review(self) -> None:
+        if self.is_completed:
+            raise ValidationError(
+                input_value=f"A proposed change in the {self.value} state is not allowed to be reviewed"
             )
 
     def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
