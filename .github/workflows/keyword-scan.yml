@@ -17,14 +17,15 @@ jobs:
 
     - name: Create TruffleHog config
       run: |
-        cat > custom-keywords.yaml << EOF
-        detectors:
-          - name: Internal keywords
-            keywords:
-              - ${{ env.KEYWORDS_LIST }}
-            regex:
-              adjective: '\b(${{ env.KEYWORDS_REGEX }})\b'
-        EOF
+        echo "detectors:" > custom-keywords.yaml
+        echo "  - name: Internal keywords" >> custom-keywords.yaml
+        echo "    keywords:" >> custom-keywords.yaml
+        IFS=',' read -ra KW <<< "${KEYWORDS_LIST}"
+        for k in "${KW[@]}"; do
+          echo "      - ${k}" >> custom-keywords.yaml
+        done
+        echo "    regex:" >> custom-keywords.yaml
+        echo "      adjective: '\\b(${{ env.KEYWORDS_REGEX }})\\b'" >> custom-keywords.yaml
       env:
         KEYWORDS_LIST: ${{ env.KEYWORDS_LIST }}
 
