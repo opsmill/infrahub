@@ -1,4 +1,5 @@
 ---
+# yamllint disable rule:truthy
 name: "Keyword Scanner"
 on: [push, pull_request]
 
@@ -10,29 +11,29 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Create TruffleHog config
-      run: |
-        echo "detectors:" > custom-keywords.yaml
-        echo "  - name: Internal keywords" >> custom-keywords.yaml
-        echo "    keywords:" >> custom-keywords.yaml
-        IFS=',' read -ra KW <<< "${KEYWORDS_LIST}"
-        for k in "${KW[@]}"; do
-          echo "      - ${k}" >> custom-keywords.yaml
-        done
-        echo "    regex:" >> custom-keywords.yaml
-        echo "      adjective: '\\b(${{ env.KEYWORDS_REGEX }})\\b'" >> custom-keywords.yaml
-      env:
-        KEYWORDS_LIST: ${{ env.KEYWORDS_LIST }}
+      - name: Create TruffleHog config
+        run: |
+          echo "detectors:" > custom-keywords.yaml
+          echo "  - name: Internal keywords" >> custom-keywords.yaml
+          echo "    keywords:" >> custom-keywords.yaml
+          IFS=',' read -ra KW <<< "${KEYWORDS_LIST}"
+          for k in "${KW[@]}"; do
+            echo "      - ${k}" >> custom-keywords.yaml
+          done
+          echo "    regex:" >> custom-keywords.yaml
+          echo "      adjective: '\\b(${{ env.KEYWORDS_REGEX }})\\b'" >> custom-keywords.yaml
+        env:
+          KEYWORDS_LIST: ${{ env.KEYWORDS_LIST }}
 
-    - name: TruffleHog scan
-      uses: trufflesecurity/trufflehog@main
-      with:
-        path: ./
-        base: ${{ github.event.repository.default_branch }}
-        head: HEAD
-        extra_args: --config=custom-keywords.yaml
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --config=custom-keywords.yaml

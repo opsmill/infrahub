@@ -137,6 +137,7 @@ template_path
 toml
 Towncrier
 towncrier
+TruffleHog
 uncheck
 uniqueness_constraints
 userinfo
