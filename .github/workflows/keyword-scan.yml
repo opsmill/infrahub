@@ -26,9 +26,10 @@ jobs:
             echo "      - ${k}" >> custom-keywords.yaml
           done
           echo "    regex:" >> custom-keywords.yaml
-          echo "      adjective: '\\b(${{ env.KEYWORDS_REGEX }})\\b'" >> custom-keywords.yaml
+          printf "      adjective: '\\b(%s)\\b'\n" "${KEYWORDS_REGEX}" >> custom-keywords.yaml
         env:
           KEYWORDS_LIST: ${{ env.KEYWORDS_LIST }}
+          KEYWORDS_REGEX: ${{ env.KEYWORDS_REGEX }}
 
       - name: TruffleHog scan
         uses: trufflesecurity/trufflehog@main
