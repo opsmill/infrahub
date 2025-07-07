@@ -749,7 +749,7 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
 async def check_cmd(
     ctx: typer.Context,
     output_dir: Path = typer.Option(  # noqa: B008
-        None, help="Directory to save detailed check results (defaults to infrahub_db_check_<timestamp>)"
+        None, help="Directory to save detailed check results (defaults to infrahub_db_check_YYYYMMDD-HHMMSS)"
     ),
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
