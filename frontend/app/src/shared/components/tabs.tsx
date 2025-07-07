@@ -9,7 +9,6 @@ type Tab = {
   label?: string;
   count?: number;
   onClick?: Function;
-  component?: Function | null;
 };
 
 type TabsProps = {
@@ -39,8 +38,6 @@ export const Tabs = (props: TabsProps) => {
       <ScrollArea scrollX className="flex-1">
         <nav className="flex space-x-8 px-4" aria-label="Tabs">
           {tabs.map((tab: Tab, index: number) => {
-            const Component = tab.component ? tab.component : () => null;
-
             return (
               <div
                 key={tab.name}
@@ -59,8 +56,6 @@ export const Tabs = (props: TabsProps) => {
                     {JSON.stringify(tab.count)}
                   </Pill>
                 )}
-
-                <Component />
               </div>
             );
           })}
