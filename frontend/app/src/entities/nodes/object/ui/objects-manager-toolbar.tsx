@@ -21,7 +21,9 @@ export function ObjectsManagerToolbar() {
 
   return (
     <div className="flex items-center gap-2 h-14 px-3 shrink-0">
-      {isGenericSchema(baseSchema) && <ObjectTableSchemaSelector />}
+      {isGenericSchema(baseSchema) && (baseSchema.used_by ?? []).length > 1 && (
+        <ObjectTableSchemaSelector />
+      )}
 
       <FilterSearchInput schema={schema} />
 
