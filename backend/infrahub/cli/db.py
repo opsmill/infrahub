@@ -58,6 +58,12 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .patch import patch_app
 
+
+def get_timestamp_string() -> str:
+    """Generate a timestamp string in the format YYYYMMDD-HHMMSS."""
+    return datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
     from infrahub.database import InfrahubDatabase
@@ -529,7 +535,7 @@ WITH n, edges + root_edges AS edges, CASE
 END AS vertices
 RETURN vertices, edges
     """ % {"id_func": db.get_id_function_name()}
-    timestamp_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+    timestamp_str = get_timestamp_string()
     export_dir /= Path(f"export-{timestamp_str}")
     if not export_dir.exists():
         export_dir.mkdir(parents=True)
@@ -737,3 +743,160 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
             await load_edges(db=db, edge_type=edge_type, edge_dicts=edge_dicts)
     rprint("Edges loaded")
     rprint(f"{SUCCESS_BADGE} Export loaded")
+
+
+@app.command(name="check")
+async def check_cmd(
+    ctx: typer.Context,
+    output_dir: Path = typer.Option(  # noqa: B008
+        None, help="Directory to save detailed check results (defaults to infrahub_db_check_<timestamp>)"
+    ),
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    ),
+) -> None:
+    """Run database sanity checks and output the results to the CSV files."""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    # Create output directory if not specified
+    if output_dir is None:
+        timestamp_str = get_timestamp_string()
+        output_dir = Path(f"infrahub_db_check_{timestamp_str}")
+
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    await run_database_checks(db=dbdriver, output_dir=output_dir)
+
+    await dbdriver.close()
+
+
+async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
+    """Run a series of database health checks and output the results to the terminal.
+
+    Args:
+        db: The database object.
+        output_dir: Directory to save detailed check results.
+    """
+    rprint("Running database health checks...")
+
+    # Check 1: Duplicate active relationships
+    rprint("\n[bold cyan]Check 1: Duplicate Active Relationships[/bold cyan]")
+    duplicate_active_rels_query = """
+    MATCH (a:Node)-[e1:IS_RELATED {status: "active"}]-(r:Relationship)-[e2:IS_RELATED {branch: e1.branch, status: "active"}]-(b:Node)
+    WHERE a.uuid < b.uuid
+    AND e1.to IS NULL
+    AND e2.to IS NULL
+    WITH DISTINCT a.uuid AS a_uuid,
+        b.uuid AS b_uuid,
+        r.name AS r_name,
+        e1.branch AS branch,
+        CASE
+        WHEN startNode(e1) = a AND startNode(e2) = r THEN "out"
+            WHEN startNode(e1) = r AND startNode(e2) = b THEN "in"
+            ELSE "bidir"
+        END AS direction,
+        count(*) AS num_paths,
+        collect(DISTINCT a.kind) AS a_kinds,
+        collect(DISTINCT b.kind) AS b_kinds
+    WHERE num_paths > 1
+    RETURN a_uuid, a_kinds, b_uuid, b_kinds, r_name, branch, direction, num_paths
+    """
+
+    results = await db.execute_query(query=duplicate_active_rels_query)
+    if results:
+        rprint(f"[red]Found {len(results)} duplicate active relationships[/red]")
+        # Write detailed results to file
+        output_file = output_dir / "duplicate_active_relationships.csv"
+        with output_file.open(mode="w", newline="") as f:
+            writer = DictWriter(
+                f, fieldnames=["a_uuid", "a_kinds", "b_uuid", "b_kinds", "r_name", "branch", "direction", "num_paths"]
+            )
+            writer.writeheader()
+            for result in results:
+                writer.writerow(dict(result))
+        rprint(f"  Detailed results written to: {output_file}")
+    else:
+        rprint(f"{SUCCESS_BADGE} No duplicate active relationships found")
+
+    # Check 2: Duplicated relationship nodes
+    rprint("\n[bold cyan]Check 2: Duplicated Relationship Nodes[/bold cyan]")
+    duplicate_rel_nodes_query = """
+    MATCH (r:Relationship)
+    WITH r.uuid AS r_uuid, COUNT(*) AS num_rels
+    WHERE num_rels > 1
+    MATCH (n:Node)-[:IS_RELATED]-(r:Relationship {uuid: r_uuid})
+    WITH DISTINCT r_uuid, n.uuid AS n_uuid, n.kind AS n_kind
+    WITH r_uuid, collect([n_uuid, n_kind]) AS node_details
+    RETURN r_uuid, node_details
+    """
+
+    results = await db.execute_query(query=duplicate_rel_nodes_query)
+    if results:
+        rprint(f"[red]Found {len(results)} duplicated relationship nodes[/red]")
+        # Write detailed results to file
+        output_file = output_dir / "duplicated_relationship_nodes.csv"
+        with output_file.open(mode="w", newline="") as f:
+            writer = DictWriter(f, fieldnames=["r_uuid", "node_details"])
+            writer.writeheader()
+            for result in results:
+                writer.writerow(dict(result))
+        rprint(f"  Detailed results written to: {output_file}")
+    else:
+        rprint(f"{SUCCESS_BADGE} No duplicated relationship nodes found")
+
+    # Check 3: Duplicated edges
+    rprint("\n[bold cyan]Check 3: Duplicated Edges[/bold cyan]")
+    duplicate_edges_query = """
+    MATCH (a)
+    CALL (a) {
+        MATCH (a)-[e]->(b)
+        WHERE elementId(a) < elementId(b)
+        WITH DISTINCT a, b, type(e) AS e_type, count(*) AS total_num_edges
+        WHERE total_num_edges > 1
+        MATCH (a)-[e]->(b)
+        WHERE type(e) = e_type
+        WITH
+            elementId(a) AS a_id,
+            labels(a) AS a_labels,
+            elementId(b) AS b_id,
+            labels(b) AS b_labels,
+            type(e) AS e_type,
+            e.branch AS branch,
+            e.status AS status,
+            e.from AS time,
+            collect(e) AS edges
+        WITH a_id, a_labels, b_id, b_labels, e_type, branch, status, time, size(edges) AS num_edges
+        WHERE num_edges > 1
+        WITH a_id, a_labels, b_id, b_labels, e_type, branch, status, time, num_edges
+        RETURN a_id, a_labels, b_id, b_labels, e_type, branch, status, time, num_edges
+    }
+    RETURN a_id, a_labels, b_id, b_labels, e_type, branch, status, time, num_edges
+    """
+
+    results = await db.execute_query(query=duplicate_edges_query)
+    if results:
+        rprint(f"[red]Found {len(results)} sets of duplicated edges[/red]")
+        # Write detailed results to file
+        output_file = output_dir / "duplicated_edges.csv"
+        with output_file.open(mode="w", newline="") as f:
+            writer = DictWriter(
+                f,
+                fieldnames=["a_id", "a_labels", "b_id", "b_labels", "e_type", "branch", "status", "time", "num_edges"],
+            )
+            writer.writeheader()
+            for result in results:
+                writer.writerow(dict(result))
+        rprint(f"  Detailed results written to: {output_file}")
+    else:
+        rprint(f"{SUCCESS_BADGE} No duplicated edges found")
+
+    rprint(f"\n{SUCCESS_BADGE} Database health checks completed")
+    rprint(f"Detailed results saved to: {output_dir.absolute()}")
