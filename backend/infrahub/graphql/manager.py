@@ -40,6 +40,7 @@ from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
 from .mutations.webhook import InfrahubWebhookMutation
+from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -491,7 +492,9 @@ class GraphQLSchemaManager:
 
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
-                resolver=default_paginated_list_resolver,
+                resolver=default_paginated_list_resolver
+                if node_name not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]
+                else ipam_paginated_list_resolver,
                 required=True,
                 **node_filters,
             )

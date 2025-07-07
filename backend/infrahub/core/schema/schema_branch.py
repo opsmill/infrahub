@@ -1873,7 +1873,7 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
-            if node.namespace in RESTRICTED_NAMESPACES:
+            if node.namespace in RESTRICTED_NAMESPACES and node.kind != InfrahubKind.IPRANGEAVAILABLE:
                 continue
 
             profiles_rel_settings: dict[str, Any] = {

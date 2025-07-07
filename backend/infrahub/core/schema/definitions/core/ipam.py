@@ -193,6 +193,7 @@ internal_ipam_ip_range_available = NodeSchema(
     display_labels=["address__value", "last_address__value"],
     branch=BranchSupportType.AWARE,
     inherit_from=[InfrahubKind.IPADDRESS],
+    generate_profile=False,
     attributes=[Attr(name="last_address", kind="IPHost", branch=BranchSupportType.AWARE, order_weight=2000)],
 )
 
