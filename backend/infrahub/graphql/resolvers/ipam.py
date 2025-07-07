@@ -66,7 +66,9 @@ def include_first_and_last_ips(ip_prefix: Node) -> bool:
     return ip_prefix.member_type.value == PrefixMemberType.ADDRESS.value and ip_prefix.prefix.prefixlen == 31
 
 
-async def resolve_available_address_nodes(db: InfrahubDatabase, branch: Branch, prefix: Node) -> list[Node]:
+async def resolve_available_address_nodes(
+    db: InfrahubDatabase, branch: Branch, prefix: Node, offset: int | None = None, limit: int | None = None
+) -> list[Node]:
     """Annotate a list of IP addresses node with available ranges within a prefix."""
     ip_prefix: IPvAnyNetwork = prefix.prefix.obj
     ip_namespace = await prefix.ip_namespace.get_peer(db=db)
@@ -147,10 +149,16 @@ async def resolve_available_address_nodes(db: InfrahubDatabase, branch: Branch, 
             )
         )
 
-    return with_available_ranges
+    offset = max(offset or 0, 0)
+    limit = limit if limit is not None else len(with_available_ranges)
+    limit = max(limit, 0)
+
+    return with_available_ranges[offset : offset + limit]
 
 
-async def resolve_available_prefix_nodes(db: InfrahubDatabase, branch: Branch, prefix: Node) -> list[Node]:
+async def resolve_available_prefix_nodes(
+    db: InfrahubDatabase, branch: Branch, prefix: Node, offset: int | None = None, limit: int | None = None
+) -> list[Node]:
     """Annotate a list of IP prefixes node with available prefixes within a parent one."""
     # Fetch all the child prefixes of the current prefix to be sure not to return any of them as available ones
     children_prefixes: list[Node] = sorted(
@@ -174,8 +182,14 @@ async def resolve_available_prefix_nodes(db: InfrahubDatabase, branch: Branch, p
         )
         available_nodes.append(node)
 
-    # Return existing nodes with available prefixes properly sorted
-    return sorted(children_prefixes + available_nodes, key=lambda n: n.prefix.obj)
+    # Properly sort existing nodes with available prefixes
+    with_available_prefixes = sorted(children_prefixes + available_nodes, key=lambda n: n.prefix.obj)
+
+    offset = max(offset or 0, 0)
+    limit = limit if limit is not None else len(with_available_prefixes)
+    limit = max(limit, 0)
+
+    return with_available_prefixes[offset : offset + limit]
 
 
 @trace.get_tracer(__name__).start_as_current_span("ipam_paginated_list_resolver")
@@ -267,9 +281,13 @@ async def ipam_paginated_list_resolver(
         result = []
         if resolve_available and parent_prefix:
             result = (
-                await resolve_available_address_nodes(db=db, branch=graphql_context.branch, prefix=parent_prefix)
+                await resolve_available_address_nodes(
+                    db=db, branch=graphql_context.branch, prefix=parent_prefix, limit=limit, offset=offset
+                )
                 if schema.is_ip_address
-                else await resolve_available_prefix_nodes(db=db, branch=graphql_context.branch, prefix=parent_prefix)
+                else await resolve_available_prefix_nodes(
+                    db=db, branch=graphql_context.branch, prefix=parent_prefix, limit=limit, offset=offset
+                )
             )
         else:
             result = objs

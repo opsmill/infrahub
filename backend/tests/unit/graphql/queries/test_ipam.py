@@ -396,6 +396,84 @@ async def test_ipaddress_include_available(
     ]
 
 
+@pytest.mark.parametrize(
+    "limit,offset,result",
+    [
+        (
+            4,
+            0,
+            [
+                ("InternalIPRangeAvailable", "1 IP address available"),
+                ("IpamIPAddress", "2001:db8::1/64"),
+                ("IpamIPAddress", "2001:db8::2/64"),
+                ("InternalIPRangeAvailable", "28 IP addresses available"),
+            ],
+        ),
+        (
+            4,
+            4,
+            [
+                ("IpamIPAddress", "2001:db8::1f/64"),
+                ("InternalIPRangeAvailable", "223 IP addresses available"),
+                ("IpamIPAddress", "2001:db8::ff/64"),
+                ("InternalIPRangeAvailable", "Many IP addresses available"),
+            ],
+        ),
+        (
+            5,
+            6,
+            [
+                ("IpamIPAddress", "2001:db8::ff/64"),
+                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("IpamIPAddress", "2001:db8::100:1/64"),
+                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
+            ],
+        ),
+    ],
+)
+async def test_ipaddress_include_available_pagination(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_ranges: dict[str, Node],
+    limit: int,
+    offset: int,
+    result: list[str],
+):
+    obj = ip_dataset_ranges["net6"]
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    query = """
+    query($prefix: ID!, $limit: Int!, $offset: Int!) {
+        BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, limit: $limit, offset: $offset) {
+            edges {
+                node {
+                    display_label
+                    __typename
+                }
+            }
+        }
+    }
+    """
+
+    response = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        variable_values={"prefix": obj.id, "limit": limit, "offset": offset},
+    )
+    assert not response.errors
+    assert response.data
+    assert response.data["BuiltinIPAddress"]["edges"]
+    assert result == [
+        (node["node"]["__typename"], node["node"]["display_label"])
+        for node in response.data["BuiltinIPAddress"]["edges"]
+    ]
+
+
 @pytest.fixture
 async def ip_dataset_available_prefixes(
     db: InfrahubDatabase,
@@ -571,6 +649,102 @@ async def test_ipprefix_include_available(
 
     response = await graphql(
         schema=gql_params.schema, source=query, context_value=gql_params.context, variable_values={"prefix": obj.id}
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["BuiltinIPPrefix"]["edges"]
+    assert result == [
+        (node["node"]["__typename"], node["node"]["display_label"], node["node"]["is_available"]["value"])
+        for node in response.data["BuiltinIPPrefix"]["edges"]
+    ]
+
+
+@pytest.mark.parametrize(
+    "limit,offset,result",
+    [
+        (
+            4,
+            0,
+            [
+                ("IpamIPPrefix", "2001:db8::/56", False),
+                ("IpamIPPrefix", "2001:db8:0:100::/56", True),
+                ("IpamIPPrefix", "2001:db8:0:200::/55", True),
+                ("IpamIPPrefix", "2001:db8:0:400::/54", True),
+            ],
+        ),
+        (
+            4,
+            4,
+            [
+                ("IpamIPPrefix", "2001:db8:0:800::/55", True),
+                ("IpamIPPrefix", "2001:db8:0:a00::/56", False),
+                ("IpamIPPrefix", "2001:db8:0:b00::/56", True),
+                ("IpamIPPrefix", "2001:db8:0:c00::/54", True),
+            ],
+        ),
+        (
+            20,
+            8,
+            [
+                ("IpamIPPrefix", "2001:db8:0:1000::/52", True),
+                ("IpamIPPrefix", "2001:db8:0:2000::/51", True),
+                ("IpamIPPrefix", "2001:db8:0:4000::/50", True),
+                ("IpamIPPrefix", "2001:db8:0:8000::/50", True),
+                ("IpamIPPrefix", "2001:db8:0:c000::/51", True),
+                ("IpamIPPrefix", "2001:db8:0:e000::/52", True),
+                ("IpamIPPrefix", "2001:db8:0:f000::/64", False),
+                ("IpamIPPrefix", "2001:db8:0:f001::/64", True),
+                ("IpamIPPrefix", "2001:db8:0:f002::/63", True),
+                ("IpamIPPrefix", "2001:db8:0:f004::/62", True),
+                ("IpamIPPrefix", "2001:db8:0:f008::/61", True),
+                ("IpamIPPrefix", "2001:db8:0:f010::/60", True),
+                ("IpamIPPrefix", "2001:db8:0:f020::/59", True),
+                ("IpamIPPrefix", "2001:db8:0:f040::/58", True),
+                ("IpamIPPrefix", "2001:db8:0:f080::/57", True),
+                ("IpamIPPrefix", "2001:db8:0:f100::/56", True),
+                ("IpamIPPrefix", "2001:db8:0:f200::/55", True),
+                ("IpamIPPrefix", "2001:db8:0:f400::/54", True),
+                ("IpamIPPrefix", "2001:db8:0:f800::/53", True),
+            ],
+        ),
+    ],
+)
+async def test_ipprefix_include_available_pagination(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_available_prefixes: dict[str, Node],
+    limit: int,
+    offset: int,
+    result: list[str],
+):
+    obj = ip_dataset_available_prefixes["net6"]
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    query = """
+    query($prefix: ID!, $limit: Int!, $offset: Int!) {
+        BuiltinIPPrefix(parent__ids: [$prefix], include_available: true, limit: $limit, offset: $offset) {
+            edges {
+                node {
+                    __typename
+                    display_label
+                    is_available {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    response = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        variable_values={"prefix": obj.id, "limit": limit, "offset": offset},
     )
 
     assert not response.errors
