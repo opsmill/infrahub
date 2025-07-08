@@ -16,7 +16,7 @@ export const parseJwt = (token: string | null) => {
   }
 
   try {
-    return JSON.parse(atob(token.split(".")[1]));
+    return JSON.parse(atob(token.split(".")[1]!));
   } catch (error) {
     console.error(error);
     return null;

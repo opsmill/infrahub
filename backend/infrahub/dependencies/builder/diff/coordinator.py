@@ -1,4 +1,5 @@
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.dependencies.builder.diff.locker import DiffLockerDependency
 from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 from .calculator import DiffCalculatorDependency
@@ -15,6 +16,7 @@ class DiffCoordinatorDependency(DependencyBuilder[DiffCoordinator]):
     @classmethod
     def build(cls, context: DependencyBuilderContext) -> DiffCoordinator:
         return DiffCoordinator(
+            db=context.db,
             diff_repo=DiffRepositoryDependency.build(context=context),
             diff_calculator=DiffCalculatorDependency.build(context=context),
             diff_combiner=DiffCombinerDependency.build(context=context),
@@ -23,4 +25,5 @@ class DiffCoordinatorDependency(DependencyBuilder[DiffCoordinator]):
             labels_enricher=DiffLabelsEnricherDependency.build(context=context),
             data_check_synchronizer=DiffDataCheckSynchronizerDependency.build(context=context),
             conflict_transferer=DiffConflictTransfererDependency.build(context=context),
+            diff_locker=DiffLockerDependency.build(context=context),
         )

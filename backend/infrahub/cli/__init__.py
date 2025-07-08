@@ -5,8 +5,8 @@ from infrahub_sdk.async_typer import AsyncTyper
 
 from infrahub import config
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, get_db
 
+from ..workers.dependencies import get_database
 from .context import CliContext
 from .db import app as db_app
 from .events import app as events_app
@@ -36,7 +36,7 @@ async def _init_shell(config_file: str) -> None:
     """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
 
-    db = InfrahubDatabase(driver=await get_db(retry=1))
+    db = await get_database()
 
     async with db.start_session() as db:
         await initialization(db=db)
