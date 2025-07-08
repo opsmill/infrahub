@@ -16,6 +16,7 @@ import { Card } from "@/shared/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
+  ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
@@ -101,6 +102,8 @@ export const ProposedChangeCreateForm = () => {
 
                   <ComboboxContent>
                     <ComboboxList>
+                      <ComboboxEmpty>No branch found</ComboboxEmpty>
+
                       {branchesToSelectOptions(sourceBranches).map(({ name }) => (
                         <ComboboxItem
                           key={name}
