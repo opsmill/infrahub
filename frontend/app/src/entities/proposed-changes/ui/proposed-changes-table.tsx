@@ -1,18 +1,13 @@
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
-import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/get-object-actions-column";
-import { ObjectsTableProps } from "@/entities/nodes/object/ui/object-table/object-table";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
-import { getProposedChangesTableColumns } from "@/entities/proposed-changes/utils/get-proposed-changes-table-columns";
-import { DataTable } from "@/shared/components/table/data-table";
+import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
+import { useProposedChanges } from "@/entities/proposed-changes/api/get-proposed-changes.query";
+import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
+import { ProposedChangesTableHeader } from "./proposed-changes-table-header";
 
-const PROPOSED_CHANGES_TABLE_COLUMN_ORDER = ["id", "name"];
-
-export interface ProposedChangesTableProps extends ObjectsTableProps {
-  baseFilters?: Array<Filter>;
-}
+type ProposedChangesTableProps = {};
 
 export function ProposedChangesTable({
   schema,
@@ -20,26 +15,26 @@ export function ProposedChangesTable({
   baseFilters = [],
 }: ProposedChangesTableProps) {
   const [filters] = useFilters();
-  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
+  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useProposedChanges({
     schema,
     filters: [...baseFilters, ...filters],
   });
 
-  const columns = React.useMemo(() => {
-    return [...getProposedChangesTableColumns(schema), getObjectActionsColumn(permission)];
-  }, [schema.hash]);
+  const isLoading = isPending || isFetchingNextPage;
+
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
-      <DataTable
-        columnOrder={PROPOSED_CHANGES_TABLE_COLUMN_ORDER}
-        columns={columns}
-        data={flatData}
-        isLoading={isPending || isFetchingNextPage}
-        renderEmpty={() => <ObjectTableEmpty schema={schema} />}
-        data-testid="ip-prefix-table"
-      />
+      <ProposedChangesTableHeader schema={schema} />
+
+      {flatData.map((node) => {
+        return <ProposedChangesItem key={node.id} node={node} />;
+      })}
+
+      {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
+
+      {isLoading && <ObjectTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>
   );
 }
