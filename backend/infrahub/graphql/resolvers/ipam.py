@@ -160,6 +160,8 @@ async def resolve_available_prefix_nodes(
     db: InfrahubDatabase, branch: Branch, prefix: Node, offset: int | None = None, limit: int | None = None
 ) -> list[Node]:
     """Annotate a list of IP prefixes node with available prefixes within a parent one."""
+    ip_prefix_schema = registry.get_node_schema(name=InfrahubKind.IPPREFIXAVAILABLE, branch=branch)
+
     # Fetch all the child prefixes of the current prefix to be sure not to return any of them as available ones
     children_prefixes: list[Node] = sorted(
         [await r.get_peer(db=db) for r in await prefix.children.get_relationships(db=db)],
@@ -172,13 +174,9 @@ async def resolve_available_prefix_nodes(
 
     # Turn them into nodes (without saving them in the database)
     for available_prefix in available_prefixes.iter_cidrs():
-        node = await Node.init(schema=prefix.get_schema(), db=db, branch=branch)
+        node = await Node.init(schema=ip_prefix_schema, db=db, branch=branch)
         await node.new(
-            db=db,
-            prefix=str(available_prefix),
-            ip_namespace=await prefix.ip_namespace.get_peer(db=db),
-            parent=prefix,
-            is_available=True,
+            db=db, prefix=str(available_prefix), ip_namespace=await prefix.ip_namespace.get_peer(db=db), parent=prefix
         )
         available_nodes.append(node)
 

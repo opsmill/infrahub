@@ -97,14 +97,6 @@ builtin_ip_prefix = GenericSchema(
             order_weight=4000,
             description="All IP addresses within this prefix are considered usable",
         ),
-        Attr(
-            name="is_available",
-            kind="Boolean",
-            read_only=True,
-            optional=True,
-            default_value=False,
-            allow_override=AllowOverrideType.NONE,
-        ),
         Attr(name="is_top_level", kind="Boolean", read_only=True, optional=True, allow_override=AllowOverrideType.NONE),
         Attr(name="utilization", kind="Number", read_only=True, optional=True, allow_override=AllowOverrideType.NONE),
         Attr(name="netmask", kind="Text", read_only=True, optional=True, allow_override=AllowOverrideType.NONE),
@@ -195,6 +187,18 @@ internal_ipam_ip_range_available = NodeSchema(
     inherit_from=[InfrahubKind.IPADDRESS],
     generate_profile=False,
     attributes=[Attr(name="last_address", kind="IPHost", branch=BranchSupportType.AWARE, order_weight=2000)],
+)
+
+internal_ipam_ip_prefix_available = NodeSchema(
+    name="IPPrefixAvailable",
+    label="Available IP Prefix",
+    namespace="Internal",
+    description="IPv6 or IPv4 prefix also referred as network which has not been allocated yet",
+    include_in_menu=False,
+    display_labels=["prefix__value"],
+    branch=BranchSupportType.AWARE,
+    inherit_from=[InfrahubKind.IPPREFIX],
+    generate_profile=False,
 )
 
 

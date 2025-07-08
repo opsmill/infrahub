@@ -49,7 +49,6 @@ class BuiltinIPPrefix(CoreNode):
     description: StringOptional
     member_type: Dropdown
     is_pool: Boolean
-    is_available: BooleanOptional
     is_top_level: BooleanOptional
     utilization: IntegerOptional
     netmask: StringOptional
@@ -553,6 +552,10 @@ class InternalAccountToken(CoreNode):
     token: String
     expiration: DateTimeOptional
     account: RelationshipManager
+
+
+class InternalIPPrefixAvailable(BuiltinIPPrefix):
+    pass
 
 
 class InternalIPRangeAvailable(BuiltinIPAddress):

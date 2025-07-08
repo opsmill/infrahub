@@ -553,67 +553,67 @@ async def ip_dataset_available_prefixes(
 @pytest.mark.parametrize(
     "prefix,result",
     [
-        ("net_empty", [("IpamIPPrefix", "10.0.0.0/24", True)]),
+        ("net_empty", [("InternalIPPrefixAvailable", "10.0.0.0/24")]),
         (
             "net_free_end",
             [
-                ("IpamIPPrefix", "10.0.1.0/27", False),
-                ("IpamIPPrefix", "10.0.1.32/27", True),
-                ("IpamIPPrefix", "10.0.1.64/26", True),
-                ("IpamIPPrefix", "10.0.1.128/25", True),
+                ("IpamIPPrefix", "10.0.1.0/27"),
+                ("InternalIPPrefixAvailable", "10.0.1.32/27"),
+                ("InternalIPPrefixAvailable", "10.0.1.64/26"),
+                ("InternalIPPrefixAvailable", "10.0.1.128/25"),
             ],
         ),
-        ("net_free_start", [("IpamIPPrefix", "10.0.2.0/25", True), ("IpamIPPrefix", "10.0.2.128/25", False)]),
+        ("net_free_start", [("InternalIPPrefixAvailable", "10.0.2.0/25"), ("IpamIPPrefix", "10.0.2.128/25")]),
         (
             "net_free_edges",
             [
-                ("IpamIPPrefix", "10.0.3.0/25", True),
-                ("IpamIPPrefix", "10.0.3.128/26", False),
-                ("IpamIPPrefix", "10.0.3.192/26", True),
+                ("InternalIPPrefixAvailable", "10.0.3.0/25"),
+                ("IpamIPPrefix", "10.0.3.128/26"),
+                ("InternalIPPrefixAvailable", "10.0.3.192/26"),
             ],
         ),
         (
             "net_free_middle",
             [
-                ("IpamIPPrefix", "10.0.4.0/27", False),
-                ("IpamIPPrefix", "10.0.4.32/27", True),
-                ("IpamIPPrefix", "10.0.4.64/26", True),
-                ("IpamIPPrefix", "10.0.4.128/26", True),
-                ("IpamIPPrefix", "10.0.4.192/27", True),
-                ("IpamIPPrefix", "10.0.4.224/27", False),
+                ("IpamIPPrefix", "10.0.4.0/27"),
+                ("InternalIPPrefixAvailable", "10.0.4.32/27"),
+                ("InternalIPPrefixAvailable", "10.0.4.64/26"),
+                ("InternalIPPrefixAvailable", "10.0.4.128/26"),
+                ("InternalIPPrefixAvailable", "10.0.4.192/27"),
+                ("IpamIPPrefix", "10.0.4.224/27"),
             ],
         ),
-        ("net_full", [("IpamIPPrefix", "10.0.5.0/25", False), ("IpamIPPrefix", "10.0.5.128/25", False)]),
+        ("net_full", [("IpamIPPrefix", "10.0.5.0/25"), ("IpamIPPrefix", "10.0.5.128/25")]),
         (
             "net6",
             [
-                ("IpamIPPrefix", "2001:db8::/56", False),
-                ("IpamIPPrefix", "2001:db8:0:100::/56", True),
-                ("IpamIPPrefix", "2001:db8:0:200::/55", True),
-                ("IpamIPPrefix", "2001:db8:0:400::/54", True),
-                ("IpamIPPrefix", "2001:db8:0:800::/55", True),
-                ("IpamIPPrefix", "2001:db8:0:a00::/56", False),
-                ("IpamIPPrefix", "2001:db8:0:b00::/56", True),
-                ("IpamIPPrefix", "2001:db8:0:c00::/54", True),
-                ("IpamIPPrefix", "2001:db8:0:1000::/52", True),
-                ("IpamIPPrefix", "2001:db8:0:2000::/51", True),
-                ("IpamIPPrefix", "2001:db8:0:4000::/50", True),
-                ("IpamIPPrefix", "2001:db8:0:8000::/50", True),
-                ("IpamIPPrefix", "2001:db8:0:c000::/51", True),
-                ("IpamIPPrefix", "2001:db8:0:e000::/52", True),
-                ("IpamIPPrefix", "2001:db8:0:f000::/64", False),
-                ("IpamIPPrefix", "2001:db8:0:f001::/64", True),
-                ("IpamIPPrefix", "2001:db8:0:f002::/63", True),
-                ("IpamIPPrefix", "2001:db8:0:f004::/62", True),
-                ("IpamIPPrefix", "2001:db8:0:f008::/61", True),
-                ("IpamIPPrefix", "2001:db8:0:f010::/60", True),
-                ("IpamIPPrefix", "2001:db8:0:f020::/59", True),
-                ("IpamIPPrefix", "2001:db8:0:f040::/58", True),
-                ("IpamIPPrefix", "2001:db8:0:f080::/57", True),
-                ("IpamIPPrefix", "2001:db8:0:f100::/56", True),
-                ("IpamIPPrefix", "2001:db8:0:f200::/55", True),
-                ("IpamIPPrefix", "2001:db8:0:f400::/54", True),
-                ("IpamIPPrefix", "2001:db8:0:f800::/53", True),
+                ("IpamIPPrefix", "2001:db8::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:100::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:200::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:400::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:800::/55"),
+                ("IpamIPPrefix", "2001:db8:0:a00::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:b00::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:c00::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:1000::/52"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:2000::/51"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:4000::/50"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:8000::/50"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:c000::/51"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:e000::/52"),
+                ("IpamIPPrefix", "2001:db8:0:f000::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f001::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f002::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f004::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f008::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f010::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f020::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f040::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f080::/57"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f100::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f200::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f400::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f800::/53"),
             ],
         ),
     ],
@@ -638,9 +638,6 @@ async def test_ipprefix_include_available(
                 node {
                     __typename
                     display_label
-                    is_available {
-                        value
-                    }
                 }
             }
         }
@@ -655,7 +652,7 @@ async def test_ipprefix_include_available(
     assert response.data
     assert response.data["BuiltinIPPrefix"]["edges"]
     assert result == [
-        (node["node"]["__typename"], node["node"]["display_label"], node["node"]["is_available"]["value"])
+        (node["node"]["__typename"], node["node"]["display_label"])
         for node in response.data["BuiltinIPPrefix"]["edges"]
     ]
 
@@ -667,45 +664,45 @@ async def test_ipprefix_include_available(
             4,
             0,
             [
-                ("IpamIPPrefix", "2001:db8::/56", False),
-                ("IpamIPPrefix", "2001:db8:0:100::/56", True),
-                ("IpamIPPrefix", "2001:db8:0:200::/55", True),
-                ("IpamIPPrefix", "2001:db8:0:400::/54", True),
+                ("IpamIPPrefix", "2001:db8::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:100::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:200::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:400::/54"),
             ],
         ),
         (
             4,
             4,
             [
-                ("IpamIPPrefix", "2001:db8:0:800::/55", True),
-                ("IpamIPPrefix", "2001:db8:0:a00::/56", False),
-                ("IpamIPPrefix", "2001:db8:0:b00::/56", True),
-                ("IpamIPPrefix", "2001:db8:0:c00::/54", True),
+                ("InternalIPPrefixAvailable", "2001:db8:0:800::/55"),
+                ("IpamIPPrefix", "2001:db8:0:a00::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:b00::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:c00::/54"),
             ],
         ),
         (
             20,
             8,
             [
-                ("IpamIPPrefix", "2001:db8:0:1000::/52", True),
-                ("IpamIPPrefix", "2001:db8:0:2000::/51", True),
-                ("IpamIPPrefix", "2001:db8:0:4000::/50", True),
-                ("IpamIPPrefix", "2001:db8:0:8000::/50", True),
-                ("IpamIPPrefix", "2001:db8:0:c000::/51", True),
-                ("IpamIPPrefix", "2001:db8:0:e000::/52", True),
-                ("IpamIPPrefix", "2001:db8:0:f000::/64", False),
-                ("IpamIPPrefix", "2001:db8:0:f001::/64", True),
-                ("IpamIPPrefix", "2001:db8:0:f002::/63", True),
-                ("IpamIPPrefix", "2001:db8:0:f004::/62", True),
-                ("IpamIPPrefix", "2001:db8:0:f008::/61", True),
-                ("IpamIPPrefix", "2001:db8:0:f010::/60", True),
-                ("IpamIPPrefix", "2001:db8:0:f020::/59", True),
-                ("IpamIPPrefix", "2001:db8:0:f040::/58", True),
-                ("IpamIPPrefix", "2001:db8:0:f080::/57", True),
-                ("IpamIPPrefix", "2001:db8:0:f100::/56", True),
-                ("IpamIPPrefix", "2001:db8:0:f200::/55", True),
-                ("IpamIPPrefix", "2001:db8:0:f400::/54", True),
-                ("IpamIPPrefix", "2001:db8:0:f800::/53", True),
+                ("InternalIPPrefixAvailable", "2001:db8:0:1000::/52"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:2000::/51"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:4000::/50"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:8000::/50"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:c000::/51"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:e000::/52"),
+                ("IpamIPPrefix", "2001:db8:0:f000::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f001::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f002::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f004::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f008::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f010::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f020::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f040::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f080::/57"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f100::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f200::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f400::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f800::/53"),
             ],
         ),
     ],
@@ -731,9 +728,6 @@ async def test_ipprefix_include_available_pagination(
                 node {
                     __typename
                     display_label
-                    is_available {
-                        value
-                    }
                 }
             }
         }
@@ -751,6 +745,6 @@ async def test_ipprefix_include_available_pagination(
     assert response.data
     assert response.data["BuiltinIPPrefix"]["edges"]
     assert result == [
-        (node["node"]["__typename"], node["node"]["display_label"], node["node"]["is_available"]["value"])
+        (node["node"]["__typename"], node["node"]["display_label"])
         for node in response.data["BuiltinIPPrefix"]["edges"]
     ]
