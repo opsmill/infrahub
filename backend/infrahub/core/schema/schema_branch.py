@@ -1425,7 +1425,8 @@ class SchemaBranch:
                 node.validate_inheritance(interface=generic_kind_schema)
 
                 # Store the list of node referencing a specific generics
-                generics_used_by[generic_kind].append(node.kind)
+                if node.namespace != "Internal":
+                    generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
