@@ -21,7 +21,23 @@ export const ProposedChangesItem = ({ node }) => {
   );
 };
 
-const ProposedChangesInfo = ({ id, name, authorId, state, createdAt, branchName }) => {
+type ProposedChangesInfoProps = {
+  id: string;
+  name: string;
+  authorId: string;
+  state: string;
+  createdAt: string;
+  branchName?: string;
+};
+
+const ProposedChangesInfo = ({
+  id,
+  name,
+  authorId,
+  state,
+  createdAt,
+  branchName,
+}: ProposedChangesInfoProps) => {
   return (
     <div className="p-2 border border-gray-200">
       <div className="flex flex-col gap-2">

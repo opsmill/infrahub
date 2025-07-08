@@ -2,22 +2,21 @@ import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import { useProposedChanges } from "@/entities/proposed-changes/api/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
+import { NodeSchema } from "@/entities/schema/types";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
 import { ProposedChangesTableHeader } from "./proposed-changes-table-header";
 
-type ProposedChangesTableProps = {};
+type ProposedChangesTableProps = {
+  schema: NodeSchema;
+};
 
-export function ProposedChangesTable({
-  schema,
-  permission,
-  baseFilters = [],
-}: ProposedChangesTableProps) {
+export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
   const [filters] = useFilters();
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useProposedChanges({
     schema,
-    filters: [...baseFilters, ...filters],
+    filters,
   });
 
   const isLoading = isPending || isFetchingNextPage;
