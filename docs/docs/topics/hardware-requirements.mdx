@@ -6,6 +6,8 @@ import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
 
 This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, and a utility for benchmarking your system's performance.
 
+If you only want to try Infrahub, follow the [getting started tutorial](../tutorials/getting-started).
+
 ## General hardware requirements
 
 The system on which you want to run Infrahub should meet the following requirements:
@@ -14,6 +16,16 @@ The system on which you want to run Infrahub should meet the following requireme
 |-------------|-----------|------|----------------------------|
 | Minimum     | 6         | 12GB | SSD and/or >= 5000 IOPS    |
 | Recommended | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+
+For cloud deployments, use at least the following machine types:
+
+| Cloud provider              | Machine type       |
+|-----------------------------|--------------------|
+| Google Cloud Platform       | c3d-standard-4     |
+| Amazon Web Services         | m7a.xlarge         |
+| Microsoft Azure             | Standard D4as v5   |
+| Oracle Cloud Infrastructure | VM.Standard.E5     |
+| Alibaba Cloud               | ecs.g8a.xlarge     |
 
 ## Enterprise sizing <EnterpriseBadge />
 
@@ -26,20 +38,6 @@ For enterprise deployments, use these guidelines:
 | Medium Action      | 8         | 16GB | SSD and/or >= 5000 IOPS    |
 | Large Data         | 16        | 32GB | SSD and/or >= 5000 IOPS    |
 | Large Action       | 16        | 32GB | SSD and/or >= 5000 IOPS    |
-
-If you only want to try Infrahub, follow the [getting started tutorial](../tutorials/getting-started).
-
-## Cloud provider recommendations
-
-For cloud deployments, use at least the following machine types:
-
-| Cloud provider              | Machine type       |
-|-----------------------------|--------------------|
-| Google Cloud Platform       | c3d-standard-4     |
-| Amazon Web Services         | m7a.xlarge         |
-| Microsoft Azure             | Standard D4as v5   |
-| Oracle Cloud Infrastructure | VM.Standard.E5     |
-| Alibaba Cloud               | ecs.g8a.xlarge     |
 
 ## Performance benchmark utility
 
