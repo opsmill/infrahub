@@ -17,8 +17,8 @@ export function TableColumnHeaderLink({
       className={classNames(
         cellsStyle,
         cellHeaderStyle,
-        "border-0 transition-all rounded-sm hover:bg-transparent font-normal",
-        isActive && "font-semibold",
+        "border-0 transition-all rounded-sm hover:bg-transparent hover:text-gray-500 font-normal",
+        isActive && "font-semibold hover:text-black",
         className
       )}
       {...props}

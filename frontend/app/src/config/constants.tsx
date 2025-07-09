@@ -48,6 +48,8 @@ export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const ARTIFACT_OBJECT = "CoreArtifact";
 
+export const CHECK_OBJECT = "CoreCheck";
+
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";

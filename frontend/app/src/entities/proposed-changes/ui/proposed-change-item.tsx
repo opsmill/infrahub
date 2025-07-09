@@ -1,21 +1,37 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { NodeCore } from "@/entities/nodes/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
+import { ProposedChangeDiffSummary } from "./diff-summary";
 import { getProposedChangesStateBadgeType } from "./proposed-changes";
 
 export const ProposedChangesItem = ({ node }) => {
+  console.log("node: ", node);
   return (
-    <div>
+    <div className="p-2 border border-b-0 border-gray-200 flex items-center justify-between">
       <ProposedChangesInfo
         id={node.id}
         name={node.name?.value}
-        authorId={node.created_by?.node?.id}
+        author={node.created_by?.node?.display_label}
         state={node.state?.value}
         createdAt={node._updated_at}
         branchName={node.source_branch?.value}
+      />
+
+      <ProposedChangesData
+        id={node.id}
+        branchName={node.source_branch?.value}
+        approvers={node.approved_by.edges.map((edge) => {
+          return edge.node;
+        })}
+        comments={node.comments.count}
+        validations={node.validations.count}
       />
     </div>
   );
@@ -24,7 +40,7 @@ export const ProposedChangesItem = ({ node }) => {
 type ProposedChangesInfoProps = {
   id: string;
   name: string;
-  authorId: string;
+  author: string;
   state: string;
   createdAt: string;
   branchName?: string;
@@ -33,13 +49,13 @@ type ProposedChangesInfoProps = {
 const ProposedChangesInfo = ({
   id,
   name,
-  authorId,
+  author,
   state,
   createdAt,
   branchName,
 }: ProposedChangesInfoProps) => {
   return (
-    <div className="p-2 border border-b-0 border-gray-200">
+    <div className="">
       <div className="flex flex-col gap-2">
         <span className="space-x-2">
           <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
@@ -50,15 +66,121 @@ const ProposedChangesInfo = ({
             {name}
           </Link>
         </span>
-        <span className="flex gap-1 text-sm">
+        <span className="flex items-center gap-1 text-xs">
           <Badge className="flex items-center gap-1">
             <Icon icon={"mdi:source-branch"} />
             {branchName}
           </Badge>
-          Opened <DateDisplay className="text-sm font-semibold" date={createdAt} /> by{" "}
-          <NodeLabel id={authorId} />
+          Opened <DateDisplay date={createdAt} /> by {author}
         </span>
       </div>
+    </div>
+  );
+};
+
+type ProposedChangesDataProps = {
+  id: string;
+  branchName?: string;
+  approvers: Array<NodeCore>;
+  reviewers: Array<NodeCore>;
+  comments: number;
+  validations: number;
+};
+
+const ProposedChangesData = ({
+  id,
+  branchName,
+  approvers,
+  comments,
+  validations,
+}: ProposedChangesDataProps) => {
+  return (
+    <div className="grid grid-cols-3 items-center gap-4 w-1/2 pr-2">
+      <ProposedChangeDiffSummary proposedChangeId={id} branchName={branchName} />
+      <ProposedChangesApprovers approvers={approvers} />
+      <div className="flex items-center justify-end gap-4">
+        <ProposedChangesChecks validations={validations} />
+        <ProposedChangesTasks id={id} />
+        <ProposedChangesArtifacts id={id} />
+        <ProposedChangesComments comments={comments} />
+      </div>
+    </div>
+  );
+};
+
+const ProposedChangesApprovers = ({ approvers }: { approvers: Array<NodeCore> }) => {
+  return (
+    <div className="flex flex-col gap-2 text-xs">
+      {!!approvers.length && (
+        <div className="flex items-center gap-2">
+          Approved by:{" "}
+          {approvers.map((approver) => {
+            return <span key={approver.id}>{approver.display_label}</span>;
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ProposedChangesComments = ({ comments }: { comments: number }) => {
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      <Tooltip enabled content="Comments">
+        <span>
+          <Icon icon={"mdi:comment-outline"} /> {comments}
+        </span>
+      </Tooltip>
+    </div>
+  );
+};
+
+const ProposedChangesChecks = ({ validations }: { validations: number }) => {
+  const { schema } = useSchema(CHECK_OBJECT);
+
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      <Tooltip enabled content="Checks">
+        <span>
+          <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
+        </span>
+      </Tooltip>
+    </div>
+  );
+};
+
+const ProposedChangesArtifacts = ({ id }: { id: string }) => {
+  const { schema } = useSchema(ARTIFACT_OBJECT);
+  const { data } = useObjectsCount({
+    objectKind: ARTIFACT_OBJECT,
+    filters: [{ name: "object__ids", value: [id] }],
+  });
+
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      <Tooltip enabled content="Artifacts">
+        <span>
+          <Icon icon={schema?.icon ?? "mdi:file-outline"} /> {data ?? 0}
+        </span>
+      </Tooltip>
+    </div>
+  );
+};
+
+const ProposedChangesTasks = ({ id }: { id: string }) => {
+  const { schema } = useSchema(TASK_OBJECT);
+  const { data } = useObjectsCount({
+    objectKind: TASK_OBJECT,
+    filters: [{ name: "related_node__ids", value: [id] }],
+  });
+
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      <Tooltip enabled content="Tasks">
+        <span>
+          <Icon icon={schema?.icon ?? "mdi:subtasks"} /> {data ?? 0}
+        </span>
+      </Tooltip>
     </div>
   );
 };

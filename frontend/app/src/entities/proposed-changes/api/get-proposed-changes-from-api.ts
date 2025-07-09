@@ -60,6 +60,12 @@ export const getProposedChanges: GetProposedChanges = async ({
             display_label: true,
             hfid: true,
             _updated_at: true,
+            comments: {
+              count: true,
+            },
+            validations: {
+              count: true,
+            },
             ...addAttributesToRequest(attributesVisible),
             ...addRelationshipsToRequest(relationshipsVisible),
           },
