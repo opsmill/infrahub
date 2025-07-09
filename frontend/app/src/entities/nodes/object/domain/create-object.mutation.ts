@@ -1,6 +1,6 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { CreateObjectParams, createObject } from "@/entities/nodes/object/domain/create-object";
 import { useMutation } from "@tanstack/react-query";
-import { createObject, CreateObjectParams } from "@/entities/nodes/object/domain/create-object";
 
 export function useCreateObjectMutation() {
   const { currentBranch } = useCurrentBranch();
