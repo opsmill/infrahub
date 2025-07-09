@@ -16,6 +16,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
+* `check`: Run database sanity checks and output the...
 * `constraint`: Manage Database Constraints
 * `index`: Manage Database Indexes
 * `init`: Erase the content of the database and...
@@ -25,6 +26,22 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `patch`: Commands for planning, applying, and...
 * `selected-export`: Export database structure of selected...
 * `update-core-schema`: Check the current format of the internal...
+
+## `infrahub db check`
+
+Run database sanity checks and output the results to the CSV files.
+
+**Usage**:
+
+```console
+$ infrahub db check [OPTIONS]
+```
+
+**Options**:
+
+* `--output-dir PATH`: Directory to save detailed check results (defaults to infrahub_db_check_YYYYMMDD-HHMMSS)
+* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+* `--help`: Show this message and exit.
 
 ## `infrahub db constraint`
 
