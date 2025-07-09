@@ -1,22 +1,18 @@
-import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { Col } from "@/shared/components/container";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { Col, Row } from "@/shared/components/container";
+import SlideOver from "@/shared/components/display/slide-over";
 import { TokenInput } from "@/shared/components/display/token-input";
+import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import ModalSuccess from "@/shared/components/modals/modal-success";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 
 export function AccountTokenCreateAction() {
   const [newToken, setNewToken] = useState<string>("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const schemaList = useAtomValue(nodeSchemasAtom);
-  const schema = schemaList.find((schema) => schema.kind === ACCOUNT_TOKEN_OBJECT);
 
   return (
     <>
@@ -27,12 +23,18 @@ export function AccountTokenCreateAction() {
 
       <SlideOver
         title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel="New"
-            title="Create new account token"
-            subtitle={schema.description}
-          />
+          <Col>
+            <Row>
+              <h3 className="font-semibold text-lg">Create a new token</h3>
+              <ObjectHelpButton
+                documentationUrl="/guides/managing-api-tokens"
+                className="ml-auto"
+              />
+            </Row>
+            <span className="text-sm text-gray-500">
+              These tokens provide full access to your account. Please keep them secure.
+            </span>
+          </Col>
         }
         open={isFormOpen}
         setOpen={setIsFormOpen}

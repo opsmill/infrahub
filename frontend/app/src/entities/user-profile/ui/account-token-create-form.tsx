@@ -3,8 +3,8 @@ import { useCreateAccountTokenMutation } from "@/entities/user-profile/domain/cr
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { toast } from "react-toastify";
 import { classNames } from "@/shared/utils/common";
+import { toast } from "react-toastify";
 
 export interface AccountTokenCreateFormProps {
   onSuccess: (data: { token: string }) => Promise<void>;
