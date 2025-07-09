@@ -8,7 +8,7 @@ from csv import DictReader, DictWriter
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 import typer
 import ujson
@@ -38,7 +38,7 @@ from infrahub.core.initialization import (
     initialization,
     initialize_registry,
 )
-from infrahub.core.migrations.graph import get_graph_migrations
+from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -60,6 +60,7 @@ from .patch import patch_app
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
+    from infrahub.core.migrations.shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
@@ -154,6 +155,7 @@ async def migrate_cmd(
     ctx: typer.Context,
     check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    migration_number: int | None = typer.Option(None, help="Apply a specific migration by number"),
 ) -> None:
     """Check the current format of the internal graph and apply the necessary migrations"""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
@@ -165,7 +167,7 @@ async def migrate_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    await migrate_database(db=dbdriver, initialize=True, check=check)
+    await migrate_database(db=dbdriver, initialize=True, check=check, migration_number=migration_number)
 
     await dbdriver.close()
 
@@ -287,7 +289,9 @@ async def index(
     await dbdriver.close()
 
 
-async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check: bool = False) -> bool:
+async def migrate_database(
+    db: InfrahubDatabase, initialize: bool = False, check: bool = False, migration_number: int | str | None = None
+) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
     Returns a boolean indicating whether a migration failed or if all migrations succeeded.
@@ -295,6 +299,7 @@ async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check
     Args:
         db: The database object.
         check: If True, the function will only check the status of the database and not apply the migrations. Defaults to False.
+        migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
     """
     rprint("Checking current state of the Database")
 
@@ -302,15 +307,28 @@ async def migrate_database(db: InfrahubDatabase, initialize: bool = False, check
         await initialize_registry(db=db)
 
     root_node = await get_root_node(db=db)
-    migrations = await get_graph_migrations(root=root_node)
+    if migration_number:
+        migration = get_migration_by_number(migration_number)
+        migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration] = [migration]
+        if check:
+            if root_node.graph_version > migration.minimum_version:
+                rprint(
+                    f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
+                )
+                return True
+            rprint(
+                f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
+            )
+            return False
+    else:
+        migrations = await get_graph_migrations(root=root_node)
+        if not migrations:
+            rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
+            return True
 
-    if not migrations:
-        rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
-        return True
-
-    rprint(
-        f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
-    )
+        rprint(
+            f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
+        )
 
     if check:
         return True
