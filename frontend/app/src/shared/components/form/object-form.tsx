@@ -31,7 +31,7 @@ import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relations
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
-import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-form";
+import { NodeForm, NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Suspense, lazy } from "react";
@@ -50,12 +50,12 @@ const ObjectTemplateForm = lazy(
 
 export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   kind: string;
-  onSuccess?: (newObject: any) => void;
+  onSubmit?: NodeFormProps["onSubmit"];
+  onSuccess?: NodeFormProps["onSuccess"];
   currentObject?: Record<string, AttributeType | RelationshipType>;
   objectTemplate?: NodeObject | null;
   currentProfiles?: ProfileData[];
   isUpdate?: boolean;
-  onSubmit?: (data: NodeFormSubmitParams) => void;
 }
 
 const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
