@@ -95,8 +95,6 @@ export default function ObjectItemEditComponent(props: Props) {
           toastId: "alert-success-updated",
         });
 
-        closeDrawer();
-
         if (onUpdateComplete) onUpdateComplete();
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);

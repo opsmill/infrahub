@@ -33,7 +33,7 @@ export type NodeFormProps = {
   isFilterForm?: boolean;
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
-  onSuccess?: (newObject: NodeCore) => Promise<void>;
+  onSuccess?: (newObject: NodeCore) => void;
   onCancel?: () => void;
 };
 
