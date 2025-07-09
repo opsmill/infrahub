@@ -11,13 +11,27 @@ import { Link } from "react-router";
 import { ProposedChangeDiffSummary } from "./diff-summary";
 import { getProposedChangesStateBadgeType } from "./proposed-changes";
 
-export const ProposedChangesItem = ({ node }) => {
+type ProposedChangesItemProps = {
+  node: {
+    id: string;
+    name: { value: string };
+    created_by: { node: { display_label: string } };
+    state: { value: string };
+    _updated_at: string;
+    source_branch: { value: string };
+    approved_by: { edges: Array<{ node: NodeCore }> };
+    comments: { count: number };
+    validations: { count: number };
+  };
+};
+
+export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
   return (
     <div className="p-2 border border-b-0 border-gray-200 flex items-center justify-between">
       <ProposedChangesInfo
         id={node.id}
-        name={node.name?.value}
-        author={node.created_by?.node?.display_label}
+        name={node.name.value}
+        author={node.created_by.node.display_label}
         state={node.state?.value}
         createdAt={node._updated_at}
         branchName={node.source_branch?.value}
@@ -26,7 +40,7 @@ export const ProposedChangesItem = ({ node }) => {
       <ProposedChangesData
         id={node.id}
         branchName={node.source_branch?.value}
-        approvers={node.approved_by.edges.map((edge) => {
+        approvers={node.approved_by.edges.map((edge: { node: NodeCore }) => {
           return edge.node;
         })}
         comments={node.comments.count}
@@ -79,9 +93,8 @@ const ProposedChangesInfo = ({
 
 type ProposedChangesDataProps = {
   id: string;
-  branchName?: string;
+  branchName: string;
   approvers: Array<NodeCore>;
-  reviewers: Array<NodeCore>;
   comments: number;
   validations: number;
 };
