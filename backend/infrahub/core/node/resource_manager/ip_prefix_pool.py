@@ -68,11 +68,12 @@ class CoreIPPrefixPool(Node):
             )
 
         member_type = member_type or data.get("member_type", None) or self.default_member_type.value.value  # type: ignore[attr-defined]
+        data["member_type"] = member_type
 
         target_schema = registry.get_node_schema(name=prefix_type, branch=branch)
         node = await Node.init(db=db, schema=target_schema, branch=branch)
         try:
-            await node.new(db=db, prefix=str(next_prefix), member_type=member_type, ip_namespace=ip_namespace, **data)
+            await node.new(db=db, prefix=str(next_prefix), ip_namespace=ip_namespace, **data)
         except ValidationError as exc:
             raise ValueError(f"IPPrefixPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
         await node.save(db=db)
