@@ -12,7 +12,6 @@ import { ProposedChangeDiffSummary } from "./diff-summary";
 import { getProposedChangesStateBadgeType } from "./proposed-changes";
 
 export const ProposedChangesItem = ({ node }) => {
-  console.log("node: ", node);
   return (
     <div className="p-2 border border-b-0 border-gray-200 flex items-center justify-between">
       <ProposedChangesInfo
