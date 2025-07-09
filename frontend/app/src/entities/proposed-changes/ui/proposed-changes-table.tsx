@@ -1,12 +1,12 @@
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
-import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import { useProposedChanges } from "@/entities/proposed-changes/api/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
+import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
+import { ProposedCHangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { NodeSchema } from "@/entities/schema/types";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
-import { ProposedChangesTableHeader } from "./proposed-changes-table-header";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;
@@ -33,7 +33,7 @@ export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
 
       {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
 
-      {isLoading && <ObjectTableSkeleton headerCount={flatData.length} />}
+      {isLoading && <ProposedCHangesTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>
   );
 }
