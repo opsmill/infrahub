@@ -2,14 +2,26 @@
 title: Hardware requirements
 ---
 
-The system on which you want to run Infrahub, has to meet the following hardware requirements:
+import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
+
+The system on which you want to run Infrahub has to meet the following hardware requirements:
 
 | Level       | CPU Cores | RAM  | Storage / database (Neo4j) |
 |-------------|-----------|------|----------------------------|
 | Minimum     | 6         | 12GB | SSD and/or >= 5000 IOPS    |
 | Recommended | 8         | 16GB | SSD and/or >= 5000 IOPS    |
 
-If you only want to give Infrahub a try, or follow the [getting started tutorial](../tutorials/getting-started), then you can use [GitHub Codespaces](../guides/installation#github-codespaces) as an alternative.
+<EnterpriseBadge />
+
+| Enterprise Product | CPU Cores | RAM  | Storage / database (Neo4j) |
+|--------------------|-----------|------|----------------------------|
+| Small              | 4         | 12GB | SSD and/or >= 5000 IOPS    |
+| Medium Data        | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+| Medium Action      | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+| Large Data         | 16        | 32GB | SSD and/or >= 5000 IOPS    |
+| Large Action       | 16        | 32GB | SSD and/or >= 5000 IOPS    |
+
+If you only want to give Infrahub a try, follow the [getting started tutorial](../tutorials/getting-started).
 
 ## Machine types for cloud providers
 
@@ -19,7 +31,7 @@ If you want to deploy Infrahub on a virtual machine provided by one of the commo
 |-----------------------------|--------------------|
 | Google Cloud Platform       | c3d-standard-4     |
 | Amazon Web Services         | m7a.xlarge         |
-| Microsoft Azure             | Standard\_D4as\_v5 |
+| Microsoft Azure             | Standard D4as v5   |
 | Oracle Cloud Infrastructure | VM.Standard.E5     |
 | Alibaba Cloud               | ecs.g8a.xlarge     |
 
