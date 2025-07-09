@@ -39,7 +39,7 @@ const ProposedChangesInfo = ({
   branchName,
 }: ProposedChangesInfoProps) => {
   return (
-    <div className="p-2 border border-gray-200">
+    <div className="p-2 border border-b-0 border-gray-200">
       <div className="flex flex-col gap-2">
         <span className="space-x-2">
           <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
