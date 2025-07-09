@@ -232,9 +232,8 @@ class NodeCreateAllQuery(NodeQuery):
 
         attrs_iphost_query = """
         WITH distinct n
-        UNWIND $attrs_iphost AS attr_iphost
-        CALL (n, attr_iphost) {
-            WITH n, attr_iphost AS attr
+        UNWIND $attrs_iphost AS attr
+        CALL (n, attr) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPHost { %(iphost_prop)s })
@@ -260,9 +259,8 @@ class NodeCreateAllQuery(NodeQuery):
 
         attrs_ipnetwork_query = """
         WITH distinct n
-        UNWIND $attrs_ipnetwork AS attr_ipnetwork
-        CALL (n, attr_ipnetwork) {
-            WITH n, attr_ipnetwork AS attr
+        UNWIND $attrs_ipnetwork AS attr
+        CALL (n, attr) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPNetwork { %(ipnetwork_prop)s })
@@ -286,12 +284,14 @@ class NodeCreateAllQuery(NodeQuery):
         }
         """ % {"ipnetwork_prop": ", ".join(ipnetwork_prop_list)}
 
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
         rels_bidir_query = """
         WITH distinct n
         UNWIND $rels_bidir AS rel
         CALL (n, rel) {
-            MATCH (d:Node { uuid: rel.destination_id })-[is_part_of_e:IS_PART_OF {status: "active", branch: rel.branch}]->(root:Root)
-            WHERE is_part_of_e.from <= $at AND (is_part_of_e.to >= $at OR is_part_of_e.to IS NULL)
+            MATCH (d:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
+            WHERE %(branch_filter)s
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
             CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -310,14 +310,14 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
         }
-        """ % {"rel_prop": rel_prop_str}
+        """ % {"rel_prop": rel_prop_str, "branch_filter": branch_filter}
 
         rels_out_query = """
         WITH distinct n
         UNWIND $rels_out AS rel
         CALL (n, rel) {
-            MATCH (d:Node { uuid: rel.destination_id })-[is_part_of_e:IS_PART_OF {status: "active", branch: rel.branch}]->(root:Root)
-            WHERE is_part_of_e.from <= $at AND (is_part_of_e.to >= $at OR is_part_of_e.to IS NULL)
+            MATCH (d:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
+            WHERE %(branch_filter)s
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
             CREATE (d)<-[:IS_RELATED %(rel_prop)s ]-(rl)
@@ -336,14 +336,14 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
         }
-        """ % {"rel_prop": rel_prop_str}
+        """ % {"rel_prop": rel_prop_str, "branch_filter": branch_filter}
 
         rels_in_query = """
         WITH distinct n
         UNWIND $rels_in AS rel
         CALL (n, rel) {
-            MATCH (d:Node { uuid: rel.destination_id })-[is_part_of_e:IS_PART_OF {status: "active", branch: rel.branch}]->(root:Root)
-            WHERE is_part_of_e.from <= $at AND (is_part_of_e.to >= $at OR is_part_of_e.to IS NULL)
+            MATCH (d:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
+            WHERE %(branch_filter)s
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -362,7 +362,7 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
         }
-        """ % {"rel_prop": rel_prop_str}
+        """ % {"rel_prop": rel_prop_str, "branch_filter": branch_filter}
 
         query = f"""
         MATCH (root:Root)
