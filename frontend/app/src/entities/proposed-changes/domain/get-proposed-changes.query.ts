@@ -7,7 +7,7 @@ import {
   GetProposedChangesParams,
   OBJECTS_PER_PAGE,
   getProposedChanges,
-} from "../domain/get-proposed-changes-from-api";
+} from "../api/get-proposed-changes-from-api";
 
 type GetObjectsQueryParams = Omit<GetProposedChangesParams, keyof PaginationParams>;
 

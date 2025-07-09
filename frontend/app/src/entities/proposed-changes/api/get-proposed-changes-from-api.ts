@@ -28,9 +28,9 @@ export type GetProposedChangesParams = ContextParams &
     getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
   };
 
-export type GetObjects = (args: GetProposedChangesParams) => Promise<Array<NodeObject>>;
+export type GetProposedChanges = (args: GetProposedChangesParams) => Promise<Array<NodeObject>>;
 
-export const getProposedChanges: GetObjects = async ({
+export const getProposedChanges: GetProposedChanges = async ({
   schema,
   limit = OBJECTS_PER_PAGE,
   offset,
