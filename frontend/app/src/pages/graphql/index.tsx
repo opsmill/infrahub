@@ -1,6 +1,6 @@
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
-import { GraphiQL } from "graphiql";
+import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -12,6 +12,8 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
+
+const plugins = [HISTORY_PLUGIN, explorerPlugin()];
 
 const fetcher =
   (url: string): Fetcher =>
@@ -41,8 +43,8 @@ const GraphqlSandboxPage = () => {
     <GraphiQL
       className="rounded-lg border border-gray-200"
       defaultEditorToolsVisibility
-      query={query ?? undefined}
-      plugins={[explorerPlugin({ showAttribution: false })]}
+      initialQuery={query ?? undefined}
+      plugins={plugins}
       fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
     />
   );
