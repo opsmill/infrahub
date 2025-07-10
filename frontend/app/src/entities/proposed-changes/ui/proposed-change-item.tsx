@@ -1,5 +1,6 @@
 import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { NodeCore } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -10,6 +11,7 @@ import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 import { ProposedChangeDiffSummary } from "./diff-summary";
 import { getProposedChangesStateBadgeType } from "./proposed-changes";
+import { ProposedChangesActionCell } from "./proposed-changes-actions-cell";
 
 type ProposedChangesItemProps = {
   node: {
@@ -26,25 +28,35 @@ type ProposedChangesItemProps = {
 };
 
 export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
-  return (
-    <div className="p-2 border border-b-0 border-gray-200 flex items-center justify-between">
-      <ProposedChangesInfo
-        id={node.id}
-        name={node.name.value}
-        author={node.created_by.node.display_label}
-        state={node.state?.value}
-        createdAt={node._updated_at}
-        branchName={node.source_branch?.value}
-      />
+  const { permission } = useObjectTableContext();
 
-      <ProposedChangesData
-        id={node.id}
-        branchName={node.source_branch?.value}
-        approvers={node.approved_by.edges.map((edge: { node: NodeCore }) => {
-          return edge.node;
-        })}
-        comments={node.comments.count}
-        validations={node.validations.count}
+  return (
+    <div className="p-2 border border-b-0 border-gray-200 flex items-center">
+      <div className="flex-grow grid grid-cols-2 items-center">
+        <ProposedChangesInfo
+          id={node.id}
+          name={node.name.value}
+          author={node.created_by.node.display_label}
+          state={node.state?.value}
+          createdAt={node._updated_at}
+          branchName={node.source_branch?.value}
+        />
+
+        <ProposedChangesData
+          id={node.id}
+          branchName={node.source_branch?.value}
+          approvers={node.approved_by.edges.map((edge: { node: NodeCore }) => {
+            return edge.node;
+          })}
+          comments={node.comments.count}
+          validations={node.validations.count}
+        />
+      </div>
+
+      <ProposedChangesActionCell
+        objectId={node.id}
+        objectLabel={node.display_label}
+        permission={permission}
       />
     </div>
   );
@@ -107,7 +119,7 @@ const ProposedChangesData = ({
   validations,
 }: ProposedChangesDataProps) => {
   return (
-    <div className="grid grid-cols-3 items-center gap-4 w-1/2 pr-2">
+    <div className="grid grid-cols-3 items-center gap-4 pr-2">
       <ProposedChangeDiffSummary proposedChangeId={id} branchName={branchName} />
       <ProposedChangesApprovers approvers={approvers} />
       <div className="flex items-center justify-end gap-4">

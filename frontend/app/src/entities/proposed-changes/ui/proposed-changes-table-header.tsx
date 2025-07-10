@@ -4,6 +4,7 @@ import { TableColumnHeader } from "@/entities/proposed-changes/ui/table-column-h
 import { TableColumnHeaderLink } from "@/entities/proposed-changes/ui/table-column-header-link";
 import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/utils/constant";
 import { NodeSchema } from "@/entities/schema/types";
+import useFilters from "@/shared/hooks/useFilters";
 import { StringParam, useQueryParam } from "use-query-params";
 
 interface ProposedChangesTableHeaderProps {
@@ -15,8 +16,9 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
     QSP.PROPOSED_CHANGES_STATE,
     StringParam
   );
+  const [filters] = useFilters();
 
-  const { data } = useProposedChangesCounts({ schema });
+  const { data } = useProposedChangesCounts({ filters });
 
   const stateAttribute = schema.attributes.find((attribute) => {
     return attribute.name === "state";

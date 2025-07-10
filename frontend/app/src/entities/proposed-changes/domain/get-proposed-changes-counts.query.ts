@@ -14,6 +14,7 @@ type GetObjectsQueryParams = Omit<GetProposedChangesCountsParams, keyof Paginati
 export function getProposedChangesCountsQueryOptions({
   branchName,
   atDate,
+  filters,
 }: GetObjectsQueryParams) {
   return queryOptions({
     queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_OBJECT, "count"],
@@ -21,6 +22,7 @@ export function getProposedChangesCountsQueryOptions({
       return getProposedChangesCounts({
         branchName,
         atDate,
+        filters,
       });
     },
   });
