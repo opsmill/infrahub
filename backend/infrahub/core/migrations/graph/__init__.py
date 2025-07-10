@@ -91,15 +91,11 @@ def get_migration_by_number(
     migration_number: int | str,
 ) -> GraphMigration | InternalSchemaMigration | ArbitraryMigration:
     # Convert to string and pad with zeros if needed
-    if isinstance(migration_number, int):
-        migration_str = f"{migration_number:03d}"
-    else:
-        # Handle string input, pad with zeros if needed
-        try:
-            num = int(migration_number)
-            migration_str = f"{num:03d}"
-        except ValueError as exc:
-            raise ValueError(f"Invalid migration number: {migration_number}") from exc
+    try:
+        num = int(migration_number)
+        migration_str = f"{num:03d}"
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Invalid migration number: {migration_number}") from exc
 
     migration_name = f"Migration{migration_str}"
 
