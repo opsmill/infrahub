@@ -169,7 +169,7 @@ test.describe("/proposed-changes", () => {
 
         await test.step("delete proposed change", async () => {
           await page.goto("/proposed-changes?pr_state=close");
-          await page.getByTestId("actions-row-button").first().click();
+          await page.getByTestId(`actions-row-${pcName}`).first().click();
           await page.getByTestId("delete-row-button").click();
           await expect(page.getByTestId("modal-delete")).toBeVisible();
           await page.getByTestId("modal-delete-confirm").click();

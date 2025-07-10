@@ -30,7 +30,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
             size="square"
             variant="ghost"
             className="size-6"
-            data-testid={`actions-cell-${objectLabel}`}
+            data-testid={`actions-row-${objectLabel}`}
           >
             <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
           </Button>
@@ -42,6 +42,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
               <DropdownMenuItem
                 disabled={!isDeleteAllowed}
                 onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
+                data-testid={"delete-row-button"}
               >
                 <Icon icon="mdi:delete-outline" className="text-base" />
                 Delete
