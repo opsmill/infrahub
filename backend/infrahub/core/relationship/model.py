@@ -63,9 +63,11 @@ class RelationshipCreateData(BaseModel):
     uuid: str
     name: str
     destination_id: str
-    branch: str | None = None
+    branch: str
     branch_level: int
     branch_support: str | None = None
+    peer_branch: str
+    peer_branch_level: int
     direction: str
     status: str
     is_protected: bool
@@ -532,10 +534,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         await self.resolve(db=db)
 
         peer = await self.get_peer(db=db)
+        peer_branch = peer.get_branch()
         data = RelationshipCreateData(
             uuid=str(UUIDT()),
             name=self.schema.get_identifier(),
             branch=branch.name,
+            peer_branch=peer_branch.name,
+            peer_branch_level=peer_branch.hierarchy_level,
             destination_id=peer.id,
             status="active",
             direction=self.schema.direction.value,

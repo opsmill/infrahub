@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     AttributeDBNodeType,
     RelationshipDirection,
     RelationshipHierarchyDirection,
@@ -286,15 +287,44 @@ class NodeCreateAllQuery(NodeQuery):
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["default_branch_name"] = registry.default_branch
+
+        dest_node_subquery = """
+        CALL (rel) {
+            MATCH (dest_node:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
+            WHERE (
+                (rel.peer_branch_level = 2 AND %(branch_filter)s)
+                OR (
+                    rel.peer_branch_level = 1
+                    AND rel.peer_branch = $global_branch_name
+                    AND r.branch = $global_branch_name
+                    AND r.from < $at AND (r.to IS NULL or r.to > $at)
+                )
+                OR (
+                    rel.peer_branch_level = 1 AND
+                    rel.peer_branch = $default_branch_name AND
+                    r.branch IN [$default_branch_name, $global_branch_name]
+                    AND r.from < $at AND (r.to IS NULL or r.to > $at)
+                )
+            )
+            ORDER BY r.branch_level DESC, r.from DESC
+            WITH dest_node, r
+            LIMIT 1
+            WITH dest_node, r
+            WHERE r.status = "active"
+            RETURN dest_node
+        }
+        """ % {"branch_filter": branch_filter}
+
         rels_bidir_query = """
         WITH distinct n
         UNWIND $rels_bidir AS rel
-        CALL (n, rel) {
-            MATCH (d:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
-            WHERE %(branch_filter)s
+        %(dest_node_subquery)s
+        CALL (n, rel, dest_node) {
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (dest_node)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             WITH rl, ip, iv
@@ -310,17 +340,16 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
         }
-        """ % {"rel_prop": rel_prop_str, "branch_filter": branch_filter}
+        """ % {"rel_prop": rel_prop_str, "dest_node_subquery": dest_node_subquery}
 
         rels_out_query = """
         WITH distinct n
         UNWIND $rels_out AS rel
-        CALL (n, rel) {
-            MATCH (d:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
-            WHERE %(branch_filter)s
+        %(dest_node_subquery)s
+        CALL (n, rel, dest_node) {
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            CREATE (d)<-[:IS_RELATED %(rel_prop)s ]-(rl)
+            CREATE (dest_node)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             WITH rl, ip, iv
@@ -336,17 +365,16 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
         }
-        """ % {"rel_prop": rel_prop_str, "branch_filter": branch_filter}
+        """ % {"rel_prop": rel_prop_str, "dest_node_subquery": dest_node_subquery}
 
         rels_in_query = """
         WITH distinct n
         UNWIND $rels_in AS rel
-        CALL (n, rel) {
-            MATCH (d:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
-            WHERE %(branch_filter)s
+        %(dest_node_subquery)s
+        CALL (n, rel, dest_node) {
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
-            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (dest_node)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             WITH rl, ip, iv
@@ -362,7 +390,7 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
         }
-        """ % {"rel_prop": rel_prop_str, "branch_filter": branch_filter}
+        """ % {"rel_prop": rel_prop_str, "dest_node_subquery": dest_node_subquery}
 
         query = f"""
         MATCH (root:Root)
