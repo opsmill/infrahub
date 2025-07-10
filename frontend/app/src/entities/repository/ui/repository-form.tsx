@@ -1,7 +1,5 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
@@ -11,11 +9,7 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Card, CardProps } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
 
 const RepositoryForm = ({
   onSuccess,
@@ -25,10 +19,10 @@ const RepositoryForm = ({
   onCancel,
   ...props
 }: NodeFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const { parentSchema, parentData } = useCurrentFormContext();
+  const createObject = useCreateObjectMutation();
+
   const fields = getFormFieldsFromSchema({
     auth,
     initialObject: currentObject,
@@ -55,25 +49,15 @@ const RepositoryForm = ({
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 
-        const data = getCreateMutationFromFormData(fields, formData);
-
-        const mutation = gql(
-          createObject({
-            kind: schema?.kind,
-            data: stringifyWithoutQuotes(data),
-          })
-        );
-
-        const result = await graphqlClient.mutate({
-          mutation,
-          context: {
-            branch: branch?.name,
-            date,
+        await createObject.mutateAsync(
+          {
+            objectKind: schema.kind as string,
+            data: getCreateMutationFromFormData(fields, formData),
           },
-        });
-
-        await graphqlClient.reFetchObservableQueries();
-        if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
+          {
+            onSuccess,
+          }
+        );
       }}
     >
       <FormGroup>
@@ -90,7 +74,9 @@ const RepositoryForm = ({
           type="relationship"
           label="Authentication"
           placeholder="Select your credential"
-          relationship={{ peer: "CorePasswordCredential", name: "credential", cardinality: "one" }}
+          relationship={
+            { peer: "CorePasswordCredential", name: "credential", cardinality: "one" } as any
+          }
           schema={schema}
         />
       </FormGroup>

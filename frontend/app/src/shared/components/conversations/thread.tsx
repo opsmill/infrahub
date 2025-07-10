@@ -2,8 +2,8 @@ import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { getThreadTitle } from "@/entities/diff/utils";
-import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -50,6 +50,7 @@ export const Thread = (props: tThread) => {
   const [displayAddComment, setDisplayAddComment] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
+  const createObject = useCreateObjectMutation();
 
   const { loading, data } = useQuery(
     gql(getObjectPermissionsQuery(PROPOSED_CHANGES_THREAD_COMMENT_OBJECT))
@@ -59,57 +60,49 @@ export const Thread = (props: tThread) => {
     data && getPermission(data?.[PROPOSED_CHANGES_THREAD_COMMENT_OBJECT]?.permissions?.edges);
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
-    try {
-      setIsLoading(true);
+    setIsLoading(true);
 
-      const newObject = {
-        text: {
-          value: comment,
-        },
-        thread: {
-          id: thread.id,
-        },
-        created_by: {
-          id: auth?.data?.sub,
-        },
-        created_at: {
-          value: formatISO(new Date()),
-        },
-      };
+    const newObject = {
+      text: {
+        value: comment,
+      },
+      thread: {
+        id: thread.id,
+      },
+      created_by: {
+        id: auth?.data?.sub,
+      },
+      created_at: {
+        value: formatISO(new Date()),
+      },
+    };
 
-      const mutationString = createObject({
-        kind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-        data: stringifyWithoutQuotes(newObject),
-      });
+    await createObject.mutateAsync(
+      {
+        objectKind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+        data: newObject,
+      },
+      {
+        onSuccess: async () => {
+          if (markAsResolved) {
+            // If the resolved checkbox was checked, we need to resolve the thread after the comment
+            await handleResolve();
+          }
 
-      const mutation = gql`
-        ${mutationString}
-      `;
+          if (refetch) {
+            await refetch();
+          }
 
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+          setIsLoading(false);
+          setDisplayAddComment(false);
         },
-      });
+        onError: (error) => {
+          console.error("An error occurred while creating the comment: ", error);
 
-      if (markAsResolved) {
-        // If the resolved checkbox was checked, we need to resolve the thread after the comment
-        await handleResolve();
+          setIsLoading(false);
+        },
       }
-
-      if (refetch) {
-        await refetch();
-      }
-
-      setIsLoading(false);
-      setDisplayAddComment(false);
-    } catch (error: any) {
-      console.error("An error occurred while creating the comment: ", error);
-
-      setIsLoading(false);
-    }
+    );
   };
 
   const handleResolve = async () => {

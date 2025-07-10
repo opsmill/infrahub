@@ -46,7 +46,10 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
               <Icon icon="mdi:open-in-new" />
             </MenuItem>
 
-            <MenuItem href={constructPath("/schema", [{ name: "kind", value: kind }])}>
+            <MenuItem
+              isDisabled={!kind}
+              href={constructPath("/schema", [{ name: "kind", value: kind }])}
+            >
               <Icon icon="mdi:code-json" className="text-lg" />
               Schema
             </MenuItem>

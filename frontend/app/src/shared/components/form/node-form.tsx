@@ -1,15 +1,11 @@
-import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
 import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject } from "@/entities/nodes/types";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { NodeCore, NodeObject } from "@/entities/nodes/types";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
-import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
 import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
@@ -19,11 +15,7 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 
 export type NodeFormSubmitParams = {
@@ -41,7 +33,7 @@ export type NodeFormProps = {
   isFilterForm?: boolean;
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
-  onSuccess?: (newObject: any) => void;
+  onSuccess?: (newObject: NodeCore) => void;
   onCancel?: () => void;
 };
 
@@ -57,10 +49,9 @@ export const NodeForm = ({
   isUpdate,
   ...props
 }: NodeFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const { parentData, parentSchema } = useCurrentFormContext();
+  const createObject = useCreateObjectMutation();
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
 
@@ -72,8 +63,8 @@ export const NodeForm = ({
       label: node.display_label as string,
       kind: node.__typename as string,
       nodeAttribute: {
-        id: node.node_attribute.id as string,
-        name: node.node_attribute.value as string,
+        id: node.node_attribute?.id as string,
+        name: node.node_attribute?.value as string,
       },
     })
   );
@@ -92,66 +83,33 @@ export const NodeForm = ({
   });
 
   async function onSubmitCreate(data: Record<string, FormFieldValue>) {
-    try {
-      if (schema.kind === ACCOUNT_TOKEN_OBJECT) {
-        const result = await graphqlClient.mutate({
-          mutation: CREATE_ACCOUNT_TOKEN,
-          variables: {
-            name: data.name?.value,
-            expiration: data.expiration?.value,
-          },
-          context: {
-            branch: branch?.name,
-            date,
-          },
-        });
+    const newObject = getCreateMutationFromFormData(fields, data);
+    const isObjectEmpty = Object.keys(newObject).length === 0;
+    const isProfilesEmpty = !profiles || profiles.length === 0;
 
-        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.label} created`} />, {
-          toastId: `alert-success-${schema?.name}-created`,
-        });
-
-        if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
-        return;
-      }
-
-      const newObject = getCreateMutationFromFormData(fields, data);
-      const isObjectEmpty = Object.keys(newObject).length === 0;
-      const isProfilesEmpty = !profiles || profiles.length === 0;
-
-      if (isObjectEmpty && isProfilesEmpty) {
-        return;
-      }
-
-      const profileIds = profiles?.map((profile) => ({ id: profile.id })) ?? [];
-
-      const mutationString = createObject({
-        kind: schema?.kind,
-        data: stringifyWithoutQuotes({
-          ...newObject,
-          ...(profileIds.length ? { profiles: profileIds } : {}),
-        }),
-      });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
-        },
-      });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-        toastId: `alert-success-${schema?.name}-created`,
-      });
-
-      if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+    if (isObjectEmpty && isProfilesEmpty) {
+      return;
     }
+
+    await createObject.mutateAsync(
+      {
+        objectKind: schema.kind as string,
+        data: newObject,
+        profileIds: profiles?.map((profile) => profile.id),
+      },
+      {
+        onSuccess: async (newObject) => {
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+            toastId: `alert-success-${schema?.name}-created`,
+          });
+
+          if (onSuccess) await onSuccess(newObject);
+        },
+        onError: (error) => {
+          console.error("An error occurred while creating the object: ", error);
+        },
+      }
+    );
   }
 
   return (

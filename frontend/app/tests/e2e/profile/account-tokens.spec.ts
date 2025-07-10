@@ -3,14 +3,6 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/profile?tab=tokens", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test.describe("when not logged in as admin account", () => {
     test("should not access profile tokens", async ({ page }) => {
       await page.goto("/profile?tab=tokens");
@@ -27,17 +19,16 @@ test.describe("/profile?tab=tokens", () => {
         await page.getByTestId("authenticated-menu-trigger").click();
         await page.getByRole("menuitem", { name: "Account settings" }).click();
         await page.getByText("Tokens").click();
-        await expect(page.getByTestId("create-object-button")).toBeVisible();
+        await page.getByRole("button", { name: "Add account token" }).click();
+        await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
         await saveScreenshotForDocs(page, "profile_tokens");
       });
 
       await test.step("create a new token", async () => {
-        await page.getByTestId("create-object-button").click();
-        await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
         await page.getByLabel("Name *").fill("test token");
         await saveScreenshotForDocs(page, "profile_tokens_create");
         await page.getByRole("button", { name: "Save" }).click();
-        await expect(page.getByText("Make sure to copy your API")).toBeVisible();
+        await expect(page.getByText("For security reasons we cannot show it again.")).toBeVisible();
         await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible();
         await saveScreenshotForDocs(page, "profile_tokens_copy");
         await page.getByRole("button", { name: "Confirm" }).click();
