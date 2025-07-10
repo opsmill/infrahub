@@ -37,7 +37,6 @@ export default defineConfig({
       exclude: [
         "node_modules/",
         "mocks/",
-        "cypress/",
         "**/**.d.ts",
         "**/tests/**",
         "**/**component-preview",

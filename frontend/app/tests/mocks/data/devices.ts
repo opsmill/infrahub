@@ -1,5 +1,3 @@
-import { permissionsAllow } from "./permissions";
-
 export const deviceDetailsMocksId = "bd3110b9-5923-45e9-b643-776b8151c074";
 export const deviceDetailsMocksHfid = "atl1-edge1";
 export const deviceSiteMocksId = "06c3ab9e-535e-41af-bf4b-ec9134cc4353";
@@ -513,7 +511,21 @@ export const deviceDetailsMocksData = {
         __typename: "EdgedInfraDevice",
       },
     ],
-    permissions: permissionsAllow,
+    permissions: {
+      edges: [
+        {
+          node: {
+            kind: "InfraDevice",
+            view: "ALLOW",
+            create: "ALLOW",
+            update: "ALLOW",
+            delete: "ALLOW",
+            __typename: "ObjectPermission",
+          },
+          __typename: "ObjectPermissionNode",
+        },
+      ],
+    },
     __typename: "PaginatedInfraDevice",
   },
 };
