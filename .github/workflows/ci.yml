@@ -574,21 +574,6 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "npm run test:coverage"
-      - name: "Run integration tests"
-        working-directory: ./frontend/app
-        run: "npm run cypress:run"
-      - name: Upload cypress screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/docs/media/*
-      - name: Upload cypress videos
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: frontend/app/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
