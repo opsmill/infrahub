@@ -1,0 +1,1 @@
+Fix an issue where prefixes could not be allocated from a pool when passing `member_type` inside the data parameter
