@@ -5,7 +5,7 @@ import {
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getThreadLabel } from "@/entities/diff/utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObject } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -31,7 +31,7 @@ export const DiffComments = (props: tDiffComments) => {
   const auth = useAuth();
   const { refetch: contextRefetch, node, currentBranch } = use(DiffContext);
   const createObject = useCreateObjectMutation();
-  const deleteObject = useDeleteObject();
+  const deleteObject = useDeleteObjectMutation();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 

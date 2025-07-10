@@ -12,7 +12,7 @@ export interface DeleteObjectParams {
   objectId: string;
 }
 
-export function useDeleteObject() {
+export function useDeleteObjectMutation() {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 

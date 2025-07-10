@@ -6,7 +6,7 @@ import {
 } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObject } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesThreads } from "@/entities/proposed-changes/api/getProposedChangesThreads";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { AddComment } from "@/shared/components/conversations/add-comment";
@@ -26,7 +26,7 @@ export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivEle
   const auth = useAuth();
   const formRef = useRef<FormRef>(null);
   const createObject = useCreateObjectMutation();
-  const deleteObject = useDeleteObject();
+  const deleteObject = useDeleteObjectMutation();
 
   const queryString = getProposedChangesThreads({
     id: proposedChangeId,
