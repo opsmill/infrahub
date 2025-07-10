@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
+import monacoEditorPlugin from "vite-plugin-monaco-editor-esm";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -15,7 +16,21 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0",
   },
-  plugins: [tailwindcss(), react(), svgr(), tsconfigPaths()],
+  plugins: [
+    tailwindcss(),
+    react(),
+    svgr(),
+    tsconfigPaths(),
+    monacoEditorPlugin({
+      languageWorkers: ["editorWorkerService", "json"],
+      customWorkers: [
+        {
+          label: "graphql",
+          entry: "monaco-graphql/esm/graphql.worker.js",
+        },
+      ],
+    }),
+  ],
   test: {
     browser: {
       enabled: true,
