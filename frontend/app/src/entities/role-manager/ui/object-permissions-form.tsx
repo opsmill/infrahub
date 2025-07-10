@@ -118,7 +118,7 @@ export const ObjectPermissionForm = ({
     } else {
       await createObject.mutateAsync(
         {
-          kind: OBJECT_PERMISSION_OBJECT,
+          objectKind: OBJECT_PERMISSION_OBJECT,
           data: newObject,
         },
         {
