@@ -129,7 +129,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002, PLR0915
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -152,11 +152,19 @@ class NodeCreateAllQuery(NodeQuery):
             else:
                 attributes.append(attr_data)
 
+        deepest_branch_name = self.branch.name
+        deepest_branch_level = self.branch.hierarchy_level
         relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
             for rel in rel_manager._relationships:
-                relationships.append(await rel.get_create_data(db=db))
+                rel_create_data = await rel.get_create_data(db=db, at=at)
+                if rel_create_data.peer_branch_level > deepest_branch_level or (
+                    deepest_branch_name == GLOBAL_BRANCH_NAME and rel_create_data.peer_branch == registry.default_branch
+                ):
+                    deepest_branch_name = rel_create_data.peer_branch
+                    deepest_branch_level = rel_create_data.peer_branch_level
+                relationships.append(rel_create_data)
 
         self.params["attrs"] = [attr.model_dump() for attr in attributes]
         self.params["attrs_iphost"] = [attr.model_dump() for attr in attributes_iphost]
@@ -285,7 +293,8 @@ class NodeCreateAllQuery(NodeQuery):
         }
         """ % {"ipnetwork_prop": ", ".join(ipnetwork_prop_list)}
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)
+        branch_filter, branch_params = deepest_branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["default_branch_name"] = registry.default_branch
@@ -299,16 +308,16 @@ class NodeCreateAllQuery(NodeQuery):
                     rel.peer_branch_level = 1
                     AND rel.peer_branch = $global_branch_name
                     AND r.branch = $global_branch_name
-                    AND r.from < $at AND (r.to IS NULL or r.to > $at)
+                    AND r.from <= $at AND (r.to IS NULL or r.to > $at)
                 )
                 OR (
                     rel.peer_branch_level = 1 AND
                     rel.peer_branch = $default_branch_name AND
                     r.branch IN [$default_branch_name, $global_branch_name]
-                    AND r.from < $at AND (r.to IS NULL or r.to > $at)
+                    AND r.from <= $at AND (r.to IS NULL or r.to > $at)
                 )
             )
-            ORDER BY r.branch_level DESC, r.from DESC
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             WITH dest_node, r
             LIMIT 1
             WITH dest_node, r
