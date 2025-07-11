@@ -3,38 +3,37 @@
 name: "Keyword Scanner"
 on: [push, pull_request]
 
-env:
-  KEYWORDS_LIST: ${{ secrets.KEYWORDS_LIST }}
-  KEYWORDS_REGEX: ""
+# env:
+#   KEYWORDS_LIST: ${{ secrets.KEYWORDS_LIST }}
 
 jobs:
-  test:
+  scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - uses: actions/checkout@v4
 
-      - name: Create TruffleHog config
-        run: |
-          echo "detectors:" > custom-keywords.yaml
-          echo "  - name: Internal keywords" >> custom-keywords.yaml
-          echo "    keywords:" >> custom-keywords.yaml
-          IFS=',' read -ra KW <<< "${KEYWORDS_LIST}"
-          for k in "${KW[@]}"; do
-            echo "      - ${k}" >> custom-keywords.yaml
-          done
-          echo "    regex:" >> custom-keywords.yaml
-          printf "      adjective: '\\b(%s)\\b'\n" "${KEYWORDS_REGEX}" >> custom-keywords.yaml
-        env:
-          KEYWORDS_LIST: ${{ env.KEYWORDS_LIST }}
-          KEYWORDS_REGEX: ${{ env.KEYWORDS_REGEX }}
+    - name: Scan for prohibited keywords
+      run: |
+        # Convert comma-separated secrets to array
+        IFS=',' read -ra KEYWORDS <<< "${{ secrets.KEYWORD_LIST }}"
+        found=false
 
-      - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --config=custom-keywords.yaml
+        for keyword in "${KEYWORDS[@]}"; do
+          # Trim whitespace
+          keyword=$(echo "$keyword" | xargs)
+          echo "Scanning for: $keyword"
+
+          if grep -r --exclude-dir=.git --exclude-dir=node_modules \
+                    --exclude="*.log" --exclude="*.lock" \
+                    -i "$keyword" .; then
+            echo "::error::Found prohibited keyword: $keyword"
+            found=true
+          fi
+        done
+
+        if [ "$found" = true ]; then
+          echo "::error::Keyword scan failed - prohibited terms found"
+          exit 1
+        else
+          echo "✅ No prohibited keywords found"
+        fi
