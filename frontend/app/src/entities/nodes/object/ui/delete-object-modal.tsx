@@ -9,6 +9,7 @@ export interface DeleteObjectModalProps {
   objectLabel: string;
   open: boolean;
   setOpen: (b: boolean) => void;
+  alertMessage?: string;
 }
 
 export function DeleteObjectModal({
@@ -17,6 +18,7 @@ export function DeleteObjectModal({
   objectId,
   open,
   setOpen,
+  alertMessage,
 }: DeleteObjectModalProps) {
   const { mutate, isPending } = useDeleteObject();
 
@@ -37,7 +39,12 @@ export function DeleteObjectModal({
           {
             onSuccess: () => {
               setOpen(false);
-              toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Object ${objectLabel} deleted`} />);
+              toast(
+                <Alert
+                  type={ALERT_TYPES.SUCCESS}
+                  message={alertMessage ?? `Object ${objectLabel} deleted`}
+                />
+              );
             },
           }
         )

@@ -30,7 +30,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
             size="square"
             variant="ghost"
             className="size-6"
-            data-testid={`actions-row-${objectLabel}`}
+            data-testid={`actions-row-button-${objectLabel}`}
           >
             <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
           </Button>
@@ -59,6 +59,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
           objectLabel={objectLabel}
           open={true}
           setOpen={() => setShowDeleteModal(false)}
+          alertMessage={`Proposed changes ${objectLabel} deleted`}
         />
       )}
     </>
