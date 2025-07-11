@@ -94,8 +94,14 @@ class InfrahubBaseMutation(ObjectType):
     CoreProposedChangeMerge = ProposedChangeMerge.Field()
     CoreGeneratorDefinitionRun = GeneratorDefinitionRequestRun.Field()
 
-    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
-    IPAddressPoolGetResource = IPAddressPoolGetResource.Field()
+    InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
+    InfrahubIPAddressPoolGetResource = IPAddressPoolGetResource.Field()
+    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field(
+        deprecation_reason="This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub."
+    )
+    IPAddressPoolGetResource = IPAddressPoolGetResource.Field(
+        deprecation_reason="This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub."
+    )
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()
