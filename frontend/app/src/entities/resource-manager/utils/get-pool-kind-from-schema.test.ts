@@ -2,7 +2,7 @@ import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { ModelSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
-import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
+import { generateGenericSchema, generateNodeSchema } from "../../../../tests/fake/schema";
 import { getPoolKindFromSchema } from "./get-pool-kind-from-schema";
 
 describe("getPoolKindFromSchema", () => {

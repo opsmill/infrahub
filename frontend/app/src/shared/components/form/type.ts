@@ -130,6 +130,10 @@ export type FormFieldProps = {
   unique?: boolean;
   rules?: ComponentProps<typeof FormField>["rules"];
   onChange?: (value: FormFieldValue) => void;
+  pool?: {
+    kind: string;
+    defaultAllocatedObjectKind: string;
+  };
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {

@@ -15,6 +15,7 @@ import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/con
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";
@@ -43,6 +44,7 @@ export type ProfileData = {
   __typename: string;
 };
 
+const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));
 const RepositoryForm = lazy(() => import("@/entities/repository/ui/repository-form"));
 const ObjectTemplateForm = lazy(
   () => import("@/entities/nodes/object-template/object-template-form")
@@ -134,6 +136,14 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (isGeneric) {
     return <GenericObjectForm genericSchema={schema} {...props} />;
+  }
+
+  if (!props.isUpdate && getPoolKindFromSchema(schema)) {
+    return (
+      <Suspense fallback={<LoadingIndicator className="mt-4" />}>
+        <IpPrefixForm schema={schema} profiles={currentProfiles} {...props} />
+      </Suspense>
+    );
   }
 
   if (isNode && schema.generate_profile) {

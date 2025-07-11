@@ -10,7 +10,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface SelectFieldProps
   extends FormFieldProps,
-    Omit<DynamicSelectFieldProps, "defaultValue" | "name"> {}
+    Omit<DynamicSelectFieldProps, "defaultValue" | "name" | "type"> {}
 
 export function SelectField({
   defaultValue = { source: null, value: null },

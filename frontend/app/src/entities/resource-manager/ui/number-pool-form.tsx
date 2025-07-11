@@ -1,7 +1,6 @@
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import {} from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
