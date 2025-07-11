@@ -230,7 +230,7 @@ Execute the following mutation to allocate an IP address out of the pool. Replac
 
   ```graphql
     mutation {
-      IPAddressPoolGetResource(
+      InfrahubIPAddressPoolGetResource(
         data: {
           id: "<id of resource pool>",
           data: {
@@ -264,7 +264,7 @@ Execute this mutation twice, note the identifier. The resulting IP address shoul
 
   ```graphql
     mutation {
-      IPAddressPoolGetResource(data: {
+      InfrahubIPAddressPoolGetResource(data: {
         id: "<id of resource pool>",
         identifier: "my-allocated-ip",
       })
@@ -430,7 +430,7 @@ Execute the following mutation to allocate an IP prefix out of the pool. Replace
 
   ```graphql
     mutation {
-      IPPrefixPoolGetResource(data: {
+      InfrahubIPPrefixPoolGetResource(data: {
         id: "<id of resource pool>",
         data: {
           description: "prefix allocated to point to point connection"
@@ -502,7 +502,7 @@ Execute this mutation twice, note the identifier. The resulting IP prefix should
 
   ```graphql
     mutation {
-      IPPrefixPoolGetResource(data: {
+      InfrahubIPPrefixPoolGetResource(data: {
         id: "<id of resource pool>",
         identifier: "my-allocated-prefix",
       })
@@ -664,7 +664,7 @@ Allocate a new IP address in the `test` branch using this mutation. Replace the 
 
   ```graphql
     mutation {
-      IPAddressPoolGetResource(
+      InfrahubIPAddressPoolGetResource(
         data: {
           id: "<id of resource pool>",
       })
