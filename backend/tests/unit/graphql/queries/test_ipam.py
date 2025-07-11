@@ -367,8 +367,6 @@ async def test_ipaddress_include_available(
     prefix: str,
     result: list[str],
 ):
-    obj = ip_dataset_ranges[prefix]
-
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
@@ -385,7 +383,10 @@ async def test_ipaddress_include_available(
     """
 
     response = await graphql(
-        schema=gql_params.schema, source=query, context_value=gql_params.context, variable_values={"prefix": obj.id}
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        variable_values={"prefix": ip_dataset_ranges[prefix].id},
     )
     assert not response.errors
     assert response.data
@@ -400,7 +401,15 @@ async def test_ipaddress_include_available(
     "limit,offset,result",
     [
         (
-            4,
+            1,
+            0,
+            [
+                ("InternalIPRangeAvailable", "1 IP address available"),
+                ("IpamIPAddress", "2001:db8::1/64"),
+            ],
+        ),
+        (
+            2,
             0,
             [
                 ("InternalIPRangeAvailable", "1 IP address available"),
@@ -411,8 +420,12 @@ async def test_ipaddress_include_available(
         ),
         (
             4,
-            4,
+            0,
             [
+                ("InternalIPRangeAvailable", "1 IP address available"),
+                ("IpamIPAddress", "2001:db8::1/64"),
+                ("IpamIPAddress", "2001:db8::2/64"),
+                ("InternalIPRangeAvailable", "28 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::1f/64"),
                 ("InternalIPRangeAvailable", "223 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ff/64"),
@@ -420,12 +433,33 @@ async def test_ipaddress_include_available(
             ],
         ),
         (
-            5,
-            6,
+            0,
+            2,
             [
+                ("InternalIPRangeAvailable", "28 IP addresses available"),
+                ("IpamIPAddress", "2001:db8::1f/64"),
+                ("InternalIPRangeAvailable", "223 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ff/64"),
                 ("InternalIPRangeAvailable", "Many IP addresses available"),
                 ("IpamIPAddress", "2001:db8::100:1/64"),
+                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
+            ],
+        ),
+        (
+            4,
+            4,
+            [
+                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("IpamIPAddress", "2001:db8::100:1/64"),
+                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
+            ],
+        ),
+        (
+            5,
+            6,
+            [
                 ("InternalIPRangeAvailable", "Many IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
             ],
@@ -442,8 +476,6 @@ async def test_ipaddress_include_available_pagination(
     offset: int,
     result: list[str],
 ):
-    obj = ip_dataset_ranges["net6"]
-
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
@@ -463,7 +495,7 @@ async def test_ipaddress_include_available_pagination(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
-        variable_values={"prefix": obj.id, "limit": limit, "offset": offset},
+        variable_values={"prefix": ip_dataset_ranges["net6"].id, "limit": limit, "offset": offset},
     )
     assert not response.errors
     assert response.data
@@ -537,6 +569,10 @@ async def ip_dataset_available_prefixes(
     await _create_prefix(db, prefix_schema, "2001:db8::/56", ns, net6)
     await _create_prefix(db, prefix_schema, "2001:db8:0:a00::/56", ns, net6)
     await _create_prefix(db, prefix_schema, "2001:db8:0:f000::/64", ns, net6)
+    await _create_prefix(db, prefix_schema, "2001:db8:0:f100::/64", ns, net6)
+    await _create_prefix(db, prefix_schema, "2001:db8:0:f200::/64", ns, net6)
+    await _create_prefix(db, prefix_schema, "2001:db8:0:ff00::/64", ns, net6)
+    await _create_prefix(db, prefix_schema, "2001:db8:0:ffff::/64", ns, net6)
 
     return {
         "ns": ns,
@@ -610,10 +646,45 @@ async def ip_dataset_available_prefixes(
                 ("InternalIPPrefixAvailable", "2001:db8:0:f020::/59"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:f040::/58"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:f080::/57"),
-                ("InternalIPPrefixAvailable", "2001:db8:0:f100::/56"),
-                ("InternalIPPrefixAvailable", "2001:db8:0:f200::/55"),
+                ("IpamIPPrefix", "2001:db8:0:f100::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f101::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f102::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f104::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f108::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f110::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f120::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f140::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f180::/57"),
+                ("IpamIPPrefix", "2001:db8:0:f200::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f201::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f202::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f204::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f208::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f210::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f220::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f240::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f280::/57"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f300::/56"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:f400::/54"),
-                ("InternalIPPrefixAvailable", "2001:db8:0:f800::/53"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f800::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fc00::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fe00::/56"),
+                ("IpamIPPrefix", "2001:db8:0:ff00::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff01::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff02::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff04::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff08::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff10::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff20::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff40::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff80::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ffc0::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ffe0::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fff0::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fff8::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fffc::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fffe::/64"),
+                ("IpamIPPrefix", "2001:db8:0:ffff::/64"),
             ],
         ),
     ],
@@ -627,8 +698,6 @@ async def test_ipprefix_include_available(
     prefix: str,
     result: list[str],
 ):
-    obj = ip_dataset_available_prefixes[prefix]
-
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
@@ -645,7 +714,10 @@ async def test_ipprefix_include_available(
     """
 
     response = await graphql(
-        schema=gql_params.schema, source=query, context_value=gql_params.context, variable_values={"prefix": obj.id}
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        variable_values={"prefix": ip_dataset_available_prefixes[prefix].id},
     )
 
     assert not response.errors
@@ -668,22 +740,47 @@ async def test_ipprefix_include_available(
                 ("InternalIPPrefixAvailable", "2001:db8:0:100::/56"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:200::/55"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:400::/54"),
-            ],
-        ),
-        (
-            4,
-            4,
-            [
                 ("InternalIPPrefixAvailable", "2001:db8:0:800::/55"),
                 ("IpamIPPrefix", "2001:db8:0:a00::/56"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:b00::/56"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:c00::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:1000::/52"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:2000::/51"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:4000::/50"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:8000::/50"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:c000::/51"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:e000::/52"),
+                ("IpamIPPrefix", "2001:db8:0:f000::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f001::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f002::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f004::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f008::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f010::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f020::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f040::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f080::/57"),
+                ("IpamIPPrefix", "2001:db8:0:f100::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f101::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f102::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f104::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f108::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f110::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f120::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f140::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f180::/57"),
             ],
         ),
         (
-            20,
-            8,
+            2,
+            1,
             [
+                ("InternalIPPrefixAvailable", "2001:db8:0:100::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:200::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:400::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:800::/55"),
+                ("IpamIPPrefix", "2001:db8:0:a00::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:b00::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:c00::/54"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:1000::/52"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:2000::/51"),
                 ("InternalIPPrefixAvailable", "2001:db8:0:4000::/50"),
@@ -705,6 +802,50 @@ async def test_ipprefix_include_available(
                 ("InternalIPPrefixAvailable", "2001:db8:0:f800::/53"),
             ],
         ),
+        (
+            20,
+            4,
+            [
+                ("InternalIPPrefixAvailable", "2001:db8:0:f101::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f102::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f104::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f108::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f110::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f120::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f140::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f180::/57"),
+                ("IpamIPPrefix", "2001:db8:0:f200::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f201::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f202::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f204::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f208::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f210::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f220::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f240::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f280::/57"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f300::/56"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f400::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:f800::/54"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fc00::/55"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fe00::/56"),
+                ("IpamIPPrefix", "2001:db8:0:ff00::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff01::/64"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff02::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff04::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff08::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff10::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff20::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff40::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ff80::/58"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ffc0::/59"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:ffe0::/60"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fff0::/61"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fff8::/62"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fffc::/63"),
+                ("InternalIPPrefixAvailable", "2001:db8:0:fffe::/64"),
+                ("IpamIPPrefix", "2001:db8:0:ffff::/64"),
+            ],
+        ),
     ],
 )
 async def test_ipprefix_include_available_pagination(
@@ -717,8 +858,6 @@ async def test_ipprefix_include_available_pagination(
     offset: int,
     result: list[str],
 ):
-    obj = ip_dataset_available_prefixes["net6"]
-
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
@@ -738,7 +877,7 @@ async def test_ipprefix_include_available_pagination(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
-        variable_values={"prefix": obj.id, "limit": limit, "offset": offset},
+        variable_values={"prefix": ip_dataset_available_prefixes["net6"].id, "limit": limit, "offset": offset},
     )
 
     assert not response.errors
