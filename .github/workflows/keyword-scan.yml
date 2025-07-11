@@ -1,39 +1,44 @@
 ---
 # yamllint disable rule:truthy
-name: "Keyword Scanner"
+name: Keyword Scanner
 on: [push, pull_request]
 
-# env:
-#   KEYWORDS_LIST: ${{ secrets.KEYWORDS_LIST }}
+env:
+  KEYWORD_LIST: ${{ secrets.KEYWORD_LIST }}
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Scan for prohibited keywords
-      run: |
-        # Convert comma-separated secrets to array
-        IFS=',' read -ra KEYWORDS <<< "${{ secrets.KEYWORD_LIST }}"
-        found=false
+      - name: Scan for prohibited keywords
+        run: |
+          # Create keyword array from secret (no echo/print of keywords)
+          IFS=',' read -ra KEYWORDS <<< "$KEYWORD_LIST"
+          found=false
+          violations=()
 
-        for keyword in "${KEYWORDS[@]}"; do
-          # Trim whitespace
-          keyword=$(echo "$keyword" | xargs)
-          echo "Scanning for: $keyword"
+          for keyword in "${KEYWORDS[@]}"; do
+            # Trim whitespace
+            keyword=$(echo "$keyword" | xargs)
 
-          if grep -r --exclude-dir=.git --exclude-dir=node_modules \
-                    --exclude="*.log" --exclude="*.lock" \
-                    -i "$keyword" .; then
-            echo "::error::Found prohibited keyword: $keyword"
-            found=true
+            # Search silently - redirect output to temp file
+            if grep -r --exclude-dir=.git --exclude-dir=node_modules \
+                      --exclude="*.log" --exclude="*.lock" \
+                      -l -i "$keyword" . > /tmp/matches 2>/dev/null; then
+
+              # Count matches without showing the keyword
+              match_count=$(wc -l < /tmp/matches)
+              violations+=("$match_count file(s)")
+              found=true
+            fi
+          done
+
+          if [ "$found" = true ]; then
+            echo "::error::Keyword scan failed - prohibited terms found in: ${violations[*]}"
+            echo "Contact security team for details on specific violations"
+            exit 1
+          else
+            echo "✅ No prohibited keywords found"
           fi
-        done
-
-        if [ "$found" = true ]; then
-          echo "::error::Keyword scan failed - prohibited terms found"
-          exit 1
-        else
-          echo "✅ No prohibited keywords found"
-        fi
