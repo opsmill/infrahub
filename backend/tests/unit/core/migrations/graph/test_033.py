@@ -73,6 +73,15 @@ class TestMigration033:
                 "branch_level": 2,
                 "from_time": "2025-01-04T00:00:02Z",
             },
+            # node on branch deleted, rel on branch during node active time
+            {
+                "uuid": "legal_branch_branch_deleted",
+                "source_uuid": "branch_a_node_deleted",
+                "dest_uuid": "branch_a_node_one",
+                "branch": "branch_a",
+                "branch_level": 2,
+                "from_time": "2025-01-03T02:00:01Z",
+            },
         ]
 
     @pytest.fixture(scope="class")
@@ -177,6 +186,15 @@ class TestMigration033:
                 "branch_level": 2,
                 "from_time": "2024-01-31T00:00:00Z",
             },
+            # node on branch deleted, rel on same branch after node deleted
+            {
+                "uuid": "illegal_branch_branch_deleted",
+                "source_uuid": "branch_a_node_deleted",
+                "dest_uuid": "branch_a_node_one",
+                "branch": "branch_a",
+                "branch_level": 2,
+                "from_time": "2025-02-03T02:00:03Z",
+            },
         ]
 
     @pytest.fixture(scope="class")
@@ -261,6 +279,15 @@ MERGE (branch_b:Branch {name: "branch_b", branched_from: "2025-01-04T00:00:00"})
                 "branch_level": 2,
                 "from_time": "2025-01-03T01:00:01Z",
             },
+            # branch A node deleted - 2025-01-03
+            {
+                "labels": ["BranchNode"],
+                "uuid": "branch_a_node_deleted",
+                "branch": "branch_a",
+                "branch_level": 2,
+                "from_time": "2025-01-03T02:00:01Z",
+                "to_time": "2025-02-03T02:00:02Z",
+            },
             # branch B node one - 2025-01-04
             {
                 "labels": ["BranchNode"],
@@ -269,7 +296,7 @@ MERGE (branch_b:Branch {name: "branch_b", branched_from: "2025-01-04T00:00:00"})
                 "branch_level": 2,
                 "from_time": "2025-01-04T00:00:01Z",
             },
-            # branch node two - 2025-01-04
+            # branch B node two - 2025-01-04
             {
                 "labels": ["BranchNode"],
                 "uuid": "branch_b_node_two",
@@ -280,18 +307,15 @@ MERGE (branch_b:Branch {name: "branch_b", branched_from: "2025-01-04T00:00:00"})
         ]
 
         for node_dict in nodes:
+            # ruff: noqa: E501
             create_node_query = """
 MATCH (root:Root)
-CREATE (n:Node:%(node_labels)s {uuid: "%(uuid)s"})
-CREATE (n)-[:IS_PART_OF {status: "active", branch: "%(branch)s", branch_level: %(branch_level)s, from: "%(from_time)s"}]->(root)
+CREATE (n:Node:%(node_labels)s {uuid: $node_dict.uuid})
+CREATE (n)-[:IS_PART_OF {status: "active", branch: $node_dict.branch, branch_level: $node_dict.branch_level, from: $node_dict.from_time, to: $node_dict.to_time}]->(root)
             """ % {
                 "node_labels": " ".join(node_dict["labels"]),
-                "uuid": node_dict["uuid"],
-                "branch": node_dict["branch"],
-                "branch_level": node_dict["branch_level"],
-                "from_time": node_dict["from_time"],
             }
-            await db.execute_query(query=create_node_query)
+            await db.execute_query(query=create_node_query, params={"node_dict": node_dict})
 
         create_relationships_query = """
 UNWIND $relationships AS rel
@@ -313,7 +337,7 @@ CREATE (rel_node_two)-[:IS_RELATED {status: "active", branch: rel.branch, branch
 
     async def test_migration_033(self, db: InfrahubDatabase, load_bad_data, legal_relationship_dicts):
         # Run the migration
-        migration = Migration033(db=db)
+        migration = Migration033()
         execution_result = await migration.execute(db=db)
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
