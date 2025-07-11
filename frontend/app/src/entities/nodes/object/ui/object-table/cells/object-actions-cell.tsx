@@ -109,6 +109,7 @@ export function ObjectActionsCell({
               await queryClient.invalidateQueries({
                 predicate: (query) => query.queryKey.includes("objects"),
               });
+              setShowEditForm(false);
             }}
             objectid={objectId}
             objectname={objectKind}

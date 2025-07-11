@@ -1,4 +1,4 @@
-import { useDeleteObject } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { toast } from "react-toastify";
@@ -20,7 +20,7 @@ export function DeleteObjectModal({
   setOpen,
   alertMessage,
 }: DeleteObjectModalProps) {
-  const { mutate, isPending } = useDeleteObject();
+  const { mutate, isPending } = useDeleteObjectMutation();
 
   return (
     <ModalDelete
