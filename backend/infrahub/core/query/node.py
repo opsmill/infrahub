@@ -303,13 +303,16 @@ class NodeCreateAllQuery(NodeQuery):
         CALL (rel) {
             MATCH (dest_node:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
             WHERE (
+                // if the relationship is on a branch, use the regular filter
                 (rel.peer_branch_level = 2 AND %(branch_filter)s)
+                // simplified filter for the global branch
                 OR (
                     rel.peer_branch_level = 1
                     AND rel.peer_branch = $global_branch_name
                     AND r.branch = $global_branch_name
                     AND r.from <= $at AND (r.to IS NULL or r.to > $at)
                 )
+                // simplified filter for the default branch
                 OR (
                     rel.peer_branch_level = 1 AND
                     rel.peer_branch = $default_branch_name AND
@@ -317,6 +320,7 @@ class NodeCreateAllQuery(NodeQuery):
                     AND r.from <= $at AND (r.to IS NULL or r.to > $at)
                 )
             )
+            // r.status is a tie-breaker when there are nodes with the same UUID added/deleted at the same time
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             WITH dest_node, r
             LIMIT 1
