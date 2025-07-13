@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
+
+from infrahub.core import registry
+from infrahub.core.node import Node
+from infrahub.exceptions import PoolExhaustedError
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_add import AttributeAddQuery
-from ..shared import AttributeSchemaMigration
+from ..shared import AttributeSchemaMigration, MigrationResult
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+
+    from ...branch import Branch
+    from ...timestamp import Timestamp
 
 
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuery):
@@ -29,3 +39,38 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
 class NodeAttributeAddMigration(AttributeSchemaMigration):
     name: str = "node.attribute.add"
     queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeAddMigrationQuery01]  # type: ignore[assignment]
+
+    async def execute_post_queries(
+        self,
+        db: InfrahubDatabase,
+        result: MigrationResult,
+        branch: Branch,
+        at: Timestamp,  # noqa: ARG002
+    ) -> MigrationResult:
+        if self.new_attribute_schema.kind != "NumberPool":
+            return result
+
+        number_pool = await Node.fetch_or_create_number_pool(
+            db=db, branch=branch, schema_node=self.new_node_schema, schema_attribute=self.new_attribute_schema
+        )
+
+        # To do, implement pagination for large number pools
+        nodes: list[Node] = await registry.manager.query(
+            db=db, branch=branch, schema=self.new_node_schema, fields={"id": True, self.new_attribute_schema.name: True}
+        )
+
+        try:
+            numbers = await number_pool.get_next_many(
+                db=db,
+                branch=branch,
+                quantity=len(nodes),
+                attribute=self.new_attribute_schema,
+            )
+        except PoolExhaustedError as exc:
+            result.errors.append(str(exc))
+            return result
+
+        for node, number in zip(nodes, numbers, strict=False):
+            number_pool.reserve(db=db, number=number, identifier=node.get_id())
+            getattr(node, self.new_attribute_schema.name).value = number
+            await node.save(db=db)

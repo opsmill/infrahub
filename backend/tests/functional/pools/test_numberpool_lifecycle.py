@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core.constants import HashableModelState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.pools.registration import get_branches_with_schema_number_pool
@@ -27,24 +29,33 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
-node_schema_definition: dict[str, Any] = {
-    "name": "NumberAttribute",
-    "namespace": "Test",
-    "attributes": [
-        {"name": "name", "kind": "Text", "unique": True},
-        {
-            "name": "assigned_number",
-            "kind": "NumberPool",
-            "optional": False,
-            "unique": True,
-            "read_only": True,
-            "parameters": {"start_range": 10, "end_range": 25},
-        },
+node_schema_definition = NodeSchema(
+    name="NumberAttribute",
+    namespace="Test",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(
+            name="assigned_number",
+            kind="NumberPool",
+            optional=False,
+            unique=True,
+            read_only=True,
+            parameters={"start_range": 10, "end_range": 25},
+        ),
     ],
-}
+)
 
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    def initial_schema(self) -> SchemaRoot:
+        schema = SchemaRoot(
+            version="1.0",
+            generics=[SNOW_TASK],
+            nodes=[node_schema_definition, SNOW_INCIDENT, SNOW_REQUEST],
+        )
+        return schema
+
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
@@ -54,15 +65,13 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         client: InfrahubClient,
         bus_simulator: BusSimulator,
         prefect_test_fixture,
+        initial_schema: SchemaRoot,
     ) -> None:
         bus_simulator.service._cache = RedisCache()
 
-        schema = {
-            "version": "1.0",
-            "generics": [SNOW_TASK.to_dict()],
-            "nodes": [node_schema_definition, SNOW_INCIDENT.to_dict(), SNOW_REQUEST.to_dict()],
-        }
-        schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
+        schema_load_response = await client.schema.load(
+            schemas=[initial_schema.model_dump()], wait_until_converged=True
+        )
         assert not schema_load_response.errors
 
     async def test_numberpool_assignment_direct_node(
@@ -97,9 +106,9 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         )
 
         assert initial_branches == ["main"]
-        node_schema_definition["state"] = "absent"
-        schema = {"version": "1.0", "nodes": [node_schema_definition]}
-        schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
+        node_schema_definition.state = HashableModelState.ABSENT
+        schema = SchemaRoot(version="1.0", nodes=[node_schema_definition])
+        schema_load_response = await client.schema.load(schemas=[schema.model_dump()], wait_until_converged=True)
         assert not schema_load_response.errors
 
         after_purge = get_branches_with_schema_number_pool(kind="TestNumberAttribute", attribute_name="assigned_number")
@@ -144,14 +153,14 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         initial_branches = get_branches_with_schema_number_pool(kind="SnowTask", attribute_name="number")
 
         assert initial_branches == ["main"]
-        snow_task = SNOW_TASK.to_dict()
-        snow_task["state"] = "absent"
-        snow_request = SNOW_REQUEST.to_dict()
-        snow_request["state"] = "absent"
-        snow_incident = SNOW_INCIDENT.to_dict()
-        snow_incident["state"] = "absent"
-        schema = {"version": "1.0", "generics": [snow_task], "nodes": [snow_request, snow_incident]}
-        schema_load_response = await client.schema.load(schemas=[schema], wait_until_converged=True)
+        snow_task = SNOW_TASK.duplicate()
+        snow_task.state = HashableModelState.ABSENT
+        snow_request = SNOW_REQUEST.duplicate()
+        snow_request.state = HashableModelState.ABSENT
+        snow_incident = SNOW_INCIDENT.duplicate()
+        snow_incident.state = HashableModelState.ABSENT
+        schema = SchemaRoot(version="1.0", generics=[snow_task], nodes=[snow_request, snow_incident])
+        schema_load_response = await client.schema.load(schemas=[schema.model_dump()], wait_until_converged=True)
         assert not schema_load_response.errors
 
         after_purge = get_branches_with_schema_number_pool(kind="SnowTask", attribute_name="number")
@@ -165,3 +174,70 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
                 kind=CoreNumberPool,
                 id=number_pool_id,
             )
+
+    async def test_numberpool_existing_nodes(
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch, initial_schema: SchemaRoot
+    ) -> None:
+        service = await InfrahubServices.new(database=db)
+        context = InfrahubContext.init(
+            branch=default_branch,
+            account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
+        )
+
+        schema_load_response = await client.schema.load(
+            schemas=[initial_schema.model_dump()], wait_until_converged=True
+        )
+        assert not schema_load_response.errors
+
+        # Create incidents to ensure there are some data into the database
+        for idx in range(1, 6):
+            incident = await Node.init(db=db, schema=SNOW_INCIDENT.kind)
+            await incident.new(db=db, title=f"Incident #{idx}")
+            await incident.save(db=db)
+
+        # Add a new attribute to the existing schema with a large pool
+        new_schema = initial_schema.duplicate()
+        incident_schema = new_schema.get(name=SNOW_INCIDENT.kind)
+        incident_schema.attributes.append(
+            AttributeSchema(
+                name="new_number",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=10, end_range=30),
+            ),
+        )
+
+        schema_load_response = await client.schema.load(schemas=[new_schema.model_dump()], wait_until_converged=True)
+        assert not schema_load_response.errors
+
+        incidents = await registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
+        assert incidents[0].new_number.value == 10
+
+        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+
+        # NOTE : to be investigated, this should work but it does not right now
+        # incident_zz = await Node.init(db=db, schema=SNOW_INCIDENT.kind)
+        # await incident_zz.new(db=db, title=f"Incident ZZZ")
+        # await incident_zz.save(db=db)
+        # assert incident_zz.new_number.value == 20
+
+        # Add a new attribute to the existing schema with a large pool
+        new_schema2 = initial_schema.duplicate()
+        incident_schema = new_schema2.get(name=SNOW_INCIDENT.kind)
+        incident_schema.attributes.append(
+            AttributeSchema(
+                name="new_number2",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=2, end_range=4),
+            ),
+        )
+
+        schema_load_response = await client.schema.load(schemas=[new_schema2.model_dump()], wait_until_converged=True)
+        assert schema_load_response.errors
+        assert len(schema_load_response.errors["errors"]) == 1
+        assert schema_load_response.errors["errors"][0]["message"] == (
+            "The size of the NumberPool is smaller than the number of existing nodes 3 < 5."
+        )

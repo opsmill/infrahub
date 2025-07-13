@@ -11,9 +11,7 @@ from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
-from infrahub.core.validators.model import (
-    SchemaConstraintValidatorRequest,
-)
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest, SchemaViolation
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.utils import add_tags
@@ -84,7 +82,17 @@ async def schema_path_validate(
         aggregated_constraint_checker = await component_registry.get_component(
             AggregatedConstraintChecker, db=db, branch=branch
         )
-        violations = await aggregated_constraint_checker.run_constraints(constraint_request)
+        try:
+            violations = await aggregated_constraint_checker.run_constraints(constraint_request)
+        except Exception as exc:
+            violation = SchemaViolation(
+                node_id="unknown",
+                node_kind=node_schema.kind,
+                display_label=f"Error validating {constraint_name} on {node_schema.kind}",
+                full_display_label=f"Error validating {constraint_name} on {node_schema.kind}",
+                message=str(exc),
+            )
+            violations = [violation]
 
         return SchemaValidatorPathResponseData(
             violations=violations, constraint_name=constraint_name, schema_path=schema_path
