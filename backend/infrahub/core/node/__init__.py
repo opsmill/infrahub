@@ -26,6 +26,7 @@ from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import (
     AttributeSchema,
+    GenericSchema,
     NodeSchema,
     NonGenericSchemaTypes,
     ProfileSchema,
@@ -315,7 +316,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     @staticmethod
     async def fetch_or_create_number_pool(
-        db: InfrahubDatabase, schema_node: NodeSchema, schema_attribute: AttributeSchema, branch: Branch | None = None
+        db: InfrahubDatabase,
+        schema_node: NodeSchema | GenericSchema,
+        schema_attribute: AttributeSchema,
+        branch: Branch | None = None,
     ) -> CoreNumberPool:
         """Fetch or create a number pool based on the schema attribute parameters.
 

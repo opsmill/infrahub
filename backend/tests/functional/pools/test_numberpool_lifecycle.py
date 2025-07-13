@@ -40,7 +40,7 @@ node_schema_definition = NodeSchema(
             optional=False,
             unique=True,
             read_only=True,
-            parameters={"start_range": 10, "end_range": 25},
+            parameters=NumberPoolParameters(start_range=10, end_range=25),
         ),
     ],
 )

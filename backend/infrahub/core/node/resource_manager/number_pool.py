@@ -42,7 +42,8 @@ class CoreNumberPool(Node):
 
         query = await NumberPoolGetUsed.init(db=db, branch=branch, pool=self, branch_agnostic=True)
         await query.execute(db=db)
-        return [result.get_as_optional_type("value", return_type=int) for result in query.results]
+        used = [result.get_as_optional_type("value", return_type=int) for result in query.results]
+        return [item for item in used if item is not None]
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
@@ -75,7 +76,7 @@ class CoreNumberPool(Node):
 
         # If we have not returned a value we need to find one if avaiable
         number = await self.get_next(db=db, branch=branch, attribute=attribute)
-        self.reserve(db=db, number=number, identifier=identifier, at=at)
+        await self.reserve(db=db, number=number, identifier=identifier, at=at)
         return number
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:
@@ -103,7 +104,7 @@ class CoreNumberPool(Node):
             next_number = find_next_free(
                 start=self.start_range.value,  # type: ignore[attr-defined]
                 end=self.end_range.value,  # type: ignore[attr-defined]
-                taken=taken + allocated,
+                taken=list(set(taken) | set(allocated)),
                 parameters=attribute.parameters
                 if isinstance(attribute.parameters, NumberAttributeParameters)
                 else None,
@@ -118,11 +119,8 @@ class CoreNumberPool(Node):
         return allocated
 
 
-def find_next_free(
-    start: int, end: int, taken: list[int | None], parameters: NumberAttributeParameters | None
-) -> int | None:
-    used_numbers = [number for number in taken if number is not None]
-    used_set = set(used_numbers)
+def find_next_free(start: int, end: int, taken: list[int], parameters: NumberAttributeParameters | None) -> int | None:
+    used_set = set(taken)
 
     for num in range(start, end + 1):
         if num not in used_set:

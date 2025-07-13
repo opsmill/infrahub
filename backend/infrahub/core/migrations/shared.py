@@ -82,7 +82,7 @@ class SchemaMigration(BaseModel):
     async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
-            at = at or Timestamp()
+            at = Timestamp(at)
 
             await self.execute_pre_queries(db=ts, result=result, branch=branch, at=at)
             await self.execute_queries(db=ts, result=result, branch=branch, at=at)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 
 from ..interface import ConstraintCheckerInterface
 from ..query import NodeNotPresentValidatorQuery
@@ -39,7 +40,7 @@ class NodeAttributeAddChecker(ConstraintCheckerInterface):
             return grouped_data_paths_list
 
         # If the attribute is a NumberPool, we need to ensure that the pool is big enough for all existing nodes
-        if attribute_schema.kind == "NumberPool":
+        if attribute_schema.kind == "NumberPool" and isinstance(attribute_schema.parameters, NumberPoolParameters):
             nbr_nodes = await registry.manager.count(db=self.db, branch=self.branch, schema=request.node_schema)
             pool_size = attribute_schema.parameters.get_pool_size()
 

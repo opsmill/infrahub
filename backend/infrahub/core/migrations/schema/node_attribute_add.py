@@ -11,6 +11,7 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationResult
 
 if TYPE_CHECKING:
+    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
@@ -50,13 +51,13 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         if self.new_attribute_schema.kind != "NumberPool":
             return result
 
-        number_pool = await Node.fetch_or_create_number_pool(
-            db=db, branch=branch, schema_node=self.new_node_schema, schema_attribute=self.new_attribute_schema
+        number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(  # type: ignore[assignment]
+            db=db, branch=branch, schema_node=self.new_schema, schema_attribute=self.new_attribute_schema
         )
 
         # To do, implement pagination for large number pools
         nodes: list[Node] = await registry.manager.query(
-            db=db, branch=branch, schema=self.new_node_schema, fields={"id": True, self.new_attribute_schema.name: True}
+            db=db, branch=branch, schema=self.new_schema, fields={"id": True, self.new_attribute_schema.name: True}
         )
 
         try:
@@ -71,6 +72,8 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             return result
 
         for node, number in zip(nodes, numbers, strict=False):
-            number_pool.reserve(db=db, number=number, identifier=node.get_id())
+            await number_pool.reserve(db=db, number=number, identifier=node.get_id())
             getattr(node, self.new_attribute_schema.name).value = number
             await node.save(db=db)
+
+        return result
