@@ -16,13 +16,13 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.timestamp import Timestamp
 
 from .query import MigrationQuery  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -47,18 +47,46 @@ class SchemaMigration(BaseModel):
     previous_node_schema: NodeSchema | GenericSchema | None = None
     schema_path: SchemaPath
 
+    async def execute_pre_queries(
+        self,
+        db: InfrahubDatabase,  # noqa: ARG002
+        result: MigrationResult,
+        branch: Branch,  # noqa: ARG002
+        at: Timestamp,  # noqa: ARG002
+    ) -> MigrationResult:
+        return result
+
+    async def execute_post_queries(
+        self,
+        db: InfrahubDatabase,  # noqa: ARG002
+        result: MigrationResult,
+        branch: Branch,  # noqa: ARG002
+        at: Timestamp,  # noqa: ARG002
+    ) -> MigrationResult:
+        return result
+
+    async def execute_queries(
+        self, db: InfrahubDatabase, result: MigrationResult, branch: Branch, at: Timestamp
+    ) -> MigrationResult:
+        for migration_query in self.queries:
+            try:
+                query = await migration_query.init(db=db, branch=branch, at=at, migration=self)
+                await query.execute(db=db)
+                result.nbr_migrations_executed += query.get_nbr_migrations_executed()
+            except Exception as exc:
+                result.errors.append(str(exc))
+                return result
+
+        return result
+
     async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
+            at = at or Timestamp()
 
-            for migration_query in self.queries:
-                try:
-                    query = await migration_query.init(db=ts, branch=branch, at=at, migration=self)
-                    await query.execute(db=ts)
-                    result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-                except Exception as exc:
-                    result.errors.append(str(exc))
-                    return result
+            await self.execute_pre_queries(db=ts, result=result, branch=branch, at=at)
+            await self.execute_queries(db=ts, result=result, branch=branch, at=at)
+            await self.execute_post_queries(db=ts, result=result, branch=branch, at=at)
 
         return result
 
