@@ -263,11 +263,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         within the create code.
         """
 
-        number_pool_parameters: NumberPoolParameters | None = None
         if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
             attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
             attribute.is_default = False
-            number_pool_parameters = attribute.schema.parameters
 
         if not attribute.from_pool:
             return
@@ -277,9 +275,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
         except NodeNotFoundError:
-            if number_pool_parameters:
-                number_pool = await self._fetch_or_create_number_pool(
-                    db=db, attribute=attribute, number_pool_parameters=number_pool_parameters
+            if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+                number_pool = await self.fetch_or_create_number_pool(
+                    db=db, schema_node=self._schema, schema_attribute=attribute.schema, branch=self._branch
                 )
 
             else:
@@ -295,7 +293,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             and number_pool.node_attribute.value == attribute.name
         ):
             try:
-                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self, attribute=attribute)
+                next_free = await number_pool.get_resource(
+                    db=db, branch=self._branch, node=self, attribute=attribute.schema
+                )
             except PoolExhaustedError:
                 errors.append(
                     ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})
@@ -313,10 +313,25 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
             )
 
-    async def _fetch_or_create_number_pool(
-        self, db: InfrahubDatabase, attribute: BaseAttribute, number_pool_parameters: NumberPoolParameters
+    @staticmethod
+    async def fetch_or_create_number_pool(
+        db: InfrahubDatabase, schema_node: NodeSchema, schema_attribute: AttributeSchema, branch: Branch | None = None
     ) -> CoreNumberPool:
+        """Fetch or create a number pool based on the schema attribute parameters.
+
+        Warning, ideally this method should be outside of the Node class, but it is itself using the Node class to create the pool node.
+        """
+
+        if (
+            schema_attribute.kind != "NumberPool"
+            or not schema_attribute.parameters
+            or not isinstance(schema_attribute.parameters, NumberPoolParameters)
+        ):
+            raise ValueError("Attribute is not of type NumberPool")
+
         number_pool_from_db: CoreNumberPool | None = None
+        number_pool_parameters: NumberPoolParameters = schema_attribute.parameters
+
         lock_definition = NumberPoolLockDefinition(pool_id=str(number_pool_parameters.number_pool_id))
         async with lock.registry.get(
             name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
@@ -328,22 +343,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             except NodeNotFoundError:
                 schema = db.schema.get_node_schema(name="CoreNumberPool", duplicate=False)
 
-                pool_node = self._schema.kind
-                schema_attribute = self._schema.get_attribute(attribute.schema.name)
+                pool_node = schema.kind
                 if schema_attribute.inherited:
-                    for generic_name in self._schema.inherit_from:
+                    for generic_name in schema_node.inherit_from:
                         generic_node = db.schema.get_generic_schema(name=generic_name, duplicate=False)
-                        if attribute.schema.name in generic_node.attribute_names:
+                        if schema_attribute.name in generic_node.attribute_names:
                             pool_node = generic_node.kind
                             break
 
-                number_pool = await Node.init(db=db, schema=schema, branch=self._branch)
+                number_pool = await Node.init(db=db, schema=schema, branch=branch)
                 await number_pool.new(
                     db=db,
                     id=number_pool_parameters.number_pool_id,
-                    name=f"{pool_node}.{attribute.schema.name} [{number_pool_parameters.number_pool_id}]",
+                    name=f"{pool_node}.{schema_attribute.name} [{number_pool_parameters.number_pool_id}]",
                     node=pool_node,
-                    node_attribute=attribute.schema.name,
+                    node_attribute=schema_attribute.name,
                     start_range=number_pool_parameters.start_range,
                     end_range=number_pool_parameters.end_range,
                     pool_type=NumberPoolType.SCHEMA.value,
