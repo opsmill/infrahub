@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.exceptions import PoolExhaustedError
-from infrahub.tasks.registry import refresh_branches
+from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_add import AttributeAddQuery
@@ -56,9 +56,8 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             db=db, branch=branch, schema_node=self.new_schema, schema_attribute=self.new_attribute_schema
         )
 
-        await refresh_branches(db=db)
+        await update_branch_registry(db=db, branch=branch)
 
-        # To do, implement pagination for large number pools
         nodes: list[Node] = await registry.manager.query(
             db=db, branch=branch, schema=self.new_schema, fields={"id": True, self.new_attribute_schema.name: True}
         )

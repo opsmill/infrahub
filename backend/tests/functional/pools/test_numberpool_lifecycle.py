@@ -176,14 +176,8 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             )
 
     async def test_numberpool_existing_nodes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch, initial_schema: SchemaRoot
+        self, db: InfrahubDatabase, client: InfrahubClient, redis, default_branch, initial_schema: SchemaRoot
     ) -> None:
-        service = await InfrahubServices.new(database=db)
-        context = InfrahubContext.init(
-            branch=default_branch,
-            account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
-        )
-
         schema_load_response = await client.schema.load(
             schemas=[initial_schema.model_dump()], wait_until_converged=True
         )
@@ -213,14 +207,6 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
 
         incidents = await registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
         assert incidents[0].new_number.value == 10
-
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
-
-        # NOTE : to be investigated, this should work but it does not right now
-        # incident_zz = await Node.init(db=db, schema=SNOW_INCIDENT.kind)
-        # await incident_zz.new(db=db, title=f"Incident ZZZ")
-        # await incident_zz.save(db=db)
-        # assert incident_zz.new_number.value == 20
 
         # Add a new attribute to the existing schema with a large pool
         new_schema2 = initial_schema.duplicate()
