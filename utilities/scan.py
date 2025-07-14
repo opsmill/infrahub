@@ -19,7 +19,9 @@ def main() -> None:
 
     repo_root = Path.cwd()
 
-    def find_keyword_matches(keyword: str, repo_root: Path, exclude_dirs: set[str], exclude_patterns: tuple[str, ...]) -> list[str]:
+    def find_keyword_matches(
+        keyword: str, repo_root: Path, exclude_dirs: set[str], exclude_patterns: tuple[str, ...]
+    ) -> list[str]:
         matches = []
         for path in repo_root.rglob("*"):
             if any(part in exclude_dirs for part in path.parts):
