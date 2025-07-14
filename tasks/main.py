@@ -99,7 +99,7 @@ def _find_keyword_matches(
 
 
 @task(name="scan")
-def scan(context: Context) -> None:
+def scan() -> None:
     """
     Scan the repository for prohibited keywords.
 
