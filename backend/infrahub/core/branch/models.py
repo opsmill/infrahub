@@ -267,9 +267,13 @@ class Branch(StandardNode):
             raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
         if self.is_global:
             raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
-        await super().delete(db=db)
+
+        self.status = BranchStatus.DELETING
+        await self.save(db=db)
+
         query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=self.name)
         await query.execute(db=db)
+        await super().delete(db=db)
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
