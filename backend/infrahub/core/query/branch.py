@@ -3,41 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
-from infrahub.core.constants import RelationshipStatus
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-
-
-class AddNodeToBranch(Query):
-    name: str = "node_add_to_branch"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, node_id: int, **kwargs: Any):
-        self.node_id = node_id
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = """
-        MATCH (root:Root)
-        MATCH (d) WHERE %(id_func)s(d) = $node_id
-        WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, status: $status }]->(root)
-        RETURN %(id_func)s(r)
-        """ % {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.params["node_id"] = db.to_database_id(self.node_id)
-        self.params["now"] = self.at.to_string()
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["status"] = RelationshipStatus.ACTIVE.value
-
-        self.add_to_query(query)
 
 
 class DeleteBranchRelationshipsQuery(Query):

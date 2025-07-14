@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
@@ -21,6 +21,8 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
+from .enums import BranchStatus
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
@@ -29,7 +31,7 @@ class Branch(StandardNode):
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
-    status: str = "OPEN"  # OPEN, CLOSED
+    status: BranchStatus = BranchStatus.OPEN
     description: str = ""
     origin_branch: str = "main"
     branched_from: Optional[str] = Field(default=None, validate_default=True)
@@ -131,14 +133,17 @@ class Branch(StandardNode):
         return True
 
     @classmethod
-    async def get_by_name(cls, name: str, db: InfrahubDatabase) -> Branch:
+    async def get_by_name(cls, name: str, db: InfrahubDatabase, ignore_deleting: bool = True) -> Branch:
         query = """
         MATCH (n:Branch)
         WHERE n.name = $name
+        AND NOT n.status IN $ignore_statuses
         RETURN n
         """
 
-        params = {"name": name}
+        params: dict[str, Any] = {"name": name}
+        if ignore_deleting:
+            params["ignore_statuses"] = [BranchStatus.DELETING.value]
 
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
 
@@ -146,6 +151,20 @@ class Branch(StandardNode):
             raise BranchNotFoundError(identifier=name)
 
         return cls.from_db(results[0].values()[0])
+
+    @classmethod
+    async def get_list(
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> list[Self]:
+        branches = await super().get_list(db=db, limit=limit, ids=ids, name=name, **kwargs)
+        branches = [branch for branch in branches if branch.status != BranchStatus.DELETING]
+
+        return branches
 
     @classmethod
     def isinstance(cls, obj: Any) -> bool:

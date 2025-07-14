@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
 default_branch = Branch(
     name="main",
-    status="OPEN",
+    status=BranchStatus.OPEN,
     description="Default Branch",
     hierarchy_level=1,
     is_global=False,
@@ -42,7 +43,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
 
         global_branch = Branch(
             name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
+            status=BranchStatus.OPEN,
             description="Global Branch",
             hierarchy_level=1,
             is_global=True,
@@ -176,7 +177,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
 
         global_branch = Branch(
             name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
+            status=BranchStatus.OPEN,
             description="Global Branch",
             hierarchy_level=1,
             is_global=True,
