@@ -5,9 +5,9 @@ from pathlib import Path
 
 
 def main() -> None:
-    keyword_list = os.environ.get("KEYWORD_LIST", "")
+    keyword_list = os.environ.get("KEYWORDS_LIST", "")
     if not keyword_list:
-        print("::error::No KEYWORD_LIST environment variable set")
+        print("::error::No KEYWORDS_LIST environment variable set")
         sys.exit(1)
 
     keywords = [k.strip() for k in keyword_list.split(",") if k.strip()]
