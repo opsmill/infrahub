@@ -1,4 +1,5 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NumberPool } from "@/entities/resource-manager/domain/get-number-pools";
 import {
   AttributeKind,
   AttributeSchema,
@@ -137,7 +138,7 @@ export type DynamicInputFieldProps = FormFieldProps & {
 
 export type DynamicNumberFieldProps = FormFieldProps & {
   type: "Number";
-  pools?: Array<NumberPoolData>;
+  pools?: Array<NumberPool>;
 };
 
 export type DynamicDropdownFieldProps = FormFieldProps & {
@@ -191,13 +192,3 @@ export const isFormFieldValueFromPool = (
 export const isFormFieldValueFromTemplate = (
   fieldData: FormFieldValue
 ): fieldData is AttributeValueFromTemplate => fieldData.source?.type === "template";
-
-export type NumberPoolData = {
-  id: string;
-  label: string;
-  kind: string;
-  nodeAttribute: {
-    id: string;
-    name: string;
-  };
-};

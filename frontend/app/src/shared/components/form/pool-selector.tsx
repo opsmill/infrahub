@@ -1,5 +1,6 @@
+import { NumberPool } from "@/entities/resource-manager/domain/get-number-pools";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
+import { FormFieldValue } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Popover, PopoverAnchor, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -18,7 +19,7 @@ export type PoolValue = {
 type PoolSelectorProps = {
   children: React.ReactNode;
   onChange: (value: PoolValue) => void;
-  pools: Array<NumberPoolData>;
+  pools: Array<NumberPool>;
   value: FormFieldValue;
 };
 
