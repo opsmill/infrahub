@@ -48,6 +48,10 @@ def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
 
 
+class EnterpriseFeatures(str, Enum):
+    PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
+
+
 class UserInfoMethod(str, Enum):
     POST = "post"
     GET = "get"
@@ -315,6 +319,10 @@ class DevelopmentSettings(BaseSettings):
     frontend_redirect_sso: bool = Field(
         default=False,
         description="Indicates of the frontend should be responsible for the SSO redirection",
+    )
+    allow_enterprise_configuration: bool = Field(
+        default=False,
+        description="Allow enterprise configuration in development mode, this will not enable the features just allow the configuration.",
     )
 
 
@@ -766,6 +774,22 @@ class TraceSettings(BaseSettings):
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
 
 
+class PolicySettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_POLICY_")
+    required_proposed_change_approvals: int = Field(
+        default=0,
+        ge=0,
+        description="Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)",
+    )
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns a list of enterprise features that are enabled based on the settings."""
+        if self.required_proposed_change_approvals > 0:
+            return [EnterpriseFeatures.PROPOSED_CHANGE_REQUIRE_APPROVAL]
+        return []
+
+
 @dataclass
 class Override:
     message_bus: InfrahubMessageBus | None = None
@@ -858,6 +882,10 @@ class ConfiguredSettings:
         return self.active_settings.analytics
 
     @property
+    def policy(self) -> PolicySettings:
+        return self.active_settings.policy
+
+    @property
     def security(self) -> SecuritySettings:
         return self.active_settings.security
 
@@ -872,6 +900,11 @@ class ConfiguredSettings:
     @property
     def experimental_features(self) -> ExperimentalFeaturesSettings:
         return self.active_settings.experimental_features
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns a list of enterprise features that are enabled based on the settings."""
+        return self.active_settings.enterprise_features
 
 
 class Settings(BaseSettings):
@@ -890,16 +923,22 @@ class Settings(BaseSettings):
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
+    policy: PolicySettings = PolicySettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns a list of enterprise features that are enabled based on the settings."""
+        return self.policy.enterprise_features
+
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:
     """Load configuration.
 
-    Configuration is loaded from a config file in toml format that contains the settings,
+    Configuration is loaded from a configuration file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
     config_file = Path(config_file_name)

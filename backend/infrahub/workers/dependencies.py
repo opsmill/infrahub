@@ -6,6 +6,7 @@ from infrahub_sdk.config import Config
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
@@ -39,6 +40,15 @@ def build_client() -> InfrahubClient:
 @inject
 def get_client(client: InfrahubClient = Depends(build_client)) -> InfrahubClient:  # noqa: B008
     return client
+
+
+def build_installation_type() -> str:
+    return INSTALLATION_TYPE
+
+
+@inject
+def get_installation_type(installation_type: str = Depends(build_installation_type)) -> str:
+    return installation_type
 
 
 async def build_database() -> InfrahubDatabase:
