@@ -1,7 +1,7 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
-import { NumberPool } from "@/entities/resource-manager/domain/get-number-pools";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import {
   AttributeKind,

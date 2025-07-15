@@ -3,18 +3,9 @@ import {
   getNumberPoolsFromApi,
 } from "@/entities/resource-manager/api/get-number-pools-from-api";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 
 export type GetNumberPoolsParams = GetNumberPoolsFromApiParams;
-
-export type NumberPool = {
-  id: string;
-  label: string;
-  kind: string;
-  nodeAttribute: {
-    id: string;
-    name: string;
-  };
-};
 
 export type GetNumberPools = (params: GetNumberPoolsParams) => Promise<Array<NumberPool>>;
 

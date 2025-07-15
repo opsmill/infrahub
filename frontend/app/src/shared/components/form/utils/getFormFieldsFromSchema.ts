@@ -1,7 +1,7 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
-import { NumberPool } from "@/entities/resource-manager/domain/get-number-pools";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps } from "@/shared/components/form/type";

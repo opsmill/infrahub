@@ -1,5 +1,5 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NumberPool } from "@/entities/resource-manager/domain/get-number-pools";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 import {
   AttributeKind,
   AttributeSchema,

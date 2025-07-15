@@ -1,4 +1,4 @@
-import { NumberPool } from "@/entities/resource-manager/domain/get-number-pools";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
