@@ -46,8 +46,7 @@ class Migration032(ArbitraryMigration):
     minimum_version: int = 31
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         migration_result = MigrationResult()
@@ -76,7 +75,6 @@ class Migration032(ArbitraryMigration):
 
         except Exception as exc:
             migration_result.errors.append(str(exc))
-            log.error(f"Error during branch cleanup: {exc}")
-            return migration_result
+            log.exception("Error during branch cleanup")
 
         return migration_result
