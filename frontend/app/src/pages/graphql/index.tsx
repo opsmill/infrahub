@@ -45,6 +45,7 @@ const GraphqlSandboxPage = () => {
       defaultEditorToolsVisibility
       initialQuery={query ?? undefined}
       plugins={plugins}
+      forcedTheme="light"
       fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
     />
   );
