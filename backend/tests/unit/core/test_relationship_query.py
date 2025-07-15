@@ -197,7 +197,12 @@ async def test_query_RelationshipCreateQuery_w_node_property(
 
 
 async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
-    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    tag_blue_main: Node,
+    tag_red_main: Node,
+    person_jack_main: Node,
+    branch: Branch,
 ):
     schema = registry.schema.get_schema_branch(name=branch.name)
     person_schema = schema.get(name="TestPerson")
@@ -245,6 +250,36 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
         relationships=["IS_RELATED"],
     )
     assert len(paths) == 0
+    query = await RelationshipCreateQuery.init(
+        db=db,
+        source=person_jack_main,
+        destination=tag_red_main,
+        schema=rel_schema,
+        rel=Relationship,
+        branch=default_branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+    # check paths between tag_red and person_jack_main
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_red_main.db_id,
+        destination_id=person_jack_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == (0 if branch.name == default_branch.name else 1)
+
+    # check paths between tag_red and migrated_person_jack
+    paths = await get_paths_between_nodes(
+        db=db,
+        source_id=tag_red_main.db_id,
+        destination_id=migrated_person_jack.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == (1 if branch.name == default_branch.name else 0)
+
     await verify_no_duplicate_paths(db=db)
 
 
