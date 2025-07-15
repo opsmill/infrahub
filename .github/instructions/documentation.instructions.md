@@ -1,9 +1,9 @@
 ---
-applyTo: '/docs/**'
+applyTo: "**/*.mdx"
 ---
-# Prompt for Generating Technical Documentation for Infrahub
+# Prompt for Writing Technical Documentation for Infrahub
 
-This master prompt serves as a comprehensive guide for AI systems tasked with generating technical documentation for Infrahub by OpsMill. The prompt defines the objectives, structure, tone, style, and key considerations necessary to produce clear, useful, and accurate documentation tailored to the needs of Infrahub users.
+This master prompt serves as a comprehensive guide for AI systems tasked with writing technical documentation for Infrahub by OpsMill. The prompt defines the objectives, structure, tone, style, and key considerations necessary to produce clear, useful, and accurate documentation tailored to the needs of Infrahub users.
 
 ## 🧑‍💻 Role Definition
 
@@ -43,9 +43,9 @@ The documentation is both an onboarding and a reference tool, serving developers
 ## 📄 Source and Style References
 
 Refer to the project style guides and templates provided in the current repository:
-- `docs/docs/development/docs.mdx` - This file is very important as it contains the main guidelines for writing documentation as well as the MDX syntax examples.
-- `.vale/styles` - Contains Vale styles for grammar and style checks.
-- `.markdownlint.yaml` - Contains Markdown linting rules to ensure consistency in formatting.
+- [documentation guidelines](../../docs/docs/development/docs.mdx) - This file is very important as it contains the main guidelines for writing documentation as well as the MDX syntax examples.
+- [vale folder](../../.vale/styles/) - Contains Vale styles for grammar and style checks.
+- [mardownlint](../../.markdownlint.yaml) - Contains Markdown linting rules to ensure consistency in formatting.
 
 If you can't find any of the references described above, please mention it in the output.
 
