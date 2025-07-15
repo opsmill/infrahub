@@ -37,6 +37,26 @@ RETURN DISTINCT (e.branch) AS branch_name
         self.return_labels = ["branch_name"]
 
 
+class DeleteOrphanRelationshipsQuery(Query):
+    """
+    Find all Relationship vertices that link to fewer than 2 Node vertices and delete them
+    """
+
+    name = "delete_orphan_relationships"
+    type = QueryType.WRITE
+    insert_return = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        query = """
+MATCH (r:Relationship)-[:IS_RELATED]-(n:Node)
+WITH DISTINCT r, n
+WITH r, count(*) AS node_count
+WHERE node_count < 2
+DETACH DELETE r
+        """
+        self.add_to_query(query)
+
+
 class Migration032(ArbitraryMigration):
     """
     Delete edges for branches that were not completely deleted
@@ -72,6 +92,11 @@ class Migration032(ArbitraryMigration):
                 delete_query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=branch_name)
                 await delete_query.execute(db=db)
                 log.info(f"Branch '{branch_name}' cleaned up.")
+
+            log.info("Deleting orphaned relationships...")
+            delete_relationships_query = await DeleteOrphanRelationshipsQuery.init(db=db)
+            await delete_relationships_query.execute(db=db)
+            log.info("Orphaned relationships deleted.")
 
         except Exception as exc:
             migration_result.errors.append(str(exc))
