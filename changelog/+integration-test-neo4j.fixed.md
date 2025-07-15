@@ -1,0 +1,1 @@
+Explicitly expose port 7687 for Neo4j to ensure the integration tests are running on all setup

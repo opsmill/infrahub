@@ -91,6 +91,7 @@ services:
       start_period: 3s
     ports:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
+      - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
 
   database-core2:
@@ -126,6 +127,7 @@ services:
       com.github.job: "${JOB_NAME:-unknown}"
     ports:
       - "${INFRAHUB_TESTING_DATABASE_PORT:-0}:6363"
+      - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
 
   database-core3:
     deploy:
@@ -160,6 +162,7 @@ services:
       com.github.job: "${JOB_NAME:-unknown}"
     ports:
       - "${INFRAHUB_TESTING_DATABASE_PORT:-0}:6364"
+      - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
 
   task-manager:
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
