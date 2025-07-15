@@ -88,7 +88,7 @@ class Migration033(GraphMigration):
     are linked to deleted nodes or nodes on in incorrect branch.
     """
 
-    name: str = "032_deduplicate_relationship_vertices"
+    name: str = "033_deduplicate_relationship_vertices"
     minimum_version: int = 31
     queries: Sequence[type[Query]] = [DeduplicateRelationshipVerticesQuery]
 
