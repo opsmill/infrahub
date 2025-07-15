@@ -38,7 +38,7 @@ def _ip_range_display_label(node: Node) -> str:
         return "1 IP address available"
     if size <= 2**16:
         return f"{size} IP addresses available"
-    return "Many IP addresses available"
+    return f"More than {2**16} IP addresses available"
 
 
 async def _build_ip_range_node(

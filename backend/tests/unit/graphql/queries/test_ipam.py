@@ -350,9 +350,9 @@ async def ip_dataset_ranges(
                 ("IpamIPAddress", "2001:db8::1f/64"),
                 ("InternalIPRangeAvailable", "223 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ff/64"),
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::100:1/64"),
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
             ],
         ),
@@ -374,6 +374,7 @@ async def test_ipaddress_include_available(
         BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true) {
             edges {
                 node {
+                    id
                     display_label
                     __typename
                 }
@@ -429,7 +430,7 @@ async def test_ipaddress_include_available(
                 ("IpamIPAddress", "2001:db8::1f/64"),
                 ("InternalIPRangeAvailable", "223 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ff/64"),
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
             ],
         ),
         (
@@ -440,9 +441,9 @@ async def test_ipaddress_include_available(
                 ("IpamIPAddress", "2001:db8::1f/64"),
                 ("InternalIPRangeAvailable", "223 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ff/64"),
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::100:1/64"),
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
             ],
         ),
@@ -450,9 +451,9 @@ async def test_ipaddress_include_available(
             4,
             4,
             [
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::100:1/64"),
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
             ],
         ),
@@ -460,7 +461,7 @@ async def test_ipaddress_include_available(
             5,
             6,
             [
-                ("InternalIPRangeAvailable", "Many IP addresses available"),
+                ("InternalIPRangeAvailable", "More than 65536 IP addresses available"),
                 ("IpamIPAddress", "2001:db8::ffff:ffff:ffff:ffff/64"),
             ],
         ),
@@ -483,6 +484,7 @@ async def test_ipaddress_include_available_pagination(
         BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, limit: $limit, offset: $offset) {
             edges {
                 node {
+                    id
                     display_label
                     __typename
                 }
@@ -705,6 +707,7 @@ async def test_ipprefix_include_available(
         BuiltinIPPrefix(parent__ids: [$prefix], include_available: true) {
             edges {
                 node {
+                    id
                     __typename
                     display_label
                 }
@@ -865,6 +868,7 @@ async def test_ipprefix_include_available_pagination(
         BuiltinIPPrefix(parent__ids: [$prefix], include_available: true, limit: $limit, offset: $offset) {
             edges {
                 node {
+                    id
                     __typename
                     display_label
                 }
