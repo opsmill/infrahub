@@ -1,1 +1,1 @@
-- Fixed broken auto-completion in GraphiQL 5 + vite
+- Fixed broken auto-completion in GraphiQL 5 + Vite
