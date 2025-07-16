@@ -70,6 +70,8 @@
     "jotai": "^2.12.5",
     "json-to-graphql-query": "^2.2.5",
     "lucide-react": "^0.525.0",
+    "monaco-editor": "^0.52.2",
+    "monaco-graphql": "^1.7.1",
     "openapi-fetch": "^0.14.0",
     "prismjs": "^1.29.0",
     "query-string": "^9.2.2",
@@ -99,7 +101,6 @@
     "unidiff": "^1.0.4",
     "use-query-params": "^2.2.1",
     "vite": "^6.3.5",
-    "vite-plugin-monaco-editor-esm": "^2.0.2",
     "vite-plugin-svgr": "^4.3.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
