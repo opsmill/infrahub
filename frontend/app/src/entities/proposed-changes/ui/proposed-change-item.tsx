@@ -16,6 +16,7 @@ import { ProposedChangesActionCell } from "./proposed-changes-actions-cell";
 type ProposedChangesItemProps = {
   node: {
     id: string;
+    display_label: string;
     name: { value: string };
     created_by: { node: { display_label: string } };
     state: { value: string };
@@ -80,7 +81,7 @@ const ProposedChangesInfo = ({
   branchName,
 }: ProposedChangesInfoProps) => {
   return (
-    <div className="">
+    <div>
       <div className="flex flex-col gap-2">
         <span className="space-x-2">
           <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
@@ -119,14 +120,16 @@ const ProposedChangesData = ({
   validations,
 }: ProposedChangesDataProps) => {
   return (
-    <div className="grid grid-cols-3 items-center gap-4 pr-2">
+    <div className="grid grid-cols-2 items-center gap-4 pr-2">
       <ProposedChangeDiffSummary proposedChangeId={id} branchName={branchName} />
-      <ProposedChangesApprovers approvers={approvers} />
-      <div className="flex items-center justify-end gap-4">
-        <ProposedChangesChecks validations={validations} />
-        <ProposedChangesTasks id={id} />
-        <ProposedChangesArtifacts id={id} />
-        <ProposedChangesComments comments={comments} />
+      <div className="flex flex-col items-end">
+        <div className="flex items-center justify-end gap-4">
+          <ProposedChangesChecks validations={validations} />
+          <ProposedChangesTasks id={id} />
+          <ProposedChangesArtifacts id={id} />
+          <ProposedChangesComments comments={comments} />
+        </div>
+        <ProposedChangesApprovers approvers={approvers} />
       </div>
     </div>
   );
@@ -149,13 +152,11 @@ const ProposedChangesApprovers = ({ approvers }: { approvers: Array<NodeCore> })
 
 const ProposedChangesComments = ({ comments }: { comments: number }) => {
   return (
-    <div className="flex items-center gap-1 text-xs">
-      <Tooltip enabled content="Comments">
-        <span>
-          <Icon icon={"mdi:comment-outline"} /> {comments}
-        </span>
-      </Tooltip>
-    </div>
+    <Tooltip enabled content="Comments">
+      <span className="flex items-center gap-1">
+        <Icon icon={"mdi:comment-outline"} /> {comments}
+      </span>
+    </Tooltip>
   );
 };
 
@@ -163,13 +164,11 @@ const ProposedChangesChecks = ({ validations }: { validations: number }) => {
   const { schema } = useSchema(CHECK_OBJECT);
 
   return (
-    <div className="flex items-center gap-1 text-xs">
-      <Tooltip enabled content="Checks">
-        <span>
-          <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
-        </span>
-      </Tooltip>
-    </div>
+    <Tooltip enabled content="Checks">
+      <span className="flex items-center">
+        <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
+      </span>
+    </Tooltip>
   );
 };
 
@@ -181,13 +180,11 @@ const ProposedChangesArtifacts = ({ id }: { id: string }) => {
   });
 
   return (
-    <div className="flex items-center gap-1 text-xs">
-      <Tooltip enabled content="Artifacts">
-        <span>
-          <Icon icon={schema?.icon ?? "mdi:file-outline"} /> {data ?? 0}
-        </span>
-      </Tooltip>
-    </div>
+    <Tooltip enabled content="Artifacts">
+      <span className="flex items-center gap-1">
+        <Icon icon={schema?.icon ?? "mdi:file-outline"} /> {data ?? 0}
+      </span>
+    </Tooltip>
   );
 };
 
@@ -199,12 +196,10 @@ const ProposedChangesTasks = ({ id }: { id: string }) => {
   });
 
   return (
-    <div className="flex items-center gap-1 text-xs">
-      <Tooltip enabled content="Tasks">
-        <span>
-          <Icon icon={schema?.icon ?? "mdi:subtasks"} /> {data ?? 0}
-        </span>
-      </Tooltip>
-    </div>
+    <Tooltip enabled content="Tasks">
+      <span className="flex items-center gap-1">
+        <Icon icon={schema?.icon ?? "mdi:subtasks"} /> {data ?? 0}
+      </span>
+    </Tooltip>
   );
 };
