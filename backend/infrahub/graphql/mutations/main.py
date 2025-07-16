@@ -146,7 +146,9 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
-    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch) -> Node:
+    async def _call_mutate_create_object(
+        cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch, override_data: dict[str, Any] | None = None
+    ) -> Node:
         """
         Wrapper around mutate_create_object to potentially activate locking.
         """
@@ -156,9 +158,9 @@ class InfrahubMutationMixin:
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                return await cls.mutate_create_object(data=data, db=db, branch=branch)
+                return await cls.mutate_create_object(data=data, db=db, branch=branch, extra_data=override_data)
 
-        return await cls.mutate_create_object(data=data, db=db, branch=branch)
+        return await cls.mutate_create_object(data=data, db=db, branch=branch, extra_data=override_data)
 
     @classmethod
     async def mutate_create(
@@ -167,10 +169,11 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
-        obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch)
+        obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
         return obj, result
 
@@ -181,12 +184,15 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         db: InfrahubDatabase,
         branch: Branch,
+        override_data: dict[str, Any] | None = None,
     ) -> Node:
         schema = cls._meta.active_schema
         if isinstance(schema, GenericSchema):
             raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
+        create_data = dict(data)
+        create_data.update(override_data or {})
         return await create_node(
-            data=dict(data),
+            data=create_data,
             db=db,
             branch=branch,
             schema=schema,
