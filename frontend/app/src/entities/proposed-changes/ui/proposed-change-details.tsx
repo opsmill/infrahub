@@ -1,8 +1,6 @@
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
-import { PcCloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
-import { PcMergeButton } from "@/entities/proposed-changes/ui/action-button/pc-merge-button";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
 import { Conversations } from "@/entities/proposed-changes/ui/conversations";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
@@ -118,19 +116,8 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Actions",
       value: (
         <div className="flex flex-wrap gap-2">
-          <PcApproveButton
+          <PcActionButton
             approvers={approvers}
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
-          <PcMergeButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed || (checkData && checkData[TASK_OBJECT].count)}
-          />
-          <PcCloseButton
             proposedChangeId={proposedChangeId!}
             state={state}
             disabled={!permission.update.isAllowed}
