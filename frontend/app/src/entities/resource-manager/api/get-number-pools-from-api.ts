@@ -1,0 +1,49 @@
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams } from "@/shared/api/types";
+import { gql } from "@apollo/client";
+
+export const GET_NUMBER_POOLS = gql`
+  query GET_NUMBER_POOLS($objectKinds: [String]) {
+    CoreNumberPool(node__values: $objectKinds) {
+      edges {
+        node {
+          id
+          display_label
+          name {
+            id
+            value
+          }
+          node {
+            id
+            value
+          }
+          node_attribute {
+            id
+            value
+          }
+        }
+      }
+    }
+  }
+`;
+
+export interface GetNumberPoolsFromApiParams extends ContextParams {
+  objectKinds: Array<string>;
+}
+
+export function getNumberPoolsFromApi({
+  objectKinds,
+  branchName,
+  atDate,
+}: GetNumberPoolsFromApiParams) {
+  return graphqlClient.query({
+    query: GET_NUMBER_POOLS,
+    variables: {
+      objectKinds,
+    },
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}

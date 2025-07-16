@@ -20,6 +20,7 @@ from .. import Node
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.ipam.constants import IPNetworkType
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -33,6 +34,7 @@ class CoreIPPrefixPool(Node):
         prefixlen: int | None = None,
         member_type: str | None = None,
         prefix_type: str | None = None,
+        at: Timestamp | None = None,
     ) -> Node:
         # Check if there is already a resource allocated with this identifier
         # if not, pull all existing prefixes and allocated the next available
@@ -71,18 +73,18 @@ class CoreIPPrefixPool(Node):
         data["member_type"] = member_type
 
         target_schema = registry.get_node_schema(name=prefix_type, branch=branch)
-        node = await Node.init(db=db, schema=target_schema, branch=branch)
+        node = await Node.init(db=db, schema=target_schema, branch=branch, at=at)
         try:
             await node.new(db=db, prefix=str(next_prefix), ip_namespace=ip_namespace, **data)
         except ValidationError as exc:
             raise ValueError(f"IPPrefixPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
-        await node.save(db=db)
+        await node.save(db=db, at=at)
         reconciler = IpamReconciler(db=db, branch=branch)
         await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())
 
         if identifier:
             query_set = await PrefixPoolSetReserved.init(
-                db=db, pool_id=self.id, identifier=identifier, prefix_id=node.id
+                db=db, pool_id=self.id, identifier=identifier, prefix_id=node.id, at=at
             )
             await query_set.execute(db=db)
 

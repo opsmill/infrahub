@@ -72,6 +72,7 @@ services:
       start_period: 3s
     ports:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
+      - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
 
   task-manager:

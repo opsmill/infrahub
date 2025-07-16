@@ -2,18 +2,15 @@ import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
-import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
+import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
-import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
-import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
+import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -60,21 +57,11 @@ export const NodeForm = ({
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
 
-  const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
+  const { data: numberPools, isPending } = useGetNumberPools({
+    objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
+  });
 
-  if (loading) return <LoadingIndicator className="mt-4" />;
-
-  const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
-    ({ node }: { node: CoreNumberPool }): NumberPoolData => ({
-      id: node.id,
-      label: node.display_label as string,
-      kind: node.__typename as string,
-      nodeAttribute: {
-        id: node.node_attribute.id as string,
-        name: node.node_attribute.value as string,
-      },
-    })
-  );
+  if (isPending) return <LoadingIndicator className="mt-4" />;
 
   const fields = getFormFieldsFromSchema({
     schema,

@@ -150,6 +150,7 @@ UUID
 UUIDs
 validators
 Version Control
+Vite
 Vitest
 VLANs
 Yaml

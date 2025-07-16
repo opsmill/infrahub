@@ -55,7 +55,7 @@ async def test_hierarchical_uniqueness_constraint(
     await fr.save(db=db)
     uk = await Node.init(db=db, schema="LocationSite", branch=default_branch)
     await uk.new(db=db, name="United Kingdom", parent=eu)
-    await fr.save(db=db)
+    await uk.save(db=db)
 
     th2 = await Node.init(db=db, schema="LocationRack", branch=default_branch)
     await th2.new(db=db, name="th2-par", parent=fr)

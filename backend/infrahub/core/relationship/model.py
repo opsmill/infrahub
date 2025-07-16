@@ -63,9 +63,11 @@ class RelationshipCreateData(BaseModel):
     uuid: str
     name: str
     destination_id: str
-    branch: str | None = None
+    branch: str
     branch_level: int
     branch_support: str | None = None
+    peer_branch: str
+    peer_branch_level: int
     direction: str
     status: str
     is_protected: bool
@@ -420,7 +422,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         )
         await delete_query.execute(db=db)
 
-    async def resolve(self, db: InfrahubDatabase) -> None:
+    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
         """Resolve the peer of the relationship."""
 
         if self._peer is not None:
@@ -470,7 +472,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
+            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, at=at, **data_from_pool)  # type: ignore[attr-defined]
             await self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
 
@@ -526,16 +528,19 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return response
 
-    async def get_create_data(self, db: InfrahubDatabase) -> RelationshipCreateData:
+    async def get_create_data(self, db: InfrahubDatabase, at: Timestamp | None = None) -> RelationshipCreateData:
         branch = self.get_branch_based_on_support_type()
 
-        await self.resolve(db=db)
+        await self.resolve(db=db, at=at)
 
         peer = await self.get_peer(db=db)
+        peer_branch = peer.get_branch()
         data = RelationshipCreateData(
             uuid=str(UUIDT()),
             name=self.schema.get_identifier(),
             branch=branch.name,
+            peer_branch=peer_branch.name,
+            peer_branch_level=peer_branch.hierarchy_level,
             destination_id=peer.id,
             status="active",
             direction=self.schema.direction.value,
