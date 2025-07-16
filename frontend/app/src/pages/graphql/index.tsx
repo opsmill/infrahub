@@ -51,7 +51,6 @@ const GraphqlSandboxPage = () => {
             return jsonWorker;
           case "graphql":
             return graphqlWorker;
-          case "editorWorkerService":
           default:
             return editorWorker;
         }
