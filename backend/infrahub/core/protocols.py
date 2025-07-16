@@ -481,6 +481,7 @@ class CoreProposedChange(CoreTaskTarget):
     destination_branch: String
     state: Enum
     approved_by: RelationshipManager
+    rejected_by: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager
     comments: RelationshipManager
