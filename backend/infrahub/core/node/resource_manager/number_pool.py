@@ -12,6 +12,7 @@ from .. import Node
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -41,6 +42,7 @@ class CoreNumberPool(Node):
         node: Node,
         attribute: BaseAttribute,
         identifier: str | None = None,
+        at: Timestamp | None = None,
     ) -> int:
         identifier = identifier or node.get_id()
         # Check if there is already a resource allocated with this identifier
@@ -56,7 +58,7 @@ class CoreNumberPool(Node):
         number = await self.get_next(db=db, branch=branch, attribute=attribute)
 
         query_set = await NumberPoolSetReserved.init(
-            db=db, pool_id=self.get_id(), identifier=identifier, reserved=number
+            db=db, pool_id=self.get_id(), identifier=identifier, reserved=number, at=at
         )
         await query_set.execute(db=db)
         return number

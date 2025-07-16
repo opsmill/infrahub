@@ -1,1 +1,0 @@
-Add a command to run a single migration

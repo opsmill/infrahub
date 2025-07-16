@@ -206,16 +206,18 @@ class RelationshipQuery(Query):
         self.params["source_id"] = self.source_id or self.source.get_id()
         if source_branch.is_global or source_branch.is_default:
             source_query_match = """
-            MATCH (s:Node { uuid: $source_id })
+            MATCH (s:Node { uuid: $source_id })-[source_e:IS_PART_OF {branch: $source_branch, status: "active"}]->(:Root)
+            WHERE source_e.from <= $at AND (source_e.to IS NULL OR source_e.to > $at)
             OPTIONAL MATCH (s)-[delete_edge:IS_PART_OF {status: "deleted", branch: $source_branch}]->(:Root)
             WHERE delete_edge.from <= $at
             WITH *, s WHERE delete_edge IS NULL
             """
             self.params["source_branch"] = source_branch.name
-        source_filter, source_filter_params = source_branch.get_query_filter_path(
-            at=self.at, variable_name="r", params_prefix="src_"
-        )
-        source_query_match = """
+        else:
+            source_filter, source_filter_params = source_branch.get_query_filter_path(
+                at=self.at, variable_name="r", params_prefix="src_"
+            )
+            source_query_match = """
             MATCH (s:Node { uuid: $source_id })
             CALL (s) {
                 MATCH (s)-[r:IS_PART_OF]->(:Root)
@@ -225,15 +227,16 @@ class RelationshipQuery(Query):
                 LIMIT 1
             }
             WITH *, s WHERE s_is_active = TRUE
-            """ % {"source_filter": source_filter}
-        self.params.update(source_filter_params)
+                """ % {"source_filter": source_filter}
+            self.params.update(source_filter_params)
         self.add_to_query(source_query_match)
 
     def add_dest_match_to_query(self, destination_branch: Branch, destination_id: str) -> None:
         self.params["destination_id"] = destination_id
         if destination_branch.is_global or destination_branch.is_default:
             destination_query_match = """
-            MATCH (d:Node { uuid: $destination_id })
+            MATCH (d:Node { uuid: $destination_id })-[dest_e:IS_PART_OF {branch: $destination_branch, status: "active"}]->(:Root)
+            WHERE dest_e.from <= $at AND (dest_e.to IS NULL OR dest_e.to > $at)
             OPTIONAL MATCH (d)-[delete_edge:IS_PART_OF {status: "deleted", branch: $destination_branch}]->(:Root)
             WHERE delete_edge.from <= $at
             WITH *, d WHERE delete_edge IS NULL

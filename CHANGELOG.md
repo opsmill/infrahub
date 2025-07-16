@@ -11,6 +11,26 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.3.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.3) - 2025-07-15
+
+### Added
+
+- <!-- vale off -->
+  Added the `infrahub db check` command to look for illegal data in the database
+  <!-- vale on -->
+- Add a command to run a single migration
+- Updated GraphQL sandbox to GraphiQL 5
+
+### Fixed
+
+- Fix upsert mutation for webhooks ([#6641](https://github.com/opsmill/infrahub/issues/6641))
+- Prevent a merge operation and a diff update from running at the same time on the same branch ([#6704](https://github.com/opsmill/infrahub/issues/6704))
+- Fix branch delete logic to handle very large branches (millions of edges) and add a migration to clean up any partially deleted branches ([#6797](https://github.com/opsmill/infrahub/issues/6797))
+- Explicitly expose port 7687 for Neo4j to ensure the integration tests are running on all setup
+- Fix a bug in node creating that could cause duplicate relationships if the node being created included a relationship to a node of a schema that had its kind or inheritance updated in the past
+- Fix an issue where prefixes could not be allocated from a pool when passing `member_type` inside the data parameter
+- Migration to clean up duplicated relationships
+
 ## [Infrahub - v1.3.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.2) - 2025-06-30
 
 ### Fixed

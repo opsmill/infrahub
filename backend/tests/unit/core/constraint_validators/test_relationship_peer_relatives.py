@@ -28,6 +28,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
     async def device_1(self, db: InfrahubDatabase, schema) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
+        await device.save(db=db)
 
         interfaces: list[Node] = []
         for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
@@ -37,7 +38,6 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
             interfaces.append(interface)
 
         await device.interfaces.update(db=db, data=interfaces)
-        await device.save(db=db)
 
         return device
 
@@ -45,6 +45,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
     async def device_2(self, db: InfrahubDatabase, schema) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
+        await device.save(db=db)
 
         interfaces: list[Node] = []
         for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
@@ -54,7 +55,6 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
             interfaces.append(interface)
 
         await device.interfaces.update(db=db, data=interfaces)
-        await device.save(db=db)
 
         return device
 
@@ -104,6 +104,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
     async def device_1(self, db: InfrahubDatabase, schema) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
+        await device.save(db=db)
 
         interfaces: list[Node] = []
         for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
@@ -113,7 +114,6 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
             interfaces.append(interface)
 
         await device.interfaces.update(db=db, data=interfaces)
-        await device.save(db=db)
 
         return device
 
@@ -121,6 +121,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
     async def device_2(self, db: InfrahubDatabase, schema) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
+        await device.save(db=db)
 
         interfaces: list[Node] = []
         for if_name in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]:
@@ -130,7 +131,6 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
             interfaces.append(interface)
 
         await device.interfaces.update(db=db, data=interfaces)
-        await device.save(db=db)
 
         return device
 

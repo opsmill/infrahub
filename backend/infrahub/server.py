@@ -23,6 +23,7 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
+from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ValidationError
@@ -37,6 +38,7 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_installation_type,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -47,6 +49,7 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
+    _validate_feature_selection(configuration=config.SETTINGS.active_settings)
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -212,3 +215,12 @@ async def documentation() -> RedirectResponse:
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
     return templates.TemplateResponse("index.html", {"request": req})
+
+
+def _validate_feature_selection(configuration: config.Settings) -> None:
+    if configuration.enterprise_features and not configuration.dev.allow_enterprise_configuration:
+        installation_type = get_installation_type()
+        if installation_type == INSTALLATION_TYPE:
+            raise ValidationError(
+                f"Enterprise features [{','.join(configuration.enterprise_features)}] are not supported when running Infrahub 'community'."
+            )

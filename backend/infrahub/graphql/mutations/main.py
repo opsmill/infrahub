@@ -376,7 +376,12 @@ class InfrahubMutationMixin:
             return updated_obj, mutation, False
 
         try:
-            data.pop("hfid", None)  # `hfid` is invalid for creation.
+            # This is a hack to avoid sitatuions where a node has an attribute or relationship called "pop"
+            # which would have overridden the `pop` method of the InputObjectType object and as such would have
+            # caused an error when trying to call `data.pop("hfid", None)`.
+            # TypeError: 'NoneType' object is not callable
+            data._pop = dict.pop.__get__(data, dict)
+            data._pop("hfid", None)  # `hfid` is invalid for creation.
             created_obj, mutation = await cls.mutate_create(info=info, data=data, branch=branch)
             return created_obj, mutation, True
         except HFIDViolatedError as exc:

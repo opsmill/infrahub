@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
 from uuid import UUID
 
@@ -191,6 +192,9 @@ class StandardNode(BaseModel):
                 continue
 
             attr_value = getattr(self, attr_name)
+            if isinstance(attr_value, Enum):
+                attr_value = attr_value.value
+
             field_type = self.guess_field_type(field)
 
             if attr_value is None:
