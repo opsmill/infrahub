@@ -116,7 +116,7 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByText("IP Namespace Kind").getByLabel("IPAM Namespace").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("IPPrefix created")).toBeVisible();
+      await expect(page.getByText("IP Prefix 11.0.0.0/8 created")).toBeVisible();
     });
 
     await test.step("validate new top level tree", async () => {
@@ -130,7 +130,7 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByText("IP Namespace Kind").getByLabel("IPAM Namespace").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("IPPrefix created")).toBeVisible();
+      await expect(page.getByText("IP Prefix 11.0.0.0/16 created")).toBeVisible();
     });
 
     await test.step("validate new top level tree", async () => {
@@ -150,7 +150,7 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByText("IP Namespace Kind").getByLabel("IPAM Namespace").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("IPPrefix created")).toBeVisible();
+      await expect(page.getByText("IP Prefix 11.0.0.0/10 created")).toBeVisible();
     });
 
     await test.step("validate tree position", async () => {
