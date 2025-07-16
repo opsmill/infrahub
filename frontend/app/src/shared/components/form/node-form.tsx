@@ -1,15 +1,12 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { NodeCore, NodeObject } from "@/entities/nodes/types";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
+import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
-import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
-import useQuery from "@/shared/api/graphql/useQuery";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
-import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
+import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
@@ -53,21 +50,11 @@ export const NodeForm = ({
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
 
-  const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
+  const { data: numberPools, isPending } = useGetNumberPools({
+    objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
+  });
 
-  if (loading) return <LoadingIndicator className="mt-4" />;
-
-  const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
-    ({ node }: { node: CoreNumberPool }): NumberPoolData => ({
-      id: node.id,
-      label: node.display_label as string,
-      kind: node.__typename as string,
-      nodeAttribute: {
-        id: node.node_attribute?.id as string,
-        name: node.node_attribute?.value as string,
-      },
-    })
-  );
+  if (isPending) return <LoadingIndicator className="mt-4" />;
 
   const fields = getFormFieldsFromSchema({
     schema,
