@@ -158,9 +158,9 @@ class InfrahubMutationMixin:
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                return await cls.mutate_create_object(data=data, db=db, branch=branch, extra_data=override_data)
+                return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
 
-        return await cls.mutate_create_object(data=data, db=db, branch=branch, extra_data=override_data)
+        return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
 
     @classmethod
     async def mutate_create(
