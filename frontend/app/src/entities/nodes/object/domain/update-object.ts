@@ -1,0 +1,19 @@
+import {
+  UpdateObjectFromApiApiParams,
+  updateObjectFromApi,
+} from "@/entities/nodes/object/api/update-object-from-api";
+import { NodeCore } from "@/entities/nodes/types";
+
+export type UpdateObjectParams = UpdateObjectFromApiApiParams;
+
+export type UpdateObject = (params: UpdateObjectParams) => Promise<NodeCore>;
+
+export const updateObject: UpdateObject = async (params) => {
+  const { data, errors } = await updateObjectFromApi(params);
+
+  if (errors?.[0]?.message) {
+    throw new Error(errors[0].message);
+  }
+
+  return data[`${params.objectKind}Create`].object;
+};
