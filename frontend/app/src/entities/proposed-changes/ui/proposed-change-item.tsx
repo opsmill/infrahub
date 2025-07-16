@@ -192,7 +192,7 @@ const ProposedChangesTasks = ({ id }: { id: string }) => {
   const { schema } = useSchema(TASK_OBJECT);
   const { data } = useObjectsCount({
     objectKind: TASK_OBJECT,
-    filters: [{ name: "related_node__ids", value: [id] }],
+    filters: [{ name: "related_node__ids", value: [{ id }] }],
   });
 
   return (
