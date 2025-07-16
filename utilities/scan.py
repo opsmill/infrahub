@@ -1,17 +1,16 @@
 import logging
 import os
-import subprocess
+import subprocess  # noqa: S404
 import sys
 from pathlib import Path
-from typing import List, Set, Tuple
 
 
 def find_keyword_violations(
-    keywords: List[str],
+    keywords: list[str],
     repo_root: Path,
-    exclude_dirs: Set[str],
-    exclude_patterns: Tuple[str, ...],
-) -> List[str]:
+    exclude_dirs: set[str],
+    exclude_patterns: tuple[str, ...],
+) -> list[str]:
     """
     Traverse files once and check each line for any prohibited keyword.
 
@@ -43,7 +42,7 @@ def find_keyword_violations(
     return violations
 
 
-def find_keyword_in_git_commits(keywords: List[str]) -> List[str]:
+def find_keyword_in_git_commits(keywords: list[str]) -> list[str]:
     """
     Scan git commit messages for any prohibited keyword.
 
