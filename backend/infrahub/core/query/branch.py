@@ -3,41 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
-from infrahub.core.constants import RelationshipStatus
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-
-
-class AddNodeToBranch(Query):
-    name: str = "node_add_to_branch"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, node_id: int, **kwargs: Any):
-        self.node_id = node_id
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = """
-        MATCH (root:Root)
-        MATCH (d) WHERE %(id_func)s(d) = $node_id
-        WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, status: $status }]->(root)
-        RETURN %(id_func)s(r)
-        """ % {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.params["node_id"] = db.to_database_id(self.node_id)
-        self.params["now"] = self.at.to_string()
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["status"] = RelationshipStatus.ACTIVE.value
-
-        self.add_to_query(query)
 
 
 class DeleteBranchRelationshipsQuery(Query):
@@ -52,31 +21,31 @@ class DeleteBranchRelationshipsQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
-        MATCH (s)-[r1]-(d)
-        WHERE r1.branch = $branch_name
-        DELETE r1
+// delete all relationships on this branch
+MATCH (s)-[r1]-(d)
+WHERE r1.branch = $branch_name
+CALL (r1) {
+  DELETE r1
+} IN TRANSACTIONS
 
-        WITH collect(DISTINCT s) + collect(DISTINCT d) AS nodes
+// check for any orphaned Node vertices and delete them
+WITH collect(DISTINCT s.uuid) + collect(DISTINCT d.uuid) AS nodes_uuids
+MATCH (s2:Node)-[r2]-(d2)
+WHERE NOT exists((s2)-[:IS_PART_OF]-(:Root))
+AND s2.uuid IN nodes_uuids
+CALL (r2) {
+  DELETE r2
+} IN TRANSACTIONS
 
-        // Collect node IDs for filtering
-        WITH nodes, [n in nodes | n.uuid] as nodes_uuids
+// reduce results to a single row
+WITH 1 AS one LIMIT 1
 
-        // Also delete agnostic relationships that would not have been deleted above
-        MATCH (s2: Node)-[r2]-(d2)
-        WHERE NOT exists((s2)-[:IS_PART_OF]-(:Root))
-        AND s2.uuid IN nodes_uuids
-        DELETE r2
-
-        WITH nodes, collect(DISTINCT s2) + collect(DISTINCT d2) as additional_nodes
-
-        WITH nodes + additional_nodes as nodes
-
-        // Delete nodes that are no longer connected to any other nodes
-        UNWIND nodes AS n
-        WITH DISTINCT n
-        MATCH (n)
-        WHERE NOT exists((n)--())
-        DELETE n
+// find any orphaned vertices and delete them
+MATCH (n)
+WHERE NOT exists((n)--())
+CALL (n) {
+  DELETE n
+} IN TRANSACTIONS
         """
         self.params["branch_name"] = self.branch_name
         self.add_to_query(query)

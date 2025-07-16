@@ -18,6 +18,7 @@ from .. import Node
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.ipam.constants import IPAddressType
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -30,6 +31,7 @@ class CoreIPAddressPool(Node):
         data: dict[str, Any] | None = None,
         address_type: str | None = None,
         prefixlen: int | None = None,
+        at: Timestamp | None = None,
     ) -> Node:
         # Check if there is already a resource allocated with this identifier
         # if not, pull all existing prefixes and allocated the next available
@@ -63,18 +65,18 @@ class CoreIPAddressPool(Node):
         next_address = await self.get_next(db=db, prefixlen=prefixlen)
 
         target_schema = registry.get_node_schema(name=address_type, branch=branch)
-        node = await Node.init(db=db, schema=target_schema, branch=branch)
+        node = await Node.init(db=db, schema=target_schema, branch=branch, at=at)
         try:
             await node.new(db=db, address=str(next_address), ip_namespace=ip_namespace, **data)
         except ValidationError as exc:
             raise ValueError(f"IPAddressPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
-        await node.save(db=db)
+        await node.save(db=db, at=at)
         reconciler = IpamReconciler(db=db, branch=branch)
         await reconciler.reconcile(ip_value=next_address, namespace=ip_namespace.id, node_uuid=node.get_id())
 
         if identifier:
             query_set = await IPAddressPoolSetReserved.init(
-                db=db, pool_id=self.id, identifier=identifier, address_id=node.id
+                db=db, pool_id=self.id, identifier=identifier, address_id=node.id, at=at
             )
             await query_set.execute(db=db)
 

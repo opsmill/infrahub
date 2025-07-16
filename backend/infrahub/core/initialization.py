@@ -6,6 +6,7 @@ from infrahub import config, lock
 from infrahub.constants.database import DatabaseType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     DEFAULT_IP_NAMESPACE,
     GLOBAL_BRANCH_NAME,
@@ -224,7 +225,7 @@ async def create_root_node(db: InfrahubDatabase) -> Root:
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=registry.default_branch,
-        status="OPEN",
+        status=BranchStatus.OPEN,
         description="Default Branch",
         hierarchy_level=1,
         is_default=True,
@@ -241,7 +242,7 @@ async def create_default_branch(db: InfrahubDatabase) -> Branch:
 async def create_global_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=GLOBAL_BRANCH_NAME,
-        status="OPEN",
+        status=BranchStatus.OPEN,
         description="Global Branch",
         hierarchy_level=1,
         is_global=True,
@@ -264,7 +265,7 @@ async def create_branch(
     description = description or f"Branch {branch_name}"
     branch = Branch(
         name=branch_name,
-        status="OPEN",
+        status=BranchStatus.OPEN,
         hierarchy_level=2,
         description=description,
         is_default=False,

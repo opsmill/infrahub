@@ -1,0 +1,41 @@
+---
+title: Release 1.3.3
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.3.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>July 15th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Amsterdam</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.3.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.3.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- <!-- vale off -->
+  Added the `infrahub db check` command to look for illegal data in the database
+  <!-- vale on -->
+- Add a command to run a single migration
+- Updated GraphQL sandbox to GraphiQL 5
+
+### Fixed
+
+- Fix upsert mutation for webhooks ([#6641](https://github.com/opsmill/infrahub/issues/6641))
+- Prevent a merge operation and a diff update from running at the same time on the same branch ([#6704](https://github.com/opsmill/infrahub/issues/6704))
+- Fix branch delete logic to handle very large branches (millions of edges) and add a migration to clean up any partially deleted branches ([#6797](https://github.com/opsmill/infrahub/issues/6797))
+- Explicitly expose port 7687 for Neo4j to ensure the integration tests are running on all setup
+- Fix a bug in node creating that could cause duplicate relationships if the node being created included a relationship to a node of a schema that had its kind or inheritance updated in the past
+- Fix an issue where prefixes could not be allocated from a pool when passing `member_type` inside the data parameter
+- Migration to clean up duplicated relationships

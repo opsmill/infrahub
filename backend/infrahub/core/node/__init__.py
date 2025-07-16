@@ -82,6 +82,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
 
+    def get_branch(self) -> Branch:
+        return self._branch
+
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
         return self._schema.kind
