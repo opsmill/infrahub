@@ -43,6 +43,7 @@ The documentation is both an onboarding and a reference tool, serving developers
 ## 📄 Source and Style References
 
 Refer to the project style guides and templates provided in the current repository:
+
 - [documentation guidelines](../../docs/docs/development/docs.mdx) - This file is very important as it contains the main guidelines for writing documentation as well as the MDX syntax examples.
 - [vale folder](../../.vale/styles/) - Contains Vale styles for grammar and style checks.
 - [mardownlint](../../.markdownlint.yaml) - Contains Markdown linting rules to ensure consistency in formatting.
