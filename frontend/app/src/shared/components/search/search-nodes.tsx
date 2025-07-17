@@ -128,9 +128,9 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
           {columns
             .filter(({ name }) => !["name", "label"].includes(name))
-            .map((column) => (
+            .map((column, index) => (
               <NodeAttribute
-                key={column.id}
+                key={`${column.label}_${index}`}
                 title={column.label}
                 kind={column.kind}
                 value={objectDetailsData[column.name]}
@@ -157,9 +157,11 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
     if ("node" in value && value.node) {
       return value.node.display_label ?? null;
     }
+
     if ("edges" in value && value.edges?.length > 0) {
       return value.edges.map(({ node }) => node?.display_label).join(", ");
     }
+
     if ("value" in value && value.value) {
       switch (kind) {
         case ATTRIBUTE_KIND.BOOLEAN:
