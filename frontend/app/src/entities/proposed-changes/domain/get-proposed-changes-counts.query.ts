@@ -15,7 +15,7 @@ export function getProposedChangesCountsQueryOptions({
   filters,
 }: GetObjectsQueryParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_OBJECT, "count"],
+    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_OBJECT, filters, "count"],
     queryFn: () => {
       return getProposedChangesCounts({
         branchName,

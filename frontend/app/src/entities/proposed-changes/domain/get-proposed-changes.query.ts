@@ -20,7 +20,7 @@ export function getProposedChangesInfiniteQueryOptions({
   getRelationshipsVisible,
 }: GetObjectsQueryParams) {
   return infiniteQueryOptions({
-    queryKey: [branchName, atDate, "objects", schema.kind, JSON.stringify(filters)],
+    queryKey: [branchName, atDate, "objects", schema.kind, filters],
     queryFn: ({ pageParam }) => {
       return getProposedChanges({
         schema,
