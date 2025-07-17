@@ -6,7 +6,7 @@ interface TableColumnHeaderLinkProps extends ButtonProps {
   isActive?: boolean;
 }
 
-export function TableColumnHeaderLink({
+export function TableFilter({
   children,
   className,
   isActive,
