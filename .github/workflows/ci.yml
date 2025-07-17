@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy rule:truthy rule:line-length
+# yamllint disable rule:truthy rule:line-length
 name: "CI"
 on:
   pull_request:
