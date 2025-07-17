@@ -480,7 +480,7 @@ class CoreProposedChange(CoreTaskTarget):
     source_branch: String
     destination_branch: String
     state: Enum
-    is_draft: BooleanOptional
+    is_draft: Boolean
     approved_by: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager

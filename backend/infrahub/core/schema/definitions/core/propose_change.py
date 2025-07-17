@@ -38,7 +38,7 @@ core_proposed_change = NodeSchema(
             default_value=ProposedChangeState.OPEN.value,
             optional=True,
         ),
-        Attr(name="is_draft", kind="Boolean", optional=True, default_value=False),
+        Attr(name="is_draft", kind="Boolean", optional=False, default_value=False),
     ],
     relationships=[
         Rel(
