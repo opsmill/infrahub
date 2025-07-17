@@ -1,6 +1,7 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import {
   AttributeKind,
@@ -20,7 +21,6 @@ import {
   DynamicInputFieldProps,
   DynamicNumberFieldProps,
   FormFieldValue,
-  NumberPoolData,
 } from "@/shared/components/form/type";
 import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
@@ -42,7 +42,7 @@ export const getFormFieldFromAttribute = ({
   objectTemplate: NodeObject | null | undefined;
   schema: ModelSchema;
   isFilterForm: boolean;
-  pools?: Array<NumberPoolData>;
+  pools?: Array<NumberPool>;
   profiles?: Array<ProfileData>;
 }): DynamicAttributeFieldProps => {
   const attributeData = currentObject?.[attributeSchema.name];
@@ -73,6 +73,7 @@ export const getFormFieldFromAttribute = ({
       required: !isFilterForm && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
         if (isFilterForm) return true;
+        if (formFieldValue.source?.type === "pool") return true;
 
         const attributeKind = attributeSchema.kind as AttributeKind;
 

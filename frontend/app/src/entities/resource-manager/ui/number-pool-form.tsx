@@ -9,7 +9,7 @@ import {
 } from "@/entities/resource-manager/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, NodeSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -162,7 +162,7 @@ const NodeAttributesSelects = () => {
   const selectedNodeField: FormAttributeValue = form.watch(NUMBER_POOL_NODE_FIELD);
   const selectedNode = options.find((node) => node.kind === selectedNodeField?.value);
 
-  const nodesWithNumberAttributes: Array<NodeSchema> = options.filter((node) =>
+  const nodesWithNumberAttributes: Array<ModelSchema> = options.filter((node) =>
     node.attributes?.some(
       (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
     )

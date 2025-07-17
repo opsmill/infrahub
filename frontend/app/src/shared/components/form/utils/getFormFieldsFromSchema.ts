@@ -1,9 +1,10 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
-import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
+import { DynamicFieldProps } from "@/shared/components/form/type";
 import { FormContextType } from "@/shared/components/form/utils/form-context";
 import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
 import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
@@ -17,7 +18,7 @@ interface GetFormFieldsFromSchema extends FormContextType {
   objectTemplate?: NodeObject | null;
   auth?: AuthContextType;
   isFilterForm?: boolean;
-  pools?: Array<NumberPoolData>;
+  pools?: Array<NumberPool>;
   isUpdate?: boolean;
 }
 
