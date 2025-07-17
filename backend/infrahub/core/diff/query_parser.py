@@ -13,6 +13,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import SchemaNotFoundError
 
 from .model.field_specifiers_map import NodeFieldSpecifierMap
 from .model.path import (
@@ -566,9 +567,12 @@ class DiffQueryParser:
         if database_path.deepest_branch == self.diff_branch_name:
             branches_to_check.append(self.base_branch_name)
         for schema_branch_name in branches_to_check:
-            node_schema = self.schema_manager.get(
-                name=database_path.node_kind, branch=schema_branch_name, duplicate=False
-            )
+            try:
+                node_schema = self.schema_manager.get(
+                    name=database_path.node_kind, branch=schema_branch_name, duplicate=False
+                )
+            except SchemaNotFoundError:
+                continue
             relationship_schemas = node_schema.get_relationships_by_identifier(id=database_path.attribute_name)
             if len(relationship_schemas) == 1:
                 return relationship_schemas[0]
