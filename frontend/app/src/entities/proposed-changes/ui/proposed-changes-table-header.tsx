@@ -62,11 +62,19 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
       </div>
 
       <div className="flex items-center">
-        <TableColumnHeader schema={schema} columnSchema={stateAttribute} />
-        <TableColumnHeader schema={schema} columnSchema={sourceBranchAttribute} />
-        <TableColumnHeader schema={schema} columnSchema={authorRelationship} />
-        <TableColumnHeader schema={schema} columnSchema={reviewersRelationship} />
-        <TableColumnHeader schema={schema} columnSchema={approversRelationship} />
+        {stateAttribute && <TableColumnHeader schema={schema} columnSchema={stateAttribute} />}
+        {sourceBranchAttribute && (
+          <TableColumnHeader schema={schema} columnSchema={sourceBranchAttribute} />
+        )}
+        {authorRelationship && (
+          <TableColumnHeader schema={schema} columnSchema={authorRelationship} />
+        )}
+        {reviewersRelationship && (
+          <TableColumnHeader schema={schema} columnSchema={reviewersRelationship} />
+        )}
+        {approversRelationship && (
+          <TableColumnHeader schema={schema} columnSchema={approversRelationship} />
+        )}
       </div>
     </div>
   );
