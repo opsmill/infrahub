@@ -11,7 +11,11 @@ type GetProposedChangesCountsResult = {
 export async function getProposedChanges(
   params: ProposedChangesFromApiParams
 ): Promise<GetProposedChangesCountsResult> {
-  const { data } = await getProposedChangesFromApi(params);
+  const { data, errors } = await getProposedChangesFromApi(params);
+
+  if (errors?.[0]?.message) {
+    throw new Error(errors[0].message);
+  }
 
   const schemaKindToQuery = params.schema.kind as string;
 
