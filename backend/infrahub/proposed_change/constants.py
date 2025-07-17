@@ -6,9 +6,9 @@ from infrahub.utils import InfrahubStringEnum
 
 class ProposedChangeApprovalDecision(InfrahubStringEnum):
     APPROVE = "approve"
-    UNDO_APPROVE = "undo-approve"
+    CANCEL_APPROVE = "cancel-approve"
     REJECT = "reject"
-    UNDO_REJECT = "undo-reject"
+    CANCEL_REJECT = "cancel-reject"
 
 
 class ProposedChangeState(InfrahubStringEnum):

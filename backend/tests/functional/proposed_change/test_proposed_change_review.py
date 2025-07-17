@@ -79,7 +79,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         rejected_by_peers = {related_node.peer.id for related_node in updated_pc.rejected_by.peers}
         assert rejected_by_peers == {user["AccountProfile"]["id"]}
 
-    async def test_undo_approve(self, client: InfrahubClient, db, car_person_schema) -> None:
+    async def test_cancel_approve(self, client: InfrahubClient, db, car_person_schema) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -117,7 +117,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         # Un-approve the PC
         response = await client.execute_graphql(
             query=self.review_query,
-            variables={"data": {"id": str(proposed_change.id), "decision": "UNDO_APPROVE"}},
+            variables={"data": {"id": str(proposed_change.id), "decision": "CANCEL_APPROVE"}},
             branch_name="main",
         )
 
@@ -129,7 +129,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.approved_by.peers) == 0
         assert len(updated_pc.rejected_by.peers) == 0
 
-    async def test_undo_reject(self, client: InfrahubClient, db, car_person_schema) -> None:
+    async def test_cancel_reject(self, client: InfrahubClient, db, car_person_schema) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -167,7 +167,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         # Un-reject the PC
         response = await client.execute_graphql(
             query=self.review_query,
-            variables={"data": {"id": str(proposed_change.id), "decision": "UNDO_REJECT"}},
+            variables={"data": {"id": str(proposed_change.id), "decision": "CANCEL_REJECT"}},
             branch_name="main",
         )
 

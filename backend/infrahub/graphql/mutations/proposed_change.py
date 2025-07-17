@@ -274,7 +274,7 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in rejected_by_ids:
                     await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
-            case ProposedChangeApprovalDecision.UNDO_APPROVE:
+            case ProposedChangeApprovalDecision.CANCEL_APPROVE:
                 if current_user.id not in approved_by_ids:
                     raise ValidationError(
                         input_value="You did not approve this proposed change yet, it can't be un-approved"
@@ -288,7 +288,7 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in approved_by_ids:
                     await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
-            case ProposedChangeApprovalDecision.UNDO_REJECT:
+            case ProposedChangeApprovalDecision.CANCEL_REJECT:
                 if current_user.id not in rejected_by_ids:
                     raise ValidationError(
                         input_value="You did not reject this proposed change yet, it can't be un-rejected"
