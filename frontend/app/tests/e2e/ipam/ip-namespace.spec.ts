@@ -177,6 +177,8 @@ test.describe("/ipam - IP Namespace", () => {
 
     await test.step("validate deleted prefix is removed from tree", async () => {
       await expect(page.getByRole("treeitem", { name: "11.0.0.0/10" })).toBeHidden();
+      await expect(page.getByRole("treeitem", { name: "11.0.0.0/8" })).toBeVisible();
+      await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeVisible();
       await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(2);
     });
 
