@@ -1,11 +1,11 @@
 import { Skeleton } from "@/shared/components/skeleton";
 import React from "react";
 
-export interface ProposedCHangesTableSkeletonProps {
+export interface ProposedChangesTableSkeletonProps {
   headerCount: number;
 }
 
-export function ProposedCHangesTableSkeleton({ headerCount }: ProposedCHangesTableSkeletonProps) {
+export function ProposedChangesTableSkeleton({ headerCount }: ProposedChangesTableSkeletonProps) {
   return [...Array(5)].map((_, rowIndex) => {
     return (
       <React.Fragment key={`skeleton-row-${rowIndex}`}>

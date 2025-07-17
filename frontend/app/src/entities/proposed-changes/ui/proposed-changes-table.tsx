@@ -4,7 +4,7 @@ import { Permission } from "@/entities/permission/types";
 import { useProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
-import { ProposedCHangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
+import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { NodeSchema } from "@/entities/schema/types";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
@@ -41,7 +41,7 @@ export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
 
       {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
 
-      {isLoading && <ProposedCHangesTableSkeleton headerCount={flatData.length} />}
+      {isLoading && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>
   );
 }
