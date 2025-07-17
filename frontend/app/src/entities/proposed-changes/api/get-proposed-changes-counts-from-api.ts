@@ -6,24 +6,15 @@ import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export type GetProposedChangesCountsParams = ContextParams & {
+export interface ProposedChangesCountsFromApiParams extends ContextParams {
   filters?: Array<Filter>;
-};
+}
 
-type GetProposedChangesCountsResult = {
-  opened: number;
-  closed: number;
-};
-
-export type GetProposedChangesCounts = (
-  args: GetProposedChangesCountsParams
-) => Promise<GetProposedChangesCountsResult>;
-
-export const getProposedChangesCounts: GetProposedChangesCounts = async ({
+export const getProposedChangesCountsFromApi = async ({
   branchName,
   atDate,
   filters,
-}) => {
+}: ProposedChangesCountsFromApiParams) => {
   const queryString = jsonToGraphQLQuery({
     query: {
       opened: {
@@ -46,18 +37,12 @@ export const getProposedChangesCounts: GetProposedChangesCounts = async ({
   });
 
   const query = gql(queryString);
-  const { data } = await graphqlClient.query({
+
+  return graphqlClient.query({
     query,
     context: {
       branch: branchName,
       date: atDate,
     },
   });
-
-  const result = {
-    opened: data.opened.count ?? 0,
-    closed: data.closed.count ?? 0,
-  };
-
-  return result;
 };
