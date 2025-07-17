@@ -19,8 +19,7 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
-from infrahub.proposed_change import constants as proposed_change_constants
-from infrahub.proposed_change.constants import ProposedChangeState
+from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from ...proposed_change.models import RequestProposedChangePipeline
@@ -30,7 +29,7 @@ from .main import InfrahubMutationOptions
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
-ProposedChangeApprovalDecision = Enum.from_enum(proposed_change_constants.ProposedChangeApprovalDecision)
+ProposedChangeApprovalDecisionInput = Enum.from_enum(ProposedChangeApprovalDecision)
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
@@ -200,7 +199,9 @@ class ProposedChangeRequestRunCheck(Mutation):
 
 class ProposedChangeReviewInput(InputObjectType):
     id = String(required=True, description="The ID of the proposed change to review.")
-    decision = ProposedChangeApprovalDecision(required=True, description="The decision for the proposed change review.")
+    decision = ProposedChangeApprovalDecisionInput(
+        required=True, description="The decision for the proposed change review."
+    )
 
 
 class ProposedChangeReview(Mutation):
@@ -216,6 +217,11 @@ class ProposedChangeReview(Mutation):
         info: GraphQLResolveInfo,
         data: ProposedChangeReviewInput,
     ) -> dict[str, bool]:
+        """
+        This mutation is used to approve or reject a proposed change.
+        It can also be used to undo an approval or rejection.
+        """
+
         graphql_context: GraphqlContext = info.context
 
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
@@ -234,46 +240,63 @@ class ProposedChangeReview(Mutation):
             db=graphql_context.db,
         )
 
-        approved_by = await proposed_change.approved_by.get_peers(db=graphql_context.db)
-        rejected_by = await proposed_change.rejected_by.get_peers(db=graphql_context.db)
+        async with graphql_context.db.start_session() as db:
+            await cls._handle_decision(
+                db=db,
+                decision=data.decision,
+                proposed_change=proposed_change,
+                current_user=current_user,
+            )
+            await proposed_change.save(db=db)
+
+        return {"ok": True}
+
+    @classmethod
+    async def _handle_decision(
+        cls,
+        db: InfrahubDatabase,
+        decision: ProposedChangeApprovalDecision,
+        proposed_change: CoreProposedChange,
+        current_user: Node,
+    ) -> None:
+        """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
+
+        approved_by = await proposed_change.approved_by.get_peers(db=db)
+        rejected_by = await proposed_change.rejected_by.get_peers(db=db)
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
 
-        async with graphql_context.db.start_session() as db:
-            if data.decision == proposed_change_constants.ProposedChangeApprovalDecision.APPROVE:
+        match decision:
+            case ProposedChangeApprovalDecision.APPROVE:
                 if current_user.id in approved_by_ids:
                     raise ValidationError(input_value="You have already approved this proposed change")
                 await proposed_change.approved_by.add(db=db, data=current_user)
                 if current_user.id in rejected_by_ids:
                     await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
-            elif data.decision == proposed_change_constants.ProposedChangeApprovalDecision.UNDO_APPROVE:
+            case ProposedChangeApprovalDecision.UNDO_APPROVE:
                 if current_user.id not in approved_by_ids:
                     raise ValidationError(
                         input_value="You did not approve this proposed change yet, it can't be un-approved"
                     )
                 await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
-            elif data.decision == proposed_change_constants.ProposedChangeApprovalDecision.REJECT:
+            case ProposedChangeApprovalDecision.REJECT:
                 if current_user.id in rejected_by_ids:
                     raise ValidationError(input_value="You have already rejected this proposed change")
                 await proposed_change.rejected_by.add(db=db, data=current_user)
                 if current_user.id in approved_by_ids:
                     await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
-            elif data.decision == proposed_change_constants.ProposedChangeApprovalDecision.UNDO_REJECT:
+            case ProposedChangeApprovalDecision.UNDO_REJECT:
                 if current_user.id not in rejected_by_ids:
                     raise ValidationError(
                         input_value="You did not reject this proposed change yet, it can't be un-rejected"
                     )
                 await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
-            else:
-                raise ValidationError(input_value=f"Invalid decision {data.decision}")
-
-            await proposed_change.save(db=db)
-
-        return {"ok": True}
+            case _:
+                raise ValidationError(input_value=f"Invalid decision {decision}")
 
 
 class ProposedChangeMergeInput(InputObjectType):
