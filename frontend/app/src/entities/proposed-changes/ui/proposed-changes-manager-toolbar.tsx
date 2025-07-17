@@ -20,35 +20,8 @@ export function ProposedChangesManagerToolbar({
   schema,
   permission,
 }: ProposedChangesManagerToolbarProps) {
-  // const [qspState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
-
   const navigate = useNavigate();
   const [filters] = useFilters();
-
-  // const tabs = [
-  //   {
-  //     label: (
-  //       <>
-  //         Opened
-  //         <Badge className={classNames("ml-1", !qspState && "bg-green-700 text-white")}>
-  //           {data?.[`${PROPOSED_CHANGE_OBJECT}Open`]?.count ?? "0"}
-  //         </Badge>
-  //       </>
-  //     ),
-  //     name: "open",
-  //   },
-  //   {
-  //     label: (
-  //       <>
-  //         Closed
-  //         <Badge className={classNames("ml-1", qspState && "bg-green-700 text-white")}>
-  //           {data?.[`${PROPOSED_CHANGE_OBJECT}Close`]?.count ?? "0"}
-  //         </Badge>
-  //       </>
-  //     ),
-  //     name: "close",
-  //   },
-  // ];
 
   return (
     <>
@@ -69,8 +42,6 @@ export function ProposedChangesManagerToolbar({
         </div>
 
         <div className="flex gap-3 items-center">
-          {/* <TabsButtons tabs={tabs} qsp={QSP.PROPOSED_CHANGES_STATE} /> */}
-
           <ButtonWithTooltip
             disabled={!permission.create.isAllowed}
             tooltipEnabled={!permission.create.isAllowed}
