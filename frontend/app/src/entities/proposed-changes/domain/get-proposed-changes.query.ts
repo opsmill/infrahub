@@ -4,12 +4,12 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import {
-  GetProposedChangesParams,
   OBJECTS_PER_PAGE,
-  getProposedChanges,
+  ProposedChangesFromApiParams,
 } from "../api/get-proposed-changes-from-api";
+import { getProposedChanges } from "./get-proposed-changes";
 
-type GetObjectsQueryParams = Omit<GetProposedChangesParams, keyof PaginationParams>;
+type GetObjectsQueryParams = Omit<ProposedChangesFromApiParams, keyof PaginationParams>;
 
 export function getProposedChangesInfiniteQueryOptions({
   schema,
