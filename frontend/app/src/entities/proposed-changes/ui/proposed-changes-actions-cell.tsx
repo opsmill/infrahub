@@ -59,7 +59,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
           objectLabel={objectLabel}
           open={true}
           setOpen={() => setShowDeleteModal(false)}
-          alertMessage={`Proposed changes ${objectLabel} deleted`}
+          toastMessage={`Proposed changes ${objectLabel} deleted`}
         />
       )}
     </>
