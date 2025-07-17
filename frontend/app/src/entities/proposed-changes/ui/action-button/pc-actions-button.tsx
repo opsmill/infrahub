@@ -1,3 +1,5 @@
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -5,10 +7,10 @@ import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { capitalizeFirstLetter } from "@/shared/utils/string";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { PROPOSED_CHANGE_APPROVAL_ACTIONS, PROPOSED_CHANGE_STATE_ACTIONS } from "../../constant";
 import { useUpdateReview } from "../../domain/update-review.mutation";
 import { ActionComboboxList } from "./actions-combobox-list";
 
@@ -20,20 +22,25 @@ interface PcActionButtonProps extends ButtonProps {
 
 export const PcActionButton = ({ proposedChangeId }: PcActionButtonProps) => {
   const [open, setOpen] = useState(false);
-  const [action, setAction] = useState("approve");
+  const [action, setAction] = useState(null);
 
   const { mutateAsync: updateObjectMutateAsync, isPending: isObjectUpdatePending } =
-    useUpdateReview({
+    useUpdateObjectMutation({
       onSuccess: async () => {
         await graphqlClient.reFetchObservableQueries();
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change updated!" />);
+        toast(
+          <Alert
+            type={ALERT_TYPES.SUCCESS}
+            message={action?.value && PROPOSED_CHANGE_STATE_ACTIONS[action.value].successMessage}
+          />
+        );
       },
       onError: async () => {
         await graphqlClient.reFetchObservableQueries();
         toast(
           <Alert
-            type={ALERT_TYPES.SUCCESS}
-            message="An error occured while updating the proposed changes"
+            type={ALERT_TYPES.ERROR}
+            message={action?.value && PROPOSED_CHANGE_STATE_ACTIONS[action.value].errorMessage}
           />
         );
       },
@@ -43,35 +50,48 @@ export const PcActionButton = ({ proposedChangeId }: PcActionButtonProps) => {
     useUpdateReview({
       onSuccess: async () => {
         await graphqlClient.reFetchObservableQueries();
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved!" />);
+        toast(
+          <Alert
+            type={ALERT_TYPES.SUCCESS}
+            message={action?.value && PROPOSED_CHANGE_APPROVAL_ACTIONS[action.value].successMessage}
+          />
+        );
       },
       onError: async () => {
         await graphqlClient.reFetchObservableQueries();
         toast(
           <Alert
-            type={ALERT_TYPES.SUCCESS}
-            message="An error occured while approving the proposed changes"
+            type={ALERT_TYPES.ERROR}
+            message={action?.value && PROPOSED_CHANGE_APPROVAL_ACTIONS[action.value].errorMessage}
           />
         );
       },
     });
 
-  const handleAction = () => {
-    switch (action) {
+  const handleAction = (event) => {
+    event.stopPropagation();
+
+    switch (action?.value) {
       case "cancel-reject":
       case "reject":
       case "cancel-approve":
       case "approve": {
         return updateApprovalMutateAsync({
           proposedChangeId,
-          decision: action,
+          decision: PROPOSED_CHANGE_APPROVAL_ACTIONS[action.value].decision,
         });
       }
       case "merge":
+      case "open":
       case "close": {
         return updateObjectMutateAsync({
-          proposedChangeId,
-          decision: action,
+          data: {
+            id: proposedChangeId,
+            state: {
+              value: PROPOSED_CHANGE_STATE_ACTIONS[action.value].state,
+            },
+          },
+          objectKind: PROPOSED_CHANGES_OBJECT,
         });
       }
     }
@@ -90,7 +110,7 @@ export const PcActionButton = ({ proposedChangeId }: PcActionButtonProps) => {
             isLoading={isLoading}
             disabled={isLoading}
           >
-            {capitalizeFirstLetter(action)}
+            {action?.name}
           </Button>
 
           <Button

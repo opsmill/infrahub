@@ -3,7 +3,7 @@ import { BranchContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
 const MUTATION = `
-mutation ProposedChangeReview($id: ID, $decison: String) {
+mutation ProposedChangeReview($id: String!, $decision: ProposedChangeApprovalDecision!) {
   CoreProposedChangeReview(data: {
     id: $id,
     decision: $decision
@@ -26,7 +26,7 @@ export function udpateReviewFromApi({
   return graphqlClient.mutate({
     mutation: gql(MUTATION),
     variables: {
-      proposedChangeId,
+      id: proposedChangeId,
       decision,
     },
     context: {

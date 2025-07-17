@@ -24,6 +24,10 @@ const actionsList: Record<string, ActionItem> = {
     value: "merge",
     name: "Merge",
   },
+  open: {
+    value: "open",
+    name: "Open",
+  },
   close: {
     value: "close",
     name: "Close",
@@ -31,7 +35,7 @@ const actionsList: Record<string, ActionItem> = {
 };
 
 export interface ActionComboboxListProps {
-  onSelect: (value: string) => void;
+  onSelect: (value: ActionItem) => void;
   value?: string | null;
 }
 
@@ -39,16 +43,16 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
   ({ value, onSelect }, ref) => {
     return (
       <ComboboxList ref={ref}>
-        {Object.entries(actionsList).map(([, { name, value: actionValue }]) => {
+        {Object.entries(actionsList).map(([, action]) => {
           return (
             <ComboboxItem
-              key={actionValue}
-              value={actionValue}
+              key={action.value}
+              value={action.value}
               selectedValue={value}
-              onSelect={() => onSelect(actionValue)}
+              onSelect={() => onSelect(action)}
               className="cursor-pointer"
             >
-              <span className="truncate">{name}</span>
+              <span className="truncate">{action.name}</span>
             </ComboboxItem>
           );
         })}
