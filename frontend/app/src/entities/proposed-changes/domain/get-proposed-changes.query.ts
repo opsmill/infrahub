@@ -1,12 +1,12 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import {
+  OBJECTS_PER_PAGE,
+  ProposedChangesFromApiParams,
+} from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
-import {
-  OBJECTS_PER_PAGE,
-  ProposedChangesFromApiParams,
-} from "../api/get-proposed-changes-from-api";
 import { getProposedChanges } from "./get-proposed-changes";
 
 type GetObjectsQueryParams = Omit<ProposedChangesFromApiParams, keyof PaginationParams>;

@@ -2,6 +2,10 @@ import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { NodeCore } from "@/entities/nodes/types";
+import { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
+import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
+import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -9,23 +13,9 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
-import { ProposedChangeDiffSummary } from "./diff-summary";
-import { getProposedChangesStateBadgeType } from "./proposed-changes";
-import { ProposedChangesActionCell } from "./proposed-changes-actions-cell";
 
 type ProposedChangesItemProps = {
-  node: {
-    id: string;
-    display_label: string;
-    name: { value: string };
-    created_by: { node: { display_label: string } };
-    state: { value: string };
-    _updated_at: string;
-    source_branch: { value: string };
-    approved_by: { edges: Array<{ node: NodeCore }> };
-    comments: { count: number };
-    validations: { count: number };
-  };
+  node: ProposedChangeItem;
 };
 
 export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {

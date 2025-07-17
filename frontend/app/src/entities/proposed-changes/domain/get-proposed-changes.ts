@@ -1,12 +1,23 @@
+import { NodeCore } from "@/entities/nodes/types";
 import {
   ProposedChangesFromApiParams,
   getProposedChangesFromApi,
 } from "../api/get-proposed-changes-from-api";
 
-type GetProposedChangesCountsResult = {
-  opened: number;
-  closed: number;
+export type ProposedChangeItem = {
+  id: string;
+  display_label: string;
+  name: { value: string };
+  created_by: { node: { display_label: string } };
+  state: { value: string };
+  _updated_at: string;
+  source_branch: { value: string };
+  approved_by: { edges: Array<{ node: NodeCore }> };
+  comments: { count: number };
+  validations: { count: number };
 };
+
+type GetProposedChangesCountsResult = Array<ProposedChangeItem>;
 
 export async function getProposedChanges(
   params: ProposedChangesFromApiParams
