@@ -29,6 +29,16 @@ class NodeSchema(GeneratedNodeSchema):
     def is_template_schema(self) -> bool:
         return False
 
+    @property
+    def is_ip_prefix(self) -> bool:
+        """Return whether a node is a derivative of built-in IP prefixes."""
+        return InfrahubKind.IPPREFIX in self.inherit_from
+
+    @property
+    def is_ip_address(self) -> bool:
+        """Return whether a node is a derivative of built-in IP addreses."""
+        return InfrahubKind.IPADDRESS in self.inherit_from
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Perform checks specific to inheritance from Generics.
 
@@ -137,11 +147,3 @@ class NodeSchema(GeneratedNodeSchema):
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append(InfrahubKind.NODE)
         return labels
-
-    def is_ip_prefix(self) -> bool:
-        """Return whether a node is a derivative of built-in IP prefixes."""
-        return InfrahubKind.IPPREFIX in self.inherit_from
-
-    def is_ip_address(self) -> bool:
-        """Return whether a node is a derivative of built-in IP addreses."""
-        return InfrahubKind.IPADDRESS in self.inherit_from

@@ -417,6 +417,14 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
+module = "infrahub.graphql.resolvers.ipam"
+disable_error_code = [
+    "attr-defined",
+    "operator",
+    "union-attr",
+]
+
+[[tool.mypy.overrides]]
 module = "infrahub.graphql.resolvers.resolver"
 disable_error_code = [
     "arg-type",

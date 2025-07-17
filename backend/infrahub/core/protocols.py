@@ -554,6 +554,14 @@ class InternalAccountToken(CoreNode):
     account: RelationshipManager
 
 
+class InternalIPPrefixAvailable(BuiltinIPPrefix):
+    pass
+
+
+class InternalIPRangeAvailable(BuiltinIPAddress):
+    last_address: IPHost
+
+
 class InternalRefreshToken(CoreNode):
     expiration: DateTime
     account: RelationshipManager
