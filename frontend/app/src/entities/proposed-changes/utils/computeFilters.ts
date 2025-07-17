@@ -13,6 +13,6 @@ export const computeFilters = ({
         state && state in PROPOSED_CHANGE_STATES
           ? PROPOSED_CHANGE_STATES[state as keyof typeof PROPOSED_CHANGE_STATES]
           : PROPOSED_CHANGE_STATES.opened,
-    },
+    } as Filter,
   ];
 };
