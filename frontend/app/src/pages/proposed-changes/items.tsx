@@ -1,5 +1,5 @@
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
 import { ProposedChangesManager } from "@/entities/proposed-changes/ui/proposed-changes-manager";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";

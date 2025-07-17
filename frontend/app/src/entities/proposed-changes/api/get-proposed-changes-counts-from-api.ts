@@ -1,4 +1,4 @@
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import { ContextParams } from "@/shared/api/types";

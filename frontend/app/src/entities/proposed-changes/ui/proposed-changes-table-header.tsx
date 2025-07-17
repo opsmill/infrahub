@@ -1,8 +1,8 @@
 import { QSP } from "@/config/qsp";
+import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/constant";
 import { useProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
 import { TableColumnHeader } from "@/entities/proposed-changes/ui/table-column-header";
 import { TableColumnHeaderLink } from "@/entities/proposed-changes/ui/table-column-header-link";
-import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/utils/constant";
 import { NodeSchema } from "@/entities/schema/types";
 import useFilters from "@/shared/hooks/useFilters";
 import { StringParam, useQueryParam } from "use-query-params";

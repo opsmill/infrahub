@@ -1,12 +1,12 @@
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
 import { ProposedChangesTable } from "@/entities/proposed-changes/ui/proposed-changes-table";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
-import { ModelSchema } from "@/entities/schema/types";
+import { NodeSchema } from "@/entities/schema/types";
 import { ProposedChangesManagerToolbar } from "./proposed-changes-manager-toolbar";
 
 export interface ProposedChangesManagerProps {
-  schema: ModelSchema;
+  schema: NodeSchema;
 }
 
 export function ProposedChangesManager({

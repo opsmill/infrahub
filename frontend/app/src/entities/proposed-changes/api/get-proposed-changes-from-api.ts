@@ -1,6 +1,6 @@
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/utils/constant";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {

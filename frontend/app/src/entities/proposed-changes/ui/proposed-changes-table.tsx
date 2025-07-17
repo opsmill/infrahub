@@ -1,5 +1,6 @@
 import { QSP } from "@/config/qsp";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
+import { Permission } from "@/entities/permission/types";
 import { useProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
@@ -13,6 +14,7 @@ import { computeFilters } from "../utils/computeFilters";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;
+  permission: Permission;
 };
 
 export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
