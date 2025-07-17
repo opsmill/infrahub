@@ -1,8 +1,8 @@
 import { QSP } from "@/config/qsp";
 import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/constant";
 import { useProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
-import { TableColumnHeader } from "@/entities/proposed-changes/ui/table-column-header";
-import { TableFilter } from "@/entities/proposed-changes/ui/table-column-header-link";
+import { TableFilter } from "@/entities/proposed-changes/ui/table-column-header";
+import { TableFilterLink } from "@/entities/proposed-changes/ui/table-column-header-link";
 import { NodeSchema } from "@/entities/schema/types";
 import useFilters from "@/shared/hooks/useFilters";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -43,37 +43,35 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
   return (
     <div className="flex items-center justify-between gap-2 p-3 pt-0">
       <div className="flex items-center">
-        <TableFilter
+        <TableFilterLink
           isActive={!proposedChangeState}
           onClick={() => {
             setProposedChangeState(undefined);
           }}
         >
           Opened ({data?.opened})
-        </TableFilter>
-        <TableFilter
+        </TableFilterLink>
+        <TableFilterLink
           isActive={proposedChangeState === QSP_STATE_CLOSE_VALUE}
           onClick={() => {
             setProposedChangeState(QSP_STATE_CLOSE_VALUE);
           }}
         >
           Closed ({data?.closed})
-        </TableFilter>
+        </TableFilterLink>
       </div>
 
       <div className="flex items-center">
-        {stateAttribute && <TableColumnHeader schema={schema} columnSchema={stateAttribute} />}
+        {stateAttribute && <TableFilter schema={schema} columnSchema={stateAttribute} />}
         {sourceBranchAttribute && (
-          <TableColumnHeader schema={schema} columnSchema={sourceBranchAttribute} />
+          <TableFilter schema={schema} columnSchema={sourceBranchAttribute} />
         )}
-        {authorRelationship && (
-          <TableColumnHeader schema={schema} columnSchema={authorRelationship} />
-        )}
+        {authorRelationship && <TableFilter schema={schema} columnSchema={authorRelationship} />}
         {reviewersRelationship && (
-          <TableColumnHeader schema={schema} columnSchema={reviewersRelationship} />
+          <TableFilter schema={schema} columnSchema={reviewersRelationship} />
         )}
         {approversRelationship && (
-          <TableColumnHeader schema={schema} columnSchema={approversRelationship} />
+          <TableFilter schema={schema} columnSchema={approversRelationship} />
         )}
       </div>
     </div>

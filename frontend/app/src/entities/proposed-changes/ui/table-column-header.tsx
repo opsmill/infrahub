@@ -15,7 +15,7 @@ export interface TableColumnHeaderProps extends PopoverTriggerProps {
   columnSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function TableColumnHeader({ schema, columnSchema, ...props }: TableColumnHeaderProps) {
+export function TableFilter({ schema, columnSchema, ...props }: TableColumnHeaderProps) {
   const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
   const currentColumnFilters = filters.find((f) => f.name.startsWith(columnSchema.name));
