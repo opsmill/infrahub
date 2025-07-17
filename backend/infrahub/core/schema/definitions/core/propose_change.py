@@ -66,6 +66,7 @@ core_proposed_change = NodeSchema(
             kind=RelKind.ATTRIBUTE,
             branch=BranchSupportType.AGNOSTIC,
             identifier="coreaccount__proposedchange_created_by",
+            read_only=True,
         ),
         Rel(
             name="comments",
