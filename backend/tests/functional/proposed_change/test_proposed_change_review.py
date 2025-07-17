@@ -12,6 +12,14 @@ if TYPE_CHECKING:
 
 
 class TestProposedChangeReview(TestInfrahubApp):
+    review_query: str = """
+        mutation ProposedChangeReview($data: ProposedChangeReviewInput!) {
+            CoreProposedChangeReview(data: $data) {
+                ok
+            }
+        }
+        """
+
     async def test_approve_then_reject(self, client: InfrahubClient, db, car_person_schema) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
@@ -34,16 +42,9 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(rejected_by_peers) == 0
 
         # Test the ProposedChangeReview mutation with APPROVED decision
-        review_query = """
-        mutation ProposedChangeReview($data: ProposedChangeReviewInput!) {
-            CoreProposedChangeReview(data: $data) {
-                ok
-            }
-        }
-        """
 
         response = await client.execute_graphql(
-            query=review_query,
+            query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
             branch_name="main",
         )
@@ -61,7 +62,7 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Test the ProposedChangeReview mutation with REJECTED decision
         response = await client.execute_graphql(
-            query=review_query,
+            query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "REJECT"}},
             branch_name="main",
         )
@@ -100,16 +101,8 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(rejected_by_peers) == 0
 
         # Approve the PC
-        review_query = """
-        mutation ProposedChangeReview($data: ProposedChangeReviewInput!) {
-            CoreProposedChangeReview(data: $data) {
-                ok
-            }
-        }
-        """
-
         await client.execute_graphql(
-            query=review_query,
+            query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
             branch_name="main",
         )
@@ -123,7 +116,7 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Un-approve the PC
         response = await client.execute_graphql(
-            query=review_query,
+            query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "UNDO_APPROVE"}},
             branch_name="main",
         )
@@ -158,16 +151,8 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(rejected_by_peers) == 0
 
         # Reject the PC
-        review_query = """
-        mutation ProposedChangeReview($data: ProposedChangeReviewInput!) {
-            CoreProposedChangeReview(data: $data) {
-                ok
-            }
-        }
-        """
-
         await client.execute_graphql(
-            query=review_query,
+            query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "REJECT"}},
             branch_name="main",
         )
@@ -181,7 +166,7 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Un-reject the PC
         response = await client.execute_graphql(
-            query=review_query,
+            query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "UNDO_REJECT"}},
             branch_name="main",
         )
