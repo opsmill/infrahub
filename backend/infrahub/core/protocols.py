@@ -482,6 +482,7 @@ class CoreProposedChange(CoreTaskTarget):
     state: Enum
     is_draft: Boolean
     approved_by: RelationshipManager
+    rejected_by: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager
     comments: RelationshipManager
