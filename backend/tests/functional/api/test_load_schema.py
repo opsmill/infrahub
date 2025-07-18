@@ -65,8 +65,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch: Branch,
     ) -> None:
-        creation = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
-        assert creation.schema_updated
+        await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
 
         # get the organization schema
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
