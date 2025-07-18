@@ -64,12 +64,13 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
         # Create the object in the database
-        obj, result = await super().mutate_create(info, data, branch)
+        obj, result = await super().mutate_create(info, data, branch, override_data=override_data)
         obj = cast(CoreGenericRepository, obj)
 
         # First check the connectivity to the remote repository

@@ -7,7 +7,6 @@ export const CREATE_PROPOSED_CHANGE = gql`
     $source_branch: String!
     $destination_branch: String!
     $reviewers: [RelatedNodeInput!]
-    $created_by: RelatedNodeInput!
   ) {
     CoreProposedChangeCreate(
       data: {
@@ -16,7 +15,6 @@ export const CREATE_PROPOSED_CHANGE = gql`
         source_branch: { value: $source_branch }
         destination_branch: { value: $destination_branch }
         reviewers: $reviewers
-        created_by: $created_by
       }
     ) {
       object {
