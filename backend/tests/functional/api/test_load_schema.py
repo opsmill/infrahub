@@ -71,6 +71,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         organization_schema = schema_branch.get_node(name="TestingOrganization", duplicate=False)
         tags_relationship = organization_schema.get_relationship(name="tags")
+        description_attribute = organization_schema.get_attribute(name="description")
 
         # set the organization and relationships to absent
         updated_schema = helper.schema_file("infra_simple_01.json")
@@ -79,6 +80,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                 node["state"] = "absent"
                 for rel in node["relationships"]:
                     rel["state"] = "absent"
+                for attr in node["attributes"]:
+                    if attr["name"] == "description":
+                        attr["state"] = "absent"
 
         update = await client.schema.load(schemas=[updated_schema])
         assert update.schema_updated
@@ -89,6 +93,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         # try to get the tags relationship
         tags_relationship_node = await NodeManager.get_one(db=db, id=tags_relationship.get_id())
         assert tags_relationship_node is None
+        # try to get the description attribute
+        description_attribute_node = await NodeManager.get_one(db=db, id=description_attribute.get_id())
+        assert description_attribute_node is None
 
     async def test_schema_load_endpoint_idempotent_with_generics(
         self, initial_dataset: str, client: InfrahubClient, helper: TestHelper, db: InfrahubDatabase
