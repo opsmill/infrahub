@@ -128,9 +128,9 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
           {columns
             .filter(({ name }) => !["name", "label"].includes(name))
-            .map((column, index) => (
+            .map((column) => (
               <NodeAttribute
-                key={`${column.label}_${index}`}
+                key={column.name}
                 title={column.label}
                 kind={column.kind}
                 value={objectDetailsData[column.name]}
