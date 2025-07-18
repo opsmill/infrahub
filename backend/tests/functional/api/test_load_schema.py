@@ -57,6 +57,40 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         assert first_relationship_count == updated_relationship_count
 
+    async def test_schema_load_with_absent_schema(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        creation = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
+        assert creation.schema_updated
+
+        # get the organization schema
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        organization_schema = schema_branch.get_node(name="TestingOrganization", duplicate=False)
+        tags_relationship = organization_schema.get_relationship(name="tags")
+
+        # set the organization and relationships to absent
+        updated_schema = helper.schema_file("infra_simple_01.json")
+        for node in updated_schema["nodes"]:
+            if node["name"] == "Organization" and node["namespace"] == "Testing":
+                node["state"] = "absent"
+                for rel in node["relationships"]:
+                    rel["state"] = "absent"
+
+        update = await client.schema.load(schemas=[updated_schema])
+        assert update.schema_updated
+
+        # try to get the organization schema
+        org_schema_node = await NodeManager.get_one(db=db, id=organization_schema.get_id())
+        assert org_schema_node is None
+        # try to get the tags relationship
+        tags_relationship_node = await NodeManager.get_one(db=db, id=tags_relationship.get_id())
+        assert tags_relationship_node is None
+
     async def test_schema_load_endpoint_idempotent_with_generics(
         self, initial_dataset: str, client: InfrahubClient, helper: TestHelper, db: InfrahubDatabase
     ) -> None:
