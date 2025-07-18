@@ -75,23 +75,10 @@ services:
       - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
 
-  task-manager-init:
-    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
-    command: "python -m infrahub.prefect_server.bootstrap"
-    environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
-    depends_on:
-      task-manager-db:
-        condition: service_healthy
-      cache:
-        condition: service_healthy
-
   task-manager:
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: "${PREFECT_SERVER_COMMAND:-gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()'}"
     depends_on:
-      task-manager-init:
-        condition: service_completed_successfully
       task-manager-db:
         condition: service_healthy
       cache:
@@ -101,6 +88,9 @@ services:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
       PREFECT__SERVER_WEBSERVER_ONLY: "true"
 
+      PREFECT_API_DATABASE_MIGRATE_ON_START: "false"
+      PREFECT_API_BLOCKS_REGISTER_ON_START: "false"
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
       PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED: "false"
       PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED: "false"
       PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED: "false"
@@ -138,6 +128,9 @@ services:
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
 
+      PREFECT_API_DATABASE_MIGRATE_ON_START: "false"
+      PREFECT_API_BLOCKS_REGISTER_ON_START: "false"
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
       PREFECT_MESSAGING_BROKER: prefect_redis.messaging
       PREFECT_MESSAGING_CACHE: prefect_redis.messaging
       PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}"

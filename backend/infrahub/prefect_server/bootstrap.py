@@ -14,4 +14,5 @@ async def init_prefect() -> None:
         await run_block_auto_registration(session=session)
 
 
-asyncio.run(init_prefect())
+if __name__ == "__main__":
+    asyncio.run(init_prefect())
