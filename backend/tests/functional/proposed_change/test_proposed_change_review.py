@@ -20,7 +20,9 @@ class TestProposedChangeReview(TestInfrahubApp):
         }
         """
 
-    async def test_approve_then_reject(self, client: InfrahubClient, db, car_person_schema) -> None:
+    async def test_approve_then_reject(
+        self, client: InfrahubClient, db, car_person_schema, unprivileged_client
+    ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -43,28 +45,30 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Test the ProposedChangeReview mutation with APPROVED decision
 
-        response = await client.execute_graphql(
+        response = await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
-            branch_name="main",
+            branch_name=source_branch.name,
         )
 
         assert response["CoreProposedChangeReview"]["ok"] is True
 
-        user = await client.get_user()
+        reviewer = await unprivileged_client.get_user()
 
         # Verify the proposed change still exists and is in the correct state
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"  # Should still be open after review
-        assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {user["AccountProfile"]["id"]}
+        assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {
+            reviewer["AccountProfile"]["id"]
+        }
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Test the ProposedChangeReview mutation with REJECTED decision
-        response = await client.execute_graphql(
+        response = await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "REJECT"}},
-            branch_name="main",
+            branch_name=source_branch.name,
         )
 
         assert response["CoreProposedChangeReview"]["ok"] is True
@@ -77,9 +81,9 @@ class TestProposedChangeReview(TestInfrahubApp):
         approved_by_peers = {related_node.peer.id for related_node in updated_pc.approved_by.peers}
         assert len(approved_by_peers) == 0
         rejected_by_peers = {related_node.peer.id for related_node in updated_pc.rejected_by.peers}
-        assert rejected_by_peers == {user["AccountProfile"]["id"]}
+        assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
 
-    async def test_cancel_approve(self, client: InfrahubClient, db, car_person_schema) -> None:
+    async def test_cancel_approve(self, client: InfrahubClient, db, car_person_schema, unprivileged_client) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -101,24 +105,26 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(rejected_by_peers) == 0
 
         # Approve the PC
-        await client.execute_graphql(
+        await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
-            branch_name="main",
+            branch_name=source_branch.name,
         )
 
         # Verify the proposed change still exists and is in the correct state
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
-        user = await client.get_user()
-        assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {user["AccountProfile"]["id"]}
+        reviewer = await unprivileged_client.get_user()
+        assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {
+            reviewer["AccountProfile"]["id"]
+        }
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Un-approve the PC
-        response = await client.execute_graphql(
+        response = await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "CANCEL_APPROVE"}},
-            branch_name="main",
+            branch_name=source_branch.name,
         )
 
         assert response["CoreProposedChangeReview"]["ok"] is True
@@ -129,7 +135,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.approved_by.peers) == 0
         assert len(updated_pc.rejected_by.peers) == 0
 
-    async def test_cancel_reject(self, client: InfrahubClient, db, car_person_schema) -> None:
+    async def test_cancel_reject(self, client: InfrahubClient, db, car_person_schema, unprivileged_client) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -151,24 +157,26 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(rejected_by_peers) == 0
 
         # Reject the PC
-        await client.execute_graphql(
+        await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "REJECT"}},
-            branch_name="main",
+            branch_name=source_branch.name,
         )
 
         # Verify the proposed change still exists and is in the correct state
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
-        user = await client.get_user()
-        assert {related_node.peer.id for related_node in updated_pc.rejected_by.peers} == {user["AccountProfile"]["id"]}
+        reviewer = await unprivileged_client.get_user()
+        assert {related_node.peer.id for related_node in updated_pc.rejected_by.peers} == {
+            reviewer["AccountProfile"]["id"]
+        }
         assert len(updated_pc.approved_by.peers) == 0
 
         # Un-reject the PC
-        response = await client.execute_graphql(
+        response = await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "CANCEL_REJECT"}},
-            branch_name="main",
+            branch_name=source_branch.name,
         )
 
         assert response["CoreProposedChangeReview"]["ok"] is True
