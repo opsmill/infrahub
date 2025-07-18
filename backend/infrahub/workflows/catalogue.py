@@ -434,6 +434,15 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
     function="validate_artifacts_generation",
 )
 
+REVOKE_APPROVAL_ON_UPDATED_PROPOSED_CHANGES = WorkflowDefinition(
+    name="revoke-approvals-on-updated-proposed-changes",
+    type=WorkflowType.INTERNAL,
+    cron="*/10 * * * *",
+    module="infrahub.proposed_change.tasks",
+    function="revoke_approvals_on_updated_proposed_changes",
+)
+
+
 WEBHOOK_PROCESS = WorkflowDefinition(
     name="webhook-process",
     type=WorkflowType.USER,
@@ -586,6 +595,7 @@ workflows = [
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
+    REVOKE_APPROVAL_ON_UPDATED_PROPOSED_CHANGES,
     RUN_GENERATOR_AS_CHECK,
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_UPDATED,

@@ -20,7 +20,12 @@ from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
-from .mutations.proposed_change import ProposedChangeMerge, ProposedChangeRequestRunCheck, ProposedChangeReview
+from .mutations.proposed_change import (
+    ProposedChangeCheckForApprovalRevoke,
+    ProposedChangeMerge,
+    ProposedChangeRequestRunCheck,
+    ProposedChangeReview,
+)
 from .mutations.relationship import (
     RelationshipAdd,
     RelationshipRemove,
@@ -93,6 +98,7 @@ class InfrahubBaseMutation(ObjectType):
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
     CoreProposedChangeMerge = ProposedChangeMerge.Field()
     CoreProposedChangeReview = ProposedChangeReview.Field()
+    CoreProposedChangeCheckForChanges = ProposedChangeCheckForApprovalRevoke.Field()
     CoreGeneratorDefinitionRun = GeneratorDefinitionRequestRun.Field()
 
     InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()

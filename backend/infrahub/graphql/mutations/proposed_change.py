@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Self
 from graphene import Boolean, Enum, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
+from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -13,8 +14,10 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.create import create_node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
@@ -23,6 +26,7 @@ from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, P
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from ...proposed_change.models import RequestProposedChangePipeline
+from ...proposed_change.revoke_approvals import revoke_approvals_on_updated_pcs
 from ..types.task import TaskInfo
 from .main import InfrahubMutationOptions
 
@@ -266,39 +270,61 @@ class ProposedChangeReview(Mutation):
     ) -> None:
         """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
 
-        approved_by = await proposed_change.approved_by.get_peers(db=db)
-        rejected_by = await proposed_change.rejected_by.get_peers(db=db)
-        approved_by_ids = [node.id for _, node in approved_by.items()]
-        rejected_by_ids = [node.id for _, node in rejected_by.items()]
+        approvals = await proposed_change.approvals.get_peers(db=db)
+        approver_id_to_approval_id = {
+            (await approval.approver.get_peer(db=db)).id: approval.id for _, approval in approvals.items()
+        }
+        rejects = await proposed_change.rejects.get_peers(db=db)
+        rejecter_id_to_reject_id = {
+            (await reject.rejecter.get_peer(db=db)).id: reject.id for _, reject in rejects.items()
+        }
 
         match decision:
             case ProposedChangeApprovalDecision.APPROVE:
-                if current_user.id in approved_by_ids:
+                if current_user.id in approver_id_to_approval_id:
                     raise ValidationError(input_value="You have already approved this proposed change")
-                await proposed_change.approved_by.add(db=db, data=current_user)
-                if current_user.id in rejected_by_ids:
-                    await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
+                approval = await create_node(
+                    db=db,
+                    branch=await registry.get_branch(db=db),
+                    schema=registry.schema.get_node_schema(name=InfrahubKind.PROPOSEDCHANGEAPPROVAL),
+                    data={"approver": current_user.id, "approved_at": Timestamp().to_string()},
+                )
+                await proposed_change.approvals.add(db=db, data=approval)
+                if current_user.id in rejecter_id_to_reject_id:
+                    await proposed_change.rejects.remove_locally(
+                        db=db, peer_id=rejecter_id_to_reject_id[current_user.id]
+                    )
 
             case ProposedChangeApprovalDecision.CANCEL_APPROVE:
-                if current_user.id not in approved_by_ids:
+                if current_user.id not in approver_id_to_approval_id:
                     raise ValidationError(
                         input_value="You did not approve this proposed change yet, it can't be un-approved"
                     )
-                await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
+                await proposed_change.approvals.remove_locally(
+                    db=db, peer_id=approver_id_to_approval_id[current_user.id]
+                )
 
             case ProposedChangeApprovalDecision.REJECT:
-                if current_user.id in rejected_by_ids:
+                if current_user.id in rejecter_id_to_reject_id:
                     raise ValidationError(input_value="You have already rejected this proposed change")
-                await proposed_change.rejected_by.add(db=db, data=current_user)
-                if current_user.id in approved_by_ids:
-                    await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
+                reject = await create_node(
+                    db=db,
+                    branch=await registry.get_branch(db=db),
+                    schema=registry.schema.get_node_schema(name=InfrahubKind.PROPOSEDCHANGEREJECT),
+                    data={"rejecter": current_user.id, "rejected_at": Timestamp().to_string()},
+                )
+                await proposed_change.rejects.add(db=db, data=reject)
+                if current_user.id in approver_id_to_approval_id:
+                    await proposed_change.approvals.remove_locally(
+                        db=db, peer_id=approver_id_to_approval_id[current_user.id]
+                    )
 
             case ProposedChangeApprovalDecision.CANCEL_REJECT:
-                if current_user.id not in rejected_by_ids:
+                if current_user.id not in rejecter_id_to_reject_id:
                     raise ValidationError(
                         input_value="You did not reject this proposed change yet, it can't be un-rejected"
                     )
-                await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
+                await proposed_change.rejects.remove_locally(db=db, peer_id=rejecter_id_to_reject_id[current_user.id])
 
             case _:
                 raise ValidationError(input_value=f"Invalid decision {decision}")
@@ -360,6 +386,24 @@ class ProposedChangeMerge(Mutation):
             task = {"id": workflow.id}
 
         return cls(ok=True, task=task)
+
+
+class ProposedChangeCheckForApprovalRevoke(Mutation):
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+    ) -> dict[str, bool]:
+        graphql_context: GraphqlContext = info.context
+
+        await revoke_approvals_on_updated_pcs(
+            db=graphql_context.db,
+        )
+
+        return {"ok": True}
 
 
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:

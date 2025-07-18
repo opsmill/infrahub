@@ -481,13 +481,23 @@ class CoreProposedChange(CoreTaskTarget):
     destination_branch: String
     state: Enum
     is_draft: Boolean
-    approved_by: RelationshipManager
-    rejected_by: RelationshipManager
+    approvals: RelationshipManager
+    rejects: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager
     comments: RelationshipManager
     threads: RelationshipManager
     validations: RelationshipManager
+
+
+class CoreProposedChangeApproval(CoreNode):
+    approved_at: String
+    approver: RelationshipManager
+
+
+class CoreProposedChangeReject(CoreNode):
+    rejected_at: String
+    rejecter: RelationshipManager
 
 
 class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):

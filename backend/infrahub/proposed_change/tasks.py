@@ -102,6 +102,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags
 
 from .branch_diff import get_diff_summary_cache, get_modified_kinds
+from .revoke_approvals import revoke_approvals_on_updated_pcs
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -1508,3 +1509,9 @@ async def _populate_subscribers(
             branch_diff.subscribers.append(
                 ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
             )
+
+
+@flow(name="revoke-approvals-on-updated-proposed-changes", flow_run_name="Revoke approvals on updated proposed changes")
+async def revoke_approvals_on_updated_proposed_changes(context: InfrahubContext) -> None:  # noqa: ARG001
+    db = await get_database()
+    await revoke_approvals_on_updated_pcs(db=db)

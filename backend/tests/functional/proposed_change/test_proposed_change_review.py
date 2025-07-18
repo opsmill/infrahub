@@ -38,13 +38,12 @@ class TestProposedChangeReview(TestInfrahubApp):
         # Get the proposed change to verify initial state
         pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
         assert pc is not None
-        approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
-        assert len(approved_by_peers) == 0
-        rejected_by_peers = {related_node.peer for related_node in pc.rejected_by.peers}
-        assert len(rejected_by_peers) == 0
+        approvals = {related_node.peer for related_node in pc.approvals.peers}
+        assert len(approvals) == 0
+        rejects = {related_node.peer for related_node in pc.rejects.peers}
+        assert len(rejects) == 0
 
         # Test the ProposedChangeReview mutation with APPROVED decision
-
         response = await unprivileged_client.execute_graphql(
             query=self.review_query,
             variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
@@ -59,10 +58,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"  # Should still be open after review
-        assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {
+        assert {related_node.peer.approver.id for related_node in updated_pc.approvals.peers} == {
             reviewer["AccountProfile"]["id"]
         }
-        assert len(updated_pc.rejected_by.peers) == 0
+        assert len(updated_pc.rejects.peers) == 0
 
         # Test the ProposedChangeReview mutation with REJECTED decision
         response = await unprivileged_client.execute_graphql(
@@ -73,15 +72,15 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         assert response["CoreProposedChangeReview"]["ok"] is True
 
-        # Verify user has been removed from `approved_by` and added to `rejected_by`
+        # Verify user has been removed from `approvals` and added to `rejects`
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"  # Should still be open after review
 
-        approved_by_peers = {related_node.peer.id for related_node in updated_pc.approved_by.peers}
-        assert len(approved_by_peers) == 0
-        rejected_by_peers = {related_node.peer.id for related_node in updated_pc.rejected_by.peers}
-        assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
+        approvals = {related_node.peer.approver.id for related_node in updated_pc.approvals.peers}
+        assert len(approvals) == 0
+        rejects = {related_node.peer.rejecter.id for related_node in updated_pc.rejects.peers}
+        assert rejects == {reviewer["AccountProfile"]["id"]}
 
     async def test_cancel_approve(self, client: InfrahubClient, db, car_person_schema, unprivileged_client) -> None:
         """Test the complete proposed change review flow including relationship updates."""
@@ -99,10 +98,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         # Get the proposed change to verify initial state
         pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
         assert pc is not None
-        approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
-        assert len(approved_by_peers) == 0
-        rejected_by_peers = {related_node.peer for related_node in pc.rejected_by.peers}
-        assert len(rejected_by_peers) == 0
+        approvals = {related_node.peer for related_node in pc.approvals.peers}
+        assert len(approvals) == 0
+        rejects = {related_node.peer for related_node in pc.rejects.peers}
+        assert len(rejects) == 0
 
         # Approve the PC
         await unprivileged_client.execute_graphql(
@@ -115,10 +114,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         reviewer = await unprivileged_client.get_user()
-        assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {
+        assert {related_node.peer.approver.id for related_node in updated_pc.approvals.peers} == {
             reviewer["AccountProfile"]["id"]
         }
-        assert len(updated_pc.rejected_by.peers) == 0
+        assert len(updated_pc.rejects.peers) == 0
 
         # Un-approve the PC
         response = await unprivileged_client.execute_graphql(
@@ -132,8 +131,8 @@ class TestProposedChangeReview(TestInfrahubApp):
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"
-        assert len(updated_pc.approved_by.peers) == 0
-        assert len(updated_pc.rejected_by.peers) == 0
+        assert len(updated_pc.approvals.peers) == 0
+        assert len(updated_pc.rejects.peers) == 0
 
     async def test_cancel_reject(self, client: InfrahubClient, db, car_person_schema, unprivileged_client) -> None:
         """Test the complete proposed change review flow including relationship updates."""
@@ -151,10 +150,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         # Get the proposed change to verify initial state
         pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
         assert pc is not None
-        approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
-        assert len(approved_by_peers) == 0
-        rejected_by_peers = {related_node.peer for related_node in pc.rejected_by.peers}
-        assert len(rejected_by_peers) == 0
+        approvals = {related_node.peer for related_node in pc.approvals.peers}
+        assert len(approvals) == 0
+        rejects = {related_node.peer for related_node in pc.rejects.peers}
+        assert len(rejects) == 0
 
         # Reject the PC
         await unprivileged_client.execute_graphql(
@@ -167,10 +166,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         reviewer = await unprivileged_client.get_user()
-        assert {related_node.peer.id for related_node in updated_pc.rejected_by.peers} == {
+        assert {related_node.peer.rejecter.id for related_node in updated_pc.rejects.peers} == {
             reviewer["AccountProfile"]["id"]
         }
-        assert len(updated_pc.approved_by.peers) == 0
+        assert len(updated_pc.approvals.peers) == 0
 
         # Un-reject the PC
         response = await unprivileged_client.execute_graphql(
@@ -184,5 +183,5 @@ class TestProposedChangeReview(TestInfrahubApp):
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"
-        assert len(updated_pc.approved_by.peers) == 0
-        assert len(updated_pc.rejected_by.peers) == 0
+        assert len(updated_pc.approvals.peers) == 0
+        assert len(updated_pc.rejects.peers) == 0
