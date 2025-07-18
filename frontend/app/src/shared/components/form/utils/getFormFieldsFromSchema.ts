@@ -60,6 +60,7 @@ export const getFormFieldsFromSchema = ({
       currentObject: initialObject as Record<string, AttributeType>,
       objectTemplate,
       isFilterForm: !!isFilterForm,
+      isUpdate: !!isUpdate,
       schema,
       pools,
       profiles,

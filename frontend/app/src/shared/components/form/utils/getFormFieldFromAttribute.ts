@@ -2,6 +2,7 @@ import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
 import { NumberPool } from "@/entities/resource-manager/domain/type";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import {
   AttributeKind,
@@ -33,6 +34,7 @@ export const getFormFieldFromAttribute = ({
   objectTemplate,
   schema,
   isFilterForm,
+  isUpdate,
   pools,
   profiles,
 }: {
@@ -42,6 +44,7 @@ export const getFormFieldFromAttribute = ({
   objectTemplate: NodeObject | null | undefined;
   schema: ModelSchema;
   isFilterForm: boolean;
+  isUpdate: boolean;
   pools?: Array<NumberPool>;
   profiles?: Array<ProfileData>;
 }): DynamicAttributeFieldProps => {
@@ -69,6 +72,7 @@ export const getFormFieldFromAttribute = ({
       schema.namespace === "Core" && attributeSchema.name === "node_kind"
         ? "NodeKind"
         : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
+    unique: attributeSchema.unique,
     rules: {
       required: !isFilterForm && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
@@ -114,7 +118,6 @@ export const getFormFieldFromAttribute = ({
   if (attributeSchema.kind === ATTRIBUTE_KIND.DROPDOWN) {
     const dropdownField: DynamicDropdownFieldProps = {
       ...basicFomFieldProps,
-      unique: attributeSchema.unique,
       type: ATTRIBUTE_KIND.DROPDOWN,
       field: attributeSchema,
       schema,
@@ -134,7 +137,6 @@ export const getFormFieldFromAttribute = ({
   if (Array.isArray(attributeSchema.enum)) {
     const enumField: DynamicEnumFieldProps = {
       ...basicFomFieldProps,
-      unique: attributeSchema.unique,
       type: "enum",
       field: attributeSchema,
       schema,
@@ -149,7 +151,6 @@ export const getFormFieldFromAttribute = ({
 
     const dropdownField: DynamicNumberFieldProps = {
       ...basicFomFieldProps,
-      unique: attributeSchema.unique,
       type: "Number",
       pools: numberPools,
     };
@@ -157,8 +158,22 @@ export const getFormFieldFromAttribute = ({
     return dropdownField;
   }
 
-  return {
-    ...basicFomFieldProps,
-    unique: attributeSchema.unique,
-  };
+  if (isUpdate) {
+    return basicFomFieldProps;
+  }
+
+  if (attributeSchema.name === "prefix" || attributeSchema.name === "address") {
+    const poolKind = getPoolKindFromSchema(schema);
+    if (poolKind) {
+      return {
+        ...basicFomFieldProps,
+        pool: {
+          kind: poolKind,
+          defaultAllocatedObjectKind: schema.kind as string,
+        },
+      };
+    }
+  }
+
+  return basicFomFieldProps;
 };
