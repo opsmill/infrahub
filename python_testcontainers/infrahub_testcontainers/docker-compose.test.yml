@@ -88,7 +88,7 @@ services:
 
   task-manager:
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
-    command: "${PREFECT_SERVER_COMMAND:-gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()}"
+    command: "${PREFECT_SERVER_COMMAND:-gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()'}"
     depends_on:
       task-manager-init:
         condition: service_completed_successfully
