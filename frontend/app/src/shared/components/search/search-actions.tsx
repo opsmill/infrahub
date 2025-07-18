@@ -9,7 +9,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 
 export const SearchActions = () => {
   const query = useCommandState((state) => state.search);
@@ -89,9 +89,10 @@ type ActionOnMenuProps = {
 
 const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
   const url = constructPath(menuItem.path);
+  const uniqueId = useId();
 
   return (
-    <SearchAnywhereItem to={url} value={menuItem.identifier}>
+    <SearchAnywhereItem to={url} value={uniqueId}>
       <span className="font-medium">Menu</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold">{menuItem.label}</span>
@@ -102,9 +103,10 @@ const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
 const ActionOnSchema = ({ model }: { model: ModelSchema }) => {
   const { kind, label, name } = model;
   const url = constructPath("/schema", [{ name: "kind", value: kind }]);
+  const uniqueId = useId();
 
   return (
-    <SearchAnywhereItem to={url} value={model.id!}>
+    <SearchAnywhereItem to={url} value={uniqueId}>
       <span className="font-medium">Schema</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold">
