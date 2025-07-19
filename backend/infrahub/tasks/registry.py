@@ -1,15 +1,75 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 log = get_logger()
+
+
+def update_graphql_schema(branch: Branch, schema_branch: SchemaBranch) -> None:
+    """
+    Update the GraphQL schema for the given branch.
+    """
+    from infrahub.graphql.manager import GraphQLSchemaManager
+
+    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
+    gqlm.get_graphql_schema(
+        include_query=True,
+        include_mutation=True,
+        include_subscription=True,
+        include_types=True,
+    )
+
+
+async def create_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
+    """Create a new entry in the registry for a given branch."""
+
+    log.info("New branch detected, pulling schema", branch=branch.name, worker=WORKER_IDENTITY)
+    await registry.schema.load_schema(db=db, branch=branch)
+    registry.branch[branch.name] = branch
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    update_graphql_schema(branch=branch, schema_branch=schema_branch)
+
+
+async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
+    """Update the registry for a branch if the schema hash has changed."""
+
+    existing_branch: Branch = registry.branch[branch.name]
+
+    if not existing_branch.schema_hash:
+        log.warning("Branch schema hash is not set, cannot update branch registry")
+        return
+
+    if existing_branch.schema_hash and existing_branch.schema_hash.main == branch.active_schema_hash.main:
+        log.debug(
+            "Branch schema hash is the same, no need to update branch registry",
+            branch=branch.name,
+            hash=existing_branch.schema_hash.main,
+            worker=WORKER_IDENTITY,
+        )
+        return
+
+    log.info(
+        "New hash detected",
+        branch=branch.name,
+        hash_current=existing_branch.schema_hash.main,
+        hash_new=branch.active_schema_hash.main,
+        worker=WORKER_IDENTITY,
+    )
+    await registry.schema.load_schema(db=db, branch=branch)
+    registry.branch[branch.name] = branch
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+
+    update_graphql_schema(branch=branch, schema_branch=schema_branch)
 
 
 async def refresh_branches(db: InfrahubDatabase) -> None:
@@ -24,41 +84,9 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
         branches = await registry.branch_object.get_list(db=db)
         for new_branch in branches:
             if new_branch.name in registry.branch:
-                branch_registry: Branch = registry.branch[new_branch.name]
-                if (
-                    branch_registry.schema_hash
-                    and branch_registry.schema_hash.main != new_branch.active_schema_hash.main
-                ):
-                    log.info(
-                        "New hash detected",
-                        branch=new_branch.name,
-                        hash_current=branch_registry.schema_hash.main,
-                        hash_new=new_branch.active_schema_hash.main,
-                        worker=WORKER_IDENTITY,
-                    )
-                    await registry.schema.load_schema(db=db, branch=new_branch)
-                    registry.branch[new_branch.name] = new_branch
-                    schema_branch = registry.schema.get_schema_branch(name=new_branch.name)
-                    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=new_branch, schema_branch=schema_branch)
-                    gqlm.get_graphql_schema(
-                        include_query=True,
-                        include_mutation=True,
-                        include_subscription=True,
-                        include_types=True,
-                    )
-
+                await update_branch_registry(db=db, branch=new_branch)
             else:
-                log.info("New branch detected, pulling schema", branch=new_branch.name, worker=WORKER_IDENTITY)
-                await registry.schema.load_schema(db=db, branch=new_branch)
-                registry.branch[new_branch.name] = new_branch
-                schema_branch = registry.schema.get_schema_branch(name=new_branch.name)
-                gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=new_branch, schema_branch=schema_branch)
-                gqlm.get_graphql_schema(
-                    include_query=True,
-                    include_mutation=True,
-                    include_subscription=True,
-                    include_types=True,
-                )
+                await create_branch_registry(db=db, branch=new_branch)
 
         purged_branches = await registry.purge_inactive_branches(db=db, active_branches=branches)
         purged_branches.update(

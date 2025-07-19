@@ -165,3 +165,9 @@ class NumberPoolParameters(AttributeParameters):
         if self.start_range > self.end_range:
             raise ValueError("`start_range` can't be less than `end_range`")
         return self
+
+    def get_pool_size(self) -> int:
+        """
+        Returns the size of the pool based on the defined ranges.
+        """
+        return self.end_range - self.start_range + 1
