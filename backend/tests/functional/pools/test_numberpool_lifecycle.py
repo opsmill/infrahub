@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
@@ -75,7 +76,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         assert not schema_load_response.errors
 
     async def test_numberpool_assignment_direct_node(
-        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
     ) -> None:
         service = await InfrahubServices.new(database=db)
         context = InfrahubContext.init(
@@ -176,7 +177,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             )
 
     async def test_numberpool_existing_nodes(
-        self, db: InfrahubDatabase, client: InfrahubClient, redis, default_branch, initial_schema: SchemaRoot
+        self, db: InfrahubDatabase, client: InfrahubClient, redis, default_branch: Branch, initial_schema: SchemaRoot
     ) -> None:
         schema_load_response = await client.schema.load(
             schemas=[initial_schema.model_dump()], wait_until_converged=True
@@ -188,6 +189,9 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             incident = await Node.init(db=db, schema=SNOW_INCIDENT.kind)
             await incident.new(db=db, title=f"Incident #{idx}")
             await incident.save(db=db)
+
+        pools_before = await client.all(kind="CoreNumberPool", branch=default_branch.name)
+        assert len(pools_before) == 1
 
         # Add a new attribute to the existing schema with a large pool
         new_schema = initial_schema.duplicate()
@@ -205,8 +209,19 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         schema_load_response = await client.schema.load(schemas=[new_schema.model_dump()], wait_until_converged=True)
         assert not schema_load_response.errors
 
+        # Validate that the new pool has been created
+        pools_after = await client.all(kind="CoreNumberPool", branch=default_branch.name)
+        assert len(pools_after) == 2
+
+        # Validate that the existing incidents have been updated with the new number
         incidents = await registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
         assert incidents[0].new_number.value == 10
+
+        pools_after2 = await client.all(kind="CoreNumberPool", branch=default_branch.name)
+        assert len(pools_after2) == 2
+
+        incident10 = await client.create(kind=SNOW_INCIDENT.kind, title="Incident #10", branch=default_branch.name)
+        await incident10.save()
 
         # Add a new attribute to the existing schema with a large pool
         new_schema2 = initial_schema.duplicate()
@@ -225,5 +240,5 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         assert schema_load_response.errors
         assert len(schema_load_response.errors["errors"]) == 1
         assert schema_load_response.errors["errors"][0]["message"] == (
-            "The size of the NumberPool is smaller than the number of existing nodes 3 < 5."
+            "The size of the NumberPool is smaller than the number of existing nodes 3 < 6."
         )

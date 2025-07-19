@@ -11,8 +11,8 @@ from .. import Node
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.core.schema import AttributeSchema
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -48,7 +48,9 @@ class CoreNumberPool(Node):
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
 
-        query = await NumberPoolSetReserved.init(db=db, pool_id=self.get_id(), identifier=identifier, reserved=number, at=at)
+        query = await NumberPoolSetReserved.init(
+            db=db, pool_id=self.get_id(), identifier=identifier, reserved=number, at=at
+        )
         await query.execute(db=db)
 
     async def get_resource(

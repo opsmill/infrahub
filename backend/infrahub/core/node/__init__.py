@@ -344,10 +344,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 number_pool_from_db = await registry.manager.get_one_by_id_or_default_filter(
                     db=db, id=str(number_pool_parameters.number_pool_id), kind=CoreNumberPool
                 )
+                return number_pool_from_db  # type: ignore[return-value]
+
             except NodeNotFoundError:
                 schema = db.schema.get_node_schema(name="CoreNumberPool", duplicate=False)
 
-                pool_node = schema.kind
+                pool_node = schema_node.kind
                 if schema_attribute.inherited:
                     for generic_name in schema_node.inherit_from:
                         generic_node = db.schema.get_generic_schema(name=generic_name, duplicate=False)
@@ -368,12 +370,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
                 await number_pool.save(db=db)
 
-        # Do a lookup of the number pool to get the correct mapped type from the registry
-        # without this we don't get access to the .get_resource() method.
-        created_pool: CoreNumberPool = number_pool_from_db or await registry.manager.get_one_by_id_or_default_filter(
-            db=db, id=number_pool.id, kind=CoreNumberPool
-        )
-        return created_pool
+                # Do a lookup of the number pool to get the correct mapped type from the registry
+                # without this we don't get access to the .get_resource() method.
+                created_pool: CoreNumberPool = (
+                    number_pool_from_db
+                    or await registry.manager.get_one_by_id_or_default_filter(
+                        db=db, id=number_pool.id, kind=CoreNumberPool
+                    )
+                )
+                return created_pool
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
