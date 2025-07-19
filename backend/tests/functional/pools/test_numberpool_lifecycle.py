@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.graphql import Query
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
@@ -44,6 +45,13 @@ node_schema_definition = NodeSchema(
             parameters=NumberPoolParameters(start_range=10, end_range=25),
         ),
     ],
+)
+
+number_pool_allocation_query = Query(
+    query={
+        "InfrahubResourcePoolAllocated": {"@filters": {"pool_id": "$pool_id", "resource_id": "$pool_id"}, "count": None}
+    },
+    variables={"pool_id": str},
 )
 
 
@@ -217,11 +225,21 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         incidents = await registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
         assert incidents[0].new_number.value == 10
 
-        pools_after2 = await client.all(kind="CoreNumberPool", branch=default_branch.name)
-        assert len(pools_after2) == 2
-
         incident10 = await client.create(kind=SNOW_INCIDENT.kind, title="Incident #10", branch=default_branch.name)
         await incident10.save()
+
+        # Ensure the calculated allocation is correct for both pools
+        number_pool = [pool for pool in pools_after if pool.node_attribute.value == "number"][0]
+        number_allocation = await client.execute_graphql(
+            query=number_pool_allocation_query.render(), variables={"pool_id": number_pool.id}
+        )
+        assert number_allocation["InfrahubResourcePoolAllocated"]["count"] == 6
+
+        new_number_pool = [pool for pool in pools_after if pool.node_attribute.value == "new_number"][0]
+        new_number_allocation = await client.execute_graphql(
+            query=number_pool_allocation_query.render(), variables={"pool_id": new_number_pool.id}
+        )
+        assert new_number_allocation["InfrahubResourcePoolAllocated"]["count"] == 6
 
         # Add a new attribute to the existing schema with a large pool
         new_schema2 = initial_schema.duplicate()

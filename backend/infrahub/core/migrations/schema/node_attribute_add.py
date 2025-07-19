@@ -75,7 +75,10 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         for node, number in zip(nodes, numbers, strict=True):
             await number_pool.reserve(db=db, number=number, identifier=node.get_id())
-            getattr(node, self.new_attribute_schema.name).value = number
+            attr = getattr(node, self.new_attribute_schema.name)
+            attr.value = number
+            attr.source = number_pool.id
+
             await node.save(db=db, fields=[self.new_attribute_schema.name])
 
         return result
