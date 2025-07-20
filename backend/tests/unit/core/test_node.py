@@ -1,23 +1,19 @@
-import copy
-
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
+from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
-from tests.constants import TestKind
-from tests.helpers.schema.device import DEVICE
 
 
 async def test_node_init(
@@ -725,15 +721,55 @@ async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, defa
 async def test_node_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ):
-    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
-    # Remove inheritance so we don't have any relationships
-    SIMPLE_DEVICE.inherit_from = []
+    DUMMY = NodeSchema(
+        name="Dummy",
+        namespace="Testing",
+        generate_template=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+        ],
+    )
 
+    SIMPLE_DEVICE = NodeSchema(
+        name="Device",
+        namespace="Testing",
+        generate_template=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, order_weight=500),
+            AttributeSchema(name="manufacturer", kind="Text", order_weight=500),
+            AttributeSchema(name="height", kind="Number", order_weight=300),
+            AttributeSchema(name="weight", kind="Number", order_weight=1000),
+            AttributeSchema(
+                name="airflow",
+                kind="Text",
+                enum=["Front to rear", "Rear to front"],
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="dummy",
+                peer="TestingDummy",
+                cardinality=RelationshipCardinality.ONE,
+                order_weight=5000,
+                optional=True,
+            )
+        ],
+    )
+    registry.schema.set(name=DUMMY.kind, schema=DUMMY, branch=default_branch.name)
     registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
 
-    template_schema = registry.schema.get(name=f"Template{TestKind.DEVICE}", branch=default_branch.name)
-    node_schema = registry.schema.get(name=TestKind.DEVICE, branch=default_branch.name)
+    template_schema = registry.schema.get(name=f"Template{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+    node_schema = registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
+
+    # Validate that the attributes respect the order_weight defined on the original schema
+    template_weights = {
+        attr.name: attr.order_weight for attr in template_schema.attributes + template_schema.relationships
+    }
+
+    assert "name" not in template_weights
+    assert template_weights["manufacturer"] == 10500
+    assert template_weights["dummy"] == 15000
 
     template = await Node.init(db=db, schema=template_schema)
     await template.new(
@@ -743,7 +779,6 @@ async def test_node_create_with_object_template(
         height=1,
         weight=8,
         airflow="Front to rear",
-        part_number="MX204",
     )
     await template.save(db=db)
 
@@ -778,13 +813,6 @@ async def test_node_create_with_object_template(
     assert (
         device.airflow.source_id
         == device.node_changelog.attributes["airflow"].properties["source"].value
-        == template.id
-    )
-    assert device.part_number.value == device.node_changelog.attributes["part_number"].value == "MX204"
-    assert device.node_changelog.attributes["part_number"].value_update_status == DiffAction.ADDED
-    assert (
-        device.part_number.source_id
-        == device.node_changelog.attributes["part_number"].properties["source"].value
         == template.id
     )
 
