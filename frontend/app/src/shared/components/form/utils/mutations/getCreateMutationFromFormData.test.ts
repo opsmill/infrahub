@@ -1,6 +1,5 @@
 import {
   AttributeValueFromProfile,
-  AttributeValueFromTemplate,
   DynamicFieldProps,
   FormAttributeValue,
   FormFieldValue,
@@ -274,10 +273,13 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
-  it("returns only object_template when form data contains template values", () => {
+  it("does not include field whose source is template", () => {
     // GIVEN
-    const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
-    const formData: Record<string, AttributeValueFromTemplate> = {
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({ name: "field1" }),
+      buildFormField({ name: "field2" }),
+    ];
+    const formData: Record<string, FormFieldValue> = {
       field1: {
         source: {
           type: "template",
@@ -287,6 +289,7 @@ describe("getCreateMutationFromFormData", () => {
         },
         value: "template-value",
       },
+      field2: { source: { type: "user" }, value: 0 },
     };
 
     // WHEN
@@ -295,6 +298,7 @@ describe("getCreateMutationFromFormData", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       object_template: { id: "template-id" },
+      field2: { value: 0 },
     });
   });
 
