@@ -12,6 +12,7 @@ import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { Row } from "@/shared/components/container";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
@@ -45,9 +46,9 @@ export const getIpPrefixTableColumns = (
       ),
       cell: ({ row }) => {
         const value: string = (row.getValue("id") ?? "-") as string;
-        const ancestors: number = row.original.ancestors?.count ?? 0;
 
         if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) {
+          const ancestorsCount: number = (row.original.parent?.node?.ancestors?.count ?? 0) + 1;
           return (
             <>
               <StickyLeftCell className="bg-green-50 pl-0.5">
@@ -57,7 +58,13 @@ export const getIpPrefixTableColumns = (
                   className="rounded-full px-2.5 pl-1.5 text-green-700 hover:underline hover:bg-green-700/10 gap-3.75"
                 >
                   <PlusIcon className="size-4 mr-px" />
-                  <span>{value}</span>
+
+                  <Row className="gap-2.5">
+                    {[...Array(ancestorsCount)].map((_, i) => (
+                      <div className="bg-green-600/40 size-1 rounded-full" key={i} />
+                    ))}
+                    {value}
+                  </Row>
                 </Button>
               </StickyLeftCell>
 
@@ -68,6 +75,8 @@ export const getIpPrefixTableColumns = (
           );
         }
 
+        const ancestorsCount: number = row.original.ancestors?.count ?? 0;
+
         return (
           <TableIdentifierCell
             objectKind={row.original.__typename as string}
@@ -75,12 +84,12 @@ export const getIpPrefixTableColumns = (
             isSelected={row.getIsSelected()}
             onSelectionChange={row.getToggleSelectedHandler()}
             label={
-              <>
-                {[...Array(ancestors)].map((_, i) => (
-                  <div className="bg-custom-blue-600/40 size-1 rounded-full mr-2.5" key={i} />
+              <Row className="gap-2.5">
+                {[...Array(ancestorsCount)].map((_, i) => (
+                  <div className="bg-custom-blue-600/40 size-1 rounded-full" key={i} />
                 ))}
                 {value}
-              </>
+              </Row>
             }
           />
         );
@@ -104,7 +113,7 @@ export const getIpPrefixTableColumns = (
         ),
         cell: ({ cell, row }) => {
           const attributeData = cell.getValue();
-          if (!attributeData) return null;
+          if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) return null; // no columns for availability rows
 
           if (attribute.name === "member_type") {
             const memberCount: number =
@@ -143,9 +152,10 @@ export const getIpPrefixTableColumns = (
         header: () => (
           <TableColumnHeader columnSchema={relationship} schema={schema} {...headerProps} />
         ),
-        cell: ({ cell }) => {
+        cell: ({ cell, row }) => {
           const value = cell.getValue();
           if (!value) return null;
+          if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) return null; // no columns for availability rows
 
           return (
             <TableCell>

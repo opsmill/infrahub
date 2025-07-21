@@ -1,4 +1,4 @@
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_PREFIX_AVAILABLE_KIND, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   addAttributesToRequest,
@@ -39,11 +39,23 @@ export function buildGetIpPrefixListQuery({
             id: true,
             display_label: true,
             hfid: true,
-            __on: {
-              __typeName: objectKind,
-              ...addAttributesToRequest(attributes),
-              ...addRelationshipsToRequest(relationships),
-            },
+            __on: [
+              {
+                __typeName: objectKind,
+                ...addAttributesToRequest(attributes),
+                ...addRelationshipsToRequest(relationships),
+              },
+              {
+                __typeName: IP_PREFIX_AVAILABLE_KIND, // Ancestors are not available on this kind. Instead, we do parent ancestors + 1
+                parent: {
+                  node: {
+                    ancestors: {
+                      count: true,
+                    },
+                  },
+                },
+              },
+            ],
             ip_namespace: {
               node: {
                 id: true,
