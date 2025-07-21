@@ -54,7 +54,7 @@ export const getIpPrefixTableColumns = (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="rounded-full pl-1.5 text-green-700 hover:underline hover:bg-green-700/10 gap-3.75"
+                  className="rounded-full px-2.5 pl-1.5 text-green-700 hover:underline hover:bg-green-700/10 gap-3.75"
                 >
                   <PlusIcon className="size-4 mr-px" />
                   <span>{value}</span>
