@@ -10,6 +10,7 @@ from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.enums import generate_python_enum
 from infrahub.core.query.attribute import default_attribute_query_filter
+from infrahub.exceptions import InitializationError
 from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
@@ -66,6 +67,11 @@ class AttributeSchema(GeneratedAttributeSchema):
     @property
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
+
+    def get_id(self) -> str:
+        if self.id is None:
+            raise InitializationError("The attribute schema has not been saved yet and doesn't have an id")
+        return self.id
 
     def to_dict(self) -> dict:
         data = self.model_dump(exclude_unset=True, exclude_none=True)

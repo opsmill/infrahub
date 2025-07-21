@@ -1,6 +1,7 @@
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema, NumberAttributeSchema
@@ -16,7 +17,7 @@ async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: B
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
 
@@ -38,6 +39,9 @@ async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: B
     await recreated_ticket2.save(db=db)
     assert recreated_ticket2.ticket_id.value == 2
 
+    # Validate methods at the pool level
+    assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
+
 
 async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     """
@@ -50,7 +54,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
 
@@ -58,7 +62,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
     await ticket1_np1.new(db=db, title="ticket1_np1", ticket_id={"from_pool": {"id": np1.id}})
     await ticket1_np1.save(db=db)
 
-    np2 = await Node.init(db=db, schema="CoreNumberPool")
+    np2 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np2.new(db=db, name="pool2", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np2.save(db=db)
 
@@ -148,7 +152,7 @@ async def test_allocate_from_number_pool_for_generic(
     await load_schema(db=db, schema=SchemaRoot(generics=[ticket], nodes=[speeding_ticket, parking_ticket]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node=ticket.kind, node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
 
@@ -199,11 +203,17 @@ async def test_allocate_from_number_pool_with_excluded_values(
     await load_schema(db=db, schema=SchemaRoot(nodes=[speeding_ticket]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(
         db=db, name="pool1", node=speeding_ticket.kind, node_attribute="ticket_id", start_range=10, end_range=30
     )
     await np1.save(db=db)
+
+    # Validate that get_next_many return the correct values
+    next_many = await np1.get_next_many(
+        db=db, branch=default_branch, quantity=5, attribute=speeding_ticket.get_attribute("ticket_id")
+    )
+    assert next_many == [10, 11, 13, 17, 18]
 
     tickets = []
     for _ in range(5):
