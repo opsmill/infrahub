@@ -11,15 +11,9 @@ from prefect.client.orchestration import get_client
 from rich import print as rprint
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.initialization import (
-    create_anonymous_role,
-    create_default_roles,
-    create_super_administrator_role,
-    create_super_administrators_group,
-    initialize_registry,
-)
+from infrahub.core.initialization import create_anonymous_role, create_default_account_groups, initialize_registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
@@ -118,11 +112,7 @@ async def upgrade_menu(db: InfrahubDatabase) -> None:
 
 
 async def upgrade_permissions(db: InfrahubDatabase) -> None:
-    existing_permissions = await NodeManager.query(
-        schema=InfrahubKind.OBJECTPERMISSION,
-        db=db,
-        limit=1,
-    )
+    existing_permissions = await NodeManager.query(schema=CoreObjectPermission, db=db, limit=1)
     if existing_permissions:
         rprint("Permissions Up to date, nothing to update")
         return
@@ -132,14 +122,8 @@ async def upgrade_permissions(db: InfrahubDatabase) -> None:
 
 
 async def setup_permissions(db: InfrahubDatabase) -> None:
-    existing_accounts = await NodeManager.query(
-        schema=InfrahubKind.ACCOUNT,
-        db=db,
-        limit=1,
-    )
-    administrator_role = await create_super_administrator_role(db=db)
-    await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=existing_accounts)
-    await create_default_roles(db=db)
+    existing_accounts = await NodeManager.query(schema=CoreAccount, db=db, limit=1)
+    await create_default_account_groups(db=db, admin_accounts=existing_accounts)
 
     if config.SETTINGS.main.allow_anonymous_access:
         await create_anonymous_role(db=db)
