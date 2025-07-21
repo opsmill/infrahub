@@ -6,7 +6,7 @@ interface TableColumnHeaderLinkProps extends ButtonProps {
   isActive?: boolean;
 }
 
-export function TableFilterLink({
+export function ProposedChangeTableFilterLink({
   children,
   className,
   isActive,
@@ -22,8 +22,6 @@ export function TableFilterLink({
         className
       )}
       {...props}
-    >
-      <span className="truncate">{children}</span>
-    </Button>
+    />
   );
 }

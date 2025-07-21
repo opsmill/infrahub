@@ -1,8 +1,8 @@
 import { QSP } from "@/config/qsp";
 import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/constant";
 import { useGetProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
-import { TableFilter } from "@/entities/proposed-changes/ui/table-column-header";
-import { TableFilterLink } from "@/entities/proposed-changes/ui/table-column-header-link";
+import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
+import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";
 import { NodeSchema } from "@/entities/schema/types";
 import useFilters from "@/shared/hooks/useFilters";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -43,35 +43,39 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
   return (
     <div className="flex items-center justify-between gap-2 p-3 pt-0">
       <div className="flex items-center">
-        <TableFilterLink
+        <ProposedChangeTableFilterLink
           isActive={!proposedChangeState}
           onClick={() => {
             setProposedChangeState(undefined);
           }}
         >
           Opened {data?.opened ? `(${data.opened})` : null}
-        </TableFilterLink>
-        <TableFilterLink
+        </ProposedChangeTableFilterLink>
+        <ProposedChangeTableFilterLink
           isActive={proposedChangeState === QSP_STATE_CLOSE_VALUE}
           onClick={() => {
             setProposedChangeState(QSP_STATE_CLOSE_VALUE);
           }}
         >
           Closed {data?.closed ? `(${data.closed})` : null}
-        </TableFilterLink>
+        </ProposedChangeTableFilterLink>
       </div>
 
       <div className="flex items-center">
-        {stateAttribute && <TableFilter schema={schema} columnSchema={stateAttribute} />}
-        {sourceBranchAttribute && (
-          <TableFilter schema={schema} columnSchema={sourceBranchAttribute} />
+        {stateAttribute && (
+          <ProposedChangeTableFilter schema={schema} columnSchema={stateAttribute} />
         )}
-        {authorRelationship && <TableFilter schema={schema} columnSchema={authorRelationship} />}
+        {sourceBranchAttribute && (
+          <ProposedChangeTableFilter schema={schema} columnSchema={sourceBranchAttribute} />
+        )}
+        {authorRelationship && (
+          <ProposedChangeTableFilter schema={schema} columnSchema={authorRelationship} />
+        )}
         {reviewersRelationship && (
-          <TableFilter schema={schema} columnSchema={reviewersRelationship} />
+          <ProposedChangeTableFilter schema={schema} columnSchema={reviewersRelationship} />
         )}
         {approversRelationship && (
-          <TableFilter schema={schema} columnSchema={approversRelationship} />
+          <ProposedChangeTableFilter schema={schema} columnSchema={approversRelationship} />
         )}
       </div>
     </div>
