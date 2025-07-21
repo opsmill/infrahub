@@ -11,6 +11,7 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
@@ -49,11 +50,15 @@ export const getIpPrefixTableColumns = (
         if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) {
           return (
             <>
-              <StickyLeftCell className="bg-green-50 text-green-800">
-                <PlusIcon className="size-4" />
-                <div className="truncate px-2.5 py-1 rounded-full text-green-700 hover:underline hover:bg-green-700/10 cursor-pointer font-medium">
-                  {value}
-                </div>
+              <StickyLeftCell className="bg-green-50 text-green-800 pl-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full pl-1.5 text-green-700 hover:underline hover:bg-green-700/10 gap-3.75"
+                >
+                  <PlusIcon className="size-4 mr-px" />
+                  <span>{value}</span>
+                </Button>
               </StickyLeftCell>
 
               <TableCell className="text-gray-400 col-start-2 -col-end-2">
