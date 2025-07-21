@@ -17,10 +17,8 @@ export async function getProposedChangesCounts(
     throw new Error(errors[0].message);
   }
 
-  const result = {
+  return {
     opened: data.opened.count ?? 0,
     closed: data.closed.count ?? 0,
   };
-
-  return result;
 }

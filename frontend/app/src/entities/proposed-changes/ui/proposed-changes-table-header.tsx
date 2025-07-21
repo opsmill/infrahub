@@ -1,6 +1,6 @@
 import { QSP } from "@/config/qsp";
 import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/constant";
-import { useProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
+import { useGetProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
 import { TableFilter } from "@/entities/proposed-changes/ui/table-column-header";
 import { TableFilterLink } from "@/entities/proposed-changes/ui/table-column-header-link";
 import { NodeSchema } from "@/entities/schema/types";
@@ -18,7 +18,7 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
   );
   const [filters] = useFilters();
 
-  const { data } = useProposedChangesCounts({ filters });
+  const { data } = useGetProposedChangesCounts({ filters });
 
   const stateAttribute = schema.attributes?.find((attribute) => {
     return attribute.name === "state";
@@ -49,7 +49,7 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
             setProposedChangeState(undefined);
           }}
         >
-          Opened ({data?.opened})
+          Opened {data?.opened ? `(${data.opened})` : null}
         </TableFilterLink>
         <TableFilterLink
           isActive={proposedChangeState === QSP_STATE_CLOSE_VALUE}
@@ -57,7 +57,7 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
             setProposedChangeState(QSP_STATE_CLOSE_VALUE);
           }}
         >
-          Closed ({data?.closed})
+          Closed {data?.closed ? `(${data.closed})` : null}
         </TableFilterLink>
       </div>
 

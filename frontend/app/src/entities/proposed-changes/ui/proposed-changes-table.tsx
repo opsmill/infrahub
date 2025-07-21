@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { Permission } from "@/entities/permission/types";
-import { useProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
+import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
@@ -22,10 +22,12 @@ export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
 
   const [filters] = useFilters();
 
-  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useProposedChanges({
-    schema,
-    filters: computeFilters({ filters, state: proposedChangeState as string }),
-  });
+  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
+    {
+      schema,
+      filters: computeFilters({ filters, state: proposedChangeState as string }),
+    }
+  );
 
   const isLoading = isPending || isFetchingNextPage;
 

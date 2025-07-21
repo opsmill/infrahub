@@ -1,4 +1,7 @@
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
+import {
+  PROPOSED_CHANGE_OBJECT,
+  PROPOSED_CHANGE_STATES,
+} from "@/entities/proposed-changes/constant";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import { ContextParams } from "@/shared/api/types";
@@ -15,28 +18,28 @@ export const getProposedChangesCountsFromApi = async ({
   atDate,
   filters,
 }: ProposedChangesCountsFromApiParams) => {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      opened: {
-        __aliasFor: PROPOSED_CHANGE_OBJECT,
-        __args: {
-          ...(filters ? addFiltersToRequest(filters) : {}),
-          state__values: ["open"],
+  const query = gql(
+    jsonToGraphQLQuery({
+      query: {
+        opened: {
+          __aliasFor: PROPOSED_CHANGE_OBJECT,
+          __args: {
+            ...(filters ? addFiltersToRequest(filters) : {}),
+            state__values: PROPOSED_CHANGE_STATES.opened,
+          },
+          count: true,
         },
-        count: true,
-      },
-      closed: {
-        __aliasFor: PROPOSED_CHANGE_OBJECT,
-        __args: {
-          ...(filters ? addFiltersToRequest(filters) : {}),
-          state__values: ["closed", "merged", "canceled"],
+        closed: {
+          __aliasFor: PROPOSED_CHANGE_OBJECT,
+          __args: {
+            ...(filters ? addFiltersToRequest(filters) : {}),
+            state__values: PROPOSED_CHANGE_STATES.closed,
+          },
+          count: true,
         },
-        count: true,
       },
-    },
-  });
-
-  const query = gql(queryString);
+    })
+  );
 
   return graphqlClient.query({
     query,

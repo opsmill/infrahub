@@ -26,7 +26,9 @@ export function getProposedChangesCountsQueryOptions({
   });
 }
 
-export function useProposedChangesCounts(params: Omit<GetObjectsQueryParams, keyof ContextParams>) {
+export function useGetProposedChangesCounts(
+  params: Omit<GetObjectsQueryParams, keyof ContextParams>
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 

@@ -42,7 +42,7 @@ export function getProposedChangesInfiniteQueryOptions({
   });
 }
 
-export function useProposedChanges(params: Omit<GetObjectsQueryParams, keyof ContextParams>) {
+export function useGetProposedChanges(params: Omit<GetObjectsQueryParams, keyof ContextParams>) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
