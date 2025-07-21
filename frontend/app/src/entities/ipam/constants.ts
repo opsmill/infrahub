@@ -3,6 +3,7 @@ import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
+export const IP_PREFIX_AVAILABLE_KIND = "InternalIPPrefixAvailable";
 
 export const POOLS_PEER = [IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC];
 

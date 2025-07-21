@@ -1,5 +1,7 @@
+import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
+import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
@@ -17,6 +19,7 @@ import { pluralize } from "@/shared/utils/string";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { ColumnDef } from "@tanstack/react-table";
+import { PlusIcon } from "lucide-react";
 
 export const getIpPrefixTableColumns = (
   schema: ModelSchema,
@@ -42,6 +45,24 @@ export const getIpPrefixTableColumns = (
       cell: ({ row }) => {
         const value: string = (row.getValue("id") ?? "-") as string;
         const ancestors: number = row.original.ancestors?.count ?? 0;
+
+        if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) {
+          return (
+            <>
+              <StickyLeftCell className="bg-green-50 text-green-800">
+                <PlusIcon className="size-4" />
+                <div className="truncate px-2.5 py-1 rounded-full text-green-700 hover:underline hover:bg-green-700/10 cursor-pointer font-medium">
+                  {value}
+                </div>
+              </StickyLeftCell>
+
+              <TableCell className="text-gray-400 col-start-2 -col-end-2">
+                {schema.label} available
+              </TableCell>
+            </>
+          );
+        }
+
         return (
           <TableIdentifierCell
             objectKind={row.original.__typename as string}
@@ -78,6 +99,7 @@ export const getIpPrefixTableColumns = (
         ),
         cell: ({ cell, row }) => {
           const attributeData = cell.getValue();
+          if (!attributeData) return null;
 
           if (attribute.name === "member_type") {
             const memberCount: number =
@@ -118,6 +140,7 @@ export const getIpPrefixTableColumns = (
         ),
         cell: ({ cell }) => {
           const value = cell.getValue();
+          if (!value) return null;
 
           return (
             <TableCell>

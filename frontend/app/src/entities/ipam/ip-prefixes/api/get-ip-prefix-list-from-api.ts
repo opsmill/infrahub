@@ -1,3 +1,4 @@
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   addAttributesToRequest,
@@ -26,10 +27,11 @@ export function buildGetIpPrefixListQuery({
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
-      [objectKind]: {
+      [IP_PREFIX_GENERIC]: {
         __args: {
           limit,
           offset,
+          include_available: true,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {
@@ -37,8 +39,11 @@ export function buildGetIpPrefixListQuery({
             id: true,
             display_label: true,
             hfid: true,
-            ...addAttributesToRequest(attributes),
-            ...addRelationshipsToRequest(relationships),
+            __on: {
+              __typeName: objectKind,
+              ...addAttributesToRequest(attributes),
+              ...addRelationshipsToRequest(relationships),
+            },
             ip_namespace: {
               node: {
                 id: true,
