@@ -230,7 +230,7 @@ class ProposedChangeReview(Mutation):
         graphql_context: GraphqlContext = info.context
         graphql_context.active_permissions.raise_for_permission(
             permission=GlobalPermission(
-                action=GlobalPermissions.APPROVE_PROPOSED_CHANGE.value, decision=PermissionDecision.ALLOW_ALL.value
+                action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value, decision=PermissionDecision.ALLOW_ALL.value
             )
         )
 

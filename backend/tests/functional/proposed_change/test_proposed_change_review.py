@@ -253,7 +253,7 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         assert (
             exc.value.errors[0]["message"]
-            == "You do not have the following permission: global:approve_proposed_change:allow_all"
+            == "You do not have the following permission: global:review_proposed_change:allow_all"
         )
 
         # Verify the proposed change still exists and is in the correct state

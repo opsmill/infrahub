@@ -431,7 +431,7 @@ async def create_proposed_change_approver_role(db: InfrahubDatabase) -> CoreAcco
     approver_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await approver_permission.new(
         db=db,
-        action=GlobalPermissions.APPROVE_PROPOSED_CHANGE.value,
+        action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value,
         decision=PermissionDecision.ALLOW_ALL.value,
         description="Allow a user to approve or revoke proposed changes",
     )
