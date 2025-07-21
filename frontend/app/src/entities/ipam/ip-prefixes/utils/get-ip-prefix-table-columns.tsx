@@ -50,7 +50,7 @@ export const getIpPrefixTableColumns = (
         if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) {
           return (
             <>
-              <StickyLeftCell className="bg-green-50 text-green-800 pl-0.5">
+              <StickyLeftCell className="bg-green-50 pl-0.5">
                 <Button
                   variant="ghost"
                   size="sm"
