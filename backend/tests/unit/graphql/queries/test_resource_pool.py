@@ -254,6 +254,40 @@ async def test_create_ipv6_prefix_and_read_allocations(db: InfrahubDatabase, def
     assert site2_prefix in prefixes
     assert site3_prefix in prefixes
 
+    # ------------------------------------------------------------
+    # Validate the utilization query in the main Branch
+    # ------------------------------------------------------------
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    utilization_result = await graphql(
+        schema=gql_params.schema,
+        source=POOL_UTILIZATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": ipv6_prefix_pool.id},
+    )
+
+    assert not utilization_result.errors
+    assert utilization_result.data
+    assert utilization_result.data["InfrahubResourcePoolUtilization"] == {
+        "edges": [
+            {
+                "node": {
+                    "display_label": "2001:db8::/48",
+                    "id": ipv6_prefix_resource.id,
+                    "kind": "IpamIPPrefix",
+                    "utilization": 0.0,
+                    "utilization_branches": 0.0,
+                    "utilization_default_branch": 0.0,
+                    "weight": 1208925819614629174706176,
+                },
+            },
+        ],
+        "count": 1,
+        "utilization": 0.0,
+        "utilization_branches": 0.0,
+        "utilization_default_branch": 0.0,
+    }
+
 
 async def test_create_ipv4_prefix_and_read_allocations(db: InfrahubDatabase, default_branch: Branch, prefix_pools_02):
     ipv4_prefix_resource = prefix_pools_02["ipv4_prefix_resource"]
