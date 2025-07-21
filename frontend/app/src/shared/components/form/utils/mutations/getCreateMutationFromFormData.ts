@@ -3,67 +3,66 @@ import {
   DynamicFieldProps,
   FormFieldValue,
   isFormFieldValueFromPool,
-  isFormFieldValueFromTemplate,
 } from "@/shared/components/form/type";
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,
-  formData: Record<string, FormFieldValue>
+  formData: Record<string, FormFieldValue>,
+  objectTemplateId?: string
 ) => {
-  return fields.reduce((acc, field) => {
-    const fieldData = formData[field.name];
+  return fields.reduce(
+    (acc, field) => {
+      const fieldData = formData[field.name];
 
-    if (!fieldData) {
+      if (!fieldData) {
+        return acc;
+      }
+
+      if (isFormFieldValueFromPool(fieldData)) {
+        return { ...acc, [field.name]: fieldData.value };
+      }
+
+      if (fieldData.source?.type === "user") {
+        if (fieldData.value === null) {
+          return { ...acc, [field.name]: { value: null } };
+        }
+
+        if (typeof fieldData.value === "object") {
+          if (Array.isArray(fieldData.value)) {
+            // To differentiate between list (string[]) and relationship (Node[])
+            if (fieldData.value.every((value) => typeof value === "string")) {
+              return {
+                ...acc,
+                [field.name]: { value: fieldData.value },
+              };
+            }
+
+            if (fieldData.value.every((value) => "id" in value)) {
+              return {
+                ...acc,
+                [field.name]: fieldData.value.map(({ id }) => ({ id })),
+              };
+            }
+          }
+
+          if ("id" in fieldData.value) {
+            return {
+              ...acc,
+              [field.name]: { id: fieldData.value.id },
+            };
+          }
+        }
+        const fieldValue = fieldData.value === "" ? null : fieldData.value;
+        return {
+          ...acc,
+          [field.name]: { value: fieldValue },
+        };
+      }
+
       return acc;
-    }
-
-    if (isFormFieldValueFromPool(fieldData)) {
-      return { ...acc, [field.name]: fieldData.value };
-    }
-
-    if (isFormFieldValueFromTemplate(fieldData)) {
-      return { ...acc, object_template: { id: fieldData.source.id } };
-    }
-
-    if (fieldData.source?.type === "user") {
-      if (fieldData.value === null) {
-        return { ...acc, [field.name]: { value: null } };
-      }
-
-      if (typeof fieldData.value === "object") {
-        if (Array.isArray(fieldData.value)) {
-          // To differentiate between list (string[]) and relationship (Node[])
-          if (fieldData.value.every((value) => typeof value === "string")) {
-            return {
-              ...acc,
-              [field.name]: { value: fieldData.value },
-            };
-          }
-
-          if (fieldData.value.every((value) => "id" in value)) {
-            return {
-              ...acc,
-              [field.name]: fieldData.value.map(({ id }) => ({ id })),
-            };
-          }
-        }
-
-        if ("id" in fieldData.value) {
-          return {
-            ...acc,
-            [field.name]: { id: fieldData.value.id },
-          };
-        }
-      }
-      const fieldValue = fieldData.value === "" ? null : fieldData.value;
-      return {
-        ...acc,
-        [field.name]: { value: fieldValue },
-      };
-    }
-
-    return acc;
-  }, {});
+    },
+    objectTemplateId ? { object_template: { id: objectTemplateId } } : {}
+  );
 };
 
 export const getCreateMutationFromFormDataOnly = (
@@ -121,5 +120,5 @@ export const getCreateMutationFromFormDataOnly = (
     }
 
     return acc;
-  }, {});
+  });
 };

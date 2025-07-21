@@ -204,9 +204,7 @@ describe("getCreateMutationFromFormData", () => {
 
     // THEN
     expect(mutationData).to.deep.equal({
-      relationship1: {
-        from_pool: { id: "pool-id" },
-      },
+      relationship1: { from_pool: { id: "pool-id" } },
     });
   });
 
@@ -244,7 +242,7 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
-  it("set value as null is value is an empty string", () => {
+  it("set value as null if value is an empty string", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
@@ -276,7 +274,7 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
-  it("handles template values correctly", () => {
+  it("returns only object_template when form data contains template values", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, AttributeValueFromTemplate> = {
@@ -292,10 +290,27 @@ describe("getCreateMutationFromFormData", () => {
     };
 
     // WHEN
-    const mutationData = getCreateMutationFromFormData(fields, formData);
+    const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
 
     // THEN
     expect(mutationData).to.deep.equal({
+      object_template: { id: "template-id" },
+    });
+  });
+
+  it("includes object_template in mutation data even with no template fields", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
+    const formData: Record<string, FormAttributeValue> = {
+      field1: { source: { type: "user" }, value: "value1" },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: { value: "value1" },
       object_template: { id: "template-id" },
     });
   });

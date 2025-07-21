@@ -83,7 +83,7 @@ export function IpPrefixPoolForm({
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
-      const newObject = getCreateMutationFromFormData(fields, data);
+      const newObject = getCreateMutationFromFormData(fields, data, props.objectTemplate?.id);
 
       if (!Object.keys(newObject).length) {
         return;

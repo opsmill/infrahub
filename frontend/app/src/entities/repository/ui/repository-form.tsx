@@ -22,6 +22,7 @@ const RepositoryForm = ({
   currentObject,
   onSubmit,
   onCancel,
+  ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -45,7 +46,7 @@ const RepositoryForm = ({
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 
-        const data = getCreateMutationFromFormData(fields, formData);
+        const data = getCreateMutationFromFormData(fields, formData, props.objectTemplate?.id);
 
         const mutation = gql(
           createObject({
