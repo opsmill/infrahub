@@ -3,6 +3,7 @@ import {
   DynamicFieldProps,
   FormFieldValue,
   isFormFieldValueFromPool,
+  isFormFieldValueFromTemplate,
 } from "@/shared/components/form/type";
 
 export const getCreateMutationFromFormData = (
@@ -10,59 +11,58 @@ export const getCreateMutationFromFormData = (
   formData: Record<string, FormFieldValue>,
   objectTemplateId?: string
 ) => {
-  return fields.reduce(
-    (acc, field) => {
-      const fieldData = formData[field.name];
+  const initialMutation = objectTemplateId ? { object_template: { id: objectTemplateId } } : {};
 
-      if (!fieldData) {
-        return acc;
+  return fields.reduce((acc, field) => {
+    const fieldData = formData[field.name];
+
+    if (!fieldData || isFormFieldValueFromTemplate(fieldData)) {
+      return acc;
+    }
+
+    if (isFormFieldValueFromPool(fieldData)) {
+      return { ...acc, [field.name]: fieldData.value };
+    }
+
+    if (fieldData.source?.type === "user") {
+      if (fieldData.value === null) {
+        return { ...acc, [field.name]: { value: null } };
       }
 
-      if (isFormFieldValueFromPool(fieldData)) {
-        return { ...acc, [field.name]: fieldData.value };
-      }
-
-      if (fieldData.source?.type === "user") {
-        if (fieldData.value === null) {
-          return { ...acc, [field.name]: { value: null } };
-        }
-
-        if (typeof fieldData.value === "object") {
-          if (Array.isArray(fieldData.value)) {
-            // To differentiate between list (string[]) and relationship (Node[])
-            if (fieldData.value.every((value) => typeof value === "string")) {
-              return {
-                ...acc,
-                [field.name]: { value: fieldData.value },
-              };
-            }
-
-            if (fieldData.value.every((value) => "id" in value)) {
-              return {
-                ...acc,
-                [field.name]: fieldData.value.map(({ id }) => ({ id })),
-              };
-            }
-          }
-
-          if ("id" in fieldData.value) {
+      if (typeof fieldData.value === "object") {
+        if (Array.isArray(fieldData.value)) {
+          // To differentiate between list (string[]) and relationship (Node[])
+          if (fieldData.value.every((value) => typeof value === "string")) {
             return {
               ...acc,
-              [field.name]: { id: fieldData.value.id },
+              [field.name]: { value: fieldData.value },
+            };
+          }
+
+          if (fieldData.value.every((value) => "id" in value)) {
+            return {
+              ...acc,
+              [field.name]: fieldData.value.map(({ id }) => ({ id })),
             };
           }
         }
-        const fieldValue = fieldData.value === "" ? null : fieldData.value;
-        return {
-          ...acc,
-          [field.name]: { value: fieldValue },
-        };
-      }
 
-      return acc;
-    },
-    objectTemplateId ? { object_template: { id: objectTemplateId } } : {}
-  );
+        if ("id" in fieldData.value) {
+          return {
+            ...acc,
+            [field.name]: { id: fieldData.value.id },
+          };
+        }
+      }
+      const fieldValue = fieldData.value === "" ? null : fieldData.value;
+      return {
+        ...acc,
+        [field.name]: { value: fieldValue },
+      };
+    }
+
+    return acc;
+  }, initialMutation);
 };
 
 export const getCreateMutationFromFormDataOnly = (
@@ -120,5 +120,5 @@ export const getCreateMutationFromFormDataOnly = (
     }
 
     return acc;
-  });
+  }, {});
 };
