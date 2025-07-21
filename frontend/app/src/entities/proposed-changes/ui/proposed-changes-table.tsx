@@ -10,7 +10,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
 import { StringParam, useQueryParam } from "use-query-params";
-import { computeFilters } from "../utils/computeFilters";
+import { computeProposedChangeFilters } from "../utils/compute-proposed-change-filters";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;
@@ -25,7 +25,7 @@ export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
     {
       schema,
-      filters: computeFilters({ filters, state: proposedChangeState as string }),
+      filters: computeProposedChangeFilters({ filters, state: proposedChangeState as string }),
     }
   );
 

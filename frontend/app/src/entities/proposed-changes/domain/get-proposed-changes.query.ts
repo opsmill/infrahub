@@ -9,7 +9,10 @@ import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { getProposedChanges } from "./get-proposed-changes";
 
-type GetObjectsQueryParams = Omit<ProposedChangesFromApiParams, keyof PaginationParams>;
+type GetProposedChangesInfiniteQueryOptionsParams = Omit<
+  ProposedChangesFromApiParams,
+  keyof PaginationParams
+>;
 
 export function getProposedChangesInfiniteQueryOptions({
   schema,
@@ -18,7 +21,7 @@ export function getProposedChangesInfiniteQueryOptions({
   atDate,
   getAttributesVisible,
   getRelationshipsVisible,
-}: GetObjectsQueryParams) {
+}: GetProposedChangesInfiniteQueryOptionsParams) {
   return infiniteQueryOptions({
     queryKey: [branchName, atDate, "objects", schema.kind, filters],
     queryFn: ({ pageParam }) => {
@@ -42,7 +45,9 @@ export function getProposedChangesInfiniteQueryOptions({
   });
 }
 
-export function useGetProposedChanges(params: Omit<GetObjectsQueryParams, keyof ContextParams>) {
+export function useGetProposedChanges(
+  params: Omit<GetProposedChangesInfiniteQueryOptionsParams, keyof ContextParams>
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 

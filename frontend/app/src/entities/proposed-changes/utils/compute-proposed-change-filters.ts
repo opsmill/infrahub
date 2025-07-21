@@ -1,7 +1,7 @@
 import { Filter } from "@/shared/hooks/useFilters";
 import { PROPOSED_CHANGE_STATES } from "../constant";
 
-export const computeFilters = ({
+export const computeProposedChangeFilters = ({
   filters,
   state,
 }: { filters: Array<Filter>; state: keyof typeof PROPOSED_CHANGE_STATES | string }) => {

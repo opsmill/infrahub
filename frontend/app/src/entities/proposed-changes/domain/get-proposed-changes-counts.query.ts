@@ -7,13 +7,16 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-type GetObjectsQueryParams = Omit<ProposedChangesCountsFromApiParams, keyof PaginationParams>;
+type GetProposedChangesCountsQueryOptionsParams = Omit<
+  ProposedChangesCountsFromApiParams,
+  keyof PaginationParams
+>;
 
 export function getProposedChangesCountsQueryOptions({
   branchName,
   atDate,
   filters,
-}: GetObjectsQueryParams) {
+}: GetProposedChangesCountsQueryOptionsParams) {
   return queryOptions({
     queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_OBJECT, filters, "count"],
     queryFn: () => {
@@ -27,7 +30,7 @@ export function getProposedChangesCountsQueryOptions({
 }
 
 export function useGetProposedChangesCounts(
-  params: Omit<GetObjectsQueryParams, keyof ContextParams>
+  params: Omit<GetProposedChangesCountsQueryOptionsParams, keyof ContextParams>
 ) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
