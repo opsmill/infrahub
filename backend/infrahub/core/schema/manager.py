@@ -535,7 +535,7 @@ class SchemaManager(NodeManager):
         """Delete the node with its attributes and relationships."""
         branch = await registry.get_branch(branch=branch, db=db)
 
-        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db, prefetch_relationships=True)
         if not obj:
             raise SchemaNotFoundError(
                 branch_name=branch.name,
@@ -544,16 +544,10 @@ class SchemaManager(NodeManager):
             )
 
         # First delete the attributes and the relationships
-        items = await self.get_many(
-            ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
-            db=db,
-            branch=branch,
-            include_owner=True,
-            include_source=True,
-        )
-
-        for item in items.values():
-            await item.delete(db=db)
+        for attr_schema_node in (await obj.attributes.get_peers(db=db)).values():
+            await attr_schema_node.delete(db=db)
+        for rel_schema_node in (await obj.relationships.get_peers(db=db)).values():
+            await rel_schema_node.delete(db=db)
 
         await obj.delete(db=db)
 
