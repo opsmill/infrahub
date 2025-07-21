@@ -427,19 +427,19 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     return role
 
 
-async def create_proposed_change_approver_role(db: InfrahubDatabase) -> CoreAccountRole:
-    approver_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await approver_permission.new(
+async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAccountRole:
+    reviewer_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await reviewer_permission.new(
         db=db,
         action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value,
         decision=PermissionDecision.ALLOW_ALL.value,
         description="Allow a user to approve or revoke proposed changes",
     )
-    await approver_permission.save(db=db)
+    await reviewer_permission.save(db=db)
 
-    role_name = "Proposed Change Approver"
+    role_name = "Proposed Change Reviewer"
     role = await Node.init(db=db, schema=CoreAccountRole)
-    await role.new(db=db, name=role_name, permissions=[approver_permission])
+    await role.new(db=db, name=role_name, permissions=[reviewer_permission])
     await role.save(db=db)
     log.info(f"Created account role: {role_name}")
 
@@ -492,12 +492,10 @@ async def create_default_account_groups(
     await create_accounts_group(db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts)
 
     default_role = await create_default_role(db=db)
-    proposed_change_approver_role = await create_proposed_change_approver_role(db=db)
+    proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
+
     await create_accounts_group(
-        db=db,
-        name="Infrahub Users",
-        roles=[default_role, proposed_change_approver_role],
-        accounts=accounts or [],
+        db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts or []
     )
 
 
