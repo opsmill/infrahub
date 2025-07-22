@@ -241,8 +241,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert account_group
         await account_group.members.delete(db=db)
 
-        # Reject the PC
-
+        # Try to approve the PC
         with pytest.raises(GraphQLError) as exc:
             await unprivileged_client.execute_graphql(
                 query=self.review_query,
