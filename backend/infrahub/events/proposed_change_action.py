@@ -20,23 +20,6 @@ class ProposedChangeEvent(InfrahubEvent):
         }
 
 
-class ProposedChangeMergedEvent(ProposedChangeEvent):
-    """Event generated when a proposed change has been merged"""
-
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.merged"
-
-    merged_by_account_id: str = Field(..., description="The ID of the user who merged the proposed change")
-    merged_by_account_name: str = Field(..., description="The name of the user who merged the proposed change")
-
-    def get_resource(self) -> dict[str, str]:
-        return {
-            **super().get_resource(),
-            "infrahub.proposed_change.merged_by_account_id": self.merged_by_account_id,
-            "infrahub.proposed_change.merged_by_account_name": self.merged_by_account_name,
-            "infrahub.branch.name": self.meta.context.branch.name,
-        }
-
-
 class ProposedChangeReviewRequestedEvent(ProposedChangeEvent):
     """Event generated when a proposed change has been flagged for review"""
 
@@ -92,5 +75,22 @@ class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
             "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
             "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
             "infrahub.proposed_change.reviewer_former_decision": self.reviewer_former_decision,
+            "infrahub.branch.name": self.meta.context.branch.name,
+        }
+
+
+class ProposedChangeMergedEvent(ProposedChangeEvent):
+    """Event generated when a proposed change has been merged"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.merged"
+
+    merged_by_account_id: str = Field(..., description="The ID of the user who merged the proposed change")
+    merged_by_account_name: str = Field(..., description="The name of the user who merged the proposed change")
+
+    def get_resource(self) -> dict[str, str]:
+        return {
+            **super().get_resource(),
+            "infrahub.proposed_change.merged_by_account_id": self.merged_by_account_id,
+            "infrahub.proposed_change.merged_by_account_name": self.merged_by_account_name,
             "infrahub.branch.name": self.meta.context.branch.name,
         }
