@@ -27,7 +27,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
-          author={node.created_by.node.display_label}
+          author={node.created_by.node?.display_label}
           state={node.state?.value}
           createdAt={node._updated_at}
           branchName={node.source_branch?.value}

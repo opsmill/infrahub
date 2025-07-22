@@ -13,6 +13,8 @@ import { ProposedChangeActionButtonProps } from "./types";
 export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
+  const isClosed = proposedChangesDetails.state.value === "closed";
+
   const { mutateAsync, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
@@ -41,7 +43,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         Merge
       </Button>
@@ -53,7 +55,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

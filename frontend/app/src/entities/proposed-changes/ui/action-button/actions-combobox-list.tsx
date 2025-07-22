@@ -30,10 +30,6 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
         value: "merge",
         name: "Merge",
       },
-      open: {
-        value: "open",
-        name: "Open",
-      },
       close: {
         value: "close",
         name: "Close",

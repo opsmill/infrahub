@@ -15,6 +15,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
+  const isClosed = proposedChangesDetails.state.value === "closed";
   const hasApproved = hasUserApproved(proposedChangesDetails, auth.user);
 
   const { mutateAsync, isPending } = useUpdateReview({
@@ -45,7 +46,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         {hasApproved ? "Cancel Approve" : "Approve"}
       </Button>
@@ -57,7 +58,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

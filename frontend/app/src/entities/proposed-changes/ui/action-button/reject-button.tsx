@@ -12,6 +12,8 @@ import { ProposedChangeActionButtonProps } from "./types";
 export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
+  const isClosed = proposedChangesDetails.state.value === "closed";
+
   const { mutateAsync, isPending } = useUpdateReview({
     onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
@@ -35,7 +37,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         Reject
       </Button>
@@ -47,7 +49,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

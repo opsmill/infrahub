@@ -10,8 +10,10 @@ import { CLOSE_STATE } from "../../constant";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
 import { ProposedChangeActionButtonProps } from "./types";
 
-export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
+
+  const isClosed = proposedChangesDetails.state.value === "closed";
 
   const { mutateAsync, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
@@ -20,10 +22,10 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event) => {
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    mutateAsync({
+    return mutateAsync({
       data: {
         id: proposedChangesDetails.id,
         state: {
@@ -41,7 +43,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         Close
       </Button>
@@ -53,7 +55,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        disabled={isClosed || isPending}
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

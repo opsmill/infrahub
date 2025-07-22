@@ -5,12 +5,18 @@ import { classNames } from "@/shared/utils/common";
 import { ReactElement, useState } from "react";
 import { ActionComboboxList } from "./actions-combobox-list";
 import { ApproveButton } from "./approve-button";
+import { OpenButton } from "./close-button";
+import { MergeButton } from "./merge-button";
+import { RejectButton } from "./reject-button";
 import { ProposedChangeActionButtonProps } from "./types";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
 const actionsListMapping: Record<string, ActionButtonComponent> = {
   approve: ({ setOpen }) => <ApproveButton setOpen={setOpen} />,
+  reject: ({ setOpen }) => <RejectButton setOpen={setOpen} />,
+  merge: ({ setOpen }) => <MergeButton setOpen={setOpen} />,
+  close: ({ setOpen }) => <OpenButton setOpen={setOpen} />,
 };
 
 export const PcActionButton = () => {
