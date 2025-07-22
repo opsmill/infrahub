@@ -86,8 +86,9 @@ test.describe("/proposed-changes", () => {
           await expect(page.getByText("Stateopen")).toBeVisible();
           // Validate the buttons are showing as intended
           await expect(page.getByRole("button", { name: "Approve" })).not.toBeDisabled();
-          await expect(page.getByRole("button", { name: "Merge" })).not.toBeDisabled();
-          await expect(page.getByRole("button", { name: "Close", exact: true })).not.toBeDisabled();
+          await page.getByTestId("proposed-change-action-button-select").click();
+          await expect(page.getByRole("option", { name: "Merge" })).not.toBeDisabled();
+          await expect(page.getByRole("option", { name: "Reject" })).not.toBeDisabled();
         });
 
         await test.step("edit proposed change reviewers", async () => {
@@ -155,15 +156,15 @@ test.describe("/proposed-changes", () => {
         });
 
         await test.step("merge proposed change and update UI", async () => {
-          await page.getByRole("button", { name: "Merge" }).click();
+          await page.getByTestId("proposed-change-action-button-select").click();
+          await page.getByRole("option", { name: "Merge" });
           await expect(page.getByText("Proposed changes merged successfully!")).toBeVisible();
           await expect(page.getByText("Statemerged")).toBeVisible();
         });
 
         await test.step("not able to edit proposed change", async () => {
           await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
-          await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
-          await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
+          await expect(page.getByTestId("proposed-change-action-button-select")).toBeDisabled();
           await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
 
