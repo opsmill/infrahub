@@ -135,7 +135,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             state.validate_state_transition(updated_state)
 
         was_draft = obj.is_draft.value
-        still_draft = data.get("is_draft", was_draft).get("value")
+        still_draft = data.get("is_draft", {"value": was_draft}).get("value")
 
         # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
         if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
