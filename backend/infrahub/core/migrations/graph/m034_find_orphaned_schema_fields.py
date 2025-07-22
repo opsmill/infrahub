@@ -3,9 +3,11 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult
 from infrahub.core.timestamp import Timestamp
+from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ...query import Query, QueryType
@@ -59,6 +61,8 @@ class Migration034(ArbitraryMigration):
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         try:
+            initialize_lock()
+            await initialization(db=db)
             query = await FindOrphanedSchemaFieldsQuery.init(db=db)
             await query.execute(db=db)
             schema_field_uuids_by_branch: dict[str, dict[str, str]] = defaultdict(dict)
