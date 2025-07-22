@@ -208,21 +208,19 @@ async def _resolve_available_prefix_nodes(
     # Properly sort existing nodes with available prefixes
     with_available_prefixes = sorted(existing_nodes + available_nodes, key=lambda n: n.prefix.obj)
 
+    if len(with_available_prefixes) > 1 or with_available_prefixes[0].prefix.obj != prefix.prefix.obj:
+        return with_available_prefixes
+
     # If the only available prefix is the same as the container prefix, this means the container prefix is empty and we should therefore at least
     # offer two smaller prefixes allocatable within it
-    if len(with_available_prefixes) == 1 and next(iter(with_available_prefixes)).prefix.obj == prefix.prefix.obj:
-        available_nodes.clear()
+    available_nodes.clear()
 
-        for subnet in prefix.prefix.obj.subnets():
-            node = await Node.init(schema=ip_prefix_schema, db=db, branch=branch)
-            await node.new(
-                db=db, prefix=str(subnet), ip_namespace=await prefix.ip_namespace.get_peer(db=db), parent=prefix
-            )
-            available_nodes.append(node)
+    for subnet in prefix.prefix.obj.subnets():
+        node = await Node.init(schema=ip_prefix_schema, db=db, branch=branch)
+        await node.new(db=db, prefix=str(subnet), ip_namespace=await prefix.ip_namespace.get_peer(db=db), parent=prefix)
+        available_nodes.append(node)
 
-        return available_nodes
-
-    return with_available_prefixes
+    return available_nodes
 
 
 async def _annotate_result(
