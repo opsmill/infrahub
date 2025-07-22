@@ -15,6 +15,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
+  const isMerged = proposedChangesDetails.state.value === "merged";
   const isClosed = proposedChangesDetails.state.value === "closed";
   const hasApproved = hasUserApproved(proposedChangesDetails, auth.user);
 
@@ -46,7 +47,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isClosed || isPending}
+        disabled={isMerged || isClosed || isPending}
       >
         {hasApproved ? "Cancel Approve" : "Approve"}
       </Button>
@@ -58,7 +59,8 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isClosed || isPending}
+        disabled={isMerged || isClosed || isPending}
+        data-testid="proposed-change-action-button-select"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

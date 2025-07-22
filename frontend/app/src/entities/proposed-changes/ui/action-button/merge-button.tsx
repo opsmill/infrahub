@@ -13,7 +13,7 @@ import { ProposedChangeActionButtonProps } from "./types";
 export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const isClosed = proposedChangesDetails.state.value === "closed";
+  const isMerged = proposedChangesDetails.state.value === "merged";
 
   const { mutateAsync, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
@@ -22,7 +22,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event) => {
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
     mutateAsync({
@@ -43,7 +43,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isClosed || isPending}
+        disabled={isMerged || isPending}
       >
         Merge
       </Button>
@@ -55,7 +55,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isClosed || isPending}
+        disabled={isMerged || isPending}
+        data-testid="proposed-change-action-button-select"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

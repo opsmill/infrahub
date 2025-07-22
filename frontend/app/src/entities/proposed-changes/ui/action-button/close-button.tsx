@@ -13,6 +13,7 @@ import { ProposedChangeActionButtonProps } from "./types";
 export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
+  const isMerged = proposedChangesDetails.state.value === "merged";
   const isClosed = proposedChangesDetails.state.value === "closed";
 
   const { mutateAsync, isPending } = useUpdateObjectMutation({
@@ -43,7 +44,7 @@ export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={handleAction}
         variant={"primary"}
         isLoading={isPending}
-        disabled={isClosed || isPending}
+        disabled={isMerged || isClosed || isPending}
       >
         Close
       </Button>
@@ -55,7 +56,8 @@ export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isClosed || isPending}
+        disabled={isMerged || isClosed || isPending}
+        data-testid="proposed-change-action-button-select"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>
