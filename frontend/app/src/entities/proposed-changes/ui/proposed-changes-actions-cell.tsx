@@ -10,7 +10,7 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { PROPOSED_CHANGE_OBJECT } from "../constant";
+import { PROPOSED_CHANGE_OBJECT } from "../constants";
 
 export interface ActionsCellProps {
   permission: Permission;

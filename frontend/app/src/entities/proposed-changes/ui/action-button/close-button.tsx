@@ -6,7 +6,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
-import { CLOSE_STATE } from "../../constant";
+import { CLOSE_STATE } from "../../constants";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
 import { ProposedChangeActionButtonProps } from "./types";
 

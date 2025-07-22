@@ -1,7 +1,7 @@
 import {
   PROPOSED_CHANGE_OBJECT,
   PROPOSED_CHANGE_STATES,
-} from "@/entities/proposed-changes/constant";
+} from "@/entities/proposed-changes/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import { ContextParams } from "@/shared/api/types";

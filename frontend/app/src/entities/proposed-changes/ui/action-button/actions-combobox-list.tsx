@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
 import { hasUserApproved } from "../../utils/has-user-approved";
+import { hasUserRejected } from "../../utils/has-user-rejected";
 
 type ActionItem = { value: string; name: string };
 
@@ -24,7 +25,7 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
       },
       reject: {
         value: "reject",
-        name: "Reject",
+        name: hasUserRejected(proposedChangesDetails, auth.user) ? "Cancel Reject" : "Reject",
       },
       merge: {
         value: "merge",

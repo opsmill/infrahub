@@ -1,5 +1,5 @@
 import { Filter } from "@/shared/hooks/useFilters";
-import { PROPOSED_CHANGE_STATES } from "../constant";
+import { PROPOSED_CHANGE_STATES } from "../constants";
 
 export const computeProposedChangeFilters = ({
   filters,

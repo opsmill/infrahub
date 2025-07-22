@@ -5,7 +5,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
-import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "../../constant";
+import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "../../constants";
 import { useUpdateReview } from "../../domain/update-review.mutation";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
 import { hasUserApproved } from "../../utils/has-user-approved";

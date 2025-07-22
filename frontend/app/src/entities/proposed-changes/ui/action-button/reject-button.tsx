@@ -1,32 +1,41 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
-import { APPROVE_DECISION } from "../../constant";
+import { CANCEL_REJECT_DECISION, REJECT_DECISION } from "../../constants";
 import { useUpdateReview } from "../../domain/update-review.mutation";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
+import { hasUserRejected } from "../../utils/has-user-rejected";
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const auth = useAuth();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const isClosed = proposedChangesDetails.state.value === "closed";
+  const hasApproved = hasUserRejected(proposedChangesDetails, auth.user);
 
   const { mutateAsync, isPending } = useUpdateReview({
     onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change approved!"} />);
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={hasApproved ? "Proposed change reject canceled!" : "Proposed change rejected!"}
+        />
+      );
     },
   });
 
-  const handleAction = (event) => {
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
     mutateAsync({
       proposedChangeId: proposedChangesDetails.id,
-      decision: APPROVE_DECISION,
+      decision: hasApproved ? CANCEL_REJECT_DECISION : REJECT_DECISION,
     });
   };
 
@@ -39,7 +48,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         isLoading={isPending}
         disabled={isClosed || isPending}
       >
-        Reject
+        {hasApproved ? "Cancel Reject" : "Reject"}
       </Button>
 
       <Button
