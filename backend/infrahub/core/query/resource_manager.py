@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any, Generator
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,6 +11,13 @@ from infrahub.core.query import Query, QueryType
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
+
+
+class NumberPoolIdentifierData(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    value: int
+    identifier: str
 
 
 class IPAddressPoolGetIdentifiers(Query):
@@ -160,7 +167,7 @@ class NumberPoolGetReserved(Query):
     def __init__(
         self,
         pool_id: str,
-        identifier: str,
+        identifier: str | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         self.pool_id = pool_id
@@ -178,28 +185,89 @@ class NumberPoolGetReserved(Query):
 
         self.params.update(branch_params)
 
+        # If identifier is not provided, we return all reservations for the pool
+        identifier_filter = ""
+        if self.identifier:
+            identifier_filter = "r.identifier = $identifier AND "
+            self.params["identifier"] = self.identifier
+
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })-[r:IS_RESERVED]->(reservation:AttributeValue)
         WHERE
-            r.identifier = $identifier
-            AND
+            %(identifier_filter)s
             %(branch_filter)s
-        """ % {"branch_filter": branch_filter, "number_pool": InfrahubKind.NUMBERPOOL}
+        """ % {
+            "branch_filter": branch_filter,
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "identifier_filter": identifier_filter,
+        }
         self.add_to_query(query)
-        self.return_labels = ["reservation.value"]
+        self.return_labels = ["reservation.value AS value", "r.identifier AS identifier"]
 
     def get_reservation(self) -> int | None:
         result = self.get_result()
         if result:
-            return result.get_as_optional_type("reservation.value", return_type=int)
+            return result.get_as_optional_type("value", return_type=int)
         return None
 
+    def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
+        for result in self.results:
+            yield NumberPoolIdentifierData.model_construct(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
 
-class NumberPoolGetUsedData(BaseModel):
-    model_config = ConfigDict(frozen=True)
 
-    value: int
-    identifier: str
+class PoolChangeReserved(Query):
+    """Change the identifier on all pools.
+    This is useful when a node is being converted to a different type and its ID has changed
+    """
+
+    name = "pool_change_reserved"
+    type = QueryType.WRITE
+
+    def __init__(
+        self,
+        existing_identifier: str,
+        new_identifier: str,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.existing_identifier = existing_identifier
+        self.new_identifier = new_identifier
+
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["new_identifier"] = self.new_identifier
+        self.params["existing_identifier"] = self.existing_identifier
+        self.params["at"] = self.at.to_string()
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+
+        self.params.update(branch_params)
+
+        global_branch = registry.get_global_branch()
+        self.params["rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": self.at.to_string(),
+            "identifier": self.new_identifier,
+        }
+
+        query = """
+        MATCH (pool:Node)-[r:IS_RESERVED]->(resource)
+        WHERE
+            r.identifier = $existing_identifier
+            AND
+            %(branch_filter)s
+        SET r.to = $at
+        CREATE (pool)-[new_rel:IS_RESERVED $rel_prop]->(resource)
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.return_labels = ["pool.uuid AS pool_id", "r", "new_rel"]
 
 
 """
@@ -214,7 +282,7 @@ This will be especially important as we want to support upsert with NumberPool
 class NumberPoolGetUsed(Query):
     name = "number_pool_get_used"
     type = QueryType.READ
-    return_model = NumberPoolGetUsedData
+    return_model = NumberPoolIdentifierData
 
     def __init__(
         self,
@@ -262,7 +330,7 @@ class NumberPoolGetUsed(Query):
         self.return_labels = ["DISTINCT(av.value) as value", "res.identifier as identifier"]
         self.order_by = ["value"]
 
-    async def iter_results(self) -> AsyncGenerator[NumberPoolGetUsedData]:
+    def iter_results(self) -> Generator[NumberPoolIdentifierData]:
         for result in self.results:
             yield self.return_model.model_construct(
                 value=result.get_as_type("value", return_type=int),
