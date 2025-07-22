@@ -4,6 +4,7 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/utils";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -37,6 +38,11 @@ export const getObjectDetailsUrl = (
 
   if (isOfKind(RESOURCE_GENERIC_KIND, schema)) {
     return constructPathForIpam(`/resource-manager/${objectId ?? ""}`, overrideParams);
+  }
+
+  if (isOfKind(PROPOSED_CHANGE_OBJECT, schema)) {
+    const path = objectId ? `/proposed-changes/${objectId}` : "/proposed-changes";
+    return constructPathForIpam(path, overrideParams);
   }
 
   const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
