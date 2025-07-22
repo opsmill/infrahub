@@ -218,6 +218,9 @@ class NumberPoolGetUsed(Query):
         self.params.update(branch_params)
         self.params["attribute_name"] = self.pool.node_attribute.value
 
+        # NOTE, there is a bug with IS_RESERVED that is affecting this query
+        # Currently the workaround is to use DISTINCT to avoid duplicates but overtime the query could become slower than expected
+        # This should be fixed in the future
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })
         CALL (pool) {
@@ -237,8 +240,8 @@ class NumberPoolGetUsed(Query):
             "number_pool": InfrahubKind.NUMBERPOOL,
         }
         self.add_to_query(query)
-        self.return_labels = ["av.value"]
-        self.order_by = ["av.value"]
+        self.return_labels = ["DISTINCT(av.value) as value"]
+        self.order_by = ["value"]
 
 
 class NumberPoolSetReserved(Query):

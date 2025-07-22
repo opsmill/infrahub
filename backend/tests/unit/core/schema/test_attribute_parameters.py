@@ -1,3 +1,4 @@
+import sys
 from copy import deepcopy
 from typing import Any
 
@@ -61,6 +62,12 @@ def test_number_pool_invalid_range() -> None:
     }
     with pytest.raises(pydantic.ValidationError, match="`start_range` can't be less than `end_range`"):
         NodeSchema(**node_schema)
+
+
+def test_number_pool_get_pool_size() -> None:
+    assert NumberPoolParameters(start_range=10, end_range=25).get_pool_size() == 16
+    assert NumberPoolParameters(start_range=10).get_pool_size() == sys.maxsize - 9
+    assert NumberPoolParameters(end_range=25).get_pool_size() == 25
 
 
 def test_number_pool_optional() -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Float, Int, List, NonNull, ObjectType, String
+from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core import registry
@@ -33,7 +33,7 @@ class IPPoolUtilizationResource(ObjectType):
     id = Field(String, required=True, description="The ID of the current resource")
     display_label = Field(String, required=True, description="The common name of the resource")
     kind = Field(String, required=True, description="The resource kind")
-    weight = Field(Int, required=True, description="The relative weight of this resource.")
+    weight = Field(BigInt, required=True, description="The relative weight of this resource.")
     utilization = Field(Float, required=True, description="The overall utilization of the resource.")
     utilization_branches = Field(
         Float, required=True, description="The utilization of the resource on all non default branches."
@@ -70,7 +70,7 @@ def _validate_pool_type(pool_id: str, pool: CoreNode | None = None) -> CoreNode:
 
 
 class PoolAllocated(ObjectType):
-    count = Field(Int, required=True, description="The number of allocations within the selected pool.")
+    count = Field(BigInt, required=True, description="The number of allocations within the selected pool.")
     edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
     @staticmethod
@@ -174,7 +174,7 @@ class PoolAllocated(ObjectType):
 
 
 class PoolUtilization(ObjectType):
-    count = Field(Int, required=True, description="The number of resources within the selected pool.")
+    count = Field(BigInt, required=True, description="The number of resources within the selected pool.")
     utilization = Field(Float, required=True, description="The overall utilization of the pool.")
     utilization_branches = Field(Float, required=True, description="The utilization in all non default branches.")
     utilization_default_branch = Field(

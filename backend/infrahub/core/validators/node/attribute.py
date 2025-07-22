@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core import registry
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+
 from ..interface import ConstraintCheckerInterface
 from ..query import NodeNotPresentValidatorQuery
 
@@ -31,8 +34,20 @@ class NodeAttributeAddChecker(ConstraintCheckerInterface):
         grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
+
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
         if attribute_schema.optional is True or attribute_schema.default_value is not None:
+            return grouped_data_paths_list
+
+        # If the attribute is a NumberPool, we need to ensure that the pool is big enough for all existing nodes
+        if attribute_schema.kind == "NumberPool" and isinstance(attribute_schema.parameters, NumberPoolParameters):
+            nbr_nodes = await registry.manager.count(db=self.db, branch=self.branch, schema=request.node_schema)
+            pool_size = attribute_schema.parameters.get_pool_size()
+
+            if pool_size < nbr_nodes:
+                raise ValueError(
+                    f"The size of the NumberPool is smaller than the number of existing nodes {pool_size} < {nbr_nodes}."
+                )
             return grouped_data_paths_list
 
         for query_class in self.query_classes:
