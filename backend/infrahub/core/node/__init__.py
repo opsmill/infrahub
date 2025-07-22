@@ -372,13 +372,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
                 # Do a lookup of the number pool to get the correct mapped type from the registry
                 # without this we don't get access to the .get_resource() method.
-                created_pool: CoreNumberPool = (
-                    number_pool_from_db
-                    or await registry.manager.get_one_by_id_or_default_filter(
-                        db=db, id=number_pool.id, kind=CoreNumberPool
-                    )
+                return await registry.manager.get_one_by_id_or_default_filter(
+                    db=db, id=number_pool.id, kind=CoreNumberPool
                 )
-                return created_pool
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
@@ -842,6 +838,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
+
         self._node_changelog = node_changelog
 
     async def to_graphql(

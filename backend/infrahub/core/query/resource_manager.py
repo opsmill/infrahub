@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, AsyncGenerator
+
+from pydantic import BaseModel, ConfigDict
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipStatus
@@ -193,9 +195,26 @@ class NumberPoolGetReserved(Query):
         return None
 
 
+class NumberPoolGetUsedData(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    value: int
+    identifier: str
+
+
+"""
+Important!: The relationship IS_RESERVED for Number is not being cleaned up when the node or the branch is deleted
+I think this is something we should address in the future.
+It works for now because the query has been updated to match the identifier in IS_RESERVED with the UUID of the related node
+But in the future, if we need to use an identifier that is not the UUID, we will need to clean up the relationships
+This will be especially important as we want to support upsert with NumberPool
+"""
+
+
 class NumberPoolGetUsed(Query):
     name = "number_pool_get_used"
     type = QueryType.READ
+    return_model = NumberPoolGetUsedData
 
     def __init__(
         self,
@@ -218,30 +237,37 @@ class NumberPoolGetUsed(Query):
         self.params.update(branch_params)
         self.params["attribute_name"] = self.pool.node_attribute.value
 
-        # NOTE, there is a bug with IS_RESERVED that is affecting this query
-        # Currently the workaround is to use DISTINCT to avoid duplicates but overtime the query could become slower than expected
-        # This should be fixed in the future
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })
-        CALL (pool) {
-            MATCH (pool)-[res:IS_RESERVED]->(av:AttributeValue)<-[hv:HAS_VALUE]-(attr:Attribute)
+        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValue)
+        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
+        CALL (pool, res, av) {
+            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
             WHERE
-                attr.name = $attribute_name
-                AND
-                toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
-                AND
-                all(r in [res, hv] WHERE (%(branch_filter)s))
-            RETURN av, (res.status = "active" AND hv.status = "active") AS is_active
+                n.uuid = res.identifier AND
+                attr.name = $attribute_name AND
+                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
+            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC, res.from DESC, hv.from DESC, ha.from DESC
+            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
+            LIMIT 1
         }
-        WITH av, is_active
-        WHERE is_active = TRUE
+        WITH av, res, is_active
+        WHERE is_active = True
         """ % {
             "branch_filter": branch_filter,
             "number_pool": InfrahubKind.NUMBERPOOL,
+            "node": self.pool.node.value,
         }
+
         self.add_to_query(query)
-        self.return_labels = ["DISTINCT(av.value) as value"]
+        self.return_labels = ["DISTINCT(av.value) as value", "res.identifier as identifier"]
         self.order_by = ["value"]
+
+    async def iter_results(self) -> AsyncGenerator[NumberPoolGetUsedData]:
+        for result in self.results:
+            yield self.return_model.model_construct(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
 
 
 class NumberPoolSetReserved(Query):
