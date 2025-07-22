@@ -594,7 +594,10 @@ class TestIpamAvailableNodes(TestInfrahubApp):
     @pytest.mark.parametrize(
         "prefix,result",
         [
-            ("net_empty", [("InternalIPPrefixAvailable", "10.0.0.0/24")]),
+            (
+                "net_empty",
+                [("InternalIPPrefixAvailable", "10.0.0.0/25"), ("InternalIPPrefixAvailable", "10.0.0.128/25")],
+            ),
             (
                 "net_free_end",
                 [

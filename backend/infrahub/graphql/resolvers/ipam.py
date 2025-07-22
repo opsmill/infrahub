@@ -12,6 +12,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
@@ -47,8 +48,8 @@ async def _build_ip_range_node(
     schema: NodeSchema,
     address: IPvAnyAddress,
     last_address: IPvAnyAddress,
-    ip_namespace: Node,
-    ip_prefix: Node,
+    ip_namespace: BuiltinIPNamespace,
+    ip_prefix: BuiltinIPPrefix,
 ) -> Node:
     n = await Node.init(schema=schema, db=db, branch=branch)
     await n.new(
@@ -62,7 +63,7 @@ async def _build_ip_range_node(
     return n
 
 
-def _include_first_and_last_ips(ip_prefix: Node) -> bool:
+def _include_first_and_last_ips(ip_prefix: BuiltinIPPrefix) -> bool:
     if ip_prefix.prefix.version == 6 or ip_prefix.is_pool.value:
         return True
 
@@ -72,14 +73,14 @@ def _include_first_and_last_ips(ip_prefix: Node) -> bool:
 async def _resolve_available_address_nodes(
     db: InfrahubDatabase,
     branch: Branch,
-    prefix: Node,
+    prefix: BuiltinIPPrefix,
     existing_nodes: Sequence[Node],
     first_node_context: Node | None = None,
     last_node_context: Node | None = None,
 ) -> list[Node]:
     """Annotate a list of IP addresses node with available ranges within a prefix."""
     ip_prefix: IPvAnyNetwork = prefix.prefix.obj
-    ip_namespace = await prefix.ip_namespace.get_peer(db=db)
+    ip_namespace = await prefix.ip_namespace.get_peer(db=db, peer_type=BuiltinIPNamespace, raise_on_error=True)
     ip_range_schema = registry.get_node_schema(name=InfrahubKind.IPRANGEAVAILABLE, branch=branch)
 
     # Make sure nodes are ordered by addresses
@@ -172,7 +173,7 @@ async def _resolve_available_address_nodes(
 async def _resolve_available_prefix_nodes(
     db: InfrahubDatabase,
     branch: Branch,
-    prefix: Node,
+    prefix: BuiltinIPPrefix,
     existing_nodes: Sequence[Node],
     first_node_context: Node | None = None,
     last_node_context: Node | None = None,
@@ -205,7 +206,21 @@ async def _resolve_available_prefix_nodes(
         available_nodes.append(node)
 
     # Properly sort existing nodes with available prefixes
-    return sorted(existing_nodes + available_nodes, key=lambda n: n.prefix.obj)
+    with_available_prefixes = sorted(existing_nodes + available_nodes, key=lambda n: n.prefix.obj)
+
+    if len(with_available_prefixes) > 1 or with_available_prefixes[0].prefix.obj != prefix.prefix.obj:
+        return with_available_prefixes
+
+    # If the only available prefix is the same as the container prefix, this means the container prefix is empty and we should therefore at least
+    # offer two smaller prefixes allocatable within it
+    available_nodes.clear()
+
+    for subnet in prefix.prefix.obj.subnets():
+        node = await Node.init(schema=ip_prefix_schema, db=db, branch=branch)
+        await node.new(db=db, prefix=str(subnet), ip_namespace=await prefix.ip_namespace.get_peer(db=db), parent=prefix)
+        available_nodes.append(node)
+
+    return available_nodes
 
 
 async def _annotate_result(
@@ -213,7 +228,7 @@ async def _annotate_result(
     branch: Branch,
     resolve_available: bool,
     schema: NodeSchema,
-    parent_prefix: Node | None,
+    parent_prefix: BuiltinIPPrefix | None,
     result: list[Node],
     first_node_context: Node | None = None,
     last_node_context: Node | None = None,
@@ -291,10 +306,10 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         if schema.is_ip_prefix and "parent__ids" in filters:
             parent_prefix_id = next(iter(filters["parent__ids"]))
 
-        parent_prefix: Node | None = None
+        parent_prefix: BuiltinIPPrefix | None = None
         if parent_prefix_id:
             parent_prefix = await NodeManager.get_one(
-                db=db, id=parent_prefix_id, at=graphql_context.at, branch=graphql_context.branch
+                db=db, kind=BuiltinIPPrefix, id=parent_prefix_id, at=graphql_context.at, branch=graphql_context.branch
             )
 
         first_node_context: Node | None = None
