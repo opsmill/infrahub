@@ -18,7 +18,7 @@ test.describe("/proposed-changes", () => {
     test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByRole("heading", { name: "Proposed changes" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Proposed Change" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
@@ -29,7 +29,7 @@ test.describe("/proposed-changes", () => {
     test("allow to create a proposed change", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByRole("heading", { name: "Proposed changes" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Proposed Change" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
       await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
@@ -169,11 +169,11 @@ test.describe("/proposed-changes", () => {
 
         await test.step("delete proposed change", async () => {
           await page.goto("/proposed-changes?pr_state=close");
-          await page.getByTestId("actions-row-button").first().click();
+          await page.getByTestId(`actions-row-${pcName}`).first().click();
           await page.getByTestId("delete-row-button").click();
           await expect(page.getByTestId("modal-delete")).toBeVisible();
           await page.getByTestId("modal-delete-confirm").click();
-          await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();
+          await expect(page.getByText(`Proposed changes ${pcNameEdit} deleted`)).toBeVisible();
         });
       });
     });

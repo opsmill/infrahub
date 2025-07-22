@@ -1,6 +1,5 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -16,6 +15,7 @@ import { Card } from "@/shared/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
+  ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
@@ -37,7 +37,6 @@ import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export const ProposedChangeCreateForm = () => {
-  const { user } = useAuth();
   const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
@@ -61,9 +60,6 @@ export const ProposedChangeCreateForm = () => {
             name,
             description,
             reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
-            created_by: {
-              id: user?.id,
-            },
           },
         });
 
@@ -101,6 +97,8 @@ export const ProposedChangeCreateForm = () => {
 
                   <ComboboxContent>
                     <ComboboxList>
+                      <ComboboxEmpty>No branch found</ComboboxEmpty>
+
                       {branchesToSelectOptions(sourceBranches).map(({ name }) => (
                         <ComboboxItem
                           key={name}

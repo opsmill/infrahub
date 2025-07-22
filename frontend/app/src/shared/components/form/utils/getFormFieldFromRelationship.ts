@@ -16,10 +16,10 @@ interface GetFormFieldFromRelationshipParams {
   auth?: AuthContextType;
   isFilterForm: boolean;
   relationshipSchema: RelationshipSchema;
-  relationshipData: RelationshipType;
+  relationshipData?: RelationshipType;
   objectTemplate?: NodeObject | null;
   schema: ModelSchema;
-  parentSchema: ModelSchema;
+  parentSchema: ModelSchema | null;
   parentData?: NodeObject | null;
 }
 

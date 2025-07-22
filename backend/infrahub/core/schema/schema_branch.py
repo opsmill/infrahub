@@ -658,7 +658,7 @@ class SchemaBranch:
                     and not (
                         schema_attribute_path.relationship_schema.name == "ip_namespace"
                         and isinstance(node_schema, NodeSchema)
-                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix())
+                        and (node_schema.is_ip_address or node_schema.is_ip_prefix)
                     )
                 ):
                     raise ValueError(
@@ -1425,7 +1425,8 @@ class SchemaBranch:
                 node.validate_inheritance(interface=generic_kind_schema)
 
                 # Store the list of node referencing a specific generics
-                generics_used_by[generic_kind].append(node.kind)
+                if node.namespace != "Internal":
+                    generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
@@ -1873,7 +1874,10 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
-            if node.namespace in RESTRICTED_NAMESPACES:
+            if node.namespace in RESTRICTED_NAMESPACES and node.kind not in (
+                InfrahubKind.IPRANGEAVAILABLE,
+                InfrahubKind.IPPREFIXAVAILABLE,
+            ):
                 continue
 
             profiles_rel_settings: dict[str, Any] = {

@@ -480,6 +480,7 @@ class CoreProposedChange(CoreTaskTarget):
     source_branch: String
     destination_branch: String
     state: Enum
+    is_draft: Boolean
     approved_by: RelationshipManager
     rejected_by: RelationshipManager
     reviewers: RelationshipManager
@@ -553,6 +554,14 @@ class InternalAccountToken(CoreNode):
     token: String
     expiration: DateTimeOptional
     account: RelationshipManager
+
+
+class InternalIPPrefixAvailable(BuiltinIPPrefix):
+    pass
+
+
+class InternalIPRangeAvailable(BuiltinIPAddress):
+    last_address: IPHost
 
 
 class InternalRefreshToken(CoreNode):

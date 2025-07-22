@@ -55,11 +55,16 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
+        override_data = {"created_by": {"id": graphql_context.active_account_session.account_id}}
+
         async with graphql_context.db.start_transaction() as dbt:
-            proposed_change, result = await super().mutate_create(info=info, data=data, branch=branch, database=dbt)
+            proposed_change, result = await super().mutate_create(
+                info=info, data=data, branch=branch, database=dbt, override_data=override_data
+            )
             destination_branch = proposed_change.destination_branch.value
             source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
             if destination_branch == source_branch.name:

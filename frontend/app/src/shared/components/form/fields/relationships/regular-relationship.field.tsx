@@ -1,5 +1,6 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
@@ -7,7 +8,6 @@ import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
-import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
@@ -144,7 +144,7 @@ export const NodeRelationshipField = ({
                 {poolKind && peerSchema && (
                   <PoolSelect
                     poolKind={poolKind}
-                    peerSchema={peerSchema}
+                    poolDefaultAllocatedObjectKind={peerSchema.kind as string}
                     selectedPoolId={selectedPoolId}
                     onChange={onChange}
                   />

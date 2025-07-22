@@ -38,6 +38,7 @@ core_proposed_change = NodeSchema(
             default_value=ProposedChangeState.OPEN.value,
             optional=True,
         ),
+        Attr(name="is_draft", kind="Boolean", optional=False, default_value=False),
     ],
     relationships=[
         Rel(
@@ -61,6 +62,15 @@ core_proposed_change = NodeSchema(
             read_only=True,
         ),
         Rel(
+            name="rejected_by",
+            peer=InfrahubKind.GENERICACCOUNT,
+            optional=True,
+            cardinality=Cardinality.MANY,
+            kind=RelKind.ATTRIBUTE,
+            branch=BranchSupportType.AGNOSTIC,
+            identifier="coreaccount__proposedchange_rejected_by",
+        ),
+        Rel(
             name="reviewers",
             peer=InfrahubKind.GENERICACCOUNT,
             optional=True,
@@ -77,6 +87,7 @@ core_proposed_change = NodeSchema(
             kind=RelKind.ATTRIBUTE,
             branch=BranchSupportType.AGNOSTIC,
             identifier="coreaccount__proposedchange_created_by",
+            read_only=True,
         ),
         Rel(
             name="comments",

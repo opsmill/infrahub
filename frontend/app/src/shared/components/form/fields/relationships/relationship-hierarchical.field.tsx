@@ -3,6 +3,7 @@ import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -12,7 +13,6 @@ import {
   FormRelationshipValue,
   PoolSource,
 } from "@/shared/components/form/type";
-import { getPoolKindFromSchema } from "@/shared/components/form/utils/get-pool-kind-from-schema";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
@@ -86,7 +86,7 @@ export default function RelationshipHierarchicalField({
               {props.relationship.cardinality === "one" && poolKind && peerSchema && (
                 <PoolSelect
                   poolKind={poolKind}
-                  peerSchema={peerSchema}
+                  poolDefaultAllocatedObjectKind={peerSchema.kind as string}
                   selectedPoolId={selectedPoolId}
                   onChange={onChange}
                 />
