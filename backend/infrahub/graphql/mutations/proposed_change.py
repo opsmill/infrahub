@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
@@ -13,10 +15,15 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.events import (
+    EventMeta,
+    ProposedChangeReviewedEvent,
+    ProposedChangeReviewRequestedEvent,
+    ProposedChangeReviewRevokedEvent,
+)
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
@@ -25,11 +32,17 @@ from infrahub.lock import InfrahubLock, build_object_lock_name
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
+from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
+
+    from infrahub.core.node import Node
+    from infrahub.events.models import InfrahubEvent
+
     from ..initialization import GraphqlContext
 
 ProposedChangeApprovalDecisionInput = Enum.from_enum(ProposedChangeApprovalDecision)
@@ -120,6 +133,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
+        was_draft = obj.is_draft.value
+        still_draft = data.get("is_draft", was_draft).get("value")
+
         # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
         if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
             try:
@@ -152,6 +168,25 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             # from the overridden "merging" value, so here we change it back to reflect the
             # correct value for the event that will be generated.
             proposed_change.node_changelog.attributes["state"].value = ProposedChangeState.MERGED.value
+
+        # If the proposed change was in draft but isn't anymore, send the review requested event
+        if was_draft and not still_draft:
+            current_user = await NodeManager.get_one(
+                db=graphql_context.db,
+                kind=InfrahubKind.GENERICACCOUNT,
+                id=graphql_context.active_account_session.account_id,
+            )
+            event_service = await get_event_service()
+            await event_service.send(
+                event=ProposedChangeReviewRequestedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    requested_by_account_id=current_user.id,
+                    requested_by_account_name=current_user.name.value,
+                    meta=EventMeta.from_context(context=graphql_context.get_context()),
+                )
+            )
 
         return proposed_change, result
 
@@ -261,6 +296,7 @@ class ProposedChangeReview(Mutation):
                     decision=data.decision,
                     proposed_change=proposed_change,
                     current_user=current_user,
+                    graphql_context=graphql_context,
                 )
                 await proposed_change.save(db=db)
 
@@ -273,6 +309,7 @@ class ProposedChangeReview(Mutation):
         decision: ProposedChangeApprovalDecision,
         proposed_change: CoreProposedChange,
         current_user: Node,
+        context: GraphqlContext,
     ) -> None:
         """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
 
@@ -280,6 +317,8 @@ class ProposedChangeReview(Mutation):
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
+        event: InfrahubEvent | None = None
+        event_meta = EventMeta.from_context(context=context.get_context())
 
         match decision:
             case ProposedChangeApprovalDecision.APPROVE:
@@ -289,12 +328,32 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in rejected_by_ids:
                     await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
+                event = ProposedChangeReviewedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_decision=decision.value,
+                    meta=event_meta,
+                )
+
             case ProposedChangeApprovalDecision.CANCEL_APPROVE:
                 if current_user.id not in approved_by_ids:
                     raise ValidationError(
                         input_value="You did not approve this proposed change yet, it can't be un-approved"
                     )
                 await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
+
+                event = ProposedChangeReviewRevokedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_former_decision=ProposedChangeApprovalDecision.APPROVE.value,
+                    meta=event_meta,
+                )
 
             case ProposedChangeApprovalDecision.REJECT:
                 if current_user.id in rejected_by_ids:
@@ -303,6 +362,16 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in approved_by_ids:
                     await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
+                event = ProposedChangeReviewedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_decision=decision.value,
+                    meta=event_meta,
+                )
+
             case ProposedChangeApprovalDecision.CANCEL_REJECT:
                 if current_user.id not in rejected_by_ids:
                     raise ValidationError(
@@ -310,8 +379,22 @@ class ProposedChangeReview(Mutation):
                     )
                 await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
+                event = ProposedChangeReviewRevokedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_former_decision=ProposedChangeApprovalDecision.REJECT.value,
+                    meta=event_meta,
+                )
+
             case _:
                 raise ValidationError(input_value=f"Invalid decision {decision}")
+
+        if event:
+            event_service = await get_event_service()
+            await event_service.send(event=event)
 
 
 class ProposedChangeMergeInput(InputObjectType):
