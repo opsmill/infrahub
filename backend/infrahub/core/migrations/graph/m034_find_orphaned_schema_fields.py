@@ -60,24 +60,21 @@ class Migration034(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        try:
-            initialize_lock()
-            await initialization(db=db)
-            query = await FindOrphanedSchemaFieldsQuery.init(db=db)
-            await query.execute(db=db)
-            schema_field_uuids_by_branch: dict[str, dict[str, str]] = defaultdict(dict)
-            for result in query.get_results():
-                schema_field_uuid = result.get_as_type("schema_field_uuid", return_type=str)
-                branch = result.get_as_type("branch", return_type=str)
-                delete_time = result.get_as_type("delete_time", return_type=str)
-                schema_field_uuids_by_branch[branch][schema_field_uuid] = delete_time
+        initialize_lock()
+        await initialization(db=db)
+        query = await FindOrphanedSchemaFieldsQuery.init(db=db)
+        await query.execute(db=db)
+        schema_field_uuids_by_branch: dict[str, dict[str, str]] = defaultdict(dict)
+        for result in query.get_results():
+            schema_field_uuid = result.get_as_type("schema_field_uuid", return_type=str)
+            branch = result.get_as_type("branch", return_type=str)
+            delete_time = result.get_as_type("delete_time", return_type=str)
+            schema_field_uuids_by_branch[branch][schema_field_uuid] = delete_time
 
-            for branch, schema_rel_details in schema_field_uuids_by_branch.items():
-                node_map = await NodeManager.get_many(db=db, branch=branch, ids=list(schema_rel_details.keys()))
-                for schema_field_uuid, orphan_schema_rel_node in node_map.items():
-                    delete_time = Timestamp(schema_rel_details[schema_field_uuid])
-                    await orphan_schema_rel_node.delete(db=db, at=delete_time)
-        except Exception as exc:
-            return MigrationResult(errors=[str(exc)])
+        for branch, schema_rel_details in schema_field_uuids_by_branch.items():
+            node_map = await NodeManager.get_many(db=db, branch=branch, ids=list(schema_rel_details.keys()))
+            for schema_field_uuid, orphan_schema_rel_node in node_map.items():
+                delete_time = Timestamp(schema_rel_details[schema_field_uuid])
+                await orphan_schema_rel_node.delete(db=db, at=delete_time)
 
         return MigrationResult()
