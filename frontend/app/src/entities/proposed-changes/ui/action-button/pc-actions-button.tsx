@@ -9,6 +9,8 @@ import { OpenButton } from "./close-button";
 import { MergeButton } from "./merge-button";
 import { RejectButton } from "./reject-button";
 import { ProposedChangeActionButtonProps } from "./types";
+import { PlaceholderButton } from "./placeholder-button";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
@@ -20,6 +22,8 @@ const actionsListMapping: Record<string, ActionButtonComponent> = {
 };
 
 export const PcActionButton = () => {
+  const auth = useAuth();
+
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<string>("approve");
 
@@ -27,7 +31,7 @@ export const PcActionButton = () => {
     <Combobox open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className={classNames(inputStyle, "flex p-0 border-0 ")}>
-          {actionsListMapping?.[action]?.({ setOpen })}
+          {auth?.user?.id ? actionsListMapping?.[action]?.({ setOpen }) : <PlaceholderButton />}
         </div>
       </PopoverTrigger>
       <ComboboxContent fitTriggerWidth={false}>
