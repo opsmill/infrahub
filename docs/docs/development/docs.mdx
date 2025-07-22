@@ -68,6 +68,66 @@ Available 'docs' tasks:
   .validate                Validate that the generated documentation is committed to Git.
 ```
 
+## Writing documentation with AI
+
+We are increasingly using AI to assist developers in writing technical documentation. To ensure consistency, we maintain a set of instructions that guide the AI when generating documentation for Infrahub.
+
+You can find these instructions in the `.github/instructions/documentation.instructions.md` file.
+
+:::warning
+
+This process is experimental. We are evaluating available options and will refine the process as we learn more.
+
+:::
+
+### Example use cases and prompts
+
+Below are some examples of how to use AI to write documentation. These are not exhaustive, but should give you a good starting point.
+
+- **Writing new documentation**: `Write a new documentation guide about [feature]. You can find the existing topic in [topic file]. The feature works like this: [description]. Make sure to include examples for [graphql, cli, etc.].`
+- **Updating existing documentation**: `We recently changed [this feature] to include [change]. Identify the documentation that needs to be updated and update it accordingly.`
+- **Assessing documentation quality**: `Review the documentation in [folder], evaluate it against our guidelines, and draft a report prioritizing which pages need updates.`
+
+### General guidelines
+
+- Always use the `.github/instructions/documentation.instructions.md` file as your reference when writing documentation.
+- We have not yet committed to a specific LLM, so you may use the one you prefer.
+- Treat AI-generated documentation as a starting point. Always review and refine the content to ensure it meets our standards and accurately reflects the intended message.
+- Provide clear, specific prompts to the AI. The more context and detail you give, the better the output will be.
+
+### Using an IDE
+
+:::success
+
+Using an agent like GitHub Copilot, Cursor, or windsurf in your IDE improves the documentation writing experience. These tools can access files directly and provide better context.
+
+:::
+
+Example steps using GitHub Copilot in VSCode:
+
+- Open a chat with GitHub Copilot.
+- Add the `.github/instructions/documentation.instructions.md` file to the chat context.
+- Prompt the AI to perform tasks on documentation files.
+- Depending on the task, switch between `Ask`, `Edit`, and `Agent` modes.
+
+### Using a web interface
+
+If you prefer a web interface, more manual work is required.
+
+Example steps using OpenAI's ChatGPT:
+
+- Create a new project dedicated to writing documentation for Infrahub.
+- Copy the instructions from `.github/instructions/documentation.instructions.md` into the project.
+- Copy the content of reference files (`docs/docs/development/docs.mdx`, `.vale/styles/`, `.markdownlint.yaml`) into the project.
+- Prompt the AI to perform documentation tasks.
+- Copy the generated content into the appropriate `.mdx` file in the `docs/docs` folder.
+
+:::warning
+
+Update the instructions and reference files in your project whenever they change in the repository.
+
+:::
+
 ## Linting and automation
 
 Infrahub uses [Vale](https://vale.sh) to check grammar, style, and word usage. You can find Vale's configuration in `.vale.ini`, and the Infrahub styles located in `.vale/styles/Infrahub`.
