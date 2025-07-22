@@ -63,10 +63,8 @@ class EventType(InfrahubStringEnum):
 
     PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
     PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
-    PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
-    PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
-    PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
-    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
+    PROPOSED_CHANGE_REVIEWED = f"{EVENT_NAMESPACE}.proposed_change.reviewed"
+    PROPOSED_CHANGE_REVIEW_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.review_revoked"
 
     REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
 
