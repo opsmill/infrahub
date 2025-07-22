@@ -3,6 +3,12 @@ from .branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedE
 from .group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from .models import EventMeta, InfrahubEvent
 from .node_action import NodeCreatedEvent, NodeDeletedEvent, NodeUpdatedEvent
+from .proposed_change_action import (
+    ProposedChangeMergedEvent,
+    ProposedChangeReviewedEvent,
+    ProposedChangeReviewRequestedEvent,
+    ProposedChangeReviewRevokedEvent,
+)
 from .repository_action import CommitUpdatedEvent
 from .validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 
@@ -21,6 +27,10 @@ __all__ = [
     "NodeCreatedEvent",
     "NodeDeletedEvent",
     "NodeUpdatedEvent",
+    "ProposedChangeMergedEvent",
+    "ProposedChangeReviewRequestedEvent",
+    "ProposedChangeReviewRevokedEvent",
+    "ProposedChangeReviewedEvent",
     "ValidatorFailedEvent",
     "ValidatorPassedEvent",
     "ValidatorStartedEvent",
