@@ -60,7 +60,6 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
           Closed {data?.closed ? `(${data.closed})` : null}
         </ProposedChangeTableFilterLink>
       </div>
-
       <div className="flex items-center">
         {stateAttribute && (
           <ProposedChangeTableFilter schema={schema} columnSchema={stateAttribute} />
