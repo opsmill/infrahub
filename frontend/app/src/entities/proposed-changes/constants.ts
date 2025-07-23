@@ -9,5 +9,5 @@ export const PROPOSED_CHANGE_OBJECT = "CoreProposedChange";
 
 export const PROPOSED_CHANGE_STATES = {
   opened: ["open", "merging"],
-  closed: ["closed", "merged", "canceled"],
+  closed: [CLOSE_STATE, MERGE_STATE, "canceled"],
 };
