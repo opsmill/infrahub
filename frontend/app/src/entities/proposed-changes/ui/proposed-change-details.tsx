@@ -1,4 +1,4 @@
-import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
+import { TASK_OBJECT } from "@/config/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
 import { Conversations } from "@/entities/proposed-changes/ui/conversations";
@@ -16,12 +16,10 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
-import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
 import { TaskDisplay } from "../../tasks/ui/task-display";
 
@@ -30,10 +28,6 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const navigate = useNavigate();
-
-  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)), {
-    pollInterval: 2000,
-  });
 
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
