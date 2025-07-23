@@ -1,3 +1,4 @@
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -7,10 +8,9 @@ import { ActionComboboxList } from "./actions-combobox-list";
 import { ApproveButton } from "./approve-button";
 import { OpenButton } from "./close-button";
 import { MergeButton } from "./merge-button";
+import { PlaceholderButton } from "./placeholder-button";
 import { RejectButton } from "./reject-button";
 import { ProposedChangeActionButtonProps } from "./types";
-import { PlaceholderButton } from "./placeholder-button";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
