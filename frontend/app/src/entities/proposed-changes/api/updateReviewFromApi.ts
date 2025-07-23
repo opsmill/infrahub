@@ -1,8 +1,7 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BranchContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
-const MUTATION = `
+const MUTATION = gql`
 mutation ProposedChangeReview($id: String!, $decision: ProposedChangeApprovalDecision!) {
   CoreProposedChangeReview(data: {
     id: $id,
@@ -13,7 +12,7 @@ mutation ProposedChangeReview($id: String!, $decision: ProposedChangeApprovalDec
 }
 `;
 
-export interface UpdateReviewFromApiApiParams extends BranchContextParams {
+export interface UpdateReviewFromApiApiParams {
   proposedChangeId: string;
   decision: string;
 }
@@ -21,16 +20,12 @@ export interface UpdateReviewFromApiApiParams extends BranchContextParams {
 export function updateProposedCHangeReviewFromApi({
   proposedChangeId,
   decision,
-  branchName,
 }: UpdateReviewFromApiApiParams) {
   return graphqlClient.mutate({
-    mutation: gql(MUTATION),
+    mutation: MUTATION,
     variables: {
       id: proposedChangeId,
       decision,
-    },
-    context: {
-      branch: branchName,
     },
   });
 }
