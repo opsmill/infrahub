@@ -22,7 +22,6 @@ import { useAtomValue } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
-import { getPermission } from "../../permission/utils";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
 import { TaskDisplay } from "../../tasks/ui/task-display";
 
@@ -44,8 +43,6 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     },
     pollInterval: 2000,
   });
-
-  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
   const rejectedBy = proposedChangesDetails?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
   const approvedBy = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
