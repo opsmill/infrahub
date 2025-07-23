@@ -1,7 +1,7 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useMutation } from "@tanstack/react-query";
-import { UpdateReviewFromApiApiParams } from "../api/updateProposedCHangeReviewFromApi";
-import { updateReview } from "./update-review";
+import { UpdateReviewFromApiApiParams } from "../api/updateProposedChangeReviewFromApi";
+import { updateProposedChangeReview } from "./update-review";
 
 interface UpdateReviewProps {
   onSuccess?: () => void;
@@ -9,12 +9,16 @@ interface UpdateReviewProps {
   onSettled?: () => void;
 }
 
-export function useUpdateReview({ onSuccess, onError, onSettled }: UpdateReviewProps) {
+export function useUpdateProposedChangeReview({
+  onSuccess,
+  onError,
+  onSettled,
+}: UpdateReviewProps) {
   const { currentBranch } = useCurrentBranch();
 
   return useMutation({
     mutationFn: async (params: Omit<UpdateReviewFromApiApiParams, "branchName">) => {
-      return updateReview({
+      return updateProposedChangeReview({
         ...params,
         branchName: currentBranch.name,
       });

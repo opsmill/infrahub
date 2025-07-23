@@ -17,7 +17,7 @@ export interface UpdateReviewFromApiApiParams {
   decision: string;
 }
 
-export function updateProposedCHangeReviewFromApi({
+export function updateProposedChangeReviewFromApi({
   proposedChangeId,
   decision,
 }: UpdateReviewFromApiApiParams) {
