@@ -125,12 +125,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Actions",
       value: (
         <div className="flex flex-wrap gap-2">
-          <PcActionButton
-            approvers={approvedBy}
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
+          <PcActionButton />
         </div>
       ),
     },
