@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "../../constants";
 import { useUpdateProposedChangeReview } from "../../domain/update-review.mutation";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApproved } from "../../utils/has-user-approved";
+import { hasUserApprovedProposeChange } from "../../utils/has-user-approved-proposed-change";
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
@@ -17,7 +17,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   const isMerged = proposedChangesDetails.state.value === "merged";
   const isClosed = proposedChangesDetails.state.value === "closed";
-  const hasApproved = hasUserApproved(proposedChangesDetails, auth.user);
+  const hasApproved = auth.user && hasUserApprovedProposeChange(proposedChangesDetails, auth.user);
 
   const { mutateAsync, isPending } = useUpdateProposedChangeReview({
     onSuccess: async () => {

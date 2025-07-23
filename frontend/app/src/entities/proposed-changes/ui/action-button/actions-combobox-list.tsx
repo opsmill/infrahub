@@ -3,8 +3,8 @@ import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApproved } from "../../utils/has-user-approved";
-import { hasUserRejected } from "../../utils/has-user-rejected";
+import { hasUserApprovedProposeChange } from "../../utils/has-user-approved-proposed-change";
+import { hasUserRejectedProposedChange } from "../../utils/has-user-rejected-proposed-change";
 
 type ActionItem = { value: string; name: string };
 
@@ -21,11 +21,17 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
     const actionsList: Record<string, ActionItem> = {
       approve: {
         value: "approve",
-        name: hasUserApproved(proposedChangesDetails, auth.user) ? "Cancel Approval" : "Approve",
+        name:
+          auth.user && hasUserApprovedProposeChange(proposedChangesDetails, auth.user)
+            ? "Cancel Approval"
+            : "Approve",
       },
       reject: {
         value: "reject",
-        name: hasUserRejected(proposedChangesDetails, auth.user) ? "Cancel Reject" : "Reject",
+        name:
+          auth.user && hasUserRejectedProposedChange(proposedChangesDetails, auth.user)
+            ? "Cancel Reject"
+            : "Reject",
       },
       merge: {
         value: "merge",
