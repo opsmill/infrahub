@@ -7,6 +7,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Getting Started',
       collapsed: false,
+      collapsible: false,
+      className: 'sidebar-item-large',
       items: [
         'getting-started/overview',
         'getting-started/quick-start',
@@ -17,6 +19,8 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Guides',
+      collapsed: false,
+      collapsible: false,
       link: {
         type: 'generated-index',
         slug: 'guides'
@@ -114,6 +118,8 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Topics',
+      collapsed: false,
+      collapsible: false,
       link: {
         type: 'generated-index',
         slug: 'topics'
@@ -122,7 +128,6 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Architecture',
-          collapsed: false,
           link: {
             type: 'generated-index',
           },
@@ -133,7 +138,6 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Core Concepts',
-          collapsed: false,
           link: {
             type: 'generated-index',
           },
@@ -234,7 +238,6 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Platform Capabilities',
-          collapsed: false,
           link: {
             type: 'generated-index',
           },
@@ -290,7 +293,6 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Development Resources',
-          collapsed: false,
           link: {
             type: 'generated-index',
           },
