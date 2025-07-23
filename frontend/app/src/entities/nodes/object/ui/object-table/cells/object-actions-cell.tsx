@@ -38,7 +38,7 @@ export function ObjectActionsCell({
   const isDeleteAllowed = permission.delete.isAllowed;
 
   if (!schema) {
-    return <StickyRightCell />;
+    return <StickyRightCell isMuted />;
   }
 
   return (

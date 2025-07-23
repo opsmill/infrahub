@@ -14,7 +14,7 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
+import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
@@ -51,24 +51,26 @@ export const getIpPrefixTableColumns = (
           const ancestorsCount: number = (row.original.parent?.node?.ancestors?.count ?? 0) + 1;
           return (
             <>
-              <StickyLeftCell className="bg-green-50 pl-0.5">
+              <StickyLeftCell className={classNames(cellMutedStyle, "pl-0.5")}>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="rounded-full px-2.5 pl-1.5 text-green-700 hover:underline hover:bg-green-700/10 gap-3.75"
+                  className="rounded-full px-2.5 pl-1.5 hover:underline hover:bg-gray-400/10 gap-3.75"
                 >
-                  <PlusIcon className="size-4 mr-px" />
+                  <div className="size-4 mr-px flex items-center justify-center">
+                    <PlusIcon className="size-4 text-gray-300" />
+                  </div>
 
                   <Row className="gap-2.5">
                     {[...Array(ancestorsCount)].map((_, i) => (
-                      <div className="bg-green-600/40 size-1 rounded-full" key={i} />
+                      <div className="bg-gray-300 size-1 rounded-full" key={i} />
                     ))}
                     {value}
                   </Row>
                 </Button>
               </StickyLeftCell>
 
-              <TableCell className="text-gray-400 col-start-2 -col-end-2">
+              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
                 {schema.label} available
               </TableCell>
             </>
@@ -99,9 +101,9 @@ export const getIpPrefixTableColumns = (
       ? [
           {
             id: "objectKind",
-            accessorFn: (row) => row.__typename,
+            accessorFn: (row: NodeObject) => row.__typename,
             header: () => <KindHeaderCell schema={schema} {...headerProps} />,
-            cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue() as string} />,
+            cell: ({ cell }: any) => <KindBodyCell schemaKind={cell.getValue() as string} />,
           },
         ]
       : []),
@@ -111,7 +113,7 @@ export const getIpPrefixTableColumns = (
         header: () => (
           <TableColumnHeader columnSchema={attribute} schema={schema} {...headerProps} />
         ),
-        cell: ({ cell, row }) => {
+        cell: ({ cell, row }: any) => {
           const attributeData = cell.getValue();
           if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) return null; // no columns for availability rows
 
@@ -152,7 +154,7 @@ export const getIpPrefixTableColumns = (
         header: () => (
           <TableColumnHeader columnSchema={relationship} schema={schema} {...headerProps} />
         ),
-        cell: ({ cell, row }) => {
+        cell: ({ cell, row }: any) => {
           const value = cell.getValue();
           if (!value) return null;
           if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) return null; // no columns for availability rows
