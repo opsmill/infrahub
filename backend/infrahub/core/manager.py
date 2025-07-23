@@ -400,7 +400,7 @@ class NodeManager:
 
         results = []
         for peer in peers_info:
-            result = await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
+            result = Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
@@ -408,7 +408,7 @@ class NodeManager:
                 data=peer,
             )
             if fetch_peers:
-                await result.set_peer(value=peer_nodes[peer.peer_id])
+                result.set_peer(value=peer_nodes[peer.peer_id])
             results.append(result)
 
         return results
