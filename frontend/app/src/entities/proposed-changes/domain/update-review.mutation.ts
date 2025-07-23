@@ -19,7 +19,6 @@ export function useUpdateReview({ onSuccess, onError, onSettled }: UpdateReviewP
         branchName: currentBranch.name,
       });
     },
-    mutationKey: ["propose-changes-action"],
     onSuccess,
     onError,
     onSettled,
