@@ -18,7 +18,7 @@ export interface UpdateReviewFromApiApiParams extends BranchContextParams {
   decision: string;
 }
 
-export function udpateReviewFromApi({
+export function updateReviewFromApi({
   proposedChangeId,
   decision,
   branchName,
