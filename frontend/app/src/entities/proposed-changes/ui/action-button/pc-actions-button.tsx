@@ -4,12 +4,12 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { ReactElement, useState } from "react";
-import { ActionComboboxList } from "./actions-combobox-list";
-import { ApproveButton } from "./approve-button";
-import { OpenButton } from "./close-button";
-import { MergeButton } from "./merge-button";
-import { PlaceholderButton } from "./placeholder-button";
-import { RejectButton } from "./reject-button";
+import { ActionComboboxList } from "./pc-actions-combobox-list";
+import { ApproveButton } from "./pc-approve-button";
+import { OpenButton } from "./pc-close-button";
+import { MergeButton } from "./pc-merge-button";
+import { PcPlaceholderButton } from "./pc-placeholder-button";
+import { RejectButton } from "./pc-reject-button";
 import { ProposedChangeActionButtonProps } from "./types";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
@@ -31,7 +31,7 @@ export const PcActionButton = () => {
     <Combobox open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className={classNames(inputStyle, "flex p-0 border-0 ")}>
-          {auth?.user?.id ? actionsListMapping?.[action]?.({ setOpen }) : <PlaceholderButton />}
+          {auth?.user?.id ? actionsListMapping?.[action]?.({ setOpen }) : <PcPlaceholderButton />}
         </div>
       </PopoverTrigger>
       <ComboboxContent fitTriggerWidth={false}>

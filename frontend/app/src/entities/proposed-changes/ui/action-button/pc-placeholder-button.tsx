@@ -1,7 +1,7 @@
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 
-export const PlaceholderButton = () => {
+export const PcPlaceholderButton = () => {
   return (
     <>
       <Button
