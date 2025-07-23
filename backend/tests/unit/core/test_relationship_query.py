@@ -317,7 +317,7 @@ async def test_query_RelationshipDeleteQuery(
     )
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
-    await rel.load(db=db, data=rel_data)
+    rel.load(db=db, data=rel_data)
 
     query = await RelationshipDeleteQuery.init(
         db=db,
@@ -386,7 +386,7 @@ async def test_query_RelationshipDeleteQuery(
     )
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
-    await rel.load(db=db, data=rel_data)
+    rel.load(db=db, data=rel_data)
 
     query = await RelationshipDeleteQuery.init(
         db=db,

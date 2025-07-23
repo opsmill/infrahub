@@ -638,7 +638,7 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
     assert c1.nbr_seats.value == 4
     assert c1.is_electric.value is True
     c1_owner = await c1.owner.get_peer(db=db)
-    assert c1_owner == p1
+    assert c1_owner.id == p1.id
 
     paths = await get_paths_between_nodes(
         db=db, source_id=c1.db_id, destination_id=p1.db_id, max_length=2, relationships=["IS_RELATED"]
