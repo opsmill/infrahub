@@ -12,12 +12,7 @@ export const PlaceholderButton = () => {
         Please login
       </Button>
 
-      <Button
-        className="h-full rounded-l-none border-l-0"
-        variant={"primary"}
-        size={"sm"}
-        disabled
-      >
+      <Button className="h-full rounded-l-none border-l-0" variant={"primary"} size={"sm"} disabled>
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>
     </>
