@@ -157,7 +157,10 @@ class NodeCreateAllQuery(NodeQuery):
         relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
+            peers = await rel_manager.get_peers(db=db, branch_agnostic=self.branch_agnostic)
             for rel in rel_manager._relationships:
+                if rel.get_peer_id() in peers:
+                    await rel.set_peer(value=peers[rel.get_peer_id()])
                 rel_create_data = await rel.get_create_data(db=db, at=at)
                 if rel_create_data.peer_branch_level > deepest_branch_level or (
                     deepest_branch_name == GLOBAL_BRANCH_NAME and rel_create_data.peer_branch == registry.default_branch
