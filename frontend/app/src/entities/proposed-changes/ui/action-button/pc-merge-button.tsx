@@ -15,7 +15,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   const isMerged = proposedChangesDetails.state.value === "merged";
 
-  const { mutateAsync, isPending } = useUpdateObjectMutation({
+  const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
@@ -25,7 +25,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    mutateAsync({
+    mutate({
       data: {
         id: proposedChangesDetails.id,
         state: {

@@ -16,7 +16,7 @@ export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const isMerged = proposedChangesDetails.state.value === "merged";
   const isClosed = proposedChangesDetails.state.value === "closed";
 
-  const { mutateAsync, isPending } = useUpdateObjectMutation({
+  const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
@@ -26,7 +26,7 @@ export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    return mutateAsync({
+    mutate({
       data: {
         id: proposedChangesDetails.id,
         state: {

@@ -19,7 +19,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const isClosed = proposedChangesDetails.state.value === "closed";
   const hasApproved = auth.user && hasUserRejectedProposedChange(proposedChangesDetails, auth.user);
 
-  const { mutateAsync, isPending } = useUpdateProposedChangeReview({
+  const { mutate, isPending } = useUpdateProposedChangeReview({
     onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
       toast(
@@ -34,7 +34,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    mutateAsync({
+    mutate({
       proposedChangeId: proposedChangesDetails.id,
       decision: hasApproved ? CANCEL_REJECT_DECISION : REJECT_DECISION,
     });
