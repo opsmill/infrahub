@@ -1,6 +1,6 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useMutation } from "@tanstack/react-query";
-import { UpdateReviewFromApiApiParams } from "../api/updateReviewFromApi";
+import { UpdateReviewFromApiApiParams } from "../api/updateProposedCHangeReviewFromApi";
 import { updateReview } from "./update-review";
 
 interface UpdateReviewProps {
