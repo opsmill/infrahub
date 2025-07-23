@@ -47,8 +47,9 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
+  const rejectedBy = proposedChangesDetails?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
+  const approvedBy = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
-  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
@@ -93,10 +94,18 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       ),
     },
     {
-      name: "Approvers",
-      value: approvers.map((approver: any, index: number) => (
-        <Tooltip key={index} content={approver.display_label}>
-          <Avatar size={"sm"} name={approver.display_label} className="mr-2" />
+      name: "Approved by",
+      value: approvedBy.map((user: any, index: number) => (
+        <Tooltip key={index} content={user.display_label}>
+          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
+        </Tooltip>
+      )),
+    },
+    {
+      name: "Rejected by",
+      value: rejectedBy.map((user: any, index: number) => (
+        <Tooltip key={index} content={user.display_label}>
+          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
         </Tooltip>
       )),
     },
@@ -117,7 +126,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       value: (
         <div className="flex flex-wrap gap-2">
           <PcActionButton
-            approvers={approvers}
+            approvers={approvedBy}
             proposedChangeId={proposedChangeId!}
             state={state}
             disabled={!permission.update.isAllowed}
