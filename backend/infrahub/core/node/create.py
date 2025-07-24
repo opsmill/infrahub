@@ -7,6 +7,7 @@ from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.save import run_constraints_and_save
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.dependencies.registry import get_component_registry
 
@@ -171,8 +172,15 @@ async def _do_create_node(
 ) -> Node:
     obj = await node_class.init(db=db, schema=schema, branch=branch)
     await obj.new(db=db, **data)
-    await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-    await obj.save(db=db)
+
+    await run_constraints_and_save(
+        node=obj,
+        node_constraint_runner=node_constraint_runner,
+        fields_to_validate=fields_to_validate,
+        fields_to_save=[],
+        db=db,
+        branch=branch,
+    )
 
     object_template = await obj.get_object_template(db=db)
     if object_template:

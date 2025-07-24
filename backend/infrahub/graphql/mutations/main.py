@@ -7,8 +7,8 @@ from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from typing_extensions import Self
 
-from infrahub import config, lock
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub import config
+from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import (
@@ -27,9 +27,9 @@ from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 
+from ...core.node.save import run_constraints_and_save
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -37,7 +37,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
 
@@ -45,8 +44,6 @@ if TYPE_CHECKING:
 
 
 log = get_logger()
-
-KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [InfrahubKind.GENERICGROUP]
 
 
 @dataclass
@@ -152,14 +149,6 @@ class InfrahubMutationMixin:
         """
         Wrapper around mutate_create_object to potentially activate locking.
         """
-        schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
-        )
-        if lock_names:
-            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
-
         return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
 
     @classmethod
@@ -220,39 +209,22 @@ class InfrahubMutationMixin:
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
         """
 
-        schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
-        )
-
         if db.is_transaction:
-            if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(
-                        db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
-                    )
-            else:
-                obj = await cls.mutate_update_object(
-                    db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
-                )
+            obj = await cls.mutate_update_object(
+                db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+            )
             result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
             return obj, result
 
         async with db.start_transaction() as dbt:
-            if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(
-                        db=dbt,
-                        info=info,
-                        data=data,
-                        branch=branch,
-                        obj=obj,
-                        skip_uniqueness_check=skip_uniqueness_check,
-                    )
-            else:
-                obj = await cls.mutate_update_object(
-                    db=dbt, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
-                )
+            obj = await cls.mutate_update_object(
+                db=dbt,
+                info=info,
+                data=data,
+                branch=branch,
+                obj=obj,
+                skip_uniqueness_check=skip_uniqueness_check,
+            )
             result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
             return obj, result
 
@@ -293,16 +265,21 @@ class InfrahubMutationMixin:
         before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
-        await node_constraint_runner.check(
-            node=obj, field_filters=fields_to_validate, skip_uniqueness_check=skip_uniqueness_check
-        )
-
         fields = list(data.keys())
+
         for field_to_remove in ("id", "hfid"):
             if field_to_remove in fields:
                 fields.remove(field_to_remove)
 
-        await obj.save(db=db, fields=fields)
+        await run_constraints_and_save(
+            node=obj,
+            node_constraint_runner=node_constraint_runner,
+            fields_to_validate=fields_to_validate,
+            fields_to_save=fields,
+            db=db,
+            skip_uniqueness_check=skip_uniqueness_check,
+            branch=branch,
+        )
 
         obj = await refresh_for_profile_update(
             db=db,
@@ -469,72 +446,6 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
         _meta.schema = schema
 
         super().__init_subclass_with_meta__(_meta=_meta, **options)
-
-
-def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
-    """
-    Return kinds for which we want to lock during creating / updating an object of a given schema node.
-    Lock should be performed on schema kind and its generics having a uniqueness_constraint defined.
-    If a generic uniqueness constraint is the same as the node schema one,
-    it means node schema overrided this constraint, in which case we only need to lock on the generic.
-    """
-
-    node_schema = schema_branch.get(name=kind, duplicate=False)
-
-    schema_uc = None
-    kinds = []
-    if node_schema.uniqueness_constraints:
-        kinds.append(node_schema.kind)
-        schema_uc = node_schema.uniqueness_constraints
-
-    if node_schema.is_generic_schema:
-        return kinds
-
-    generics_kinds = node_schema.inherit_from
-
-    node_schema_kind_removed = False
-    for generic_kind in generics_kinds:
-        generic_uc = schema_branch.get(name=generic_kind, duplicate=False).uniqueness_constraints
-        if generic_uc:
-            kinds.append(generic_kind)
-            if not node_schema_kind_removed and generic_uc == schema_uc:
-                # Check whether we should remove original schema kind as it simply overrides uniqueness_constraint
-                # of a generic
-                kinds.pop(0)
-                node_schema_kind_removed = True
-    return kinds
-
-
-def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch) -> bool:
-    """
-    Check whether kind or any kind generic is in KINDS_TO_LOCK_ON_ANY_BRANCH.
-    """
-
-    if kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-        return True
-
-    node_schema = schema_branch.get(name=kind, duplicate=False)
-    if node_schema.is_generic_schema:
-        return False
-
-    for generic_kind in node_schema.inherit_from:
-        if generic_kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-            return True
-    return False
-
-
-def _get_kind_lock_names_on_object_mutation(kind: str, branch: Branch, schema_branch: SchemaBranch) -> list[str]:
-    """
-    Return objects kind for which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
-    concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
-    """
-
-    if not branch.is_default and not _should_kind_be_locked_on_any_branch(kind, schema_branch):
-        return []
-
-    lock_kinds = _get_kinds_to_lock_on_object_mutation(kind, schema_branch)
-    lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
-    return lock_names
 
 
 def _get_data_fields(data: InputObjectType) -> list[str]:
