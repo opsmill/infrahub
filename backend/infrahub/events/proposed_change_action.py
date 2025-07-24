@@ -20,6 +20,36 @@ class ProposedChangeEvent(InfrahubEvent):
         }
 
 
+class ProposedChangeReviewEvent(ProposedChangeEvent):
+    reviewer_account_id: str = Field(..., description="The ID of the user who reviewed the proposed change")
+    reviewer_account_name: str = Field(..., description="The name of the user who reviewed the proposed change")
+    reviewer_decision: str = Field(..., description="The decision made by the reviewer")
+
+    def get_resource(self) -> dict[str, str]:
+        return {
+            **super().get_resource(),
+            "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
+            "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
+            "infrahub.proposed_change.reviewer_decision": self.reviewer_decision,
+            "infrahub.branch.name": self.meta.context.branch.name,
+        }
+
+
+class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
+    reviewer_account_id: str = Field(..., description="The ID of the user who reviewed the proposed change")
+    reviewer_account_name: str = Field(..., description="The name of the user who reviewed the proposed change")
+    reviewer_former_decision: str = Field(..., description="The former decision made by the reviewer")
+
+    def get_resource(self) -> dict[str, str]:
+        return {
+            **super().get_resource(),
+            "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
+            "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
+            "infrahub.proposed_change.reviewer_former_decision": self.reviewer_former_decision,
+            "infrahub.branch.name": self.meta.context.branch.name,
+        }
+
+
 class ProposedChangeMergedEvent(ProposedChangeEvent):
     """Event generated when a proposed change has been merged"""
 
@@ -58,39 +88,25 @@ class ProposedChangeReviewRequestedEvent(ProposedChangeEvent):
         }
 
 
-class ProposedChangeReviewedEvent(ProposedChangeEvent):
-    """Event generated when a proposed change has been reviewed"""
+class ProposedChangeApprovedEvent(ProposedChangeReviewEvent):
+    """Event generated when a proposed change has been approved"""
 
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.reviewed"
-
-    reviewer_account_id: str = Field(..., description="The ID of the user who reviewed the proposed change")
-    reviewer_account_name: str = Field(..., description="The name of the user who reviewed the proposed change")
-    reviewer_decision: str = Field(..., description="The decision made by the reviewer")
-
-    def get_resource(self) -> dict[str, str]:
-        return {
-            **super().get_resource(),
-            "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
-            "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
-            "infrahub.proposed_change.reviewer_decision": self.reviewer_decision,
-            "infrahub.branch.name": self.meta.context.branch.name,
-        }
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approved"
 
 
-class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
-    """Event generated when a proposed change review has been revoked"""
+class ProposedChangeRejectedEvent(ProposedChangeReviewEvent):
+    """Event generated when a proposed change has been rejected"""
 
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.review_revoked"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejected"
 
-    reviewer_account_id: str = Field(..., description="The ID of the user who reviewed the proposed change")
-    reviewer_account_name: str = Field(..., description="The name of the user who reviewed the proposed change")
-    reviewer_former_decision: str = Field(..., description="The former decision made by the reviewer")
 
-    def get_resource(self) -> dict[str, str]:
-        return {
-            **super().get_resource(),
-            "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
-            "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
-            "infrahub.proposed_change.reviewer_former_decision": self.reviewer_former_decision,
-            "infrahub.branch.name": self.meta.context.branch.name,
-        }
+class ProposedChangeApprovalRevokedEvent(ProposedChangeReviewRevokedEvent):
+    """Event generated when a proposed change approval has been revoked"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
+
+
+class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
+    """Event generated when a proposed change rejection has been revoked"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
