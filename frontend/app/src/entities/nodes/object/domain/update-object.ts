@@ -1,10 +1,10 @@
 import {
-  UpdateObjectFromApiApiParams,
+  UpdateObjectFromApiParams,
   updateObjectFromApi,
 } from "@/entities/nodes/object/api/update-object-from-api";
 import { NodeCore } from "@/entities/nodes/types";
 
-export type UpdateObjectParams = UpdateObjectFromApiApiParams;
+export type UpdateObjectParams = UpdateObjectFromApiParams;
 
 export type UpdateObject = (params: UpdateObjectParams) => Promise<NodeCore>;
 

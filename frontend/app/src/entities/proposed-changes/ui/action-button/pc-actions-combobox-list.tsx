@@ -3,7 +3,7 @@ import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApprovedProposeChange } from "../../utils/has-user-approved-proposed-change";
+import { hasUserApprovedProposedChange } from "../../utils/has-user-approved-proposed-change";
 import { hasUserRejectedProposedChange } from "../../utils/has-user-rejected-proposed-change";
 
 type ActionItem = { value: string; name: string };
@@ -22,7 +22,7 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
       approve: {
         value: "approve",
         name:
-          auth.user && hasUserApprovedProposeChange(proposedChangesDetails, auth.user)
+          auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user)
             ? "Cancel Approval"
             : "Approve",
       },

@@ -3,7 +3,7 @@ import { BranchContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export interface UpdateObjectFromApiApiParams extends BranchContextParams {
+export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
   data: Record<string, any>;
   profileIds?: Array<string>;
@@ -14,7 +14,7 @@ export function updateObjectFromApi({
   objectKind,
   profileIds = [],
   branchName,
-}: UpdateObjectFromApiApiParams) {
+}: UpdateObjectFromApiParams) {
   const mutation = jsonToGraphQLQuery({
     mutation: {
       [`${objectKind}Update`]: {
