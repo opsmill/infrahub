@@ -162,5 +162,4 @@ Slurp'it
 walkthrough
 Otternet
 Widget's
-IDE
-AI
+widget's
