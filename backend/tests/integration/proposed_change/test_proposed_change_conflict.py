@@ -282,11 +282,11 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             secondary_events = await client.execute_graphql(
                 query=QUERY_EVENT, variables={"parent__ids": merge_event_id}
             )
-            if secondary_events["InfrahubEvent"]["count"] >= 2:
+            if secondary_events["InfrahubEvent"]["count"] >= 3:
                 break
             await asyncio.sleep(1)
 
-        assert secondary_events["InfrahubEvent"]["count"] >= 2
+        assert secondary_events["InfrahubEvent"]["count"] >= 3
 
         johns_events = [
             event
