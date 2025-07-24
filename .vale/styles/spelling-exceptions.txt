@@ -161,3 +161,6 @@ VSCode
 Slurp'it
 walkthrough
 Otternet
+Widget's
+IDE
+AI
