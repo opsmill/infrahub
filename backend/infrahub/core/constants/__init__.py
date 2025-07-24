@@ -66,7 +66,7 @@ class EventType(InfrahubStringEnum):
     PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
     PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
     PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
-    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejectin_revoked"
+    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
 
     REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
 
