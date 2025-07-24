@@ -2,6 +2,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipHierarchyDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -183,8 +184,13 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
 
 
 async def test_inheritance_migration_on_branch_and_main(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_alfred_main: Node
 ):
+    # 0. add a deleted relationship
+    accord_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await accord_main.owner.update(db=db, data=person_alfred_main.id)
+    await accord_main.save(db=db)
+
     # 1. Create a new branch
     branch = await create_branch(db=db, branch_name="test-migration-branch")
 
