@@ -60,7 +60,7 @@ def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch)
     return False
 
 
-def _get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch: SchemaBranch) -> list[str]:
+def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch: SchemaBranch) -> list[str]:
     """
     Return lock names for object on which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
     concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
@@ -95,7 +95,8 @@ def _get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch
                     continue
 
                 uc_attributes_names.add(field_path)
-                uc_attributes_values.append(str(getattr(node, schema_path.attribute_schema.name).value))
+                value_hashed = str(hash(str(getattr(node, schema_path.attribute_schema.name).value)))
+                uc_attributes_values.append(value_hashed)
 
             if uc_attributes_values:
                 uc_lock_name = ".".join(uc_attributes_values)

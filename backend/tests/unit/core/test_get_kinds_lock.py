@@ -3,10 +3,10 @@ from copy import deepcopy
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.database import InfrahubDatabase
-from infrahub.lock_utils import (
+from infrahub.lock_getter import (
     _get_kinds_to_lock_on_object_mutation,
-    _get_lock_names_on_object_mutation,
     _should_kind_be_locked_on_any_branch,
+    get_lock_names_on_object_mutation,
 )
 from tests.helpers.test_app import TestInfrahubApp
 from tests.node_creation import create_and_save
@@ -47,7 +47,7 @@ class TestGetKindsLock(TestInfrahubApp):
         schema_branch = registry.schema.get_schema_branch(name=other_branch.name)
 
         person = await create_and_save(db=db, schema="TestPerson", name="John", branch=other_branch)
-        assert _get_lock_names_on_object_mutation(person, branch=other_branch, schema_branch=schema_branch) == []
+        assert get_lock_names_on_object_mutation(person, branch=other_branch, schema_branch=schema_branch) == []
 
     async def test_lock_groups_on_other_branches(
         self,
@@ -77,6 +77,6 @@ class TestGetKindsLock(TestInfrahubApp):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person = await create_and_save(db=db, schema="TestPerson", name="John")
         car = await create_and_save(db=db, schema="TestCar", name="mercedes", color="blue", owner=person)
-        assert _get_lock_names_on_object_mutation(car, branch=default_branch, schema_branch=schema_branch) == [
-            "global.object.TestCar.mercedes.blue"
+        assert get_lock_names_on_object_mutation(car, branch=default_branch, schema_branch=schema_branch) == [
+            "global.object.TestCar." + str(hash("mercedes")) + "." + str(hash("blue"))
         ]
