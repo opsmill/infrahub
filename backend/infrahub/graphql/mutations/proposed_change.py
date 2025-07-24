@@ -20,9 +20,11 @@ from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import (
     EventMeta,
-    ProposedChangeReviewedEvent,
+    ProposedChangeApprovalRevokedEvent,
+    ProposedChangeApprovedEvent,
+    ProposedChangeRejectedEvent,
+    ProposedChangeRejectionRevokedEvent,
     ProposedChangeReviewRequestedEvent,
-    ProposedChangeReviewRevokedEvent,
 )
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
@@ -328,7 +330,7 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in rejected_by_ids:
                     await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
-                event = ProposedChangeReviewedEvent(
+                event = ProposedChangeApprovedEvent(
                     proposed_change_id=proposed_change.id,
                     proposed_change_name=proposed_change.name.value,
                     proposed_change_state=proposed_change.state.value,
@@ -345,7 +347,7 @@ class ProposedChangeReview(Mutation):
                     )
                 await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
-                event = ProposedChangeReviewRevokedEvent(
+                event = ProposedChangeApprovalRevokedEvent(
                     proposed_change_id=proposed_change.id,
                     proposed_change_name=proposed_change.name.value,
                     proposed_change_state=proposed_change.state.value,
@@ -362,7 +364,7 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in approved_by_ids:
                     await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
-                event = ProposedChangeReviewedEvent(
+                event = ProposedChangeRejectedEvent(
                     proposed_change_id=proposed_change.id,
                     proposed_change_name=proposed_change.name.value,
                     proposed_change_state=proposed_change.state.value,
@@ -379,7 +381,7 @@ class ProposedChangeReview(Mutation):
                     )
                 await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
-                event = ProposedChangeReviewRevokedEvent(
+                event = ProposedChangeRejectionRevokedEvent(
                     proposed_change_id=proposed_change.id,
                     proposed_change_name=proposed_change.name.value,
                     proposed_change_state=proposed_change.state.value,
