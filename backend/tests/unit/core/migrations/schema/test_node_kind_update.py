@@ -1,6 +1,7 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -9,7 +10,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
-from tests.helpers.db_validation import validate_node_relationships
+from tests.helpers.db_validation import validate_node_relationships, verify_no_duplicate_paths
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
@@ -179,3 +180,41 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
     )
     await hierarchy_query.execute(db=db)
     assert list(hierarchy_query.get_peer_ids()) == [continent_europe.get_id()]
+
+
+async def test_inheritance_migration_on_branch_and_main(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+):
+    # 1. Create a new branch
+    branch = await create_branch(db=db, branch_name="test-migration-branch")
+
+    # 2. Run NodeKindUpdateMigration on the new branch
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get_node(name="TestCar")
+    candidate_schema.delete(name="TestCar")
+    car_schema.inherit_from = ["GenericThing"]
+    candidate_schema.set(name="TestCar", schema=car_schema)
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+    )
+
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 2
+
+    # 3. Run the same NodeKindUpdateMigration on the default_branch
+    schema_default = registry.schema.get_schema_branch(name=default_branch.name)
+    migration_default = NodeKindUpdateMigration(
+        previous_node_schema=schema_default.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+    )
+
+    execution_result_default = await migration_default.execute(db=db, branch=default_branch)
+    assert not execution_result_default.errors
+
+    await verify_no_duplicate_paths(db=db)
