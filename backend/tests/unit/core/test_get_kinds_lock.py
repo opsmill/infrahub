@@ -80,3 +80,20 @@ class TestGetKindsLock(TestInfrahubApp):
         assert get_lock_names_on_object_mutation(car, branch=default_branch, schema_branch=schema_branch) == [
             "global.object.TestCar." + str(hash("mercedes")) + "." + str(hash("blue"))
         ]
+
+    async def test_lock_names_optional_empty_attribute(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        client,
+        car_person_schema_unregistered,
+    ):
+        car_person_schema_unregistered = deepcopy(car_person_schema_unregistered)
+        car_person_schema_unregistered.nodes[1].uniqueness_constraints = [["height__value"]]
+        registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        person = await create_and_save(db=db, schema="TestPerson", name="John")
+        assert get_lock_names_on_object_mutation(person, branch=default_branch, schema_branch=schema_branch) == [
+            "global.object.TestPerson." + str(hash("")) + "." + str(hash("John"))
+        ]

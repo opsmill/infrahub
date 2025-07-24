@@ -95,7 +95,14 @@ def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch:
                     continue
 
                 uc_attributes_names.add(field_path)
-                value_hashed = str(hash(str(getattr(node, schema_path.attribute_schema.name).value)))
+                attr = getattr(node, schema_path.attribute_schema.name, None)
+                if attr is None or attr.value is None:
+                    # `attr.value` being None corresponds to optional unique attribute.
+                    # `attr` being None is not supposed to happen.
+                    value_hashed = str(hash(""))
+                else:
+                    value_hashed = str(hash(str(attr.value)))
+
                 uc_attributes_values.append(value_hashed)
 
             if uc_attributes_values:
