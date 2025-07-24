@@ -1,89 +1,66 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
+import { CLOSE_STATE } from "../../constants";
+import { proposedChangedState } from "../../stores/proposedChanges.atom";
+import { ProposedChangeActionButtonProps } from "./types";
 
-interface PcCloseButtonProps extends ButtonProps {
-  proposedChangeId: string;
-  state: "closed" | "open" | "merged";
-}
+export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-export const PcCloseButton = ({
-  proposedChangeId,
-  state,
-  disabled,
-  ...props
-}: PcCloseButtonProps) => {
-  const [isLoadingClose, setIsLoadingClose] = useState(false);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+  const isMerged = proposedChangesDetails.state.value === "merged";
+  const isClosed = proposedChangesDetails.state.value === "closed";
 
-  const handleClose = async () => {
-    setIsLoadingClose(true);
-
-    const newState = state === "closed" ? "open" : "closed";
-
-    const data = {
-      state: {
-        value: newState,
-      },
-    };
-
-    try {
-      const mutationString = updateObjectWithId({
-        kind: PROPOSED_CHANGES_OBJECT,
-        data: stringifyWithoutQuotes({
-          id: proposedChangeId,
-          ...data,
-        }),
-      });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: { branch: branch?.name, date },
-      });
-
-      toast(
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`Proposed change ${state === "closed" ? "opened" : "closed"}`}
-        />
-      );
-
+  const { mutate, isPending } = useUpdateObjectMutation({
+    onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
-      setIsLoadingClose(false);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
+    },
+  });
 
-      return;
-    } catch (e) {
-      console.error("Something went wrong while updating the object:", e);
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
 
-      setIsLoadingClose(false);
-
-      return;
-    }
+    mutate({
+      data: {
+        id: proposedChangesDetails.id,
+        state: {
+          value: CLOSE_STATE,
+        },
+      },
+      objectKind: PROPOSED_CHANGES_OBJECT,
+    });
   };
 
   return (
-    <Button
-      variant="danger"
-      onClick={handleClose}
-      isLoading={isLoadingClose}
-      disabled={disabled || state === "merged"}
-      {...props}
-    >
-      {state === "closed" ? "Re-open" : "Close"}
-    </Button>
+    <>
+      <Button
+        className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+        onClick={handleAction}
+        variant={"primary"}
+        isLoading={isPending}
+        disabled={isMerged || isClosed || isPending}
+      >
+        Close
+      </Button>
+
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"primary"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isMerged || isClosed || isPending}
+        data-testid="proposed-change-action-button-select"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

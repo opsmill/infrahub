@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { QSP_STATE_CLOSE_VALUE } from "@/entities/proposed-changes/constant";
+import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
 import { useGetProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
 import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
 import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";
@@ -52,15 +52,14 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
           Opened {data?.opened ? `(${data.opened})` : null}
         </ProposedChangeTableFilterLink>
         <ProposedChangeTableFilterLink
-          isActive={proposedChangeState === QSP_STATE_CLOSE_VALUE}
+          isActive={proposedChangeState === CLOSE_STATE}
           onClick={() => {
-            setProposedChangeState(QSP_STATE_CLOSE_VALUE);
+            setProposedChangeState(CLOSE_STATE);
           }}
         >
           Closed {data?.closed ? `(${data.closed})` : null}
         </ProposedChangeTableFilterLink>
       </div>
-
       <div className="flex items-center">
         {stateAttribute && (
           <ProposedChangeTableFilter schema={schema} columnSchema={stateAttribute} />

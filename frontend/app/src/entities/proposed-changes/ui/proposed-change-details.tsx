@@ -1,8 +1,6 @@
-import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
+import { TASK_OBJECT } from "@/config/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
-import { PcCloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
-import { PcMergeButton } from "@/entities/proposed-changes/ui/action-button/pc-merge-button";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
 import { Conversations } from "@/entities/proposed-changes/ui/conversations";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
@@ -18,13 +16,10 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
-import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
-import { getPermission } from "../../permission/utils";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
 import { TaskDisplay } from "../../tasks/ui/task-display";
 
@@ -33,10 +28,6 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const navigate = useNavigate();
-
-  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)), {
-    pollInterval: 2000,
-  });
 
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
@@ -47,10 +38,9 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     pollInterval: 2000,
   });
 
-  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
-
+  const rejectedBy = proposedChangesDetails?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
+  const approvedBy = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
-  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
@@ -95,10 +85,18 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       ),
     },
     {
-      name: "Approvers",
-      value: approvers.map((approver: any, index: number) => (
-        <Tooltip key={index} content={approver.display_label}>
-          <Avatar size={"sm"} name={approver.display_label} className="mr-2" />
+      name: "Approved by",
+      value: approvedBy.map((user: any, index: number) => (
+        <Tooltip key={index} content={user.display_label}>
+          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
+        </Tooltip>
+      )),
+    },
+    {
+      name: "Rejected by",
+      value: rejectedBy.map((user: any, index: number) => (
+        <Tooltip key={index} content={user.display_label}>
+          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
         </Tooltip>
       )),
     },
@@ -118,23 +116,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Actions",
       value: (
         <div className="flex flex-wrap gap-2">
-          <PcApproveButton
-            approvers={approvers}
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
-          <PcMergeButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed || (checkData && checkData[TASK_OBJECT].count)}
-          />
-          <PcCloseButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
+          <PcActionButton />
         </div>
       ),
     },

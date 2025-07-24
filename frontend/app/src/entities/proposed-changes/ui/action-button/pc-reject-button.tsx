@@ -5,19 +5,19 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
-import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "../../constants";
+import { CANCEL_REJECT_DECISION, REJECT_DECISION } from "../../constants";
 import { useUpdateProposedChangeReview } from "../../domain/update-review.mutation";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApprovedProposedChange } from "../../utils/has-user-approved-proposed-change";
+import { hasUserRejectedProposedChange } from "../../utils/has-user-rejected-proposed-change";
 import { ProposedChangeActionButtonProps } from "./types";
 
-export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const isMerged = proposedChangesDetails.state.value === "merged";
   const isClosed = proposedChangesDetails.state.value === "closed";
-  const hasApproved = auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user);
+  const hasApproved = auth.user && hasUserRejectedProposedChange(proposedChangesDetails, auth.user);
 
   const { mutate, isPending } = useUpdateProposedChangeReview({
     onSuccess: async () => {
@@ -25,7 +25,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
-          message={hasApproved ? "Proposed change approval canceled!" : "Proposed change approved!"}
+          message={hasApproved ? "Proposed change reject canceled!" : "Proposed change rejected!"}
         />
       );
     },
@@ -36,7 +36,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
     mutate({
       proposedChangeId: proposedChangesDetails.id,
-      decision: hasApproved ? CANCEL_APPROVE_DECISION : APPROVE_DECISION,
+      decision: hasApproved ? CANCEL_REJECT_DECISION : REJECT_DECISION,
     });
   };
 
@@ -49,7 +49,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         isLoading={isPending}
         disabled={isMerged || isClosed || isPending}
       >
-        {hasApproved ? "Cancel Approve" : "Approve"}
+        {hasApproved ? "Cancel Reject" : "Reject"}
       </Button>
 
       <Button

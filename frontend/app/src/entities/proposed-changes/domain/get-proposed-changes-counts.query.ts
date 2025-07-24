@@ -1,6 +1,6 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ProposedChangesCountsFromApiParams } from "@/entities/proposed-changes/api/get-proposed-changes-counts-from-api";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constant";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { getProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";

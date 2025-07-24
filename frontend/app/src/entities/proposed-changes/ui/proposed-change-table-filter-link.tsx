@@ -7,7 +7,6 @@ interface TableColumnHeaderLinkProps extends ButtonProps {
 }
 
 export function ProposedChangeTableFilterLink({
-  children,
   className,
   isActive,
   ...props

@@ -33,6 +33,14 @@ export const GET_PROPOSED_CHANGE_DETAILS = gql`
               }
             }
           }
+          rejected_by {
+            edges {
+              node {
+                id
+                display_label
+              }
+            }
+          }
           reviewers {
             edges {
               node {

@@ -1,1 +1,2 @@
 - Enhance the Proposed Changes list view by adding filters and improving the UI.
+- Enhance actions and add a select menu to choose which action to trigger.

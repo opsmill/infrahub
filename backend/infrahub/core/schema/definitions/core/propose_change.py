@@ -49,6 +49,7 @@ core_proposed_change = NodeSchema(
             kind=RelKind.ATTRIBUTE,
             branch=BranchSupportType.AGNOSTIC,
             identifier="coreaccount__proposedchange_approved_by",
+            read_only=True,
         ),
         Rel(
             name="rejected_by",
@@ -58,6 +59,7 @@ core_proposed_change = NodeSchema(
             kind=RelKind.ATTRIBUTE,
             branch=BranchSupportType.AGNOSTIC,
             identifier="coreaccount__proposedchange_rejected_by",
+            read_only=True,
         ),
         Rel(
             name="reviewers",

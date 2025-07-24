@@ -1,87 +1,65 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
+import { MERGE_STATE } from "../../constants";
+import { proposedChangedState } from "../../stores/proposedChanges.atom";
+import { ProposedChangeActionButtonProps } from "./types";
 
-interface PcMergeButtonProps extends ButtonProps {
-  proposedChangeId: string;
-  state: "closed" | "open" | "merged";
-  sourceBranch?: string;
-}
+export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-export const PcMergeButton = ({
-  sourceBranch,
-  proposedChangeId,
-  state,
-  disabled,
-  ...props
-}: PcMergeButtonProps) => {
-  const [isLoadingMerge, setIsLoadingMerge] = useState(false);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+  const isMerged = proposedChangesDetails.state.value === "merged";
 
-  const handleMerge = async () => {
-    if (!sourceBranch) return;
-
-    try {
-      setIsLoadingMerge(true);
-
-      const stateData = {
-        state: {
-          value: "merged",
-        },
-      };
-
-      const stateMutationString = updateObjectWithId({
-        kind: PROPOSED_CHANGES_OBJECT,
-        data: stringifyWithoutQuotes({
-          id: proposedChangeId,
-          ...stateData,
-        }),
-      });
-
-      const stateMutation = gql`
-        ${stateMutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation: stateMutation,
-        context: { branch: branch?.name, date },
-      });
-
+  const { mutate, isPending } = useUpdateObjectMutation({
+    onSuccess: async () => {
       await graphqlClient.reFetchObservableQueries();
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
-    } catch (error) {
-      console.error(error);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
+    },
+  });
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while merging the proposed changes"}
-        />
-      );
-    }
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
 
-    setIsLoadingMerge(false);
+    mutate({
+      data: {
+        id: proposedChangesDetails.id,
+        state: {
+          value: MERGE_STATE,
+        },
+      },
+      objectKind: PROPOSED_CHANGES_OBJECT,
+    });
   };
 
   return (
-    <Button
-      variant="active"
-      onClick={handleMerge}
-      isLoading={isLoadingMerge}
-      disabled={disabled || state === "closed" || state === "merged"}
-      {...props}
-    >
-      Merge
-    </Button>
+    <>
+      <Button
+        className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+        onClick={handleAction}
+        variant={"primary"}
+        isLoading={isPending}
+        disabled={isMerged || isPending}
+      >
+        Merge
+      </Button>
+
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"primary"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isMerged || isPending}
+        data-testid="proposed-change-action-button-select"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };
