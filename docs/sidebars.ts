@@ -269,16 +269,6 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'category',
-              label: 'Testing',
-              link: {
-                type: 'generated-index',
-              },
-              items: [
-                'topics/resources-testing-framework',
-              ],
-            },
-            {
-              type: 'category',
               label: 'System Administration',
               link: {
                 type: 'generated-index',
@@ -299,6 +289,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'topics/developer-guide',
             'topics/local-demo-environment',
+            'topics/resources-testing-framework',
           ],
         },
       ],
@@ -356,12 +347,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Development',
+      label: 'Contributing',
       link: {
         type: 'generated-index',
         slug: 'development'
       },
-
       items: [
         'development/editor',
         'development/changelog',
