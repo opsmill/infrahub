@@ -172,39 +172,11 @@ class PrefectEventData(PrefectEventModel):
 
         return {"members": members, "ancestors": ancestors}
 
-    def _return_proposed_change_event(self) -> dict[str, Any]:
-        data = {}
-        for resource in self.related:
-            if resource.role != "infrahub.related.node":
-                continue
-            match self.event:
-                case "infrahub.proposed_change.merged":
-                    data.update(
-                        {
-                            "merged_by_account_id": resource.get("infrahub.node.id"),
-                            "merged_by_account_name": resource.get("infrahub.merged_by.account.name"),
-                        }
-                    )
-                case "infrahub.proposed_change.review_requested":
-                    data.update(
-                        {
-                            "requested_by_account_id": resource.get("infrahub.node.id"),
-                            "requested_by_account_name": resource.get("infrahub.requested_by.account.name"),
-                        }
-                    )
-                case (
-                    "infrahub.proposed_change.approved"
-                    | "infrahub.proposed_change.rejected"
-                    | "infrahub.proposed_change.approval_revoked"
-                    | "infrahub.proposed_change.rejection_revoked"
-                ):
-                    data.update(
-                        {
-                            "reviewer_account_id": resource.get("infrahub.node.id"),
-                            "reviewer_account_name": resource.get("infrahub.reviewer.account.name"),
-                        }
-                    )
-        return data
+    def _return_proposed_change_reviewer(self) -> dict[str, Any]:
+        return {
+            "reviewer_account_id": self.resource.get("infrahub.proposed_change.reviewer_account_id"),
+            "reviewer_account_name": self.resource.get("infrahub.proposed_change.reviewer_account_name"),
+        }
 
     def _return_proposed_change_reviewer_decision(self) -> dict[str, Any]:
         return {"reviewer_decision": self.resource.get("infrahub.proposed_change.reviewer_decision")}
@@ -234,16 +206,14 @@ class PrefectEventData(PrefectEventModel):
                 event_specifics = self._return_group_event()
             case "infrahub.proposed_change.approved" | "infrahub.proposed_change.rejected":
                 event_specifics = {
-                    **self._return_proposed_change_event(),
+                    **self._return_proposed_change_reviewer(),
                     **self._return_proposed_change_reviewer_decision(),
                 }
             case "infrahub.proposed_change.approval_revoked" | "infrahub.proposed_change.rejection_revoked":
                 event_specifics = {
-                    **self._return_proposed_change_event(),
+                    **self._return_proposed_change_reviewer(),
                     **self._return_proposed_change_reviewer_former_decision(),
                 }
-            case "infrahub.proposed_change.review_requested" | "infrahub.proposed_change.merged":
-                event_specifics = self._return_proposed_change_event()
 
         return event_specifics
 
