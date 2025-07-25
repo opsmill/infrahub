@@ -1,3 +1,5 @@
+import hashlib
+
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -60,6 +62,12 @@ def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch)
     return False
 
 
+def _hash(value: str) -> str:
+    # Do not use builtin `hash` for lock names as due to randomization results would differ between
+    # different processes.
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
 def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch: SchemaBranch) -> list[str]:
     """
     Return lock names for object on which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
@@ -99,9 +107,9 @@ def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch:
                 if attr is None or attr.value is None:
                     # `attr.value` being None corresponds to optional unique attribute.
                     # `attr` being None is not supposed to happen.
-                    value_hashed = str(hash(""))
+                    value_hashed = _hash("")
                 else:
-                    value_hashed = str(hash(str(attr.value)))
+                    value_hashed = _hash(str(attr.value))
 
                 uc_attributes_values.append(value_hashed)
 

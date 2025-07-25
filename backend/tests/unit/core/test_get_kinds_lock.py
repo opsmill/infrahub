@@ -5,6 +5,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.database import InfrahubDatabase
 from infrahub.lock_getter import (
     _get_kinds_to_lock_on_object_mutation,
+    _hash,
     _should_kind_be_locked_on_any_branch,
     get_lock_names_on_object_mutation,
 )
@@ -78,7 +79,7 @@ class TestGetKindsLock(TestInfrahubApp):
         person = await create_and_save(db=db, schema="TestPerson", name="John")
         car = await create_and_save(db=db, schema="TestCar", name="mercedes", color="blue", owner=person)
         assert get_lock_names_on_object_mutation(car, branch=default_branch, schema_branch=schema_branch) == [
-            "global.object.TestCar." + str(hash("mercedes")) + "." + str(hash("blue"))
+            "global.object.TestCar." + _hash("mercedes") + "." + _hash("blue")
         ]
 
     async def test_lock_names_optional_empty_attribute(
@@ -95,5 +96,5 @@ class TestGetKindsLock(TestInfrahubApp):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person = await create_and_save(db=db, schema="TestPerson", name="John")
         assert get_lock_names_on_object_mutation(person, branch=default_branch, schema_branch=schema_branch) == [
-            "global.object.TestPerson." + str(hash("")) + "." + str(hash("John"))
+            "global.object.TestPerson." + _hash("") + "." + _hash("John")
         ]
