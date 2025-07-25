@@ -6,7 +6,6 @@ import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/
 import { NodeObject } from "@/entities/nodes/types";
 import { classNames } from "@/shared/utils/common";
 import { XIcon } from "lucide-react";
-import { Modal as AriaModal } from "react-aria-components";
 
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeObject>;
@@ -20,8 +19,8 @@ export function ObjectTableToolbar({
   renderMore,
 }: ObjectTableSelectionToolbarProps) {
   return (
-    <AriaModal
-      isOpen
+    <div
+      role="dialog"
       className={classNames(
         "fixed bottom-10 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap",
         "text backdrop-blur-lg px-1.5 shadow-lg rounded-xl border border-neutral-300 text-sm",
@@ -47,6 +46,6 @@ export function ObjectTableToolbar({
           {renderMore({ selectedRows })}
         </>
       )}
-    </AriaModal>
+    </div>
   );
 }

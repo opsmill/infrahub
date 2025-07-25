@@ -77,7 +77,7 @@
     "ramda": "^0.31.3",
     "react": "19.1.0",
     "react-accessible-treeview": "^2.11.2",
-    "react-aria-components": "^1.10.1",
+    "react-aria-components": "^1.11.0",
     "react-datepicker": "^8.1.0",
     "react-diff-view": "^3.3.2",
     "react-dom": "19.1.0",
