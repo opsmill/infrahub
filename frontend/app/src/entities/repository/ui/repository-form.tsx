@@ -52,7 +52,7 @@ const RepositoryForm = ({
         await createObject.mutateAsync(
           {
             objectKind: schema.kind as string,
-            data: getCreateMutationFromFormData(fields, formData),
+            data: getCreateMutationFromFormData(fields, formData, props.objectTemplate?.id),
           },
           {
             onSuccess,

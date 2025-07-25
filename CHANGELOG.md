@@ -11,6 +11,23 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.3.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.4) - 2025-07-22
+
+### Fixed
+
+- Add migration for Attribute of kind NumberPool on existing nodes ([#6802](https://github.com/opsmill/infrahub/issues/6802))
+- Fix an issue where number pools defined on a generic schema attribute couldn’t be used in attributes of inheriting nodes ([#6817](https://github.com/opsmill/infrahub/issues/6817))
+- Fix a validation bug that incorrectly blocked form submission when a number pool was selected on an number attribute ([#6817](https://github.com/opsmill/infrahub/issues/6817))
+- Fix bug that would cause diff generation to fail if schema for a deleted Node was deleted on both source and target branches ([#6830](https://github.com/opsmill/infrahub/issues/6830))
+- Fix 500 error when list of schemas is empty. ([#6834](https://github.com/opsmill/infrahub/issues/6834))
+- Ensure Templates attributes and relationships order weights are aligned with original node. ([#6838](https://github.com/opsmill/infrahub/issues/6838))
+- Ensure Search Anywhere remains stable during template searches ([#6845](https://github.com/opsmill/infrahub/issues/6845))
+- Fix bug that could leave orphaned SchemaRelationships with no linked SchemaNode in the database. These would be invisible to the user until the user tried to merge a branch that included schema changes, at which point they might receive errors that look like this during the schema integrity checks, "Relationship-level 'count' constraint violation on schema 'SchemaRelationship'. Node (SchemaRelationship: 1809b4d6-6838-880b-3408-c51daf04ecbe) is not compliant." ([#6852](https://github.com/opsmill/infrahub/issues/6852))
+- Fix Resource Pool utilization query for large IPv6 prefix resource ([#6855](https://github.com/opsmill/infrahub/issues/6855))
+- Fix Object template wasn't sent on creation if no fields used template values ([#6859](https://github.com/opsmill/infrahub/issues/6859))
+- Fix number allocation for Number Pool to ensure that values that are not used anymore will get back into the pool ([#6865](https://github.com/opsmill/infrahub/issues/6865))
+- Fix broken auto-completion in GraphiQL 5 + Vite
+
 ## [Infrahub - v1.3.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.3) - 2025-07-15
 
 ### Added

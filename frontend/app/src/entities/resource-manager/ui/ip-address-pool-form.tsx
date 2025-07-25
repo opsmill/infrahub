@@ -89,7 +89,7 @@ export const IpAddressPoolForm = ({
   }, [props.schema.kind, genericAddressSchema?.kind, currentObject, isUpdate]);
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    const newObject = getCreateMutationFromFormData(fields, data);
+    const newObject = getCreateMutationFromFormData(fields, data, props.objectTemplate?.id);
 
     if (!Object.keys(newObject).length) {
       return;

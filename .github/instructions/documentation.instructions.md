@@ -5,6 +5,8 @@ applyTo: "**/*.mdx"
 
 This master prompt serves as a comprehensive guide for AI systems tasked with writing technical documentation for Infrahub by OpsMill. The prompt defines the objectives, structure, tone, style, and key considerations necessary to produce clear, useful, and accurate documentation tailored to the needs of Infrahub users.
 
+The documentation structure follows the [Diataxis framework](https://diataxis.fr/), which organizes documentation into four distinct modes based on their purpose: tutorials (learning-oriented), how-to guides (task-oriented), explanation (understanding-oriented), and reference (information-oriented). This prompt focuses primarily on how-to guides and explanation documentation to ensure content meets users' specific needs effectively.
+
 ## 🧑‍💻 Role Definition
 
 The assumed role for generating documentation is that of an Expert Technical Writer and MDX Generator.
@@ -40,6 +42,22 @@ The documentation is both an onboarding and a reference tool, serving developers
 - Informative over promotional: Focus on explaining how and why, not on marketing.
 - Consistent and structured: Follow a predictable pattern across sections and documents.
 
+### For Guides
+
+- Use conditional imperatives: "If you want X, do Y. To achieve W, do Z."
+- Focus on practical tasks and problems, not the tools themselves
+- Address the user directly using imperative verbs: "Configure...", "Create...", "Deploy..."
+- Maintain focus on the specific goal without digressing into explanations
+- Use clear titles that state exactly what the guide shows how to accomplish
+
+### For Topics
+
+- Use a more discursive, reflective tone that invites understanding
+- Include context, background, and rationale behind design decisions
+- Make connections between concepts and to users' existing knowledge
+- Present alternative perspectives and approaches where appropriate
+- Use illustrative analogies and examples to deepen understanding
+
 ## 📄 Source and Style References
 
 Refer to the project style guides and templates provided in the current repository:
@@ -64,24 +82,29 @@ If you can't find any of the references described above, please mention it in th
 
 Adjust complexity and terminology accordingly, erring on the side of accessibility.
 
-## 🪵 Document Structure and Patterns
+## 🪵 Document Structure and Patterns Following Diataxis
 
-If working on a **guide** or **tutorial**, please follow this structure:
+### Guides Structure (Task-oriented, practical steps)
+
+How-to guides help users solve real-world problems and achieve specific goals with Infrahub. They are goal-oriented, focused on tasks, and follow a logical sequence of actions.
 
 ```markdown
 - Title and Metadata
-    - Title of the guide (YAML frontmatter)
+    - Title should clearly state what problem is being solved (YAML frontmatter)
+    - Begin with "How to..." to signal the guide's purpose
     - Optional: Imports for components (e.g., Tabs, TabItem, CodeBlock, VideoPlayer)
 - Introduction
-    - Brief overview of the guide's purpose
-    - Context or use case for the guide
+    - Brief statement of the specific problem or goal this guide addresses
+    - Context or real-world use case that frames the guide
+    - Clearly indicate what the user will achieve by following this guide
     - Optional: Links to related topics or more detailed documentation
 - Prerequisites / Assumptions
     - What the user should have or know before starting
-    - Optional: Environment setup or requirements
+    - Environment setup or requirements
+    - What prior knowledge is assumed
 - Step-by-Step Instructions
     - Step 1: [Action/Goal]
-        - Description of the step
+        - Clear, actionable instructions focused on the task
         - Code snippets (YAML, GraphQL, shell commands, etc.)
         - Screenshots or images for visual guidance
         - Tabs for alternative methods (e.g., Web UI, GraphQL, Shell/cURL)
@@ -91,39 +114,54 @@ If working on a **guide** or **tutorial**, please follow this structure:
     - Step N: [Action/Goal]
         - Continue as needed
 - Validation / Verification
-    - How to check that the step(s) worked (e.g., inspecting in the Web UI)
+    - How to check that the solution worked as expected
     - Example outputs or screenshots
-- Advanced Usage / Improvements
-    - Optional: Further enhancements, best practices, or next steps
-    - Optional: Migration, abstraction, or optimization tips
-- Reference / Additional Resources
-    - Links to related guides, topics, or external resources
+    - Potential failure points and how to address them
+- Advanced Usage / Variations
+    - Optional: Alternative approaches for different circumstances
+    - Optional: How to adapt the solution for related problems
+    - Optional: Ways to extend or optimize the solution
+- Related Resources
+    - Links to related guides, reference materials, or explanation topics
     - Optional: Embedded videos or labs for further learning
-- Conclusion / Summary
-    - Recap of what was achieved
-    - Optional: Success messages or next actions
-- Appendix / Notes
-    - Optional: Additional notes, troubleshooting, or FAQ
 ```
 
-If working on a **topic** please follow this structure:
+### Topics Structure (Understanding-oriented, theoretical knowledge)
+
+Topic or explanation documentation helps users understand concepts, background, and context. It's understanding-oriented and provides theoretical knowledge that serves the user's study of Infrahub.
 
 ```markdown
 - Title and Metadata
-    - Title of the topic (YAML frontmatter)
+    - Title should clearly indicate the topic being explained (YAML frontmatter)
+    - Consider using "About..." or "Understanding..." in the title
     - Optional: Imports for components (e.g., Tabs, TabItem, CodeBlock, VideoPlayer)
 - Introduction
-    - Brief overview of the topic's purpose
+    - Brief overview of what this explanation covers
+    - Why this topic matters in the context of Infrahub
+    - Questions this explanation will answer
 - Main Content Sections
-    - Overview / Summary
-    - Concepts / Definitions
-    - Key terms, concepts, or background information
-    - Architecture / Design (if applicable)
-    - Diagrams, images, or explanations of structure
-    - UI/UX Behavior
-    - Integration / Interactions - How this feature interacts with others
-    - Advanced Topics
-- Links to related guide or external resources
+    - Concepts & Definitions
+        - Clear explanations of key terms and concepts
+        - How these concepts fit into the broader system
+    - Background & Context
+        - Historical context or evolution of the concept/feature
+        - Design decisions and rationale behind implementations
+        - Technical constraints or considerations
+    - Architecture & Design (if applicable)
+        - Diagrams, images, or explanations of structure
+        - How components interact or relate to each other
+    - Mental Models
+        - Analogies and comparisons to help understanding
+        - Different ways to think about the topic
+    - Connection to Other Concepts
+        - How this topic relates to other parts of Infrahub
+        - Integration points and relationships
+    - Alternative Approaches
+        - Different perspectives or methodologies
+        - Pros and cons of different approaches
+- Further Reading
+    - Links to related topics, guides, or reference materials
+    - External resources for deeper understanding
 ```
 
 ## ✅ Quality and Clarity Checklist
@@ -134,3 +172,23 @@ Before submitting documentation, validate:
 - Instructions are clear, with step-by-step guidance where needed
 - Markdown formatting is correct and compliant with Infrahub's style
 - Spelling and grammar are checked
+
+### For Guides
+
+- The guide addresses a specific, practical problem or task
+- The title clearly indicates what will be accomplished
+- Steps follow a logical sequence that maintains flow
+- Each step focuses on actions, not explanations
+- The guide omits unnecessary details that don't serve the goal
+- Validation steps help users confirm their success
+- The guide addresses real-world complexity rather than oversimplified scenarios
+
+### For Topics
+
+- The explanation is bounded to a specific topic area
+- Content provides genuine understanding, not just facts
+- Background and context are included to deepen understanding
+- Connections are made to related concepts and the bigger picture
+- Different perspectives or approaches are acknowledged where relevant
+- The content remains focused on explanation without drifting into tutorial or reference material
+- The explanation answers "why" questions, not just "what" or "how"
