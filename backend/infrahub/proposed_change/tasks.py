@@ -102,6 +102,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags
 
 from .branch_diff import get_diff_summary_cache, get_modified_kinds
+from .revoke_approvals import do_check_pc_has_enough_approvals
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -157,14 +158,28 @@ async def merge_proposed_change(
 ) -> State:
     log = get_run_logger()
     await add_tags(nodes=[proposed_change_id])
-
     database = await get_database()
-    async with database.start_session() as db:
-        proposed_change = await registry.manager.get_one(
-            db=db, id=proposed_change_id, kind=InternalCoreProposedChange, raise_on_error=True
-        )
 
+    proposed_change = await registry.manager.get_one(
+        db=database,
+        id=proposed_change_id,
+        kind=InternalCoreProposedChange,
+        raise_on_error=True,
+        prefetch_relationships=True,
+    )
+
+    async with database.start_session() as db:
         log.info("Validating if all conditions are met to merge the proposed change")
+
+        nb_approvals_required = config.SETTINGS.policy.required_proposed_change_approvals
+        if nb_approvals_required > 0:
+            error_message = await do_check_pc_has_enough_approvals(
+                nb_approvals_required=nb_approvals_required,
+                proposed_change=proposed_change,  # type: ignore[arg-type]
+                db=db,
+            )
+            if error_message:
+                return Failed(message=error_message)
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)
         validations = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
