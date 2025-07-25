@@ -172,6 +172,18 @@ class PrefectEventData(PrefectEventModel):
 
         return {"members": members, "ancestors": ancestors}
 
+    def _return_proposed_change_reviewer(self) -> dict[str, Any]:
+        return {
+            "reviewer_account_id": self.resource.get("infrahub.proposed_change.reviewer_account_id"),
+            "reviewer_account_name": self.resource.get("infrahub.proposed_change.reviewer_account_name"),
+        }
+
+    def _return_proposed_change_reviewer_decision(self) -> dict[str, Any]:
+        return {"reviewer_decision": self.resource.get("infrahub.proposed_change.reviewer_decision")}
+
+    def _return_proposed_change_reviewer_former_decision(self) -> dict[str, Any]:
+        return {"reviewer_former_decision": self.resource.get("infrahub.proposed_change.reviewer_former_decision")}
+
     def _return_event_specifics(self) -> dict[str, Any]:
         """Return event specific data based on the type of event being processed"""
 
@@ -192,6 +204,16 @@ class PrefectEventData(PrefectEventModel):
                 event_specifics = self._return_branch_rebased()
             case "infrahub.group.member_added" | "infrahub.group.member_removed":
                 event_specifics = self._return_group_event()
+            case "infrahub.proposed_change.approved" | "infrahub.proposed_change.rejected":
+                event_specifics = {
+                    **self._return_proposed_change_reviewer(),
+                    **self._return_proposed_change_reviewer_decision(),
+                }
+            case "infrahub.proposed_change.approval_revoked" | "infrahub.proposed_change.rejection_revoked":
+                event_specifics = {
+                    **self._return_proposed_change_reviewer(),
+                    **self._return_proposed_change_reviewer_former_decision(),
+                }
 
         return event_specifics
 
