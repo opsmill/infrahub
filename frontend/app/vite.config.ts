@@ -16,9 +16,6 @@ export default defineConfig({
     host: "0.0.0.0",
   },
   plugins: [tailwindcss(), react(), svgr(), tsconfigPaths()],
-  worker: {
-    format: "es",
-  },
   test: {
     browser: {
       enabled: true,
