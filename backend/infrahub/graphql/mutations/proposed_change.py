@@ -24,7 +24,6 @@ from infrahub.events import (
     ProposedChangeApprovedEvent,
     ProposedChangeRejectedEvent,
     ProposedChangeRejectionRevokedEvent,
-    ProposedChangeReviewRequestedEvent,
 )
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
@@ -135,9 +134,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
-        was_draft = obj.is_draft.value
-        still_draft = data.get("is_draft", {"value": was_draft}).get("value")
-
         # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
         if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
             try:
@@ -170,25 +166,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             # from the overridden "merging" value, so here we change it back to reflect the
             # correct value for the event that will be generated.
             proposed_change.node_changelog.attributes["state"].value = ProposedChangeState.MERGED.value
-
-        # If the proposed change was in draft but isn't anymore, send the review requested event
-        if was_draft and not still_draft:
-            current_user = await NodeManager.get_one(
-                db=graphql_context.db,
-                kind=InfrahubKind.GENERICACCOUNT,
-                id=graphql_context.active_account_session.account_id,
-            )
-            event_service = await get_event_service()
-            await event_service.send(
-                event=ProposedChangeReviewRequestedEvent(
-                    proposed_change_id=proposed_change.id,
-                    proposed_change_name=proposed_change.name.value,
-                    proposed_change_state=proposed_change.state.value,
-                    requested_by_account_id=current_user.id,
-                    requested_by_account_name=current_user.name.value,
-                    meta=EventMeta.from_context(context=graphql_context.get_context()),
-                )
-            )
 
         return proposed_change, result
 
