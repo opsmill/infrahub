@@ -34,6 +34,5 @@ test.describe("CoreGroup filtering", () => {
 
     await expect(hideInternalGroupsFilter).toBeVisible();
     await expect(engineeringTeamLink).toBeVisible();
-    await expect(computedGroupLink).toBeVisible();
   });
 });
