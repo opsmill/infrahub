@@ -123,6 +123,7 @@ class ProposedChangeReviewEvent(ObjectType):
     reviewer_account_id = String(required=True, description="The ID of the user who reviewed the proposed change")
     reviewer_account_name = String(required=True, description="The name of the user who reviewed the proposed change")
     reviewer_decision = String(required=True, description="The decision made by the reviewer")
+    payload = Field(GenericScalar, required=True)
 
 
 class ProposedChangeReviewRevokedEvent(ObjectType):
@@ -132,6 +133,7 @@ class ProposedChangeReviewRevokedEvent(ObjectType):
     reviewer_account_id = String(required=True, description="The ID of the user who reviewed the proposed change")
     reviewer_account_name = String(required=True, description="The name of the user who reviewed the proposed change")
     reviewer_former_decision = String(required=True, description="The decision made by the reviewer")
+    payload = Field(GenericScalar, required=True)
 
 
 # ---------------------------------------
