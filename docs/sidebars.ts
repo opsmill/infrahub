@@ -8,7 +8,6 @@ const sidebars: SidebarsConfig = {
       label: 'Getting Started',
       collapsed: false,
       collapsible: false,
-      className: 'sidebar-item-large',
       items: [
         'getting-started/overview',
         'getting-started/quick-start',
