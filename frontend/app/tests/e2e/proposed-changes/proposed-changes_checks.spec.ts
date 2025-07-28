@@ -22,7 +22,7 @@ test.describe("/proposed-changes checks", () => {
       await page.getByLabel("Name *").fill("pc-checks");
       await page.getByLabel("Source Branch *").click();
       await page.getByRole("option", { name: "atl1-delete-upstream" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Open" }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();
     });
 

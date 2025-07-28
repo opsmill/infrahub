@@ -32,13 +32,13 @@ test.describe("/proposed-changes", () => {
       await expect(page.getByRole("heading", { name: "Proposed Change" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Open" })).toBeVisible();
     });
 
     test("display validation errors when form is submitted with wrong value", async ({ page }) => {
       await page.goto("/proposed-changes/new");
 
-      await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Open" })).toBeVisible();
       await page.getByRole("button", { name: "Create proposed change" }).click();
       await expect(page.getByLabel("Name *").locator("..")).toContainText("Required");
       await expect(page.getByText("Source Branch *").locator("..")).toContainText("Required");
