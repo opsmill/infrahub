@@ -1,4 +1,7 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { pcStatesList } from "@/entities/proposed-changes/constants";
+import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
+import { StateComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-state-combobox-list";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
@@ -6,10 +9,13 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { PcPlaceholderButton } from "./pc-placeholder-button";
-import { StateComboboxList, statesList } from "./pc-state-combobox-list";
 
-export const PcStateButton = ({ state = "open", setState }) => {
+interface PcStateButtonProps {
+  state?: string;
+  setState: (state: string) => void;
+}
+
+export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) => {
   const auth = useAuth();
   const { formState } = useFormContext();
 
@@ -33,7 +39,7 @@ export const PcStateButton = ({ state = "open", setState }) => {
                 isLoading={isLoading}
                 disabled={isLoading}
               >
-                {statesList[state].message}
+                {state && pcStatesList[state] && pcStatesList[state].message}
               </Button>
 
               <Button
