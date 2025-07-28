@@ -59,7 +59,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
           {isDraft && (
             <Badge variant={"gray"} className="ml-2">
-              DRAFT
+              draft
             </Badge>
           )}
         </>

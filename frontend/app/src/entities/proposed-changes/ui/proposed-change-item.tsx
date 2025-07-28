@@ -78,7 +78,7 @@ const ProposedChangesInfo = ({
       <div className="flex flex-col gap-2">
         <span className="space-x-2">
           <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
-          {isDraft && <Badge variant={"gray"}>DRAFT</Badge>}
+          {isDraft && <Badge variant={"gray"}>draft</Badge>}
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
             className="hover:text-gray-500 transition-all"
