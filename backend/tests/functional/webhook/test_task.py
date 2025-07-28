@@ -257,6 +257,7 @@ class TestWebhookTasks(TestInfrahubApp):
             "repository_kind": "CoreRepository",
             "repository_name": "car-dealership",
             "convert_query_response": False,
+            "shared_key": None,
             "transform_class": "WebhookTransformer",
             "transform_file": "transforms/webhook_transformer.py",
             "transform_name": "WebhookTransformer",
