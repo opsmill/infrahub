@@ -1,13 +1,10 @@
 import ObjectHeader from "@/entities/nodes/object-header";
-import { ActiveFilterTags } from "@/entities/nodes/object/ui/filters/active-filter-tags";
-import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
+import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import useFilters from "@/shared/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router";
 
@@ -21,7 +18,6 @@ export function ProposedChangesManagerToolbar({
   permission,
 }: ProposedChangesManagerToolbarProps) {
   const navigate = useNavigate();
-  const [filters] = useFilters();
 
   return (
     <>
@@ -31,14 +27,7 @@ export function ProposedChangesManagerToolbar({
         <div className="flex items-center shrink-0 justify-between">
           <FilterSearchInput schema={schema} />
 
-          {filters.length > 0 && (
-            <>
-              <ScrollArea scrollX>
-                <ActiveFilterTags schema={schema} className="mx-2" />
-              </ScrollArea>
-              <FilterResetButton />
-            </>
-          )}
+          <ActiveObjectFilterTags schema={schema} className="mx-2" />
         </div>
 
         <div className="flex gap-3 items-center">
