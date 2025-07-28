@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID
 
 from prefect.client.orchestration import PrefectClient
-from prefect.events.filters import EventFilter, EventIDFilter
+from prefect.events.filters import EventFilter, EventIDFilter, EventNameFilter
 from prefect.events.schemas.events import Event, RelatedResource, Resource
 from pydantic import TypeAdapter
 
@@ -51,6 +51,15 @@ async def query_event(client: PrefectClient, event_id: UUID) -> Event:
         return events[0]
 
     raise Exception(f"No event found for id {event_id}")
+
+
+async def query_events_by_name(client: PrefectClient, event_name: str) -> list[Event]:
+    filters = EventFilter(event=EventNameFilter(name=[event_name]))  # type: ignore[call-arg]
+    body = {"filter": filters.model_dump(mode="json", exclude_unset=True)}
+
+    response = await client._client.post("/events/filter", json=body)
+    response.raise_for_status()
+    return TypeAdapter(list[Event]).validate_python(response.json().get("events"))
 
 
 def extract_expected_ids(data: dict[str, InfrahubEvent], expected_events: list[str]) -> list[str]:
