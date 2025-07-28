@@ -9,7 +9,4 @@ def define_global_permission_from_branch(permission: GlobalPermissions, branch_n
     else:
         decision = PermissionDecision.ALLOW_OTHER
 
-    return GlobalPermission(
-        action=permission.value,
-        decision=decision.value,
-    )
+    return GlobalPermission(action=permission.value, decision=decision.value)
