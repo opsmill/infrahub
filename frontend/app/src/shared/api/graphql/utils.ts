@@ -1,3 +1,4 @@
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -115,6 +116,11 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
     (acc, filter) => {
       // Skip kind__value filter as it's handled separately
       if (filter.name === "kind__value") {
+        return acc;
+      }
+
+      if (filter.name === AVAILABLE_IP_FILTER_NAME) {
+        acc[AVAILABLE_IP_FILTER_NAME] = filter.value;
         return acc;
       }
 

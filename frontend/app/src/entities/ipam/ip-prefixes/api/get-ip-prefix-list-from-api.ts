@@ -31,7 +31,6 @@ export function buildGetIpPrefixListQuery({
         __args: {
           limit,
           offset,
-          include_available: true,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {
