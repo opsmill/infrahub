@@ -1,4 +1,5 @@
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -11,7 +12,6 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
@@ -21,7 +21,6 @@ import { pluralize } from "@/shared/utils/string";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { ColumnDef } from "@tanstack/react-table";
-import { PlusIcon } from "lucide-react";
 
 export const getIpPrefixTableColumns = (
   schema: ModelSchema,
@@ -48,26 +47,10 @@ export const getIpPrefixTableColumns = (
         const value: string = (row.getValue("id") ?? "-") as string;
 
         if (row.original.__typename === IP_PREFIX_AVAILABLE_KIND) {
-          const ancestorsCount: number = (row.original.parent?.node?.ancestors?.count ?? 0) + 1;
           return (
             <>
               <StickyLeftCell className={classNames(cellMutedStyle, "pl-0.5")}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full px-2.5 pl-1.5 hover:underline hover:bg-gray-400/10 gap-3.75"
-                >
-                  <div className="size-4 mr-px flex items-center justify-center">
-                    <PlusIcon className="size-4 text-gray-300" />
-                  </div>
-
-                  <Row className="gap-2.5">
-                    {[...Array(ancestorsCount)].map((_, i) => (
-                      <div className="bg-gray-300 size-1 rounded-full" key={i} />
-                    ))}
-                    {value}
-                  </Row>
-                </Button>
+                <IpPrefixAvailableIdentifier prefixNode={row.original} />
               </StickyLeftCell>
 
               <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>

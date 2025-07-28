@@ -64,6 +64,9 @@ export function buildGetIpPrefixListQuery({
                 __typeName: IP_PREFIX_AVAILABLE_KIND, // Ancestors are not available on this kind. Instead, we do parent ancestors + 1
                 parent: {
                   node: {
+                    id: true,
+                    display_label: true,
+                    hfid: true,
                     ancestors: {
                       count: true,
                     },
