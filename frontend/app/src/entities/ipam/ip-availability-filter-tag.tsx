@@ -24,8 +24,10 @@ export function IpAvailabilityFilterTag({ ...props }: TagProps) {
   );
 
   if (!currentIpAvailabilityFilter || currentIpAvailabilityFilter.value) {
-    return <FilterTag id={HIDE_AVAILABLE_IP} label="available IPs" value="show" {...props} />;
+    return (
+      <FilterTag id={HIDE_AVAILABLE_IP} label="Available IP prefixes" value="visible" {...props} />
+    );
   }
 
-  return <FilterSuggestionTag id={SHOW_AVAILABLE_IP} label="show available IPs" {...props} />;
+  return <FilterSuggestionTag id={SHOW_AVAILABLE_IP} label="Available IP prefixes" {...props} />;
 }
