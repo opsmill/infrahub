@@ -2,6 +2,7 @@ import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-s
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import type { TagProps } from "react-aria-components";
+import { useParams } from "react-router";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -14,6 +15,9 @@ export const SHOW_AVAILABLE_IP = "show-available-ip";
 
 export function IpAvailabilityFilterTag({ ...props }: TagProps) {
   const [filters] = useFilters();
+  const { objectId } = useParams();
+
+  if (!objectId) return null; // to hide it on IPAM homepage
 
   const currentIpAvailabilityFilter = filters.find(
     (filter) => filter.name === AVAILABLE_IP_FILTER_NAME
