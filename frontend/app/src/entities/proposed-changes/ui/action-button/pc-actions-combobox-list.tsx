@@ -41,6 +41,10 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
         value: "close",
         name: "Close",
       },
+      draft: {
+        value: "draft",
+        name: proposedChangesDetails.is_draft?.value ? "Open" : "Move to draft",
+      },
     };
 
     return (

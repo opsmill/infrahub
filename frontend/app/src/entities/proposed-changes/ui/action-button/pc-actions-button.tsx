@@ -1,16 +1,17 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { ActionComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-actions-combobox-list";
+import { ApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
+import { OpenButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
+import { DraftButton } from "@/entities/proposed-changes/ui/action-button/pc-draft-button";
+import { MergeButton } from "@/entities/proposed-changes/ui/action-button/pc-merge-button";
+import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
+import { RejectButton } from "@/entities/proposed-changes/ui/action-button/pc-reject-button";
+import { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { ReactElement, useState } from "react";
-import { ActionComboboxList } from "./pc-actions-combobox-list";
-import { ApproveButton } from "./pc-approve-button";
-import { OpenButton } from "./pc-close-button";
-import { MergeButton } from "./pc-merge-button";
-import { PcPlaceholderButton } from "./pc-placeholder-button";
-import { RejectButton } from "./pc-reject-button";
-import { ProposedChangeActionButtonProps } from "./types";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
@@ -19,6 +20,7 @@ const actionsListMapping: Record<string, ActionButtonComponent> = {
   reject: ({ setOpen }) => <RejectButton setOpen={setOpen} />,
   merge: ({ setOpen }) => <MergeButton setOpen={setOpen} />,
   close: ({ setOpen }) => <OpenButton setOpen={setOpen} />,
+  draft: ({ setOpen }) => <DraftButton setOpen={setOpen} />,
 };
 
 export const PcActionButton = () => {
