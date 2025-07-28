@@ -32,20 +32,23 @@ class TestProposedChangeReview(TestInfrahubApp):
         }
     }
     """
+    event_query = """
+    query GetEvents($event_type: String!) {
+        InfrahubEvent(event_type: [$event_type]) {
+            edges {
+                node {
+                    __typename
+                    event
+                }
+            }
+        }
+    }
+    """
 
-    @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
-        async with get_client(sync_client=False) as client:
-            yield client
-
-    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
-        for _ in range(10):
-            events = await query_events_by_name(client=prefect_client, event_name=event_name)
-            if len(events) == 1:
-                return
-            await asyncio.sleep(1)
-
-        pytest.fail(f"unable to find prefect event '{event_name}'")
+    async def query_events(self, client: InfrahubClient, event_type: str) -> dict:
+        # Not pretty, but wait for events to be processed before querying them
+        await asyncio.sleep(2)
+        return await client.execute_graphql(query=self.event_query, variables={"event_type": event_type})
 
     async def test_approve_then_reject(
         self,
@@ -97,7 +100,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.approved")
+        event_response = await self.query_events(client=client, event_type="infrahub.proposed_change.approved")
+        assert event_response["InfrahubEvent"]["edges"]
+        assert event_response["InfrahubEvent"]["edges"][0]["node"]["__typename"] == "ProposedChangeReviewEvent"
+        assert event_response["InfrahubEvent"]["edges"][0]["node"]["event"] == "infrahub.proposed_change.approved"
 
         # Test the ProposedChangeReview mutation with REJECTED decision
         response = await unprivileged_client.execute_graphql(
@@ -119,7 +125,10 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.rejected")
+        event_response = await self.query_events(client=client, event_type="infrahub.proposed_change.rejected")
+        assert event_response["InfrahubEvent"]["edges"]
+        assert event_response["InfrahubEvent"]["edges"][0]["node"]["__typename"] == "ProposedChangeReviewEvent"
+        assert event_response["InfrahubEvent"]["edges"][0]["node"]["event"] == "infrahub.proposed_change.rejected"
 
     async def test_cancel_approve(
         self,
@@ -181,7 +190,12 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.approval_revoked")
+        event_response = await self.query_events(client=client, event_type="infrahub.proposed_change.approval_revoked")
+        assert event_response["InfrahubEvent"]["edges"]
+        assert event_response["InfrahubEvent"]["edges"][0]["node"]["__typename"] == "ProposedChangeReviewRevokedEvent"
+        assert (
+            event_response["InfrahubEvent"]["edges"][0]["node"]["event"] == "infrahub.proposed_change.approval_revoked"
+        )
 
     async def test_cancel_reject(
         self,
@@ -243,7 +257,12 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.rejection_revoked")
+        event_response = await self.query_events(client=client, event_type="infrahub.proposed_change.rejection_revoked")
+        assert event_response["InfrahubEvent"]["edges"]
+        assert event_response["InfrahubEvent"]["edges"][0]["node"]["__typename"] == "ProposedChangeReviewRevokedEvent"
+        assert (
+            event_response["InfrahubEvent"]["edges"][0]["node"]["event"] == "infrahub.proposed_change.rejection_revoked"
+        )
 
     async def test_missing_permission(
         self,
