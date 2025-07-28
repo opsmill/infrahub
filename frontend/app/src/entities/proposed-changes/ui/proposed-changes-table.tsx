@@ -25,7 +25,7 @@ export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
     {
       schema,
-      filters: computeProposedChangeFilters({ filters, state: proposedChangeState as string }),
+      filters: computeProposedChangeFilters({ filters, qsp: proposedChangeState as string }),
     }
   );
 

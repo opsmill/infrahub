@@ -20,21 +20,17 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import {
-  Form,
-  FormField,
-  FormInput,
-  FormLabel,
-  FormMessage,
-  FormSubmit,
-} from "@/shared/components/ui/form";
+import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { DRAFT_STATE, OPEN_STATE } from "../constants";
+import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
   const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
@@ -42,6 +38,7 @@ export const ProposedChangeCreateForm = () => {
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const navigate = useNavigate();
+  const [state, setState] = useState(OPEN_STATE);
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
@@ -59,6 +56,7 @@ export const ProposedChangeCreateForm = () => {
             destination_branch,
             name,
             description,
+            isDraft: state === DRAFT_STATE,
             reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
           },
         });
@@ -188,12 +186,12 @@ export const ProposedChangeCreateForm = () => {
         )}
       />
 
-      <div className="text-right">
-        <LinkButton variant="outline" to={constructPath("/proposed-changes")} className="mr-2">
+      <div className="flex items-center justify-end w-full gap-2">
+        <LinkButton variant="outline" to={constructPath("/proposed-changes")}>
           Cancel
         </LinkButton>
 
-        <FormSubmit>Create proposed change</FormSubmit>
+        <PcStateButton state={state} setState={setState} />
       </div>
 
       {error && (

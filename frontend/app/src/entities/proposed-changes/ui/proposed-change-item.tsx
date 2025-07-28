@@ -4,8 +4,8 @@ import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/o
 import { NodeCore } from "@/entities/nodes/types";
 import { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -29,6 +29,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
           name={node.name.value}
           author={node.created_by.node?.display_label}
           state={node.state?.value}
+          isDraft={!!node.is_draft?.value}
           createdAt={node._updated_at}
           branchName={node.source_branch?.value}
         />
@@ -58,6 +59,7 @@ type ProposedChangesInfoProps = {
   name: string;
   author: string;
   state: string;
+  isDraft: boolean;
   createdAt: string;
   branchName?: string;
 };
@@ -67,6 +69,7 @@ const ProposedChangesInfo = ({
   name,
   author,
   state,
+  isDraft,
   createdAt,
   branchName,
 }: ProposedChangesInfoProps) => {
@@ -75,6 +78,7 @@ const ProposedChangesInfo = ({
       <div className="flex flex-col gap-2">
         <span className="space-x-2">
           <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
+          {isDraft && <Badge variant={"gray"}>DRAFT</Badge>}
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
             className="hover:text-gray-500 transition-all"
