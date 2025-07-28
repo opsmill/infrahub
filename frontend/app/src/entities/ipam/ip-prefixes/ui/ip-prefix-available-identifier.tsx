@@ -42,7 +42,7 @@ export function IpPrefixAvailableIdentifier({
           disabled={!isCreationAllowed}
           className={classNames(
             "rounded-full px-2.5 pl-1.5 hover:underline hover:bg-gray-400/10 gap-3.75",
-            isCreationAllowed && "hover:bg-gray-50",
+            !isCreationAllowed && "hover:bg-gray-50",
             className
           )}
           onClick={() => setIsCreateFormOpen(true)}

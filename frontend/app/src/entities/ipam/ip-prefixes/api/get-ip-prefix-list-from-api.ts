@@ -1,4 +1,5 @@
 import { IP_PREFIX_AVAILABLE_KIND, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability-filter-tag";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   addAttributesToRequest,
@@ -31,6 +32,7 @@ export function buildGetIpPrefixListQuery({
         __args: {
           limit,
           offset,
+          [AVAILABLE_IP_FILTER_NAME]: true,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {

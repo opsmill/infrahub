@@ -2,9 +2,9 @@ import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import {
   AVAILABLE_IP_FILTER_NAME,
   HIDE_AVAILABLE_IP,
+  HIDE_AVAILABLE_IP_FILTER,
   IpAvailabilityFilterTag,
   SHOW_AVAILABLE_IP,
-  SHOW_AVAILABLE_IP_FILTER,
 } from "@/entities/ipam/ip-availability-filter-tag";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
@@ -68,12 +68,12 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
                 );
               }
               case SHOW_AVAILABLE_IP: {
-                return setFilters([SHOW_AVAILABLE_IP_FILTER, ...filters]);
-              }
-              case HIDE_AVAILABLE_IP: {
                 return setFilters(
                   filters.filter((filter) => filter.name !== AVAILABLE_IP_FILTER_NAME)
                 );
+              }
+              case HIDE_AVAILABLE_IP: {
+                return setFilters([HIDE_AVAILABLE_IP_FILTER, ...filters]);
               }
               default: {
                 return handleRemoveFilter(filterName);
