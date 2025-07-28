@@ -42,7 +42,7 @@ class CoreNumberPool(Node):
 
         query = await NumberPoolGetUsed.init(db=db, branch=branch, pool=self, branch_agnostic=True)
         await query.execute(db=db)
-        used = [result.get_as_optional_type("value", return_type=int) for result in query.results]
+        used = [result.value for result in query.iter_results()]
         return [item for item in used if item is not None]
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:

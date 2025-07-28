@@ -75,6 +75,17 @@ A TransformPython must be written as a Python class that inherits from `Infrahub
 
 Please refer to the guide [Creating a Python transform](../guides/python-transform) for more information.
 
+##### Python transform accessing local files
+
+There may be times that you want to access files that are stored within the Git repository such as Jinja2 templates.
+
+This can be accomplished by using the `self.root_directory` that points to the root of the Git repository.
+
+```python
+    async def transform(self, data):
+        templates_path = f"{self.root_directory}/templates"
+```
+
 #### Render a TransformPython
 
 A TransformPython can be rendered with 2 different methods:

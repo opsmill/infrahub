@@ -2,11 +2,33 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField
+from infrahub.core.query.resource_manager import NumberPoolGetReserved
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.node import InfrahubNode
+
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
+
+CONVERT_OBJECT_MUTATION = """
+    mutation($node_id: String!, $target_kind: String!, $fields_mapping: GenericScalar!) {
+        ConvertObjectType(data: {
+                node_id: $node_id,
+                target_kind: $target_kind,
+                fields_mapping: $fields_mapping
+            }) {
+                ok
+                node
+        }
+    }
+"""
 
 
 class TestGetConversionSchemaMapping(TestInfrahubApp):
@@ -93,21 +115,7 @@ class TestConvertObjectType(TestInfrahubApp):
             favorite_car=car_1,
             fastest_cars=[car_1, car_2],
         )
-
         await jack_1.save()
-
-        query = """
-            mutation($node_id: String!, $target_kind: String!, $fields_mapping: GenericScalar!) {
-                ConvertObjectType(data: {
-                        node_id: $node_id,
-                        target_kind: $target_kind,
-                        fields_mapping: $fields_mapping
-                    }) {
-                        ok
-                        node
-                }
-            }
-        """
 
         mapping = {
             "name": InputForDestField(source_field="name"),
@@ -121,7 +129,7 @@ class TestConvertObjectType(TestInfrahubApp):
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
 
         response = await client.execute_graphql(
-            query=query,
+            query=CONVERT_OBJECT_MUTATION,
             variables={
                 "node_id": str(jack_1.id),
                 "fields_mapping": mapping_dict,
@@ -135,3 +143,78 @@ class TestConvertObjectType(TestInfrahubApp):
         assert res_node["age"]["value"] == 25
         assert res_node["name"]["value"] == "Jack"
         assert res_node["height"]["value"] == 170
+
+
+class TestConvertObjectTypeResourcePool(TestInfrahubApp):
+    @pytest.fixture
+    async def schemas_person(self, node_group_schema, data_schema) -> SchemaRoot:
+        person_generic = GenericSchema(
+            name="PersonGeneric",
+            namespace="Test",
+            human_friendly_id=["name__value"],
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="height", kind="Number", optional=True),
+                AttributeSchema(name="random_id", kind="NumberPool", read_only=True),
+            ],
+        )
+
+        person1 = NodeSchema(
+            name="Person1",
+            namespace="Test",
+            inherit_from=[person_generic.kind],
+        )
+
+        person2 = NodeSchema(
+            name="Person2",
+            namespace="Test",
+            inherit_from=[person_generic.kind],
+            attributes=[
+                AttributeSchema(name="age", kind="Number", default_value=25),
+                AttributeSchema(name="citizenship", kind="Text", optional=True),
+            ],
+        )
+
+        schema: SchemaRoot = SchemaRoot(version="1.0", generics=[person_generic], nodes=[person1, person2])
+        return schema
+
+    async def test_convert_number_pool(
+        self, db: InfrahubDatabase, client: InfrahubClient, schemas_person: SchemaRoot, default_branch: Branch
+    ) -> None:
+        response = await client.schema.load(schemas=[schemas_person.model_dump()])
+        assert len(response.errors) == 0, response.errors
+
+        # Create some objects
+        persons: dict[str, InfrahubNode] = {}
+        for name in ["jack", "paul", "pierre"]:
+            person = await client.create(kind="TestPerson1", name=name)
+            await person.save()
+            persons[name] = person
+
+        # Retrieve the pool used for the NumberPool attribute
+        pools = await client.all(kind=InfrahubKind.NUMBERPOOL)
+        assert len(pools) == 1
+        pool = pools[0]
+
+        # Check the state of the pool before converting the object
+        query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
+        await query1.execute(db=db)
+        reservations_before = {item.identifier: item.value for item in query1.get_reservations()}
+
+        response = await client.execute_graphql(
+            query=CONVERT_OBJECT_MUTATION,
+            variables={
+                "node_id": str(persons["jack"].id),
+                "target_kind": "TestPerson2",
+                "fields_mapping": {},
+            },
+            branch_name="main",
+        )
+        assert response["ConvertObjectType"]["ok"] is True
+        new_id = response["ConvertObjectType"]["node"]["id"]
+
+        query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
+        await query1.execute(db=db)
+        reservations_after = {item.identifier: item.value for item in query1.get_reservations()}
+
+        assert reservations_after[new_id] == reservations_before[str(persons["jack"].id)]

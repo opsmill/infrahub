@@ -9,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.query.relationship import GetAllPeersIds
+from infrahub.core.query.resource_manager import PoolChangeReserved
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
@@ -120,5 +121,14 @@ async def convert_object_type(
         peers = await NodeManager.get_many(ids=peers_ids, db=dbt, prefetch_relationships=True, branch=branch)
         for peer in peers.values():
             peer.validate_relationships()
+
+        # If the node had some value reserved in any Pools / Resource Manager, we need to change the identifier of the reservation(s)
+        query = await PoolChangeReserved.init(
+            db=dbt,
+            existing_identifier=node.get_id(),
+            new_identifier=node_created.get_id(),
+            branch=branch,
+        )
+        await query.execute(db=dbt)
 
         return node_created
