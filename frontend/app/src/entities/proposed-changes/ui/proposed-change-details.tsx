@@ -1,7 +1,7 @@
 import { TASK_OBJECT } from "@/config/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
-import { Conversations } from "@/entities/proposed-changes/ui/conversations";
+import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
@@ -167,7 +167,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
             </CardWithBorder>
           )}
 
-          <Conversations />
+          <Overview />
         </div>
 
         <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">

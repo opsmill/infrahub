@@ -12,7 +12,7 @@ import { formatISO } from "date-fns";
 import { HTMLAttributes, useRef } from "react";
 import { ProposedChangeEvents } from "./proposed-change-events";
 
-export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
+export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const formRef = useRef<FormRef>(null);
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
