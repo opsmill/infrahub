@@ -50,6 +50,15 @@ class TestProposedChangeReview(TestInfrahubApp):
         async with get_client(sync_client=False) as client:
             yield client
 
+    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
+        for _ in range(10):
+            events = await query_events_by_name(client=prefect_client, event_name=event_name)
+            if len(events) == 1:
+                return
+            await asyncio.sleep(1)
+
+        pytest.fail(f"unable to find prefect event '{event_name}'")
+
     async def test_approve_then_reject(
         self,
         client: InfrahubClient,
@@ -100,9 +109,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await asyncio.sleep(2)
-        events = await query_events_by_name(client=prefect_client, event_name="infrahub.proposed_change.approved")
-        assert len(events) == 1
+        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.approved")
 
         # Test the ProposedChangeReview mutation with REJECTED decision
         response = await unprivileged_client.execute_graphql(
@@ -124,9 +131,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
 
         # Verify that an event has been logged
-        await asyncio.sleep(2)
-        events = await query_events_by_name(client=prefect_client, event_name="infrahub.proposed_change.rejected")
-        assert len(events) == 1
+        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.rejected")
 
     async def test_cancel_approve(
         self,
@@ -188,11 +193,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await asyncio.sleep(2)
-        events = await query_events_by_name(
-            client=prefect_client, event_name="infrahub.proposed_change.approval_revoked"
-        )
-        assert len(events) == 1
+        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.approval_revoked")
 
     async def test_cancel_reject(
         self,
@@ -254,11 +255,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await asyncio.sleep(2)
-        events = await query_events_by_name(
-            client=prefect_client, event_name="infrahub.proposed_change.rejection_revoked"
-        )
-        assert len(events) == 1
+        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.rejection_revoked")
 
     async def test_missing_permission(
         self,
