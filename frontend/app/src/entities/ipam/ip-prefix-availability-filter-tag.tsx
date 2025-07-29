@@ -1,19 +1,15 @@
+import {
+  AVAILABLE_IP_FILTER_NAME,
+  HIDE_AVAILABLE_IP,
+  SHOW_AVAILABLE_IP,
+} from "@/entities/ipam/constants";
 import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import useFilters from "@/shared/hooks/useFilters";
 import type { TagProps } from "react-aria-components";
 import { useParams } from "react-router";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const AVAILABLE_IP_FILTER_NAME = "include_available" as const;
-export const HIDE_AVAILABLE_IP_FILTER: Filter = { name: AVAILABLE_IP_FILTER_NAME, value: false };
-export const HIDE_AVAILABLE_IP = "hide-available-ip";
-export const SHOW_AVAILABLE_IP = "show-available-ip";
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export function IpAvailabilityFilterTag({ ...props }: TagProps) {
+export function IpPrefixAvailabilityFilterTag({ ...props }: TagProps) {
   const [filters] = useFilters();
   const { objectId } = useParams();
 

@@ -1,4 +1,4 @@
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability-filter-tag";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";

@@ -1,5 +1,8 @@
-import { IP_PREFIX_AVAILABLE_KIND, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability-filter-tag";
+import {
+  AVAILABLE_IP_FILTER_NAME,
+  IP_PREFIX_AVAILABLE_KIND,
+  IP_PREFIX_GENERIC,
+} from "@/entities/ipam/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   addAttributesToRequest,

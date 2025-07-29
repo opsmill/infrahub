@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability-filter-tag";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { uniqueItemsArray } from "@/shared/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
 
