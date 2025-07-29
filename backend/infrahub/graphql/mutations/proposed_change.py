@@ -22,8 +22,8 @@ from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
+from ...proposed_change.approval_revoker import do_revoke_approvals_on_all_pcs
 from ...proposed_change.models import RequestProposedChangePipeline
-from ...proposed_change.revoke_approvals import do_revoke_approvals_on_all_pcs
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
