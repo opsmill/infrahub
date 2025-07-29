@@ -32,18 +32,6 @@ class TestProposedChangeReview(TestInfrahubApp):
         }
     }
     """
-    event_query = """
-    query GetEvents($event_type: String!) {
-        InfrahubEvent(event_type: [$event_type]) {
-            edges {
-                node {
-                    __typename
-                    event
-                }
-            }
-        }
-    }
-    """
 
     @pytest.fixture(scope="class")
     async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
