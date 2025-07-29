@@ -319,6 +319,7 @@ class CoreCheckDefinition(CoreTaskTarget):
 
 
 class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
+    shared_key: StringOptional
     transformation: RelationshipManager
 
 

@@ -121,17 +121,38 @@ class Webhook(BaseModel):
     validate_certificates: bool = Field(...)
     _payload: Any = None
     _headers: dict[str, Any] | None = None
+    shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
 
     async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:  # noqa: ARG002
         self._payload = {"data": data, **context.model_dump()}
 
-    def _assign_headers(self) -> None:
-        self._headers = {}
+    def _assign_headers(self, uuid: UUID | None = None, at: Timestamp | None = None) -> None:
+        self._headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        if self.shared_key:
+            message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
+            timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
+            payload = json.dumps(self._payload or {})
+            unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
+            signature = self._sign(data=unsigned_data)
+            self._headers["webhook-id"] = message_id
+            self._headers["webhook-timestamp"] = timestamp
+            self._headers["webhook-signature"] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def webhook_type(self) -> str:
         return self.__class__.__name__
+
+    @property
+    def signing_key(self) -> str:
+        """Return the signing key for the webhook."""
+        if self.shared_key:
+            return self.shared_key
+        raise ValueError("Shared key is not set for the webhook")
 
     async def prepare(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
         await self._prepare_payload(data=data, context=context, client=client)
@@ -153,6 +174,9 @@ class Webhook(BaseModel):
     def from_cache(cls, data: dict[str, Any]) -> Self:
         return cls(**data)
 
+    def _sign(self, data: bytes) -> bytes:
+        return hmac.new(key=self.signing_key.encode(), msg=data, digestmod=hashlib.sha256).digest()
+
 
 class CustomWebhook(Webhook):
     """Custom webhook"""
@@ -164,30 +188,11 @@ class CustomWebhook(Webhook):
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
+            shared_key=obj.shared_key.value,
         )
 
 
 class StandardWebhook(Webhook):
-    shared_key: str = Field(...)
-
-    def _assign_headers(self, uuid: UUID | None = None, at: Timestamp | None = None) -> None:
-        message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
-        timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-        payload = json.dumps(self._payload or {})
-        unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
-        signature = self._sign(data=unsigned_data)
-
-        self._headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "webhook-id": message_id,
-            "webhook-timestamp": timestamp,
-            "webhook-signature": f"v1,{base64.b64encode(signature).decode('utf-8')}",
-        }
-
-    def _sign(self, data: bytes) -> bytes:
-        return hmac.new(key=self.shared_key.encode(), msg=data, digestmod=hashlib.sha256).digest()
-
     @classmethod
     def from_object(cls, obj: CoreStandardWebhook) -> Self:
         return cls(
@@ -245,4 +250,5 @@ class TransformWebhook(Webhook):
             transform_file=transform.file_path.value,
             transform_timeout=transform.timeout.value,
             convert_query_response=transform.convert_query_response.value or False,
+            shared_key=obj.shared_key.value,
         )
