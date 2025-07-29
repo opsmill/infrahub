@@ -1,6 +1,6 @@
+import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { NodeCore } from "@/entities/nodes/types";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
@@ -13,19 +13,19 @@ import { PlusIcon } from "lucide-react";
 import React from "react";
 
 export interface IpPrefixAvailableIdentifierProps extends ButtonProps {
-  prefixNode: NodeCore & { parent?: { node: NodeCore & { ancestors: { count: number } } } };
+  ipPrefixNode: IpPrefixNode;
 }
 
 export function IpPrefixAvailableIdentifier({
   className,
-  prefixNode,
+  ipPrefixNode,
   ...props
 }: IpPrefixAvailableIdentifierProps) {
   const { selectedSchema, permission } = useObjectTableContext();
   const [isCreateFormOpen, setIsCreateFormOpen] = React.useState(false);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
-  const parentNode = prefixNode.parent?.node;
+  const parentNode = ipPrefixNode.parent?.node;
   const ancestorsCount: number = (parentNode?.ancestors?.count ?? 0) + 1;
   const isCreationAllowed = permission.create.isAllowed;
 
@@ -55,7 +55,7 @@ export function IpPrefixAvailableIdentifier({
             {[...Array(ancestorsCount)].map((_, i) => (
               <div className="bg-gray-300 size-1 rounded-full" key={i} />
             ))}
-            {prefixNode.display_label}
+            {ipPrefixNode.display_label}
           </Row>
         </Button>
       </Tooltip>
@@ -83,7 +83,7 @@ export function IpPrefixAvailableIdentifier({
               reloadIpamTree(parentNode?.id);
             }
           }}
-          currentObject={{ prefix: { value: prefixNode.display_label } }}
+          currentObject={{ prefix: { value: ipPrefixNode.display_label } }}
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />
