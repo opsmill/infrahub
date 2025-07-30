@@ -513,13 +513,6 @@ class DiffRepository:
         query = await EnrichedDiffMergedTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
         await query.execute(db=self.db)
 
-    async def get_num_changes_in_time_range_by_branch(
-        self, branch_names: list[str], from_time: Timestamp, to_time: Timestamp
-    ) -> dict[str, int]:
-        query = await DiffCountChanges.init(db=self.db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
-        await query.execute(db=self.db)
-        return query.get_num_changes_by_branch()
-
     async def get_node_field_specifiers(self, diff_id: str) -> NodeFieldSpecifierMap:
         limit = config.SETTINGS.database.query_size_limit
         offset = 0

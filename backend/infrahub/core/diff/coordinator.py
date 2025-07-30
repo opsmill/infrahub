@@ -22,6 +22,7 @@ from .model.path import (
     NodeIdentifier,
     TrackingId,
 )
+from ..query.diff import get_num_changes_in_time_range_by_branch
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -419,7 +420,7 @@ class DiffCoordinator:
                 log.info(
                     f"Checking number of changes on branches for {diff_request!r}, from_time={current_time}, to_time={end_time}"
                 )
-                num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
+                num_changes_by_branch = await get_num_changes_in_time_range_by_branch(
                     branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
                     from_time=current_time,
                     to_time=end_time,
