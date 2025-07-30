@@ -517,6 +517,50 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
             },
             "TestCriticality's relationship status inherited from InfraGenericInterface cannot be overriden",
         ),
+        (
+            {
+                "nodes": [
+                    {
+                        "name": "Criticality",
+                        "namespace": "Test",
+                        "inherit_from": ["InfraGenericInterface"],
+                        "default_filter": "name__value",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "relationships": [
+                            {"name": "status", "peer": "TestState", "optional": True, "cardinality": "one"}
+                        ],
+                    },
+                    {
+                        "name": "Status",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                    {
+                        "name": "State",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                ],
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Infra",
+                        "attributes": [{"name": "name", "kind": "Text"}],
+                        "relationships": [
+                            {
+                                "name": "status",
+                                "peer": "TestStatus",
+                                "optional": True,
+                                "cardinality": "one",
+                            }
+                        ],
+                    },
+                ],
+            },
+            "TestCriticality's relationship status inherited from InfraGenericInterface must have the same peer (TestStatus != TestState)",
+        ),
     ],
 )
 async def test_schema_protected_generics(schema_dict, expected_error):

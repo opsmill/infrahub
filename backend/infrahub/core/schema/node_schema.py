@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import AllowOverrideType, InfrahubKind
+from infrahub.core.constants import AllowOverrideType, InfrahubKind, RelationshipKind
 
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema
@@ -70,14 +70,17 @@ class NodeSchema(GeneratedNodeSchema):
                     )
 
         for relationship in self.relationships:
-            if (
-                relationship.name in interface.relationship_names
-                and not relationship.inherited
-                and interface.get_relationship(relationship.name).allow_override == AllowOverrideType.NONE
-            ):
-                raise ValueError(
-                    f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
-                )
+            if relationship.name in interface.relationship_names and not relationship.inherited:
+                interface_relationship = interface.get_relationship(relationship.name)
+                if interface_relationship.allow_override == AllowOverrideType.NONE:
+                    raise ValueError(
+                        f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
+                    )
+                if relationship.kind != RelationshipKind.HIERARCHY and relationship.peer != interface_relationship.peer:
+                    raise ValueError(
+                        f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} must have the same peer "
+                        f"({interface_relationship.peer} != {relationship.peer})"
+                    )
 
     def inherit_from_interface(self, interface: GenericSchema) -> None:
         existing_inherited_attributes: dict[str, int] = {
