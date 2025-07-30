@@ -4,7 +4,7 @@ import { uniqueItemsArray } from "@/shared/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export type Filter = {
-  name: `${string}__${string}` | typeof AVAILABLE_IP_FILTER_NAME;
+  name: `${string}__${string}` | typeof AVAILABLE_IP_FILTER_NAME | "order";
   value: any;
   display_label?: string;
 };
