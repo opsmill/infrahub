@@ -10,7 +10,46 @@ import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
 import { EventAttributes } from "./node-events/event-attributes";
 import { NodeEventTitle } from "./node-events/node-event-title";
+import { ProposedChangeEventTitle } from "./proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
+
+const getEventComponent = (props: EventType) => {
+  if ("attributes" in props) {
+    return (
+      <>
+        <NodeEventTitle {...props} />
+        <EventAttributes attributes={props.attributes} />
+      </>
+    );
+  }
+
+  if (
+    props.__typename === "BranchCreatedEvent" ||
+    props.__typename === "BranchDeletedEvent" ||
+    props.__typename === "BranchMergedEvent" ||
+    props.__typename === "BranchRebasedEvent"
+  ) {
+    return <BranchEventTitle {...props} />;
+  }
+
+  if (props.__typename === "StandardEvent" && props.event.includes(".proposed_change.")) {
+    return <ProposedChangeEventTitle {...props} />;
+  }
+
+  if (props.__typename === "StandardEvent" && !props.event.includes(".proposed_change.")) {
+    return <StandardEventTitle {...props} />;
+  }
+
+  if (props.__typename === "GroupEvent") {
+    return <GroupEventTitle {...props} />;
+  }
+
+  if (props.__typename === "ArtifactEvent") {
+    return <ArtifactEventTitle {...props} />;
+  }
+
+  return props.event;
+};
 
 export const EventCard = (props: EventType) => {
   return (
@@ -19,20 +58,7 @@ export const EventCard = (props: EventType) => {
 
       <div className="flex grow gap-3 p-2 rounded-md shadow-xs border border-gray-200 bg-white">
         <div className="flex flex-col gap-2 grow">
-          {"attributes" in props && <NodeEventTitle {...props} />}
-
-          {"attributes" in props && <EventAttributes attributes={props.attributes} />}
-
-          {(props.__typename === "BranchCreatedEvent" ||
-            props.__typename === "BranchDeletedEvent" ||
-            props.__typename === "BranchMergedEvent" ||
-            props.__typename === "BranchRebasedEvent") && <BranchEventTitle {...props} />}
-
-          {props.__typename === "StandardEvent" && <StandardEventTitle {...props} />}
-
-          {props.__typename === "GroupEvent" && <GroupEventTitle {...props} />}
-
-          {props.__typename === "ArtifactEvent" && <ArtifactEventTitle {...props} />}
+          {getEventComponent(props)}
 
           <div className="flex justify-between text-gray-500">
             <DateDisplay date={props.occurred_at} />
