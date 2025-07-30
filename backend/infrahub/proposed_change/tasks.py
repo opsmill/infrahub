@@ -102,7 +102,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags
 
 from .branch_diff import get_diff_summary_cache, get_modified_kinds
-from .checker import can_merge_proposed_change
+from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -171,8 +171,10 @@ async def merge_proposed_change(
     async with database.start_session() as db:
         log.info("Validating if all conditions are met to merge the proposed change")
 
-        if error_message := await can_merge_proposed_change(proposed_change=proposed_change, db=db):  # type: ignore[arg-type]
-            return Failed(message=error_message)
+        try:
+            await verify_proposed_change_is_mergeable(proposed_change=proposed_change, db=db)  # type: ignore[arg-type]
+        except ValueError as exc:
+            return Failed(message=str(exc))
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)
         validations = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)

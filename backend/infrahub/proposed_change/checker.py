@@ -9,17 +9,17 @@ from infrahub.database import InfrahubDatabase
 class ProposedChangeChecker(ABC):
     # We can't use CoreProposedChange type instead of Node as fast_depends enforces pydantic runtime type checks.
     @abstractmethod
-    async def can_merge_proposed_change(self, proposed_change: Node, db: InfrahubDatabase) -> str | None:
+    async def verify_proposed_change_is_mergeable(self, proposed_change: Node, db: InfrahubDatabase) -> None:
         """
-        Returns None if proposed change can be merged, otherwise returns the error message.
+        Raise an error if proposed change cannot be merged.
         """
 
         raise NotImplementedError()
 
 
 class ProposedChangeCheckerCommunity(ProposedChangeChecker):
-    async def can_merge_proposed_change(self, proposed_change: Node, db: InfrahubDatabase) -> str | None:  # noqa: ARG002
-        return None
+    async def verify_proposed_change_is_mergeable(self, proposed_change: Node, db: InfrahubDatabase) -> None:
+        pass
 
 
 def get_proposed_change_checker() -> ProposedChangeChecker:
@@ -28,10 +28,10 @@ def get_proposed_change_checker() -> ProposedChangeChecker:
 
 # We can't use CoreProposedChange type instead of Node as fast_depends enforces pydantic runtime type checks.
 @inject
-async def can_merge_proposed_change(
+async def verify_proposed_change_is_mergeable(
     proposed_change: Node,
     db: InfrahubDatabase,
     pc_checker: ProposedChangeChecker = Depends(get_proposed_change_checker),  # noqa: B008
 ) -> str | None:
     # type ignore due to fast-depends enforcing pydantic checks
-    return await pc_checker.can_merge_proposed_change(proposed_change=proposed_change, db=db)  # type: ignore
+    return await pc_checker.verify_proposed_change_is_mergeable(proposed_change=proposed_change, db=db)  # type: ignore

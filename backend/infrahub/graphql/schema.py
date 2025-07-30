@@ -21,7 +21,6 @@ from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.proposed_change import (
-    ProposedChangeCheckForApprovalRevoke,
     ProposedChangeRequestRunCheck,
     ProposedChangeReview,
 )
@@ -96,7 +95,6 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
     CoreProposedChangeReview = ProposedChangeReview.Field()
-    ProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
     CoreGeneratorDefinitionRun = GeneratorDefinitionRequestRun.Field()
 
     InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
