@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from graphql import GraphQLResolveInfo
-    from pydantic import IPvAnyAddress, IPvAnyNetwork
+    from pydantic import IPvAnyAddress, IPvAnyInterface, IPvAnyNetwork
 
     from infrahub.core.branch.models import Branch
     from infrahub.core.schema import NodeSchema
@@ -42,6 +42,11 @@ def _ip_range_display_label(node: Node) -> str:
     return f"More than {2**16} IP addresses available"
 
 
+def _ip_with_prefix_length(ip_address: IPvAnyAddress, ip_prefix: IPvAnyNetwork) -> IPvAnyInterface:
+    """Convert an `IPAddress` object into an `IPInterface` one given a `IPNetwork`."""
+    return ipaddress.ip_interface(f"{ip_address}/{ip_prefix.prefixlen}")
+
+
 async def _build_ip_range_node(
     db: InfrahubDatabase,
     branch: Branch,
@@ -51,12 +56,15 @@ async def _build_ip_range_node(
     ip_namespace: BuiltinIPNamespace,
     ip_prefix: BuiltinIPPrefix,
 ) -> Node:
+    address_with_len = str(_ip_with_prefix_length(ip_address=address, ip_prefix=ip_prefix.prefix))
+    last_address_with_len = str(_ip_with_prefix_length(ip_address=last_address, ip_prefix=ip_prefix.prefix))
+
     n = await Node.init(schema=schema, db=db, branch=branch)
     await n.new(
         db=db,
-        address=str(address),
-        last_address=str(last_address),
-        description=f"Available IP range {address} - {last_address}",
+        address=address_with_len,
+        last_address=last_address_with_len,
+        description=f"Available IP range {address_with_len} - {last_address_with_len}",
         ip_namespace=ip_namespace,
         ip_prefix=ip_prefix,
     )
