@@ -39,6 +39,7 @@ core_proposed_change = NodeSchema(
             optional=True,
         ),
         Attr(name="is_draft", kind="Boolean", optional=False, default_value=False),
+        Attr(name="total_comments", kind="Number", optional=True, read_only=True),
     ],
     relationships=[
         Rel(
