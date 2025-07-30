@@ -14,13 +14,21 @@ export const computeProposedChangeFilters = ({
           ? PROPOSED_CHANGE_STATES[qsp as keyof typeof PROPOSED_CHANGE_STATES]
           : PROPOSED_CHANGE_STATES.opened,
     } as Filter,
+    ...(!qsp
+      ? [
+          {
+            name: "is_draft__value",
+            value: false,
+          } as Filter,
+        ]
+      : []),
     ...(qsp === DRAFT_STATE
-      ? ([
+      ? [
           {
             name: "is_draft__value",
             value: true,
-          },
-        ] as Array<Filter>)
+          } as Filter,
+        ]
       : []),
   ];
 };
