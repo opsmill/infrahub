@@ -1,0 +1,88 @@
+import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import {
+  addAttributesToRequest,
+  addFiltersToRequest,
+  addRelationshipsToRequest,
+} from "@/shared/api/graphql/utils";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { Filter } from "@/shared/hooks/useFilters";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+export interface GetIpAddressLisGraphQLQueryParams extends PaginationParams {
+  filters?: Array<Filter>;
+  objectKind: string;
+  attributes: Array<AttributeSchema>;
+  relationships: Array<RelationshipSchema>;
+}
+
+export function getIpAddressLisGraphQLQuery({
+  limit,
+  offset,
+  filters,
+  objectKind,
+  attributes,
+  relationships,
+}: GetIpAddressLisGraphQLQueryParams) {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${objectKind}`,
+      [IP_ADDRESS_GENERIC]: {
+        __args: {
+          limit,
+          offset,
+          include_available: true,
+          ...(filters ? addFiltersToRequest(filters) : {}),
+        },
+        edges: {
+          node: {
+            id: true,
+            display_label: true,
+            hfid: true,
+            __on: [
+              {
+                __typeName: objectKind,
+                ...addAttributesToRequest(attributes),
+                ...addRelationshipsToRequest(relationships),
+                ip_namespace: {
+                  node: {
+                    id: true,
+                    display_label: true,
+                    hfid: true,
+                  },
+                },
+              },
+              {
+                __typeName: IP_ADDRESS_AVAILABLE_KIND,
+                address: { value: true },
+                last_address: { value: true },
+              },
+            ],
+          },
+        },
+      },
+    },
+  });
+}
+
+export interface getIpAddressListFromApiParams
+  extends ContextParams,
+    GetIpAddressLisGraphQLQueryParams {}
+
+export function getIpAddressListFromApi({
+  branchName,
+  atDate,
+  ...params
+}: getIpAddressListFromApiParams) {
+  const graphqlQuery = getIpAddressLisGraphQLQuery(params);
+
+  return graphqlClient.query({
+    query: gql(graphqlQuery),
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}

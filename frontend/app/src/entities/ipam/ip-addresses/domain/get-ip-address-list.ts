@@ -1,0 +1,54 @@
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { getIpAddressListFromApi } from "@/entities/ipam/ip-addresses/api/get-ip-address-list-from-api";
+import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
+import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
+import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
+import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
+import { NodeObject } from "@/entities/nodes/types";
+import { ModelSchema } from "@/entities/schema/types";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { Filter } from "@/shared/hooks/useFilters";
+
+export interface GetIpAddressListParams extends ContextParams, PaginationParams {
+  schema: ModelSchema;
+  filters?: Array<Filter>;
+}
+
+export type GetIpAddressList = (
+  params: GetIpAddressListParams
+) => Promise<Array<NodeObject | IpAddressAvailableNode>>;
+
+export const getIpAddressList: GetIpAddressList = async ({
+  schema,
+  limit = OBJECTS_PER_PAGE,
+  offset,
+  branchName,
+  atDate,
+  filters,
+}) => {
+  const attributesVisible = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
+  const relationshipsVisible = getIpAddressRelationshipsVisibleInListView(
+    schema.relationships ?? []
+  );
+
+  const schemaKind = schema.kind as string;
+  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
+  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
+
+  const { data, errors } = await getIpAddressListFromApi({
+    branchName,
+    atDate,
+    limit,
+    offset,
+    filters,
+    objectKind: schemaKindToQuery,
+    attributes: attributesVisible,
+    relationships: relationshipsVisible,
+  });
+
+  if (errors?.[0]?.message) {
+    throw new Error(errors[0].message);
+  }
+
+  return data[IP_ADDRESS_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
+};
