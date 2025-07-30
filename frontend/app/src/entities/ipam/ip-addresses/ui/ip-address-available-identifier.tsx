@@ -3,7 +3,7 @@ import { Button, ButtonProps } from "@/shared/components/buttons/button-primitiv
 import { classNames } from "@/shared/utils/common";
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
 
-export interface IPAddressRangeAvailableIdentifierProps extends ButtonProps {
+export interface IPAddressAvailableIdentifierProps extends ButtonProps {
   ipAddressAvailableNode: IpAddressAvailableNode;
 }
 
@@ -11,7 +11,7 @@ export function IpAddressAvailableIdentifier({
   ipAddressAvailableNode,
   className,
   ...props
-}: IPAddressRangeAvailableIdentifierProps) {
+}: IPAddressAvailableIdentifierProps) {
   const firstAddressAvailable = ipAddressAvailableNode.address.value;
   const lastAddressAvailable = ipAddressAvailableNode.last_address.value;
 

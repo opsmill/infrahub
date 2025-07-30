@@ -1,6 +1,6 @@
 import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
-import { IpAddressAvailableIdentifier } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
+import { IpAddressAvailableCreateFormTrigger } from "@/entities/ipam/ip-addresses/ui/ip-address-available-create-form-trigger";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
@@ -47,7 +47,9 @@ export const getIpAddressTableColumns = (
           return (
             <>
               <StickyLeftCell isMuted className="p-0.5">
-                <IpAddressAvailableIdentifier ipAddressAvailableNode={ipAddressAvailableNode} />
+                <IpAddressAvailableCreateFormTrigger
+                  ipAddressAvailableNode={ipAddressAvailableNode}
+                />
               </StickyLeftCell>
 
               <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
