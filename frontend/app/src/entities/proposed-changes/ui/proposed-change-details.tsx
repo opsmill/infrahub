@@ -3,7 +3,7 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
 import { Conversations } from "@/entities/proposed-changes/ui/conversations";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -44,6 +44,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
+  const isDraft = proposedChangesDetails?.is_draft?.value;
 
   const proposedChangeProperties: Property[] = [
     {
@@ -52,7 +53,17 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     },
     {
       name: "State",
-      value: <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>,
+      value: (
+        <>
+          <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
+
+          {isDraft && (
+            <Badge variant={"gray"} className="ml-2">
+              draft
+            </Badge>
+          )}
+        </>
+      ),
     },
     {
       name: "Source branch",

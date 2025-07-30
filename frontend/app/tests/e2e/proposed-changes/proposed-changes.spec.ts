@@ -39,7 +39,7 @@ test.describe("/proposed-changes", () => {
       await page.goto("/proposed-changes/new");
 
       await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
-      await page.getByRole("button", { name: "Create proposed change" }).click();
+      await page.getByRole("button", { name: "Open" }).click();
       await expect(page.getByLabel("Name *").locator("..")).toContainText("Required");
       await expect(page.getByText("Source Branch *").locator("..")).toContainText("Required");
     });
@@ -72,7 +72,7 @@ test.describe("/proposed-changes", () => {
         await page.getByRole("option", { name: "CRM Synchronization" }).click();
         await page.getByLabel("Reviewers").click(); // to close the combobox
 
-        await page.getByRole("button", { name: "Create proposed change" }).click();
+        await page.getByRole("button", { name: "Open" }).click();
         await expect(page.getByText("Proposed change created")).toBeVisible();
       });
 

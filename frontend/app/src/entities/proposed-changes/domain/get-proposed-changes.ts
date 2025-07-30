@@ -10,6 +10,7 @@ export type ProposedChangeItem = {
   name: { value: string };
   created_by: { node: { display_label: string } };
   state: { value: string };
+  is_draft: { value: string };
   _updated_at: string;
   source_branch: { value: string };
   approved_by: { edges: Array<{ node: NodeCore }> };

@@ -15,5 +15,5 @@ export const updateObject: UpdateObject = async (params) => {
     throw new Error(errors[0].message);
   }
 
-  return data[`${params.objectKind}Create`].object;
+  return data[`${params.objectKind}Update`].object;
 };
