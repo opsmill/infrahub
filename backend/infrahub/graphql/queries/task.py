@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 from prefect.client.schemas.objects import StateType
 
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.task import PrefectTask
 from infrahub.workflows.constants import WorkflowTag
@@ -79,7 +79,7 @@ class Tasks(ObjectType):
         log_offset: int | None = None,
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
-        fields = await extract_fields_first_node(info)
+        fields = extract_graphql_fields(info=info)
 
         prefect_tasks = await PrefectTask.query(
             db=graphql_context.db,

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
-from infrahub_sdk.utils import extract_fields
 from typing_extensions import Self
 
 from infrahub import config, lock
@@ -27,6 +26,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 
@@ -200,7 +200,7 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         result: dict[str, Any] = {"ok": True}
         if "object" in fields:
             result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
@@ -320,7 +320,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         obj: Node,
     ) -> Self:
-        fields_object = await extract_fields(info.field_nodes[0].selection_set)
+        fields_object = extract_graphql_fields(info=info)
         fields_object = fields_object.get("object", {})
         result: dict[str, Any] = {"ok": True}
         if fields_object:
