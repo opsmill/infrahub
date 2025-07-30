@@ -46,9 +46,13 @@ export const getIpAddressList: GetIpAddressList = async ({
     relationships: relationshipsVisible,
   });
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  return data[IP_ADDRESS_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
+  return (
+    data[IP_ADDRESS_GENERIC]?.edges?.map(
+      (edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node
+    ) ?? []
+  );
 };
