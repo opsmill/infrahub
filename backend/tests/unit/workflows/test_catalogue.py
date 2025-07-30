@@ -33,10 +33,14 @@ def test_workflow_definition_flow_names() -> None:
     assert not duplicates, f"Duplicate flow names found: {', '.join(duplicates)}"
 
 
-@pytest.mark.skipif(
-    get_installation_type() != INSTALLATION_TYPE, reason="Not working on enterprise version due to new workflows"
-)
 def test_workflows_sorted() -> None:
+    """
+    Only test that workflows are defined in an alphabetical way for developer comfort.
+    """
+
+    if get_installation_type() != INSTALLATION_TYPE:
+        return
+
     catalogue_attrs = [getattr(catalogue, name) for name in dir(catalogue)]
     ordered_workflows = [
         catalogue_attr for catalogue_attr in catalogue_attrs if isinstance(catalogue_attr, WorkflowDefinition)

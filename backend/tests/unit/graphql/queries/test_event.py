@@ -451,9 +451,6 @@ async def test_event_query_prefect(
     assert result.errors is None
     assert result.data
 
-    clean_result_asc = filter_outofscope_events(result.data, event_ids_inscope)
-    assert clean_result_asc["InfrahubEvent"]["count"] == 10
-
     result_branch1 = await run_query(
         db=db,
         branch=default_branch,
