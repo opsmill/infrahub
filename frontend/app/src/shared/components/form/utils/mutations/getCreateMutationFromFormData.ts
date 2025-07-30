@@ -8,21 +8,20 @@ import {
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,
-  formData: Record<string, FormFieldValue>
+  formData: Record<string, FormFieldValue>,
+  objectTemplateId?: string
 ) => {
+  const initialMutation = objectTemplateId ? { object_template: { id: objectTemplateId } } : {};
+
   return fields.reduce((acc, field) => {
     const fieldData = formData[field.name];
 
-    if (!fieldData) {
+    if (!fieldData || isFormFieldValueFromTemplate(fieldData)) {
       return acc;
     }
 
     if (isFormFieldValueFromPool(fieldData)) {
       return { ...acc, [field.name]: fieldData.value };
-    }
-
-    if (isFormFieldValueFromTemplate(fieldData)) {
-      return { ...acc, object_template: { id: fieldData.source.id } };
     }
 
     if (fieldData.source?.type === "user") {
@@ -63,7 +62,7 @@ export const getCreateMutationFromFormData = (
     }
 
     return acc;
-  }, {});
+  }, initialMutation);
 };
 
 export const getCreateMutationFromFormDataOnly = (

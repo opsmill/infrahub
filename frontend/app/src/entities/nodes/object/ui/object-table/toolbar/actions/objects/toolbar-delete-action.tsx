@@ -1,11 +1,11 @@
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
-import { NodeObject } from "@/entities/nodes/types";
+import { NodeCore } from "@/entities/nodes/types";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import { DeleteObjectsModal } from "./delete-objects-modal";
 
 export interface ToolbarDeleteObjectProps {
-  selectedRows: Array<NodeObject>;
+  selectedRows: Array<NodeCore>;
 }
 
 export function ToolbarDeleteObject({ selectedRows }: ToolbarDeleteObjectProps) {

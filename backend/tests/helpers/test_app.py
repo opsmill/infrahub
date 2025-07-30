@@ -12,11 +12,10 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_account,
+    create_default_account_groups,
     create_default_branch,
     create_global_branch,
     create_root_node,
-    create_super_administrator_role,
-    create_super_administrators_group,
     initialization,
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -198,18 +197,14 @@ class TestInfrahubApp(TestInfrahub):
         api_admin_token: str,
         api_unprivileged_token: str,
     ) -> None:
-        _ = await create_account(
-            db=db,
-            name="unprivileged",
-            password="testing_unprivileged_password",
-            token_value=api_unprivileged_token,
+        unprivileged_account = await create_account(
+            db=db, name="unprivileged", password="testing_unprivileged_password", token_value=api_unprivileged_token
         )
         admin_account = await create_account(
             db=db, name="admin", password=config.SETTINGS.initial.admin_password, token_value=api_admin_token
         )
 
-        administrator_role = await create_super_administrator_role(db=db)
-        await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=[admin_account])
+        await create_default_account_groups(db=db, admin_accounts=[admin_account], accounts=[unprivileged_account])
 
         # This call emits a warning related to the fact database index manager has not been initialized.
         await initialization(db=db)

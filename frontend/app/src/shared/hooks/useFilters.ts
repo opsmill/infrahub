@@ -1,9 +1,10 @@
 import { QSP } from "@/config/qsp";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { uniqueItemsArray } from "@/shared/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export type Filter = {
-  name: `${string}__${string}`;
+  name: `${string}__${string}` | typeof AVAILABLE_IP_FILTER_NAME;
   value: any;
   display_label?: string;
 };

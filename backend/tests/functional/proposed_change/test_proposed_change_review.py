@@ -2,13 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+from infrahub_sdk.exceptions import GraphQLError
 from tests.helpers.test_app import TestInfrahubApp
 
 from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreAccountGroup
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 
 class TestProposedChangeReview(TestInfrahubApp):
@@ -21,7 +28,11 @@ class TestProposedChangeReview(TestInfrahubApp):
         """
 
     async def test_approve_then_reject(
-        self, client: InfrahubClient, db, car_person_schema, unprivileged_client
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        car_person_schema: SchemaBranch,
+        unprivileged_client: InfrahubClient,
     ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
@@ -83,7 +94,13 @@ class TestProposedChangeReview(TestInfrahubApp):
         rejected_by_peers = {related_node.peer.id for related_node in updated_pc.rejected_by.peers}
         assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
 
-    async def test_cancel_approve(self, client: InfrahubClient, db, car_person_schema, unprivileged_client) -> None:
+    async def test_cancel_approve(
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        car_person_schema: SchemaBranch,
+        unprivileged_client: InfrahubClient,
+    ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -135,7 +152,13 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.approved_by.peers) == 0
         assert len(updated_pc.rejected_by.peers) == 0
 
-    async def test_cancel_reject(self, client: InfrahubClient, db, car_person_schema, unprivileged_client) -> None:
+    async def test_cancel_reject(
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        car_person_schema: SchemaBranch,
+        unprivileged_client: InfrahubClient,
+    ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
 
         # Create a branch for the proposed change
@@ -184,5 +207,56 @@ class TestProposedChangeReview(TestInfrahubApp):
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"
+        assert len(updated_pc.approved_by.peers) == 0
+        assert len(updated_pc.rejected_by.peers) == 0
+
+    async def test_missing_permission(
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        car_person_schema: SchemaBranch,
+        unprivileged_client: InfrahubClient,
+    ) -> None:
+        """Test that an approval is rejected if the user does not have the permission to make it."""
+        # Create a branch for the proposed change
+        source_branch = await create_branch(branch_name="branch-pc-4", db=db)
+
+        # Create a proposed change
+        proposed_change = await client.create(
+            kind=PROPOSEDCHANGE,
+            data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc-4"},
+        )
+        await proposed_change.save()
+
+        # Get the proposed change to verify initial state
+        pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
+        assert pc is not None
+        approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
+        assert len(approved_by_peers) == 0
+        rejected_by_peers = {related_node.peer for related_node in pc.rejected_by.peers}
+        assert len(rejected_by_peers) == 0
+
+        # Remove the proposed change approver role from the unprivileged user
+        account_group = await NodeManager.get_one_by_hfid(db=db, hfid=["Infrahub Users"], kind=CoreAccountGroup)
+        assert account_group
+        await account_group.members.delete(db=db)
+
+        # Try to approve the PC
+        with pytest.raises(GraphQLError) as exc:
+            await unprivileged_client.execute_graphql(
+                query=self.review_query,
+                variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
+                branch_name=source_branch.name,
+                raise_for_error=False,
+            )
+
+        assert (
+            exc.value.errors[0]["message"]
+            == "You do not have the following permission: global:review_proposed_change:allow_all"
+        )
+
+        # Verify the proposed change still exists and is in the correct state
+        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        assert updated_pc is not None
         assert len(updated_pc.approved_by.peers) == 0
         assert len(updated_pc.rejected_by.peers) == 0

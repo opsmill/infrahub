@@ -152,7 +152,7 @@ class InfrahubWorkerAsync(BaseWorker):
         params = flow_func.validate_parameters(parameters=flow_run.parameters)
 
         if task_status:
-            task_status.started()
+            task_status.started(True)
 
         await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
