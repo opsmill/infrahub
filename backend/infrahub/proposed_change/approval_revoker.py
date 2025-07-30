@@ -28,4 +28,4 @@ async def do_revoke_approvals_on_all_pcs(
     db: InfrahubDatabase,
     approval_revoker: ApprovalRevoker = Depends(get_approval_revoker),  # noqa: B008
 ) -> None:
-    return await approval_revoker.revoke_approvals_on_updated_pcs(db=db)
+    await approval_revoker.revoke_approvals_on_updated_pcs(db=db)

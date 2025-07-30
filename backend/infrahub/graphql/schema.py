@@ -96,7 +96,7 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
     CoreProposedChangeReview = ProposedChangeReview.Field()
-    CoreProposedChangeCheckForChanges = ProposedChangeCheckForApprovalRevoke.Field()
+    ProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
     CoreGeneratorDefinitionRun = GeneratorDefinitionRequestRun.Field()
 
     InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()

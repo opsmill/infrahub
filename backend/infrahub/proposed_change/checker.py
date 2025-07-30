@@ -11,7 +11,7 @@ class ProposedChangeChecker(ABC):
     @abstractmethod
     async def can_merge_proposed_change(self, proposed_change: Node, db: InfrahubDatabase) -> str | None:
         """
-        Returns None if proposed change cannot be merged, otherwise returns the error message.
+        Returns None if proposed change can be merged, otherwise returns the error message.
         """
 
         raise NotImplementedError()
@@ -22,7 +22,7 @@ class ProposedChangeCheckerCommunity(ProposedChangeChecker):
         return None
 
 
-def get_proposed_change_merger() -> ProposedChangeChecker:
+def get_proposed_change_checker() -> ProposedChangeChecker:
     return ProposedChangeCheckerCommunity()
 
 
@@ -31,7 +31,7 @@ def get_proposed_change_merger() -> ProposedChangeChecker:
 async def can_merge_proposed_change(
     proposed_change: Node,
     db: InfrahubDatabase,
-    pc_checker: ProposedChangeChecker = Depends(get_proposed_change_merger),  # noqa: B008
+    pc_checker: ProposedChangeChecker = Depends(get_proposed_change_checker),  # noqa: B008
 ) -> str | None:
     # type ignore due to fast-depends enforcing pydantic checks
     return await pc_checker.can_merge_proposed_change(proposed_change=proposed_change, db=db)  # type: ignore
