@@ -56,8 +56,8 @@ async def _build_ip_range_node(
     ip_namespace: BuiltinIPNamespace,
     ip_prefix: BuiltinIPPrefix,
 ) -> Node:
-    address_with_len = str(_ip_with_prefix_length(ip_address=address, ip_prefix=ip_prefix.prefix))
-    last_address_with_len = str(_ip_with_prefix_length(ip_address=last_address, ip_prefix=ip_prefix.prefix))
+    address_with_len = str(_ip_with_prefix_length(ip_address=address, ip_prefix=ip_prefix.prefix.obj))
+    last_address_with_len = str(_ip_with_prefix_length(ip_address=last_address, ip_prefix=ip_prefix.prefix.obj))
 
     n = await Node.init(schema=schema, db=db, branch=branch)
     await n.new(
