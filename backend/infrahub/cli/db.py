@@ -56,6 +56,7 @@ from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
+from .db_commands.check_inheritance import check_inheritance
 from .patch import patch_app
 
 
@@ -174,6 +175,28 @@ async def migrate_cmd(
     dbdriver = await context.init_db(retry=1)
 
     await migrate_database(db=dbdriver, initialize=True, check=check, migration_number=migration_number)
+
+    await dbdriver.close()
+
+
+@app.command(name="check-inheritance")
+async def check_inheritance_cmd(
+    ctx: typer.Context,
+    fix: bool = typer.Option(False, help="Fix the inheritance of any invalid nodes."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Check the database for any vertices with incorrect inheritance"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+    await initialize_registry(db=dbdriver)
+
+    await check_inheritance(db=dbdriver, fix=fix)
 
     await dbdriver.close()
 
