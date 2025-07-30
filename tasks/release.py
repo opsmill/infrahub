@@ -304,7 +304,7 @@ def update_docker_compose_env_vars(
     existing_vars = {}
 
     for i, line in enumerate(docker_compose):
-        if line.strip().startswith("x-infrahub-config: &infrahub_config"):
+        if line.strip().startswith("x-infrahub-config: &infrahub_base_config"):
             in_infrahub_config_section = True
             infrahub_config_start = i + 1
             continue
