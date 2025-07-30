@@ -1,0 +1,88 @@
+---
+title: Authentication
+---
+import ReferenceLink from "../../src/components/Card";
+
+# Authentication
+
+Infrahub provides flexible authentication options to fit various organizational needs. You can authenticate users through a local user store maintained within Infrahub or by integrating with external identity providers through single sign-on protocols.
+
+This topic explains the authentication mechanisms supported by Infrahub and how they integrate with your existing identity management systems.
+
+## Authentication methods
+
+### Local user store
+
+The local user store is Infrahub's built-in user management system. It maintains user accounts directly within Infrahub's database and provides complete control over user authentication without requiring external systems.
+
+Key characteristics of the local user store:
+
+- User accounts are created and managed directly within Infrahub
+- Passwords are securely stored using modern cryptographic standards
+- Ideal for standalone deployments or testing environments
+
+### Single sign-on (SSO)
+
+Single sign-on allows users to authenticate once with an external identity provider and gain access to Infrahub without needing to enter separate credentials. Infrahub integrates seamlessly with popular identity providers such as Microsoft Entra ID (formerly Azure AD), Okta, Google Workspace, and others through industry-standard authentication protocols.
+
+Key characteristics of SSO in Infrahub:
+
+- Supports both OAuth 2.0 and OpenID Connect (OIDC) protocols
+- Multiple identity providers can be configured simultaneously
+- Users authenticated via SSO are automatically created in the local user store
+- Optional automatic group assignment based on identity provider attributes
+- Reduces credential management overhead and improves security
+
+<ReferenceLink title="Configuring Single Sign-On" url="../guides/sso"/>
+
+:::info Recommendation
+Local user store is suitable for testing and development environments. For production use, integrating with an external identity provider via SSO is recommended for better security and user management.
+:::
+
+## OAuth 2.0 vs OpenID Connect
+
+While both protocols are used in authentication flows, they serve different primary purposes:
+
+### OAuth 2.0
+
+OAuth 2.0 is primarily an authorization framework that enables applications to gain limited access to resources on behalf of users.
+
+- **Primary purpose**: Authorization (controlling what resources a user can access)
+- **Use case**: Granting applications limited access to a user's data
+- **Common scenario**: Third-party applications requesting permissions from services like GitHub, Google, or Microsoft
+- **Limitation**: Does not define standards for user identity verification
+
+### OpenID Connect (OIDC)
+
+OIDC extends OAuth 2.0 by adding a standardized authentication layer.
+
+- **Primary purpose**: Authentication (verifying who a user is) + Authorization
+- **Use case**: Identity verification along with access control
+- **Common scenario**: Enterprise single sign-on implementations
+- **Key feature**: Provides an ID Token (JWT) containing identity claims about the authenticated user
+
+:::info Recommendation
+When configuring an external identity provider, OIDC is generally recommended as it provides standardized identity information.
+:::
+
+## Authentication flow
+
+When a user attempts to access Infrahub, the following authentication flow occurs:
+
+1. The user is presented with available authentication options (local login and configured SSO providers)
+    :::note
+    It's possible to have multiple SSO providers configured. Even with SSO provider enabled, local login remains available for fallback scenarios (e.g. when identity provider is unavailable).
+    :::
+2. Upon successful authentication:
+   - For local users: Credentials are verified against the local user store
+   - For SSO users: The user is redirected to the identity provider, authenticated there, and returned to Infrahub
+3. If authentication succeeds, a user session is created
+4. For SSO users who don't already exist in Infrahub, a local user record is created
+5. Group memberships and roles are applied based on configuration
+6. The user is granted access according to their assigned permissions
+
+## Related concepts
+
+Authentication works in conjunction with Infrahub's authorization system, which controls what actions authenticated users can perform. While authentication verifies who you are, authorization determines what you can do within the system.
+
+For more information about controlling access after authentication, see [Permissions and roles](./permissions-roles).
