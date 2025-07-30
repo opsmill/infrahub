@@ -2,6 +2,8 @@ from typing import ClassVar
 
 from pydantic import Field
 
+from infrahub.core.constants import InfrahubKind
+
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
 
@@ -14,7 +16,8 @@ class ProposedChangeEvent(InfrahubEvent):
     def get_resource(self) -> dict[str, str]:
         return {
             "prefect.resource.id": f"infrahub.proposed_change.{self.proposed_change_id}",
-            "infrahub.proposed_change.id": self.proposed_change_id,
+            "infrahub.node.kind": InfrahubKind.PROPOSEDCHANGE,
+            "infrahub.node.id": self.proposed_change_id,
             "infrahub.proposed_change.name": self.proposed_change_name,
             "infrahub.proposed_change.state": self.proposed_change_state,
             "infrahub.branch.name": self.meta.context.branch.name,
