@@ -7,6 +7,7 @@ from .ipam import (
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
 )
+from .proposed_change import ProposedChangeAvailableActions
 from .relationship import Relationship
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
 from .search import InfrahubSearchAnywhere
@@ -26,6 +27,7 @@ __all__ = [
     "InfrahubResourcePoolUtilization",
     "InfrahubSearchAnywhere",
     "InfrahubStatus",
+    "ProposedChangeAvailableActions",
     "Relationship",
     "Task",
 ]
