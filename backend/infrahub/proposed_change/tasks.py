@@ -171,7 +171,7 @@ async def merge_proposed_change(
     async with database.start_session() as db:
         log.info("Validating if all conditions are met to merge the proposed change")
 
-        if error_message := await can_merge_proposed_change(proposed_change=proposed_change, db=db):
+        if error_message := await can_merge_proposed_change(proposed_change=proposed_change, db=db):  # type: ignore[arg-type]
             return Failed(message=error_message)
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)

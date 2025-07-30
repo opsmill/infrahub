@@ -2,13 +2,14 @@ from abc import ABC, abstractmethod
 
 from fast_depends import Depends, inject
 
-from infrahub.core.protocols import CoreProposedChange
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
 class ProposedChangeChecker(ABC):
+    # We can't use CoreProposedChange type instead of Node as fast_depends enforces pydantic runtime type checks.
     @abstractmethod
-    async def can_merge_proposed_change(self, proposed_change: CoreProposedChange, db: InfrahubDatabase) -> str | None:
+    async def can_merge_proposed_change(self, proposed_change: Node, db: InfrahubDatabase) -> str | None:
         """
         Returns None if proposed change cannot be merged, otherwise returns the error message.
         """
@@ -17,7 +18,7 @@ class ProposedChangeChecker(ABC):
 
 
 class ProposedChangeCheckerCommunity(ProposedChangeChecker):
-    async def can_merge_proposed_change(self, proposed_change: CoreProposedChange, db: InfrahubDatabase) -> str | None:  # noqa: ARG002
+    async def can_merge_proposed_change(self, proposed_change: Node, db: InfrahubDatabase) -> str | None:  # noqa: ARG002
         return None
 
 
@@ -25,11 +26,10 @@ def get_proposed_change_merger() -> ProposedChangeChecker:
     return ProposedChangeCheckerCommunity()
 
 
-# TODO if we use CoreProposedChange instead of Node, pydantic is called through fast_depends @inject and raises an error
-#  as we are using a Node as argument.
+# We can't use CoreProposedChange type instead of Node as fast_depends enforces pydantic runtime type checks.
 @inject
 async def can_merge_proposed_change(
-    proposed_change: CoreProposedChange,
+    proposed_change: Node,
     db: InfrahubDatabase,
     pc_checker: ProposedChangeChecker = Depends(get_proposed_change_merger),  # noqa: B008
 ) -> str | None:
