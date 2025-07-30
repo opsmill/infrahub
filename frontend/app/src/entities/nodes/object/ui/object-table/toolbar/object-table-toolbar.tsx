@@ -3,14 +3,14 @@ import { ToolBarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object
 import { ToolbarDeleteObject } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-delete-action";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
-import { NodeObject } from "@/entities/nodes/types";
+import { NodeCore } from "@/entities/nodes/types";
 import { classNames } from "@/shared/utils/common";
 import { XIcon } from "lucide-react";
 
 export interface ObjectTableSelectionToolbarProps {
-  selectedRows: Array<NodeObject>;
+  selectedRows: Array<NodeCore>;
   onClose: () => void;
-  renderMore?: (props: { selectedRows: Array<NodeObject> }) => React.ReactNode;
+  renderMore?: (props: { selectedRows: Array<NodeCore> }) => React.ReactNode;
 }
 
 export function ObjectTableToolbar({

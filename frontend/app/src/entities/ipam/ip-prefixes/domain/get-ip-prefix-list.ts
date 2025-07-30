@@ -1,8 +1,9 @@
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { buildGetIpPrefixListQuery } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
+import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
@@ -14,7 +15,7 @@ export interface GetIpPrefixListParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;
 }
 
-export type GetIpPrefixList = (params: GetIpPrefixListParams) => Promise<Array<NodeObject>>;
+export type GetIpPrefixList = (params: GetIpPrefixListParams) => Promise<Array<IpPrefixNode>>;
 
 export const getIpPrefixList: GetIpPrefixList = async ({
   schema,
@@ -49,5 +50,5 @@ export const getIpPrefixList: GetIpPrefixList = async ({
     },
   });
 
-  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
+  return data[IP_PREFIX_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
 };
