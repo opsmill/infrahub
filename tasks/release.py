@@ -20,9 +20,7 @@ if TYPE_CHECKING:
 
 @task
 def markdownlint(context: Context) -> None:
-    has_markdownlint = check_if_command_available(
-        context=context, command_name="markdownlint-cli2"
-    )
+    has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
@@ -51,9 +49,7 @@ def vale(context: Context) -> None:
 @task
 def draft(context: Context) -> None:
     """Run `towncrier build --draft` to validate that Towncrier can read the Newsfragments."""
-    has_towncrier = check_if_command_available(
-        context=context, command_name="towncrier"
-    )
+    has_towncrier = check_if_command_available(context=context, command_name="towncrier")
 
     if not has_towncrier:
         print("Warning, Towncrier is not installed")
@@ -75,9 +71,7 @@ def lint(context: Context) -> None:
 
 @task
 def build_changelog(context: Context) -> None:
-    has_towncrier = check_if_command_available(
-        context=context, command_name="towncrier"
-    )
+    has_towncrier = check_if_command_available(context=context, command_name="towncrier")
 
     if not has_towncrier:
         print("Warning, Towncrier is not installed")
@@ -116,9 +110,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         chart_yaml = yaml.load(chart_path)
 
         if "appVersion" not in chart_yaml:
-            raise ValueError(
-                f"appVersion not found in {str(chart_path)}; no updates made."
-            )
+            raise ValueError(f"appVersion not found in {str(chart_path)}; no updates made.")
 
         old_app_version = chart_yaml.get("appVersion", "")
         if old_app_version == app_version:
@@ -130,9 +122,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         # Handle Helm chart version increment
         old_helm_version = chart_yaml.get("version", "")
         if not old_helm_version:
-            raise ValueError(
-                f"Helm chart `version` not found in {str(chart_path)}; no updates made."
-            )
+            raise ValueError(f"Helm chart `version` not found in {str(chart_path)}; no updates made.")
 
         # Split the Helm chart version into components for increment logic
         major, minor, patch = map(int, old_helm_version.split("."))
@@ -143,9 +133,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
             if app_version > old_app_version:
                 if int(app_version.split(".")[0]) > int(old_app_version.split(".")[0]):
                     new_helm_version = f"{major + 1}.0.0"
-                elif int(app_version.split(".")[1]) > int(
-                    old_app_version.split(".")[1]
-                ):
+                elif int(app_version.split(".")[1]) > int(old_app_version.split(".")[1]):
                     new_helm_version = f"{major}.{minor + 1}.0"
                 elif int(app_version.split(".")[2].split("a")[0]) > int(
                     old_app_version.split(".")[2].split("a")[0]
@@ -153,9 +141,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
                     new_helm_version = f"{major}.{minor}.{patch + 1}"
         except Exception:
             # Fallback in case app_version has non-standard format for Helm comparison
-            print(
-                f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}"
-            )
+            print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
 
         # Update the YAML
         chart_yaml["appVersion"] = app_version
@@ -173,22 +159,14 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
                 or "global" not in values_yaml["prefect-server"]
                 or "prefect" not in values_yaml["prefect-server"]["global"]
                 or "image" not in values_yaml["prefect-server"]["global"]["prefect"]
-                or "prefectTag"
-                not in values_yaml["prefect-server"]["global"]["prefect"]["image"]
-                or "repository"
-                not in values_yaml["prefect-server"]["global"]["prefect"]["image"]
-                or values_yaml["prefect-server"]["global"]["prefect"]["image"][
-                    "repository"
-                ]
+                or "prefectTag" not in values_yaml["prefect-server"]["global"]["prefect"]["image"]
+                or "repository" not in values_yaml["prefect-server"]["global"]["prefect"]["image"]
+                or values_yaml["prefect-server"]["global"]["prefect"]["image"]["repository"]
                 != "registry.opsmill.io/opsmill/infrahub"
             ):
-                print(
-                    f"prefect-server image tag not found in {str(values_path)}; no updates made."
-                )
+                print(f"prefect-server image tag not found in {str(values_path)}; no updates made.")
             else:
-                values_yaml["prefect-server"]["global"]["prefect"]["image"][
-                    "prefectTag"
-                ] = app_version
+                values_yaml["prefect-server"]["global"]["prefect"]["image"]["prefectTag"] = app_version
                 yaml_values.dump(values_yaml, values_path)
                 print(f"{str(values_path)} updated with `prefectTag`: {app_version}")
         elif chart == "infrahub-enterprise":
@@ -197,22 +175,16 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
                     if dependency["name"] == "infrahub":
                         # Update 'infrahub' dependencies in helm chart
                         dependency["version"] = dependency_version
-                        print(
-                            f"'infrahub' dependency update to {dependency_version} in {chart}"
-                        )
+                        print(f"'infrahub' dependency update to {dependency_version} in {chart}")
                         break
 
         yaml.dump(chart_yaml, chart_path)
 
-        print(
-            f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}"
-        )
+        print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
 
 
 @task
-def update_docker_compose(
-    context: Context, docker_file: str | None = "docker-compose.yml"
-) -> None:  # noqa: ARG001
+def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
 
@@ -258,9 +230,7 @@ def update_docker_compose(
 
 
 @task
-def update_test_containers(
-    context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml"
-) -> None:  # noqa: ARG001
+def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
     """Update test containers pyproject.toml with the current version from pyproject.toml."""
     print(" - [release] Update python_testcontainers/pyproject.toml")
 
@@ -272,12 +242,7 @@ def update_test_containers(
     test_containers_toml = test_containers_file.read_text(encoding="utf8")
 
     # Replace the version referenced there
-    new_toml = re.sub(
-        r'^version = ".*"',
-        f'version = "{version}"',
-        test_containers_toml,
-        flags=re.MULTILINE,
-    )
+    new_toml = re.sub(r'^version = ".*"', f'version = "{version}"', test_containers_toml, flags=re.MULTILINE)
 
     # Print the new file out
     test_containers_file.write_text(new_toml, encoding="utf8")
@@ -339,13 +304,11 @@ def update_docker_compose_env_vars(
     existing_vars = {}
 
     for i, line in enumerate(docker_compose):
-        if line.strip().startswith("x-infrahub-config: &infrahub_base_config"):
+        if line.strip().startswith("x-infrahub-config: &infrahub_config"):
             in_infrahub_config_section = True
             infrahub_config_start = i + 1
             continue
-        if in_infrahub_config_section and (
-            not line.strip() or line.strip().startswith("services:")
-        ):
+        if in_infrahub_config_section and (not line.strip() or line.strip().startswith("services:")):
             in_infrahub_config_section = False
             infrahub_config_end = i
             break
@@ -372,9 +335,7 @@ def update_docker_compose_env_vars(
 
         if var in existing_vars:
             line_idx = existing_vars[var]
-            existing_value = (
-                docker_compose[line_idx].split(":", 1)[1].strip().strip('"')
-            )
+            existing_value = docker_compose[line_idx].split(":", 1)[1].strip().strip('"')
 
             match = pattern.match(existing_value)
             if match and match.group(1) == var and match.group(2) == default_value_str:
@@ -386,9 +347,7 @@ def update_docker_compose_env_vars(
                 "INFRAHUB_CACHE_PASSWORD",
             ]:
                 key_name = var.replace("INFRAHUB_", "").lower()
-                new_config_lines.append(
-                    f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}"
-                )
+                new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
             elif default_value_str:
                 new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
             else:
@@ -400,19 +359,13 @@ def update_docker_compose_env_vars(
             "INFRAHUB_CACHE_PASSWORD",
         ]:
             key_name = var.replace("INFRAHUB_", "").lower()
-            new_config_lines.append(
-                f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}"
-            )
+            new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
         elif default_value_str:
             new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
         else:
             new_config_lines.append(f"  {var}:")
 
-    docker_compose = (
-        docker_compose[:infrahub_config_start]
-        + new_config_lines
-        + docker_compose[infrahub_config_end:]
-    )
+    docker_compose = docker_compose[:infrahub_config_start] + new_config_lines + docker_compose[infrahub_config_end:]
 
     docker_path.write_text("\n".join(docker_compose) + "\n", encoding="utf-8")
     print(f"{docker_file} updated with environment variables")
@@ -453,9 +406,7 @@ def gen_config_env(
             if issubclass(field_inst.__class__, BaseSettings):
                 fetch_fields(field_inst)
             else:
-                for _, field_env_name, _ in env_settings._extract_field_info(
-                    field, field_name
-                ):
+                for _, field_env_name, _ in env_settings._extract_field_info(field, field_name):
                     env_vars.add(field_env_name.upper())
                     env_defaults[field_env_name.upper()] = field.get_default()
 
