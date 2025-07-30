@@ -2,19 +2,16 @@ import {
   IPAddressAvailableIdentifierProps,
   IpAddressAvailableIdentifier,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { useSetAtom } from "jotai";
 import React from "react";
 
 export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIdentifierProps) {
   const { selectedSchema, permission } = useObjectTableContext();
   const [isCreateFormOpen, setIsCreateFormOpen] = React.useState(false);
-  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const isCreationAllowed = permission.create.isAllowed;
 
@@ -46,10 +43,6 @@ export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIde
             queryClient.invalidateQueries({
               predicate: (query) => query.queryKey.includes("objects"),
             });
-
-            if (location.pathname.startsWith("/ipam")) {
-              reloadIpamTree(parentNode?.id);
-            }
           }}
           currentObject={{ address: { value: props.ipAddressAvailableNode.address.value } }}
           onCancel={() => setIsCreateFormOpen(false)}
