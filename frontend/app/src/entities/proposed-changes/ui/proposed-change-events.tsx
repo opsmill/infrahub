@@ -15,6 +15,7 @@ export const ProposedChangeEvents = () => {
       primaryNodeIds: proposedChangeId ? [proposedChangeId] : undefined,
       eventType: PROPOSED_CHANGE_EVENTS,
       limit: 0,
+      order: "ASC",
     },
   });
 
