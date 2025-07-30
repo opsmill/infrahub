@@ -78,7 +78,7 @@ export const getIpAddressTableColumns = (
             cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue()} />,
           }),
         ]
-      : ([] as any)),
+      : ([] as Array<any>)),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
         header: () => (

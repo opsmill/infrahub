@@ -11,21 +11,21 @@ import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export interface GetIpAddressLisGraphQLQueryParams extends PaginationParams {
+export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   filters?: Array<Filter>;
   objectKind: string;
   attributes: Array<AttributeSchema>;
   relationships: Array<RelationshipSchema>;
 }
 
-export function getIpAddressLisGraphQLQuery({
+export function getIpAddressListGraphQLQuery({
   limit,
   offset,
   filters,
   objectKind,
   attributes,
   relationships,
-}: GetIpAddressLisGraphQLQueryParams) {
+}: GetIpAddressListGraphQLQueryParams) {
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
@@ -69,14 +69,14 @@ export function getIpAddressLisGraphQLQuery({
 
 export interface getIpAddressListFromApiParams
   extends ContextParams,
-    GetIpAddressLisGraphQLQueryParams {}
+    GetIpAddressListGraphQLQueryParams {}
 
 export function getIpAddressListFromApi({
   branchName,
   atDate,
   ...params
 }: getIpAddressListFromApiParams) {
-  const graphqlQuery = getIpAddressLisGraphQLQuery(params);
+  const graphqlQuery = getIpAddressListGraphQLQuery(params);
 
   return graphqlClient.query({
     query: gql(graphqlQuery),
