@@ -15,10 +15,10 @@ export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, (props: any) => Reac
     return <div className="text-gray-600">rejected the proposed change</div>;
   },
   "infrahub.proposed_change.approval_revoked": () => {
-    return <div className="text-gray-600">canceled its approval</div>;
+    return <div className="text-gray-600">canceled the approval</div>;
   },
   "infrahub.proposed_change.rejection_revoked": () => {
-    return <div className="text-gray-600">canceled its rejection</div>;
+    return <div className="text-gray-600">canceled the rejection</div>;
   },
 };
 
