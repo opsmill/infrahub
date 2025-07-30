@@ -38,11 +38,23 @@ class NodeDuplicateQuery(Query):
 
     def render_match(self) -> str:
         labels_str = ":".join(self.previous_node.labels)
-        query = f"""
+        query = """
         // Find all the active nodes
-        MATCH (node:{labels_str})
+        MATCH (node:%(labels_str)s)
         WITH DISTINCT node
-        """
+        CALL (node) {
+            WITH labels(node) AS node_labels
+            UNWIND node_labels AS n_label
+            ORDER BY n_label ASC
+            WITH collect(n_label) AS sorted_labels
+
+            RETURN (
+                node.kind = $new_node.kind AND
+                sorted_labels = $new_sorted_labels
+            ) AS already_migrated
+        }
+        WITH node WHERE already_migrated = FALSE
+        """ % {"labels_str": labels_str}
 
         return query
 
@@ -111,6 +123,7 @@ class NodeDuplicateQuery(Query):
 
         self.params["new_node"] = self.new_node.model_dump()
         self.params["previous_node"] = self.previous_node.model_dump()
+        self.params["new_sorted_labels"] = sorted(self.new_node.labels + ["Node"])
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch"] = self.branch.name
