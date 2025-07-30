@@ -10,7 +10,6 @@ from infrahub.core.diff.query.summary_counts_enricher import (
     DiffFieldsSummaryCountsEnricherQuery,
     DiffNodesSummaryCountsEnricherQuery,
 )
-from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
