@@ -136,6 +136,28 @@ class ProposedChangeReviewRevokedEvent(ObjectType):
     payload = Field(GenericScalar, required=True)
 
 
+class ProposedChangeReviewRequestedEvent(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    requested_by_account_id = String(
+        required=True, description="The ID of the user who requested the proposed change to be reviewed"
+    )
+    requested_by_account_name = String(
+        required=True, description="The name of the user who requested the proposed change to be reviewed"
+    )
+    payload = Field(GenericScalar, required=True)
+
+
+class ProposedChangeMergedEvent(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    merged_by_account_id = String(required=True, description="The ID of the user who merged the proposed change")
+    merged_by_account_name = String(required=True, description="The name of the user who merged the proposed change")
+    payload = Field(GenericScalar, required=True)
+
+
 # ---------------------------------------
 # Node/Object events
 # ---------------------------------------
@@ -190,5 +212,7 @@ EVENT_TYPES: dict[str, type[ObjectType]] = {
     events.ProposedChangeApprovalRevokedEvent.event_name: ProposedChangeReviewRevokedEvent,
     events.ProposedChangeRejectedEvent.event_name: ProposedChangeReviewEvent,
     events.ProposedChangeRejectionRevokedEvent.event_name: ProposedChangeReviewRevokedEvent,
+    events.ProposedChangeReviewRequestedEvent.event_name: ProposedChangeReviewRequestedEvent,
+    events.ProposedChangeMergedEvent.event_name: ProposedChangeMergedEvent,
     "undefined": StandardEvent,
 }

@@ -184,6 +184,18 @@ class PrefectEventData(PrefectEventModel):
     def _return_proposed_change_reviewer_former_decision(self) -> dict[str, Any]:
         return {"reviewer_former_decision": self.resource.get("infrahub.proposed_change.reviewer_former_decision")}
 
+    def _return_proposed_change_requested_by(self) -> dict[str, Any]:
+        return {
+            "requested_by_account_id": self.resource.get("infrahub.proposed_change.requested_by_account_id"),
+            "requested_by_account_name": self.resource.get("infrahub.proposed_change.requested_by_account_name"),
+        }
+
+    def _return_proposed_change_merged_by(self) -> dict[str, Any]:
+        return {
+            "merged_by_account_id": self.resource.get("infrahub.proposed_change.merged_by_account_id"),
+            "merged_by_account_name": self.resource.get("infrahub.proposed_change.merged_by_account_name"),
+        }
+
     def _return_event_specifics(self) -> dict[str, Any]:
         """Return event specific data based on the type of event being processed"""
 
@@ -214,6 +226,10 @@ class PrefectEventData(PrefectEventModel):
                     **self._return_proposed_change_reviewer(),
                     **self._return_proposed_change_reviewer_former_decision(),
                 }
+            case "infrahub.proposed_change.review_requested":
+                event_specifics = self._return_proposed_change_requested_by()
+            case "infrahub.proposed_change.merged":
+                event_specifics = self._return_proposed_change_merged_by()
 
         return event_specifics
 
