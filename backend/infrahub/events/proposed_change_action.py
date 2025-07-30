@@ -17,6 +17,7 @@ class ProposedChangeEvent(InfrahubEvent):
             "infrahub.proposed_change.id": self.proposed_change_id,
             "infrahub.proposed_change.name": self.proposed_change_name,
             "infrahub.proposed_change.state": self.proposed_change_state,
+            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
 
@@ -31,7 +32,6 @@ class ProposedChangeReviewEvent(ProposedChangeEvent):
             "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
             "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
             "infrahub.proposed_change.reviewer_decision": self.reviewer_decision,
-            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
 
@@ -46,7 +46,6 @@ class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
             "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
             "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
             "infrahub.proposed_change.reviewer_former_decision": self.reviewer_former_decision,
-            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
 
@@ -63,7 +62,6 @@ class ProposedChangeMergedEvent(ProposedChangeEvent):
             **super().get_resource(),
             "infrahub.proposed_change.merged_by_account_id": self.merged_by_account_id,
             "infrahub.proposed_change.merged_by_account_name": self.merged_by_account_name,
-            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
 
@@ -84,7 +82,6 @@ class ProposedChangeReviewRequestedEvent(ProposedChangeEvent):
             **super().get_resource(),
             "infrahub.proposed_change.review_requested_by_account_id": self.requested_by_account_id,
             "infrahub.proposed_change.review_requested_by_account_name": self.requested_by_account_name,
-            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
 
