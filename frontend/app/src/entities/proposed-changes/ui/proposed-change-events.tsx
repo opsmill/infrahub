@@ -1,5 +1,6 @@
 import { useGetEvents } from "@/entities/events/domain/get-events.query";
 import { EventCard } from "@/entities/events/ui/event-card";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -11,7 +12,8 @@ export const ProposedChangeEvents = () => {
 
   const { isPending, data, error } = useGetEvents({
     filters: {
-      relatedNodeIds: proposedChangeId ? [proposedChangeId] : undefined,
+      primaryNodeIds: proposedChangeId ? [proposedChangeId] : undefined,
+      eventType: PROPOSED_CHANGE_EVENTS,
       limit: 0,
     },
   });
@@ -27,7 +29,7 @@ export const ProposedChangeEvents = () => {
   }
 
   if (!flatData.length) {
-    return <NoDataFound message="No activity found for this object." />;
+    return <NoDataFound message="No activity found for this proposed change." />;
   }
 
   return (
