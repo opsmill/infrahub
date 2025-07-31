@@ -22,6 +22,7 @@ export function LinkTab({ href, className, ...props }: LinkTabProps) {
   return (
     <NavLink
       to={href}
+      end
       className={({ isActive }) =>
         classNames(
           "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
