@@ -7,13 +7,9 @@ import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
 import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useAtomValue } from "jotai";
-import React from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker.js?worker&url";
-import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker.js?worker&url";
-import graphqlWorker from "./graphql-worker?worker&url";
-
+import "graphiql/setup-workers/esm.sh";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
 
@@ -42,21 +38,6 @@ const GraphqlSandboxPage = () => {
   const [query] = useQueryParam(QSP.QUERY, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
-
-  React.useEffect(() => {
-    window.MonacoEnvironment = {
-      getWorkerUrl: (_moduleId: string, label: string) => {
-        switch (label) {
-          case "json":
-            return jsonWorker;
-          case "graphql":
-            return graphqlWorker;
-          default:
-            return editorWorker;
-        }
-      },
-    };
-  }, []);
 
   return (
     <GraphiQL

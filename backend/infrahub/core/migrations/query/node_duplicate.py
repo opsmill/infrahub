@@ -37,9 +37,11 @@ class NodeDuplicateQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
+        labels_str = ":".join(self.previous_node.labels)
         query = f"""
         // Find all the active nodes
-        MATCH (node:{self.previous_node.kind})
+        MATCH (node:{labels_str})
+        WITH DISTINCT node
         """
 
         return query
@@ -145,6 +147,7 @@ class NodeDuplicateQuery(Query):
         WITH active_node, new_node
         // Process Outbound Relationship
         MATCH (active_node)-[]->(peer)
+        WITH DISTINCT active_node, new_node, peer
         CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
@@ -164,6 +167,7 @@ class NodeDuplicateQuery(Query):
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
         MATCH (active_node)<-[]-(peer)
+        WITH DISTINCT active_node, new_node, peer
         CALL (active_node, peer) {
             MATCH (active_node)<-[r]-(peer)
             WHERE %(branch_filter)s
