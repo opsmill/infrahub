@@ -4011,3 +4011,58 @@ async def test_calculate_with_renamed_relationships(
 
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 0
+
+async def test_migrated_kind_node_then_peer_delete(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main,
+    car_camry_main,
+    person_john_main,
+    person_jane_main,
+    person_alfred_main,
+    person_albert_main,
+):
+    # migrate TestPerson kind on main
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    original_person_schema = schema.get_node(name="TestPerson")
+    person_schema = schema.get_node(name="TestPerson")
+    person_schema.inherit_from = ["GenericThing"]
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=original_person_schema,
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+  
+    # migrate TestPerson kind back to original on a different branch
+    branch = await create_branch(db=db, branch_name="branch-undo-kind-migrate")
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    original_person_schema = schema.get_node(name="TestPerson")
+    person_schema = schema.get_node(name="TestPerson")
+    person_schema.inherit_from = []
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=original_person_schema,
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    # create a branch and delete a car on the branch
+    branch = await create_branch(db=db, branch_name="branch-delete-car")
+    branch_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_accord.delete(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers=None,
+        include_unchanged=True,
+    )
