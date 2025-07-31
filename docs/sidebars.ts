@@ -248,7 +248,7 @@ const sidebars: SidebarsConfig = {
                 type: 'generated-index',
               },
               items: [
-                'topics/auth',
+                'topics/authentication',
                 'topics/permissions-roles',
               ],
             },
