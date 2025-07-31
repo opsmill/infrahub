@@ -21,6 +21,7 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
+from ...proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 
 from ...proposed_change.models import RequestProposedChangePipeline
 from ..types.task import TaskInfo
@@ -385,10 +386,14 @@ class ProposedChangeCheckForApprovalRevoke(Mutation):
         data: dict[str, Any],
     ) -> dict[str, bool]:
 
-        graphql_context: GraphqlContext = info.context
+        db = info.context.db
+        ids: list[str] | None
+        try:
+            ids = data["ids"]
+        except KeyError:
+            ids = None
 
-
-
+        await do_revoke_approvals_on_updated_pcs(db=db, proposed_changes_ids=ids)
         return cls(ok=True)
 
 
