@@ -128,3 +128,4 @@ class InfrahubBaseMutation(ObjectType):
     ResolveDiffConflict = ResolveDiffConflict.Field()
 
     ConvertObjectType = ConvertObjectType.Field()
+    ProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()

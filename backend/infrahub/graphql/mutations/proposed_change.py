@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Self
 
-from graphene import Boolean, Enum, InputObjectType, Mutation, String
+from graphene import Boolean, Enum, Field, InputObjectType, Mutation, String, List
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.account import GlobalPermission
@@ -23,6 +23,7 @@ from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, P
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from ...proposed_change.models import RequestProposedChangePipeline
+from ..types.task import TaskInfo
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
@@ -310,6 +311,85 @@ class ProposedChangeReview(Mutation):
 
 class ProposedChangeMergeInput(InputObjectType):
     id = String(required=True)
+
+
+class ProposedChangeMerge(Mutation):
+    class Arguments:
+        data = ProposedChangeMergeInput(required=True)
+        wait_until_completion = Boolean(required=False)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: dict[str, Any],
+        wait_until_completion: bool = True,
+    ) -> dict[str, bool]:
+        graphql_context: GraphqlContext = info.context
+        task: dict | None = None
+
+        identifier = data.get("id", "")
+        proposed_change = await NodeManager.get_one(
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=graphql_context.db, raise_on_error=True
+        )
+        state = ProposedChangeState(proposed_change.state.value.value)
+        if state != ProposedChangeState.OPEN:
+            raise ValidationError("Only proposed change in OPEN state can be merged")
+
+        async with graphql_context.db.start_session() as db:
+            proposed_change.state.value = ProposedChangeState.MERGING.value
+            await proposed_change.save(db=db)
+
+        if wait_until_completion:
+            await graphql_context.service.workflow.execute_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
+            )
+        else:
+            workflow = await graphql_context.service.workflow.submit_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
+            )
+            task = {"id": workflow.id}
+
+        return cls(ok=True, task=task)
+
+
+class ProposedChangeCheckForApprovalRevokeInput(InputObjectType):
+    ids = Field(List(of_type=String, required=True), required=False)
+
+
+class ProposedChangeCheckForApprovalRevoke(Mutation):
+    class Arguments:
+        data = ProposedChangeCheckForApprovalRevokeInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: dict[str, Any],
+    ) -> dict[str, bool]:
+
+        graphql_context: GraphqlContext = info.context
+
+
+
+        return cls(ok=True)
 
 
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:

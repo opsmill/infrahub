@@ -50,6 +50,7 @@ def default_append_git_suffix_domains() -> list[str]:
 
 class EnterpriseFeatures(str, Enum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
+    REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
 
 
 class UserInfoMethod(str, Enum):
@@ -781,13 +782,20 @@ class PolicySettings(BaseSettings):
         ge=0,
         description="Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)",
     )
+    revoke_proposed_change_approvals: bool = Field(
+        default=False,
+        description="Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.)",
+    )
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
+        features = []
         if self.required_proposed_change_approvals > 0:
-            return [EnterpriseFeatures.PROPOSED_CHANGE_REQUIRE_APPROVAL]
-        return []
+            features.append(EnterpriseFeatures.PROPOSED_CHANGE_REQUIRE_APPROVAL)
+        if self.revoke_proposed_change_approvals:
+            features.append(EnterpriseFeatures.REVOKE_PROPOSED_CHANGE_APPROVALS)
+        return features
 
 
 @dataclass
