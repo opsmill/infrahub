@@ -1,5 +1,5 @@
 import { classNames } from "@/shared/utils/common";
-import { LinkProps, Link as RouterLink } from "react-router";
+import { LinkProps, NavLink, NavLinkProps, Link as RouterLink } from "react-router";
 
 export const Link = (props: LinkProps) => {
   const { children, className, ...propsToPass } = props;
@@ -14,21 +14,21 @@ export const Link = (props: LinkProps) => {
   );
 };
 
-interface LinkTabProps extends Omit<LinkProps, "to"> {
+interface LinkTabProps extends Omit<NavLinkProps, "to"> {
   href: string;
 }
 
 export function LinkTab({ href, className, ...props }: LinkTabProps) {
-  const isTabActive = location.pathname.endsWith(href.split("?")?.[0] as string);
-
   return (
-    <RouterLink
+    <NavLink
       to={href}
-      className={classNames(
-        "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
-        "px-3 py-2 border-b-2 border-transparent inline-flex items-center gap-2 text-sm truncate h-11",
-        isTabActive && "border-custom-blue-600"
-      )}
+      className={({ isActive }) =>
+        classNames(
+          "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
+          "px-3 py-2 border-b-2 border-transparent inline-flex items-center gap-2 text-sm truncate h-11",
+          isActive && "border-custom-blue-600"
+        )
+      }
       {...props}
     />
   );
