@@ -21,6 +21,11 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
+<<<<<<< Updated upstream
+=======
+from ... import lock
+from ...lock import build_object_lock_name, InfrahubMultiLock, InfrahubLock
+>>>>>>> Stashed changes
 
 from ... import lock
 from ...lock import InfrahubMultiLock, build_object_lock_name
@@ -238,7 +243,7 @@ class ProposedChangeReview(Mutation):
         )
         pc_id = str(data.id)
         lock_name = build_object_lock_name(pc_id)
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+        async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=pc_id, kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
             )
