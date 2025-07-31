@@ -270,7 +270,7 @@ class ProposedChangeReview(Mutation):
             )
 
             async with graphql_context.db.start_session() as db:
-                await cls._handle_decision(
+                event = await cls._handle_decision(
                     db=db,
                     decision=data.decision,
                     proposed_change=proposed_change,
@@ -278,6 +278,10 @@ class ProposedChangeReview(Mutation):
                     graphql_context=graphql_context,
                 )
                 await proposed_change.save(db=db)
+
+                if event:
+                    event_service = await get_event_service()
+                    await event_service.send(event=event)
 
         return {"ok": True}
 
@@ -289,7 +293,7 @@ class ProposedChangeReview(Mutation):
         proposed_change: CoreProposedChange,
         current_user: Node,
         context: GraphqlContext,
-    ) -> None:
+    ) -> InfrahubEvent | None:
         """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
 
         approved_by = await proposed_change.approved_by.get_peers(db=db)
@@ -371,9 +375,7 @@ class ProposedChangeReview(Mutation):
             case _:
                 raise ValidationError(input_value=f"Invalid decision {decision}")
 
-        if event:
-            event_service = await get_event_service()
-            await event_service.send(event=event)
+        return event
 
 
 class ProposedChangeMergeInput(InputObjectType):
