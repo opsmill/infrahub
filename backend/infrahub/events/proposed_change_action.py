@@ -29,13 +29,21 @@ class ProposedChangeReviewEvent(ProposedChangeEvent):
     reviewer_account_name: str = Field(..., description="The name of the user who reviewed the proposed change")
     reviewer_decision: str = Field(..., description="The decision made by the reviewer")
 
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": self.reviewer_account_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": InfrahubKind.GENERICACCOUNT,
+                "infrahub.node.id": self.reviewer_account_id,
+                "infrahub.reviewer.account.name": self.reviewer_account_name,
+            }
+        )
+        return related
+
     def get_resource(self) -> dict[str, str]:
-        return {
-            **super().get_resource(),
-            "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
-            "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
-            "infrahub.proposed_change.reviewer_decision": self.reviewer_decision,
-        }
+        return {**super().get_resource(), "infrahub.proposed_change.reviewer_decision": self.reviewer_decision}
 
 
 class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
@@ -43,11 +51,22 @@ class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
     reviewer_account_name: str = Field(..., description="The name of the user who reviewed the proposed change")
     reviewer_former_decision: str = Field(..., description="The former decision made by the reviewer")
 
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": self.reviewer_account_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": InfrahubKind.GENERICACCOUNT,
+                "infrahub.node.id": self.reviewer_account_id,
+                "infrahub.reviewer.account.name": self.reviewer_account_name,
+            }
+        )
+        return related
+
     def get_resource(self) -> dict[str, str]:
         return {
             **super().get_resource(),
-            "infrahub.proposed_change.reviewer_account_id": self.reviewer_account_id,
-            "infrahub.proposed_change.reviewer_account_name": self.reviewer_account_name,
             "infrahub.proposed_change.reviewer_former_decision": self.reviewer_former_decision,
         }
 
@@ -59,6 +78,19 @@ class ProposedChangeMergedEvent(ProposedChangeEvent):
 
     merged_by_account_id: str = Field(..., description="The ID of the user who merged the proposed change")
     merged_by_account_name: str = Field(..., description="The name of the user who merged the proposed change")
+
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": self.merged_by_account_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": InfrahubKind.GENERICACCOUNT,
+                "infrahub.node.id": self.merged_by_account_id,
+                "infrahub.merged_by.account.name": self.merged_by_account_name,
+            }
+        )
+        return related
 
     def get_resource(self) -> dict[str, str]:
         return {
@@ -80,12 +112,18 @@ class ProposedChangeReviewRequestedEvent(ProposedChangeEvent):
         ..., description="The name of the user who requested the proposed change to be reviewed"
     )
 
-    def get_resource(self) -> dict[str, str]:
-        return {
-            **super().get_resource(),
-            "infrahub.proposed_change.review_requested_by_account_id": self.requested_by_account_id,
-            "infrahub.proposed_change.review_requested_by_account_name": self.requested_by_account_name,
-        }
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": self.requested_by_account_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": InfrahubKind.GENERICACCOUNT,
+                "infrahub.node.id": self.requested_by_account_id,
+                "infrahub.requested_by.account.name": self.requested_by_account_name,
+            }
+        )
+        return related
 
 
 class ProposedChangeApprovedEvent(ProposedChangeReviewEvent):
