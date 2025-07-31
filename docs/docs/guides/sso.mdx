@@ -298,7 +298,7 @@ If authentication fails, check the [Troubleshooting section](#troubleshooting).
 To configure multiple identity providers:
 
 - Configure each provider using the same steps as above, but with the appropriate slot name (e.g., `provider1`, `provider2`)
-- Make sure to set the `INFRAHUB_SECURITY_OIDC_PROVIDERS` or `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` environment variable to include all configured providers
+- Make sure to set the `INFRAHUB_SECURITY_OIDC_PROVIDERS` or `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` variable to include all configured providers
 
 <Tabs groupId="config-method">
 <TabItem value="environment-variables" default>
@@ -310,7 +310,7 @@ export INFRAHUB_OIDC_PROVIDER1_*
 # Configuration for second provider
 export INFRAHUB_OIDC_PROVIDER2_*
 
-# Then enable the provider
+# Then enable the providers
 export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1", "provider2"]'
 ```
 
@@ -325,6 +325,7 @@ export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1", "provider2"]'
 # Configuration for second provider
 
 [security]
+# Then enable the providers
 oidc_providers = ["provider1", "provider2"]
 ```
 
@@ -335,4 +336,3 @@ oidc_providers = ["provider1", "provider2"]
 
 - [Authentication methods](../topics/authentication)
 - [Configuration reference](../reference/configuration)
-- [Security best practices](../topics/security)
