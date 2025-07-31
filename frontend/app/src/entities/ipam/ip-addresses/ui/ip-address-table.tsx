@@ -34,6 +34,7 @@ export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
         data={flatData}
         isLoading={isPending || isFetchingNextPage}
         renderEmpty={() => <ObjectTableEmpty schema={selectedSchema} />}
+        data-testid="ip-address-table"
       />
     </InfiniteScroll>
   );
