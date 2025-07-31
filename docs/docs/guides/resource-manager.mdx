@@ -1,5 +1,5 @@
 ---
-title: Resource managers
+title: Resource management
 ---
 
 import VideoPlayer from '../../src/components/VideoPlayer';
@@ -138,7 +138,9 @@ infrahubctl schema load /tmp/schema.yml
 ```
 
 :::success
+
 You should see: `schema '/tmp/schema.yml' loaded successfully`
+
 :::
 
 ## Create IP address pools
@@ -165,18 +167,14 @@ Navigate to **IP Prefixes** and create a new prefix with:
 
   ```graphql
   mutation {
-    CoreIPPrefixPoolCreate(data: {
-      name: {value: "Customer Service Pool"},
-      default_prefix_length: {value: 31},
-      default_prefix_type: {value: "IpamIPPrefix"},
-      resources: [{id: "<id of prefix>"}],
-      ip_namespace: {id: "default"}
+    IpamIPPrefixCreate(data: {
+      prefix: {value: "10.100.0.0/24"},
+      member_type: {value: "address"},
     })
     {
       ok
       object {
         id
-        hfid
       }
     }
   }
