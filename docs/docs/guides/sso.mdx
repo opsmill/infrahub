@@ -137,22 +137,24 @@ On the registration overview page, click the **Endpoints** tab to find the neces
 
 <Tabs groupId="selected-protocol">
 <TabItem value="oidc" default>
-| Field | Location |
+| Field | Location/Value |
 |-------|-------|
 | Client ID | The "Application (client) ID" shown on the app overview page |
 | Client Secret | The value of the client secret you created (only visible at creation time) |
 | Discovery URL | Called "OpenID Connect metadata document" under the **Endpoints** tab |
+| Display Label | For example: `Microsoft Entra ID` |
+| Icon | For example: `mdi:microsoft` |
 </TabItem>
 <TabItem value="oauth2">
-| Field | Location |
+| Field | Location/Value |
 |-------|-------|
 | Client ID | The "Application (client) ID" shown on the app overview page |
 | Client Secret | The value of the client secret you created (only visible at creation time) |
 | Authorization URL | The "OAuth 2.0 authorization endpoint (v2)" URL under the **Endpoints** tab |
 | Token URL | The "OAuth 2.0 token endpoint (v2)" URL under the **Endpoints** tab |
 | Userinfo URL | The value is static: `https://graph.microsoft.com/oidc/userinfo` |
-| Display Label | This is cosmetic: `Microsoft Entra ID` |
-| Icon | This is cosmetic: `mdi:microsoft` |
+| Display Label | For example: `Microsoft Entra ID` |
+| Icon | For example: `mdi:microsoft` |
 </TabItem>
 </Tabs>
 
