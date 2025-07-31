@@ -1294,7 +1294,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         query: CoreGraphQLQuery,
     ) -> ArtifactGenerateResult:
         """It doesn't look like this is used anywhere today ... we should either remove it or refactor render_artifact below to use this."""
-        variables = target.extract(params=definition.parameters.value)
+        variables = await target.extract(params=definition.parameters.value)
         response = await self.sdk.query_gql_query(
             name=query.name.value,
             variables=variables,
