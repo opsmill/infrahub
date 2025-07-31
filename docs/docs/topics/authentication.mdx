@@ -5,11 +5,13 @@ import ReferenceLink from "../../src/components/Card";
 
 # Authentication
 
-Infrahub provides flexible authentication options to fit various organizational needs. You can authenticate users through a local user store maintained within Infrahub or by integrating with external identity providers through single sign-on protocols.
+Infrahub provides flexible authentication options to fit various organizational needs.
+
+You can authenticate users through a local user store maintained within Infrahub or by integrating with external identity providers through single sign-on protocols.
 
 This topic explains the authentication mechanisms supported by Infrahub and how they integrate with your existing identity management systems.
 
-## Authentication methods
+## User authentication methods
 
 ### Local user store
 
@@ -65,24 +67,70 @@ OIDC extends OAuth 2.0 by adding a standardized authentication layer.
 When configuring an external identity provider, OIDC is generally recommended as it provides standardized identity information.
 :::
 
+## User permission management
+
+Users are allocated permissions through a hierarchical system of groups and roles.
+
+- **Users** are members of **Groups**
+- **Groups** are associated with **Roles**
+- **Roles** are allocated specific **Permissions**
+
+:::note Authentication & Authorization
+Authentication works in conjunction with Infrahub's authorization system, which controls what actions authenticated users can perform. While authentication verifies who you are, authorization determines what you can do within the system.
+
+Authentication is the first step - it creates users and assigns them to groups. Authorization then attaches permissions and roles to those groups.
+:::
+
+<ReferenceLink title="Roles and permissions" url="./permissions-roles"/>
+
+## Anonymous access
+
+By default, Infrahub allows anonymous access in read-only mode. This can be disabled through either:
+
+- The configuration parameter: `main.allow_anonymous_access`
+- The environment variable: `INFRAHUB_ALLOW_ANONYMOUS_ACCESS`
+
+:::warning
+Disabling anonymous access is recommended for production environments to ensure that only authenticated users can access the system.
+:::
+
 ## Authentication flow
 
 When a user attempts to access Infrahub, the following authentication flow occurs:
 
 1. The user is presented with available authentication options (local login and configured SSO providers)
-    :::note
-    It's possible to have multiple SSO providers configured. Even with SSO provider enabled, local login remains available for fallback scenarios (for example when identity provider is unavailable).
-    :::
+   :::info
+   Multiple SSO providers can be configured simultaneously. Even with SSO providers enabled, local login remains available for fallback scenarios (such as when an identity provider is unavailable).
+   :::
 2. Upon successful authentication:
    - For local users: Credentials are verified against the local user store
    - For SSO users: The user is redirected to the identity provider, authenticated there, and returned to Infrahub
-3. If authentication succeeds, a user session is created
-4. For SSO users who don't already exist in Infrahub, a local user record is created
+3. A user session is created after successful authentication
+4. For first-time SSO users, a corresponding local user record is automatically created
 5. Group memberships and roles are applied based on configuration
 6. The user is granted access according to their assigned permissions
 
+## Application authentication
+
+Infrahub supports two authentication methods for applications and integrations:
+
+- **JWT Tokens**: Short-lived tokens generated on demand from the API
+- **API Tokens**: Long-lived tokens generated ahead of time for persistent access
+
+### Authentication method compatibility
+
+The table below shows which authentication methods are supported by different Infrahub interfaces:
+
+| Interface          | JWT Token | API Token |
+| ------------------ | :-------: | :-------: |
+| API / GraphQL      | Yes       | Yes       |
+| Frontend           | Yes       | No        |
+| Python SDK         | Yes       | Yes       |
+| infrahubctl        | Yes       | Yes       |
+| GraphQL Playground | No        | Yes       |
+
+<ReferenceLink title="Managing API Tokens Guide" url="../guides/managing-api-tokens"/>
+
 ## Related concepts
 
-Authentication works in conjunction with Infrahub's authorization system, which controls what actions authenticated users can perform. While authentication verifies who you are, authorization determines what you can do within the system.
-
-For more information about controlling access after authentication, see [Permissions and roles](./permissions-roles).
+- [Roles and permissions topic](./permissions-roles)
