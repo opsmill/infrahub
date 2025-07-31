@@ -297,26 +297,34 @@ def update_docker_compose_env_vars(
     docker_path = Path(docker_file)
     docker_compose = docker_path.read_text(encoding="utf-8").splitlines()
 
-    in_infrahub_config_section = False
-    infrahub_config_start = None
-    infrahub_config_end = None
+    def get_env_vars_in_anchor(anchor_name: str, docker_compose: list[str]) -> tuple[dict, int | None, int | None]:
+        in_config_section = False
+        infrahub_config_start = None
+        infrahub_config_end = None
 
-    existing_vars = {}
+        existing_vars = {}
 
-    for i, line in enumerate(docker_compose):
-        if line.strip().startswith("x-infrahub-config: &infrahub_base_config"):
-            in_infrahub_config_section = True
-            infrahub_config_start = i + 1
-            continue
-        if in_infrahub_config_section and (not line.strip() or line.strip().startswith("services:")):
-            in_infrahub_config_section = False
-            infrahub_config_end = i
-            break
-        if in_infrahub_config_section:
-            var_name = line.split(":", 1)[0].strip()
-            existing_vars[var_name] = i
+        for i, line in enumerate(docker_compose):
+            if line.strip().startswith(anchor_name):
+                in_config_section = True
+                infrahub_config_start = i + 1
+                continue
+            if in_config_section and (not line.strip() or line.strip().startswith("services:")):
+                in_config_section = False
+                infrahub_config_end = i
+                break
+            # Skip YAML alias in the config section
+            if in_config_section and not line.strip().startswith("<<") and not line.strip().startswith("#"):
+                var_name = line.split(":", 1)[0].strip()
+                existing_vars[var_name] = i
 
-    all_vars = sorted(existing_vars.keys() | set(env_vars))
+        return existing_vars, infrahub_config_start, infrahub_config_end
+
+    infrahub_base_config, infrahub_config_start, infrahub_config_end = get_env_vars_in_anchor(
+        "x-infrahub-config: &infrahub_base_config", docker_compose
+    )
+    infrahub_sso_config, *_ = get_env_vars_in_anchor("x-infrahub-api-server: &infrahub_api_server", docker_compose)
+    all_vars = sorted(infrahub_base_config.keys() | set(env_vars) - infrahub_sso_config.keys())
     pattern = re.compile(r"\$\{(.+):-([^}]+)\}")
 
     new_config_lines = []
@@ -333,8 +341,8 @@ def update_docker_compose_env_vars(
         else:
             default_value_str = str(default_value) if default_value is not None else ""
 
-        if var in existing_vars:
-            line_idx = existing_vars[var]
+        if var in infrahub_base_config:
+            line_idx = infrahub_base_config[var]
             existing_value = docker_compose[line_idx].split(":", 1)[1].strip().strip('"')
 
             match = pattern.match(existing_value)
