@@ -3,6 +3,7 @@ import { Filter } from "@/shared/hooks/useFilters";
 
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
+export const IP_ADDRESS_AVAILABLE_KIND = "InternalIPRangeAvailable" as const;
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
 export const IP_PREFIX_AVAILABLE_KIND = "InternalIPPrefixAvailable";
 

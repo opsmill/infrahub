@@ -1,0 +1,54 @@
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import {
+  GetIpAddressListParams,
+  getIpAddressList,
+} from "@/entities/ipam/ip-addresses/domain/get-ip-address-list";
+import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+type GetIpAddressListInfiniteQueryParams = Omit<GetIpAddressListParams, keyof PaginationParams>;
+
+export function getIpAddressListInfiniteQueryOptions({
+  schema,
+  filters,
+  branchName,
+  atDate,
+}: GetIpAddressListInfiniteQueryParams) {
+  return infiniteQueryOptions({
+    queryKey: [branchName, atDate, "objects", schema.kind, filters],
+    queryFn: ({ pageParam }) => {
+      return getIpAddressList({
+        schema,
+        filters,
+        offset: pageParam,
+        branchName,
+        atDate,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < OBJECTS_PER_PAGE) {
+        return undefined;
+      }
+      return lastPageParam + OBJECTS_PER_PAGE;
+    },
+  });
+}
+
+export function useGetIpAddressList(
+  params: Omit<GetIpAddressListInfiniteQueryParams, keyof ContextParams>
+) {
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
+  return useInfiniteQuery(
+    getIpAddressListInfiniteQueryOptions({
+      ...params,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    })
+  );
+}
