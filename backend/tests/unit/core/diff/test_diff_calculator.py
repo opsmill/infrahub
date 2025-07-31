@@ -4012,6 +4012,7 @@ async def test_calculate_with_renamed_relationships(
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 0
 
+
 async def test_migrated_kind_node_then_peer_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -4035,7 +4036,7 @@ async def test_migrated_kind_node_then_peer_delete(
     )
     execution_result = await migration.execute(db=db, branch=default_branch)
     assert not execution_result.errors
-  
+
     # migrate TestPerson kind back to original on a different branch
     branch = await create_branch(db=db, branch_name="branch-undo-kind-migrate")
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -4058,7 +4059,7 @@ async def test_migrated_kind_node_then_peer_delete(
 
     diff_calculator = DiffCalculator(db=db)
 
-    calculated_diffs = await diff_calculator.calculate_diff(
+    _ = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=Timestamp(branch.get_branched_from()),
