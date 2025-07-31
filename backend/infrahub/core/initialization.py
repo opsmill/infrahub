@@ -488,10 +488,14 @@ async def create_accounts_group(
 
 
 async def create_default_account_groups(
-    db: InfrahubDatabase, admin_accounts: Sequence[CoreAccount], accounts: Sequence[CoreAccount] | None = None
+    db: InfrahubDatabase,
+    admin_accounts: Sequence[CoreAccount] | None = None,
+    accounts: Sequence[CoreAccount] | None = None,
 ) -> None:
     administrator_role = await create_super_administrator_role(db=db)
-    await create_accounts_group(db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts)
+    await create_accounts_group(
+        db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts or []
+    )
 
     default_role = await create_default_role(db=db)
     proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)

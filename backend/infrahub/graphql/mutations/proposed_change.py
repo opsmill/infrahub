@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Any, Self
 
-from graphene import Boolean, Enum, Field, InputObjectType, Mutation, String
+from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
+from infrahub import lock
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -19,11 +20,13 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
+from infrahub.graphql.types.task import TaskInfo
+from infrahub.lock import InfrahubLock, build_object_lock_name
+from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
+from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
-from ...proposed_change.models import RequestProposedChangePipeline
-from ..types.task import TaskInfo
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
@@ -233,31 +236,33 @@ class ProposedChangeReview(Mutation):
                 action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value, decision=PermissionDecision.ALLOW_ALL.value
             )
         )
-
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=str(data.id), kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
-        )
-        state = ProposedChangeState(proposed_change.state.value.value)
-        state.validate_reviewable()
-
-        created_by = await proposed_change.created_by.get_peer(db=graphql_context.db)
-        if created_by and created_by.id == graphql_context.active_account_session.account_id:
-            raise ValidationError(input_value="You cannot review your own proposed changes")
-
-        current_user = await NodeManager.get_one_by_id_or_default_filter(
-            id=graphql_context.active_account_session.account_id,
-            kind=InfrahubKind.GENERICACCOUNT,
-            db=graphql_context.db,
-        )
-
-        async with graphql_context.db.start_session() as db:
-            await cls._handle_decision(
-                db=db,
-                decision=data.decision,
-                proposed_change=proposed_change,
-                current_user=current_user,
+        pc_id = str(data.id)
+        lock_name = build_object_lock_name(pc_id)
+        async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
+            proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+                id=pc_id, kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
             )
-            await proposed_change.save(db=db)
+            state = ProposedChangeState(proposed_change.state.value.value)
+            state.validate_reviewable()
+
+            created_by = await proposed_change.created_by.get_peer(db=graphql_context.db)
+            if created_by and created_by.id == graphql_context.active_account_session.account_id:
+                raise ValidationError(input_value="You cannot review your own proposed changes")
+
+            current_user = await NodeManager.get_one_by_id_or_default_filter(
+                id=graphql_context.active_account_session.account_id,
+                kind=InfrahubKind.GENERICACCOUNT,
+                db=graphql_context.db,
+            )
+
+            async with graphql_context.db.start_session() as db:
+                await cls._handle_decision(
+                    db=db,
+                    decision=data.decision,
+                    proposed_change=proposed_change,
+                    current_user=current_user,
+                )
+                await proposed_change.save(db=db)
 
         return {"ok": True}
 
@@ -365,6 +370,34 @@ class ProposedChangeMerge(Mutation):
             task = {"id": workflow.id}
 
         return cls(ok=True, task=task)
+
+
+class ProposedChangeCheckForApprovalRevokeInput(InputObjectType):
+    ids = Field(List(of_type=String, required=True), required=False)
+
+
+class ProposedChangeCheckForApprovalRevoke(Mutation):
+    class Arguments:
+        data = ProposedChangeCheckForApprovalRevokeInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: dict[str, Any],
+    ) -> dict[str, bool]:
+        db = info.context.db
+        ids: list[str] | None
+        try:
+            ids = data["ids"]
+        except KeyError:
+            ids = None
+
+        await do_revoke_approvals_on_updated_pcs(db=db, proposed_changes_ids=ids)
+        return cls(ok=True)
 
 
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:
