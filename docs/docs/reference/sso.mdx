@@ -1,12 +1,12 @@
 ---
-title: Single Sign-On (SSO)
+title: Single sign-on (SSO)
 ---
 
-# Single Sign-On
+# Single sign-on
 
 This reference document describes the available SSO protocols, configuration options, and parameters in Infrahub.
 
-## Supported Protocols
+## Supported protocols
 
 :::info
 See [Authentication topic](../topics/authentication) for details on the differences between OIDC and OAuth2.
@@ -20,7 +20,7 @@ OIDC is an identity layer built on top of OAuth 2.0 that standardizes user authe
 
 OAuth 2.0 is an industry-standard protocol for authorization that focuses on client developer simplicity.
 
-## Configuration Slots
+## Configuration slots
 
 Infrahub provides six predefined configuration slots for identity providers:
 
@@ -29,9 +29,9 @@ Infrahub provides six predefined configuration slots for identity providers:
 | OIDC     | PROVIDER1, PROVIDER2, GOOGLE |
 | OAuth 2.0 | PROVIDER1, PROVIDER2, GOOGLE |
 
-## Configuration Parameters
+## Configuration parameters
 
-### OIDC Parameters
+### OIDC parameters
 
 | Parameter | Environment Variable | TOML Path | Description | Required |
 |-----------|---------------------|-----------|-------------|----------|
@@ -44,7 +44,7 @@ Infrahub provides six predefined configuration slots for identity providers:
 
 *At least one provider must be specified if using OIDC.
 
-### OAuth 2.0 Parameters
+### OAuth 2.0 parameters
 
 | Parameter | Environment Variable | TOML Path | Description | Required |
 |-----------|---------------------|-----------|-------------|----------|
@@ -59,7 +59,7 @@ Infrahub provides six predefined configuration slots for identity providers:
 
 *At least one provider must be specified if using OAuth 2.0.
 
-## Redirect URI Formats
+## Redirect URI formats
 
 When configuring a provider in an external identity system, use the following format for the redirect URI:
 
@@ -72,7 +72,7 @@ https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback
 | OIDC     | `https://infrahub.example.com/auth/oidc/provider1/callback` |
 | OAuth 2.0 | `https://infrahub.example.com/auth/oauth2/provider1/callback` |
 
-## User Attributes Mapping
+## User attributes mapping
 
 Infrahub maps standard profile attributes from identity providers to its internal user model:
 
@@ -85,7 +85,7 @@ Infrahub maps standard profile attributes from identity providers to its interna
 
 ## Examples
 
-### OIDC Configuration Example
+### OIDC configuration example
 
 ```toml
 [security.oidc_provider_settings.provider1]
@@ -99,7 +99,7 @@ icon = "mdi:microsoft"
 oidc_providers = ["provider1"]
 ```
 
-### OAuth 2.0 Configuration Example
+### OAuth 2.0 configuration example
 
 ```toml
 [security.oauth2_provider_settings.provider1]

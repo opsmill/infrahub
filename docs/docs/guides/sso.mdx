@@ -109,7 +109,7 @@ We cover common identity providers, but if yours isn't listed, refer to your pro
 1. Sign in to the [Microsoft Entra admin center](https://entra.microsoft.com)
 2. Navigate to **App registrations**
 3. Click **+ New registration**
-4. Enter a name for your application (e.g., "Infrahub")
+4. Enter a name for your application (for example "Infrahub")
 5. Select the appropriate account type (usually "Accounts in this organizational directory only" for internal use)
 6. Under **Redirect URI**:
    - Select **Web** for the platform
@@ -266,7 +266,7 @@ After restarting, Infrahub will authenticate users through your configured ident
 If Infrahub fails to restart, check the [Troubleshooting section](#troubleshooting).
 :::
 
-## Step 4: Validate the SSO Configuration
+## Step 4: Validate the SSO configuration
 
 To verify your SSO configuration:
 
@@ -284,20 +284,18 @@ If authentication fails, check the [Troubleshooting section](#troubleshooting).
 
 ## Troubleshooting
 
-### Common Issues and Solutions
-
 | Issue | Possible Cause | Solution |
 |-------|---------------|----------|
 | "Redirect URI mismatch" error | The redirect URI in your identity provider doesn't match the one Infrahub expects | Verify the redirect URI follows the exact format: `https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback` |
 | "Invalid client" error | Client ID or secret is incorrect | Double-check your client ID and secret values for typos or extra spaces |
 
-## Advanced Usage
+## Advanced usage
 
-### Multiple Identity Providers
+### Multiple identity providers
 
 To configure multiple identity providers:
 
-- Configure each provider using the same steps as above, but with the appropriate slot name (e.g., `provider1`, `provider2`)
+- Configure each provider using the same steps as above, but with the appropriate slot name (for example `provider1`, `provider2`)
 - Make sure to set the `INFRAHUB_SECURITY_OIDC_PROVIDERS` or `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` variable to include all configured providers
 
 <Tabs groupId="config-method">
@@ -332,7 +330,7 @@ oidc_providers = ["provider1", "provider2"]
 </TabItem>
 </Tabs>
 
-## Related Resources
+## Related resources
 
 - [Authentication topic](../topics/authentication)
 - [SSO reference](../reference/sso)

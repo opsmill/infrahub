@@ -44,15 +44,15 @@ Object permissions control actions on specific types of objects and can be appli
 | `object:*:*:create:allow_other`               | `*` (all types)| `create`| `allow_other`| Allows creating any object, but only on non-default branches |
 | `object:*:*:view:allow_all`                   | `*` (all types)| `view`  | `allow_all` | Allows viewing any object across both default and non-default branches |
 | `object:Builtin:Tag:update:deny`              | `BuiltinTag`  | `update`| `deny`      | Denies updating objects of type BuiltinTag on all branches |
-| `object:*:Generic:view:allow_all`             | `*Generic`    | `view`  | `allow_all` | Allows viewing all objects with 'Generic' in their type (e.g., LocationGeneric, DeviceGeneric) |
+| `object:*:Generic:view:allow_all`             | `*Generic`    | `view`  | `allow_all` | Allows viewing all objects with 'Generic' in their type (LocationGeneric, DeviceGeneric...) |
 
 ### Object permission attributes
 
 - **Identifier**: A unique string that identifies the permission, computed based on the Object Type, Action, and Decision.
-- **Object Type**: The type of object the permission applies to (e.g., `Tag`, `Device`):
-  - Can include namespace prefixes (e.g., `Builtin:Tag`)
+- **Object Type**: The type of object the permission applies to (for example `Tag`, `Device`):
+  - Can include namespace prefixes (for example `Builtin:Tag`)
   - Supports wildcards (`*`) to apply to multiple object types
-  - Can use partial matching with wildcards (e.g., `*Generic`)
+  - Can use partial matching with wildcards (for example `*Generic`)
 - **Action**: The specific operation allowed on the object:
   - `view`: Permission to read or access the object
   - `create`: Permission to create new objects of this type
