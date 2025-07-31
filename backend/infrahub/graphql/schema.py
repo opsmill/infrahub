@@ -21,6 +21,7 @@ from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.proposed_change import (
+    ProposedChangeCheckForApprovalRevoke,
     ProposedChangeRequestRunCheck,
     ProposedChangeReview,
 )

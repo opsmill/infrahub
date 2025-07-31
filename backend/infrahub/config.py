@@ -784,7 +784,8 @@ class PolicySettings(BaseSettings):
     )
     revoke_proposed_change_approvals: bool = Field(
         default=False,
-        description="Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.)",
+        description="Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals."
+        " (Enterprise only: not available in the community version.)",
     )
 
     @property
