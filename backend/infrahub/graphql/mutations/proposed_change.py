@@ -275,7 +275,7 @@ class ProposedChangeReview(Mutation):
                     decision=data.decision,
                     proposed_change=proposed_change,
                     current_user=current_user,
-                    graphql_context=graphql_context,
+                    context=graphql_context,
                 )
                 await proposed_change.save(db=db)
 
