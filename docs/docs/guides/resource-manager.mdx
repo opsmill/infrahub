@@ -145,26 +145,41 @@ You should see: `schema '/tmp/schema.yml' loaded successfully`
 
 IP address pools (`CoreIPAddressPool`) dynamically allocate individual IP addresses from source prefixes.
 
-### Create a IP Prefix object
+### Create an IP Prefix object
 
 Create the IP prefix that serves as the allocation source:
 
 <Tabs>
   <TabItem value="web" label="Web interface" default>
 
-  Navigate to **IP Prefixes** and create a new prefix with:
+Navigate to **IP Prefixes** and create a new prefix with:
 
-  - **Prefix**: `10.100.0.0/24`
-  - **Member Type**: `address`
+- **Prefix**: `10.100.0.0/24`
+- **Member Type**: `address`
 
-  ![Creating prefix 10.100.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_0.png)
+![Creating prefix 10.100.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_0.png)
 
   </TabItem>
 
   <TabItem value="graphql" label="GraphQL">
 
   ```graphql
-w
+  mutation {
+    CoreIPPrefixPoolCreate(data: {
+      name: {value: "Customer Service Pool"},
+      default_prefix_length: {value: 31},
+      default_prefix_type: {value: "IpamIPPrefix"},
+      resources: [{id: "<id of prefix>"}],
+      ip_namespace: {id: "default"}
+    })
+    {
+      ok
+      object {
+        id
+        hfid
+      }
+    }
+  }
   ```
 
   Save the prefix ID for the next step.
@@ -179,15 +194,15 @@ Create a `CoreIPAddressPool` resource manager:
 <Tabs>
   <TabItem value="web" label="Web interface" default>
 
-  Navigate to **Resource Managers** and create a new IP Address Pool with:
+Navigate to **Resource Managers** and create a new IP Address Pool with:
 
-  - **Name**: `My IP address pool`
-  - **Default Address Type**: `IpamIPAddress`
-  - **Default Prefix Length**: `24`
-  - **Resources**: Select the `10.100.0.0/24` prefix
-  - **IP Namespace**: `default`
+- **Name**: `My IP address pool`
+- **Default Address Type**: `IpamIPAddress`
+- **Default Prefix Length**: `24`
+- **Resources**: Select the `10.100.0.0/24` prefix
+- **IP Namespace**: `default`
 
-  ![Creating IP address pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_ip.png)
+![Creating IP address pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_ip.png)
 
   </TabItem>
 
@@ -329,12 +344,12 @@ Create the parent prefix:
 <Tabs>
   <TabItem value="web" label="Web interface" default>
 
-  Create a prefix with:
+Create a prefix with:
 
-  - **Prefix**: `10.100.1.0/24`
-  - **Member Type**: `prefix`
+- **Prefix**: `10.100.1.0/24`
+- **Member Type**: `prefix`
 
-  ![Creating prefix 10.100.1.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_1.png)
+![Creating prefix 10.100.1.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_1.png)
 
   </TabItem>
 
@@ -365,15 +380,15 @@ Create a `CoreIPPrefixPool`:
 <Tabs>
   <TabItem value="web" label="Web interface" default>
 
-  Create a new IP Prefix Pool with:
+Create a new IP Prefix Pool with:
 
-  - **Name**: `Customer Service Pool`
-  - **Default Prefix Type**: `IpamIPPrefix`
-  - **Default Prefix Length**: `31`
-  - **Resources**: Select the `10.100.1.0/24` prefix
-  - **IP Namespace**: `default`
+- **Name**: `Customer Service Pool`
+- **Default Prefix Type**: `IpamIPPrefix`
+- **Default Prefix Length**: `31`
+- **Resources**: Select the `10.100.1.0/24` prefix
+- **IP Namespace**: `default`
 
-  ![Creating Prefix Pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_prefix.png)
+![Creating Prefix Pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_prefix.png)
 
   </TabItem>
 
@@ -476,15 +491,15 @@ Create a pool for VLAN IDs:
 <Tabs>
   <TabItem value="web" label="Web interface" default>
 
-  Create a Number Pool with:
+Create a Number Pool with:
 
-  - **Name**: `My VLAN ID Pool`
-  - **Node**: `IpamVLAN`
-  - **Node attribute**: `vlan_id`
-  - **Start range**: `100`
-  - **End range**: `1000`
+- **Name**: `My VLAN ID Pool`
+- **Node**: `IpamVLAN`
+- **Node attribute**: `vlan_id`
+- **Start range**: `100`
+- **End range**: `1000`
 
-  ![Creating Number Pool](../media/guides/resources-manager/resource_manager_pool_vlan.png)
+![Creating Number Pool](../media/guides/resources-manager/resource_manager_pool_vlan.png)
 
   </TabItem>
 

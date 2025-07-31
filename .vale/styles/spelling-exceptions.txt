@@ -131,6 +131,7 @@ sdk
 Streamlit
 subcommand
 subnet
+subnets
 subtyping
 Subtyping
 template_path
