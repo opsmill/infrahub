@@ -1,7 +1,8 @@
 from typing import cast
 
+from infrahub.core.constants.infrahubkind import THREADCOMMENT
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreChangeThread
 from infrahub.core.protocols import CoreProposedChange as CoreProposedChangeProtocol
 from infrahub.database import InfrahubDatabase
 
@@ -33,11 +34,10 @@ class CoreProposedChange(Node):
                 total_comments += len(change_comments)
 
                 threads = await proposed_change.threads.get_peers(db=db)
-                for thread in threads.values():
-                    thread_ = cast(CoreChangeThread, thread)
-                    thread_comments = await thread_.comments.get_relationships(db=db)
-                    total_comments += len(thread_comments)
-
+                thread_comments = await NodeManager.query(
+                    db=db, schema=THREADCOMMENT, filters={"thread__ids": list(threads.keys())}
+                )
+                total_comments += len(thread_comments)
                 response["total_comments"] = {"value": total_comments}
 
         return response

@@ -64,8 +64,8 @@ class TestProposedChangeTotalComments(TestInfrahubApp):
         await pc_thread_comment_2.save()
 
         query: str = """
-            query {
-              CoreProposedChange {
+            query ($ids: [ID]!){
+              CoreProposedChange(ids: $ids)  {
                 count
                 edges {
                   node {
@@ -76,5 +76,43 @@ class TestProposedChangeTotalComments(TestInfrahubApp):
             }
         """
 
-        result = await client.execute_graphql(query=query)
+        result = await client.execute_graphql(query=query, variables={"ids": [proposed_change.id]})
         assert result["CoreProposedChange"]["edges"][0]["node"]["total_comments"]["value"] == 3
+
+    async def test_no_comments(
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        car_person_schema: SchemaBranch,
+        unprivileged_client: InfrahubClient,
+    ) -> None:
+        """
+        Creates both change comments and thread-attached comments and make sur `total_comments` property
+        is computed correctly.
+        """
+
+        # Create a branch for the proposed change
+        source_branch = await create_branch(branch_name="branch-proposed-change", db=db)
+
+        # Create a proposed change
+        proposed_change = await client.create(
+            kind=PROPOSEDCHANGE,
+            data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc"},
+        )
+        await proposed_change.save()
+
+        query: str = """
+            query ($ids: [ID]!){
+              CoreProposedChange(ids: $ids)  {
+                count
+                edges {
+                  node {
+                    total_comments { value }
+                  }
+                }
+              }
+            }
+        """
+
+        result = await client.execute_graphql(query=query, variables={"ids": [proposed_change.id]})
+        assert result["CoreProposedChange"]["edges"][0]["node"]["total_comments"]["value"] == 0
