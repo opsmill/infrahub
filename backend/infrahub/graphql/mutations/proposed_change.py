@@ -21,9 +21,9 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
-from ... import lock
-from ...lock import build_object_lock_name, InfrahubMultiLock
 
+from ... import lock
+from ...lock import InfrahubMultiLock, build_object_lock_name
 from ...proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from ...proposed_change.models import RequestProposedChangePipeline
 from ..types.task import TaskInfo
