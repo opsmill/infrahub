@@ -52,3 +52,18 @@ class ProposedChangeState(InfrahubStringEnum):
             raise ValidationError(
                 input_value="A closed proposed change is only allowed to transition to the open state"
             )
+
+
+class ProposedChangeAction(InfrahubStringEnum):
+    OPEN = "open"
+    CLOSE = "close"
+    SET_DRAFT = "set_draft"
+    UNSET_DRAFT = "unset_draft"
+    REVIEW = "review"
+    MERGE = "merge"
+
+    # To decompose review
+    # APPROVE = "approve"
+    # CANCEL_APPROVE = "cancel_approve"
+    # REJECT = "reject"
+    # CANCEL_REJECT = "cancel_reject"
