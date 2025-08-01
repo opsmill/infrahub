@@ -39,8 +39,8 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   };
 
   return (
-    <Tooltip content={close.unavailability_reason} enabled={!close.available}>
-      <>
+    <>
+      <Tooltip content={close.unavailability_reason} enabled={!close.available}>
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
@@ -50,20 +50,20 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         >
           Close
         </Button>
+      </Tooltip>
 
-        <Button
-          className="h-full rounded-l-none border-l-0"
-          variant={"danger"}
-          size={"sm"}
-          onClick={() => {
-            setOpen(true);
-          }}
-          disabled={isPending}
-          data-testid="proposed-change-action-button-select"
-        >
-          <Icon icon="mdi:unfold-more-horizontal" />
-        </Button>
-      </>
-    </Tooltip>
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"danger"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

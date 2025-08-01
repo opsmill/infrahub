@@ -43,8 +43,8 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   };
 
   return (
-    <Tooltip content={approve.unavailability_reason} enabled={!approve.available}>
-      <>
+    <>
+      <Tooltip content={approve.unavailability_reason} enabled={!approve.available}>
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
@@ -54,20 +54,20 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         >
           {hasApproved ? "Cancel Approve" : "Approve"}
         </Button>
+      </Tooltip>
 
-        <Button
-          className="h-full rounded-l-none border-l-0"
-          variant={"primary"}
-          size={"sm"}
-          onClick={() => {
-            setOpen(true);
-          }}
-          disabled={isPending}
-          data-testid="proposed-change-action-button-select"
-        >
-          <Icon icon="mdi:unfold-more-horizontal" />
-        </Button>
-      </>
-    </Tooltip>
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"primary"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

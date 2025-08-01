@@ -42,8 +42,8 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   };
 
   return (
-    <Tooltip content={reject.unavailability_reason} enabled={!reject.available}>
-      <>
+    <>
+      <Tooltip content={reject.unavailability_reason} enabled={!reject.available}>
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
@@ -53,20 +53,20 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         >
           {hasRejected ? "Cancel Reject" : "Reject"}
         </Button>
+      </Tooltip>
 
-        <Button
-          className="h-full rounded-l-none border-l-0"
-          variant={"primary"}
-          size={"sm"}
-          onClick={() => {
-            setOpen(true);
-          }}
-          disabled={isPending}
-          data-testid="proposed-change-action-button-select"
-        >
-          <Icon icon="mdi:unfold-more-horizontal" />
-        </Button>
-      </>
-    </Tooltip>
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"primary"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

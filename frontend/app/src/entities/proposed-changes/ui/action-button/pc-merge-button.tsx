@@ -39,8 +39,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   };
 
   return (
-    <Tooltip content={merge.unavailability_reason} enabled={!merge.available}>
-      <>
+    <>
+      <Tooltip content={merge.unavailability_reason} enabled={!merge.available}>
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
@@ -50,20 +50,20 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         >
           Merge
         </Button>
+      </Tooltip>
 
-        <Button
-          className="h-full rounded-l-none border-l-0"
-          variant={"active"}
-          size={"sm"}
-          onClick={() => {
-            setOpen(true);
-          }}
-          disabled={isPending}
-          data-testid="proposed-change-action-button-select"
-        >
-          <Icon icon="mdi:unfold-more-horizontal" />
-        </Button>
-      </>
-    </Tooltip>
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"active"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };
