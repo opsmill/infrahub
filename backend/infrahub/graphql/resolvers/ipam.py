@@ -231,6 +231,23 @@ async def _resolve_available_prefix_nodes(
     return available_nodes
 
 
+def _filter_kinds(nodes: list[Node], kinds: list[str], limit: int | None) -> list[Node]:
+    filtered: list[Node] = []
+    available_node_kinds = [InfrahubKind.IPPREFIXAVAILABLE, InfrahubKind.IPRANGEAVAILABLE]
+    kinds += available_node_kinds
+
+    limit_with_available = limit
+    for node in nodes:
+        if node.get_schema().kind not in kinds:
+            continue
+        # Adapt the limit of nodes to return by always including available ones
+        if node.get_schema().kind in available_node_kinds:
+            limit_with_available += 1
+        filtered.append(node)
+
+    return filtered[:limit_with_available] if limit else filtered
+
+
 async def _annotate_result(
     db: InfrahubDatabase,
     branch: Branch,
@@ -240,29 +257,32 @@ async def _annotate_result(
     result: list[Node],
     first_node_context: Node | None = None,
     last_node_context: Node | None = None,
+    kinds_to_filter: list[str] | None = None,
+    limit: int | None = None,
 ) -> list[Node]:
-    if not resolve_available or not parent_prefix:
-        return result
+    nodes: list[Node] = result
 
-    return (
-        await _resolve_available_address_nodes(
-            db=db,
-            branch=branch,
-            prefix=parent_prefix,
-            existing_nodes=result,
-            first_node_context=first_node_context,
-            last_node_context=last_node_context,
-        )
-        if schema.is_ip_address
-        else await _resolve_available_prefix_nodes(
-            db=db,
-            branch=branch,
-            prefix=parent_prefix,
-            existing_nodes=result,
-            first_node_context=first_node_context,
-            last_node_context=last_node_context,
-        )
-    )
+    if resolve_available and parent_prefix:
+        if schema.is_ip_address:
+            nodes = await _resolve_available_address_nodes(
+                db=db,
+                branch=branch,
+                prefix=parent_prefix,
+                existing_nodes=result,
+                first_node_context=first_node_context,
+                last_node_context=last_node_context,
+            )
+        else:
+            nodes = await _resolve_available_prefix_nodes(
+                db=db,
+                branch=branch,
+                prefix=parent_prefix,
+                existing_nodes=result,
+                first_node_context=first_node_context,
+                last_node_context=last_node_context,
+            )
+
+    return _filter_kinds(nodes=nodes, kinds=kinds_to_filter, limit=limit) if kinds_to_filter else nodes
 
 
 @trace.get_tracer(__name__).start_as_current_span("ipam_paginated_list_resolver")
@@ -283,6 +303,12 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
 
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
+    kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
+
+    # Since we are going to narrow down the number of nodes in the end, we will query for a larger set in the first place to make sure that we will
+    # fill in the page to its maximum
+    if kinds_to_filter and limit:
+        limit *= len(kinds_to_filter)
 
     graphql_context: GraphqlContext = info.context
     async with graphql_context.db.start_session(read_only=True) as db:
@@ -379,6 +405,8 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
             result=objs,
             first_node_context=first_node_context,
             last_node_context=last_node_context,
+            kinds_to_filter=kinds_to_filter,
+            limit=limit,
         )
 
         if result:

@@ -914,6 +914,7 @@ class GraphQLSchemaManager:
             if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
                 # This is only available for IPAM generics
                 filters["include_available"] = graphene.Boolean()
+                filters["kinds"] = graphene.List(graphene.NonNull(graphene.String))
 
         if not top_level:
             return filters
