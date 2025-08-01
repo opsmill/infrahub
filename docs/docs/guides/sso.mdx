@@ -99,10 +99,11 @@ For a local development instance:
 Create an application in your identity provider that Infrahub will use for authentication.
 
 :::info
-We cover common identity providers, but if yours isn't listed, refer to your provider's documentation for similar steps.
+While this guide tries to cover common identity providers, if your specific provider isn't listed, please refer to your provider's documentation for instructions on "creating an application registration" or "configuring OAuth2/OIDC integration."
 :::
 
-### Using Entra ID (formerly Azure AD)
+<details>
+    <summary>Using Entra ID (formerly Azure AD)</summary>
 
 #### Create an application in Entra ID
 
@@ -157,6 +158,27 @@ On the registration overview page, click the **Endpoints** tab to find the neces
 | Icon | For example: `mdi:microsoft` |
 </TabItem>
 </Tabs>
+</details>
+
+:::success
+At the end of this step, you should have gathered all the necessary information to configure SSO in Infrahub.
+
+<Tabs groupId="selected-protocol">
+<TabItem value="oidc" default>
+
+| Client ID | Client Secret | Discovery URL |
+|-----------|--------------|--------------|
+
+</TabItem>
+<TabItem value="oauth2">
+
+| Client ID | Client Secret | Authorization URL | Token URL | Userinfo URL |
+|-----------|--------------|-------------------|-----------|--------------|
+
+</TabItem>
+</Tabs>
+
+:::
 
 ## Step 3: Configure Infrahub
 
