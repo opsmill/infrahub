@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
@@ -13,10 +15,16 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.events import (
+    EventMeta,
+    ProposedChangeApprovalRevokedEvent,
+    ProposedChangeApprovedEvent,
+    ProposedChangeRejectedEvent,
+    ProposedChangeRejectionRevokedEvent,
+)
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
@@ -25,11 +33,17 @@ from infrahub.lock import InfrahubLock, build_object_lock_name
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
+from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
+
+    from infrahub.core.node import Node
+    from infrahub.events.models import InfrahubEvent
+
     from ..initialization import GraphqlContext
 
 ProposedChangeApprovalDecisionInput = Enum.from_enum(ProposedChangeApprovalDecision)
@@ -256,13 +270,18 @@ class ProposedChangeReview(Mutation):
             )
 
             async with graphql_context.db.start_session() as db:
-                await cls._handle_decision(
+                event = await cls._handle_decision(
                     db=db,
                     decision=data.decision,
                     proposed_change=proposed_change,
                     current_user=current_user,
+                    context=graphql_context,
                 )
                 await proposed_change.save(db=db)
+
+                if event:
+                    event_service = await get_event_service()
+                    await event_service.send(event=event)
 
         return {"ok": True}
 
@@ -273,13 +292,16 @@ class ProposedChangeReview(Mutation):
         decision: ProposedChangeApprovalDecision,
         proposed_change: CoreProposedChange,
         current_user: Node,
-    ) -> None:
+        context: GraphqlContext,
+    ) -> InfrahubEvent | None:
         """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
 
         approved_by = await proposed_change.approved_by.get_peers(db=db)
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
+        event: InfrahubEvent | None = None
+        event_meta = EventMeta.from_context(context=context.get_context())
 
         match decision:
             case ProposedChangeApprovalDecision.APPROVE:
@@ -289,12 +311,32 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in rejected_by_ids:
                     await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
+                event = ProposedChangeApprovedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_decision=decision.value,
+                    meta=event_meta,
+                )
+
             case ProposedChangeApprovalDecision.CANCEL_APPROVE:
                 if current_user.id not in approved_by_ids:
                     raise ValidationError(
                         input_value="You did not approve this proposed change yet, it can't be un-approved"
                     )
                 await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
+
+                event = ProposedChangeApprovalRevokedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_former_decision=ProposedChangeApprovalDecision.APPROVE.value,
+                    meta=event_meta,
+                )
 
             case ProposedChangeApprovalDecision.REJECT:
                 if current_user.id in rejected_by_ids:
@@ -303,6 +345,16 @@ class ProposedChangeReview(Mutation):
                 if current_user.id in approved_by_ids:
                     await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
 
+                event = ProposedChangeRejectedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_decision=decision.value,
+                    meta=event_meta,
+                )
+
             case ProposedChangeApprovalDecision.CANCEL_REJECT:
                 if current_user.id not in rejected_by_ids:
                     raise ValidationError(
@@ -310,8 +362,20 @@ class ProposedChangeReview(Mutation):
                     )
                 await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
 
+                event = ProposedChangeRejectionRevokedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_former_decision=ProposedChangeApprovalDecision.REJECT.value,
+                    meta=event_meta,
+                )
+
             case _:
                 raise ValidationError(input_value=f"Invalid decision {decision}")
+
+        return event
 
 
 class ProposedChangeMergeInput(InputObjectType):

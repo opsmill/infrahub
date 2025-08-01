@@ -43,6 +43,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
+from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
@@ -51,6 +52,7 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.events import EventMeta, ProposedChangeMergedEvent
 from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
@@ -214,6 +216,22 @@ async def merge_proposed_change(
         await _proposed_change_transition_state(
             proposed_change=proposed_change, state=ProposedChangeState.MERGED, database=db
         )
+
+        current_user = await NodeManager.get_one_by_id_or_default_filter(
+            id=context.account.account_id, kind=InfrahubKind.GENERICACCOUNT, db=db
+        )
+        event_service = await get_event_service()
+        await event_service.send(
+            event=ProposedChangeMergedEvent(
+                proposed_change_id=proposed_change.id,
+                proposed_change_name=proposed_change.name.value,
+                proposed_change_state=proposed_change.state.value,
+                merged_by_account_id=current_user.id,
+                merged_by_account_name=current_user.name.value,
+                meta=EventMeta.from_context(context=context),
+            )
+        )
+
         return Completed(message="proposed change merged successfully")
 
 

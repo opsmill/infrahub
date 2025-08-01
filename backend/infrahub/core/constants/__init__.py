@@ -61,6 +61,13 @@ class EventType(InfrahubStringEnum):
     GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
     GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
 
+    PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
+    PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
+    PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
+    PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
+    PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
+    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
+
     REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
 
     ARTIFACT_CREATED = f"{EVENT_NAMESPACE}.artifact.created"
