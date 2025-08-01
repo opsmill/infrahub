@@ -46,7 +46,7 @@ export const getIpAddressTableColumns = (
 
           return (
             <>
-              <StickyLeftCell isMuted className="p-0.5">
+              <StickyLeftCell isMuted className="p-0.5" data-testid="ip-address-available">
                 <IpAddressAvailableCreateFormTrigger
                   ipAddressAvailableNode={ipAddressAvailableNode}
                 />

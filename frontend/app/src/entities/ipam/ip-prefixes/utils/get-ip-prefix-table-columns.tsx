@@ -48,7 +48,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
         if (ipPrefixNode.__typename === IP_PREFIX_AVAILABLE_KIND) {
           return (
             <>
-              <StickyLeftCell isMuted className="pl-0.5">
+              <StickyLeftCell isMuted className="pl-0.5" data-testid="ip-prefix-available">
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
