@@ -77,6 +77,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         graphql_context: GraphqlContext = info.context
 
         override_data = {"created_by": {"id": graphql_context.active_account_session.account_id}}
+        state = data.get("state", {}).get("value")
+        if state and state != ProposedChangeState.OPEN.value:
+            raise ValidationError(input_value="A proposed change has to be in the open state during creation")
 
         async with graphql_context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(

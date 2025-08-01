@@ -203,9 +203,16 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
         proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")
+        # The state=open part here is to validate that the state check during creation of a
+        # proposed change still works if the default "open" state is manually specified
         proposed_change_create = await client.create(
             kind=CoreProposedChange,
-            data={"source_branch": happy_data_branch, "destination_branch": "main", "name": "happy-test"},
+            data={
+                "source_branch": happy_data_branch,
+                "destination_branch": "main",
+                "name": "happy-test",
+                "state": "open",
+            },
         )
         await proposed_change_create.save(
             request_context=RequestContext(account=ContextAccount(id=proposed_change_user.id))
