@@ -44,7 +44,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
-          variant={"primary"}
+          variant={"active"}
           isLoading={isPending}
           disabled={!merge.available || isPending}
         >
@@ -53,12 +53,12 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
         <Button
           className="h-full rounded-l-none border-l-0"
-          variant={"primary"}
+          variant={"active"}
           size={"sm"}
           onClick={() => {
             setOpen(true);
           }}
-          disabled={!merge.available || isPending}
+          disabled={isPending}
           data-testid="proposed-change-action-button-select"
         >
           <Icon icon="mdi:unfold-more-horizontal" />

@@ -61,7 +61,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
           onClick={() => {
             setOpen(true);
           }}
-          disabled={!reject.available}
+          disabled={isPending}
           data-testid="proposed-change-action-button-select"
         >
           <Icon icon="mdi:unfold-more-horizontal" />

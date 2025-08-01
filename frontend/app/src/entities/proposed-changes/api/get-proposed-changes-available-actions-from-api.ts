@@ -40,7 +40,7 @@ const mock = {
         },
         {
           node: {
-            action: "set_draft",
+            action: "setDraft",
             available: false,
             unavailability_reason: "The proposed change state is not open",
           },
@@ -62,7 +62,7 @@ const mock = {
         {
           node: {
             action: "merge",
-            available: false,
+            available: true,
             unavailability_reason: "The proposed change state is not open",
           },
         },

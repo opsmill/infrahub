@@ -12,8 +12,8 @@ import { proposedChangedState } from "../../stores/proposedChanges.atom";
 import { usePcActionsContext } from "../pc-actions-permissions-context";
 import { ProposedChangeActionButtonProps } from "./types";
 
-export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
-  const { open } = usePcActionsContext();
+export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const { close } = usePcActionsContext();
 
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
@@ -39,26 +39,26 @@ export const OpenButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   };
 
   return (
-    <Tooltip content={open.unavailability_reason} enabled={!open.available}>
+    <Tooltip content={close.unavailability_reason} enabled={!close.available}>
       <>
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
-          variant={"primary"}
+          variant={"danger"}
           isLoading={isPending}
-          disabled={!open.available || isPending}
+          disabled={!close.available || isPending}
         >
           Close
         </Button>
 
         <Button
           className="h-full rounded-l-none border-l-0"
-          variant={"primary"}
+          variant={"danger"}
           size={"sm"}
           onClick={() => {
             setOpen(true);
           }}
-          disabled={!open.available || isPending}
+          disabled={isPending}
           data-testid="proposed-change-action-button-select"
         >
           <Icon icon="mdi:unfold-more-horizontal" />
