@@ -218,7 +218,7 @@ async def request_generator_definition_run(
             repository_kind=repository.typename,
             branch_name=model.branch,
             query=model.generator_definition.query_name,
-            variables=member.extract(params=model.generator_definition.parameters),
+            variables=await member.extract(params=model.generator_definition.parameters),
             target_id=member.id,
             target_name=member.display_label,
         )

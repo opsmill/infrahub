@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import keyword
 from collections import defaultdict
 from itertools import chain, combinations
 from typing import Any
@@ -518,6 +519,7 @@ class SchemaBranch:
 
     def process_validate(self) -> None:
         self.validate_names()
+        self.validate_python_keywords()
         self.validate_kinds()
         self.validate_computed_attributes()
         self.validate_attribute_parameters()
@@ -986,6 +988,26 @@ class SchemaBranch:
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+
+    def validate_python_keywords(self) -> None:
+        """Validate that attribute and relationship names don't use Python keywords."""
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            # Check for Python keywords in attribute names
+            for attribute in node.attributes:
+                if keyword.iskeyword(attribute.name):
+                    raise ValueError(
+                        f"Python keyword '{attribute.name}' cannot be used as an attribute name on '{node.kind}'"
+                    )
+
+            # Check for Python keywords in relationship names
+            if config.SETTINGS.main.schema_strict_mode:
+                for relationship in node.relationships:
+                    if keyword.iskeyword(relationship.name):
+                        raise ValueError(
+                            f"Python keyword '{relationship.name}' cannot be used as a relationship name on '{node.kind}' when using strict mode"
+                        )
 
     def _validate_common_parent(self, node: NodeSchema, rel: RelationshipSchema) -> None:
         if not rel.common_parent:
