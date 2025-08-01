@@ -13,6 +13,7 @@ from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
+from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
@@ -252,7 +253,7 @@ async def _annotate_result(
     db: InfrahubDatabase,
     branch: Branch,
     resolve_available: bool,
-    schema: NodeSchema,
+    schema: NodeSchema | GenericSchema,
     parent_prefix: BuiltinIPPrefix | None,
     result: list[Node],
     first_node_context: Node | None = None,
@@ -295,7 +296,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: NodeSchema = (
+    schema: NodeSchema | GenericSchema = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)
         else info.return_type.graphene_type._meta.schema
@@ -304,11 +305,6 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
     kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
-
-    # Since we are going to narrow down the number of nodes in the end, we will query for a larger set in the first place to make sure that we will
-    # fill in the page to its maximum
-    if kinds_to_filter and limit:
-        limit *= len(kinds_to_filter)
 
     graphql_context: GraphqlContext = info.context
     async with graphql_context.db.start_session(read_only=True) as db:
@@ -358,6 +354,12 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
             limit += 1
             fetch_last_node_context = True
 
+        # Since we are going to narrow down the number of nodes in the end, we will query for a larger set (that can potentially include all kinds of
+        # implementations) in the first place to make sure that we will fill in the page to its maximum
+        query_limit = limit
+        if kinds_to_filter and limit and isinstance(schema, GenericSchema):
+            query_limit *= len(schema.used_by)
+
         objs = []
         if edges or "hfid" in filters:
             objs = await NodeManager.query(
@@ -367,7 +369,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 fields=node_fields,
                 at=graphql_context.at,
                 branch=graphql_context.branch,
-                limit=limit,
+                limit=query_limit,
                 offset=offset,
                 account=graphql_context.account_session,
                 include_source=True,
