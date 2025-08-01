@@ -128,6 +128,7 @@ services:
       cache:
         condition: service_healthy
     environment:
+      PREFECT_UI_ENABLED: "${INFRAHUB_TESTING_PREFECT_UI_ENABLED}" # This might be required because triggers actions service depends on an in-memory API server
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
 
       PREFECT_API_DATABASE_MIGRATE_ON_START: "false"
