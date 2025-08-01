@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.events.constants import EventSortOrder
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
@@ -79,7 +79,7 @@ class Events(ObjectType):
         limit: int,
         offset: int | None = None,
     ) -> dict[str, Any]:
-        fields = await extract_fields_first_node(info)
+        fields = extract_graphql_fields(info)
 
         prefect_tasks = await PrefectEvent.query(
             fields=fields,

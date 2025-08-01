@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
-from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
@@ -16,6 +15,7 @@ from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -438,7 +438,7 @@ class DiffTreeResolver:
         else:
             enriched_diff = enriched_diffs[0]
 
-        full_fields = await extract_fields(info.field_nodes[0].selection_set)
+        full_fields = extract_graphql_fields(info=info)
         diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, graphql_context=graphql_context)
         need_base_changes = "num_untracked_base_changes" in full_fields
         need_branch_changes = "num_untracked_diff_changes" in full_fields
@@ -495,7 +495,7 @@ class DiffTreeResolver:
             to_time=summary.to_time.to_datetime(),
             **summary.model_dump(exclude={"from_time", "to_time"}),
         )
-        full_fields = await extract_fields(info.field_nodes[0].selection_set)
+        full_fields = extract_graphql_fields(info=info)
         need_base_changes = "num_untracked_base_changes" in full_fields
         need_branch_changes = "num_untracked_diff_changes" in full_fields
         if need_base_changes or need_branch_changes:

@@ -281,7 +281,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         else info.return_type.graphene_type._meta.schema
     )
 
-    fields = await extract_selection(info.field_nodes[0], schema=schema)
+    fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
 
     graphql_context: GraphqlContext = info.context
