@@ -3722,14 +3722,14 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.4.9"
+version = "3.4.11"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect-3.4.9-py3-none-any.whl", hash = "sha256:3fa6665976457195fe2ff7baa38b10cae62ab87f4fd1973d80a42a86356b0211"},
-    {file = "prefect-3.4.9.tar.gz", hash = "sha256:1087e9f98378c55613345a47bdec71be384cede6fa63cf806b95da7c1effabc8"},
+    {file = "prefect-3.4.11-py3-none-any.whl", hash = "sha256:332b3f2930100e168b5c0199ec6da57c38b8bac3ba7a33cb45515cb96c294fc5"},
+    {file = "prefect-3.4.11.tar.gz", hash = "sha256:a898bf250b228711520c904310c91048bb401567168f62dffe1e59429088514a"},
 ]
 
 [package.dependencies]
@@ -6304,4 +6304,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10, < 3.13"
-content-hash = "a1a6eddc5076eea5ead4046693fbbd5d9044ecaee1c8a3d83fc3e6318ffeb73a"
+content-hash = "8856c4b28ee5a0830a428c8702cd3351727bc802eb9fffc4bdf331d0a59adbce"
