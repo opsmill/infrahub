@@ -342,6 +342,7 @@ const sidebars: SidebarsConfig = {
         'reference/schema-validation',
         'reference/task-worker',
         'reference/infrahub-tests',
+        'reference/sso'
       ],
     },
     {
