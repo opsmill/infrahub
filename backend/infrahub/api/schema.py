@@ -342,9 +342,28 @@ async def load_schema(
             raise SchemaNotValidError(",\n".join(error_messages))
 
         # ----------------------------------------------------------
-        # Update the schema
+        # Run the migrations
         # ----------------------------------------------------------
         origin_schema = branch_schema.duplicate()
+        apply_migration_data = SchemaApplyMigrationData(
+            branch=branch,
+            new_schema=candidate_schema,
+            previous_schema=origin_schema,
+            migrations=result.migrations,
+        )
+        migration_error_msgs = await service.workflow.execute_workflow(
+            workflow=SCHEMA_APPLY_MIGRATION,
+            context=context,
+            expected_return=list[str],
+            parameters={"message": apply_migration_data},
+        )
+
+        if migration_error_msgs:
+            raise MigrationError(message=",\n".join(migration_error_msgs))
+
+        # ----------------------------------------------------------
+        # Update the schema
+        # ----------------------------------------------------------
         log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
         async with db.start_transaction() as dbt:
             await registry.schema.update_schema_branch(
@@ -366,25 +385,6 @@ async def load_schema(
             await branch.save(db=dbt)
             updated_branch = registry.schema.get_schema_branch(name=branch.name)
             updated_hash = updated_branch.get_hash()
-
-        # ----------------------------------------------------------
-        # Run the migrations
-        # ----------------------------------------------------------
-        apply_migration_data = SchemaApplyMigrationData(
-            branch=branch,
-            new_schema=candidate_schema,
-            previous_schema=origin_schema,
-            migrations=result.migrations,
-        )
-        migration_error_msgs = await service.workflow.execute_workflow(
-            workflow=SCHEMA_APPLY_MIGRATION,
-            context=context,
-            expected_return=list[str],
-            parameters={"message": apply_migration_data},
-        )
-
-        if migration_error_msgs:
-            raise MigrationError(message=",\n".join(migration_error_msgs))
 
     await service.component.refresh_schema_hash(branches=[branch.name])
 
