@@ -3,13 +3,17 @@ import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-o
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 import { proposedChangedState } from "../../stores/proposedChanges.atom";
+import { usePcActionsContext } from "../pc-actions-permissions-context";
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const { draft } = usePcActionsContext();
+
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const isDraft = !!proposedChangesDetails.is_draft.value;
@@ -41,29 +45,31 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   };
 
   return (
-    <>
-      <Button
-        className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
-        onClick={handleAction}
-        variant={"primary"}
-        isLoading={isPending}
-        disabled={isPending}
-      >
-        {isDraft ? "Open" : "Move to draft"}
-      </Button>
+    <Tooltip content={draft.unavailability_reason} enabled={!draft.available}>
+      <>
+        <Button
+          className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+          onClick={handleAction}
+          variant={"primary"}
+          isLoading={isPending}
+          disabled={!draft.available || isPending}
+        >
+          {isDraft ? "Open" : "Move to draft"}
+        </Button>
 
-      <Button
-        className="h-full rounded-l-none border-l-0"
-        variant={"primary"}
-        size={"sm"}
-        onClick={() => {
-          setOpen(true);
-        }}
-        disabled={isPending}
-        data-testid="proposed-change-action-button-select"
-      >
-        <Icon icon="mdi:unfold-more-horizontal" />
-      </Button>
-    </>
+        <Button
+          className="h-full rounded-l-none border-l-0"
+          variant={"primary"}
+          size={"sm"}
+          onClick={() => {
+            setOpen(true);
+          }}
+          disabled={!draft.available || isPending}
+          data-testid="proposed-change-action-button-select"
+        >
+          <Icon icon="mdi:unfold-more-horizontal" />
+        </Button>
+      </>
+    </Tooltip>
   );
 };
