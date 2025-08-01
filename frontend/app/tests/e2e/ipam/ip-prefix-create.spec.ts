@@ -69,7 +69,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       ).toBeVisible();
     });
 
-    await test.step("Creation form should suggested a  available ip address", async () => {
+    await test.step("Creation form should suggest an available IP address within parent prefix", async () => {
       await page.getByTestId("create-object-button").click();
       await expect(page.getByLabel("Address *")).toHaveValue("11.0.0.2/9");
       await page.getByRole("button", { name: "Save" }).click();
