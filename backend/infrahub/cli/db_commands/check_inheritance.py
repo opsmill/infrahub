@@ -26,6 +26,89 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+class GetSchemaWithUpdatedInheritance(Query):
+    """
+    Get the name, namespace, and branch of any SchemaNodes with _updated_ inheritance
+    This query will only return schemas that have had `inherit_from` updated after they were created
+    """
+
+    name = "get_schema_with_updated_inheritance"
+    type = QueryType.READ
+    insert_return = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        query = """
+// find inherit_from attributes that have been updated
+MATCH p = (schema_node:SchemaNode)-[has_attr_e:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "inherit_from"})
+WHERE has_attr_e.to IS NULL
+CALL (a) {
+  // only get branches on which the value was updated, we can ignore the initial create
+  MATCH (a)-[e:HAS_VALUE]->(:AttributeValue)
+  ORDER BY e.from ASC
+  // tail leaves out the earliest one, which is the initial create
+  RETURN tail(collect(e.branch)) AS branches
+}
+WITH schema_node, a, branches
+WHERE size(branches) > 0
+UNWIND branches AS branch
+WITH DISTINCT schema_node, a, branch
+
+//get branch details
+CALL (branch) {
+  MATCH (b:Branch {name: branch})
+  RETURN b.branched_from AS branched_from, b.hierarchy_level AS branch_level
+}
+
+// get the namespace for the schema
+CALL (schema_node, a, branch, branched_from, branch_level) {
+  MATCH (schema_node)-[e1:HAS_ATTRIBUTE]-(:Attribute {name: "namespace"})-[e2:HAS_VALUE]->(av)
+  WHERE (
+    e1.branch = branch OR
+    (e1.branch_level < branch_level AND e1.from <= branched_from)
+  ) AND e1.to IS NULL
+  AND e1.status = "active"
+  AND (
+    e2.branch = branch OR
+    (e2.branch_level < branch_level AND e2.from <= branched_from)
+  ) AND e2.to IS NULL
+  AND e2.status = "active"
+  ORDER BY e2.branch_level DESC, e1.branch_level DESC, e2.from DESC, e1.from DESC
+  RETURN av.value AS namespace
+  LIMIT 1
+}
+
+// get the name for the schema
+CALL (schema_node, a, branch, branched_from, branch_level) {
+  MATCH (schema_node)-[e1:HAS_ATTRIBUTE]-(:Attribute {name: "name"})-[e2:HAS_VALUE]->(av)
+  WHERE (
+    e1.branch = branch OR
+    (e1.branch_level < branch_level AND e1.from <= branched_from)
+  ) AND e1.to IS NULL
+  AND e1.status = "active"
+  AND (
+    e2.branch = branch OR
+    (e2.branch_level < branch_level AND e2.from <= branched_from)
+  ) AND e2.to IS NULL
+  AND e2.status = "active"
+  ORDER BY e2.branch_level DESC, e1.branch_level DESC, e2.from DESC, e1.from DESC
+  RETURN av.value AS name
+  LIMIT 1
+}
+RETURN name, namespace, branch
+"""
+        self.return_labels = ["name", "namespace", "branch"]
+        self.add_to_query(query)
+
+    def get_updated_inheritance_kinds_by_branch(self) -> dict[str, list[str]]:
+        kinds_by_branch: dict[str, list[str]] = defaultdict(list)
+        for result in self.results:
+            name = result.get_as_type(label="name", return_type=str)
+            namespace = result.get_as_type(label="namespace", return_type=str)
+            branch = result.get_as_type(label="branch", return_type=str)
+            kinds_by_branch[branch].append(f"{namespace}{name}")
+        return kinds_by_branch
+
+
 @dataclass
 class KindLabelCount:
     kind: str
@@ -39,21 +122,36 @@ class KindLabelCountCorrected(KindLabelCount):
 
 
 class GetAllKindsAndLabels(Query):
+    """
+    Get the kind, labels, and number of nodes for the given kinds and branch
+    """
+
     name = "get_all_kinds_and_labels"
     type = QueryType.READ
     insert_return = False
 
+    def __init__(self, kinds: list[str] | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.kinds = kinds
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["branch_name"] = self.branch.name
         self.params["branched_from"] = self.branch.get_branched_from()
+        self.params["branch_level"] = self.branch.hierarchy_level
+        kinds_str = "Node"
+        if self.kinds:
+            kinds_str = "|".join(self.kinds)
         query = """
-MATCH (n:Node)-[r:IS_PART_OF {branch: $branch_name}]->(:Root)
-WHERE r.from >= $branched_from
+MATCH (n:%(kinds_str)s)-[r:IS_PART_OF]->(:Root)
+WHERE (
+    r.branch = $branch_name OR
+    (r.branch_level < $branch_level AND r.from <= $branched_from)
+)
 AND r.to IS NULL
 AND r.status = "active"
 RETURN DISTINCT n.kind AS kind, labels(n) AS labels, count(*) AS num_nodes
 ORDER BY kind ASC
-        """
+        """ % {"kinds_str": kinds_str}
         self.return_labels = ["kind", "labels", "num_nodes"]
         self.add_to_query(query)
 
@@ -88,27 +186,39 @@ def display_kind_label_counts(kind_label_counts_by_branch: dict[str, list[KindLa
     console.print(table)
 
 
-async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> None:
+async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> bool:
+    """
+    Run migrations to update the inheritance of any nodes with incorrect inheritance from a failed migration
+    1. Identifies node schemas that have had their inheritance updated after they were created
+        a. includes the kind and branch of the inheritance update
+    2. Checks nodes of the given kinds on the given branch to verify their inheritance is correct
+    3. Displays counts of any kinds with incorrect inheritance on the given branch
+    4. If fix is True, runs migrations to update the inheritance of any nodes with incorrect inheritance
+        on the correct branch
+    """
+
+    updated_inheritance_query = await GetSchemaWithUpdatedInheritance.init(db=db)
+    await updated_inheritance_query.execute(db=db)
+    updated_inheritance_kinds_by_branch = updated_inheritance_query.get_updated_inheritance_kinds_by_branch()
+
+    if not updated_inheritance_kinds_by_branch:
+        rprint(f"{SUCCESS_BADGE} No schemas have had their inheritance updated")
+        return True
+
     schema_manager = SchemaManager()
     registry.schema = schema_manager
     schema = SchemaRoot(**internal_schema)
     schema_manager.register_schema(schema=schema)
     branches_by_name = {b.name: b for b in await Branch.get_list(db=db)}
-    kind_label_counts_by_branch: dict[str, list[KindLabelCountCorrected]] = defaultdict(list)
-    for branch in branches_by_name.values():
-        if not branch.is_default:
-            continue
 
-        rprint(f"Checking branch: {branch.name}", end="...")
-        # get the kind and labels for every node on the database
-        kind_label_query = await GetAllKindsAndLabels.init(db=db, branch=branch)
+    kind_label_counts_by_branch: dict[str, list[KindLabelCountCorrected]] = defaultdict(list)
+    for branch_name, kinds in updated_inheritance_kinds_by_branch.items():
+        rprint(f"Checking branch: {branch_name}", end="...")
+        branch = branches_by_name[branch_name]
+        schema_branch = await schema_manager.load_schema_from_db(db=db, branch=branch)
+        kind_label_query = await GetAllKindsAndLabels.init(db=db, branch=branch, kinds=kinds)
         await kind_label_query.execute(db=db)
         kind_label_counts = kind_label_query.get_kind_label_counts()
-
-        if branch.is_global:
-            schema_branch = await schema_manager.load_schema_from_db(db=db, branch=registry.default_branch)
-        else:
-            schema_branch = await schema_manager.load_schema_from_db(db=db, branch=branch)
 
         for kind_label_count in kind_label_counts:
             node_schema = schema_branch.get_node(name=kind_label_count.kind, duplicate=False)
@@ -116,7 +226,7 @@ async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> None:
             if kind_label_count.labels == correct_labels:
                 continue
 
-            kind_label_counts_by_branch[branch.name].append(
+            kind_label_counts_by_branch[branch_name].append(
                 KindLabelCountCorrected(
                     kind=kind_label_count.kind,
                     labels=kind_label_count.labels,
@@ -128,13 +238,13 @@ async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> None:
 
     if not kind_label_counts_by_branch:
         rprint(f"{SUCCESS_BADGE} All nodes have the correct inheritance")
-        return
+        return True
 
     display_kind_label_counts(kind_label_counts_by_branch)
 
     if not fix:
         rprint(f"{FAILED_BADGE} Use the --fix flag to fix the inheritance of any invalid nodes")
-        return
+        return False
 
     for branch_name, kind_label_counts_corrected in kind_label_counts_by_branch.items():
         for kind_label_count in kind_label_counts_corrected:
@@ -162,3 +272,13 @@ async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> None:
             rprint("done")
 
     rprint(f"{SUCCESS_BADGE} All nodes have the correct inheritance")
+
+    if registry.default_branch in kind_label_counts_by_branch:
+        kinds = [kind_label_count.kind for kind_label_count in kind_label_counts_by_branch[registry.default_branch]]
+        rprint(
+            "[bold cyan]Note that migrations were run on the default branch for the following schema kinds: "
+            f"{', '.join(kinds)}. You should rebase any branches that include/will include changes using "
+            "the migrated schemas[/bold cyan]"
+        )
+
+    return True

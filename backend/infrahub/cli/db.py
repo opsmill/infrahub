@@ -196,7 +196,9 @@ async def check_inheritance_cmd(
     dbdriver = await context.init_db(retry=1)
     await initialize_registry(db=dbdriver)
 
-    await check_inheritance(db=dbdriver, fix=fix)
+    success = await check_inheritance(db=dbdriver, fix=fix)
+    if not success:
+        raise typer.Exit(code=1)
 
     await dbdriver.close()
 
