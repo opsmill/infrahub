@@ -82,6 +82,7 @@ JSONSchema
 kbps
 Keycloak
 kubectl
+LibreNMS
 livestream
 Loopbacks
 markdownlint
@@ -97,6 +98,7 @@ Nautobot
 Neo4j
 Netbox
 Netpicker
+NetPicker
 Netutils
 Newsfragment
 Nornir
