@@ -652,20 +652,8 @@ jobs:
         uses: errata-ai/vale-action@v2.1.1
         with:
           version: ${{ env.VALE_VERSION }}
-          files: docs
-          vale_flags: "--config=./.vale.ini --glob='*.mdx'"
-
-      # The official GitHub Action for Vale doesn't work, installing manually instead:
-      # https://github.com/errata-ai/vale-action/issues/103
-      # - name: Download Vale
-      #   run: |
-      #     curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
-      #     tar -xzf vale.tar.gz
-      #   env:
-      #     VALE_VERSION: ${{ env.VALE_VERSION }}
-
-      # - name: "Validate documentation style"
-      #   run: ./vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+          files: docs/**/*.mdx
+          vale_flags: "--config=./.vale.ini"
 
   validate-release-notes-style:
     if: |
