@@ -486,7 +486,7 @@ jobs:
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-          pip install invoke toml
+          poetry run pip install invoke toml
       - name: "Install Package"
         run: "poetry install"
       - name: "Run validator"
