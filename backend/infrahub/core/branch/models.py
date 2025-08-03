@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Self, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
+
+from typing_extensions import Self
 
 from pydantic import Field, field_validator
 
