@@ -602,7 +602,8 @@ jobs:
         run: |
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
-          poetry env use 3.12
+          poetry env remove --all || true
+          poetry env use $(which python3.12)
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Setup environment"
