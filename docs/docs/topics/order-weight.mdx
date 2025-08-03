@@ -1,0 +1,241 @@
+---
+title: Understanding Order Weight
+---
+
+# Understanding Order Weight
+
+The `order_weight` property controls how attributes and relationships are ordered in the Infrahub frontend, including table views and detailed object views. Understanding how default values are assigned and how to work with them effectively is crucial for creating well-organized schemas.
+
+## Default Assignment Logic
+
+When you don't explicitly specify an `order_weight` value, Infrahub automatically assigns default values using a predictable pattern:
+
+### The 1000-Increment Pattern
+
+- **First attribute/relationship**: Gets `order_weight: 1000`
+- **Second attribute/relationship**: Gets `order_weight: 2000`
+- **Third attribute/relationship**: Gets `order_weight: 3000`
+- **And so on**: Each subsequent field increments by 1000
+
+This happens for both attributes and relationships, in the order they appear in your schema definition.
+
+```yaml title="Example Schema with Default Weights"
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: name          # Gets order_weight: 1000
+        kind: Text
+      - name: description   # Gets order_weight: 2000
+        kind: Text
+        optional: true
+      - name: serial_number # Gets order_weight: 3000
+        kind: Text
+    relationships:
+      - name: site          # Gets order_weight: 4000
+        peer: InfraSite
+        cardinality: one
+      - name: interfaces    # Gets order_weight: 5000
+        peer: InfraInterface
+        cardinality: many
+```
+
+### When Default Assignment Occurs
+
+Default `order_weight` values are assigned during **schema post-validation processing**, which happens when you:
+
+- Load a new schema with `infrahubctl schema load`
+- Update an existing schema
+- Process schema changes during branch operations (merge, rebase)
+
+Only fields **without an existing `order_weight`** receive default values. If you've explicitly set a value, it won't be overridden.
+
+## Inheritance and Generics
+
+### Generic Inheritance
+
+When a node inherits from a generic, the order weight assignment follows this pattern:
+
+```yaml title="Generic with Order Weights"
+generics:
+  - name: BaseDevice
+    namespace: Infra
+    attributes:
+      - name: name          # Gets order_weight: 1000
+        kind: Text
+      - name: description   # Gets order_weight: 2000
+        kind: Text
+        optional: true
+
+nodes:
+  - name: Router
+    namespace: Infra
+    inherit_from: ["InfraBaseDevice"]
+    attributes:
+      - name: model         # Gets order_weight: 3000
+        kind: Text
+      - name: os_version    # Gets order_weight: 4000
+        kind: Text
+```
+
+The inherited attributes maintain their original weights (1000, 2000), while new attributes continue the sequence (3000, 4000).
+
+### Multiple Inheritance
+
+With multiple generics, order weight assignment prioritizes the **first generic** in the `inherit_from` list:
+
+```yaml title="Multiple Inheritance Example"
+generics:
+  - name: NetworkDevice
+    namespace: Infra
+    attributes:
+      - name: ip_address    # Gets order_weight: 1000
+        kind: IPHost
+
+  - name: ManagedDevice
+    namespace: Infra
+    attributes:
+      - name: snmp_community # Gets order_weight: 1000 (but NetworkDevice takes precedence)
+        kind: Text
+
+nodes:
+  - name: Switch
+    namespace: Infra
+    inherit_from: ["InfraNetworkDevice", "InfraManagedDevice"]  # NetworkDevice first
+    attributes:
+      - name: vlan_count    # Gets order_weight: 2000
+        kind: Number
+```
+
+## Template Handling
+
+For object templates, a special rule applies:
+
+- If a template field corresponds to a node field, it gets: **node field weight + 10000**
+- If no corresponding node field exists, it gets `None`
+
+```yaml title="Template Weight Example"
+# If the base node has name with order_weight: 1000
+# The template field gets order_weight: 11000 (1000 + 10000)
+```
+
+## Mental Models for Working with Order Weight
+
+### Think in Ranges
+
+Instead of thinking about exact numbers, think in ranges:
+
+- **1-999**: Reserved for high-priority fields you want to appear first
+- **1000-9999**: Default range (system-assigned values)
+- **10000+**: Low-priority fields or those you want to appear last
+
+### Common Spacing Patterns
+
+**Conservative Spacing (Recommended)**:
+
+```yaml
+order_weight: 100   # Primary identifier
+order_weight: 500   # Secondary important field
+order_weight: 1500  # Between first and second default fields
+order_weight: 2500  # Between second and third default fields
+```
+
+**Aggressive Spacing**:
+
+```yaml
+order_weight: 10    # Highest priority
+order_weight: 50    # High priority
+order_weight: 99    # Just before defaults
+order_weight: 9999  # Just after all defaults
+```
+
+## Why the Large Increment?
+
+The 1000-increment pattern provides flexibility for users to:
+
+1. **Insert fields easily**: Use values like 1500, 2500 to place fields between defaults
+2. **Group related fields**: Reserve ranges like 3000-3999 for a specific category
+3. **Avoid conflicts**: Reduce chance of accidentally using the same weight twice
+
+## Best Practices
+
+### For New Schemas
+
+- **Let defaults work for you**: Don't specify `order_weight` unless you need custom ordering
+- **Use logical field ordering**: Place fields in your schema definition in the order you want them displayed
+- **Reserve low numbers**: Keep 1-999 for fields that must appear first
+
+### For Existing Schemas
+
+- **Check current weights first**: Use the schema explorer at `/schema` to see existing values
+- **Use gaps effectively**: Insert new fields using values between existing ones
+- **Consider reorganization**: If you have many custom weights, consider a systematic renumbering
+
+### For Field Insertion
+
+```yaml title="Inserting Between Existing Fields"
+# Existing fields have weights 1000, 2000, 3000
+# To insert between first and second:
+attributes:
+  - name: new_field
+    kind: Text
+    order_weight: 1500  # Will appear between 1000 and 2000
+```
+
+## Common Scenarios
+
+### Promoting a Field to First Position
+
+```yaml
+attributes:
+  - name: primary_field
+    kind: Text
+    order_weight: 100  # Well below the 1000 default range
+```
+
+### Grouping Related Fields
+
+```yaml
+attributes:
+  # Network settings group (3100-3199)
+  - name: ip_address
+    kind: IPHost
+    order_weight: 3100
+  - name: subnet_mask
+    kind: IPNetwork
+    order_weight: 3110
+  - name: gateway
+    kind: IPHost
+    order_weight: 3120
+
+  # Hardware settings group (3200-3299)
+  - name: cpu_count
+    kind: Number
+    order_weight: 3200
+  - name: memory_gb
+    kind: Number
+    order_weight: 3210
+```
+
+## Connection to Other Concepts
+
+- **Menu placement**: Affects how models are organized in the frontend sidebar
+- **Display labels**: Determines which fields appear in list views and detailed views
+- **GraphQL schema**: Influences the order of fields in API responses
+- **Schema validation**: Order weight changes are allowed during schema updates
+
+## Troubleshooting
+
+### "My field with order_weight: 999 still appears after defaults"
+
+- Check if other fields have even lower weights (1-998)
+- Verify the schema was successfully loaded with your changes
+- Use the schema explorer to confirm the current weights
+
+#### "I want to reorganize all fields efficiently"
+
+- Consider using systematic numbering (100, 200, 300) for major reorganization
+- Update your schema definition order to match your desired display order
+- Test changes in a branch before applying to main
+
+For practical implementation guidance, see the [Customize Field Ordering](../guides/customize-field-ordering) guide.
