@@ -653,7 +653,7 @@ jobs:
         with:
           version: ${{ env.VALE_VERSION }}
           files: docs
-          vale_flags: "--config=./.vale.ini"
+          vale_flags: "--config=./.vale.ini --glob='*.mdx'"
 
       # The official GitHub Action for Vale doesn't work, installing manually instead:
       # https://github.com/errata-ai/vale-action/issues/103
