@@ -573,13 +573,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: "Setup environment"
+      - name: "Setup python environment"
         run: |
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
           pip install invoke toml
-      - name: "Install Package"
+      - name: "Install Poetry packages"
         run: "poetry install"
       - name: "Install npm dependencies"
         run: npm install
@@ -606,19 +606,26 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: "Setup Python environment"
+      - name: "Setup python environment"
         run: |
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: "Setup environment"
-        run: "pip install invoke toml"
+          pip install invoke toml
+      - name: "Install Poetry packages"
+        run: "poetry install"
+      - name: "Install npm dependencies"
+        run: npm install
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
