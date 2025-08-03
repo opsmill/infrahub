@@ -1,5 +1,5 @@
 ---
-title: Resource management
+title: Resource manager (Guide)
 ---
 
 import VideoPlayer from '../../src/components/VideoPlayer';
@@ -169,7 +169,7 @@ Navigate to **IP Prefixes** and create a new prefix with:
   mutation {
     IpamIPPrefixCreate(data: {
       prefix: {value: "10.100.0.0/24"},
-      member_type: {value: "address"},
+      member_type: {value: "address"}
     })
     {
       ok
@@ -271,7 +271,7 @@ Include an `identifier` field to ensure the same IP address is returned on repea
 mutation {
   IPAddressPoolGetResource(data: {
     id: "<pool-id>",
-    identifier: "my-allocated-ip",
+    identifier: "my-allocated-ip"
   })
   {
     ok
@@ -292,7 +292,7 @@ Allocate an IP address when creating a device:
 
 <Tabs>
   <TabItem value="web" label="Web interface" default>
-  
+
   Navigate to **Devices** → **Add Device**. Next to the Primary IP Address field, click the pools button and select your resource pool.
 
   ![Device creation via the Web Interface - Before](../media/guides/resources-manager/resource_manager_pool_device_before.png)
@@ -357,7 +357,7 @@ Create a prefix with:
   mutation {
     IpamIPPrefixCreate(data: {
       prefix: {value: "10.100.1.0/24"},
-      member_type: {value: "prefix"},
+      member_type: {value: "prefix"}
     })
     {
       ok
