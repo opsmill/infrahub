@@ -654,6 +654,7 @@ jobs:
           version: ${{ env.VALE_VERSION }}
           files: docs
           vale_flags: "--config=./.vale.ini --glob='*.{md,mdx}'"
+          fail_on_error: true
 
   validate-release-notes-style:
     if: |
