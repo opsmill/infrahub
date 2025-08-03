@@ -652,7 +652,9 @@ jobs:
         uses: errata-ai/vale-action@v2.1.1
         with:
           version: ${{ env.VALE_VERSION }}
-          files: docs/**/*.md docs/**/*.mdx
+          files: |
+            docs/**/*.md
+            docs/**/*.mdx
           # separator: "\n"
 
       # The official GitHub Action for Vale doesn't work, installing manually instead:
