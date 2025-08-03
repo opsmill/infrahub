@@ -181,8 +181,7 @@ jobs:
         run: |
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
-          poetry env remove --all || true
-          poetry env use /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
+          poetry env use 3.12
 
       - name: Compare package versions
         run: |
@@ -487,7 +486,7 @@ jobs:
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-          poetry run pip install invoke toml
+          pip install invoke toml
       - name: "Install Package"
         run: "poetry install"
       - name: "Run validator"
@@ -574,12 +573,24 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: "Install dependencies"
+      - name: "Setup environment"
+        run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install"
+      - name: "Install npm dependencies"
         run: npm install
-      - name: "Setup Python environment"
-        run: "pip install invoke toml"
-      - name: "Build website"
-        run: "invoke docs.build"
+      - name: "Build docs"
+        run: "poetry run invoke docs.build"
+      # - name: "Install dependencies"
+      #   run: npm install
+      # - name: "Setup Python environment"
+      #   run: "pip install invoke toml"
+      # - name: "Build website"
+      #   run: "invoke docs.build"
 
   validate-generated-documentation:
     if: |
@@ -603,12 +614,11 @@ jobs:
         run: |
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
-          poetry env remove --all || true
-          poetry env use /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Setup environment"
-        run: "poetry run pip install invoke toml"
+        run: "pip install invoke toml"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
