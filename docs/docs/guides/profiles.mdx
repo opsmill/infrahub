@@ -1,25 +1,31 @@
 ---
-title: Creating and assigning profiles
+title: Profiles (Guide)
 ---
 
-# Creating and assigning profiles
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-In this tutorial we will be creating a Profile for a network device interface, and then create multiple interfaces using that profile.
+This guide shows you how to create and apply profiles to ensure consistent configuration across multiple nodes in Infrahub. You'll learn how to create a profile, apply it to nodes, and override profile values when needed.
 
-The profile will be used to create interfaces that will connect end-users. We want all the end-user interfaces in our network to have exactly the same configuration.
+## What you'll achieve
 
-The following configuration attributes need to be defined in the profile:
+By following this guide, you'll:
 
-- Profile: end-user-interface
-- Status: active
-- Enabled: true
-- Auto negotiation: enabled
-- MTU: 1500 bytes
-- Mode: Access
-- Untagged VLAN: 10
-- Role: end-user
+- Create a profile that defines standard configuration for network interfaces
+- Apply the profile to multiple interfaces to ensure consistency
+- Learn how to override profile values for specific interfaces
+- Understand how profile inheritance works in Infrahub
 
-We will be assuming the following schema has been loaded into Infrahub, this is a requirement to be able to complete the rest of this guide.
+## Prerequisites
+
+- Infrahub instance running and accessible
+- Schema loaded with nodes that support profiles (the schema in this guide includes an `InfraInterface` node)
+- Access to GraphQL API or Python SDK (profiles are currently only manageable via API)
+- Basic understanding of GraphQL mutations and queries
+
+## Example schema
+
+This guide assumes the following schema is loaded in your Infrahub instance:
 
 ```yaml
 ---
@@ -106,13 +112,12 @@ nodes:
             color: "#98b2d1"
 ```
 
-From this schema Infrahub will generate a `ProfileInfraInterface` schema. Infrahub will also generate a GraphQL query `ProfileInfraInterface` and the GraphQL mutations `ProfileInfraInterfaceCreate`, `ProfileInfraInterfaceDelete`, `ProfileInfraInterfaceUpdate` and `ProfileInfraInterfaceUpsert`.
+## Step 1: Create an interface profile
 
-Profiles, at this stage, can be only be used from the GraphQL API or the Python SDK. In a future release we will add support for managing profiles using the web frontend.
+Create a profile that defines the standard configuration for end-user interfaces. This profile will set common attributes that all end-user interfaces should have.
 
-## Creating the profile
-
-We can create the profile by executing the following GraphQL mutation:
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 mutation {
@@ -122,7 +127,7 @@ mutation {
       status: {value: "active"},
       enabled: {value: true},
       auto_negotiation: {value: true},
-      mtu: {value:1500},
+      mtu: {value: 1500},
       mode: {value: "access"},
       untagged_vlan: {value: 10},
       role: {value: "end_user"},
@@ -131,14 +136,55 @@ mutation {
     ok
     object {
       id
+      profile_name {
+        value
+      }
     }
   }
 }
 ```
 
-## Retrieving profiles from Infrahub
+</TabItem>
+<TabItem value="python" label="Python SDK">
 
-We can query Infrahub to retrieve the interface profile using the following GraphQL query
+```python
+from infrahub_sdk import InfrahubClient
+
+client = InfrahubClient()
+
+profile = client.create(
+    kind="ProfileInfraInterface",
+    profile_name="end-user-interface",
+    status="active",
+    enabled=True,
+    auto_negotiation=True,
+    mtu=1500,
+    mode="access",
+    untagged_vlan=10,
+    role="end_user"
+)
+profile.save()
+```
+
+</TabItem>
+</Tabs>
+
+The profile defines these standard settings:
+
+- **Status**: active (interface is operational)
+- **Enabled**: true (interface is administratively up)
+- **Auto negotiation**: enabled
+- **MTU**: 1500 bytes
+- **Mode**: Access (not trunk)
+- **Untagged VLAN**: 10
+- **Role**: end-user
+
+## Step 2: Verify the profile was created
+
+Query Infrahub to confirm the profile exists:
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 query {
@@ -149,20 +195,50 @@ query {
         profile_name {
           value
         }
+        status {
+          value
+        }
+        enabled {
+          value
+        }
+        mtu {
+          value
+        }
       }
     }
   }
 }
 ```
 
-## Creating a node using a profile
+</TabItem>
+<TabItem value="python" label="Python SDK">
 
-We can now create multiple interfaces that will inherited the attributes we defined in our `end-user-interface` profile.
+```python
+profiles = client.all(kind="ProfileInfraInterface")
+for profile in profiles:
+    if profile.profile_name.value == "end-user-interface":
+        print(f"Profile ID: {profile.id}")
+        print(f"Status: {profile.status.value}")
+        print(f"MTU: {profile.mtu.value}")
+```
+
+</TabItem>
+</Tabs>
+
+## Step 3: Create interfaces using the profile
+
+Create multiple interfaces that inherit configuration from the profile. You only need to specify the interface name and reference the profile.
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 mutation {
   int0: InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/0"}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/0"}, 
+      profiles: [{id: "end-user-interface"}]
+    }
   ) {
     ok
     object {
@@ -170,7 +246,10 @@ mutation {
     }
   }
   int1: InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/1"}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/1"}, 
+      profiles: [{id: "end-user-interface"}]
+    }
   ) {
     ok
     object {
@@ -178,7 +257,10 @@ mutation {
     }
   }
   int2: InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/2"}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/2"}, 
+      profiles: [{id: "end-user-interface"}]
+    }
   ) {
     ok
     object {
@@ -188,7 +270,32 @@ mutation {
 }
 ```
 
-We will now query for one of the interfaces we created and check the values of the name and status attribute and the metadata.
+</TabItem>
+<TabItem value="python" label="Python SDK">
+
+```python
+# Get the profile
+profile = client.get(kind="ProfileInfraInterface", id="end-user-interface")
+
+# Create interfaces with the profile
+for i in range(3):
+    interface = client.create(
+        kind="InfraInterface",
+        name=f"GigabitEthernet0/0/{i}",
+        profiles=[profile]
+    )
+    interface.save()
+```
+
+</TabItem>
+</Tabs>
+
+## Step 4: Verify profile inheritance
+
+Check that the interfaces inherited values from the profile. The metadata shows which values came from the profile.
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 query {
@@ -208,24 +315,61 @@ query {
             display_label
           }
         }
+        mtu {
+          value
+          is_from_profile
+        }
+        enabled {
+          value
+          is_from_profile
+        }
       }
     }
   }
 }
 ```
 
-On the name attribute we can see that the `is_from_profile` property is `False`, indicating the name attribute was not inherited from a profile. The status attribute has the `is_from_profile` property set to `True` and the `source__id` property is set to the id of the profile from which the value was inherited.
+</TabItem>
+<TabItem value="python" label="Python SDK">
 
-The status attribute value is inherited from the profile, because we didn't specify a value for that attribute when we created the interface, hence the `is_default` property of the status attribute is `True`.
+```python
+interface = client.get(
+    kind="InfraInterface", 
+    name__value="GigabitEthernet0/0/0",
+    include=["status", "mtu", "enabled"]
+)
 
-## Overriding profile attribute values
+print(f"Interface: {interface.name.value}")
+print(f"  Name from profile: {interface.name.is_from_profile}")
+print(f"  Status: {interface.status.value} (from profile: {interface.status.is_from_profile})")
+print(f"  MTU: {interface.mtu.value} (from profile: {interface.mtu.is_from_profile})")
+```
 
-We will now create another interface `GigabitEthernet0/0/3` using the profile. But we want to override the value of the MTU attribute, which is defined in the profile. To do this we have to explicitly provide a value for the attribute.
+</TabItem>
+</Tabs>
+
+Expected results:
+
+- `name.is_from_profile`: False (name was explicitly set)
+- `status.is_from_profile`: True (inherited from profile)
+- `mtu.is_from_profile`: True (inherited from profile)
+- `status.source.id`: Shows the profile that provided the value
+
+## Step 5: Override profile values
+
+Create an interface with a custom MTU value that overrides the profile default:
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 mutation {
   InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/3"}, mtu: {value: 9000}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/3"}, 
+      mtu: {value: 9000},  # Override profile MTU
+      profiles: [{id: "end-user-interface"}]
+    }
   ) {
     ok
     object {
@@ -235,9 +379,33 @@ mutation {
 }
 ```
 
-Using this query we can verify that the value for the MTU attribute and that it was not inherited from a profile.
+</TabItem>
+<TabItem value="python" label="Python SDK">
 
-```query
+```python
+profile = client.get(kind="ProfileInfraInterface", id="end-user-interface")
+
+# Create interface with custom MTU
+interface = client.create(
+    kind="InfraInterface",
+    name="GigabitEthernet0/0/3",
+    mtu=9000,  # Override profile MTU
+    profiles=[profile]
+)
+interface.save()
+```
+
+</TabItem>
+</Tabs>
+
+## Step 6: Verify the override
+
+Confirm that the MTU was overridden while other values still come from the profile:
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
 query {
   InfraInterface(name__value: "GigabitEthernet0/0/3") {
     edges {
@@ -246,8 +414,109 @@ query {
           value
           is_from_profile
         }
+        status {
+          value
+          is_from_profile
+        }
       }
     }
   }
 }
 ```
+
+</TabItem>
+<TabItem value="python" label="Python SDK">
+
+```python
+interface = client.get(
+    kind="InfraInterface",
+    name__value="GigabitEthernet0/0/3"
+)
+
+print(f"MTU: {interface.mtu.value} (from profile: {interface.mtu.is_from_profile})")
+print(f"Status: {interface.status.value} (from profile: {interface.status.is_from_profile})")
+```
+
+</TabItem>
+</Tabs>
+
+Expected results:
+
+- `mtu.value`: 9000 (custom value)
+- `mtu.is_from_profile`: False (overridden)
+- `status.is_from_profile`: True (still from profile)
+
+## Validation
+
+Your interfaces are now configured with consistent settings from the profile:
+
+✓ All end-user interfaces have the same base configuration
+✓ You can see which values come from profiles using metadata
+✓ Individual interfaces can override profile values when needed
+✓ Changes to the profile automatically propagate to all interfaces using it
+
+## Advanced usage
+
+### Using multiple profiles
+
+Nodes can have multiple profiles assigned. Use `profile_priority` to control which profile takes precedence:
+
+```graphql
+mutation {
+  ProfileInfraInterfaceCreate(
+    data: {
+      profile_name: {value: "high-speed-interface"},
+      profile_priority: {value: 500},  # Lower number = higher priority
+      speed: {value: 10000},
+      mtu: {value: 9000}
+    }
+  ) {
+    ok
+  }
+}
+```
+
+### Updating profiles
+
+When you update a profile, all nodes using it automatically inherit the changes:
+
+```graphql
+mutation {
+  ProfileInfraInterfaceUpdate(
+    data: {
+      id: "end-user-interface",
+      untagged_vlan: {value: 20}  # Change VLAN for all interfaces
+    }
+  ) {
+    ok
+  }
+}
+```
+
+## Related resources
+
+### Learn more about profiles
+
+- [Understanding profiles in Infrahub](../topics/profiles) - Detailed explanation of profile concepts, architecture, and design decisions
+- [Metadata](../topics/metadata) - Learn how Infrahub tracks data lineage and attribute sources
+- [Version control](../topics/version-control) - Understand how profiles work with branches and merges
+
+### Schema and configuration
+
+- [Creating a schema](../guides/create-schema) - Learn to create schemas that generate profile support
+- [Node schema reference](../reference/schema/node) - Complete reference for node configuration including `generate_profile` option
+- [Generic schema reference](../reference/schema/generic) - How profiles work with generic node types
+- [Schema validation](../reference/schema-validation) - Validate your schemas before loading
+
+### API and automation
+
+- [GraphQL API](../topics/graphql) - Overview of Infrahub's GraphQL API
+- [GraphQL queries tutorial](../tutorials/getting-started/graphql-query) - Learn to query profiles and nodes
+- [GraphQL mutations tutorial](../tutorials/getting-started/graphql-mutation) - Create and update profiles programmatically
+- [Python SDK documentation](https://docs.infrahub.app/python-sdk) - Full SDK reference for profile operations
+
+### Related features
+
+- [Groups](../guides/groups) - Organize nodes and apply configurations at scale
+- [Computed attributes](../guides/computed-attributes) - Dynamic attribute values that complement profiles
+- [Lineage information](../tutorials/getting-started/lineage-information) - Track where configuration values originate
