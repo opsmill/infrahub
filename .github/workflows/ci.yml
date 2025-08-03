@@ -652,7 +652,7 @@ jobs:
         uses: errata-ai/vale-action@v2.1.1
         with:
           version: ${{ env.VALE_VERSION }}
-          files: docs/**/*.mdx
+          files: "docs/**/*.mdx"
           vale_flags: "--config=./.vale.ini"
 
   validate-release-notes-style:
