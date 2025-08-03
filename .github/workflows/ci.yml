@@ -652,8 +652,8 @@ jobs:
         uses: errata-ai/vale-action@v2.1.1
         with:
           version: ${{ env.VALE_VERSION }}
-          files: "docs/**/*.mdx"
-          vale_flags: "--config=./.vale.ini"
+          files: docs
+          vale_flags: "--config=./.vale.ini --glob='*.{md,mdx}'"
 
   validate-release-notes-style:
     if: |
