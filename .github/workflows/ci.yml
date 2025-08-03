@@ -582,6 +582,7 @@ jobs:
       - name: "Install Poetry packages"
         run: "poetry install"
       - name: "Install npm dependencies"
+        working-directory: ./docs
         run: npm install
       - name: "Build docs"
         run: "poetry run invoke docs.build"
@@ -625,6 +626,7 @@ jobs:
       - name: "Install Poetry packages"
         run: "poetry install"
       - name: "Install npm dependencies"
+        working-directory: ./docs
         run: npm install
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
