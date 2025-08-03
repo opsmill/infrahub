@@ -606,7 +606,7 @@ jobs:
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Setup environment"
-        run: "pip install invoke toml"
+        run: "poetry run pip install invoke toml"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
