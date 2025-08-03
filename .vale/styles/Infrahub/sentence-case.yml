@@ -26,6 +26,7 @@ exceptions:
   - CoreArtifactTarget
   - CoreRepository
   - CoreGroup
+  - CSS-like cascading
   - Docker Compose
   - E2E
   - Generics
