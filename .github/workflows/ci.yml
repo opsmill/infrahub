@@ -211,59 +211,6 @@ jobs:
     with:
       directory: "./python_testcontainers"
 
-  # TODO NEED TO REVISIT THIS ONE
-  # python-sdk-poetry-check:
-  #   if: |
-  #     needs.files-changed.outputs.python_sdk_poetry_files == 'true' ||
-  #     github.ref_name == 'stable' ||
-  #     github.ref_name == 'develop'
-  #   needs:
-  #     - "files-changed"
-  #   uses: "./.github/workflows/poetry-check.yml"
-  #   with:
-  #     directory: "./python-sdk/"
-
-  # TODO NEED TO REVISIT THIS ONE
-  # python-sdk-integration-tests:
-  #   if: |
-  #     always() && !cancelled() &&
-  #     !contains(needs.*.result, 'failure') &&
-  #     !contains(needs.*.result, 'cancelled')
-  #   needs: ["python-sdk-unit-tests"]
-  #   runs-on:
-  #     group: huge-runners
-  #   timeout-minutes: 30
-  #   env:
-  #     INFRAHUB_DB_TYPE: memgraph
-  #   steps:
-  #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v4"
-  #       with:
-  #         submodules: true
-  #     - name: "Install Invoke"
-  #       run: "pip install invoke toml"
-
-  #     - name: "Set environment variables"
-  #       run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-  #     - name: "Set environment variables"
-  #       run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-  #     - name: "Clear docker environment"
-  #       run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-  #     - name: "Build Test Image"
-  #       run: "invoke dev.build"
-  #     - name: "Pull External Docker Images"
-  #       run: "invoke dev.pull"
-  #     - name: "Integration Tests"
-  #       run: "invoke sdk.test-integration"
-  #     - name: "Coveralls : Integration Tests"
-  #       uses: coverallsapp/github-action@v2
-  #       continue-on-error: true
-  #       env:
-  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-  #       with:
-  #         flag-name: python-sdk-integration
-  #         parallel: true
 
   backend-tests-unit:
     if: |
@@ -629,7 +576,7 @@ jobs:
       - name: "Install dependencies"
         run: npm install
       - name: "Setup Python environment"
-        run: "pip install invoke toml"
+        run: "pip install invoke"
       - name: "Build website"
         run: "invoke docs.build"
 
@@ -659,7 +606,7 @@ jobs:
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Setup environment"
-        run: "pip install invoke toml"
+        run: "pip install invoke"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
