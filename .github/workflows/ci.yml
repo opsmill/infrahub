@@ -576,7 +576,7 @@ jobs:
       - name: "Install dependencies"
         run: npm install
       - name: "Setup Python environment"
-        run: "pip install invoke"
+        run: "pip install invoke toml"
       - name: "Build website"
         run: "invoke docs.build"
 
@@ -606,7 +606,7 @@ jobs:
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Setup environment"
-        run: "pip install invoke"
+        run: "pip install invoke toml"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
