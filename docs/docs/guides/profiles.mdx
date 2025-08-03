@@ -179,6 +179,10 @@ The profile defines these standard settings:
 - **Untagged VLAN**: 10
 - **Role**: end-user
 
+:::important
+Save the profile ID returned from the creation mutation. You'll need this UUID to assign the profile to nodes. The profile_name ("end-user-interface") is used for queries and filters, but mutations require the actual UUID.
+:::
+
 ## Step 2: Verify the profile was created
 
 Query Infrahub to confirm the profile exists:
@@ -229,6 +233,10 @@ for profile in profiles:
 
 Create multiple interfaces that inherit configuration from the profile. You only need to specify the interface name and reference the profile.
 
+:::note
+Replace the example UUID below with the actual profile ID returned from Step 1. You cannot use the profile_name directly in the profiles array.
+:::
+
 <Tabs>
 <TabItem value="graphql" label="GraphQL">
 
@@ -236,8 +244,8 @@ Create multiple interfaces that inherit configuration from the profile. You only
 mutation {
   int0: InfraInterfaceCreate(
     data: {
-      name: {value: "GigabitEthernet0/0/0"}, 
-      profiles: [{id: "end-user-interface"}]
+      name: {value: "GigabitEthernet0/0/0"},
+      profiles: [{id: "179266e9-f385-491b-b6f0-716385295a49"}]
     }
   ) {
     ok
@@ -247,8 +255,8 @@ mutation {
   }
   int1: InfraInterfaceCreate(
     data: {
-      name: {value: "GigabitEthernet0/0/1"}, 
-      profiles: [{id: "end-user-interface"}]
+      name: {value: "GigabitEthernet0/0/1"},
+      profiles: [{id: "179266e9-f385-491b-b6f0-716385295a49"}]
     }
   ) {
     ok
@@ -258,8 +266,8 @@ mutation {
   }
   int2: InfraInterfaceCreate(
     data: {
-      name: {value: "GigabitEthernet0/0/2"}, 
-      profiles: [{id: "end-user-interface"}]
+      name: {value: "GigabitEthernet0/0/2"},
+      profiles: [{id: "179266e9-f385-491b-b6f0-716385295a49"}]
     }
   ) {
     ok
@@ -274,8 +282,13 @@ mutation {
 <TabItem value="python" label="Python SDK">
 
 ```python
-# Get the profile
-profile = client.get(kind="ProfileInfraInterface", id="end-user-interface")
+# Get the profile by name
+profiles = client.all(kind="ProfileInfraInterface", profile_name__value="end-user-interface")
+if not profiles:
+    print("Profile not found!")
+    exit(1)
+
+profile = profiles[0]
 
 # Create interfaces with the profile
 for i in range(3):
@@ -334,7 +347,7 @@ query {
 
 ```python
 interface = client.get(
-    kind="InfraInterface", 
+    kind="InfraInterface",
     name__value="GigabitEthernet0/0/0",
     include=["status", "mtu", "enabled"]
 )
@@ -366,9 +379,9 @@ Create an interface with a custom MTU value that overrides the profile default:
 mutation {
   InfraInterfaceCreate(
     data: {
-      name: {value: "GigabitEthernet0/0/3"}, 
+      name: {value: "GigabitEthernet0/0/3"},
       mtu: {value: 9000},  # Override profile MTU
-      profiles: [{id: "end-user-interface"}]
+      profiles: [{id: "179266e9-f385-491b-b6f0-716385295a49"}]
     }
   ) {
     ok
@@ -383,16 +396,19 @@ mutation {
 <TabItem value="python" label="Python SDK">
 
 ```python
-profile = client.get(kind="ProfileInfraInterface", id="end-user-interface")
+# Get the profile by name
+profiles = client.all(kind="ProfileInfraInterface", profile_name__value="end-user-interface")
+profile = profiles[0] if profiles else None
 
-# Create interface with custom MTU
-interface = client.create(
-    kind="InfraInterface",
-    name="GigabitEthernet0/0/3",
-    mtu=9000,  # Override profile MTU
-    profiles=[profile]
-)
-interface.save()
+if profile:
+    # Create interface with custom MTU
+    interface = client.create(
+        kind="InfraInterface",
+        name="GigabitEthernet0/0/3",
+        mtu=9000,  # Override profile MTU
+        profiles=[profile]
+    )
+    interface.save()
 ```
 
 </TabItem>
@@ -481,10 +497,23 @@ mutation {
 When you update a profile, all nodes using it automatically inherit the changes:
 
 ```graphql
+# Method 1: Update by profile UUID
 mutation {
   ProfileInfraInterfaceUpdate(
     data: {
-      id: "end-user-interface",
+      id: "179266e9-f385-491b-b6f0-716385295a49",
+      untagged_vlan: {value: 20}  # Change VLAN for all interfaces
+    }
+  ) {
+    ok
+  }
+}
+
+# Method 2: Update by profile name (recommended)
+mutation {
+  ProfileInfraInterfaceUpdate(
+    where: {profile_name__value: "end-user-interface"},
+    data: {
       untagged_vlan: {value: 20}  # Change VLAN for all interfaces
     }
   ) {
