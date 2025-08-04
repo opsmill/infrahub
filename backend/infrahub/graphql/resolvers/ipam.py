@@ -14,6 +14,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
@@ -305,6 +306,11 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
     kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
+
+    if isinstance(schema, GenericSchema):
+        for kind in kinds_to_filter:
+            if kind not in schema.used_by:
+                raise ValidationError(f"{kind} is not a node inheriting from {schema.kind}")
 
     graphql_context: GraphqlContext = info.context
     async with graphql_context.db.start_session(read_only=True) as db:

@@ -575,7 +575,6 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         kinds: list[str],
     ):
         gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-
         query = """
         query($prefix: ID!, $limit: Int!, $kinds: [String!]) {
             BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds, limit: $limit) {
@@ -620,6 +619,39 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         else:
             # If we query for all addresses, we'll have 2 available ranges too
             assert len(response.data["BuiltinIPAddress"]["edges"]) == expected_ipaddress_count + 2
+
+    async def test_ip_address_include_available_filtered_by_kind_invalid(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        default_ipnamespace: Node,
+        register_ipam_schema: SchemaBranch,
+        ip_dataset_range_various_kinds: dict[str, Node],
+    ):
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        query = """
+        query($prefix: ID!, $kinds: [String!]) {
+            BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds) {
+                edges {
+                    node {
+                        id
+                        display_label
+                        __typename
+                    }
+                }
+            }
+        }
+        """
+
+        response = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            variable_values={"prefix": ip_dataset_range_various_kinds["net"].id, "kinds": ["NotAnIPAddress"]},
+        )
+
+        assert response.errors
+        assert response.errors[0].message == "NotAnIPAddress is not a node inheriting from BuiltinIPAddress"
 
     @pytest.mark.parametrize(
         "limit,offset,result",
