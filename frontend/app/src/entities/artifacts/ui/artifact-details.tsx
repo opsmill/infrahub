@@ -56,7 +56,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
 
           <Row className="gap-4">
             <NodeDescription node={objectDetailsData.definition?.node} className="p-2" />
-            <div className="self-stretch w-px bg-gray-300" />
+            <Separator orientation="vertical" />
             <NodeDescription node={objectDetailsData.object?.node} className="p-2" />
           </Row>
         </Col>
