@@ -14,7 +14,8 @@ For resilient, high-availability deployments, refer to the [high availability ar
 
 ## Prerequisites
 
-Ensure your system meets the [hardware requirements](../topics/hardware-requirements) before installing Infrahub.
+- Ensure your system meets the [hardware requirements](../topics/hardware-requirements) before installing Infrahub.
+- Note that each installation method will have additional prerequisites
 
 :::info
 
@@ -31,7 +32,7 @@ Allocating more CPU cores to the Neo4j database will only improve performance on
 Infrahub Community is deployed as a container-based architecture and can be installed using several methods.
 
 <Tabs>
-<TabItem value="Quick start via curl" default>
+<TabItem value="Docker compose via curl" default>
 
 To quickly spin up the latest Infrahub locally, retrieve the Docker Compose file from [infrahub.opsmill.io](https://infrahub.opsmill.io).
 
@@ -95,7 +96,7 @@ curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - down -v
 </Tabs>
 
 </TabItem>
-<TabItem value="Docker Compose">
+<TabItem value="Local development (git clone)">
 
 The recommended method for running Infrahub uses the Docker Compose files included with the project combined with helper commands defined in `invoke`.
 
@@ -231,26 +232,6 @@ invoke demo.start
 ```
 
 <ReferenceLink title="Check the documentation of the demo environment for more information" url="../topics/local-demo-environment" />
-
-</TabItem>
-<TabItem value="GitHub Codespaces">
-
-The Infrahub GitHub repository is designed to launch an instance via [GitHub Codespaces](https://docs.github.com/en/codespaces/overview). We have two devcontainer configurations:
-
-- `infrahub`: a deployment running with no [Schema](../tutorials/getting-started/schema) or data pre-installed
-- `infrahub-demo`: a deployment running the [demo environment](../topics/local-demo-environment)
-
-|  No Data | Demo Data |
-|---|---|
-| [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=stable) |
-
-:::note
-
-The default devcontainer `.devcontainer/devcontainer.json` launches Infrahub with no schema or data. If you want to launch a deployment with the demo schema and data, you will need to choose the alternate `Dev container configuration` in the GitHub Codespaces creation options.
-
-:::
-
-<ReferenceLink title="Infrahub devcontainer file" url="https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json" openInNewTab />
 
 </TabItem>
 <TabItem value="Kubernetes with Helm">
