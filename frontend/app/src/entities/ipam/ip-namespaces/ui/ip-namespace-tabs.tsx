@@ -1,3 +1,4 @@
+import { constructPathForIpam } from "@/entities/ipam/utils";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
 import { ModelSchema } from "@/entities/schema/types";
 
@@ -21,7 +22,7 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
           parentKind={schema.kind!}
           parentId={objectId}
           relationship={relationshipSchemaWithIpPrefix}
-          href="/ipam"
+          href={constructPathForIpam("/ipam")}
         />
       )}
 
@@ -30,7 +31,7 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
           parentKind={schema.kind!}
           parentId={objectId}
           relationship={relationshipSchemaWithIpAddress}
-          href="/ipam/ip_addresses"
+          href={constructPathForIpam("/ipam/ip_addresses")}
         />
       )}
     </div>
