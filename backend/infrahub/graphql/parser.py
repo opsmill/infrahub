@@ -18,7 +18,7 @@ from infrahub_sdk.utils import deep_merge_dict
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
 
 
 @dataclass
@@ -29,13 +29,13 @@ class FieldEnricher:
     fields: dict = field(default_factory=dict)
 
 
-async def extract_selection(info: GraphQLResolveInfo, schema: NodeSchema) -> dict:
+async def extract_selection(info: GraphQLResolveInfo, schema: NodeSchema | GenericSchema) -> dict:
     graphql_extractor = GraphQLExtractor(info=info, schema=schema)
     return await graphql_extractor.get_fields()
 
 
 class GraphQLExtractor:
-    def __init__(self, info: GraphQLResolveInfo, schema: NodeSchema) -> None:
+    def __init__(self, info: GraphQLResolveInfo, schema: NodeSchema | GenericSchema) -> None:
         self.info = info
         self.schema = schema
         self.typename_paths: dict[str, list[FieldEnricher]] = {}

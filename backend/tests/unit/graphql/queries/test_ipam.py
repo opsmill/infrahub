@@ -1,8 +1,10 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.node_schema import NodeSchema
@@ -191,6 +193,34 @@ async def test_ipaddress_nextavailable(
     assert result.data["InfrahubIPAddressGetNextAvailable"]["address"] == response
 
 
+@pytest.fixture(scope="class")
+def alternative_ipam_schema() -> SchemaRoot:
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Test",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_labels": ["prefix__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Test",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_labels": ["address__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+        ],
+    }
+
+    return SchemaRoot(**SCHEMA)
+
+
 class TestIpamAvailableNodes(TestInfrahubApp):
     async def _create_address(
         self, db: InfrahubDatabase, schema: NodeSchema, address: str, ns: Node, prefix: Node
@@ -208,9 +238,15 @@ class TestIpamAvailableNodes(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def register_ipam_schema(
-        self, initialize_registry: None, default_branch: Branch, ipam_schema: SchemaRoot
+        self,
+        initialize_registry: None,
+        default_branch: Branch,
+        ipam_schema: SchemaRoot,
+        alternative_ipam_schema: SchemaRoot,
     ) -> SchemaBranch:
-        schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
+        schema_branch = registry.schema.register_schema(
+            schema=ipam_schema.merge(alternative_ipam_schema), branch=default_branch.name
+        )
         default_branch.update_schema_hash()
         return schema_branch
 
@@ -372,6 +408,42 @@ class TestIpamAvailableNodes(TestInfrahubApp):
             "net6": net6,
         }
 
+    @pytest.fixture(scope="class")
+    async def ip_dataset_range_various_kinds(
+        self, db: InfrahubDatabase, default_branch: Branch, register_ipam_schema: SchemaBranch
+    ):
+        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+        alternative_address_schema = registry.schema.get_node_schema(name="TestIPAddress", branch=default_branch)
+
+        ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+        await ns.new(db=db, name="multi-kinds")
+        await ns.save(db=db)
+
+        # Prefix with all IP available
+        net = await Node.init(db=db, schema=prefix_schema)
+        await net.new(db=db, prefix="192.0.2.0/24", ip_namespace=ns, is_pool=False, member_type="address")
+        await net.save(db=db)
+
+        ipamipaddress_count = 0
+        testipaddress_count = 0
+        for i in range(1, 32):
+            await self._create_address(db, address_schema, f"192.0.2.{i}/24", ns, net)
+            ipamipaddress_count += 1
+        for i in range(64, 96):
+            await self._create_address(db, alternative_address_schema, f"192.0.2.{i}/24", ns, net)
+            testipaddress_count += 1
+        for i in range(96, 128):
+            await self._create_address(db, address_schema, f"192.0.2.{i}/24", ns, net)
+            ipamipaddress_count += 1
+
+        return {
+            "ns": ns,
+            "net": net,
+            "ipamipaddress_count": ipamipaddress_count,
+            "testipaddress_count": testipaddress_count,
+        }
+
     @pytest.mark.parametrize(
         "prefix,result",
         [
@@ -480,6 +552,106 @@ class TestIpamAvailableNodes(TestInfrahubApp):
             (node["node"]["__typename"], node["node"]["display_label"])
             for node in response.data["BuiltinIPAddress"]["edges"]
         ]
+
+    @pytest.mark.parametrize(
+        "limit,kinds",
+        [
+            (0, ["IpamIPAddress"]),
+            (0, ["IpamIPAddress", "TestIPAddress"]),
+            (10, ["IpamIPAddress"]),
+            (10, ["IpamIPAddress", "TestIPAddress"]),
+            (60, ["IpamIPAddress"]),
+            (60, ["IpamIPAddress", "TestIPAddress"]),
+        ],
+    )
+    async def test_ip_address_include_available_filtered_by_kind(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        default_ipnamespace: Node,
+        register_ipam_schema: SchemaBranch,
+        ip_dataset_range_various_kinds: dict[str, Node],
+        limit: int,
+        kinds: list[str],
+    ):
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        query = """
+        query($prefix: ID!, $limit: Int!, $kinds: [String!]) {
+            BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds, limit: $limit) {
+                edges {
+                    node {
+                        id
+                        display_label
+                        __typename
+                    }
+                }
+            }
+        }
+        """
+
+        response = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            variable_values={"prefix": ip_dataset_range_various_kinds["net"].id, "limit": limit, "kinds": kinds},
+        )
+        assert not response.errors
+        assert response.data
+        assert response.data["BuiltinIPAddress"]["edges"]
+
+        if len(kinds) == 1 or (limit > 0 and limit < 32):
+            # There should be only one kind if we exclude available range
+            assert {node["node"]["__typename"] for node in response.data["BuiltinIPAddress"]["edges"]} - {
+                "InternalIPRangeAvailable"
+            } == {"IpamIPAddress"}
+        else:
+            assert {node["node"]["__typename"] for node in response.data["BuiltinIPAddress"]["edges"]} - {
+                "InternalIPRangeAvailable"
+            } == set(kinds)
+
+        expected_ipaddress_count = ip_dataset_range_various_kinds["ipamipaddress_count"]
+        if len(kinds) == 2:
+            expected_ipaddress_count += ip_dataset_range_various_kinds["testipaddress_count"]
+
+        # Given the used fixture, only 0, 1 or 2 available ranges can be in the result
+        if limit:
+            assert len(response.data["BuiltinIPAddress"]["edges"]) - limit in [0, 1, 2]
+        else:
+            # If we query for all addresses, we'll have 2 available ranges too
+            assert len(response.data["BuiltinIPAddress"]["edges"]) == expected_ipaddress_count + 2
+
+    async def test_ip_address_include_available_filtered_by_kind_invalid(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        default_ipnamespace: Node,
+        register_ipam_schema: SchemaBranch,
+        ip_dataset_range_various_kinds: dict[str, Node],
+    ):
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        query = """
+        query($prefix: ID!, $kinds: [String!]) {
+            BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds) {
+                edges {
+                    node {
+                        id
+                        display_label
+                        __typename
+                    }
+                }
+            }
+        }
+        """
+
+        response = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            variable_values={"prefix": ip_dataset_range_various_kinds["net"].id, "kinds": ["NotAnIPAddress"]},
+        )
+
+        assert response.errors
+        assert response.errors[0].message == "NotAnIPAddress is not a node inheriting from BuiltinIPAddress"
 
     @pytest.mark.parametrize(
         "limit,offset,result",
