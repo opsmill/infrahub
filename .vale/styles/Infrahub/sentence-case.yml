@@ -21,6 +21,7 @@ exceptions:
   - BGP
   - CA certificates
   - CI
+  - CI/CD
   - Codespaces
   - Computed Attribute
   - Computed Attributes
