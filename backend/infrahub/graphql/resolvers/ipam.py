@@ -235,14 +235,14 @@ async def _resolve_available_prefix_nodes(
 def _filter_kinds(nodes: list[Node], kinds: list[str], limit: int | None) -> list[Node]:
     filtered: list[Node] = []
     available_node_kinds = [InfrahubKind.IPPREFIXAVAILABLE, InfrahubKind.IPRANGEAVAILABLE]
-    kinds += available_node_kinds
+    kinds_with_available = kinds + available_node_kinds
 
     limit_with_available = limit
     for node in nodes:
-        if node.get_schema().kind not in kinds:
+        if node.get_schema().kind not in kinds_with_available:
             continue
         # Adapt the limit of nodes to return by always including available ones
-        if node.get_schema().kind in available_node_kinds:
+        if limit and node.get_schema().kind in available_node_kinds:
             limit_with_available += 1
         filtered.append(node)
 
