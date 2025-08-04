@@ -176,6 +176,9 @@ async def merge_proposed_change(
         try:
             await verify_proposed_change_is_mergeable(proposed_change=proposed_change, db=db)  # type: ignore[arg-type]
         except ValueError as exc:
+            await _proposed_change_transition_state(
+                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+            )
             return Failed(message=str(exc))
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)
