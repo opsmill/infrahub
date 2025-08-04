@@ -173,6 +173,7 @@ jobs:
           submodules: true
 
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -182,6 +183,8 @@ jobs:
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
 
       - name: Compare package versions
         run: |
@@ -531,6 +534,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
@@ -539,7 +543,8 @@ jobs:
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-          pip install invoke toml
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install Package"
         run: "poetry install"
       - name: "Run validator"
@@ -633,6 +638,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -641,10 +647,10 @@ jobs:
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
-      - name: "Setup environment"
-        run: "pip install invoke toml"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
