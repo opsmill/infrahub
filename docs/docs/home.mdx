@@ -101,6 +101,12 @@ import HomePageCard from "../src/components/HomePage/card.tsx";
 
 <div className="row">
     <HomePageCard
+        title="All Integrations"
+        svgPath="/img/sync.svg"
+        description="Infrahub integrates with a wide range of network management and automation tools to help you synchronize data and automate workflows."
+        link="$(base_url)integrations"
+    />
+    <HomePageCard
         title="Ansible"
         svgPath="/img/ansible.svg"
         description="OpsMill maintains the `opsmill.infrahub` Ansible Collection."
@@ -111,12 +117,6 @@ import HomePageCard from "../src/components/HomePage/card.tsx";
         svgPath="/img/nornir.png"
         description="Infrahub can be used as an inventory source for Nornir."
         link="$(base_url)nornir"
-    />
-    <HomePageCard
-        title="Infrahub Sync"
-        svgPath="/img/sync.svg"
-        description="A versatile Python package for synchronizing data between source and destination systems. Examples: NetBox, Nautobot, Slurp'it, IP Fabric, Peering Manager"
-        link="$(base_url)sync"
     />
 </div>
 
