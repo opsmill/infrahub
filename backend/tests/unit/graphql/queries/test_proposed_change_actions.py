@@ -1,9 +1,11 @@
 from infrahub.auth import AccountSession
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.graphql import graphql_query
@@ -24,9 +26,11 @@ query actions($proposed_change_id: String!) {
 """
 
 
-async def test_proposed_change_available_actions(
+async def test_proposed_change_open(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
 ):
+    registry.permission_backends = [LocalPermissionBackend()]
+
     branch_name = "pc-1234"
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
@@ -34,7 +38,7 @@ async def test_proposed_change_available_actions(
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
         db=db,
-        name="pc-merged-1234",
+        name="pc-1",
         destination_branch="main",
         source_branch=branch_name,
         state="open",
@@ -59,8 +63,8 @@ async def test_proposed_change_available_actions(
         True,
         True,
         False,
-        False,
-        False,
+        True,
+        True,
     ]
     assert [
         node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
@@ -69,12 +73,86 @@ async def test_proposed_change_available_actions(
         None,
         None,
         "The proposed change is not a draft",
-        "You do not have the permission to perform this action",
-        "You do not have the permission to perform this action",
+        None,
+        None,
     ]
 
-    proposed_change.is_draft.value = True
+
+async def test_proposed_change_closed(
+    db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
+):
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    branch_name = "pc-3"
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name="pc-3",
+        destination_branch="main",
+        source_branch=branch_name,
+        state="closed",
+        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
+    )
     await proposed_change.save(db=db)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    response = await graphql_query(
+        query=PROPOSED_CHANGE_ACTIONS,
+        db=db,
+        service=service,
+        variables={"proposed_change_id": proposed_change.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 6
+
+    assert [node["node"]["available"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]] == [
+        True,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ]
+    assert [
+        node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
+    ] == [
+        None,
+        "The proposed change is not open",
+        "The proposed change is not open",
+        "The proposed change is not open",
+        "The proposed change is not open",
+        "The proposed change is not open",
+    ]
+
+
+async def test_proposed_change_draft(
+    db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
+):
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    branch_name = "pc-2"
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name="pc-2",
+        destination_branch="main",
+        source_branch=branch_name,
+        state="open",
+        is_draft=True,
+        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
+    )
+    await proposed_change.save(db=db)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
     response = await graphql_query(
         query=PROPOSED_CHANGE_ACTIONS,
@@ -92,7 +170,7 @@ async def test_proposed_change_available_actions(
         True,
         False,
         True,
-        False,
+        True,
         False,
     ]
     assert [
@@ -102,6 +180,6 @@ async def test_proposed_change_available_actions(
         None,
         "The proposed change is a draft",
         None,
-        "You do not have the permission to perform this action",
+        None,
         "The proposed change is a draft",
     ]
