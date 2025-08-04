@@ -10,8 +10,8 @@ class TestProposedChangeCheckForRevokeApprovals(TestInfrahubApp):
         client: InfrahubClient,
     ) -> None:
         mutation = """
-        mutation ProposedChangeCheckForApprovalRevoke($data: ProposedChangeCheckForApprovalRevokeInput!) {
-            ProposedChangeCheckForApprovalRevoke(data: $data) {
+        mutation CoreProposedChangeCheckForApprovalRevoke($data: ProposedChangeCheckForApprovalRevokeInput!) {
+            CoreProposedChangeCheckForApprovalRevoke(data: $data) {
                 ok
             }
         }
