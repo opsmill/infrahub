@@ -1,7 +1,6 @@
+import { IpamDetailsHeader } from "@/entities/ipam/ip-prefixes/ui/ipam-details-header";
 import { IpamDetailsTabs } from "@/entities/ipam/ipam-details-tabs";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { ModelSchema } from "@/entities/schema/types";
@@ -33,24 +32,20 @@ function IpamDetailsLayout({ objectSchema, objectId, permission }: IpamDetailsPa
 
   return (
     <FormContext value={{ parentSchema: objectSchema, parentData: data }}>
-      <Col className="gap-0 overflow-hidden">
-        <Row className="text-xs py-2 px-2.5 gap-1.5 text-custom-blue-800">
+      <Col className="gap-0 overflow-hidden pt-2">
+        <Row className="text-xs px-2.5 gap-1.5 text-custom-blue-800">
           <Icon icon={getSchemaIcon(objectSchema)} />
           {objectSchema.label}
         </Row>
 
-        <Row className="px-2">
-          <h2 className="font-semibold text-lg justify-between">{getNodeLabel(data)}</h2>
-
-          <ObjectDetailsMenu
-            objectSchema={objectSchema}
-            objectData={data}
-            permission={permission}
-          />
-        </Row>
+        <IpamDetailsHeader
+          ipPrefixSchema={objectSchema}
+          ipPrefixNode={data}
+          permission={permission}
+          className="px-2.5 mb-2"
+        />
 
         <IpamDetailsTabs objectSchema={objectSchema} objectData={data} />
-
         <Outlet />
       </Col>
     </FormContext>
