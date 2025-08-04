@@ -8,6 +8,7 @@ append_git_suffix
 artifact_definitions
 artifact_name
 async
+auditable
 Authentik
 boolean
 certifi
@@ -45,6 +46,7 @@ eslint
 excalidraw
 fanout
 file_path
+Gbps
 generate_artifacts
 generator_definition
 generator_definitions
@@ -63,6 +65,7 @@ httpx
 human_friendly_id
 id_token
 idempotency
+idempotently
 include_in_menu
 Infrahub
 Infrahub's
@@ -71,6 +74,8 @@ IP
 IPAddress
 IPAM
 IPHost
+IPPrefix
+IPs
 is_empty
 is_ip_within
 is_not_empty
@@ -81,12 +86,14 @@ json
 JSONSchema
 kbps
 Keycloak
+Kriten
 kubectl
 LibreNMS
 livestream
 Loopbacks
 markdownlint
 max_count
+Mbps
 memgraph
 menu_placement
 min_max
@@ -112,6 +119,7 @@ order_by
 order_weight
 Otternet
 pg_dump
+plaintext
 Postgresql
 Postgress
 Prefetch
@@ -127,6 +135,7 @@ regenerate_host_artifact
 repo
 resources
 REST
+reusability
 Schema
 schema_mapping
 schema's
@@ -134,16 +143,21 @@ scrollable
 scrollbar
 sdk
 Slurp'it
+streamlit
 Streamlit
 subcommand
 subnet
+subnets
 subtyping
 Subtyping
+Telecom
 template_path
 toml
+Tooltips
 towncrier
 Towncrier
 TruffleHog
+UIs
 uncheck
 uniqueness_constraints
 upsert
