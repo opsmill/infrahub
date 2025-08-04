@@ -303,14 +303,16 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         else info.return_type.graphene_type._meta.schema
     )
 
+    if not isinstance(schema, GenericSchema) or schema.kind not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+        raise ValidationError(f"{schema.kind} is not {InfrahubKind.IPADDRESS} or {InfrahubKind.IPPREFIX}")
+
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
     kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
 
-    if isinstance(schema, GenericSchema):
-        for kind in kinds_to_filter:
-            if kind not in schema.used_by:
-                raise ValidationError(f"{kind} is not a node inheriting from {schema.kind}")
+    for kind in kinds_to_filter:
+        if kind not in schema.used_by:
+            raise ValidationError(f"{kind} is not a node inheriting from {schema.kind}")
 
     graphql_context: GraphqlContext = info.context
     async with graphql_context.db.start_session(read_only=True) as db:
@@ -363,7 +365,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         # Since we are going to narrow down the number of nodes in the end, we will query for a larger set (that can potentially include all kinds of
         # implementations) in the first place to make sure that we will fill in the page to its maximum
         query_limit = limit
-        if kinds_to_filter and limit and isinstance(schema, GenericSchema):
+        if kinds_to_filter and limit:
             query_limit *= len(schema.used_by)
 
         objs = []
