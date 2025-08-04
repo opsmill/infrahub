@@ -29,6 +29,7 @@ exceptions:
   - CoreRepository
   - Docker Compose
   - E2E
+  - Emma
   - Generics
   - Git
   - GitHub
