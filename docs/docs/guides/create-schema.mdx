@@ -1,5 +1,5 @@
 ---
-title: Creating a Schema
+title: Creating a schema
 ---
 
 import CodeBlock from "@theme/CodeBlock";
@@ -7,80 +7,48 @@ import VideoPlayer from '../../src/components/VideoPlayer';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Creating a schema
+This guide shows you how to create a new schema file for Infrahub. You'll learn to define data structures and relationships using a network device example with interfaces.
 
-In Infrahub, schemas play a crucial role in defining the structure and relationships of your data. This guide will walk you through the process of creating a new schema file, we will do this using the following steps:
+By following this guide, you'll build a complete schema that includes nodes, attributes, relationships, and generic abstractions. This example focuses on network devices to demonstrate key concepts, though real-world schemas involve additional complexity.
 
-1. Adding nodes and attributes
-2. Adding relationships to the nodes
-3. Abstracting nodes into generics
-4. Improving our schema by modifying attributes and adding new attributes
+## Prerequisites
 
-In this guide we will create a schema for a network device and its interfaces.
+- Infrahub running locally or in your environment
+- [`infrahubctl`]($(base_url)infrahubctl) command-line tool installed
+- Basic understanding of YAML syntax
 
-By no mean this is meant to be a complete schema for a network device, there is far more complexity that goes into modeling a schema for a network device, it is just used as an example to guide you through the process.
+:::info Schema validation
 
-For a more detailed explanation of the different Attributes and Relationships, you can check out our [Schema Topic](../topics/schema).
-
-Throughout this guide we will load different schemas into Infrahub into different branches. The fact that multiple schemas can exist simultaneously is a core feature of Infrahub. It is a recommendation and best practice to always use a branch to make changes to the schema.
-
-:::note
-
-To help with the development process of a schema definition file, you can leverage [schema validation](../reference/schema-validation) within your editor.
+Enable [schema validation](../reference/schema-validation) in your editor to catch errors while developing schema files.
 
 :::
 
-## Alternate learning methods
+## Alternative learning resources
 
-### Hands-on lab - Schema introduction
+### Hands-on lab
 
-Getting started with Infrahub and unsure about all the possibilities offered by flexible schemas? In our hands-on lab, we'll walk you through the fundamentals of this feature, enabling you to successfully shape your first schema.
+Try the interactive [Infrahub Schema Introduction](https://opsmill.instruqt.com/pages/labs) lab for hands-on practice with schemas.
 
-[Infrahub Schema Introduction](https://opsmill.instruqt.com/pages/labs)
-
-### Introduction to Schema design video
+### Video tutorials
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=f3jtGm0_IxQ' light />
 </center>
 
-### Exploring the Infrahub Schema video
-
-A recording of a livestream that covers:
-
-- What the Infrahub schema actually is
-- Why we built it this way (and what we rejected)
-- How it compares to other source of truth tools
-- Best practices for customizing the schema to your environment
+Learn advanced schema concepts in this livestream recording:
 
 <center>
   <VideoPlayer url='https://www.youtube.com/live/0Z_SBoPmGws' light />
 </center>
 
-## 1. Adding nodes and attributes
+## Step 1: Create basic nodes with attributes
 
-Create a file named `schema_guide.yml` on your computer. The place where you create the file on the file system is not that important, as long as you know the path to the file. For this guide we will be storing the schema file in the `/tmp` directory.
+Create a file named `schema_guide.yml` in a location you can access easily, such as `/tmp/schema_guide.yml`.
 
-In the file we will be creating 2 kinds of nodes in the `Network` namespace:
+Start by defining two basic nodes in the `Network` namespace:
 
-- `Device`: the network device we want to model
-- `Interface`: the network interface we want to model
-
-The `NetworkDevice` node will have the following attributes:
-
-- `hostname`: the `hostname` of the device, needs to be unique and is a required attribute
-- `model` (Text): the model of the device, which is a required attribute
-
-The `NetworkInterface` node will have the following attributes:
-
-- `name` (Text): the name of the interface, which is a required attribute
-- `description` (Text): a description for the interface, which is a required attribute
-
-:::note
-
-We define a `human_friendly_id` on the `hostname` attribute of the `NetworkDevice`. This way we can use the `hostname` as an alternative for the `hfid` in the queries and mutations in this guide.
-
-:::
+- `Device`: Represents network devices with hostname and model attributes
+- `Interface`: Represents network interfaces with name and description attributes
 
 ```yaml
 ---
@@ -105,63 +73,72 @@ nodes:
         optional: true
 ```
 
-Create a branch `network-device-schema` in Infrahub
+:::info Human-friendly IDs
+
+The `human_friendly_id` on the `hostname` attribute lets you use the hostname value instead of the system-generated ID in queries and mutations.
+
+:::
+
+### Load the schema into Infrahub
+
+Create a new branch for your schema changes:
 
 ```shell
 infrahubctl branch create network-device-schema
 ```
 
-Load the schema into Infrahub in the `network-device-schema` branch
+Load the schema into the branch:
 
 ```shell
 infrahubctl schema load --branch network-device-schema /tmp/schema_guide.yml
 ```
 
-We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-schema) (Object Management > Schemas) as shown below.
+View your schema in the [Web UI](http://localhost:8000/schema?branch=network-device-schema) under Object Management > Schemas.
 
-![schema page screenshot](../media/guides/create_schema_1.png)
+![Schema page screenshot](../media/guides/create_schema_1.png)
 
-We'll create a device and an interface according to the schema by using the web interface, GraphQL Query or cURL.
+### Create test data
+
+Test your schema by creating a device and interface:
 
 <Tabs>
-<TabItem value="graphql" label="Via the GraphQL Interface" default>
+<TabItem value="graphql" label="GraphQL" default>
 
-Open the GraphQL sandbox (bottom left of the web interface) and make a query with the following:
+Open the GraphQL sandbox (bottom left of the web interface) and execute:
 
 ```graphql
 mutation {
   NetworkDeviceCreate(data: {hostname: {value: "atl1-edge1"}, model: {value: "Cisco ASR1002-HX"}}) {
-        ok
-        object {
-          id
-        }
+    ok
+    object {
+      id
+    }
   }
   NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}}) {
-        ok
-        object {
-          id
-        }
+    ok
+    object {
+      id
+    }
   }
 }
 ```
 
-![schema page screenshot](../media/guides/create_schema_graphql_1.png)
+</TabItem>
 
- </TabItem>
+<TabItem value="web" label="Web interface">
 
-  <TabItem value="web" label="Via the Web Interface">
+1. Navigate to **Objects > Device** in the left menu
+2. Click **Add Device**
+3. Enter `atl1-edge1` as Hostname and `Cisco ASR1002-HX` as Model
+4. Click **Save**
+5. Navigate to **Objects > Interface**
+6. Create an interface with `Ethernet1` as Name and `WAN interface` as Description
 
-1. Login to Infrahub's web interface.
-2. Click on **Objects > Device** in the left side menu.
-3. Click on 'Add Device'
-4. Create a new device with 'atl1-edge1' as Hostname and 'Cisco ASR1002-HX' as Model and click save.
-5. Under Interface, create a new interface with 'Ethernet1' as Name and 'WAN interface' as description.
+</TabItem>
 
-  </TabItem>
+<TabItem value="shell" label="cURL">
 
- <TabItem value="shell" label="Using cURL">
-
-Here is an example of using `cURL` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to include the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
+Replace the IP address and API key with your actual values:
 
 ```shell
 curl -X POST http://localhost:8000/graphql/network-device-schema \
@@ -170,25 +147,21 @@ curl -X POST http://localhost:8000/graphql/network-device-schema \
   -d '{"query": "mutation { NetworkDeviceCreate(data: {hostname: {value: \"atl1-edge1\"}, model: {value: \"Cisco ASR1002-HX\"}}) { ok object { id } } NetworkInterfaceCreate(data: {name: {value: \"Ethernet1\"}, description: {value: \"WAN interface\"}}) { ok object { id } } }"}'
 ```
 
- </TabItem>
+</TabItem>
 </Tabs>
 
-You can verify that both the Device and Interface were added to Infrahub by navigating to `Objects` and selecting `Device` or `Interface`.
+Verify your objects were created by navigating to **Objects** and selecting **Device** or **Interface**.
 
-![schema page screenshot](../media/guides/create_schema_2.png)
+## Step 2: Add relationships between nodes
 
-We have now successfully created our first schema, loaded into a branch into Infrahub and created the first nodes in the `network-device-schema` branch in Infrahub.
+Connect your device and interface nodes with relationships. This creates meaningful associations between your data.
 
-## 2. Adding relationships to the nodes
+Add these relationships to your schema:
 
-The next thing we want to do is adding relationships to our schema. We first created device and interface nodes, but we didn't create any relation between them. They are 2 independent nodes within our schema.
+1. **Device to interfaces**: One device can have many interfaces (component relationship)
+2. **Interface to device**: Each interface belongs to one device (parent relationship)
 
-We will be adding 2 relationships to the schema:
-
-1. device > interface, a relation `interfaces` from the device node to the interface node, of cardinality `many` and kind `Component`
-2. interface > device, a relation `device` from the interface node to device node of cardinality `one` and kind `Parent`
-
-Overwrite the `schema_guide.yml` with the following contents:
+Replace your `schema_guide.yml` content with:
 
 ```yaml
 ---
@@ -224,58 +197,54 @@ nodes:
         kind: Parent
 ```
 
-Create a new branch to load the new version of our schema
+### Load the updated schema
+
+Create a new branch for the relationship changes:
 
 ```shell
 infrahubctl branch create network-device-relations
 ```
 
-Load the schema in the branch
+Load the updated schema:
 
 ```shell
 infrahubctl schema load --branch network-device-relations /tmp/schema_guide.yml
 ```
 
-We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-relations)
+### Test the relationships
 
-Use this GraphQL mutations to create a NetworkInterface `Ethernet1`, a NetworkDevice `atl1-edge1`.
+Create connected objects using this GraphQL mutation:
 
 ```graphql
 mutation {
   NetworkDeviceCreate(data: {hostname: {value: "atl1-edge1"}, model: {value: "Cisco ASR1002-HX"}}) {
-        ok
-        object {
-          id
-        }
+    ok
+    object {
+      id
+    }
   }
-  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {hfid: "atl1-edge1"} }) {
-        ok
-        object {
-          id
-        }
+  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {hfid: "atl1-edge1"}}) {
+    ok
+    object {
+      id
+    }
   }
 }
 ```
 
-In the Web UI we can now see that the device has a relation to the Ethernet1 interface.
+In the Web UI, view the device details to see the relationship to the Ethernet1 interface.
 
-![schema page screenshot](../media/guides/create_schema_3.png)
+![Schema page screenshot](../media/guides/create_schema_3.png)
 
-## 3. Abstracting nodes into generics
+## Step 3: Create generic nodes for abstraction
 
-We would like to add another interface `Vlan1` to our device `atl1-edge1`. We could add the interface as a `NetworkInterface` node, however this could cause some problems. The `Vlan1` interface is a logical interface, `Ethernet1` on the other hand is a physical interface. While physical interfaces a lot of properties in common with logical interfaces, they also have their differences. A cable can be plugged into a Physical interface, which you cannot do on a logical interface.
+Real network devices have different interface types with shared and unique characteristics. Use generic nodes to model this abstraction.
 
-This is a perfect case for us to abstract common attributes/relationships into a generic.
+Physical interfaces (like Ethernet1) have properties like speed and cable connections. Logical interfaces (like Vlan1) don't have these physical properties but share common attributes like name and description.
 
-We will modify the schema:
+### Create a generic interface
 
-- Implement a generic `NetworkInterface` that gathers the common attributes and relationships
-- Define a `NetworkPhysicalInterface` node
-- Define a `NetworkLogicalInterface` node
-
-The interfaces relationships on a device does not need to be modified. A relationship can point to a generic node as the peer of the relation. This allows us to add relations to both a `NetworkPhysicalInterface` node and `NetworkLogicalInterface`.
-
-Overwrite the `schema_guide.yml` file with the following contents:
+Replace your schema with this structure using generics:
 
 ```yaml
 ---
@@ -323,69 +292,73 @@ nodes:
       - NetworkInterface
 ```
 
-Create a new branch to load the new version of our schema
+### Load the generic schema
+
+Create a new branch for generic changes:
 
 ```shell
 infrahubctl branch create network-device-generics
 ```
 
-Load the schema in the branch
+Load the schema:
 
 ```shell
 infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
 ```
 
-We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-generics)
+### Test different interface types
 
-Use this GraphQL mutation to create a NetworkPhysicalInterface `Ethernet1`, NetworkLogicalInterface `Vlan1`, and a NetworkDevice `atl1-edge1`.
+Create both physical and logical interfaces:
 
 ```graphql
 mutation {
   NetworkDeviceCreate(data: {hostname: {value: "atl1-edge1"}, model: {value: "Cisco ASR1002-HX"}}) {
-        ok
-        object {
-          id
-        }
+    ok
+    object {
+      id
+    }
   }
   NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}, device: {hfid: "atl1-edge1"}}) {
-        ok
-        object {
-          id
-        }
+    ok
+    object {
+      id
+    }
   }
   NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for VLAN 1"}, device: {hfid: "atl1-edge1"}}) {
-        ok
-        object {
-          id
-        }
+    ok
+    object {
+      id
+    }
   }
 }
 ```
 
-In the detailed view of the device in the Web UI, we can now see that the device has 2 interfaces, but they are of a different kind.
+View the device in the Web UI to see both interface types connected to the same device.
 
-![schema page screenshot](../media/guides/create_schema_generics.png)
+![Schema page screenshot](../media/guides/create_schema_generics.png)
 
-## 4. Improving our schema
+## Step 4: Improve the schema with migrations
 
-Although the schema already closely represents what we wanted to achieve, there are still a few improvements we would like to make. For this, we are going to use Infrahub's schema migrations feature. More details can be found in [the Schema topic](../topics/schema#schema-update-and-data-migrations).
+Refine your schema using Infrahub's schema migration features. These changes demonstrate how to evolve schemas while preserving existing data.
 
-1. adding and `mtu` and `enabled` attribute on the generic `NetworkInterface`
-4. deleting the `description` attribute of the generic `NetworkInterface`
-2. setting a default value for the `speed` attribute of `NetworkPhysicalInterface`
-3. renaming the `model` attribute of a `NetworkDevice` to `device_type`
-4. add labels for all the attributes and relationships
-6. a unique constraint needs to be defined on the `NetworkInterface` generic on the name attribute and device relationship
+Make these improvements:
 
-We will be reusing the branch from the previous step.
+1. Add `mtu` and `enabled` attributes to the generic `NetworkInterface`
+2. Remove the `description` attribute from the generic `NetworkInterface`
+3. Set a default value for the `speed` attribute of `NetworkPhysicalInterface`
+4. Rename the `model` attribute to `device_type`
+5. Add labels for better user experience
+6. Define uniqueness constraints
 
-Overwrite the contents of the `schema_guide.yml` file with this content:
+### Get the attribute ID for migration
 
-:::note
+:::warning Attribute ID required
 
-To do this nation, we must provide the `id` of the attribute and the new name. You will have to grab the `id` of the model attribute of the NetworkDevice node from the [schema page](http://localhost:8000/schema?branch=network-device-generics&kind=NetworkDevice) in the Web UI.
+To rename an attribute, you need its current ID. Find the `model` attribute ID on the [NetworkDevice schema page](http://localhost:8000/schema?branch=network-device-generics&kind=NetworkDevice) in the Web UI.
 
 :::
+
+Replace your schema content (update the `id` value with the actual model attribute ID):
 
 ```yaml
 ---
@@ -457,80 +430,72 @@ nodes:
       - NetworkInterface
 ```
 
-Use the `infrahubctl schema check` command to validate the schema and to get a `diff` of the schema changes that will be performed
+### Preview schema changes
+
+Use the check command to see what changes will be applied:
 
 ```shell
 infrahubctl schema check --branch network-device-generics /tmp/schema_guide.yml
 ```
 
-```shell
- schema '/tmp/schema_guide.yml' is Valid!
-diff:
-        added: {}
-        changed:
-                NetworkDevice:
-                        added: {}
-                        changed:
-                                attributes:
-                                        added: {}
-                                        changed:
-                                                device_type:
-                                                        added: {}
-                                                        changed:
-                                                                label: null
-                                                                name: null
-                                                        removed: {}
-                                        removed: {}
-                        removed: {}
-                NetworkInterface:
-                        added: {}
-                        changed:
-                                attributes:
-                                        added:
-                                                enabled: null
-                                                mtu: null
-                                        changed: {}
-                                        removed:
-                                                description: null
-                        removed: {}
-                NetworkLogicalInterface:
-                        added: {}
-                        changed:
-                                attributes:
-                                        added:
-                                                enabled: null
-                                                mtu: null
-                                        changed: {}
-                                        removed: {}
-                                uniqueness_constraints: null
-                        removed: {}
-                NetworkPhysicalInterface:
-                        added: {}
-                        changed:
-                                attributes:
-                                        added:
-                                                enabled: null
-                                                mtu: null
-                                        changed:
-                                                speed:
-                                                        added: {}
-                                                        changed:
-                                                                default_value: null
-                                                                label: null
-                                                                optional: null
-                                                        removed: {}
-                                        removed: {}
-                                uniqueness_constraints: null
-                        removed: {}
-        removed: {}
-```
+This shows a diff of changes before applying them.
 
-Load the schema into `network-device-generics` branch in Infrahub
+### Apply the migration
+
+Load the improved schema:
 
 ```shell
 infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
 ```
 
-We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-generics)
+:::success Migration complete
 
-Notice that besides the schema, also all the existing data in this branch has been migrated to adhere to the new version of the schema.
+Infrahub automatically migrates existing data to match the new schema structure. View the updated schema in the [Web UI](http://localhost:8000/schema?branch=network-device-generics).
+
+:::
+
+## Relationship best practices
+
+Follow these practices when creating relationships with generic nodes:
+
+### Always set explicit identifiers
+
+```yaml
+# ❌ Avoid: Missing identifier with generics
+generics:
+  - name: Interface
+    relationships:
+      - name: device
+        peer: TestDevice
+        # Auto-generation may fail
+
+# ✅ Prefer: Explicit identifier
+generics:
+  - name: Interface
+    relationships:
+      - name: device
+        peer: TestDevice
+        identifier: "device__interface"
+```
+
+### Use consistent naming patterns
+
+- Follow the pattern `<parent>__<child>` or `<node_a>__<node_b>`
+- Verify that both sides of bidirectional relationships use matching identifiers
+- Document cascade delete behavior when using `on_delete: cascade`
+
+## Next steps
+
+Now that you've created a basic schema:
+
+- Learn about [schema validation](../reference/schema-validation) for development workflows
+- Explore the complete [Schema topic](../topics/schema) for advanced concepts
+- Try [importing existing schemas](../guides/import-schema) from other sources
+- Set up [external repositories](../guides/repository) to manage schemas with Git
+
+## Related resources
+
+- [Schema topic](../topics/schema) - Complete schema documentation
+- [Schema validation reference](../reference/schema-validation) - Validation tools and rules
+- [GraphQL topic](../topics/graphql) - Query and mutation syntax
+- [Import schema guide](../guides/import-schema) - Loading existing schemas
