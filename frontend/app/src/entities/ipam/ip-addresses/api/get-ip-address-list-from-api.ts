@@ -34,6 +34,7 @@ export function getIpAddressListGraphQLQuery({
           limit,
           offset,
           include_available: true,
+          ...(objectKind !== IP_ADDRESS_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {
