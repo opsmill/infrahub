@@ -75,7 +75,11 @@ export const getIpAddressTableColumns = (
           columnHelper.accessor("__typename", {
             id: "objectKind",
             header: () => <KindHeaderCell schema={schema} />,
-            cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue()} />,
+            cell: ({ cell }) => {
+              const schemaKind = cell.getValue();
+              if (schemaKind === IP_ADDRESS_AVAILABLE_KIND) return null;
+              return <KindBodyCell schemaKind={cell.getValue()} />;
+            },
           }),
         ]
       : ([] as Array<any>)),
