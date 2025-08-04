@@ -36,6 +36,7 @@ export function buildGetIpPrefixListQuery({
           limit,
           offset,
           [AVAILABLE_IP_FILTER_NAME]: true,
+          ...(objectKind !== IP_PREFIX_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {
