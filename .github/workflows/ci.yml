@@ -575,6 +575,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
@@ -583,7 +584,8 @@ jobs:
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-          pip install invoke toml
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install Poetry packages"
         run: "poetry install"
       - name: "Install npm dependencies"
@@ -591,12 +593,6 @@ jobs:
         run: npm install
       - name: "Build docs"
         run: "poetry run invoke docs.build"
-      # - name: "Install dependencies"
-      #   run: npm install
-      # - name: "Setup Python environment"
-      #   run: "pip install invoke toml"
-      # - name: "Build website"
-      #   run: "invoke docs.build"
 
   validate-generated-documentation:
     if: |
