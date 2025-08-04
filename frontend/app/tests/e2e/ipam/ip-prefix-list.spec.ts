@@ -12,7 +12,7 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
     await expect(page.getByRole("heading", { name: "Details" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Activities" })).toBeVisible();
     await expect(page.getByText("Prefix203.111.0.0/16")).toBeVisible();
-    await expect(page.getByText("Utilization0%")).toBeVisible();
+    await expect(page.getByRole("row", { name: "Utilization 0%" })).toBeVisible();
     await expect(page.getByRole("progressbar")).toBeVisible();
     await expect(page.getByRole("row", { name: "IP Namespace default" })).toBeVisible();
   });
