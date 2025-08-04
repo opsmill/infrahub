@@ -54,7 +54,7 @@ export function IpamDetailsHeader({
         />
       </Row>
 
-      <Row>
+      <Row className="gap-2.5">
         <Fade />
         {orderedFields.map((field, index) => {
           let displayValue: React.ReactNode = "-";

@@ -82,7 +82,11 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
           columnHelper.accessor("__typename", {
             id: "objectKind",
             header: () => <KindHeaderCell schema={schema} />,
-            cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue()} />,
+            cell: ({ cell }) => {
+              const schemaKind = cell.getValue();
+              if (schemaKind === IP_PREFIX_AVAILABLE_KIND) return null;
+              return <KindBodyCell schemaKind={schemaKind} />;
+            },
           }),
         ]
       : ([] as Array<any>)),
