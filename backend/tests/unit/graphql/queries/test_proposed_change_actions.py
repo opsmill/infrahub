@@ -132,7 +132,10 @@ async def test_proposed_change_closed(
 
 
 async def test_proposed_change_draft(
-    db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    session_admin: AccountSession,
+    session_first_account: AccountSession,
 ):
     registry.permission_backends = [LocalPermissionBackend()]
 
@@ -181,5 +184,34 @@ async def test_proposed_change_draft(
         "The proposed change is a draft",
         None,
         None,
+        "The proposed change is a draft",
+    ]
+
+    response = await graphql_query(
+        query=PROPOSED_CHANGE_ACTIONS,
+        db=db,
+        service=service,
+        variables={"proposed_change_id": proposed_change.id},
+        account_session=session_first_account,
+    )
+
+    assert not response.errors
+    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 6
+    assert [node["node"]["available"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]] == [
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
+    ]
+    assert [
+        node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
+    ] == [
+        "The proposed change is not closed, canceled",
+        None,
+        "You are not the author of the proposed change",
+        "You are not the author of the proposed change",
+        "You do not have the permission to perform this action",
         "The proposed change is a draft",
     ]
