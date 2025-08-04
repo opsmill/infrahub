@@ -430,6 +430,57 @@ nodes:
 
 </details>
 
+##### Generic Node Relationships
+
+When creating relationships between generic nodes and their implementations, always explicitly define matching identifiers:
+
+<details>
+  <summary>Example: Generic Interface and Device Relationship</summary>
+
+```yaml {7,16,27,36} showLineNumbers
+generics:
+  - name: Interface
+    namespace: Test
+    relationships:
+      - name: device
+        peer: TestDevice
+        identifier: "device__interface"  # Must match on both sides
+        optional: false
+        cardinality: one
+        kind: Parent
+
+nodes:
+  - name: Device
+    namespace: Test
+    relationships:
+      - name: interfaces
+        peer: TestInterface
+        identifier: "device__interface"  # Must match generic's identifier
+        cardinality: many
+        kind: Component
+        on_delete: cascade
+
+  - name: NetworkInterface
+    namespace: Infra
+    inherit_from:
+      - TestInterface
+    # Inherits the device relationship with correct identifier
+
+  - name: Router
+    namespace: Infra
+    inherit_from:
+      - TestDevice
+    # Inherits the interfaces relationship with correct identifier
+```
+
+In this example:
+
+- The generic `TestInterface` and `TestDevice` define the relationship with explicit identifier `device__interface`
+- Specific implementations (`InfraNetworkInterface`, `InfraRouter`) inherit these relationships with matching identifiers
+- Cascade deletion will work correctly because identifiers match on both sides
+
+</details>
+
 <!-- vale off -->
 ### Uniqueness Constraints
 <!-- vale on -->
