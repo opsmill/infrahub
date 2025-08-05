@@ -59,11 +59,8 @@ class ProposedChangeAction(InfrahubStringEnum):
     CLOSE = "close"
     SET_DRAFT = "set_draft"
     UNSET_DRAFT = "unset_draft"
-    REVIEW = "review"
     MERGE = "merge"
-
-    # To decompose review
-    # APPROVE = "approve"
-    # CANCEL_APPROVE = "cancel_approve"
-    # REJECT = "reject"
-    # CANCEL_REJECT = "cancel_reject"
+    APPROVE = "approve"
+    CANCEL_APPROVE = "cancel_approve"
+    REJECT = "reject"
+    CANCEL_REJECT = "cancel_reject"

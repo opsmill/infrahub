@@ -31,7 +31,7 @@ async def test_proposed_change_open(
 ):
     registry.permission_backends = [LocalPermissionBackend()]
 
-    branch_name = "pc-1234"
+    branch_name = "pc-1"
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
 
@@ -57,12 +57,16 @@ async def test_proposed_change_open(
     )
 
     assert not response.errors
-    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 6
+    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 10
     assert [node["node"]["available"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]] == [
         False,
         True,
         True,
         False,
+        True,
+        True,
+        True,
+        True,
         True,
         True,
     ]
@@ -73,6 +77,10 @@ async def test_proposed_change_open(
         None,
         None,
         "The proposed change is not a draft",
+        None,
+        None,
+        None,
+        None,
         None,
         None,
     ]
@@ -109,10 +117,14 @@ async def test_proposed_change_closed(
     )
 
     assert not response.errors
-    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 6
+    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 10
 
     assert [node["node"]["available"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]] == [
         True,
+        False,
+        False,
+        False,
+        False,
         False,
         False,
         False,
@@ -123,6 +135,10 @@ async def test_proposed_change_closed(
         node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
     ] == [
         None,
+        "The proposed change is not open",
+        "The proposed change is not open",
+        "The proposed change is not open",
+        "The proposed change is not open",
         "The proposed change is not open",
         "The proposed change is not open",
         "The proposed change is not open",
@@ -139,14 +155,14 @@ async def test_proposed_change_draft(
 ):
     registry.permission_backends = [LocalPermissionBackend()]
 
-    branch_name = "pc-2"
+    branch_name = "pc-4"
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
 
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
         db=db,
-        name="pc-2",
+        name="pc-4",
         destination_branch="main",
         source_branch=branch_name,
         state="open",
@@ -166,12 +182,16 @@ async def test_proposed_change_draft(
     )
 
     assert not response.errors
-    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 6
+    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 10
 
     assert [node["node"]["available"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]] == [
         False,
         True,
         False,
+        True,
+        True,
+        True,
+        True,
         True,
         True,
         False,
@@ -182,6 +202,10 @@ async def test_proposed_change_draft(
         "The proposed change is not closed, canceled",
         None,
         "The proposed change is a draft",
+        None,
+        None,
+        None,
+        None,
         None,
         None,
         "The proposed change is a draft",
@@ -196,10 +220,14 @@ async def test_proposed_change_draft(
     )
 
     assert not response.errors
-    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 6
+    assert response.data["CoreProposedChangeAvailableActions"]["count"] == 10
     assert [node["node"]["available"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]] == [
         False,
         True,
+        False,
+        False,
+        False,
+        False,
         False,
         False,
         False,
@@ -212,6 +240,10 @@ async def test_proposed_change_draft(
         None,
         "You are not the author of the proposed change",
         "You are not the author of the proposed change",
+        "You do not have the permission to perform this action",
+        "You do not have the permission to perform this action",
+        "You do not have the permission to perform this action",
+        "You do not have the permission to perform this action",
         "You do not have the permission to perform this action",
         "The proposed change is a draft",
     ]
