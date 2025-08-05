@@ -1,0 +1,1 @@
+Add a new check for orphaned Relationship vertices to `infrahub db check`
