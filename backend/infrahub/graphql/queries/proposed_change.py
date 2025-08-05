@@ -77,13 +77,6 @@ ACTION_RULES = [
         ],
     ),
     ActionRule(
-        action=ProposedChangeAction.APPROVE,
-        checks=[
-            StateIs(expected=[ProposedChangeState.OPEN]),
-            HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
-        ],
-    ),
-    ActionRule(
         action=ProposedChangeAction.MERGE,
         checks=[
             StateIs(expected=[ProposedChangeState.OPEN]),
