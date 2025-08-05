@@ -837,6 +837,49 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
     assert query.get_peer_ids() == [car_volt_main.id]
 
 
+async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
+    db: InfrahubDatabase,
+    person_john_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_prius_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    person_schema = registry.schema.get_node_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("cars")
+
+    # migrate person kind
+    person_schema.name = "NewPerson"
+    person_schema.namespace = "Test2"
+    assert person_schema.kind == "Test2NewPerson"
+    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get_node_schema(name="TestPerson", branch=branch),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
+        ),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    query = await RelationshipGetPeerQuery.init(
+        db=db,
+        source_ids=[person_john_main.id],
+        schema=rel_schema,
+        filters={"cars__is_electric__value": True, "cars__nbr_seats__value": 4},
+        rel=Relationship,
+        branch=branch,
+        at=Timestamp(),
+    )
+
+    await query.execute(db=db)
+
+    assert query.get_peer_ids() == [car_volt_main.id]
+
+
 async def test_query_RelationshipDataDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
