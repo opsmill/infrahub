@@ -72,7 +72,7 @@ async def test_proposed_change_open(
     assert [
         node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
     ] == [
-        "The proposed change is not closed, canceled",
+        "The proposed change is not closed",
         None,
         None,
         "The proposed change is not a draft",
@@ -194,7 +194,7 @@ async def test_proposed_change_draft(
     assert [
         node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
     ] == [
-        "The proposed change is not closed, canceled",
+        "The proposed change is not closed",
         None,
         "The proposed change is a draft",
         None,
@@ -229,7 +229,7 @@ async def test_proposed_change_draft(
     assert [
         node["node"]["unavailability_reason"] for node in response.data["CoreProposedChangeAvailableActions"]["edges"]
     ] == [
-        "The proposed change is not closed, canceled",
+        "The proposed change is not closed",
         None,
         "You are not the author of the proposed change",
         "You are not the author of the proposed change",

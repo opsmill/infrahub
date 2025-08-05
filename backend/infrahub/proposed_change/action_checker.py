@@ -4,15 +4,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from infrahub.core.account import GlobalPermission
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.exceptions import ValidationError
+from infrahub.proposed_change.constants import ProposedChangeAction, ProposedChangeState
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from infrahub.core.account import GlobalPermission
     from infrahub.core.protocols import CoreGenericAccount, CoreProposedChange
     from infrahub.graphql.initialization import GraphqlContext
-    from infrahub.proposed_change.constants import ProposedChangeAction, ProposedChangeState
 
 
 class Check(ABC):
@@ -124,3 +125,62 @@ class ActionRulesEvaluator:
                 )
             )
         return report
+
+
+MERGE_PROPOSED_CHANGE_PERMISSION = GlobalPermission(
+    action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
+    decision=PermissionDecision.ALLOW_ALL.value,
+)
+REVIEW_PROPOSED_CHANGE_PERMISSION = GlobalPermission(
+    action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value,
+    decision=PermissionDecision.ALLOW_ALL.value,
+)
+
+ACTION_RULES = [
+    ActionRule(action=ProposedChangeAction.OPEN, checks=[StateIs(expected=[ProposedChangeState.CLOSED])]),
+    ActionRule(action=ProposedChangeAction.CLOSE, checks=[StateIs(expected=[ProposedChangeState.OPEN])]),
+    ActionRule(
+        action=ProposedChangeAction.SET_DRAFT,
+        checks=[IsAuthor(), StateIs(expected=[ProposedChangeState.OPEN]), DraftIs(expected=False)],
+    ),
+    ActionRule(
+        action=ProposedChangeAction.UNSET_DRAFT,
+        checks=[IsAuthor(), StateIs(expected=[ProposedChangeState.OPEN]), DraftIs(expected=True)],
+    ),
+    ActionRule(
+        action=ProposedChangeAction.APPROVE,
+        checks=[
+            StateIs(expected=[ProposedChangeState.OPEN]),
+            HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
+        ],
+    ),
+    ActionRule(
+        action=ProposedChangeAction.CANCEL_APPROVE,
+        checks=[
+            StateIs(expected=[ProposedChangeState.OPEN]),
+            HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
+        ],
+    ),
+    ActionRule(
+        action=ProposedChangeAction.REJECT,
+        checks=[
+            StateIs(expected=[ProposedChangeState.OPEN]),
+            HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
+        ],
+    ),
+    ActionRule(
+        action=ProposedChangeAction.CANCEL_REJECT,
+        checks=[
+            StateIs(expected=[ProposedChangeState.OPEN]),
+            HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
+        ],
+    ),
+    ActionRule(
+        action=ProposedChangeAction.MERGE,
+        checks=[
+            StateIs(expected=[ProposedChangeState.OPEN]),
+            DraftIs(expected=False),
+            HasPermission(permission=MERGE_PROPOSED_CHANGE_PERMISSION),
+        ],
+    ),
+]
