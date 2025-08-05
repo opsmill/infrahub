@@ -132,5 +132,3 @@ class InfrahubBaseMutation(ObjectType):
 
     ConvertObjectType = ConvertObjectType.Field()
     CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
-    # Remove the below line once the enterprise test has been renamed
-    ProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
