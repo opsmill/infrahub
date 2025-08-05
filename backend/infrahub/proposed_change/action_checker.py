@@ -37,8 +37,8 @@ class IsAuthor(Check):
 
 
 class StateIs(Check):
-    def __init__(self, expected_states: Sequence[ProposedChangeState]) -> None:
-        self.expected_states = expected_states
+    def __init__(self, expected: Sequence[ProposedChangeState]) -> None:
+        self.expected = expected
 
     def evaluate(
         self,
@@ -46,8 +46,8 @@ class StateIs(Check):
         proposed_change_author: CoreGenericAccount,  # noqa: ARG002
         graphql_context: GraphqlContext,  # noqa: ARG002
     ) -> None:
-        if proposed_change.state.value.value not in self.expected_states:
-            raise ValidationError(f"The proposed change is not {', '.join([i.value for i in self.expected_states])}")
+        if proposed_change.state.value.value not in self.expected:
+            raise ValidationError(f"The proposed change is not {', '.join([i.value for i in self.expected])}")
 
 
 class DraftIs(Check):

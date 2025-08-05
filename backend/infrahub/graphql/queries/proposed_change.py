@@ -34,60 +34,59 @@ REVIEW_PROPOSED_CHANGE_PERMISSION = GlobalPermission(
     decision=PermissionDecision.ALLOW_ALL.value,
 )
 
-
 ACTION_RULES = [
     ActionRule(
         action=ProposedChangeAction.OPEN,
-        checks=[StateIs(expected_states=[ProposedChangeState.CLOSED, ProposedChangeState.CANCELED])],
+        checks=[StateIs(expected=[ProposedChangeState.CLOSED, ProposedChangeState.CANCELED])],
     ),
-    ActionRule(action=ProposedChangeAction.CLOSE, checks=[StateIs(expected_states=[ProposedChangeState.OPEN])]),
+    ActionRule(action=ProposedChangeAction.CLOSE, checks=[StateIs(expected=[ProposedChangeState.OPEN])]),
     ActionRule(
         action=ProposedChangeAction.SET_DRAFT,
-        checks=[IsAuthor(), StateIs(expected_states=[ProposedChangeState.OPEN]), DraftIs(expected=False)],
+        checks=[IsAuthor(), StateIs(expected=[ProposedChangeState.OPEN]), DraftIs(expected=False)],
     ),
     ActionRule(
         action=ProposedChangeAction.UNSET_DRAFT,
-        checks=[IsAuthor(), StateIs(expected_states=[ProposedChangeState.OPEN]), DraftIs(expected=True)],
+        checks=[IsAuthor(), StateIs(expected=[ProposedChangeState.OPEN]), DraftIs(expected=True)],
     ),
     ActionRule(
         action=ProposedChangeAction.APPROVE,
         checks=[
-            StateIs(expected_states=[ProposedChangeState.OPEN]),
+            StateIs(expected=[ProposedChangeState.OPEN]),
             HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
         ],
     ),
     ActionRule(
         action=ProposedChangeAction.CANCEL_APPROVE,
         checks=[
-            StateIs(expected_states=[ProposedChangeState.OPEN]),
+            StateIs(expected=[ProposedChangeState.OPEN]),
             HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
         ],
     ),
     ActionRule(
         action=ProposedChangeAction.REJECT,
         checks=[
-            StateIs(expected_states=[ProposedChangeState.OPEN]),
+            StateIs(expected=[ProposedChangeState.OPEN]),
             HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
         ],
     ),
     ActionRule(
         action=ProposedChangeAction.CANCEL_REJECT,
         checks=[
-            StateIs(expected_states=[ProposedChangeState.OPEN]),
+            StateIs(expected=[ProposedChangeState.OPEN]),
             HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
         ],
     ),
     ActionRule(
         action=ProposedChangeAction.APPROVE,
         checks=[
-            StateIs(expected_states=[ProposedChangeState.OPEN]),
+            StateIs(expected=[ProposedChangeState.OPEN]),
             HasPermission(permission=REVIEW_PROPOSED_CHANGE_PERMISSION),
         ],
     ),
     ActionRule(
         action=ProposedChangeAction.MERGE,
         checks=[
-            StateIs(expected_states=[ProposedChangeState.OPEN]),
+            StateIs(expected=[ProposedChangeState.OPEN]),
             DraftIs(expected=False),
             HasPermission(permission=MERGE_PROPOSED_CHANGE_PERMISSION),
         ],
