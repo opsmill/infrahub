@@ -677,6 +677,17 @@ AND ALL(
     WHERE ((r_pair[0]).branch = $base_branch_name OR (r_pair[1]).branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
+    // filter out paths where an earlier from time follows a later from time
+    AND (r_pair[0]).from <= (r_pair[1]).from
+    // if both are deleted, then the deeper edge must have been deleted first
+    AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "active" OR (r_pair[0]).from >= (r_pair[1].from))
+    AND (
+        (r_pair[0]).status = (r_pair[1]).status
+        OR (
+            (r_pair[0]).from <= (r_pair[1]).from
+            AND ((r_pair[0]).to IS NULL OR (r_pair[0]).to >= (r_pair[1]).from)
+        )
+    )
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
     AND (
         (r_pair[0]).branch <> (r_pair[1]).branch
