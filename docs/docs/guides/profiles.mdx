@@ -511,9 +511,9 @@ mutation {
 # Method 2: Update by profile name (recommended)
 mutation {
   ProfileInfraInterfaceUpdate(
-    where: {profile_name__value: "end-user-interface"},
     data: {
-      untagged_vlan: {value: 20}  # Change VLAN for all interfaces
+      hfid: ["test"]
+      mtu: {value: 12000} # Change MTU for all interfaces
     }
   ) {
     ok
