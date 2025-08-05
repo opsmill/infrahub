@@ -1,8 +1,7 @@
 from typing import Any
 
-from infrahub.permissions import PermissionManager
 from infrahub_sdk.context import ContextAccount, RequestContext
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from infrahub.auth import AccountSession
@@ -33,20 +32,12 @@ class BranchContext(BaseModel):
 
 class InfrahubContext(BaseModel):
     branch: BranchContext
-    account: AccountSession  # todo remove and reuse the one in perm manager
+    account: AccountSession
     event: EventContext | None = Field(default=None)
-    # permission_manager: PermissionManager | None = Field(default=None)
 
     @classmethod
     def init(cls, branch: Branch, account: AccountSession) -> Self:
-        # todo update any existing call?
         return cls(branch=BranchContext(name=branch.name, id=str(branch.uuid)), account=account)
-
-    def get_permission_manager(self):
-        if self.permission_manager is None:
-            raise ValueError("Permission manager not set")
-
-        return self.permission_manager
 
     def set_event(self, name: str, id: str) -> None:
         if self.event:

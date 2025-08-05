@@ -6,6 +6,7 @@ from graphene import Boolean, Field, InputField, InputObjectType, Mutation, Stri
 from opentelemetry import trace
 from typing_extensions import Self
 
+from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core.branch import Branch
 from infrahub.database import retry_db_transaction
 from infrahub.graphql.context import apply_external_context
@@ -23,7 +24,6 @@ from infrahub.workflows.catalogue import (
 from ..types import BranchType
 from ..types.task import TaskInfo
 from .models import BranchCreateModel
-from ...branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo

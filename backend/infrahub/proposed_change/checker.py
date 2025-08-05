@@ -5,13 +5,14 @@ from fast_depends import Depends, inject
 from infrahub.auth import AccountSession
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.permissions import PermissionManager
 
 
 class ProposedChangeChecker(ABC):
     # We can't use CoreProposedChange type instead of Node as fast_depends enforces pydantic runtime type checks.
     @abstractmethod
-    async def verify_proposed_change_is_mergeable(self, proposed_change: Node, db: InfrahubDatabase, account_session: AccountSession) -> None:
+    async def verify_proposed_change_is_mergeable(
+        self, proposed_change: Node, db: InfrahubDatabase, account_session: AccountSession
+    ) -> None:
         """
         Raise an error if proposed change cannot be merged.
         """
@@ -20,7 +21,9 @@ class ProposedChangeChecker(ABC):
 
 
 class ProposedChangeCheckerCommunity(ProposedChangeChecker):
-    async def verify_proposed_change_is_mergeable(self, proposed_change: Node, db: InfrahubDatabase, account_session: AccountSession) -> None:
+    async def verify_proposed_change_is_mergeable(
+        self, proposed_change: Node, db: InfrahubDatabase, account_session: AccountSession
+    ) -> None:
         pass
 
 
@@ -35,6 +38,8 @@ async def verify_proposed_change_is_mergeable(
     db: InfrahubDatabase,
     account_session: AccountSession,
     pc_checker: ProposedChangeChecker = Depends(get_proposed_change_checker),  # noqa: B008
-) -> str | None:
+) -> None:
     # type ignore due to fast-depends enforcing pydantic checks
-    return await pc_checker.verify_proposed_change_is_mergeable(proposed_change=proposed_change, db=db, account_session=account_session)  # type: ignore
+    await pc_checker.verify_proposed_change_is_mergeable(
+        proposed_change=proposed_change, db=db, account_session=account_session
+    )

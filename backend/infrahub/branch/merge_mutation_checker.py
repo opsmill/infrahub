@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from fast_depends import inject, Depends
+from fast_depends import Depends, inject
 
 
 class BranchMergeMutationChecker(ABC):

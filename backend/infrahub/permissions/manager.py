@@ -48,12 +48,12 @@ class PermissionManager:
             specificity += 1
         return specificity
 
-    def is_super_admin(self):
+    def is_super_admin(self) -> bool:
         return self.resolve_global_permission(
-        permission_to_check=GlobalPermission(
-            action=GlobalPermissions.SUPER_ADMIN, decision=PermissionDecision.ALLOW_ALL
-        ),
-    )
+            permission_to_check=GlobalPermission(
+                action=GlobalPermissions.SUPER_ADMIN, decision=PermissionDecision.ALLOW_ALL
+            ),
+        )
 
     def report_object_permission(self, namespace: str, name: str, action: str) -> PermissionDecisionFlag:
         """Given a set of permissions, return the permission decision for a given kind and action."""

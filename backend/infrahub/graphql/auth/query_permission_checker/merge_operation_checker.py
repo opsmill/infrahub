@@ -28,8 +28,6 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
-        # If we are doing a merge, check user has permission for it. So it's not here we want to do the check
-        # , we just want to ignore the approval logic if a user is super user
         if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
             query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
             return CheckerResolution.TERMINATE
