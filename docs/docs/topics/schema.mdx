@@ -426,11 +426,11 @@ nodes:
         kind: Attribute
         optional: true
         description: "Employees who are part of this leader's team."
-````
+```
 
 </details>
 
-##### Generic Node Relationships
+##### Generic node relationships
 
 When creating relationships between generic nodes and their implementations, always explicitly define matching identifiers:
 
@@ -481,9 +481,8 @@ In this example:
 
 </details>
 
-<!-- vale off -->
-### Uniqueness Constraints
-<!-- vale on -->
+### Uniqueness constraints
+
 More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the Node or Generic level with the property `uniqueness_constraints`.
 It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
 
@@ -999,9 +998,8 @@ The full identifier of the icon must be used. Example `mdi:domain`
 
 Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration.
 
-<!-- vale off -->
 ### infrahubctl command
-<!-- vale on -->
+
 The `infrahubctl` command can be used to check & load individual schema files or multiple files as part of a directory.
 
 The `infrahub schema check` command will validate if a given schema is valid and it will return a summary of the changes
