@@ -1,2 +1,0 @@
-Fix an issue in a cypher query to get the peers of a node that has been migrated for a kind or inheritance update.
-Fix an issue in the diff calculation that could double count properties of a node that has been migrated for a kind or inheritance update.
