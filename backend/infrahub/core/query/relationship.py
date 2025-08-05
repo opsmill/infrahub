@@ -643,12 +643,9 @@ class RelationshipGetPeerQuery(Query):
 
         arrows = self.schema.get_query_arrows()
 
-        path_str = (
-            f"{arrows.left.start}[:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[:IS_RELATED]{arrows.right.end}"
-        )
+        path_str = f"{arrows.left.start}[r1:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[r2:IS_RELATED]{arrows.right.end}"
 
         branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
-        froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
         query = """
         MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
         WHERE source_node.uuid IN $source_ids
@@ -659,24 +656,24 @@ class RelationshipGetPeerQuery(Query):
                 $source_kind IN LABELS(source_node) AND
                 peer.uuid <> source_node.uuid AND
                 $peer_kind IN LABELS(peer) AND
-                all(r IN relationships(path) WHERE (%(branch_filter)s))
-            WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s AS froms
-            RETURN peer as peer, rels, rl as rl1
-            ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+                all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH source_node, peer, rl, r1, r2, %(branch_level)s AS branch_level
+            RETURN peer as peer, r1.status = "active" AND r2.status = "active" AS is_active, [r1, r2] AS rels
+            // status is required as a tiebreaker for migrated-kind nodes
+            ORDER BY branch_level DESC, r2.from DESC, r2.status ASC, r1.from DESC, r1.status ASC
             LIMIT 1
         }
-        WITH peer, rl1 as rl, rels, source_node
+        WITH peer, rl, is_active, rels, source_node
         """ % {
             "path": path_str,
             "branch_filter": branch_filter,
             "branch_level": branch_level_str,
-            "froms": froms_str,
             "arrow_left_start": arrows.left.start,
             "arrow_left_end": arrows.left.end,
         }
 
         self.add_to_query(query)
-        where_clause = ['all(r IN rels WHERE r.status = "active")']
+        where_clause = ["is_active = TRUE"]
         clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
 
         if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
