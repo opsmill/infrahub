@@ -275,7 +275,9 @@ class BranchMerge(Mutation):
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
-        await verify_branch_merge_mutation_allowed()
+        await verify_branch_merge_mutation_allowed(
+            db=graphql_context.db, account_session=graphql_context.active_account_session
+        )
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
