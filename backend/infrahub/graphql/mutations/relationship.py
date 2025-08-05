@@ -332,6 +332,11 @@ async def _validate_node(info: GraphQLResolveInfo, data: RelationshipNodesInput)
     if rel_schema.cardinality != RelationshipCardinality.MANY:
         raise ValidationError({"name": f"'{relationship_name}' must be a relationship of cardinality Many"})
 
+    if rel_schema.read_only:
+        # These mutations should never be allowed to update read-only relationships, as those typically
+        # have custom code tied to them such as the approved_by relationship of a CoreProposedChange.
+        raise ValidationError({source.get_kind(): f"'{relationship_name}' is a read-only relationship"})
+
     return source
 
 
