@@ -26,7 +26,7 @@ class ActionAvailabilityEdge(ObjectType):
 
 
 class AvailableActions(ObjectType):
-    count = Field(Int, required=True, description="The number of allocations within the selected pool.")
+    count = Field(Int, required=True, description="The number of available actions for the proposed change.")
     edges = Field(List(of_type=NonNull(ActionAvailabilityEdge), required=True), required=True)
 
     @staticmethod
