@@ -44,7 +44,7 @@ nodes:
 
 Default `order_weight` values are assigned during **schema post-validation processing**, which happens when you:
 
-- Load a new schema with `infrahubctl schema load`
+- Load a new schema (for example with `infrahubctl schema load`)
 - Update an existing schema
 - Process schema changes during branch operations (merge, rebase)
 
@@ -217,12 +217,103 @@ attributes:
     order_weight: 3210
 ```
 
+## Relationships of Kind "Attribute"
+
+Relationships with `kind: Attribute` are a special type of relationship in Infrahub that behave more like attributes in the UI but maintain the power and flexibility of relationships. They're commonly used for connecting to resource pools, IP addresses, and other managed resources.
+
+### Order Weight Behavior
+
+Relationships of kind "Attribute" follow the same order weight rules as regular attributes and relationships:
+
+```yaml title="Example with Attribute Relationships"
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: name              # Gets order_weight: 1000
+        kind: Text
+      - name: description       # Gets order_weight: 2000
+        kind: Text
+    relationships:
+      - name: ip_address        # Gets order_weight: 3000
+        peer: InfraIPAddress
+        kind: Attribute
+        cardinality: one
+      - name: asn               # Gets order_weight: 4000
+        peer: InfraAutonomousSystem 
+        kind: Attribute
+        cardinality: one
+      - name: location          # Gets order_weight: 5000
+        peer: InfraLocation
+        kind: Generic           # Regular relationship
+        cardinality: one
+```
+
+### UI Presentation
+
+Relationships of kind "Attribute" appear alongside regular attributes in forms and tables, making them feel like native attributes to users while maintaining referential integrity:
+
+- **In forms**: Displayed as dropdowns or select fields like attributes
+- **In tables**: Shown in columns alongside attribute values
+- **In filters**: Available for filtering just like attributes
+
+### Common Use Cases
+
+```yaml title="IP Address Management"
+relationships:
+  - name: primary_ip
+    peer: InfraIPAddress
+    kind: Attribute
+    cardinality: one
+    order_weight: 1500  # Position between name and description
+```
+
+```yaml title="Resource Pool Assignment"
+relationships:
+  - name: vlan_id
+    peer: InfraVLAN
+    kind: Attribute
+    cardinality: one
+    optional: false
+    order_weight: 500   # Prioritize before most attributes
+```
+
+### Best Practices for Attribute Relationships
+
+1. **Positioning**: Place attribute relationships logically with related fields
+2. **Naming**: Use attribute-like names (e.g., `ip_address` not `has_ip_address`)
+3. **Grouping**: Keep attribute relationships close to related attributes in order weight
+
+```yaml title="Grouped Attribute Relationships"
+attributes:
+  # Network identity group (1000-1999)
+  - name: hostname
+    kind: Text
+    order_weight: 1000
+
+relationships:
+  - name: primary_ip4      # Attribute relationship
+    peer: InfraIPAddress
+    kind: Attribute
+    order_weight: 1100
+  - name: primary_ip6      # Attribute relationship
+    peer: InfraIPAddress
+    kind: Attribute
+    order_weight: 1200
+
+attributes:
+  # Hardware info group (2000-2999)
+  - name: serial_number
+    kind: Text
+    order_weight: 2000
+```
+
 ## Connection to Other Concepts
 
 - **Menu placement**: Affects how models are organized in the frontend sidebar
 - **Display labels**: Determines which fields appear in list views and detailed views
 - **GraphQL schema**: Influences the order of fields in API responses
-- **Schema validation**: Order weight changes are allowed during schema updates
+- **[Schema changes](./schema.mdx)**: Order weight changes are allowed during schema updates
 
 ## Troubleshooting
 
