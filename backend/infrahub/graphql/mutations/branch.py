@@ -23,6 +23,7 @@ from infrahub.workflows.catalogue import (
 from ..types import BranchType
 from ..types.task import TaskInfo
 from .models import BranchCreateModel
+from ...branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -273,6 +274,8 @@ class BranchMerge(Mutation):
         task: dict | None = None
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        await verify_branch_merge_mutation_allowed()
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
