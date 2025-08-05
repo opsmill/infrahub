@@ -21,6 +21,13 @@ class SchemaNodeInfo(BaseModel):
 
 
 class NodeDuplicateQuery(Query):
+    """
+    Duplicates a Node to use a new kind or inheritance.
+    Creates a copy of each affected Node and sets the new kind/inheritance.
+    Adds duplicate edges to the new Node that match all the active edges on the old Node.
+    Sets all the edges on the old Node to deleted.
+    """
+
     name = "node_duplicate"
     type = QueryType.WRITE
     insert_return: bool = False
@@ -42,6 +49,9 @@ class NodeDuplicateQuery(Query):
         // Find all the active nodes
         MATCH (node:%(labels_str)s)
         WITH DISTINCT node
+        // ----------------
+        // Filter out nodes that have already been migrated
+        // ----------------
         CALL (node) {
             WITH labels(node) AS node_labels
             UNWIND node_labels AS n_label
