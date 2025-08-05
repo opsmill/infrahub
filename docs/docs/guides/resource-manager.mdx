@@ -1,5 +1,5 @@
 ---
-title: Resource manager (Guide)
+title: Working with resource manager
 ---
 
 import VideoPlayer from '../../src/components/VideoPlayer';
@@ -21,7 +21,7 @@ This guide uses a simplified schema. If you already have the demo schema loaded,
 ## Prerequisites
 
 - A running Infrahub instance
-- Basic understanding of GraphQL or web interface navigation
+- Basic understanding of GraphQL
 - `infrahubctl` CLI installed (for schema loading)
 
 ## Load the schema
@@ -245,7 +245,7 @@ Allocate an IP address directly from the pool:
   mutation {
     IPAddressPoolGetResource(
       data: {
-        id: "<pool-id>",
+        id: "<HFID>",
         data: {
           description: "my first allocated ip"
         }
@@ -270,7 +270,7 @@ Include an `identifier` field to ensure the same IP address is returned on repea
 ```graphql
 mutation {
   IPAddressPoolGetResource(data: {
-    id: "<pool-id>",
+    id: "<HFID>",
     identifier: "my-allocated-ip"
   })
   {
@@ -308,7 +308,7 @@ Allocate an IP address when creating a device:
       name: {value: "dev-123"},
       primary_ip: {
         from_pool: {
-          id: "<pool-id>"
+          id: "<HFID>"
         }
       }
     })
@@ -421,7 +421,7 @@ Create a new IP Prefix Pool with:
 ```graphql
 mutation {
   IPPrefixPoolGetResource(data: {
-    id: "<pool-id>",
+    id: "<HFID>",
     data: {
       description: "prefix allocated to point to point connection"
     }
@@ -444,7 +444,7 @@ mutation {
     name: {value: "svc-123"},
     assigned_prefix: {
       from_pool: {
-        id: "<pool-id>"
+        id: "<HFID>"
       }
     }
   })
@@ -579,7 +579,7 @@ Allocate an IP address in the test branch:
 mutation {
   IPAddressPoolGetResource(
     data: {
-      id: "<pool-id>",
+      id: "<HFID>",
   })
   {
     ok
@@ -595,7 +595,7 @@ Check allocation status from the main branch:
 
 ```graphql
 query {
-  InfrahubResourcePoolAllocated(pool_id: "<pool-id>", resource_id: "<prefix-id>") {
+  InfrahubResourcePoolAllocated(pool_id: "<HFID>", resource_id: "<prefix-id>") {
     edges {
       node {
         display_label
