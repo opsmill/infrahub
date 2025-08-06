@@ -40,7 +40,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
           approvers={node.approved_by.edges.map((edge: { node: NodeCore }) => {
             return edge.node;
           })}
-          comments={node.comments.count}
+          comments={node.total_comments.value ?? 0}
           validations={node.validations.count}
         />
       </div>

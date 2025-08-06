@@ -56,8 +56,8 @@ export const getProposedChangesFromApi = async ({
             display_label: true,
             hfid: true,
             _updated_at: true,
-            comments: {
-              count: true,
+            total_comments: {
+              value: true,
             },
             validations: {
               count: true,

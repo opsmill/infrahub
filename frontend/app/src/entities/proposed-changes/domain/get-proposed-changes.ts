@@ -14,7 +14,7 @@ export type ProposedChangeItem = {
   _updated_at: string;
   source_branch: { value: string };
   approved_by: { edges: Array<{ node: NodeCore }> };
-  comments: { count: number };
+  total_comments: { value: number };
   validations: { count: number };
 };
 
