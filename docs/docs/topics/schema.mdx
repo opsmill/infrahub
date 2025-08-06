@@ -493,7 +493,7 @@ In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` 
 - For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future, the plan is to allow additional metadata to be used as well.*
 - For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationships of cardinality `one` are supported and the relationship must be mandatory.*
 
-```yaml {10} showLineNumbers
+```yaml {10-11} showLineNumbers
 nodes:
   - name: Person
     namespace: Example
@@ -514,6 +514,38 @@ nodes:
         optional: false
         cardinality: one
 ```
+
+#### Optimizing uniqueness constraints
+
+When defining uniqueness constraints, the order of the elements in each constraint array can significantly impact performance. The uniqueness checker processes constraints from left to right, so listing the most selective elements first can dramatically improve performance.
+
+:::info How It Works
+
+The uniqueness checker runs Cypher queries to validate constraints. When elements are ordered from most to least selective, the database can quickly eliminate non-matching candidates earlier in the query execution.
+
+:::
+
+For example, consider an IP address model with a uniqueness constraint:
+
+```yaml
+uniqueness_constraints:
+  - ["ip_namespace", "address__value"]
+```
+
+If many IP addresses share the same namespace but few share the same address value, this constraint would require checking all nodes with the same namespace before filtering by address. A more efficient ordering would be:
+
+```yaml
+uniqueness_constraints:
+  - ["address__value", "ip_namespace"]
+```
+
+This allows the system to first filter by the more selective address value, resulting in fewer nodes to check against the namespace constraint.
+
+:::success Best Practice
+
+Order uniqueness constraint elements from most selective (returning fewer matches) to least selective (returning more matches) to optimize database query performance.
+
+:::
 
 ### Human friendly identifier (hfid)
 
