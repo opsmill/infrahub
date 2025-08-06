@@ -29,6 +29,7 @@ exceptions:
   - CoreRepository
   - Docker Compose
   - E2E
+  - Emma
   - Generics
   - Git
   - GitHub
@@ -93,4 +94,13 @@ exceptions:
   - VS Code
   - VS Code extensions
   - WebUI
+  - Slurp'it
+  - IDE
+  - AI
+  - OpenID Connect
+  - OAuth 2.0
+  - OAuth 2.0 vs OpenID Connect
+  - OpenID Connect (OIDC)
   - Emma
+  - Helm
+  - Kubernetes

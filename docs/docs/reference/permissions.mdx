@@ -1,62 +1,120 @@
 ---
 title: Permissions
+description: Reference documentation for Infrahub's global and object permissions
 ---
 
 # Permissions
 
-This page provides detailed documentation for all available global and object permissions within Infrahub.
+This reference documents all permissions available in Infrahub's authorization system. Permissions control what actions users can perform and what resources they can access within the platform.
 
 :::info
-
-For more detailed explanations on how to use these permissions within Infrahub, see the [roles and permissions](../topics/permissions-roles) topic.
-
+For conceptual explanations and usage guidance, see the [roles and permissions](../topics/permissions-roles) topic.
 :::
 
 ## Global permissions
 
-Below are the eight global permissions possible in Infrahub:
+Global permissions control system-wide actions that affect the entire platform. Infrahub defines the following global permissions:
 
-| Identifier                                | Action                  | Decision |
-|-------------------------------------------|-------------------------|----------|
-| `global:edit_default_branch:allow_all`    | `edit_default_branch`    | `Allow`  |
-| `global:manage_accounts:allow_all`        | `manage_accounts`        | `Allow`  |
-| `global:manage_permissions:allow_all`     | `manage_permissions`     | `Allow`  |
-| `global:manage_repositories:allow_all`    | `manage_repositories`    | `Allow`  |
-| `global:merge_branch:allow_all`           | `merge_branch`           | `Allow`  |
-| `global:merge_proposed_change:allow_all`  | `merge_proposed_change`  | `Allow`  |
-| `global:manage_schema:allow_all`          | `manage_schema`          | `Allow`  |
-| `global:super_admin:allow_all`            | `super_admin`            | `Allow`  |
+| Identifier                                | Action                  | Decision | Description |
+|-------------------------------------------|-------------------------|----------|-------------|
+| `global:edit_default_branch:allow_all`    | `edit_default_branch`    | `Allow`  | Allows editing content in the default branch |
+| `global:manage_accounts:allow_all`        | `manage_accounts`        | `Allow`  | Allows creating, updating, and deleting user accounts |
+| `global:manage_permissions:allow_all`     | `manage_permissions`     | `Allow`  | Allows configuring permissions and roles |
+| `global:manage_repositories:allow_all`    | `manage_repositories`    | `Allow`  | Allows creating and managing repositories |
+| `global:merge_branch:allow_all`           | `merge_branch`           | `Allow`  | Allows merging branches |
+| `global:merge_proposed_change:allow_all`  | `merge_proposed_change`  | `Allow`  | Allows merging proposed changes |
+| `global:manage_schema:allow_all`          | `manage_schema`          | `Allow`  | Allows modifying the schema definition |
+| `global:super_admin:allow_all`            | `super_admin`            | `Allow`  | Grants complete administrative access |
 
-### Attributes
+### Global permission attributes
 
-- **Identifier**:  A unique string that identifies the permission, computed by the backend based on the **Action** and **Decision**.
-- **Action**: The action that the permission permits, such as `edit_default_branch` or `manage_accounts`.
-- **Decision**: Indicates if the action is permitted or prohibited:
+- **Identifier**: A unique string that identifies the permission, automatically generated based on the Action and Decision values.
+- **Action**: The specific system operation that the permission controls.
+- **Decision**: Determines if the action is permitted:
   - **Allow**: Grants permission for the action.
-  - **Deny**: Denies permission for the action.
-- **Roles**: These are the roles that make use of this permission.
+  - **Deny**: Prohibits the action.
+- **Description**: A brief explanation of what the permission enables a user to do.
 
 ## Object permissions
 
-Object permissions can be applied to different types of objects and across different branches.
+Object permissions control actions on specific types of objects and can be applied across different branch types. They provide fine-grained control over data operations within Infrahub.
 
-| Identifier                                    | Object Type   | Action  | Decision    | Description                                                                                 |
-|-----------------------------------------------|---------------|---------|-------------|---------------------------------------------------------------------------------------------|
-| `object:*:*:create:allow_other`               | `*` (all types)| `any`   | `allow_other`| Allows creating any object, but only on non-default branches. |
-| `object:*:*:view:allow_all`                   | `*` (all types)| `view`  | `allow_all` | Allows viewing any object, anywhere, across both default and non-default branches. |
-| `object:Builtin:Tag:update:deny`              | `BuiltinTag`   | `update`| `deny`      | Denies the ability to update any object of type BuiltinTag, across all branches. |
-| `object:*:Generic:view:allow_all`             | `*Generic`     | `view`  | `allow_all` | Allows viewing all objects that contain 'Generic' in their type (example: LocationGeneric, DeviceGeneric) in all namespaces, across all branches. |
+| Identifier                                    | Object Type   | Action  | Decision    | Description |
+|-----------------------------------------------|---------------|---------|-------------|-------------|
+| `object:*:*:create:allow_other`               | `*` (all types)| `create`| `allow_other`| Allows creating any object, but only on non-default branches |
+| `object:*:*:view:allow_all`                   | `*` (all types)| `view`  | `allow_all` | Allows viewing any object across both default and non-default branches |
+| `object:Builtin:Tag:update:deny`              | `BuiltinTag`  | `update`| `deny`      | Denies updating objects of type BuiltinTag on all branches |
+| `object:*:Generic:view:allow_all`             | `*Generic`    | `view`  | `allow_all` | Allows viewing all objects with 'Generic' in their type (LocationGeneric, DeviceGeneric...) |
 
-### Attributes
+### Object permission attributes
 
-<!-- vale off -->
-- **Identifier**: A unique string that identifies the permission, computed by the backend based on the **Action**, **Object Type**, **Branch Type**, and **Decision**.
-- **Object Type**: The type of object the permission applies to (such as, `tag`, `device`). Wildcards (`*`) can be used to apply the permission to all object types.
-- **Action**: The specific action allowed on the object, such as `create`, `update`, `delete`, or `view`.
-- **Decision**: Controls whether the action is allowed or denied, and under which branch type it applies:
-  - **allow_default**: Allows the action on the default branch.
-  - **allow_other**: Allows the action on branches other than the default one.
-  - **allow_all**: Allows the action on both the default and non-default branches.
-  - **deny**: Denies the action regardless of branch.
-- **Roles**: The roles that use this permission.
-<!-- vale on -->
+- **Identifier**: A unique string that identifies the permission, computed based on the Object Type, Action, and Decision.
+- **Object Type**: The type of object the permission applies to (for example `Tag`, `Device`):
+  - Can include namespace prefixes (for example `Builtin:Tag`)
+  - Supports wildcards (`*`) to apply to multiple object types
+  - Can use partial matching with wildcards (for example `*Generic`)
+- **Action**: The specific operation allowed on the object:
+  - `view`: Permission to read or access the object
+  - `create`: Permission to create new objects of this type
+  - `update`: Permission to modify existing objects
+  - `delete`: Permission to remove objects
+  - `any`: Applies to all possible actions
+- **Decision**: Controls whether the action is allowed or denied, and on which branch types:
+  - `allow_default`: Permits the action only on the default branch
+  - `allow_other`: Permits the action only on non-default branches
+  - `allow_all`: Permits the action on all branches
+  - `deny`: Prohibits the action on all branches
+
+## Default permission setup
+
+Infrahub comes with a default configuration that contains pre-configured users, groups, and roles to simplify access management from the start. These defaults ensure that key administrative and access capabilities are ready to use out of the box.
+
+### Default accounts
+
+| Account   | Description                                                                  |
+|-----------|------------------------------------------------------------------------------|
+| **Admin** | Default administrative user that belongs to the **Super Administrators** group with complete system access |
+
+### Default groups
+
+| Group Name             | Description                                                         | Assigned Role         |
+|------------------------|---------------------------------------------------------------------|------------------------|
+| **Infrahub Users**     | Standard users with permissions to view and interact with resources | **General Access**     |
+| **Super Administrators**| System administrators with unrestricted access to all features     | **Super Administrator** |
+
+### Default roles
+
+#### General access
+
+This role grants standard users the ability to view resources and make changes in non-default branches.
+
+| Permission                                | Description                                                  |
+|-------------------------------------------|--------------------------------------------------------------|
+| `global:manage_repositories:allow_all`    | Manage repositories across all branches                      |
+| `global:manage_schema:allow_all`          | Configure and modify the system schema                       |
+| `global:merge_proposed_change:allow_all`  | Merge proposed changes across all branches                   |
+| `object:*:*:view:allow_all`               | View all objects across all branches and namespaces          |
+| `object:*:*:any:allow_other`              | Perform any action on objects in non-default branches        |
+
+#### Super administrator
+
+This role provides complete administrative control over the entire Infrahub system.
+
+| Permission                     | Description                                              |
+|--------------------------------|----------------------------------------------------------|
+| `global:super_admin:allow_all` | Full administrative access to all aspects of the system  |
+
+#### Anonymous user
+
+When Infrahub is configured to allow anonymous access, a special role called **Anonymous User** is created. This role defines the permissions granted to unauthenticated users. The default configuration includes:
+
+| Permission                | Description                                                   |
+|---------------------------|---------------------------------------------------------------|
+| `object:*:*:any:deny`     | Explicitly denies all actions on all objects (for clarity)    |
+| `object:*:*:view:allow_all` | Grants read-only access to all objects across all branches  |
+
+This role can be customized by changing the `main.anonymous_access_role` configuration setting or the `INFRAHUB_ANONYMOUS_ACCESS_ROLE` environment variable.
+
+:::note
+Regardless of permissions assigned to the anonymous role, unauthenticated users can never make changes to data within Infrahub.
+:::
