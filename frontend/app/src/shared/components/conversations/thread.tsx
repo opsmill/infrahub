@@ -9,7 +9,7 @@ import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button";
+
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import ModalConfirm from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -24,6 +24,7 @@ import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { Button } from "../buttons/button-primitive";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -162,7 +163,7 @@ export const Thread = (props: tThread) => {
   const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 text-sm">
       <Checkbox
         id={idForLabel}
         disabled={isResolved}
@@ -210,6 +211,7 @@ export const Thread = (props: tThread) => {
           {MarkAsResolved}
 
           <Button
+            variant={"outline"}
             onClick={() => setDisplayAddComment(true)}
             disabled={loading || !permission?.create?.isAllowed}
           >

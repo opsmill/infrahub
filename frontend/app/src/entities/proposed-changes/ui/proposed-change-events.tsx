@@ -7,6 +7,32 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import React from "react";
 import { useParams } from "react-router";
 
+const THREAD_EVENT = {
+  id: "e4683406-e068-4718-bfc4-5b84eebaa46z",
+  event: "infrahub.proposed_change.thread",
+  branch: "test",
+  occurred_at: "2025-08-06T10:40:43.641161+00:00",
+  level: 0,
+  account_id: "1859250b-3078-9596-389b-c510ee80b9b9",
+  primary_node: {
+    id: "185925d3-3b1a-3a52-3893-c515647a53c9",
+    kind: "CoreProposedChange",
+    __typename: "RelatedNode",
+  },
+  related_nodes: [
+    {
+      id: "1859250b-3078-9596-389b-c510ee80b9b9",
+      kind: "CoreGenericAccount",
+      __typename: "RelatedNode",
+    },
+  ],
+  payload: {
+    id: "185927d4-18c4-fe04-3893-c5131b57fe98",
+  },
+  has_children: false,
+  __typename: "ProposedChangeMergedEvent",
+};
+
 export const ProposedChangeEvents = () => {
   const { proposedChangeId } = useParams();
 
@@ -38,6 +64,8 @@ export const ProposedChangeEvents = () => {
       {flatData.map((activity) => (
         <EventCard key={activity.id} {...activity} />
       ))}
+
+      <EventCard {...THREAD_EVENT} />
     </div>
   );
 };
