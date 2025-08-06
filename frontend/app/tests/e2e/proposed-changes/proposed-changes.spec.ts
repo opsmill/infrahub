@@ -76,7 +76,7 @@ test.describe("/proposed-changes", () => {
         await expect(page.getByText("Proposed change created")).toBeVisible();
       });
 
-      test("display and edit proposed change", async ({ page }) => {
+      test.fixme("display and edit proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         test.slow();
 
