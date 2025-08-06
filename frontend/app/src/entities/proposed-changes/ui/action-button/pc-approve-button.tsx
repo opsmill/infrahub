@@ -1,4 +1,9 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
+import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/domain/update-review.mutation";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -6,11 +11,6 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
-import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "../../constants";
-import { useUpdateProposedChangeReview } from "../../domain/update-review.mutation";
-import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApprovedProposedChange } from "../../utils/has-user-approved-proposed-change";
-import { usePcActionsContext } from "../pc-actions-permissions-context";
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {

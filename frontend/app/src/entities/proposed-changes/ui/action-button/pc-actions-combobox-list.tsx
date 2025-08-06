@@ -1,12 +1,12 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
+import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/utils/has-user-rejected-proposed-change";
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
-import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApprovedProposedChange } from "../../utils/has-user-approved-proposed-change";
-import { hasUserRejectedProposedChange } from "../../utils/has-user-rejected-proposed-change";
-import { usePcActionsContext } from "../pc-actions-permissions-context";
 
 type ActionItem = { value: string; name: string; isDisabled?: boolean; message: string | null };
 
