@@ -1,5 +1,7 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { PROPOSED_CHANGE_THREAD } from "@/entities/proposed-changes/constants";
 import { ReactNode } from "react";
+import { ProposedChangeThreadEvent } from "./proposed-change-thread-event";
 
 export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
   "infrahub.proposed_change.merged": () => {
@@ -24,6 +26,19 @@ export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, (props: any) => Reac
 
 export const ProposedChangeEventTitle = (props: any) => {
   const { event, account_id, branch } = props;
+
+  if (event === PROPOSED_CHANGE_THREAD) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex text-sm gap-1">
+          <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />{" "}
+          <span className="text-gray-600">created a thread</span>
+        </div>
+
+        <ProposedChangeThreadEvent id={props.payload.id} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center flex-wrap gap-1 text-sm">
