@@ -46,7 +46,11 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   return (
     <>
-      <Tooltip content={setDraft.unavailability_reason} enabled={!setDraft.available}>
+      <Tooltip
+        content={setDraft.unavailability_reason}
+        enabled={!setDraft.available}
+        className="whitespace-pre"
+      >
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}

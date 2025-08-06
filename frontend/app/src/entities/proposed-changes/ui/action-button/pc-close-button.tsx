@@ -40,7 +40,11 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   return (
     <>
-      <Tooltip content={close.unavailability_reason} enabled={!close.available}>
+      <Tooltip
+        content={close.unavailability_reason}
+        enabled={!close.available}
+        className="whitespace-pre"
+      >
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}

@@ -1,3 +1,4 @@
+import { ActionAvailability } from "@/shared/api/graphql/generated/graphql";
 import {
   GetProposedChangeActionFromApiParams,
   getProposedChangeAvailableActionFromApi,
@@ -12,10 +13,13 @@ export async function getProposedChangeAvailableActions(
     throw new Error(errors[0].message);
   }
 
-  return data.CoreProposedChangeAvailableActions.edges.reduce((acc, edge) => {
-    return {
-      ...acc,
-      [edge.node.action]: edge.node,
-    };
-  }, {});
+  return data.CoreProposedChangeAvailableActions.edges.reduce(
+    (acc: Record<string, ActionAvailability>, edge: { node: ActionAvailability }) => {
+      return {
+        ...acc,
+        [edge.node.action]: edge.node,
+      };
+    },
+    {}
+  );
 }

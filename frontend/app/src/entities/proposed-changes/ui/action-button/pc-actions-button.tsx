@@ -12,8 +12,10 @@ import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
+import { useAtomValue } from "jotai";
 import { ReactElement, useState } from "react";
 import { useGetProposedChangeAvailableActions } from "../../domain/get-proposed-change-available-actions.query";
+import { proposedChangedState } from "../../stores/proposedChanges.atom";
 import { PcActionsContext } from "../pc-actions-permissions-context";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
@@ -28,8 +30,11 @@ const actionsListMapping: Record<string, ActionButtonComponent> = {
 
 export const PcActionButton = () => {
   const auth = useAuth();
+  const proposedChange = useAtomValue(proposedChangedState);
 
-  const { data, isPending } = useGetProposedChangeAvailableActions();
+  const { data, isPending } = useGetProposedChangeAvailableActions({
+    proposedChangeId: proposedChange.id,
+  });
 
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<string>("merge");

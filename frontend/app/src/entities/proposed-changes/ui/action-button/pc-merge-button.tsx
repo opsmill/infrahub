@@ -40,7 +40,11 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   return (
     <>
-      <Tooltip content={merge.unavailability_reason} enabled={!merge.available}>
+      <Tooltip
+        content={merge.unavailability_reason}
+        enabled={!merge.available}
+        className="whitespace-pre"
+      >
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}

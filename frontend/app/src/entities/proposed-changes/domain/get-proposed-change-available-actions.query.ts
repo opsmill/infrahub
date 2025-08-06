@@ -5,7 +5,11 @@ import { useAtomValue } from "jotai";
 import { GetProposedChangeActionFromApiParams } from "../api/get-proposed-changes-available-actions-from-api";
 import { getProposedChangeAvailableActions } from "./get-proposed-change-available-actions";
 
+export interface UseGetProposedChangeAction
+  extends Omit<GetProposedChangeActionFromApiParams, "atDate"> {}
+
 export function getProposedChangeAvailableActionsQueryOptions({
+  proposedChangeId,
   atDate,
 }: GetProposedChangeActionFromApiParams) {
   return queryOptions({
@@ -13,17 +17,21 @@ export function getProposedChangeAvailableActionsQueryOptions({
     queryFn: () => {
       return getProposedChangeAvailableActions({
         atDate,
+        proposedChangeId,
       });
     },
   });
 }
 
-export function useGetProposedChangeAvailableActions() {
+export function useGetProposedChangeAvailableActions({
+  proposedChangeId,
+}: UseGetProposedChangeAction) {
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     getProposedChangeAvailableActionsQueryOptions({
       atDate: timeMachineDate,
+      proposedChangeId,
     })
   );
 }

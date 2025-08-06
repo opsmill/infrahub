@@ -43,7 +43,11 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   return (
     <>
-      <Tooltip content={reject.unavailability_reason} enabled={!reject.available}>
+      <Tooltip
+        content={reject.unavailability_reason}
+        enabled={!reject.available}
+        className="whitespace-pre"
+      >
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
