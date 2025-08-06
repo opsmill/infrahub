@@ -13,7 +13,7 @@ export function getProposedChangeAvailableActionsQueryOptions({
   atDate,
 }: GetProposedChangeActionFromApiParams) {
   return queryOptions({
-    queryKey: [atDate, "objects", PROPOSED_CHANGE_OBJECT, "actions"],
+    queryKey: [atDate, "objects", PROPOSED_CHANGE_OBJECT, "actions", proposedChangeId],
     queryFn: () => {
       return getProposedChangeAvailableActions({
         atDate,
