@@ -1268,3 +1268,110 @@ async def test_without_permissions(
 
     assert result.errors
     assert "You do not have one of the following permissions" in result.errors[0].message
+
+
+async def test_relationship_read_only(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> None:
+    """Validates that it's not possible to modify relationships that are read-only."""
+    raw_schema = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Location",
+                "hierarchical": True,
+                "attributes": [{"name": "name", "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "devices",
+                        "peer": "InfraDevice",
+                        "cardinality": "many",
+                        "optional": True,
+                        "read_only": True,
+                    }
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Infra",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False}],
+                "relationships": [
+                    {"name": "location", "peer": "LocationGeneric", "optional": False, "cardinality": "one"}
+                ],
+            },
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["LocationGeneric"],
+                "attributes": [{"name": "description", "optional": False, "kind": "Text"}],
+            },
+        ],
+    }
+    schema = SchemaRoot(**raw_schema)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    site_schema = schema_branch.get_node(name="LocationSite")
+    device_schema = schema_branch.get_node(name="InfraDevice")
+
+    site1 = await Node.init(db=db, schema=site_schema, branch=default_branch)
+    await site1.new(db=db, name="site1", description="test")
+    await site1.save(db=db)
+
+    device1 = await Node.init(db=db, schema=device_schema, branch=default_branch)
+    await device1.new(db=db, name="device1", location=site1)
+    await device1.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=True, include_subscription=False, branch=default_branch
+    )
+
+    add_query = """
+    mutation RelationshipAdd(
+        $id: String!,
+        $relationship_name: String!,
+        $node: String!,
+        ) {
+        RelationshipAdd(
+            data: {id: $id, name: $relationship_name, nodes: {id: $node}}
+        ) {
+        ok
+        }
+    }
+    """
+    add_result = await graphql(
+        schema=gql_params.schema,
+        source=add_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": site1.id, "relationship_name": "devices", "node": device1.id},
+    )
+
+    remove_query = """
+    mutation RelationshipRemove(
+        $id: String!,
+        $relationship_name: String!,
+        $node: String!,
+        ) {
+        RelationshipRemove(
+            data: {id: $id, name: $relationship_name, nodes: {id: $node}}
+        ) {
+        ok
+        }
+    }
+    """
+    remove_result = await graphql(
+        schema=gql_params.schema,
+        source=remove_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": site1.id, "relationship_name": "devices", "node": device1.id},
+    )
+
+    assert add_result.errors
+    assert "'devices' is a read-only relationship at LocationSite" in str(add_result.errors)
+
+    assert remove_result.errors
+    assert "'devices' is a read-only relationship at LocationSite" in str(remove_result.errors)
