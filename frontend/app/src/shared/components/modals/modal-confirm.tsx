@@ -10,10 +10,10 @@ interface iProps {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
   description?: string | React.ReactNode;
-  onConfirm: Function;
-  onCancel: Function;
   children?: ReactNode;
   icon?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
 }
 
 export default function ModalConfirm({
