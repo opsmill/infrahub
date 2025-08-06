@@ -139,7 +139,7 @@ class ProposedChangeThreadCreatedEvent(ProposedChangeThreadEevent):
 
 
 class ProposedChangeThreadUpdatedEvent(ProposedChangeThreadEevent):
-    """Event generated when a thead has been updated in a proposed change"""
+    """Event generated when a thread has been updated in a proposed change"""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
     action: MutationAction = MutationAction.UPDATED
