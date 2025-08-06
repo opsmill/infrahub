@@ -248,7 +248,7 @@ const sidebars: SidebarsConfig = {
                 type: 'generated-index',
               },
               items: [
-                'topics/auth',
+                'topics/authentication',
                 'topics/permissions-roles',
               ],
             },
@@ -342,6 +342,7 @@ const sidebars: SidebarsConfig = {
         'reference/schema-validation',
         'reference/task-worker',
         'reference/infrahub-tests',
+        'reference/sso'
       ],
     },
     {
