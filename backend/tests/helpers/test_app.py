@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Generator
 
@@ -6,6 +7,8 @@ from fast_depends import Provider
 from fast_depends import dependency_provider as provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
+from prefect import get_client
+from prefect.client.orchestration import PrefectClient
 
 from infrahub import config
 from infrahub.core import registry
@@ -30,6 +33,7 @@ from infrahub.workers.dependencies import build_cache, build_client, build_messa
 from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.events import query_events_by_name
 
 from .test_client import InfrahubTestClient
 
@@ -208,3 +212,17 @@ class TestInfrahubApp(TestInfrahub):
 
         # This call emits a warning related to the fact database index manager has not been initialized.
         await initialization(db=db)
+
+    @pytest.fixture(scope="class")
+    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
+        async with get_client(sync_client=False) as client:
+            yield client
+
+    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
+        for _ in range(10):
+            events = await query_events_by_name(client=prefect_client, event_name=event_name)
+            if len(events) == 1:
+                return
+            await asyncio.sleep(1)
+
+        pytest.fail(f"unable to find prefect event '{event_name}'")

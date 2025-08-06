@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
-from prefect import get_client
-from tests.helpers.events import query_events_by_name
 from tests.helpers.test_app import TestInfrahubApp
 
 from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE
@@ -15,8 +12,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from infrahub_sdk import InfrahubClient
     from prefect.client.orchestration import PrefectClient
 
@@ -32,20 +27,6 @@ class TestProposedChangeReview(TestInfrahubApp):
         }
     }
     """
-
-    @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
-        async with get_client(sync_client=False) as client:
-            yield client
-
-    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
-        for _ in range(10):
-            events = await query_events_by_name(client=prefect_client, event_name=event_name)
-            if len(events) == 1:
-                return
-            await asyncio.sleep(1)
-
-        pytest.fail(f"unable to find prefect event '{event_name}'")
 
     async def test_approve_then_reject(
         self,
