@@ -114,7 +114,7 @@ class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
 
 
-class ProposedChangeThreadEevent(ProposedChangeEvent):
+class ProposedChangeThreadEvent(ProposedChangeEvent):
     thread_id: str = Field(..., description="The ID of the thread that was created or updated")
     thread_kind: str = Field(..., description="The name of the thread that was created or updated")
 
@@ -131,14 +131,14 @@ class ProposedChangeThreadEevent(ProposedChangeEvent):
         return related
 
 
-class ProposedChangeThreadCreatedEvent(ProposedChangeThreadEevent):
+class ProposedChangeThreadCreatedEvent(ProposedChangeThreadEvent):
     """Event generated when a thread has been created in a proposed change"""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
     action: MutationAction = MutationAction.CREATED
 
 
-class ProposedChangeThreadUpdatedEvent(ProposedChangeThreadEevent):
+class ProposedChangeThreadUpdatedEvent(ProposedChangeThreadEvent):
     """Event generated when a thread has been updated in a proposed change"""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
