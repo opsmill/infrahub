@@ -22,6 +22,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
+from infrahub.core.node.proposed_change import CoreProposedChange
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -118,6 +119,7 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
     registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
+    registry.node[InfrahubKind.PROPOSEDCHANGE] = CoreProposedChange
 
     # ---------------------------------------------------
     # Instantiate permission backends
@@ -486,10 +488,14 @@ async def create_accounts_group(
 
 
 async def create_default_account_groups(
-    db: InfrahubDatabase, admin_accounts: Sequence[CoreAccount], accounts: Sequence[CoreAccount] | None = None
+    db: InfrahubDatabase,
+    admin_accounts: Sequence[CoreAccount] | None = None,
+    accounts: Sequence[CoreAccount] | None = None,
 ) -> None:
     administrator_role = await create_super_administrator_role(db=db)
-    await create_accounts_group(db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts)
+    await create_accounts_group(
+        db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts or []
+    )
 
     default_role = await create_default_role(db=db)
     proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)

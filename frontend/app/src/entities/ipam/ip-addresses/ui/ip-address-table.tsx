@@ -1,5 +1,5 @@
+import { useGetIpAddressList } from "@/entities/ipam/ip-addresses/domain/get-ip-address-list.query";
 import { getIpAddressTableColumns } from "@/entities/ipam/ip-addresses/utils/get-ip-address-table-columns";
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/get-object-actions-column";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
@@ -16,13 +16,9 @@ export interface IpAddressTableProps {
 
 export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
   const { filters, selectedSchema, permission } = useObjectTableContext();
-  const { isPending, isFetchingNextPage, data, fetchNextPage, hasNextPage } = useObjects({
+  const { isPending, isFetchingNextPage, data, fetchNextPage, hasNextPage } = useGetIpAddressList({
     schema: selectedSchema,
     filters: [...baseFilters, ...filters],
-    getAttributesVisible: (attributes) =>
-      attributes.filter((attribute) => !["address"].includes(attribute.name)),
-    getRelationshipsVisible: (relationships) =>
-      relationships.filter((relationship) => relationship.name === "ip_prefix"),
   });
 
   const columns = React.useMemo(() => {
@@ -38,6 +34,7 @@ export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
         data={flatData}
         isLoading={isPending || isFetchingNextPage}
         renderEmpty={() => <ObjectTableEmpty schema={selectedSchema} />}
+        data-testid="ip-address-table"
       />
     </InfiniteScroll>
   );

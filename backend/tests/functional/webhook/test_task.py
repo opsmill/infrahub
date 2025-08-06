@@ -19,7 +19,7 @@ from infrahub.webhook.tasks import (
     webhook_process,
 )
 from infrahub.workers.dependencies import build_http_service
-from infrahub.workflows.catalogue import WEBHOOK_PROCESS, worker_pools
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.adapters.http import MemoryHTTP
 from tests.constants import TestKind
@@ -106,7 +106,7 @@ class TestWebhookTasks(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def webhook_deployment(self, db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
         await setup_worker_pools(client=prefect_client)
-        await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=worker_pools[0])
+        await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
     @pytest.fixture(scope="class")
     async def webhook1(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:

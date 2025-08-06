@@ -48,7 +48,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
         if (ipPrefixNode.__typename === IP_PREFIX_AVAILABLE_KIND) {
           return (
             <>
-              <StickyLeftCell className={classNames(cellMutedStyle, "pl-0.5")}>
+              <StickyLeftCell isMuted className="pl-0.5" data-testid="ip-prefix-available">
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
@@ -82,7 +82,11 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
           columnHelper.accessor("__typename", {
             id: "objectKind",
             header: () => <KindHeaderCell schema={schema} />,
-            cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue()} />,
+            cell: ({ cell }) => {
+              const schemaKind = cell.getValue();
+              if (schemaKind === IP_PREFIX_AVAILABLE_KIND) return null;
+              return <KindBodyCell schemaKind={schemaKind} />;
+            },
           }),
         ]
       : ([] as Array<any>)),

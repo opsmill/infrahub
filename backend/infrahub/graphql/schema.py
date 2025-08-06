@@ -20,7 +20,12 @@ from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
-from .mutations.proposed_change import ProposedChangeMerge, ProposedChangeRequestRunCheck, ProposedChangeReview
+from .mutations.proposed_change import (
+    ProposedChangeCheckForApprovalRevoke,
+    ProposedChangeMerge,
+    ProposedChangeRequestRunCheck,
+    ProposedChangeReview,
+)
 from .mutations.relationship import (
     RelationshipAdd,
     RelationshipRemove,
@@ -49,6 +54,7 @@ from .queries import (
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
     InfrahubStatus,
+    ProposedChangeAvailableActions,
     Relationship,
 )
 from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
@@ -75,6 +81,8 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubTask = Task
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
+
+    CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
 
     IPAddressGetNextAvailable = DeprecatedIPAddressGetNextAvailable
     IPPrefixGetNextAvailable = DeprecatedIPPrefixGetNextAvailable
@@ -126,3 +134,4 @@ class InfrahubBaseMutation(ObjectType):
     ResolveDiffConflict = ResolveDiffConflict.Field()
 
     ConvertObjectType = ConvertObjectType.Field()
+    CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()

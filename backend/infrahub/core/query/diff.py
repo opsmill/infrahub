@@ -100,6 +100,17 @@ class DiffCountChanges(Query):
         return branch_count_map
 
 
+async def get_num_changes_in_time_range_by_branch(
+    branch_names: list[str],
+    from_time: Timestamp,
+    to_time: Timestamp,
+    db: InfrahubDatabase,
+) -> dict[str, int]:
+    query = await DiffCountChanges.init(db=db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
+    await query.execute(db=db)
+    return query.get_num_changes_by_branch()
+
+
 class DiffCalculationQuery(DiffQuery):
     type = QueryType.READ
     insert_limit = False
@@ -148,7 +159,14 @@ CALL (diff_path) {
         OR type(base_r_node) <> "IS_RELATED" OR type(base_r_prop) <> "IS_RELATED"
     )
     WITH latest_base_path, base_r_root, base_r_node, base_r_prop
-    ORDER BY base_r_prop.from DESC, base_r_node.from DESC, base_r_root.from DESC
+    // status="active" ordering is for tie-breaking edges added and deleted at the same time, we want the active one
+    ORDER BY
+        base_r_prop.from DESC,
+        base_r_prop.status = "active" DESC,
+        base_r_node.from DESC,
+        base_r_node.status = "active" DESC,
+        base_r_root.from DESC,
+        base_r_root.status = "active" DESC
     LIMIT 1
     RETURN latest_base_path
 }
@@ -172,8 +190,6 @@ CALL (penultimate_path) {
     AND %(id_func)s(peer_r_node) = %(id_func)s(r_node)
     AND [%(id_func)s(n), type(peer_r_node)] <> [%(id_func)s(peer), type(r_peer)]
     AND r_peer.from < $to_time
-    // filter out paths where an earlier from time follows a later from time
-    AND peer_r_node.from <= r_peer.from
     // filter out paths where a base branch edge follows a branch edge
     AND (peer_r_node.branch = $base_branch_name OR r_peer.branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
@@ -663,6 +679,15 @@ AND ALL(
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
     // filter out paths where an earlier from time follows a later from time
     AND (r_pair[0]).from <= (r_pair[1]).from
+    // if both are deleted, then the deeper edge must have been deleted first
+    AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "active" OR (r_pair[0]).from >= (r_pair[1].from))
+    AND (
+        (r_pair[0]).status = (r_pair[1]).status
+        OR (
+            (r_pair[0]).from <= (r_pair[1]).from
+            AND ((r_pair[0]).to IS NULL OR (r_pair[0]).to >= (r_pair[1]).from)
+        )
+    )
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
     AND (
         (r_pair[0]).branch <> (r_pair[1]).branch

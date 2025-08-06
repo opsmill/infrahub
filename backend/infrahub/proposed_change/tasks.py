@@ -43,6 +43,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
+from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
@@ -51,6 +52,7 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.events import EventMeta, ProposedChangeMergedEvent
 from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
@@ -102,6 +104,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags
 
 from .branch_diff import get_diff_summary_cache, get_modified_kinds
+from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -157,14 +160,30 @@ async def merge_proposed_change(
 ) -> State:
     log = get_run_logger()
     await add_tags(nodes=[proposed_change_id])
-
     database = await get_database()
-    async with database.start_session() as db:
-        proposed_change = await registry.manager.get_one(
-            db=db, id=proposed_change_id, kind=InternalCoreProposedChange, raise_on_error=True
-        )
 
+    proposed_change = await registry.manager.get_one(
+        db=database,
+        id=proposed_change_id,
+        kind=InternalCoreProposedChange,
+        raise_on_error=True,
+        prefetch_relationships=True,
+    )
+
+    async with database.start_session() as db:
         log.info("Validating if all conditions are met to merge the proposed change")
+
+        try:
+            await verify_proposed_change_is_mergeable(
+                proposed_change=proposed_change,  # type: ignore[arg-type]
+                db=db,
+                account_session=context.account,
+            )
+        except ValueError as exc:
+            await _proposed_change_transition_state(
+                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+            )
+            return Failed(message=str(exc))
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)
         validations = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
@@ -204,6 +223,22 @@ async def merge_proposed_change(
         await _proposed_change_transition_state(
             proposed_change=proposed_change, state=ProposedChangeState.MERGED, database=db
         )
+
+        current_user = await NodeManager.get_one_by_id_or_default_filter(
+            id=context.account.account_id, kind=InfrahubKind.GENERICACCOUNT, db=db
+        )
+        event_service = await get_event_service()
+        await event_service.send(
+            event=ProposedChangeMergedEvent(
+                proposed_change_id=proposed_change.id,
+                proposed_change_name=proposed_change.name.value,
+                proposed_change_state=proposed_change.state.value,
+                merged_by_account_id=current_user.id,
+                merged_by_account_name=current_user.name.value,
+                meta=EventMeta.from_context(context=context),
+            )
+        )
+
         return Completed(message="proposed change merged successfully")
 
 
@@ -636,7 +671,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 repository_kind=repository.kind,
                 branch_name=model.source_branch,
                 query=model.artifact_definition.query_name,
-                variables=member.extract(params=artifact_definition.parameters.value),
+                variables=await member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
                 target_kind=member.get_kind(),
                 target_name=member.display_label,
@@ -896,7 +931,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
                 repository_kind=repository.kind,
                 branch_name=model.source_branch,
                 query=model.generator_definition.query_name,
-                variables=member.extract(params=model.generator_definition.parameters),
+                variables=await member.extract(params=model.generator_definition.parameters),
                 target_id=member.id,
                 target_name=member.display_label,
                 validator_id=validator.id,

@@ -7,6 +7,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Getting Started',
       collapsed: false,
+      collapsible: false,
       items: [
         'getting-started/overview',
         'getting-started/quick-start',
@@ -17,83 +18,279 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Guides',
+      collapsed: false,
+      collapsible: false,
       link: {
         type: 'generated-index',
         slug: 'guides'
       },
       items: [
-        'guides/installation',
-        'guides/create-schema',
-        'guides/import-schema',
-        'guides/menu',
-        'guides/object-load',
-        'guides/computed-attributes',
-        'guides/resource-manager',
-        'guides/accounts-permissions',
-        'guides/events-rules-actions',
-        'guides/groups',
-        'guides/generator',
-        'guides/repository',
-        'guides/jinja2-transform',
-        'guides/python-transform',
-        'guides/artifact',
-        'guides/database-backup',
-        'guides/managing-api-tokens',
-        'guides/object-template',
-        'guides/profiles',
-        'guides/object-storage',
-        'guides/sso',
-        'guides/check',
-        'guides/upgrade',
-        'guides/webhooks',
+        {
+          type: 'category',
+          label: 'Installation & Setup',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/installation',
+            'guides/database-backup',
+            'guides/upgrade',
+            'guides/repository',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Schema & Data Modeling',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/create-schema',
+            'guides/import-schema',
+            'guides/menu',
+            'guides/computed-attributes',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Data Management',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/object-load',
+            'guides/resource-manager',
+            'guides/groups',
+            'guides/object-template',
+            'guides/profiles',
+            'guides/check',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Artifact & Transform',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/jinja2-transform',
+            'guides/python-transform',
+            'guides/artifact',
+            'guides/object-storage',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Generators',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/generator',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Integration & Events',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/events-rules-actions',
+            'guides/webhooks',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'User Management & Authentication',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/sso',
+            'guides/managing-api-tokens',
+            'guides/accounts-permissions',
+          ],
+        },
       ],
     },
     {
       type: 'category',
       label: 'Topics',
+      collapsed: false,
+      collapsible: false,
       link: {
         type: 'generated-index',
         slug: 'topics'
       },
       items: [
-        'topics/infrahub-yml',
-        'topics/auth',
-        'topics/activity-log',
-        'topics/architecture',
-        'topics/artifact',
-        'topics/check',
-        'topics/computed-attributes',
-        'topics/metadata',
-        'topics/database-backup',
-        'topics/developer-guide',
-        'topics/event-actions',
-        'topics/events',
-        'topics/local-demo-environment',
-        'topics/generator',
-        'topics/graphql',
-        'topics/groups',
-        'topics/hardware-requirements',
-        'topics/ipam',
-        'topics/object-storage',
-        'topics/object-template',
-        'topics/permissions-roles',
-        'topics/profiles',
-        'topics/proposed-change',
-        'topics/repository',
-        'topics/resource-manager',
-        'topics/resources-testing-framework',
         {
           type: 'category',
-          label: 'Schema',
+          label: 'Architecture',
+          link: {
+            type: 'generated-index',
+          },
           items: [
-            'topics/schema',
-            'topics/schema-attr-kind-number-pool',
+            'topics/architecture',
           ],
         },
-        'topics/tasks',
-        'topics/transformation',
-        'topics/version-control',
-        'topics/webhooks',
+        {
+          type: 'category',
+          label: 'Core Concepts',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            {
+              type: 'category',
+              label: 'Git Integration',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/infrahub-yml',
+                'topics/repository',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Transforms',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/transformation',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Generators',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/generator',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Version Control & Branching',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/version-control',
+                'topics/proposed-change',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Artifacts',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/artifact',
+                'topics/object-storage',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Schema',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/schema',
+                'topics/schema-attr-kind-number-pool',
+                'topics/computed-attributes',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Data Management',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/check',
+                'topics/metadata',
+                'topics/groups',
+                'topics/graphql',
+                'topics/resource-manager',
+                'topics/object-template',
+                'topics/profiles',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'IPAM',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/ipam',
+              ],
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Platform Capabilities',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            {
+              type: 'category',
+              label: 'User Management & Authentication',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/auth',
+                'topics/permissions-roles',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Event Management & Logging',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/activity-log',
+                'topics/events',
+                'topics/event-actions',
+                'topics/tasks',
+                'topics/webhooks',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'System Administration',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/database-backup',
+                'topics/hardware-requirements',
+              ],
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Development Resources',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'topics/developer-guide',
+            'topics/local-demo-environment',
+            'topics/resources-testing-framework',
+          ],
+        },
       ],
     },
     {
@@ -149,12 +346,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Development',
+      label: 'Contributing',
       link: {
         type: 'generated-index',
         slug: 'development'
       },
-
       items: [
         'development/editor',
         'development/changelog',

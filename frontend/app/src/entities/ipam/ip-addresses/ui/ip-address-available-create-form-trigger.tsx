@@ -1,0 +1,54 @@
+import {
+  IPAddressAvailableIdentifierProps,
+  IpAddressAvailableIdentifier,
+} from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { queryClient } from "@/shared/api/rest/client";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ObjectForm from "@/shared/components/form/object-form";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import React from "react";
+
+export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIdentifierProps) {
+  const { selectedSchema, permission } = useObjectTableContext();
+  const [isCreateFormOpen, setIsCreateFormOpen] = React.useState(false);
+
+  const isCreationAllowed = permission.create.isAllowed;
+
+  return (
+    <>
+      <Tooltip
+        enabled={!isCreationAllowed}
+        content={!isCreationAllowed && permission.create.message}
+        side="right"
+      >
+        <IpAddressAvailableIdentifier onClick={() => setIsCreateFormOpen(true)} {...props} />
+      </Tooltip>
+
+      <SlideOver
+        title={
+          <SlideOverTitle
+            schema={selectedSchema}
+            currentObjectLabel="New"
+            title={`Create ${selectedSchema.label}`}
+            subtitle={selectedSchema.description}
+          />
+        }
+        open={isCreateFormOpen}
+        setOpen={setIsCreateFormOpen}
+      >
+        <ObjectForm
+          onSuccess={() => {
+            setIsCreateFormOpen(false);
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey.includes("objects"),
+            });
+          }}
+          currentObject={{ address: { value: props.ipAddressAvailableNode.address.value } }}
+          onCancel={() => setIsCreateFormOpen(false)}
+          kind={selectedSchema.kind!}
+        />
+      </SlideOver>
+    </>
+  );
+}

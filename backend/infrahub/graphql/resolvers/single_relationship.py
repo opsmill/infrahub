@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
 from graphql.type.definition import GraphQLNonNull
-from infrahub_sdk.utils import deep_merge_dict, extract_fields
+from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType
@@ -10,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 from ..loaders.node import GetManyParams, NodeDataLoader
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -42,7 +43,7 @@ class SingleRelationshipResolver:
         graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         node_fields = fields.get("node", {})
         property_fields = fields.get("properties", {})
         for key, value in property_fields.items():

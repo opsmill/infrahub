@@ -34,12 +34,14 @@ mutation ProposedChange(
   $destination: String!,
   $name: String!,
   $source: String!
+  $state: String
   ) {
   CoreProposedChangeCreate(
     data: {
       name: {value: $name},
       source_branch: {value: $source},
       destination_branch: {value: $destination}
+      state: {value: $state}
     }
   ) {
     ok
@@ -141,6 +143,62 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     assert "Currently only the 'main' branch is supported as a destination for a proposed change" in str(
         invalid_destination.errors
     )
+
+
+async def test_create_invalid_state_combinations(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that we can't create a PC in an invalid state.
+
+    While this wouldn't actually do anything it looks weird from an auditing point of view to have a
+    proposed change that looks like it has been merged even though it never was.
+    """
+    branch_name = str(uuid4().hex)
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db,
+        include_subscription=False,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
+    closed = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "invalid-state",
+            "state": "closed",
+        },
+    )
+    assert closed.errors
+    assert "A proposed change has to be in the open state during creation" in str(closed.errors)
+
+    merged = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "invalid-state",
+            "state": "merged",
+        },
+    )
+
+    assert closed.errors
+    assert "A proposed change has to be in the open state during creation" in str(closed.errors)
+    assert merged.errors
+    assert "A proposed change has to be in the open state during creation" in str(merged.errors)
 
 
 class TestTriggerProposedChange(TestInfrahubApp):

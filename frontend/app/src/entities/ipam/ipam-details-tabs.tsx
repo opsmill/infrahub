@@ -1,0 +1,37 @@
+import { constructPathForIpam } from "@/entities/ipam/utils";
+import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
+import { NodeObject } from "@/entities/nodes/types";
+import { ModelSchema } from "@/entities/schema/types";
+import { Row } from "@/shared/components/container";
+import { LinkTab } from "@/shared/components/ui/link";
+import { IdCardIcon } from "lucide-react";
+
+export interface IpamDetailsTabsProps {
+  objectSchema: ModelSchema;
+  objectData: NodeObject;
+}
+
+export function IpamDetailsTabs({ objectSchema, objectData }: IpamDetailsTabsProps) {
+  const relationshipVisible = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
+
+  return (
+    <Row className="border-b border-gray-200">
+      <LinkTab href={constructPathForIpam("details")}>
+        <IdCardIcon className="size-4" />
+        Details
+      </LinkTab>
+
+      {relationshipVisible.map((relationship) => {
+        return (
+          <ObjectDetailsTab
+            key={relationship.name}
+            parentKind={objectSchema.kind as string}
+            parentId={objectData.id}
+            relationship={relationship}
+          />
+        );
+      })}
+    </Row>
+  );
+}
