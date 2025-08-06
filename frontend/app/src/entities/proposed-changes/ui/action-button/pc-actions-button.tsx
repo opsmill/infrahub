@@ -20,7 +20,9 @@ import { ReactElement, useState } from "react";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
-const actionsListMapping: Record<string, ActionButtonComponent> = {
+type Action = "approve" | "reject" | "merge" | "close" | "draft";
+
+const actionsListMapping: Record<Action, ActionButtonComponent> = {
   approve: ({ setOpen }) => <ApproveButton setOpen={setOpen} />,
   reject: ({ setOpen }) => <RejectButton setOpen={setOpen} />,
   merge: ({ setOpen }) => <MergeButton setOpen={setOpen} />,
@@ -37,7 +39,7 @@ export const PcActionButton = () => {
   });
 
   const [open, setOpen] = useState(false);
-  const [action, setAction] = useState<string>("merge");
+  const [action, setAction] = useState<Action>("merge");
 
   return (
     <PcActionsContext value={data}>
@@ -57,7 +59,7 @@ export const PcActionButton = () => {
             value={action}
             onSelect={(action) => {
               setOpen(false);
-              setAction(action);
+              setAction(action as Action);
             }}
           />
         </ComboboxContent>
