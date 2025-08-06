@@ -89,7 +89,7 @@ export default function ModalConfirm({
                     Confirm
                   </Button>
                   {!hideCancel && (
-                    <Button onClick={onCancel} ref={cancelButtonRef}>
+                    <Button onClick={onCancel} ref={cancelButtonRef} variant={"outline"}>
                       Cancel
                     </Button>
                   )}
