@@ -15,7 +15,7 @@ import { ProposedChangeActionButtonProps } from "./types";
 
 export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
-  const { reject } = usePcActionsContext();
+  const { reject, cancelReject } = usePcActionsContext();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const hasRejected = auth.user && hasUserRejectedProposedChange(proposedChangesDetails, auth.user);
@@ -41,19 +41,20 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
+  const tooltipContent = hasRejected
+    ? cancelReject.unavailability_reason
+    : reject.unavailability_reason;
+  const tooltipEnabled = hasRejected ? !cancelReject.available : !reject.available;
+
   return (
     <>
-      <Tooltip
-        content={reject.unavailability_reason}
-        enabled={!reject.available}
-        className="whitespace-pre"
-      >
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
           variant={"primary"}
           isLoading={isPending}
-          disabled={!reject.available}
+          disabled={tooltipEnabled || isPending}
         >
           {hasRejected ? "Cancel Reject" : "Reject"}
         </Button>

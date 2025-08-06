@@ -12,7 +12,7 @@ import { usePcActionsContext } from "../pc-actions-permissions-context";
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
-  const { setDraft } = usePcActionsContext();
+  const { setDraft, unsetDraft } = usePcActionsContext();
 
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
@@ -44,19 +44,20 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
+  const tooltipContent = isDraft
+    ? unsetDraft.unavailability_reason
+    : setDraft.unavailability_reason;
+  const tooltipEnabled = isDraft ? !unsetDraft.available : !setDraft.available;
+
   return (
     <>
-      <Tooltip
-        content={setDraft.unavailability_reason}
-        enabled={!setDraft.available}
-        className="whitespace-pre"
-      >
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
           variant={"primary"}
           isLoading={isPending}
-          disabled={!setDraft.available || isPending}
+          disabled={tooltipEnabled || isPending}
         >
           {isDraft ? "Open" : "Move to draft"}
         </Button>

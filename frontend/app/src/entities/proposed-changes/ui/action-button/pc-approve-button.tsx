@@ -15,7 +15,7 @@ import { ProposedChangeActionButtonProps } from "./types";
 
 export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
-  const { approve } = usePcActionsContext();
+  const { approve, cancelApprove } = usePcActionsContext();
 
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
@@ -42,19 +42,20 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
+  const tooltipContent = hasApproved
+    ? cancelApprove.unavailability_reason
+    : approve.unavailability_reason;
+  const tooltipEnabled = hasApproved ? !cancelApprove.available : !approve.available;
+
   return (
     <>
-      <Tooltip
-        content={approve.unavailability_reason}
-        enabled={!approve.available}
-        className="whitespace-pre"
-      >
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
           variant={"primary"}
           isLoading={isPending}
-          disabled={!approve.available}
+          disabled={tooltipEnabled || isPending}
         >
           {hasApproved ? "Cancel Approve" : "Approve"}
         </Button>

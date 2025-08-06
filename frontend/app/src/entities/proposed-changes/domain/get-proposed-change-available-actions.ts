@@ -15,6 +15,34 @@ export async function getProposedChangeAvailableActions(
 
   return data.CoreProposedChangeAvailableActions.edges.reduce(
     (acc: Record<string, ActionAvailability>, edge: { node: ActionAvailability }) => {
+      if (edge.node.action === "set-draft") {
+        return {
+          ...acc,
+          setDraft: edge.node,
+        };
+      }
+
+      if (edge.node.action === "unset-draft") {
+        return {
+          ...acc,
+          unsetDraft: edge.node,
+        };
+      }
+
+      if (edge.node.action === "cancel-approve") {
+        return {
+          ...acc,
+          cancelApprove: edge.node,
+        };
+      }
+
+      if (edge.node.action === "cancel-reject") {
+        return {
+          ...acc,
+          cancelReject: edge.node,
+        };
+      }
+
       return {
         ...acc,
         [edge.node.action]: edge.node,

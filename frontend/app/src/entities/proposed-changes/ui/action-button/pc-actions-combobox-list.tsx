@@ -65,7 +65,7 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
         {Object.entries(actionsList).map(([, action]) => {
           if (action.isDisabled) {
             return (
-              <Tooltip enabled content={action.message}>
+              <Tooltip enabled content={action.message} className="whitespace-pre">
                 <span className="flex items-center gap-2 cursor-default select-none rounded-md px-2 py-1.5 ml-5 text-sm outline-hidden truncate opacity-50">
                   {action.name}
                 </span>

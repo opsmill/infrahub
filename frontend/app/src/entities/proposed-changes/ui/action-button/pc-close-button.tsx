@@ -38,19 +38,18 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
+  const tooltipContent = close.unavailability_reason;
+  const tooltipEnabled = !close.available;
+
   return (
     <>
-      <Tooltip
-        content={close.unavailability_reason}
-        enabled={!close.available}
-        className="whitespace-pre"
-      >
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
           variant={"danger"}
           isLoading={isPending}
-          disabled={!close.available || isPending}
+          disabled={tooltipEnabled || isPending}
         >
           Close
         </Button>

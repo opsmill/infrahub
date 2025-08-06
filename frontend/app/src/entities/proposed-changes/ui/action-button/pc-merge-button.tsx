@@ -38,19 +38,18 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
+  const tooltipContent = merge.unavailability_reason;
+  const tooltipEnabled = !merge.available;
+
   return (
     <>
-      <Tooltip
-        content={merge.unavailability_reason}
-        enabled={!merge.available}
-        className="whitespace-pre"
-      >
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
           variant={"active"}
           isLoading={isPending}
-          disabled={!merge.available || isPending}
+          disabled={tooltipEnabled || isPending}
         >
           Merge
         </Button>

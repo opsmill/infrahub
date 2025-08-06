@@ -1,27 +1,49 @@
 import { createContext, use } from "react";
 
 export interface PcActionsContextType {
-  setDraft: {
-    action: string;
-    available: boolean;
-    unavailability_reason: string | null;
-  };
-  close: {
-    action: string;
-    available: boolean;
-    unavailability_reason: string | null;
-  };
-  merge: {
-    action: string;
-    available: boolean;
-    unavailability_reason: string | null;
-  };
   approve: {
     action: string;
     available: boolean;
     unavailability_reason: string | null;
   };
+
+  cancelApprove: {
+    action: string;
+    available: boolean;
+    unavailability_reason: string | null;
+  };
+
+  close: {
+    action: string;
+    available: boolean;
+    unavailability_reason: string | null;
+  };
+
+  merge: {
+    action: string;
+    available: boolean;
+    unavailability_reason: string | null;
+  };
+
   reject: {
+    action: string;
+    available: boolean;
+    unavailability_reason: string | null;
+  };
+
+  cancelReject: {
+    action: string;
+    available: boolean;
+    unavailability_reason: string | null;
+  };
+
+  setDraft: {
+    action: string;
+    available: boolean;
+    unavailability_reason: string | null;
+  };
+
+  unsetDraft: {
     action: string;
     available: boolean;
     unavailability_reason: string | null;
@@ -29,11 +51,14 @@ export interface PcActionsContextType {
 }
 
 export const PcActionsContext = createContext<PcActionsContextType>({
-  setDraft: { action: "", available: false, unavailability_reason: null },
+  approve: { action: "", available: false, unavailability_reason: null },
+  cancelApprove: { action: "", available: false, unavailability_reason: null },
   close: { action: "", available: false, unavailability_reason: null },
   merge: { action: "", available: false, unavailability_reason: null },
-  approve: { action: "", available: false, unavailability_reason: null },
   reject: { action: "", available: false, unavailability_reason: null },
+  cancelReject: { action: "", available: false, unavailability_reason: null },
+  setDraft: { action: "", available: false, unavailability_reason: null },
+  unsetDraft: { action: "", available: false, unavailability_reason: null },
 });
 
 export function usePcActionsContext() {
