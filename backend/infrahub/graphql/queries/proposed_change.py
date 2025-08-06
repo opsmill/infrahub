@@ -46,7 +46,7 @@ class AvailableActions(ObjectType):
         proposed_change_author = await proposed_change.created_by.get_peer(
             db=graphql_context.db, peer_type=CoreGenericAccount, raise_on_error=True
         )
-        actions = ActionRulesEvaluator(rules=ACTION_RULES).evaluate(
+        actions = await ActionRulesEvaluator(rules=ACTION_RULES).evaluate(
             proposed_change=proposed_change,
             graphql_context=graphql_context,
             proposed_change_author=proposed_change_author,

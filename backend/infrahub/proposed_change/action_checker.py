@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.exceptions import ValidationError
-from infrahub.proposed_change.constants import ProposedChangeAction, ProposedChangeState
+
+from .checker import verify_proposed_change_is_mergeable
+from .constants import ProposedChangeAction, ProposedChangeState
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -18,7 +20,7 @@ if TYPE_CHECKING:
 
 class Check(ABC):
     @abstractmethod
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,
         proposed_change_author: CoreGenericAccount,
@@ -27,7 +29,7 @@ class Check(ABC):
 
 
 class IsAuthor(Check):
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,  # noqa: ARG002
         proposed_change_author: CoreGenericAccount,
@@ -41,7 +43,7 @@ class StateIs(Check):
     def __init__(self, expected: Sequence[ProposedChangeState]) -> None:
         self.expected = expected
 
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,
         proposed_change_author: CoreGenericAccount,  # noqa: ARG002
@@ -55,7 +57,7 @@ class DraftIs(Check):
     def __init__(self, expected: bool) -> None:
         self.expected = expected
 
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,
         proposed_change_author: CoreGenericAccount,  # noqa: ARG002
@@ -71,7 +73,7 @@ class HasPermission(Check):
     def __init__(self, permission: GlobalPermission) -> None:
         self.permission = permission
 
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,  # noqa: ARG002
         proposed_change_author: CoreGenericAccount,  # noqa: ARG002
@@ -81,12 +83,25 @@ class HasPermission(Check):
             raise ValidationError("You do not have the permission to perform this action")
 
 
+class IsMergeable(Check):
+    async def evaluate(
+        self,
+        proposed_change: CoreProposedChange,
+        proposed_change_author: CoreGenericAccount,  # noqa: ARG002
+        graphql_context: GraphqlContext,
+    ) -> None:
+        try:
+            await verify_proposed_change_is_mergeable(proposed_change=proposed_change, db=graphql_context.db)  # type: ignore[arg-type]
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+
 @dataclass
 class ActionRule:
     action: ProposedChangeAction
     checks: list[Check]
 
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,
         proposed_change_author: CoreGenericAccount,
@@ -94,7 +109,7 @@ class ActionRule:
     ) -> dict[str, str | bool | None]:
         for check in self.checks:
             try:
-                check.evaluate(
+                await check.evaluate(
                     proposed_change=proposed_change,
                     proposed_change_author=proposed_change_author,
                     graphql_context=graphql_context,
@@ -109,7 +124,7 @@ class ActionRulesEvaluator:
     def __init__(self, rules: list[ActionRule]):
         self.rules = rules
 
-    def evaluate(
+    async def evaluate(
         self,
         proposed_change: CoreProposedChange,
         proposed_change_author: CoreGenericAccount,
@@ -118,7 +133,7 @@ class ActionRulesEvaluator:
         report: list[dict[str, str | bool | None]] = []
         for rule in self.rules:
             report.append(
-                rule.evaluate(
+                await rule.evaluate(
                     proposed_change=proposed_change,
                     proposed_change_author=proposed_change_author,
                     graphql_context=graphql_context,
@@ -181,6 +196,7 @@ ACTION_RULES = [
             StateIs(expected=[ProposedChangeState.OPEN]),
             DraftIs(expected=False),
             HasPermission(permission=MERGE_PROPOSED_CHANGE_PERMISSION),
+            IsMergeable(),
         ],
     ),
 ]
