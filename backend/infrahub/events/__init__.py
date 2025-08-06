@@ -10,6 +10,8 @@ from .proposed_change_action import (
     ProposedChangeRejectedEvent,
     ProposedChangeRejectionRevokedEvent,
     ProposedChangeReviewRequestedEvent,
+    ProposedChangeThreadCreatedEvent,
+    ProposedChangeThreadUpdatedEvent,
 )
 from .repository_action import CommitUpdatedEvent
 from .validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
@@ -35,6 +37,8 @@ __all__ = [
     "ProposedChangeRejectedEvent",
     "ProposedChangeRejectionRevokedEvent",
     "ProposedChangeReviewRequestedEvent",
+    "ProposedChangeThreadCreatedEvent",
+    "ProposedChangeThreadUpdatedEvent",
     "ValidatorFailedEvent",
     "ValidatorPassedEvent",
     "ValidatorStartedEvent",

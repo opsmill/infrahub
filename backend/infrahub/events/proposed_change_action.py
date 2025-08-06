@@ -2,6 +2,8 @@ from typing import ClassVar
 
 from pydantic import Field
 
+from infrahub.core.constants import InfrahubKind, MutationAction
+
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
 
@@ -110,3 +112,34 @@ class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
     """Event generated when a proposed change rejection has been revoked"""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
+
+
+class ProposedChangeThreadEevent(ProposedChangeEvent):
+    thread_id: str = Field(..., description="The ID of the thread that was created or updated")
+    thread_kind: str = Field(..., description="The name of the thread that was created or updated")
+
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": self.thread_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": self.thread_kind,
+                "infrahub.node.id": self.thread_id,
+            }
+        )
+        return related
+
+
+class ProposedChangeThreadCreatedEvent(ProposedChangeThreadEevent):
+    """Event generated when a thread has been created in a proposed change"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
+    action: MutationAction = MutationAction.CREATED
+
+
+class ProposedChangeThreadUpdatedEvent(ProposedChangeThreadEevent):
+    """Event generated when a thead has been updated in a proposed change"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
+    action: MutationAction = MutationAction.UPDATED
