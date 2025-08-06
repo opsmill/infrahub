@@ -13,7 +13,7 @@ type CommentProps = {
 export const Comment: React.FC<CommentProps> = ({ author, createdAt, content, className = "" }) => {
   return (
     <div
-      className={classNames("p-4 mb-4 text-base bg-white rounded-lg", className)}
+      className={classNames("p-2 text-base bg-white rounded-lg", className)}
       data-testid="comment"
     >
       <div className="flex justify-between items-center mb-2 text-xs">

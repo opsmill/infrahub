@@ -154,6 +154,10 @@ export const Thread = (props: tThread) => {
       setDisplayAddComment(false);
     }
 
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes(thread.id),
+    });
+
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
   };
 
@@ -184,7 +188,7 @@ export const Thread = (props: tThread) => {
 
   return (
     <Card
-      className={classNames("relative", isResolved && "bg-gray-200")}
+      className={classNames("flex flex-col relative p-1 gap-1", isResolved && "bg-gray-200")}
       data-testid="thread"
       data-cy="thread"
     >
