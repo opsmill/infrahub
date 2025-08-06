@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 from prefect import get_client
-from tests.helpers.events import query_events_by_name
 from tests.helpers.test_app import TestInfrahubApp
 
 from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE
