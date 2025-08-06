@@ -54,6 +54,7 @@ from .queries import (
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
     InfrahubStatus,
+    ProposedChangeAvailableActions,
     Relationship,
 )
 from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
@@ -80,6 +81,8 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubTask = Task
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
+
+    CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
 
     IPAddressGetNextAvailable = DeprecatedIPAddressGetNextAvailable
     IPPrefixGetNextAvailable = DeprecatedIPPrefixGetNextAvailable
