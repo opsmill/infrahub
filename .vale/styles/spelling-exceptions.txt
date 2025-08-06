@@ -163,6 +163,9 @@ vscode
 VSCode
 walkthrough
 widget's
+Entra
+Okta
+OAuth
 Widget's
 Yaml
 yamllint
