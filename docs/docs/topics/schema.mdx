@@ -493,7 +493,7 @@ In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` 
 - For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future, the plan is to allow additional metadata to be used as well.*
 - For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationships of cardinality `one` are supported and the relationship must be mandatory.*
 
-```yaml {10, 11} showLineNumbers
+```yaml {10-11} showLineNumbers
 nodes:
   - name: Person
     namespace: Example
