@@ -84,7 +84,7 @@ Two limitations could have an impact on your choice of node vs generic :
 
 ### Field Ordering with Order Weight
 
-The order in which attributes and relationships appear in the Infrahub frontend is controlled by the `order_weight` property. When not explicitly specified, Infrahub automatically assigns default values in increments of 1000:
+The order in which attributes and relationships appear in the Infrahub frontend is controlled by the `order_weight` property. **Items with lower values appear before those with higher values.** When not explicitly specified, Infrahub automatically assigns default values in increments of 1000:
 
 ```yaml title="Default Order Weight Assignment"
 nodes:
@@ -120,14 +120,10 @@ attributes:
     order_weight: 9000      # Appears last
 ```
 
-:::tip Field Ordering Best Practices
-
-- Use values below 1000 for high-priority fields that should appear first
-- Use values like 1500, 2500 to insert fields between default assignments
-- Leave gaps between values to make future reorganization easier
-- For comprehensive guidance, see [Understanding Order Weight](./order-weight) and [Customize Field Ordering](../guides/customize-field-ordering)
-
-:::
+<ReferenceLink
+  title="For more details on order weight, refer to the dedicated topic"
+  url="/topics/order-weight"
+  openInNewTab />
 
 ### Node example
 

@@ -1,10 +1,14 @@
 ---
-title: Understanding Order Weight
+title: Order Weight
 ---
 
-# Understanding Order Weight
+# Order Weight
 
-The `order_weight` property controls how attributes and relationships are ordered in the Infrahub frontend, including table views and detailed object views. Understanding how default values are assigned and how to work with them effectively is crucial for creating well-organized schemas.
+The `order_weight` property controls how attributes and relationships are ordered in the Infrahub frontend, including table views and detailed object views. **Items with lower values appear before those with higher values.** Understanding how default values are assigned and how to work with them effectively is crucial for creating well-organized schemas.
+
+## Ordering principle
+
+**Lower `order_weight` values appear first.** This means items with smaller numbers are displayed before those with larger numbers.
 
 ## Default Assignment Logic
 
