@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from prefect import get_client
 from tests.helpers.test_app import TestInfrahubApp
 
 from infrahub import config
@@ -10,6 +11,8 @@ from infrahub.core.constants.infrahubkind import CHANGETHREAD, PROPOSEDCHANGE, T
 from infrahub.core.initialization import create_branch
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub_sdk import InfrahubClient
     from prefect.client.orchestration import PrefectClient
 
@@ -21,6 +24,11 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
     def enable_broker_settings(self) -> None:
         config.SETTINGS.broker.enable = True
+
+    @pytest.fixture(scope="class")
+    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
+        async with get_client(sync_client=False) as client:
+            yield client
 
     async def test_thread_events(
         self,

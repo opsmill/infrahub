@@ -213,11 +213,6 @@ class TestInfrahubApp(TestInfrahub):
         # This call emits a warning related to the fact database index manager has not been initialized.
         await initialization(db=db)
 
-    @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
-        async with get_client(sync_client=False) as client:
-            yield client
-
     async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
         for _ in range(10):
             events = await query_events_by_name(client=prefect_client, event_name=event_name)
