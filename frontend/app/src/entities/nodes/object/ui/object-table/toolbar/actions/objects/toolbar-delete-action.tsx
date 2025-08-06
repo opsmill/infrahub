@@ -1,20 +1,20 @@
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { NodeCore } from "@/entities/nodes/types";
-import { Icon } from "@iconify-icon/react";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import React from "react";
 import { DeleteObjectsModal } from "./delete-objects-modal";
 
-export interface ToolbarDeleteObjectProps {
+export interface ToolbarDeleteActionProps {
   selectedRows: Array<NodeCore>;
 }
 
-export function ToolbarDeleteObject({ selectedRows }: ToolbarDeleteObjectProps) {
+export function ToolbarDeleteAction({ selectedRows }: ToolbarDeleteActionProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <>
       <ToolbarButton variant="danger" onPress={() => setIsOpen((prev) => !prev)}>
-        <Icon icon="mdi:trash-can-outline" />
+        <TrashIcon className="size-3.5" />
         Delete
       </ToolbarButton>
 
