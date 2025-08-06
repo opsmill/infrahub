@@ -8,6 +8,7 @@ import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObje
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import ModalConfirm from "@/shared/components/modals/modal-confirm";
@@ -93,6 +94,10 @@ export const Thread = (props: tThread) => {
             await refetch();
           }
 
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes(thread.id),
+          });
+
           setIsLoading(false);
           setDisplayAddComment(false);
         },
@@ -154,7 +159,7 @@ export const Thread = (props: tThread) => {
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
-  const idForLabel = `checkbox-resolve-thread${thread.id}`;
+  const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
   const MarkAsResolved = (
     <div className="flex items-center gap-2">
