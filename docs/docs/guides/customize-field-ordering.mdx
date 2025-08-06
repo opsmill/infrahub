@@ -1,11 +1,11 @@
 ---
-title: How to Customize Field Ordering
+title: How to customize field ordering
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# How to Customize Field Ordering
+# How to customize field ordering
 
 This guide shows you how to control the order in which attributes and relationships appear in the Infrahub frontend using the `order_weight` property.
 
@@ -23,11 +23,11 @@ Relationships follow the same `order_weight` rules as attributes. This includes:
 - Access to the schema explorer under Object Management > Schemas
 - Understanding of [schema basics](../topics/schema)
 
-## Step 1: Check Current Field Ordering
+## Step 1: Check current field ordering
 
 Before making changes, examine how your fields are currently ordered.
 
-### View in the Schema Explorer
+### View in the schema explorer
 
 1. Navigate to your Infrahub instance's schema explorer: Object Management > Schemas
 2. Find your node type in the list
@@ -43,11 +43,11 @@ If you see fields without explicit `order_weight` values, they follow the [defau
 - Third field: `3000`
 - And so on...
 
-## Step 2: Plan Your Field Organization
+## Step 2: Plan your field organization
 
 Before editing your schema, decide on your desired field order and weight strategy.
 
-### Common Strategies
+### Common strategies
 
 <Tabs>
 <TabItem value="conservative" label="Conservative (Recommended)">
@@ -70,7 +70,7 @@ order_weight: 9000  # After all defaults
 </TabItem>
 <TabItem value="systematic" label="Systematic Numbering">
 
-Use consistent increments for easy maintenance:
+Use consistent increments for better maintenance:
 
 ```yaml
 # Primary information
@@ -110,9 +110,9 @@ order_weight: 310  # memory_gb
 </TabItem>
 </Tabs>
 
-## Step 3: Update Your Schema
+## Step 3: Update your schema
 
-### Promote a Field to First Position
+### Promote a field to first position
 
 To make a field appear first, give it a low `order_weight`:
 
@@ -130,7 +130,7 @@ nodes:
         optional: true
 ```
 
-### Insert a Field Between Existing Ones
+### Insert a field between existing ones
 
 Add a field between two existing fields using an intermediate weight:
 
@@ -150,7 +150,7 @@ attributes:
     kind: Text           # Already has weight 3000
 ```
 
-### Reorder Multiple Fields
+### Reorder multiple fields
 
 When reorganizing multiple fields, update their weights systematically:
 
@@ -186,7 +186,7 @@ nodes:
         order_weight: 600
 ```
 
-## Step 4: Load the Updated Schema
+## Step 4: Load the updated schema
 
 Update your schema using `infrahubctl`:
 
@@ -214,23 +214,23 @@ infrahubctl schema load /path/to/schema.yml --branch my-feature-branch
 </TabItem>
 </Tabs>
 
-## Step 5: Verify the Changes
+## Step 5: Verify the changes
 
-### Check in the Frontend
+### Check in the frontend
 
 1. Navigate to your node type in the Infrahub UI
 2. View both the list view and detailed view of objects
 3. Confirm fields appear in your desired order
 
-### Verify in Schema Explorer
+### Verify in schema explorer
 
 1. Return to the schema explorer
 2. Check that your `order_weight` values were applied correctly
 3. Ensure no conflicts or unexpected ordering occurred
 
-## Common Use Cases
+## Common use cases
 
-### Adding a New Required Field First
+### Adding a new required field first
 
 When adding a new mandatory field that should appear first:
 
@@ -248,7 +248,7 @@ nodes:
         # order_weight: 100  (existing weight stays)
 ```
 
-### Organizing Related Fields Together
+### Organizing related fields together
 
 Group logically related fields using consecutive weights:
 
@@ -276,7 +276,7 @@ attributes:
     order_weight: 300
 ```
 
-### Working with Attribute Relationships
+### Working with attribute relationships
 
 Relationships with `kind: Attribute` appear alongside regular attributes and can be ordered using `order_weight`:
 
@@ -304,7 +304,7 @@ nodes:
         order_weight: 400  # Appears after description
 ```
 
-### Moving a Field to the End
+### Moving a field to the end
 
 To move a field to appear last, give it a high weight:
 
@@ -316,7 +316,7 @@ attributes:
     order_weight: 9999  # Will appear after all default fields
 ```
 
-### Working with Inherited Fields
+### Working with inherited fields
 
 When working with generics, consider the inherited field weights:
 
@@ -339,9 +339,9 @@ nodes:
         order_weight: 150   # Between inherited name (100) and default range (1000+)
 ```
 
-## Advanced Techniques
+## Advanced techniques
 
-### Systematic Renumbering
+### Systematic renumbering
 
 When your weights become messy, systematically renumber them:
 
@@ -362,7 +362,7 @@ attributes:
     order_weight: 500
 ```
 
-### Handling Large Schemas
+### Handling large schemas
 
 For schemas with many fields, use range-based organization:
 
@@ -397,7 +397,7 @@ attributes:
     order_weight: 310
 ```
 
-### Ordering Component Relationship Tabs
+### Ordering component relationship tabs
 
 Component relationships appear as tabs in the UI, and their order is controlled by `order_weight`:
 
@@ -424,7 +424,7 @@ relationships:
 
 ## Troubleshooting
 
-### Field Still Appears in Wrong Position
+### Field still appears in wrong position
 
 **Check for conflicting weights:**
 
@@ -440,7 +440,7 @@ infrahubctl schema check /path/to/schema.yml
 # Should show your order_weight changes
 ```
 
-### Order Doesn't Match Expectations
+### Order doesn't match expectations
 
 **Remember the sorting rule:** Lower numbers appear first
 
@@ -456,18 +456,18 @@ order_weight: 200  # Appears second
 order_weight: 300  # Appears third
 ```
 
-### Changes Not Visible in UI
+### Changes not visible in UI
 
 1. **Clear browser cache** - Frontend may cache schema information
 2. **Check branch** - Ensure you're viewing the correct branch
 3. **Verify data** - Create a new object to see field ordering in forms
 
-## Best Practices Summary
+## Best practices summary
 
-- **Start simple**: Let defaults work, only customize when needed
-- **Leave gaps**: Use increments like 100, 200, 300 for easy insertion
+- **Start with defaults**: Let defaults work, only customize when needed
+- **Leave gaps**: Use increments like 100, 200, 300 for better insertion
 - **Group logically**: Keep related fields close together numerically
 - **Document decisions**: Comment your schema with weight rationale
 - **Test thoroughly**: Verify both list and detail views after changes
 
-For more information about how order weights work internally, see [Understanding Order Weight](../topics/order-weight).
+For more information about how order weights work internally, see [Understanding order weight](../topics/order-weight).
