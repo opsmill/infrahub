@@ -29,6 +29,7 @@ exceptions:
   - CoreRepository
   - Docker Compose
   - E2E
+  - Emma
   - Generics
   - Git
   - GitHub
@@ -101,3 +102,5 @@ exceptions:
   - OAuth 2.0 vs OpenID Connect
   - OpenID Connect (OIDC)
   - Emma
+  - Helm
+  - Kubernetes
