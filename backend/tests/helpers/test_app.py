@@ -7,7 +7,6 @@ from fast_depends import Provider
 from fast_depends import dependency_provider as provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
-from prefect import get_client
 from prefect.client.orchestration import PrefectClient
 
 from infrahub import config
