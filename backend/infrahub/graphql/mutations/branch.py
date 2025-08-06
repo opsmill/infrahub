@@ -6,6 +6,7 @@ from graphene import Boolean, Field, InputField, InputObjectType, Mutation, Stri
 from opentelemetry import trace
 from typing_extensions import Self
 
+from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core.branch import Branch
 from infrahub.database import retry_db_transaction
 from infrahub.graphql.context import apply_external_context
@@ -273,6 +274,10 @@ class BranchMerge(Mutation):
         task: dict | None = None
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        await verify_branch_merge_mutation_allowed(
+            db=graphql_context.db, account_session=graphql_context.active_account_session
+        )
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
