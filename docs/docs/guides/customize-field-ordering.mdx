@@ -1,0 +1,473 @@
+---
+title: How to customize field ordering
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# How to customize field ordering
+
+This guide shows you how to control the order in which attributes and relationships appear in the Infrahub frontend using the `order_weight` property.
+
+:::info Relationships Support Order Weight
+Relationships follow the same `order_weight` rules as attributes. This includes:
+
+- **Relationships with `kind: Attribute`** - Appear inline with attributes in forms and tables
+- **Component relationships** (`kind: Component`) - Determine tab ordering when displayed as tabs
+- **All other relationships** - Follow the same 1000-increment default pattern
+:::
+
+## Prerequisites
+
+- An existing Infrahub schema loaded into your instance
+- Access to the schema explorer under Object Management > Schemas
+- Understanding of [schema basics](../topics/schema)
+
+## Step 1: Check current field ordering
+
+Before making changes, examine how your fields are currently ordered.
+
+### View in the schema explorer
+
+1. Navigate to your Infrahub instance's schema explorer: Object Management > Schemas
+2. Find your node type in the list
+3. Click on the node to see its attributes and relationships
+4. Note the current `order_weight` values (if any are set)
+
+### Check default weights
+
+If you see fields without explicit `order_weight` values, they follow the [default assignment pattern](../topics/order-weight#default-assignment-logic):
+
+- First field: `1000`
+- Second field: `2000`
+- Third field: `3000`
+- And so on...
+
+## Step 2: Plan your field organization
+
+Before editing your schema, decide on your desired field order and weight strategy.
+
+### Common strategies
+
+<Tabs>
+<TabItem value="conservative" label="Conservative (Recommended)">
+
+Use weights that leave plenty of room for future insertions:
+
+```yaml
+# High priority fields
+order_weight: 100   # Most important field
+order_weight: 200   # Second most important
+
+# Between defaults
+order_weight: 1500  # Between 1st and 2nd default
+order_weight: 2500  # Between 2nd and 3rd default
+
+# Low priority
+order_weight: 9000  # After all defaults
+```
+
+</TabItem>
+<TabItem value="systematic" label="Systematic Numbering">
+
+Use consistent increments for better maintenance:
+
+```yaml
+# Primary information
+order_weight: 100
+order_weight: 200
+order_weight: 300
+
+# Technical details
+order_weight: 400
+order_weight: 500
+order_weight: 600
+
+# Metadata
+order_weight: 700
+order_weight: 800
+```
+
+</TabItem>
+<TabItem value="grouped" label="Range-Based Grouping">
+
+Reserve number ranges for different categories:
+
+```yaml
+# Identity (100-199)
+order_weight: 100  # name
+order_weight: 110  # description
+
+# Network (200-299)
+order_weight: 200  # ip_address
+order_weight: 210  # subnet
+
+# Hardware (300-399)
+order_weight: 300  # cpu_count
+order_weight: 310  # memory_gb
+```
+
+</TabItem>
+</Tabs>
+
+## Step 3: Update your schema
+
+### Promote a field to first position
+
+To make a field appear first, give it a low `order_weight`:
+
+```yaml title="schema.yml" {6}
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: hostname
+        order_weight: 100  # Will appear first
+        kind: Text
+        unique: true
+      - name: description  # Gets default: 1000, appears second
+        kind: Text
+        optional: true
+```
+
+### Insert a field between existing ones
+
+Add a field between two existing fields using an intermediate weight:
+
+```yaml title="Before: Fields have weights 1000, 2000, 3000"
+# Current order: name (1000), description (2000), model (3000)
+
+# Add serial_number between description and model:
+attributes:
+  - name: name
+    kind: Text           # Already has weight 1000
+  - name: description
+    kind: Text           # Already has weight 2000
+  - name: serial_number
+    kind: Text
+    order_weight: 2500   # Will appear between description (2000) and model (3000)
+  - name: model
+    kind: Text           # Already has weight 3000
+```
+
+### Reorder multiple fields
+
+When reorganizing multiple fields, update their weights systematically:
+
+```yaml title="Reorganized Device Schema"
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      # Primary identification
+      - name: hostname
+        kind: Text
+        order_weight: 100
+      - name: serial_number
+        kind: Text
+        order_weight: 200
+
+      # Technical specifications
+      - name: model
+        kind: Text
+        order_weight: 300
+      - name: os_version
+        kind: Text
+        order_weight: 400
+
+      # Optional metadata
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 500
+      - name: notes
+        kind: TextArea
+        optional: true
+        order_weight: 600
+```
+
+## Step 4: Load the updated schema
+
+Update your schema using `infrahubctl`:
+
+<Tabs>
+<TabItem value="file" label="Single File">
+
+```shell
+infrahubctl schema load /path/to/your/schema.yml
+```
+
+</TabItem>
+<TabItem value="directory" label="Directory">
+
+```shell
+infrahubctl schema load /path/to/schemas/
+```
+
+</TabItem>
+<TabItem value="branch" label="Specific Branch">
+
+```shell
+infrahubctl schema load /path/to/schema.yml --branch my-feature-branch
+```
+
+</TabItem>
+</Tabs>
+
+## Step 5: Verify the changes
+
+### Check in the frontend
+
+1. Navigate to your node type in the Infrahub UI
+2. View both the list view and detailed view of objects
+3. Confirm fields appear in your desired order
+
+### Verify in schema explorer
+
+1. Return to the schema explorer
+2. Check that your `order_weight` values were applied correctly
+3. Ensure no conflicts or unexpected ordering occurred
+
+## Common use cases
+
+### Adding a new required field first
+
+When adding a new mandatory field that should appear first:
+
+```yaml title="Adding a new primary field"
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: asset_tag      # New field
+        kind: Text
+        unique: true
+        order_weight: 50     # Lower than existing fields
+      - name: hostname       # Existing field
+        kind: Text
+        # order_weight: 100  (existing weight stays)
+```
+
+### Organizing related fields together
+
+Group logically related fields using consecutive weights:
+
+```yaml title="Grouping network configuration"
+attributes:
+  # Basic info
+  - name: name
+    kind: Text
+    order_weight: 100
+
+  # Network configuration block
+  - name: management_ip
+    kind: IPHost
+    order_weight: 200
+  - name: management_vlan
+    kind: Number
+    order_weight: 210
+  - name: default_gateway
+    kind: IPHost
+    order_weight: 220
+
+  # Hardware info
+  - name: serial_number
+    kind: Text
+    order_weight: 300
+```
+
+### Working with attribute relationships
+
+Relationships with `kind: Attribute` appear alongside regular attributes and can be ordered using `order_weight`:
+
+```yaml title="Mixing attributes and attribute relationships"
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: hostname
+        kind: Text
+        order_weight: 100
+      - name: description
+        kind: Text
+        order_weight: 300
+    relationships:
+      - name: primary_ip4
+        peer: InfraIPAddress
+        kind: Attribute
+        cardinality: one
+        order_weight: 200  # Appears between hostname and description
+      - name: location
+        peer: InfraLocation
+        kind: Attribute
+        cardinality: one
+        order_weight: 400  # Appears after description
+```
+
+### Moving a field to the end
+
+To move a field to appear last, give it a high weight:
+
+```yaml
+attributes:
+  - name: internal_notes
+    kind: TextArea
+    optional: true
+    order_weight: 9999  # Will appear after all default fields
+```
+
+### Working with inherited fields
+
+When working with generics, consider the inherited field weights:
+
+```yaml title="Managing inheritance order"
+generics:
+  - name: BaseDevice
+    namespace: Infra
+    attributes:
+      - name: name
+        kind: Text
+        order_weight: 100   # Will be inherited
+
+nodes:
+  - name: Router
+    namespace: Infra
+    inherit_from: ["InfraBaseDevice"]
+    attributes:
+      - name: router_id     # New field
+        kind: IPHost
+        order_weight: 150   # Between inherited name (100) and default range (1000+)
+```
+
+## Advanced techniques
+
+### Systematic renumbering
+
+When your weights become messy, systematically renumber them:
+
+```yaml title="Clean renumbering approach"
+# Instead of: 100, 150, 175, 1500, 2000, 2100, 9999
+# Use consistent increments:
+
+attributes:
+  - name: hostname
+    order_weight: 100
+  - name: ip_address
+    order_weight: 200
+  - name: model
+    order_weight: 300
+  - name: serial_number
+    order_weight: 400
+  - name: description
+    order_weight: 500
+```
+
+### Handling large schemas
+
+For schemas with many fields, use range-based organization:
+
+```yaml title="Range-based organization"
+# 100-199: Identity
+# 200-299: Network
+# 300-399: Hardware
+# 400-499: Software
+# 500-599: Location
+# 600-699: Metadata
+
+attributes:
+  - name: hostname
+    order_weight: 100
+  - name: fqdn
+    order_weight: 110
+
+relationships:
+  - name: management_ip    # Attribute relationship
+    peer: InfraIPAddress
+    kind: Attribute
+    order_weight: 200
+  - name: management_vlan  # Attribute relationship
+    peer: InfraVLAN
+    kind: Attribute
+    order_weight: 210
+
+attributes:
+  - name: model
+    order_weight: 300
+  - name: serial_number
+    order_weight: 310
+```
+
+### Ordering component relationship tabs
+
+Component relationships appear as tabs in the UI, and their order is controlled by `order_weight`:
+
+```yaml title="Controlling tab order for component relationships"
+relationships:
+  - name: interfaces
+    peer: InfraInterface
+    kind: Component
+    cardinality: many
+    order_weight: 1000  # First tab
+
+  - name: ports
+    peer: InfraPort
+    kind: Component
+    cardinality: many
+    order_weight: 2000  # Second tab
+
+  - name: cards
+    peer: InfraCard
+    kind: Component
+    cardinality: many
+    order_weight: 3000  # Third tab
+```
+
+## Troubleshooting
+
+### Field still appears in wrong position
+
+**Check for conflicting weights:**
+
+```shell
+# Use schema explorer to find all current weights
+# Look for duplicate or unexpected values
+```
+
+**Verify schema was loaded:**
+
+```shell
+infrahubctl schema check /path/to/schema.yml
+# Should show your order_weight changes
+```
+
+### Order doesn't match expectations
+
+**Remember the sorting rule:** Lower numbers appear first
+
+```yaml
+# This order:
+order_weight: 300  # Appears first
+order_weight: 100  # Appears second
+order_weight: 200  # Appears third
+
+# Should be:
+order_weight: 100  # Appears first
+order_weight: 200  # Appears second
+order_weight: 300  # Appears third
+```
+
+### Changes not visible in UI
+
+1. **Clear browser cache** - Frontend may cache schema information
+2. **Check branch** - Ensure you're viewing the correct branch
+3. **Verify data** - Create a new object to see field ordering in forms
+
+## Best practices summary
+
+- **Start with defaults**: Let defaults work, only customize when needed
+- **Leave gaps**: Use increments like 100, 200, 300 for better insertion
+- **Group logically**: Keep related fields close together numerically
+- **Document decisions**: Comment your schema with weight rationale
+- **Test thoroughly**: Verify both list and detail views after changes
+
+For more information about how order weights work internally, see [Understanding order weight](../topics/order-weight).
