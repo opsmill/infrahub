@@ -49,7 +49,7 @@ const getEventComponent = (props: EventType) => {
     return <ArtifactEventTitle {...props} />;
   }
 
-  return <span className="text-sm text-gray-600">aaaa {props.event}</span>;
+  return <span className="text-sm text-gray-600">{props.event}</span>;
 };
 
 export const EventCard = (props: EventType) => {
