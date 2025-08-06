@@ -91,7 +91,11 @@ class IsMergeable(Check):
         graphql_context: GraphqlContext,
     ) -> None:
         try:
-            await verify_proposed_change_is_mergeable(proposed_change=proposed_change, db=graphql_context.db)  # type: ignore[arg-type]
+            await verify_proposed_change_is_mergeable(
+                proposed_change=proposed_change,  # type: ignore[arg-type]
+                db=graphql_context.db,
+                account_session=graphql_context.active_account_session,
+            )
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
