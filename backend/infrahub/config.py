@@ -647,7 +647,10 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
-    value_db_index: bool = False
+    value_db_index: bool = Field(
+        default=False,
+        deprecated="This setting has no effect and will be removed in a future version.",
+    )
 
 
 class SecuritySettings(BaseSettings):

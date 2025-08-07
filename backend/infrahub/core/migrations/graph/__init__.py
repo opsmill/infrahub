@@ -36,6 +36,7 @@ from .m031_check_number_attributes import Migration031
 from .m032_cleanup_orphaned_branch_relationships import Migration032
 from .m033_deduplicate_relationship_vertices import Migration033
 from .m034_find_orphaned_schema_fields import Migration034
+from .m035_drop_attr_value_index import Migration035
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -77,6 +78,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration032,
     Migration033,
     Migration034,
+    Migration035,
 ]
 
 

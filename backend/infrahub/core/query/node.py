@@ -140,15 +140,19 @@ class NodeCreateAllQuery(NodeQuery):
         attributes: list[AttributeCreateData] = []
         attributes_iphost: list[AttributeCreateData] = []
         attributes_ipnetwork: list[AttributeCreateData] = []
+        attributes_indexed: list[AttributeCreateData] = []
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
             attr_data = attr.get_create_data()
+            node_type = attr.get_db_node_type()
 
-            if attr_data.node_type == AttributeDBNodeType.IPHOST:
+            if AttributeDBNodeType.IPHOST in node_type:
                 attributes_iphost.append(attr_data)
-            elif attr_data.node_type == AttributeDBNodeType.IPNETWORK:
+            elif AttributeDBNodeType.IPNETWORK in node_type:
                 attributes_ipnetwork.append(attr_data)
+            elif AttributeDBNodeType.INDEXED in node_type:
+                attributes_indexed.append(attr_data)
             else:
                 attributes.append(attr_data)
 
@@ -167,6 +171,7 @@ class NodeCreateAllQuery(NodeQuery):
                 relationships.append(rel_create_data)
 
         self.params["attrs"] = [attr.model_dump() for attr in attributes]
+        self.params["attrs_indexed"] = [attr.model_dump() for attr in attributes_indexed]
         self.params["attrs_iphost"] = [attr.model_dump() for attr in attributes_iphost]
         self.params["attrs_ipnetwork"] = [attr.model_dump() for attr in attributes_ipnetwork]
         self.params["rels_bidir"] = [
@@ -209,24 +214,59 @@ class NodeCreateAllQuery(NodeQuery):
             "binary_address": "attr.content.binary_address",
             "version": "attr.content.version",
             "prefixlen": "attr.content.prefixlen",
-            # "num_addresses": "attr.content.num_addresses",
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
-        attrs_query = """
+        attrs_nonindexed_query = """
         WITH distinct n
         UNWIND $attrs AS attr
-        CALL (n, attr) {
+        // Try to find a matching vertex
+        OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+        WHERE NOT existing_av:AttributeValueIndexed
+        CALL (attr, existing_av) {
+            // If none found, create a new one
+            WITH existing_av
+            WHERE existing_av IS NULL
+            CREATE (:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+        }
+        CALL (attr) {
+            MATCH (av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+            WHERE NOT av:AttributeValueIndexed
+            RETURN av
+            LIMIT 1
+        }
+        CALL (n, attr, av) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
-            MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
-            WITH av, a
-            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
             WITH a, ip, iv
             LIMIT 1
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+        }"""
+
+        attrs_indexed_query = """
+        WITH distinct n
+        UNWIND $attrs_indexed AS attr
+        CALL (n, attr) {
+            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
+            MERGE (av:AttributeValue:AttributeValueIndexed { value: attr.content.value, is_default: attr.content.is_default })
+            WITH av, a
+            LIMIT 1
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
             CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
             CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
             FOREACH ( prop IN attr.source_prop |
@@ -245,7 +285,7 @@ class NodeCreateAllQuery(NodeQuery):
         CALL (n, attr) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
-            MERGE (av:AttributeValue:AttributeIPHost { %(iphost_prop)s })
+            MERGE (av:AttributeValue:AttributeValueIndexed:AttributeIPHost { %(iphost_prop)s })
             WITH attr, av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
@@ -272,7 +312,7 @@ class NodeCreateAllQuery(NodeQuery):
         CALL (n, attr) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
-            MERGE (av:AttributeValue:AttributeIPNetwork { %(ipnetwork_prop)s })
+            MERGE (av:AttributeValue:AttributeValueIndexed:AttributeIPNetwork { %(ipnetwork_prop)s })
             WITH attr, av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
@@ -409,7 +449,8 @@ class NodeCreateAllQuery(NodeQuery):
         MATCH (root:Root)
         CREATE (n:Node:%(labels)s $node_prop )
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
-        {attrs_query if self.params["attrs"] else ""}
+        {attrs_nonindexed_query if self.params["attrs"] else ""}
+        {attrs_indexed_query if self.params["attrs_indexed"] else ""}
         {attrs_iphost_query if self.params["attrs_iphost"] else ""}
         {attrs_ipnetwork_query if self.params["attrs_ipnetwork"] else ""}
         {rels_bidir_query if self.params["rels_bidir"] else ""}

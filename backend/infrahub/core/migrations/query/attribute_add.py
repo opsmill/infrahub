@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, RelationshipStatus
+from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.query import Query, QueryType
+from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -36,7 +38,6 @@ class AttributeAddQuery(Query):
 
         self.params["node_kind"] = self.node_kind
         self.params["attr_name"] = self.attribute_name
-        self.params["attr_type"] = self.attribute_kind
         self.params["branch_support"] = self.branch_support
         self.params["current_time"] = self.at.to_string()
 
@@ -55,8 +56,31 @@ class AttributeAddQuery(Query):
         self.params["is_protected_default"] = False
         self.params["is_visible_default"] = True
 
+        attr_value_label = GraphAttributeValueNode.get_default_label()
+        if not is_large_attribute_type(self.attribute_kind):
+            # should be indexed
+            attr_value_label += f":{GraphAttributeValueIndexedNode.get_default_label()}"
+            match_query = """
+            MERGE (av:%(attr_value_label)s { value: $attr_value, is_default: true })
+            LIMIT 1
+            """ % {"attr_value_label": attr_value_label}
+        else:
+            # cannot be indexed
+            match_query = """
+            OPTIONAL MATCH (existing_av:%(attr_value_label)s { value: $attr_value, is_default: true })
+            WHERE NOT existing_av:AttributeValueIndexed
+            CALL (existing_av) {
+                WITH existing_av
+                WHERE existing_av IS NULL
+                CREATE (:%(attr_value_label)s { value: $attr_value, is_default: true })
+            }
+            MATCH (av:%(attr_value_label)s { value: $attr_value, is_default: true })
+            WHERE NOT av:AttributeValueIndexed
+            LIMIT 1
+            """ % {"attr_value_label": attr_value_label}
+
         query = """
-        MERGE (av:AttributeValue { value: $attr_value, is_default: true })
+        %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH av, is_protected_value, is_visible_value
@@ -84,6 +108,7 @@ class AttributeAddQuery(Query):
             SET has_attr_e.to = $current_time
         )
         """ % {
+            "match_query": match_query,
             "branch_filter": branch_filter,
             "node_kind": self.node_kind,
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
