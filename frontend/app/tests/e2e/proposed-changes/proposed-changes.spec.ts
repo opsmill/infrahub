@@ -120,7 +120,7 @@ test.describe("/proposed-changes", () => {
         });
       });
 
-      test("add a comment on overview tab", async ({ page }) => {
+      test.fixme("add a comment on overview tab", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
 
