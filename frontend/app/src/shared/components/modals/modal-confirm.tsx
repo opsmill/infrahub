@@ -85,6 +85,7 @@ export default function ModalConfirm({
                     variant={"active"}
                     className="ml-2"
                     isLoading={isLoading}
+                    disabled={isLoading}
                   >
                     Confirm
                   </Button>
