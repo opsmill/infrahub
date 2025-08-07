@@ -32,7 +32,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
   }
 
   return (
-    <div className="flex items-end gap-2">
+    <div className="flex items-end gap-2 relative">
       <GroupCard>
         <GroupPanelHeader>Editing {pluralize(selectedRows.length, "object")}</GroupPanelHeader>
         <GroupPanelBody className="flex flex-col gap-2 p-2">
@@ -46,7 +46,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
         </GroupPanelBody>
       </GroupCard>
 
-      <GroupCard className="w-100">
+      <GroupCard className="w-100 absolute left-[calc(100%+0.5rem)]">
         <GroupPanelHeader>Specify changes</GroupPanelHeader>
         <GroupPanelBody>
           <NodeForm
