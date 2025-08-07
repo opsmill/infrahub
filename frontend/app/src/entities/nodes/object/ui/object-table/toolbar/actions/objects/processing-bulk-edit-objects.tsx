@@ -13,7 +13,7 @@ import React from "react";
 interface ProcessingBulkEditObjectsProps {
   selectedRows: Array<NodeCore>;
   schema: ModelSchema;
-  payload?: UpdateObjectParams["data"];
+  payload: UpdateObjectParams["data"];
 }
 
 export function ProcessingBulkEditObjects({
