@@ -1,5 +1,15 @@
+import { Card, CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 import React from "react";
+
+export function GroupCard({ className, ...props }: CardProps) {
+  return (
+    <Card
+      className={classNames("p-0 flex flex-col shadow-sm max-h-[47rem] overflow-hidden", className)}
+      {...props}
+    />
+  );
+}
 
 export function GroupPanelHeader({
   className,

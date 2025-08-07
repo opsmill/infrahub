@@ -1,25 +1,20 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { UpdateObjectParams, updateObject } from "@/entities/nodes/object/domain/update-object";
+import { MutationConfig } from "@/shared/api/types";
 import { useMutation } from "@tanstack/react-query";
 
-interface UpdateObjectProps {
-  onSuccess?: () => void;
-  onError?: () => void;
-  onSettled?: () => void;
-}
+interface UpdateObjectProps extends MutationConfig<typeof updateObject> {}
 
-export function useUpdateObjectMutation({ onSuccess, onError, onSettled }: UpdateObjectProps) {
+export function useUpdateObjectMutation(config?: Omit<UpdateObjectProps, "mutationFn">) {
   const { currentBranch } = useCurrentBranch();
 
   return useMutation({
+    ...config,
     mutationFn: (params: Omit<UpdateObjectParams, "branchName">) => {
       return updateObject({
         branchName: currentBranch.name,
         ...params,
       });
     },
-    onSuccess,
-    onError,
-    onSettled,
   });
 }

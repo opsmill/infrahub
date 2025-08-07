@@ -54,7 +54,7 @@ export const NodeForm = ({
     objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
   });
 
-  if (isPending) return <LoadingIndicator className="mt-4" />;
+  if (isPending) return <LoadingIndicator className="my-4" />;
 
   const fields = getFormFieldsFromSchema({
     schema,
