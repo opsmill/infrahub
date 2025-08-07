@@ -141,7 +141,9 @@ export const EVENTS_QUERY = gql`
   }
 `;
 
-export type GetEventsFromApiParams = PaginationParams & { filters: GlobalEventsFilters };
+export interface GetEventsFromApiParams extends PaginationParams {
+  filters: GlobalEventsFilters;
+}
 
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,

@@ -17,6 +17,9 @@ export const ProposedChangeEvents = () => {
       limit: 0,
       order: "ASC",
     },
+    queryOptions: {
+      refetchInterval: 1000,
+    },
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);

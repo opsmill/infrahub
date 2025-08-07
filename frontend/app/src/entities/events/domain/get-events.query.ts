@@ -1,9 +1,21 @@
 import { OBJECTS_PER_PAGE } from "@/entities/events/api/get-events-from-api";
 import { GetEventsParams, getEvents } from "@/entities/events/domain/get-events";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  UseInfiniteQueryOptions,
+  infiniteQueryOptions,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 
-export function getEventsQueryOptions({ filters }: GetEventsParams) {
+interface GetEventsQueryOptions extends GetEventsParams {
+  queryOptions: Omit<
+    UseInfiniteQueryOptions,
+    "queryKey" | "queryFn" | "initialPageParam" | "getNextPageParam"
+  >;
+}
+
+export function getEventsQueryOptions({ filters, queryOptions }: GetEventsQueryOptions) {
   return infiniteQueryOptions({
+    ...queryOptions,
     queryKey: ["events", filters],
     queryFn: ({ pageParam }) =>
       getEvents({
@@ -20,6 +32,6 @@ export function getEventsQueryOptions({ filters }: GetEventsParams) {
   });
 }
 
-export function useGetEvents({ filters }: GetEventsParams) {
-  return useInfiniteQuery(getEventsQueryOptions({ filters }));
+export function useGetEvents({ filters, queryOptions }: GetEventsQueryOptions) {
+  return useInfiniteQuery(getEventsQueryOptions({ filters, queryOptions }));
 }
