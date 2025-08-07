@@ -15,6 +15,7 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 interface GetFormFieldFromRelationshipParams {
   auth?: AuthContextType;
   isFilterForm: boolean;
+  isBulkUpdate: boolean;
   relationshipSchema: RelationshipSchema;
   relationshipData?: RelationshipType;
   objectTemplate?: NodeObject | null;
@@ -28,6 +29,7 @@ export const getFormFieldFromRelationship = ({
   relationshipData,
   objectTemplate,
   isFilterForm = false,
+  isBulkUpdate,
   schema,
   parentSchema,
   parentData,
@@ -61,9 +63,9 @@ export const getFormFieldFromRelationship = ({
     parent: getRelationshipParent(relationshipData ?? relationshipTemplate),
     relationship: relationshipSchema,
     rules: {
-      required: !isFilterForm && !relationshipSchema.optional,
+      required: !isFilterForm && !isBulkUpdate && !relationshipSchema.optional,
       validate: (formFieldValue: FormRelationshipValue) => {
-        if (isFilterForm) return true;
+        if (isFilterForm || isBulkUpdate) return true;
 
         if (relationshipSchema.cardinality === "many") {
           const validation = validateRelationshipMany(
