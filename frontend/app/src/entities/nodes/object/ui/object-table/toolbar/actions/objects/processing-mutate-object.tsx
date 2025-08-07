@@ -2,10 +2,8 @@ import { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeCore } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
 import { Card } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
@@ -13,18 +11,12 @@ import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
 export interface ProcessingMutateObjectProps {
-  schema: ModelSchema;
   node: NodeCore;
   payload: UpdateObjectParams["data"];
   onSuccess?: () => void;
 }
 
-export function ProcessingMutateObject({
-  schema,
-  node,
-  payload,
-  onSuccess,
-}: ProcessingMutateObjectProps) {
+export function ProcessingMutateObject({ node, payload, onSuccess }: ProcessingMutateObjectProps) {
   const { mutate, isPending, error } = useUpdateObjectMutation();
 
   const handleProcessing = () => {
@@ -37,13 +29,7 @@ export function ProcessingMutateObject({
         },
       },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            predicate: (query) =>
-              query.queryKey.includes("objects") && query.queryKey.includes(schema.kind),
-          });
-          onSuccess?.();
-        },
+        onSuccess,
       }
     );
   };

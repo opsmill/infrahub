@@ -22,13 +22,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
   const [payload, setPayload] = React.useState<UpdateObjectParams["data"]>();
 
   if (payload) {
-    return (
-      <ProcessingBulkEditObjects
-        schema={selectedSchema}
-        selectedRows={selectedRows}
-        payload={payload}
-      />
-    );
+    return <ProcessingBulkEditObjects selectedRows={selectedRows} payload={payload} />;
   }
 
   return (

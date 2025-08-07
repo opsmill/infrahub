@@ -9,12 +9,13 @@ export function useUpdateObjectMutation(config?: Omit<UpdateObjectProps, "mutati
   const { currentBranch } = useCurrentBranch();
 
   return useMutation({
-    ...config,
+    mutationKey: ["objects", "update"],
     mutationFn: (params: Omit<UpdateObjectParams, "branchName">) => {
       return updateObject({
         branchName: currentBranch.name,
         ...params,
       });
     },
+    ...config,
   });
 }
