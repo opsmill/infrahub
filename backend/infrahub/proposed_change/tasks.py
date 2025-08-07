@@ -532,7 +532,16 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
     def _execute(
         directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
     ) -> int | pytest.ExitCode:
-        config_file = str(directory / ".infrahub.yml")
+        # Check for both .infrahub.yml and .infrahub.yaml, prefer .yml if both exist
+        config_file_yml = directory / ".infrahub.yml"
+        config_file_yaml = directory / ".infrahub.yaml"
+
+        if config_file_yml.is_file():
+            config_file = str(config_file_yml)
+        elif config_file_yaml.is_file():
+            config_file = str(config_file_yaml)
+        else:
+            config_file = str(config_file_yml)  # Default to .yml for error messages
         test_directory = directory / "tests"
         log = get_logger()
 
