@@ -93,6 +93,15 @@ class SchemaManager(NodeManager):
 
         raise ValueError("The selected node is not of type NodeSchema")
 
+    def get_generic_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> GenericSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, GenericSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type GenericSchema")
+
     def get_profile_schema(
         self, name: str, branch: Branch | str | None = None, duplicate: bool = True
     ) -> ProfileSchema:
