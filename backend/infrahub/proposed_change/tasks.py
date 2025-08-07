@@ -554,6 +554,16 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             )
             return 1
 
+        # Check if config file exists and log error if neither extension is found
+        if not config_file_yml.is_file() and not config_file_yaml.is_file():
+            log.error(
+                event="repository_tests_failed",
+                proposed_change=proposed_change,
+                repository=repository.repository_name,
+                message="Configuration file not found (.infrahub.yml or .infrahub.yaml)",
+            )
+            return 1
+
         # Redirect stdout/stderr to avoid showing pytest lines in the git agent
         old_out = sys.stdout
         old_err = sys.stderr
