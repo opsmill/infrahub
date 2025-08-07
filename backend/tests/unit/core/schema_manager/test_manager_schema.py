@@ -2451,6 +2451,32 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
     assert len(results) == 1
 
 
+async def test_get_incorrect_kinds(default_branch: Branch) -> None:
+    person_schema = NodeSchema(
+        name="Person",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    house_generic = GenericSchema(
+        name="House", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)]
+    )
+    manager = SchemaManager()
+
+    manager.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    manager.set(name="TestHouse", schema=house_generic, branch=default_branch.name)
+
+    with pytest.raises(ValueError, match="The selected node is not of type NodeSchema"):
+        manager.get_node_schema(name="TestHouse", branch=default_branch.name, duplicate=False)
+
+    with pytest.raises(ValueError, match="The selected node is not of type GenericSchema"):
+        manager.get_generic_schema(name="TestPerson", branch=default_branch.name, duplicate=False)
+
+
 async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
     SCHEMA = {
         "name": "Criticality",
