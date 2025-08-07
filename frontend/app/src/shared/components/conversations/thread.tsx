@@ -188,7 +188,10 @@ export const Thread = (props: tThread) => {
 
   return (
     <Card
-      className={classNames("flex flex-col relative p-1 gap-1", isResolved && "bg-gray-200")}
+      className={classNames(
+        "flex flex-col relative p-2 gap-2 rounded-md",
+        isResolved && "bg-gray-200"
+      )}
       data-testid="thread"
       data-cy="thread"
     >
