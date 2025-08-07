@@ -77,7 +77,7 @@ class AttributeAddQuery(Query):
             MATCH (av:%(attr_value_label)s { value: $attr_value, is_default: true })
             WHERE NOT av:AttributeValueIndexed
             LIMIT 1
-            """
+            """ % {"attr_value_label": attr_value_label}
 
         query = """
         %(match_query)s
