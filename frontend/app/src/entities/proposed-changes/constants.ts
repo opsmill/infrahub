@@ -1,3 +1,5 @@
+import { StateItem } from "@/entities/proposed-changes/ui/action-button/types";
+
 export const APPROVE_DECISION = "APPROVE";
 export const CANCEL_APPROVE_DECISION = "CANCEL_APPROVE";
 export const REJECT_DECISION = "REJECT";
@@ -33,3 +35,16 @@ export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_COMMENT,
   PROPOSED_CHANGE_THREAD,
 ];
+
+export const pcStatesList: Record<string, StateItem> = {
+  open: {
+    value: "open",
+    name: "Open",
+    message: "Open",
+  },
+  draft: {
+    value: "draft",
+    name: "Draft",
+    message: "Open a draft",
+  },
+};
