@@ -59,11 +59,12 @@ export function ProcessingMutateObject({
   if (error) {
     return (
       <NodeCard node={node}>
-        {error.message}
-        <RefreshCwIcon
-          className="text-red-500 size-4 hidden group-hover:block cursor-pointer"
-          onClick={() => handleProcessing()}
-        />
+        <Row className="text-red-600 text-xs cursor-pointer">
+          <span>{error.message}</span>
+          <div className="bg-red-50 rounded-full p-1 border border-red-200 hover:border-current">
+            <RefreshCwIcon className="size-2.5" onClick={() => handleProcessing()} />
+          </div>
+        </Row>
       </NodeCard>
     );
   }
@@ -95,7 +96,7 @@ export function NodeCard({ node, children }: { node: NodeCore; children?: React.
           <span className="truncate">ID {node.id}</span>
         </Row>
         <Row className="justify-between">
-          <span>{getNodeLabel(node)}</span>
+          <span className="shrink-0">{getNodeLabel(node)}</span>
           <span>{children}</span>
         </Row>
       </Col>
