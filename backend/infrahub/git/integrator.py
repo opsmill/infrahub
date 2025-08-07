@@ -436,10 +436,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
 
-        config_file_name = ".infrahub.yml"
-        config_file = branch_wt.directory / config_file_name
-        if not config_file.is_file():
-            log.debug(f"Unable to find the configuration file {config_file_name}, skipping")
+        # Check for both .infrahub.yml and .infrahub.yaml, prefer .yml if both exist
+        config_file_yml = branch_wt.directory / ".infrahub.yml"
+        config_file_yaml = branch_wt.directory / ".infrahub.yaml"
+
+        if config_file_yml.is_file():
+            config_file = config_file_yml
+            config_file_name = ".infrahub.yml"
+        elif config_file_yaml.is_file():
+            config_file = config_file_yaml
+            config_file_name = ".infrahub.yaml"
+        else:
+            log.debug("Unable to find the configuration file (.infrahub.yml or .infrahub.yaml), skipping")
             return None
 
         config_file_content = config_file.read_text(encoding="utf-8")
