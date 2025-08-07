@@ -78,8 +78,11 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
                 formRef.current?.reset();
 
                 queryClient.invalidateQueries({
-                  predicate: (query) => query.queryKey.includes(PROPOSED_CHANGES_THREAD_OBJECT),
+                  predicate: (query) =>
+                    query.queryKey.includes(PROPOSED_CHANGES_THREAD_OBJECT) ||
+                    query.queryKey.includes("events"),
                 });
+
                 formRef.current?.reset();
               },
               onError: async (error) => {
