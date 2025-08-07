@@ -217,15 +217,27 @@ class NodeCreateAllQuery(NodeQuery):
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
-        attrs_query = """
+        attrs_nonindexed_query = """
         WITH distinct n
         UNWIND $attrs AS attr
-        CALL (n, attr) {
+        // Try to find a matching vertex
+        OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+        WHERE NOT existing_av:AttributeValueIndexed
+        CALL (attr, existing_av) {
+            // If none found, create a new one
+            WITH existing_av
+            WHERE existing_av IS NULL
+            CREATE (:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+        }
+        CALL (attr) {
+            MATCH (av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+            WHERE NOT av:AttributeValueIndexed
+            RETURN av
+            LIMIT 1
+        }
+        CALL (n, attr, av) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
-            MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
-            WITH av, a
-            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -437,7 +449,7 @@ class NodeCreateAllQuery(NodeQuery):
         MATCH (root:Root)
         CREATE (n:Node:%(labels)s $node_prop )
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
-        {attrs_query if self.params["attrs"] else ""}
+        {attrs_nonindexed_query if self.params["attrs"] else ""}
         {attrs_indexed_query if self.params["attrs_indexed"] else ""}
         {attrs_iphost_query if self.params["attrs_iphost"] else ""}
         {attrs_ipnetwork_query if self.params["attrs_ipnetwork"] else ""}
