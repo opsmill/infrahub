@@ -35,7 +35,7 @@ export const ProposedChangeEventTitle = (props: any) => {
           <span className="text-gray-600">created a thread</span>
         </div>
 
-        <ProposedChangeThreadEvent id={props.payload.id} />
+        <ProposedChangeThreadEvent id={props.related_nodes[0].id} />
       </div>
     );
   }

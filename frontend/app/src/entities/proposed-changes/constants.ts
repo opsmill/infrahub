@@ -24,7 +24,7 @@ export const PROPOSED_CHANGE_REJECTED = "infrahub.proposed_change.rejected";
 export const PROPOSED_CHANGE_APPROVAL_REVOKED = "infrahub.proposed_change.approval_revoked";
 export const PROPOSED_CHANGE_REJECTION_REVOKED = "infrahub.proposed_change.rejection_revoked";
 export const PROPOSED_CHANGE_COMMENT = "infrahub.proposed_change.comment";
-export const PROPOSED_CHANGE_THREAD = "infrahub.proposed_change.thread";
+export const PROPOSED_CHANGE_THREAD = "infrahub.proposed_change_thread.created";
 export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_MERGED,
   PROPOSED_CHANGE_REVIEW_REQUESTED,
