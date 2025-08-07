@@ -1,4 +1,3 @@
-import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkEditObjects } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/bulk-edit-objects";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { NodeCore } from "@/entities/nodes/types";
@@ -11,8 +10,6 @@ export interface ToolbarEditActionProps {
 }
 
 export function ToolbarEditAction({ selectedRows }: ToolbarEditActionProps) {
-  const { selectedSchema } = useObjectTableContext();
-
   return (
     <DialogTrigger>
       <ToolbarButton>
@@ -21,7 +18,7 @@ export function ToolbarEditAction({ selectedRows }: ToolbarEditActionProps) {
       </ToolbarButton>
 
       <Popover placement="top start" className="bg-transparent shadow-none border-transparent">
-        <BulkEditObjects schema={selectedSchema} selectedRows={selectedRows} />
+        <BulkEditObjects selectedRows={selectedRows} />
       </Popover>
     </DialogTrigger>
   );

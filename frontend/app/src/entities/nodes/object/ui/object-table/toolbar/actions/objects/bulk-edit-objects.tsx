@@ -1,4 +1,5 @@
 import { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   GroupCard,
   GroupPanelBody,
@@ -7,7 +8,6 @@ import {
 import { ProcessingBulkEditObjects } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-bulk-edit-objects";
 import { NodeCard } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-mutate-object";
 import { NodeCore } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
 import { NodeForm } from "@/shared/components/form/node-form";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { pluralize } from "@/shared/utils/string";
@@ -15,15 +15,19 @@ import React from "react";
 
 export interface BulkEditObjectsProps {
   selectedRows: Array<NodeCore>;
-  schema: ModelSchema;
 }
 
-export function BulkEditObjects({ schema, selectedRows }: BulkEditObjectsProps) {
+export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
+  const { selectedSchema } = useObjectTableContext();
   const [payload, setPayload] = React.useState<UpdateObjectParams["data"]>();
 
   if (payload) {
     return (
-      <ProcessingBulkEditObjects schema={schema} selectedRows={selectedRows} payload={payload} />
+      <ProcessingBulkEditObjects
+        schema={selectedSchema}
+        selectedRows={selectedRows}
+        payload={payload}
+      />
     );
   }
 
@@ -48,7 +52,7 @@ export function BulkEditObjects({ schema, selectedRows }: BulkEditObjectsProps) 
           <NodeForm
             isFilterForm
             isUpdate
-            schema={schema}
+            schema={selectedSchema}
             onSubmit={({ fields, formData }) => {
               const updatedObject = getUpdateMutationFromFormData({ formData, fields });
               const isObjectUpdated = Object.keys(updatedObject).length > 0;
