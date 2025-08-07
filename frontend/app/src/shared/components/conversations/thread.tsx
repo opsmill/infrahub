@@ -123,6 +123,8 @@ export const Thread = (props: tThread) => {
       return;
     }
 
+    setIsLoading(true);
+
     const mutationString = updateObjectWithId({
       kind: thread.__typename,
       data: stringifyWithoutQuotes({
@@ -159,6 +161,7 @@ export const Thread = (props: tThread) => {
     });
 
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
+    setIsLoading(false);
   };
 
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
