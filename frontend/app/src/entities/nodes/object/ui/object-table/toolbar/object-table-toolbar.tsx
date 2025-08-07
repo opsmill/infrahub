@@ -28,6 +28,7 @@ export function ObjectTableToolbar({
         "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1/2",
         "flex items-center gap-1.5 outline-none"
       )}
+      data-testid="object-table-toolbar"
     >
       <ToolbarButton variant="ghost" onPress={onClose}>
         <span>{selectedRows.length} selected</span>

@@ -5,7 +5,10 @@ import React from "react";
 export function GroupCard({ className, ...props }: CardProps) {
   return (
     <Card
-      className={classNames("p-0 flex flex-col shadow-sm max-h-[47rem] overflow-hidden", className)}
+      className={classNames(
+        "p-0 flex flex-col shadow-sm max-h-[min(47rem,calc(100vh-6rem))] overflow-hidden",
+        className
+      )}
       {...props}
     />
   );
