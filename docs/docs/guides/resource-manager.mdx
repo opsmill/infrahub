@@ -18,17 +18,32 @@ This guide uses a simplified schema. If you already have the demo schema loaded,
   <VideoPlayer url='https://www.youtube.com/watch?v=sVU4OKi9_9o' light />
 </center>
 
+## What you'll build
+
+In this guide, you'll learn how to implement three common resource manager use cases:
+
+1. **IP Address Allocation**: Assign IP addresses to devices from address pools
+2. **IP Prefix Allocation**: Allocate customer subnets from larger prefix pools
+3. **Number Allocation**: Generate sequential VLAN IDs from number pools
+
 ## Prerequisites
 
 - A running Infrahub instance
 - Basic understanding of GraphQL
+- Understanding of the [Resource Manager concepts](../topics/resource-manager)
 - `infrahubctl` CLI installed (for schema loading)
 
 ## Load the schema
 
-Save this schema to a local file (for example, `/tmp/schema.yml`):
+:::warning Schema Creation
 
-```yaml
+This step is only necessary if you don't already have the schemas affected by the resource manager in your instance.
+
+:::
+
+1. Create a schema.yml file in the schemas directory of your repository:
+
+```yaml title="schema.yml"
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
@@ -37,6 +52,7 @@ generics:
     namespace: Infra
     description: "Services"
     default_filter: name__value
+    include_in_menu: false
     order_by:
       - name__value
     display_labels:
@@ -131,68 +147,72 @@ nodes:
         cardinality: one
 ```
 
-Load the schema with this command:
+2. Load the schema with this command:
 
 ```shell
-infrahubctl schema load /tmp/schema.yml
+infrahubctl schema load schema.yml
 ```
 
 :::success
 
-You should see: `schema '/tmp/schema.yml' loaded successfully`
+You should see: `schema 'schema.yml' loaded successfully`
 
 :::
 
-## Create IP address pools
+## Allocate IP address
 
 IP address pools (`CoreIPAddressPool`) dynamically allocate individual IP addresses from source prefixes.
 
-### Create an IP Prefix object
+### Step 1: Create an IP prefix object
 
 Create the IP prefix that serves as the allocation source:
 
-<Tabs>
+<Tabs groupId="method">
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **IP Prefixes** and create a new prefix with:
+Navigate to **IPAM** → **IP Prefixes**  and create a new prefix with:
 
 - **Prefix**: `10.100.0.0/24`
 - **Member Type**: `address`
 
 ![Creating prefix 10.100.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_0.png)
 
-  </TabItem>
+</TabItem>
 
-  <TabItem value="graphql" label="GraphQL">
+<TabItem value="graphql" label="GraphQL">
 
-  ```graphql
-  mutation {
-    IpamIPPrefixCreate(data: {
-      prefix: {value: "10.100.0.0/24"},
-      member_type: {value: "address"}
-    })
-    {
-      ok
-      object {
-        id
-      }
+```graphql
+mutation {
+  IpamIPPrefixCreate(data: {
+    prefix: {value: "10.100.0.0/24"},
+    member_type: {value: "address"}
+  })
+  {
+    ok
+    object {
+      id
     }
   }
-  ```
+}
+```
 
-  Save the prefix ID for the next step.
+:::important
+
+Save the prefix ID for the next step!
+
+:::
 
   </TabItem>
 </Tabs>
 
-### Create the IP address pool
+### Step 2: Create the IP address pool
 
 Create a `CoreIPAddressPool` resource manager:
 
-<Tabs>
+<Tabs groupId="method">
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **Resource Managers** and create a new IP Address Pool with:
+Navigate to **Object Management** → **Resource Managers** and create a new IP Address Pool with:
 
 - **Name**: `My IP address pool`
 - **Default Address Type**: `IpamIPAddress`
@@ -202,35 +222,39 @@ Navigate to **Resource Managers** and create a new IP Address Pool with:
 
 ![Creating IP address pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_ip.png)
 
-  </TabItem>
+</TabItem>
 
-  <TabItem value="graphql" label="GraphQL">
+<TabItem value="graphql" label="GraphQL">
 
-  ```graphql
-  mutation {
-    CoreIPAddressPoolCreate(data: {
-      name: {value: "My IP address pool"},
-      default_address_type: {value: "IpamIPAddress"},
-      default_prefix_length: {value: 24},
-      resources: [{id: "<prefix-id>"}],
-      ip_namespace: {id: "default"}
-    })
-    {
-      ok
-      object {
-        id
-        hfid
-      }
+```graphql
+mutation {
+  CoreIPAddressPoolCreate(data: {
+    name: {value: "My IP address pool"},
+    default_address_type: {value: "IpamIPAddress"},
+    default_prefix_length: {value: 24},
+    resources: [{id: "<prefix-id>"}],
+    ip_namespace: {id: "default"}
+  })
+  {
+    ok
+    object {
+      id
+      hfid
     }
   }
-  ```
+}
+```
 
-  Save the pool ID for allocation operations.
+:::important
+
+Save the pool ID for allocation operations!
+
+:::
 
   </TabItem>
 </Tabs>
 
-### Allocate IP addresses
+### Step 3: Allocate IP addresses
 
 You can allocate IP addresses in two ways: direct allocation or allocation during node creation.
 
@@ -238,20 +262,22 @@ You can allocate IP addresses in two ways: direct allocation or allocation durin
 
 Allocate an IP address directly from the pool:
 
-<Tabs>
+<Tabs groupId="method">
+  <TabItem value="web" label="Web interface" default>
+
+  This method is currently not available in the Web interface. Use the GraphQL method instead.
+
+  </TabItem>
   <TabItem value="graphql" label="GraphQL">
 
   ```graphql
   mutation {
     IPAddressPoolGetResource(
       data: {
-        id: "<HFID>",
-        data: {
-          description: "my first allocated ip"
-        }
+        hfid: ["My IP address pool"]
+        data: {description: "my first allocated ip"}
       }
-    )
-    {
+    ) {
       ok
       node {
         id
@@ -261,36 +287,46 @@ Allocate an IP address directly from the pool:
   }
   ```
 
+  :::info Idempotent allocation
+
+  Include an `identifier` field to ensure the same IP address is returned on repeated calls:
+
+  ```graphql
+  mutation {
+    IPAddressPoolGetResource(
+      data: {
+        hfid: ["My IP address pool"]
+        data: {description: "my first allocated ip"}
+        identifier: "my-allocated-ip"
+      }
+    ) {
+      ok
+      node {
+        id
+        display_label
+      }
+    }
+  }
+  ```
+
+  This is essential for [generators](../topics/generator.mdx) and automated workflows.
+
+  :::
+
   </TabItem>
 </Tabs>
 
-:::info Idempotent allocation
-Include an `identifier` field to ensure the same IP address is returned on repeated calls:
+:::success
 
-```graphql
-mutation {
-  IPAddressPoolGetResource(data: {
-    id: "<HFID>",
-    identifier: "my-allocated-ip"
-  })
-  {
-    ok
-    node {
-      id
-      display_label
-    }
-  }
-}
-```
+You have created an IP address record from the pool!
 
-This is essential for [generators](../topics/generator.mdx) and automated workflows.
 :::
 
 #### Allocation during node creation
 
 Allocate an IP address when creating a device:
 
-<Tabs>
+<Tabs groupId="method">
   <TabItem value="web" label="Web interface" default>
 
   Navigate to **Devices** → **Add Device**. Next to the Primary IP Address field, click the pools button and select your resource pool.
@@ -304,15 +340,12 @@ Allocate an IP address when creating a device:
 
   ```graphql
   mutation {
-    InfraDeviceCreate(data: {
-      name: {value: "dev-123"},
-      primary_ip: {
-        from_pool: {
-          id: "<HFID>"
-        }
+    InfraDeviceCreate(
+      data: {
+        name: {value: "dev-123"}
+        primary_ip: {from_pool: {id: "<POOL-ID>"}}
       }
-    })
-    {
+    ) {
       ok
       object {
         display_label
@@ -331,18 +364,24 @@ Allocate an IP address when creating a device:
   </TabItem>
 </Tabs>
 
-## Create IP prefix pools
+:::success
+
+The device is created with primary IP address allocated from the pool!
+
+:::
+
+## Allocate IP prefix
 
 IP prefix pools (`CoreIPPrefixPool`) allocate IP subnets from larger prefixes.
 
-### Create a source prefix
+### Step 1: Create a source prefix
 
 Create the parent prefix:
 
-<Tabs>
+<Tabs groupId="method">
   <TabItem value="web" label="Web interface" default>
 
-Create a prefix with:
+Navigate to **IPAM** → **IP Prefixes** and create a new prefix with:
 
 - **Prefix**: `10.100.1.0/24`
 - **Member Type**: `prefix`
@@ -355,11 +394,10 @@ Create a prefix with:
 
   ```graphql
   mutation {
-    IpamIPPrefixCreate(data: {
-      prefix: {value: "10.100.1.0/24"},
-      member_type: {value: "prefix"}
-    })
-    {
+    IpamIPPrefixCreate(
+      data: {prefix: {value: "10.100.1.0/24"}
+      member_type: {value: "prefix"}}
+    ) {
       ok
       object {
         id
@@ -368,17 +406,23 @@ Create a prefix with:
   }
   ```
 
+  :::important
+
+  Save the prefix ID for the next step!
+
+  :::
+
   </TabItem>
 </Tabs>
 
-### Create the IP prefix pool
+### Step 2: Create the IP prefix pool
 
-Create a `CoreIPPrefixPool`:
+Create a `CoreIPPrefixPool` resource manager:
 
-<Tabs>
+<Tabs groupId="method">
   <TabItem value="web" label="Web interface" default>
 
-Create a new IP Prefix Pool with:
+Navigate to **Object Management** → **Resource Managers** and create a new IP Prefix Pool with:
 
 - **Name**: `Customer Service Pool`
 - **Default Prefix Type**: `IpamIPPrefix`
@@ -392,20 +436,63 @@ Create a new IP Prefix Pool with:
 
   <TabItem value="graphql" label="GraphQL">
 
+```graphql
+mutation {
+  CoreIPPrefixPoolCreate(data: {
+    name: {value: "Customer Service Pool"},
+    default_prefix_length: {value: 31},
+    default_prefix_type: {value: "IpamIPPrefix"},
+    resources: [{id: "<prefix-id>"}],
+    ip_namespace: {id: "default"}
+  })
+  {
+    ok
+    object {
+      id
+      hfid
+    }
+  }
+}
+```
+
+:::important
+
+Save the pool ID for allocation operations!
+
+:::
+
+  </TabItem>
+</Tabs>
+
+### Step 3: Allocate IP prefixes
+
+You can allocate IP prefixes in two ways: direct allocation or allocation during node creation.
+
+#### Direct allocation
+
+Allocate an IP prefix directly from the pool:
+
+<Tabs groupId="method">
+  <TabItem value="web" label="Web interface" default>
+
+  This method is currently not available in the Web interface. Use the GraphQL method instead.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
   ```graphql
   mutation {
-    CoreIPPrefixPoolCreate(data: {
-      name: {value: "Customer Service Pool"},
-      default_prefix_length: {value: 31},
-      default_prefix_type: {value: "IpamIPPrefix"},
-      resources: [{id: "<prefix-id>"}],
-      ip_namespace: {id: "default"}
+    IPPrefixPoolGetResource(data: {
+      hfid: ["My IP address pool"]
+      data: {
+        description: "prefix allocated to point to point connection"
+      }
     })
     {
       ok
-      object {
+      node {
         id
-        hfid
+        display_label
       }
     }
   }
@@ -414,82 +501,106 @@ Create a new IP Prefix Pool with:
   </TabItem>
 </Tabs>
 
-### Allocate IP prefixes
+:::success
 
-#### Direct allocation
+You have created an IP prefix record from the pool!
 
-```graphql
-mutation {
-  IPPrefixPoolGetResource(data: {
-    id: "<HFID>",
-    data: {
-      description: "prefix allocated to point to point connection"
-    }
-  })
-  {
-    ok
-    node {
-      id
-      display_label
-    }
-  }
-}
-```
+:::
 
-#### Allocation during service creation
+#### Allocation during node creation
 
-```graphql
-mutation {
-  CustomerServiceCreate(data: {
-    name: {value: "svc-123"},
-    assigned_prefix: {
-      from_pool: {
-        id: "<HFID>"
+Allocate an IP prefix when creating a customer service:
+
+<Tabs groupId="method">
+  <TabItem value="web" label="Web interface" default>
+
+  Navigate to **Customer Service** → **Add Customer Service**.
+
+  Next to the Assigned Prefix field, click the pools button and select your resource pool.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
+  ```graphql
+  mutation {
+    CustomerServiceCreate(
+      data: {
+        name: {value: "svc-123"}
+        assigned_prefix: {from_pool: {id: "<POOL-ID>"}}
       }
-    }
-  })
-  {
-    ok
-    object {
-      display_label
-      assigned_prefix {
-        node {
-          prefix {
-            value
+    ) {
+      ok
+      object {
+        display_label
+        assigned_prefix {
+          node {
+            prefix {
+              value
+            }
           }
         }
       }
     }
   }
-}
-```
+  ```
 
-:::success Weighted allocation
-To control allocation order from multiple resources, inherit from `CoreWeightedPoolResource` in your schema and set `allocation_weight` values. Higher weights are allocated first.
+  :::info Idempotent allocation
 
-```yaml
-nodes:
-  - name: IPPrefix
-    namespace: Ipam
-    inherit_from:
-      - "BuiltinIPPrefix"
-      - "CoreWeightedPoolResource"
-```
+  Include an `identifier` field to ensure the same prefix is returned on repeated calls:
+
+  ```graphql
+  mutation {
+    CustomerServiceUpsert(
+      data: {
+        name: {value: "svc-456"}
+        assigned_prefix: {
+          from_pool: {
+            id: "<POOL-ID>"
+            identifier: "svc-456"
+          }
+        }
+      }
+    ) {
+      ok
+      object {
+        display_label
+        assigned_prefix {
+          node {
+            prefix {
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  This is essential for [generators](../topics/generator.mdx) and automated workflows.
+
+  :::
+
+  </TabItem>
+</Tabs>
+
+:::success
+
+The service is created with IP prefix allocated from the pool!
 
 :::
 
-## Create number pools
+## Allocate number
 
 Number pools (`CoreNumberPool`) automatically assign sequential numbers to numeric attributes.
 
-### Create a number pool
+### Step 1: Create a number pool
 
 Create a pool for VLAN IDs:
 
-<Tabs>
+<Tabs groupId="method">
   <TabItem value="web" label="Web interface" default>
 
-Create a Number Pool with:
+Navigate to **Object Management** → **Resource Managers** and create a new Number Pool with:
 
 - **Name**: `My VLAN ID Pool`
 - **Node**: `IpamVLAN`
@@ -500,37 +611,43 @@ Create a Number Pool with:
 ![Creating Number Pool](../media/guides/resources-manager/resource_manager_pool_vlan.png)
 
   </TabItem>
-
   <TabItem value="graphql" label="GraphQL">
 
-  ```graphql
-  mutation {
-    CoreNumberPoolCreate(data:{
-      name: {value: "My VLAN ID Pool"},
-      node: {value: "IpamVLAN"},
-      node_attribute: {value: "vlan_id"},
-      start_range: {value: 100},
+```graphql
+mutation {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: "My VLAN ID Pool"}
+      node: {value: "IpamVLAN"}
+      node_attribute: {value: "vlan_id"}
+      start_range: {value: 100}
       end_range: {value: 1000}
-    })
-    {
-      ok
-      object {
-        hfid
-        id
-      }
+    }
+  ) {
+    ok
+    object {
+      hfid
+      id
     }
   }
-  ```
+}
+```
+
+:::important
+
+Save the pool ID for allocation operations!
+
+:::
 
   </TabItem>
 </Tabs>
 
-### Allocate numbers
+### Step 2: Allocate VLAN ID
 
 <Tabs>
   <TabItem value="web" label="Web interface" default>
 
-  Navigate to **VLANs** → **Add VLAN**. Next to the VLAN ID field, click the pools button and select your number pool.
+  Navigate to **VLAN** → **Add VLAN**. Next to the VLAN ID field, click the pools button and select your number pool.
 
   ![Allocating Number Pool - Before](../media/guides/resources-manager/resource_manager_pool_vlan_before.png)
   ![Allocating Number Pool - After](../media/guides/resources-manager/resource_manager_pool_vlan_after.png)
@@ -541,11 +658,12 @@ Create a Number Pool with:
 
   ```graphql
   mutation {
-    IpamVLANCreate(data:{
-      name: {value: "My vlan"},
-      vlan_id: {from_pool: {hfid: ["My VLAN ID Pool"]}}
-    })
-    {
+    IpamVLANCreate(
+      data: {
+        name: {value: "My vlan"}
+        vlan_id: {from_pool: {id: "<POOL-ID>"}}
+      }
+    ) {
       ok
       object {
         name {
@@ -563,25 +681,167 @@ Create a Number Pool with:
   </TabItem>
 </Tabs>
 
-## Verify branch-agnostic allocation
+:::success
 
-Resource managers allocate resources across all branches to prevent conflicts.
+The VLAN is created with VLAN ID allocated from the pool!
 
-Create a test branch:
+:::
 
-```shell
-infrahubctl branch create test
+## Advanced use cases
+
+### Weighted allocation
+
+When multiple resources can be allocated from a pool, you can control the allocation order using weights.
+
+:::warning Schema Update
+
+Adapt these steps to your existing schema.
+
+:::
+
+:::info Prefix pool & Address pool
+
+While this example uses IP address pools, the same principles apply to IP prefix pools.
+
+:::
+
+1. Inherit from `CoreWeightedPoolResource` in your schema
+
+```yaml title="schema.yml" {10}
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+
+nodes:
+  - name: IPPrefix
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPPrefix"
+      - "CoreWeightedPoolResource"
 ```
 
-Allocate an IP address in the test branch:
+2. Load the schema with this command:
+
+```shell
+infrahubctl schema load schema.yml
+```
+
+3. Create two IP prefixes with different weights
+
+<Tabs groupId="method">
+  <TabItem value="web" label="Web interface" default>
+
+Navigate to **IPAM** → **IP Prefixes**  and create a new prefix with:
+
+- **Prefix**: `10.100.5.0/24`
+- **Member Type**: `address`
+- **Weight**: `100`
+
+Then create another prefix with:
+
+- **Prefix**: `10.100.6.0/24`
+- **Member Type**: `address`
+- **Weight**: `200`
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamIPPrefixCreate(
+    data: {
+      prefix: {value: "10.100.5.0/24"}
+      member_type: {value: "address"}
+      allocation_weight: {value: 100}
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+```graphql
+mutation {
+  IpamIPPrefixCreate(
+    data: {
+      prefix: {value: "10.100.6.0/24"}
+      member_type: {value: "address"}
+      allocation_weight: {value: 200}
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+:::important
+
+Save the prefix IDs for the next step!
+
+:::
+
+  </TabItem>
+</Tabs>
+
+4. Create a `CoreIPAddressPool` resource manager:
+
+<Tabs groupId="method">
+  <TabItem value="web" label="Web interface" default>
+
+Navigate to **Object Management** → **Resource Managers** and create a new IP Address Pool with:
+
+- **Name**: `My Weighted IP address pool`
+- **Default Address Type**: `IpamIPAddress`
+- **Default Prefix Length**: `24`
+- **Resources**: Select the `10.100.5.0/24` and `10.100.6.0/24` prefixes
+- **IP Namespace**: `default`
+
+</TabItem>
+
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  CoreIPAddressPoolCreate(
+    data: {
+      name: {value: "My Weighted IP address pool"}
+      default_address_type: {value: "IpamIPAddress"}
+      default_prefix_length: {value: 24}
+      resources: [
+        {id: "<prefix01-id>"}
+        {id: "<prefix02-id>"}
+      ]
+      ip_namespace: {id: "default"}
+    }
+  ) {
+    ok
+    object {
+      id
+      hfid
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+5. Allocate an IP address from the pool:
 
 ```graphql
 mutation {
   IPAddressPoolGetResource(
     data: {
-      id: "<HFID>",
-  })
-  {
+      hfid: ["My Weighted IP address pool"]
+      data: {description: "my first allocated ip"}
+    }
+  ) {
     ok
     node {
       id
@@ -591,11 +851,49 @@ mutation {
 }
 ```
 
-Check allocation status from the main branch:
+:::success Weighted allocation
+
+You should have received an IP address from the `10.100.6.0/24` prefix, as it has a higher weight (200) than `10.100.5.0/24` (100).
+
+:::
+
+### Branch-agnostic allocation
+
+Resource managers allocate resources across all branches to prevent conflicts.
+
+1. Create a test branch
+
+```shell
+infrahubctl branch create test
+```
+
+2. Allocate an IP address in the test branch
+
+```graphql
+mutation {
+  IPAddressPoolGetResource(
+    data: {
+      hfid: ["My IP address pool"]
+      data: {description: "my IP allocated on branch test"}
+    }
+  ) {
+    ok
+    node {
+      id
+      display_label
+    }
+  }
+}
+```
+
+3. Check allocation status from the main branch
 
 ```graphql
 query {
-  InfrahubResourcePoolAllocated(pool_id: "<HFID>", resource_id: "<prefix-id>") {
+  InfrahubResourcePoolAllocated(
+    pool_id: "<POOL-ID>"
+    resource_id: "<PREFIX-ID>"
+  ) {
     edges {
       node {
         display_label
@@ -614,11 +912,17 @@ query {
 ```
 
 :::success
+
 The query shows the IP address is allocated in the test branch, preventing duplicate allocation in main, even though the IP address object doesn't exist in main yet.
+
 :::
 
 ## Related resources
 
-- [Resource Manager topic](../topics/resource-manager.mdx) - Deep dive into concepts and architecture
+- [Resource Manager topic](../topics/resource-manager.mdx) - Deep dive into resource manager concepts and architecture
 - [Resource Manager blog post](https://opsmill.com/blog/infrahub-resource-manager-automate-allocation/) - Alternative learning resource with additional examples
-- [Generators topic](../topics/generator.mdx) - Automate resource allocation workflows
+- [Generators topic](../topics/generator) - Learn how to automate resource allocation workflows
+- [IPAM topic](../topics/ipam) - Additional information about IP address management
+- [Schema topic](./import-schema) - Learn more about creating and managing schemas in Infrahub
+- [IPAM topic](../topics/ipam) - Additional information about IP address management
+- [Schema topic](./import-schema) - Learn more about creating and managing schemas in Infrahub
