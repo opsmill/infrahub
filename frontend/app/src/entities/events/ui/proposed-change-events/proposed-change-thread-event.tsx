@@ -2,7 +2,7 @@ import { useGetProposedChangeThread } from "@/entities/proposed-changes/domain/g
 import { Thread } from "@/shared/components/conversations/thread";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-export const ProposedChangeThreadEvent = ({ id }) => {
+export const ProposedChangeThreadEvent = ({ id }: { id: string }) => {
   const { data, isPending } = useGetProposedChangeThread({ threadId: id });
 
   if (isPending) {
