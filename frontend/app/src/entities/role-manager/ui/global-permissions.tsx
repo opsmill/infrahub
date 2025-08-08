@@ -113,7 +113,7 @@ function GlobalPermissions() {
       return <UnauthorizedScreen message={message} />;
     }
 
-    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+    return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
   if (networkStatus === NetworkStatus.loading) {

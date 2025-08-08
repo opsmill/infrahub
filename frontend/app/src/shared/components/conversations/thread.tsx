@@ -8,7 +8,8 @@ import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObje
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/buttons/button";
+import { queryClient } from "@/shared/api/rest/client";
+
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import ModalConfirm from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -23,6 +24,7 @@ import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { Button } from "../buttons/button-primitive";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -93,6 +95,10 @@ export const Thread = (props: tThread) => {
             await refetch();
           }
 
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes(thread.id),
+          });
+
           setIsLoading(false);
           setDisplayAddComment(false);
         },
@@ -116,6 +122,8 @@ export const Thread = (props: tThread) => {
       setConfirmModal(false);
       return;
     }
+
+    setIsLoading(true);
 
     const mutationString = updateObjectWithId({
       kind: thread.__typename,
@@ -148,16 +156,21 @@ export const Thread = (props: tThread) => {
       setDisplayAddComment(false);
     }
 
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes(thread.id),
+    });
+
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
+    setIsLoading(false);
   };
 
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
-  const idForLabel = `checkbox-resolve-thread${thread.id}`;
+  const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 text-sm">
       <Checkbox
         id={idForLabel}
         disabled={isResolved}
@@ -178,7 +191,10 @@ export const Thread = (props: tThread) => {
 
   return (
     <Card
-      className={classNames("relative", isResolved && "bg-gray-200")}
+      className={classNames(
+        "flex flex-col relative p-2 gap-2 rounded-md",
+        isResolved && "bg-gray-200"
+      )}
       data-testid="thread"
       data-cy="thread"
     >
@@ -205,6 +221,7 @@ export const Thread = (props: tThread) => {
           {MarkAsResolved}
 
           <Button
+            variant={"outline"}
             onClick={() => setDisplayAddComment(true)}
             disabled={loading || !permission?.create?.isAllowed}
           >
