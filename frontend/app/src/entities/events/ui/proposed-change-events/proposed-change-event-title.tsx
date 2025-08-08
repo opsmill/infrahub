@@ -27,7 +27,7 @@ export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, () => ReactNode> = {
 export const ProposedChangeEventTitle = (props: any) => {
   const { event, account_id, branch } = props;
 
-  if (event === PROPOSED_CHANGE_THREAD) {
+  if (event === PROPOSED_CHANGE_THREAD && props.related_nodes?.[0].id) {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex text-sm gap-1">
@@ -35,7 +35,7 @@ export const ProposedChangeEventTitle = (props: any) => {
           <span className="text-gray-600">created a thread</span>
         </div>
 
-        <ProposedChangeThreadEvent id={props.related_nodes[0].id} />
+        <ProposedChangeThreadEvent id={props.related_nodes?.[0].id} />
       </div>
     );
   }
