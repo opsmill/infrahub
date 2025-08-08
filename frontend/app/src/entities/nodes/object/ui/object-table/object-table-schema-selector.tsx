@@ -1,6 +1,7 @@
+import { QSP } from "@/config/qsp";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { GenericSchema, ModelSchema } from "@/entities/schema/types";
+import { ModelSchema } from "@/entities/schema/types";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Row } from "@/shared/components/container";
@@ -15,13 +16,19 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
+import { StringParam, useQueryParams } from "use-query-params";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const { filters, setFilters, baseSchema, selectedSchema } = useObjectTableContext();
+  const [, setQsp] = useQueryParams({
+    [QSP.KIND]: StringParam,
+    [QSP.FILTER]: StringParam,
+  });
+  const { filters, baseSchema, selectedSchema } = useObjectTableContext();
 
   const items = React.useMemo<ModelSchema[]>(() => {
-    const inheritingKind = (baseSchema as GenericSchema).used_by ?? [];
+    if (!isGenericSchema(baseSchema)) return [];
+    const inheritingKind = baseSchema.used_by ?? [];
 
     return inheritingKind
       .map((kind) => {
@@ -46,7 +53,11 @@ export function ObjectTableSchemaSelector() {
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
             onSelect={() => {
-              setFilters(removeFiltersNotInSchema(filters, baseSchema));
+              const pruned = removeFiltersNotInSchema(filters, baseSchema);
+              setQsp({
+                [QSP.KIND]: undefined,
+                [QSP.FILTER]: pruned.length ? JSON.stringify(pruned) : undefined,
+              });
               setIsOpen(false);
             }}
           >
@@ -57,12 +68,13 @@ export function ObjectTableSchemaSelector() {
               <ComboboxItem
                 key={schema.hash}
                 value={schema.hash}
-                selectedValue={selectedSchema?.hash}
+                selectedValue={selectedSchema.hash}
                 onSelect={() => {
-                  setFilters([
-                    { name: "kind__value", value: schema.kind },
-                    ...removeFiltersNotInSchema(filters, schema),
-                  ]);
+                  const pruned = removeFiltersNotInSchema(filters, schema);
+                  setQsp({
+                    [QSP.KIND]: schema.kind,
+                    [QSP.FILTER]: pruned.length ? JSON.stringify(pruned) : undefined,
+                  });
                   setIsOpen(false);
                 }}
               >

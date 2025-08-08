@@ -32,8 +32,6 @@ export const getIpAddressList: GetIpAddressList = async ({
   );
 
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
   const { data, errors } = await getIpAddressListFromApi({
     branchName,
@@ -41,7 +39,7 @@ export const getIpAddressList: GetIpAddressList = async ({
     limit,
     offset,
     filters,
-    objectKind: schemaKindToQuery,
+    objectKind: schemaKind,
     attributes: attributesVisible,
     relationships: relationshipsVisible,
   });

@@ -114,11 +114,6 @@ export const addRelationshipsToRequest = (
 export const addFiltersToRequest = (filters: Array<Filter>) => {
   return filters.reduce(
     (acc, filter) => {
-      // Skip kind__value filter as it's handled separately
-      if (filter.name === "kind__value") {
-        return acc;
-      }
-
       if (filter.name === AVAILABLE_IP_FILTER_NAME) {
         acc[AVAILABLE_IP_FILTER_NAME] = filter.value;
         return acc;

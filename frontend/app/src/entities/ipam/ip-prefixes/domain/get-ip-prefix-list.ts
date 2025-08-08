@@ -29,14 +29,12 @@ export const getIpPrefixList: GetIpPrefixList = async ({
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
 
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
   const queryString = buildGetIpPrefixListQuery({
     limit,
     offset,
     filters,
-    objectKind: schemaKindToQuery,
+    objectKind: schemaKind,
     attributes: attributesVisible,
     relationships: relationshipsVisible,
   });
