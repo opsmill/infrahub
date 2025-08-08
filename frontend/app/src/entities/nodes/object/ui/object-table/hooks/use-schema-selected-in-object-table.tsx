@@ -19,12 +19,12 @@ export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
 
     if (!kindInQsp) return schema;
 
-    const inheritingKindInFilter = schema.used_by?.find((kind) => kind === kindInQsp);
-    if (!inheritingKindInFilter) return schema;
+    const inheritingKindInQsp = schema.used_by?.find((kind) => kind === kindInQsp);
+    if (!inheritingKindInQsp) return schema;
 
-    const { schema: schemaOfInheritingKindInFilter } = getSchema(inheritingKindInFilter);
-    if (!schemaOfInheritingKindInFilter) return schema;
+    const { schema: schemaOfInheritingKindInQsp } = getSchema(inheritingKindInQsp);
+    if (!schemaOfInheritingKindInQsp) return schema;
 
-    return schemaOfInheritingKindInFilter;
+    return schemaOfInheritingKindInQsp;
   }, [kindInQsp, schema]);
 };

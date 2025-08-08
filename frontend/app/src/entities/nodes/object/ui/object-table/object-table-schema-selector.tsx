@@ -16,12 +16,15 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
-import { StringParam, useQueryParam } from "use-query-params";
+import { StringParam, useQueryParams } from "use-query-params";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [_kindInQsp, setKindInQsp] = useQueryParam(QSP.KIND, StringParam);
-  const { filters, setFilters, baseSchema, selectedSchema } = useObjectTableContext();
+  const [, setQsp] = useQueryParams({
+    [QSP.KIND]: StringParam,
+    [QSP.FILTER]: StringParam,
+  });
+  const { filters, baseSchema, selectedSchema } = useObjectTableContext();
 
   const items = React.useMemo<ModelSchema[]>(() => {
     if (!isGenericSchema(baseSchema)) return [];
@@ -50,8 +53,11 @@ export function ObjectTableSchemaSelector() {
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
             onSelect={() => {
-              setKindInQsp(undefined);
-              setFilters(removeFiltersNotInSchema(filters, baseSchema));
+              const pruned = removeFiltersNotInSchema(filters, baseSchema);
+              setQsp({
+                [QSP.KIND]: undefined,
+                [QSP.FILTER]: pruned.length ? JSON.stringify(pruned) : undefined,
+              });
               setIsOpen(false);
             }}
           >
@@ -64,8 +70,11 @@ export function ObjectTableSchemaSelector() {
                 value={schema.hash}
                 selectedValue={selectedSchema.hash}
                 onSelect={() => {
-                  setKindInQsp(schema.kind);
-                  setFilters(removeFiltersNotInSchema(filters, schema));
+                  const pruned = removeFiltersNotInSchema(filters, schema);
+                  setQsp({
+                    [QSP.KIND]: schema.kind,
+                    [QSP.FILTER]: pruned.length ? JSON.stringify(pruned) : undefined,
+                  });
                   setIsOpen(false);
                 }}
               >
