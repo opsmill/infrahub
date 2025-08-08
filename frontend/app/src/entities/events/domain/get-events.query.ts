@@ -1,21 +1,14 @@
 import { OBJECTS_PER_PAGE } from "@/entities/events/api/get-events-from-api";
 import { GetEventsParams, getEvents } from "@/entities/events/domain/get-events";
-import {
-  UseInfiniteQueryOptions,
-  infiniteQueryOptions,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
+import { QueryConfig } from "@/shared/api/types";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
 interface GetEventsQueryOptions extends GetEventsParams {
-  queryOptions: Omit<
-    UseInfiniteQueryOptions,
-    "queryKey" | "queryFn" | "initialPageParam" | "getNextPageParam"
-  >;
+  queryOptions: QueryConfig<typeof getEventsQueryOptions>;
 }
 
-export function getEventsQueryOptions({ filters, queryOptions }: GetEventsQueryOptions) {
+export function getEventsQueryOptions({ filters }: GetEventsParams) {
   return infiniteQueryOptions({
-    ...queryOptions,
     queryKey: ["events", filters],
     queryFn: ({ pageParam }) =>
       getEvents({
@@ -33,5 +26,8 @@ export function getEventsQueryOptions({ filters, queryOptions }: GetEventsQueryO
 }
 
 export function useGetEvents({ filters, queryOptions }: GetEventsQueryOptions) {
-  return useInfiniteQuery(getEventsQueryOptions({ filters, queryOptions }));
+  return useInfiniteQuery({
+    ...getEventsQueryOptions({ filters }),
+    ...queryOptions,
+  });
 }
