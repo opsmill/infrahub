@@ -6,6 +6,7 @@ import {
 import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
@@ -34,10 +35,10 @@ export const getIpAddressList: GetIpAddressList = async ({
     schema.relationships ?? []
   );
 
-  const isFiltered = filters.some(({ name }) => name !== "ip_prefix__ids");
+  const excludeIpAvailability = hasIncompatibleFiltersForIpAvailability(filters);
   const schemaKind = schema.kind as string;
 
-  const getIpAddressListFromApi = isFiltered
+  const getIpAddressListFromApi = excludeIpAvailability
     ? getIpAddressListWithoutAvailabilityFromApi
     : getIpAddressListWithAvailabilityFromApi;
 
@@ -57,7 +58,7 @@ export const getIpAddressList: GetIpAddressList = async ({
   }
 
   return (
-    data[isFiltered ? schemaKind : IP_ADDRESS_GENERIC]?.edges?.map(
+    data[excludeIpAvailability ? schemaKind : IP_ADDRESS_GENERIC]?.edges?.map(
       (edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node
     ) ?? []
   );
