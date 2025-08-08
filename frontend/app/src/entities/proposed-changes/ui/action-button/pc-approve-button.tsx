@@ -1,22 +1,24 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
+import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/domain/update-review.mutation";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
-import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "../../constants";
-import { useUpdateProposedChangeReview } from "../../domain/update-review.mutation";
-import { proposedChangedState } from "../../stores/proposedChanges.atom";
-import { hasUserApprovedProposedChange } from "../../utils/has-user-approved-proposed-change";
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
+  const { approve, cancelApprove } = usePcActionsContext();
+
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const isMerged = proposedChangesDetails.state.value === "merged";
-  const isClosed = proposedChangesDetails.state.value === "closed";
   const hasApproved = auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user);
 
   const { mutate, isPending } = useUpdateProposedChangeReview({
@@ -40,17 +42,24 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
+  const tooltipContent = hasApproved
+    ? cancelApprove.unavailability_reason
+    : approve.unavailability_reason;
+  const tooltipEnabled = hasApproved ? !cancelApprove.available : !approve.available;
+
   return (
     <>
-      <Button
-        className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
-        onClick={handleAction}
-        variant={"primary"}
-        isLoading={isPending}
-        disabled={isMerged || isClosed || isPending}
-      >
-        {hasApproved ? "Cancel Approve" : "Approve"}
-      </Button>
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+        <Button
+          className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+          onClick={handleAction}
+          variant={"primary"}
+          isLoading={isPending}
+          disabled={tooltipEnabled || isPending}
+        >
+          {hasApproved ? "Cancel Approve" : "Approve"}
+        </Button>
+      </Tooltip>
 
       <Button
         className="h-full rounded-l-none border-l-0"
@@ -59,7 +68,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         onClick={() => {
           setOpen(true);
         }}
-        disabled={isMerged || isClosed || isPending}
+        disabled={isPending}
         data-testid="proposed-change-action-button-select"
       >
         <Icon icon="mdi:unfold-more-horizontal" />

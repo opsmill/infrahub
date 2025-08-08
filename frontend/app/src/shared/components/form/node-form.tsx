@@ -29,6 +29,7 @@ export type NodeFormProps = {
   objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;
+  isBulkUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
   onSuccess?: (newObject: NodeCore) => void;
   onCancel?: () => void;
@@ -44,6 +45,7 @@ export const NodeForm = ({
   isFilterForm,
   onSubmit,
   isUpdate,
+  isBulkUpdate,
   ...props
 }: NodeFormProps) => {
   const auth = useAuth();
@@ -54,7 +56,7 @@ export const NodeForm = ({
     objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
   });
 
-  if (isPending) return <LoadingIndicator className="mt-4" />;
+  if (isPending) return <LoadingIndicator className="my-4" />;
 
   const fields = getFormFieldsFromSchema({
     schema,
@@ -65,6 +67,7 @@ export const NodeForm = ({
     isFilterForm,
     pools: numberPools,
     isUpdate,
+    isBulkUpdate,
     parentSchema,
     parentData,
   });

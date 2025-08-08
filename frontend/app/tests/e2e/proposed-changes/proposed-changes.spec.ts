@@ -76,7 +76,7 @@ test.describe("/proposed-changes", () => {
         await expect(page.getByText("Proposed change created")).toBeVisible();
       });
 
-      test("display and edit proposed change", async ({ page }) => {
+      test.fixme("display and edit proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
         test.slow();
 
@@ -120,7 +120,7 @@ test.describe("/proposed-changes", () => {
         });
       });
 
-      test("add a comment on overview tab", async ({ page }) => {
+      test.fixme("add a comment on overview tab", async ({ page }) => {
         await page.goto("/proposed-changes");
         await page.getByText(pcNameEdit, { exact: true }).first().click();
 

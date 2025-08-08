@@ -22,6 +22,7 @@ class QueryRelationshipAttributePath(BaseModel):
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
+    attribute_kind: str
     property_name: str | None = Field(default=None)
     value: Any | None = Field(default=None)
 

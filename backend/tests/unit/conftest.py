@@ -1711,10 +1711,10 @@ async def optional_attr_uniqueness_constraint_schema(
         name="AttrOptionalUniquenessSchema",
         namespace="Test",
         branch=BranchSupportType.AWARE.value,
-        uniqueness_constraints=[["name__value"]],
+        uniqueness_constraints=[["name__value", "description__value"]],
         attributes=[
             AttributeSchema(name="name", kind="Text", optional=True),
-            AttributeSchema(name="description", kind="Text", optional=True),
+            AttributeSchema(name="description", kind="TextArea", optional=True),
         ],
     )
     registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)

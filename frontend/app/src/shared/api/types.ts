@@ -1,3 +1,5 @@
+import { UseMutationOptions } from "@tanstack/react-query";
+
 export type BranchContextParams = {
   branchName: string;
 };
@@ -20,3 +22,10 @@ export type InfiniteQueryConfig<T extends (...args: any[]) => any> = Omit<
   ReturnType<T>,
   "queryKey" | "queryFn" | "initialPageParam" | "getNextPageParam"
 >;
+
+export type MutationConfig<MutationFnType extends (...args: any) => Promise<any>> =
+  UseMutationOptions<
+    Awaited<ReturnType<MutationFnType>>,
+    Error,
+    Omit<Parameters<MutationFnType>[0], keyof ContextParams>
+  >;

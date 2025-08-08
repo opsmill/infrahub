@@ -20,6 +20,7 @@ interface GetFormFieldsFromSchema extends FormContextType {
   isFilterForm?: boolean;
   pools?: Array<NumberPool>;
   isUpdate?: boolean;
+  isBulkUpdate?: boolean;
 }
 
 export const getFormFieldsFromSchema = ({
@@ -31,12 +32,13 @@ export const getFormFieldsFromSchema = ({
   isFilterForm,
   pools = [],
   isUpdate,
+  isBulkUpdate,
   parentSchema,
   parentData,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
-    ...(schema.attributes ?? []),
-    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate, schema),
+    ...(schema.attributes ?? []).filter((attribute) => !isBulkUpdate || !attribute.unique),
+    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate || isBulkUpdate, schema),
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
@@ -48,6 +50,7 @@ export const getFormFieldsFromSchema = ({
         relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
         objectTemplate,
         isFilterForm: !!isFilterForm,
+        isBulkUpdate: !!isBulkUpdate,
         schema,
         parentSchema,
         parentData,
@@ -60,6 +63,7 @@ export const getFormFieldsFromSchema = ({
       currentObject: initialObject as Record<string, AttributeType>,
       objectTemplate,
       isFilterForm: !!isFilterForm,
+      isBulkUpdate: !!isBulkUpdate,
       isUpdate: !!isUpdate,
       schema,
       pools,

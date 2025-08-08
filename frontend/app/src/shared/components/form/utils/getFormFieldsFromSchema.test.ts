@@ -702,4 +702,36 @@ describe("getFormFieldsFromSchema", () => {
       },
     });
   });
+
+  it("removes unique fields when isBulkUpdate is true", () => {
+    // GIVEN
+    const schema = {
+      attributes: [
+        generateAttributeSchema({ name: "unique_field", unique: true }),
+        generateAttributeSchema({ name: "non_unique_field", unique: false }),
+      ],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]?.name).to.equal("non_unique_field");
+  });
+
+  it("removes required validation when isBulkUpdate is true", () => {
+    // GIVEN
+    const schema = {
+      attributes: [generateAttributeSchema({ name: "required_field", optional: false })],
+      relationships: [generateRelationshipSchema({ name: "required_rel", optional: false })],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields[0]?.rules?.required).to.equal(false);
+    expect(fields[1]?.rules?.required).to.equal(false);
+  });
 });

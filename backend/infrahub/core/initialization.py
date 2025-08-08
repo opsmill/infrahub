@@ -17,7 +17,7 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
+from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
@@ -132,8 +132,6 @@ async def add_indexes(db: InfrahubDatabase) -> None:
         index_manager: IndexManagerBase = IndexManagerMemgraph(db=db)
     index_manager = IndexManagerNeo4j(db=db)
 
-    if config.SETTINGS.experimental_features.value_db_index:
-        node_indexes.append(attr_value_index)
     index_manager.init(nodes=node_indexes, rels=rel_indexes)
     log.debug("Loading database indexes ..")
     await index_manager.add()

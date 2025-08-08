@@ -140,7 +140,7 @@ class NumberPoolGetAllocated(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValue)
+        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
         MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)
         WHERE
             pool.uuid = $pool_id
@@ -306,7 +306,7 @@ class NumberPoolGetUsed(Query):
         self.params["attribute_name"] = self.pool.node_attribute.value
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValue)
+        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
         WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
         CALL (pool, res, av) {
             MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
@@ -371,7 +371,7 @@ class NumberPoolSetReserved(Query):
 
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })
-        MERGE (value:AttributeValue { value: $reserved, is_default: false })
+        MERGE (value:AttributeValue:AttributeValueIndexed { value: $reserved, is_default: false })
         WITH value, pool
         LIMIT 1
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(value)

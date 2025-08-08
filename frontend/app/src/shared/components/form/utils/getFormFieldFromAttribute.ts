@@ -35,6 +35,7 @@ export const getFormFieldFromAttribute = ({
   schema,
   isFilterForm,
   isUpdate,
+  isBulkUpdate,
   pools,
   profiles,
 }: {
@@ -45,6 +46,7 @@ export const getFormFieldFromAttribute = ({
   schema: ModelSchema;
   isFilterForm: boolean;
   isUpdate: boolean;
+  isBulkUpdate: boolean;
   pools?: Array<NumberPool>;
   profiles?: Array<ProfileData>;
 }): DynamicAttributeFieldProps => {
@@ -74,9 +76,9 @@ export const getFormFieldFromAttribute = ({
         : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
     unique: attributeSchema.unique,
     rules: {
-      required: !isFilterForm && !attributeSchema.optional,
+      required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
-        if (isFilterForm) return true;
+        if (isFilterForm || isBulkUpdate) return true;
         if (formFieldValue.source?.type === "pool") return true;
 
         const attributeKind = attributeSchema.kind as AttributeKind;

@@ -47,7 +47,7 @@ export function useObjectTableContext() {
   const context = React.use(ObjectTableContext);
 
   if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.");
+    throw new Error("useObjectTableContext must be used within a ObjectTableProvider.");
   }
 
   return context;
