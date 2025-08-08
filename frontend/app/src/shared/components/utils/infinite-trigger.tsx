@@ -4,14 +4,12 @@ import React from "react";
 export interface InfiniteTriggerProps extends ScrollAreaProps {
   hasNextPage: boolean;
   onLoadMore: () => void;
-  threshold?: number;
 }
 
 export const InfiniteTrigger = ({
   children,
   hasNextPage,
   onLoadMore,
-  threshold = 200,
   ...props
 }: InfiniteTriggerProps) => {
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -34,7 +32,7 @@ export const InfiniteTrigger = ({
     return () => {
       observer.disconnect();
     };
-  }, [onLoadMore, hasNextPage, threshold]);
+  }, [onLoadMore, hasNextPage]);
 
   return (
     <div {...props} ref={rootRef}>
