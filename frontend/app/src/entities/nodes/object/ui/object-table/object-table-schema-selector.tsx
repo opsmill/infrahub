@@ -1,6 +1,7 @@
+import { QSP } from "@/config/qsp";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { GenericSchema, ModelSchema } from "@/entities/schema/types";
+import { ModelSchema } from "@/entities/schema/types";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Row } from "@/shared/components/container";
@@ -15,13 +16,16 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
+import { StringParam, useQueryParam } from "use-query-params";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [_kind, setKindInQsp] = useQueryParam(QSP.KIND, StringParam);
   const { filters, setFilters, baseSchema, selectedSchema } = useObjectTableContext();
 
   const items = React.useMemo<ModelSchema[]>(() => {
-    const inheritingKind = (baseSchema as GenericSchema).used_by ?? [];
+    if (!isGenericSchema(baseSchema)) return [];
+    const inheritingKind = baseSchema.used_by ?? [];
 
     return inheritingKind
       .map((kind) => {
@@ -46,6 +50,7 @@ export function ObjectTableSchemaSelector() {
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
             onSelect={() => {
+              setKindInQsp(undefined);
               setFilters(removeFiltersNotInSchema(filters, baseSchema));
               setIsOpen(false);
             }}
@@ -59,10 +64,8 @@ export function ObjectTableSchemaSelector() {
                 value={schema.hash}
                 selectedValue={selectedSchema?.hash}
                 onSelect={() => {
-                  setFilters([
-                    { name: "kind__value", value: schema.kind },
-                    ...removeFiltersNotInSchema(filters, schema),
-                  ]);
+                  setKindInQsp(schema.kind);
+                  setFilters(removeFiltersNotInSchema(filters, schema));
                   setIsOpen(false);
                 }}
               >
