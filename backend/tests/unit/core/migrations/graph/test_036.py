@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -13,7 +14,6 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
-# TODO: test for reverting large attribute type on branch where value is too large to be indexed
 # TODO: test schema change on default branch when other branches exist
 
 
@@ -227,6 +227,19 @@ class TestMigration036:
                 updated_nodes_map[branch.name].append(branch_node)
         return updated_nodes_map
 
+    async def update_branch_1_schema(
+        self, db: InfrahubDatabase, branch_1: Branch, all_attribute_types_schema: NodeSchema
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=branch_1.name)
+        schema_branch = schema_branch.duplicate(name=branch_1.name)
+        node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
+
+        name_attr_schema = node_schema.get_attribute(name="mytextarea")
+        name_attr_schema.kind = "Text"
+        schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
+        registry.schema.set_schema_branch(name=branch_1.name, schema=schema_branch)
+        await registry.schema.load_schema_to_db(db=db, branch=branch_1, schema=schema_branch)
+
     async def verify_no_duplicate_has_value_edges(self, db: InfrahubDatabase) -> None:
         query = """
 MATCH (attr:Attribute)-[e:HAS_VALUE {status: "active"}]->()
@@ -251,7 +264,7 @@ RETURN attr.uuid AS attr_uuid, e.branch AS branch, e.from AS from_time, overlap.
         assert len(error_messages) == 0, "\n".join(error_messages)
 
     async def verify_attributes_have_correct_indexing(
-        self, db: InfrahubDatabase, branch: Branch, kind_attr_name_map: dict[str, list[str]]
+        self, db: InfrahubDatabase, branch: Branch, kind_attr_name_map: dict[str, list[str]], max_value_size: int
     ) -> None:
         for node_kind, attr_names in kind_attr_name_map.items():
             params = {
@@ -259,6 +272,7 @@ RETURN attr.uuid AS attr_uuid, e.branch AS branch, e.from AS from_time, overlap.
                 "branch_level": branch.hierarchy_level,
                 "branched_from": branch.get_branched_from(),
                 "attr_names": attr_names,
+                "max_value_size": max_value_size,
             }
 
             query = """
@@ -289,10 +303,11 @@ WITH
     attr.name AS attr_name,
     elementId(av) AS av_id,
     attr.name IN $attr_names AS is_large_attr,
+    size(toString(av.value)) > $max_value_size AS is_too_large,
     "AttributeValueIndexed" IN labels(av) AS is_indexed
 WITH *,
-    is_large_attr AND is_indexed AS should_not_be_indexed,
-    NOT is_large_attr AND NOT is_indexed AS should_be_indexed
+    is_indexed AND (is_large_attr OR is_too_large) AS should_not_be_indexed,
+    NOT is_indexed AND NOT is_large_attr AND NOT is_too_large AS should_be_indexed
 WHERE should_not_be_indexed OR should_be_indexed
 RETURN node_uuid, branch, attr_name, av_id, should_not_be_indexed, should_be_indexed
             """ % {"node_kind": node_kind}
@@ -330,10 +345,15 @@ RETURN node_uuid, branch, attr_name, av_id, should_not_be_indexed, should_be_ind
         branch_0: Branch,
         branch_1: Branch,
         branch_2: Branch,
+        all_attribute_types_schema: NodeSchema,
     ) -> None:
         # do branch updates for nodes created on main
         updated_nodes_map = await self.update_main_nodes_on_branches(
             db=db, main_nodes=load_main_nodes, branches=[branch_1, branch_2]
+        )
+
+        await self.update_branch_1_schema(
+            db=db, branch_1=branch_1, all_attribute_types_schema=all_attribute_types_schema
         )
 
         remove_attribute_value_indexed_labels_query = """
@@ -359,12 +379,12 @@ REMOVE avi:AttributeValueIndexed
                 "TestAllAttributeTypes": ["myjson", "mylist", "name"],
             },
         )
-        # no schema changes on branch_1
+        # branch_1 updates mytextarea updated to text kind
         branch_1_schema_data = BranchSchemaData(
             branch=branch_1,
             nodes=load_branch_1_nodes + updated_nodes_map[branch_1.name],
             kind_attr_name_map={
-                "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring"],
+                "TestAllAttributeTypes": ["myjson", "mylist", "mystring"],
             },
         )
         # branch_2 updates mylist to a Text attribute and myjson to a TextArea attribute
@@ -414,4 +434,6 @@ REMOVE avi:AttributeValueIndexed
                 else:
                     assert original_attr_value == retrieved_attr_value
 
-        await self.verify_attributes_have_correct_indexing(db=db, branch=branch, kind_attr_name_map=kind_attr_name_map)
+        await self.verify_attributes_have_correct_indexing(
+            db=db, branch=branch, kind_attr_name_map=kind_attr_name_map, max_value_size=MAX_STRING_LENGTH
+        )

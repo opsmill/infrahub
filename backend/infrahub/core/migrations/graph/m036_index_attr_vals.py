@@ -3,9 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.constants.database import IndexType
 from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
+from infrahub.database.index import IndexItem
+from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.log import get_logger
 
 from ..shared import ArbitraryMigration
@@ -14,6 +17,11 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
+
+
+AV_INDEXED_INDEX = IndexItem(
+    name="attr_value_indexed", label="AttributeValueIndexed", properties=["value"], type=IndexType.RANGE
+)
 
 
 @dataclass
@@ -210,11 +218,9 @@ class DeIndexLargeAttributeValuesQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["max_value_size"] = self.max_value_size
         query = """
-MATCH (av:AttributeValue)
-WHERE valueType(av.value) = "STRING NOT NULL"
-AND size(toString(av.value)) > $max_value_size
-SET av:AttributeValueNonIndexed
-REMOVE av:AttributeValue
+MATCH (av:AttributeValueIndexed)
+WHERE size(toString(av.value)) > $max_value_size
+REMOVE av:AttributeValueIndexed
         """
         self.add_to_query(query)
 
@@ -436,15 +442,17 @@ class Migration036(ArbitraryMigration):
     """
     Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES
 
+    0. Drop the index on the AttributeValueIndexed vertex, there are no AttributeValueIndexed vertices at this point anyway
     1. For all attributes of all schema on all branches, determine if the attribute is a LARGE_ATTRIBUTE_TYPE and when
         attribute's kind was last updated in the schema
-    2. Any AttributeValues with a value of size greater than MAX_STRING_LENGTH are changed to AttributeValueNonIndexed
-    3. For all branches, starting with the default and global branches, update HAS_VALUE edges for LARGE_ATTRIBUTE_TYPE
+    2. For all branches, starting with the default and global branches, update HAS_VALUE edges for LARGE_ATTRIBUTE_TYPE
         attributes to point to AttributeValueNonIndexed vertices
-    4. For any LARGE_ATTRIBUTE_TYPE attributes on the default branch that were updated to non-large_type on other branches,
+    3. For any LARGE_ATTRIBUTE_TYPE attributes on the default branch that were updated to non-large_type on other branches,
         revert the HAS_VALUE edges to point to AttributeValue vertices
-    5. Add the AttributeValueIndexed label to all AttributeValue vertices
-    6. Update all AttributeValueNonIndexed vertices to AttributeValue (no AttributeValueIndexed label)
+    4. Add the AttributeValueIndexed label to all AttributeValue vertices
+    5. Update all AttributeValueNonIndexed vertices to AttributeValue (no AttributeValueIndexed label)
+    6. Any AttributeValueIndexed vertices with a value of size greater than MAX_STRING_LENGTH are changed to AttributeValueNonIndexed
+    7. Add the index on AttributeValueIndexed again
     """
 
     name: str = "036_index_attr_vals"
@@ -486,11 +494,10 @@ class Migration036(ArbitraryMigration):
             ):
                 large_type_reverts.append(schema_attr_time)
 
-        # de-index all attribute values too large to be indexed
-        de_index_large_attribute_values_query = await DeIndexLargeAttributeValuesQuery.init(
-            db=db, max_value_size=MAX_STRING_LENGTH
-        )
-        await de_index_large_attribute_values_query.execute(db=db)
+        # drop the index on the AttributeValueNonIndexed vertex, there won't be any at this point anyway
+        index_manager = IndexManagerNeo4j(db=db)
+        index_manager.init(nodes=[AV_INDEXED_INDEX], rels=[])
+        await index_manager.drop()
 
         # create the temporary non-indexed attribute value vertices for LARGE_ATTRIBUTE_TYPE attributes
         # start with default branch
@@ -516,5 +523,16 @@ class Migration036(ArbitraryMigration):
         # set AttributeValueNonIndexed vertices to just AttributeValue
         finalize_attribute_value_non_indexed_query = await FinalizeAttributeValueNonIndexedQuery.init(db=db)
         await finalize_attribute_value_non_indexed_query.execute(db=db)
+
+        # de-index all attribute values too large to be indexed
+        de_index_large_attribute_values_query = await DeIndexLargeAttributeValuesQuery.init(
+            db=db, max_value_size=MAX_STRING_LENGTH
+        )
+        await de_index_large_attribute_values_query.execute(db=db)
+
+        # add the index back to the AttributeValueNonIndexed vertex
+        index_manager = IndexManagerNeo4j(db=db)
+        index_manager.init(nodes=[AV_INDEXED_INDEX], rels=[])
+        await index_manager.add()
 
         return result
