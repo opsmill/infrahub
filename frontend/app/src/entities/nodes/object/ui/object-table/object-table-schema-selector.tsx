@@ -62,7 +62,7 @@ export function ObjectTableSchemaSelector() {
               <ComboboxItem
                 key={schema.hash}
                 value={schema.hash}
-                selectedValue={selectedSchema?.hash}
+                selectedValue={selectedSchema.hash}
                 onSelect={() => {
                   setKindInQsp(schema.kind);
                   setFilters(removeFiltersNotInSchema(filters, schema));
