@@ -61,6 +61,14 @@ class TestMigration036:
         return branch_2
 
     @pytest.fixture
+    async def branch_3(self, db: InfrahubDatabase, default_branch: Branch, load_start_schema: None) -> Branch:
+        branch_3 = await create_branch(db=db, branch_name="branch_3")
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch.duplicate(name=branch_3.name)
+        registry.schema.set_schema_branch(name=branch_3.name, schema=schema_branch)
+        return branch_3
+
+    @pytest.fixture
     async def load_branch_0_nodes(
         self,
         db: InfrahubDatabase,
@@ -198,6 +206,23 @@ class TestMigration036:
         )
         await branch_node_after.save(db=db)
         loaded_nodes.append(branch_node_after)
+
+        return loaded_nodes
+
+    @pytest.fixture
+    async def load_branch_3_nodes(
+        self, db: InfrahubDatabase, default_branch: Branch, branch_3: Branch, all_attribute_types_schema: NodeSchema
+    ) -> list[Node]:
+        loaded_nodes = []
+
+        all_attribute_types_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
+
+        branch_node_before = await Node.init(db=db, branch=branch_3, schema=all_attribute_types_schema)
+        await branch_node_before.new(
+            db=db, mystring="qrs", mytextarea="q" * 10_000, myjson={"q": "r"}, mylist=["q", "r", "s"]
+        )
+        await branch_node_before.save(db=db)
+        loaded_nodes.append(branch_node_before)
 
         return loaded_nodes
 
@@ -342,9 +367,11 @@ RETURN node_uuid, branch, attr_name, av_id, should_not_be_indexed, should_be_ind
         load_main_nodes: list[Node],
         load_branch_1_nodes: list[Node],
         load_branch_2_nodes: list[Node],
+        load_branch_3_nodes: list[Node],
         branch_0: Branch,
         branch_1: Branch,
         branch_2: Branch,
+        branch_3: Branch,
         all_attribute_types_schema: NodeSchema,
     ) -> None:
         # do branch updates for nodes created on main
@@ -395,6 +422,14 @@ REMOVE avi:AttributeValueIndexed
                 "TestAllAttributeTypes": ["mytextarea", "myjson", "mystring"],
             },
         )
+        # branch_3 has no schema changes
+        branch_3_schema_data = BranchSchemaData(
+            branch=branch_3,
+            nodes=load_branch_3_nodes,
+            kind_attr_name_map={
+                "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring"],
+            },
+        )
 
         migration = Migration036()
         await migration.execute(db=db)
@@ -406,6 +441,7 @@ REMOVE avi:AttributeValueIndexed
                 branch_0_schema_data,
                 branch_1_schema_data,
                 branch_2_schema_data,
+                branch_3_schema_data,
             ],
         )
 
