@@ -11,7 +11,7 @@ import { useParams } from "react-router";
 export const ProposedChangeEvents = () => {
   const { proposedChangeId } = useParams();
 
-  const { isPending, data, error, hasNextPage, fetchNextPage } = useGetEvents({
+  const { isPending, data, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useGetEvents({
     filters: {
       primaryNodeIds: proposedChangeId ? [proposedChangeId] : undefined,
       eventType: PROPOSED_CHANGE_EVENTS,
@@ -40,6 +40,7 @@ export const ProposedChangeEvents = () => {
     <InfiniteTrigger
       hasNextPage={hasNextPage}
       onLoadMore={fetchNextPage}
+      isFetchingNextPage={isFetchingNextPage}
       className="flex flex-col gap-2 p-2"
     >
       {flatData.map((activity) => (

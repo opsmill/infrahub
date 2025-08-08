@@ -3,12 +3,14 @@ import React from "react";
 export interface InfiniteTriggerProps extends React.HTMLAttributes<HTMLDivElement> {
   hasNextPage: boolean;
   onLoadMore: () => void;
+  isFetchingNextPage?: boolean;
 }
 
 export const InfiniteTrigger = ({
   children,
   hasNextPage,
   onLoadMore,
+  isFetchingNextPage,
   ...props
 }: InfiniteTriggerProps) => {
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -17,7 +19,7 @@ export const InfiniteTrigger = ({
   React.useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting && hasNextPage) {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
           onLoadMore();
         }
       });
