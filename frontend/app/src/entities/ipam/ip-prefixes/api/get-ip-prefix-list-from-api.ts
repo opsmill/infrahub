@@ -20,7 +20,52 @@ export interface BuildGetIpPrefixListQueryParams extends PaginationParams {
   relationships: Array<RelationshipSchema>;
 }
 
-export function buildGetIpPrefixListQuery({
+// Common fields reused across IP Prefix queries
+export const IP_PREFIX_KIND_DETAILS_FRAGMENT = {
+  ancestors: {
+    count: true,
+  },
+  children: {
+    count: true,
+  },
+  ip_addresses: {
+    count: true,
+  },
+};
+
+export function buildGetIpPrefixListWithoutAvailabilityQuery({
+  limit,
+  offset,
+  filters,
+  objectKind,
+  attributes,
+  relationships,
+}: BuildGetIpPrefixListQueryParams) {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${objectKind}`,
+      [objectKind]: {
+        __args: {
+          limit,
+          offset,
+          ...(filters ? addFiltersToRequest(filters) : {}),
+        },
+        edges: {
+          node: {
+            id: true,
+            display_label: true,
+            hfid: true,
+            ...IP_PREFIX_KIND_DETAILS_FRAGMENT,
+            ...addAttributesToRequest(attributes),
+            ...addRelationshipsToRequest(relationships),
+          },
+        },
+      },
+    },
+  });
+}
+
+export function buildGetIpPrefixListWithAvailabilityQuery({
   limit,
   offset,
   filters,
@@ -47,34 +92,19 @@ export function buildGetIpPrefixListQuery({
             __on: [
               {
                 __typeName: objectKind,
+                ...IP_PREFIX_KIND_DETAILS_FRAGMENT,
                 ...addAttributesToRequest(attributes),
                 ...addRelationshipsToRequest(relationships),
-                ip_namespace: {
-                  node: {
-                    id: true,
-                    display_label: true,
-                    hfid: true,
-                  },
-                },
-                ancestors: {
-                  count: true,
-                },
-                children: {
-                  count: true,
-                },
-                ip_addresses: {
-                  count: true,
-                },
               },
               {
-                __typeName: IP_PREFIX_AVAILABLE_KIND, // Ancestors are not available on this kind. Instead, we do parent ancestors + 1
+                __typeName: IP_PREFIX_AVAILABLE_KIND,
                 parent: {
                   node: {
                     id: true,
                     display_label: true,
                     hfid: true,
                     ancestors: {
-                      count: true,
+                      count: true, // Ancestors are not available on this kind. Instead, we do parent ancestors + 1
                     },
                   },
                 },

@@ -15,6 +15,9 @@ export function IpPrefixAvailabilityFilterTag({ ...props }: TagProps) {
 
   if (!objectId) return null; // to hide it on IPAM homepage
 
+  const isFiltered = filters.some((filter) => filter.name !== "parent__ids");
+  if (isFiltered) return null;
+
   const currentIpAvailabilityFilter = filters.find(
     (filter) => filter.name === AVAILABLE_IP_FILTER_NAME
   );

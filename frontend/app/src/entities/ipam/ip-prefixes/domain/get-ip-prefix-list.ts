@@ -1,5 +1,8 @@
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { buildGetIpPrefixListQuery } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
+import {
+  buildGetIpPrefixListWithAvailabilityQuery,
+  buildGetIpPrefixListWithoutAvailabilityQuery,
+} from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
 import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
@@ -28,9 +31,14 @@ export const getIpPrefixList: GetIpPrefixList = async ({
   const attributesVisible = getPrefixAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
 
+  const isFiltered = filters?.some((filter) => filter.name !== "parent__ids");
   const schemaKind = schema.kind as string;
 
-  const queryString = buildGetIpPrefixListQuery({
+  const queryString = (
+    isFiltered
+      ? buildGetIpPrefixListWithoutAvailabilityQuery
+      : buildGetIpPrefixListWithAvailabilityQuery
+  )({
     limit,
     offset,
     filters,
@@ -48,5 +56,7 @@ export const getIpPrefixList: GetIpPrefixList = async ({
     },
   });
 
-  return data[IP_PREFIX_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
+  return (
+    data[isFiltered ? schemaKind : IP_PREFIX_GENERIC]?.edges?.map((edge: any) => edge.node) ?? []
+  );
 };
