@@ -16,7 +16,7 @@ export const ProposedChangeThreadEvent = ({ id }: ProposedChangeThreadEventProps
   }
 
   if (error) {
-    return <ErrorScreen message="An error occured while fetching thread conversation." />;
+    return <ErrorScreen message="An error occurred while fetching thread conversation." />;
   }
 
   if (!data) {
