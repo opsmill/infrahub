@@ -8,6 +8,12 @@ import { StringParam, useQueryParam } from "use-query-params";
 export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
   const [kindInQsp, setKindInQsp] = useQueryParam(QSP.KIND, StringParam);
 
+  React.useEffect(() => {
+    if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {
+      return setKindInQsp(undefined, "replaceIn");
+    }
+  }, [kindInQsp]);
+
   return React.useMemo<ModelSchema>(() => {
     if (!isGenericSchema(schema)) return schema;
 
@@ -20,10 +26,7 @@ export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
     if (!kindInQsp) return schema;
 
     const inheritingKindInQsp = schema.used_by?.find((kind) => kind === kindInQsp);
-    if (!inheritingKindInQsp) {
-      setKindInQsp(undefined, "replaceIn");
-      return schema;
-    }
+    if (!inheritingKindInQsp) return schema;
 
     const { schema: schemaOfInheritingKindInQsp } = getSchema(inheritingKindInQsp);
     if (!schemaOfInheritingKindInQsp) return schema;
