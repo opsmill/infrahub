@@ -24,8 +24,10 @@ export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, () => ReactNode> = {
   },
 };
 
+type Event = keyof typeof PROPOSED_CHANGE_EVENTS_MAPPING | typeof PROPOSED_CHANGE_THREAD;
+
 interface ProposedChangeEventTitleProps {
-  event: string;
+  event: Event;
   account_id: string;
   branch: string;
   related_nodes?: Array<{ id: string }>;
