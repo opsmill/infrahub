@@ -757,6 +757,34 @@ files = [
 ]
 
 [[package]]
+name = "copier"
+version = "9.9.0"
+description = "A library for rendering project templates."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "copier-9.9.0-py3-none-any.whl", hash = "sha256:d3484178560456fc3f138ec67349872dd2b378051c2360f95d7f31005ea9794d"},
+    {file = "copier-9.9.0.tar.gz", hash = "sha256:db48d89bd30d957faa8c96fed757cb5718fdc0fe6b83bebb201424f448cb5216"},
+]
+
+[package.dependencies]
+colorama = ">=0.4.6"
+dunamai = ">=1.7.0"
+funcy = ">=1.17"
+jinja2 = ">=3.1.5"
+jinja2-ansible-filters = ">=1.3.1"
+packaging = ">=23.0"
+pathspec = ">=0.9.0"
+platformdirs = ">=4.3.6"
+plumbum = ">=1.6.9"
+pydantic = ">=2.4.2"
+pygments = ">=2.7.1"
+pyyaml = ">=5.3.1"
+questionary = ">=1.8.1"
+typing-extensions = {version = ">=4.0.0,<5.0.0", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "coverage"
 version = "7.6.1"
 description = "Code coverage measurement for Python"
@@ -1105,6 +1133,21 @@ paramiko = ["paramiko"]
 pgp = ["gpg"]
 
 [[package]]
+name = "dunamai"
+version = "1.25.0"
+description = "Dynamic version generation"
+optional = false
+python-versions = ">=3.5"
+groups = ["main"]
+files = [
+    {file = "dunamai-1.25.0-py3-none-any.whl", hash = "sha256:7f9dc687dd3256e613b6cc978d9daabfd2bb5deb8adc541fc135ee423ffa98ab"},
+    {file = "dunamai-1.25.0.tar.gz", hash = "sha256:a7f8360ea286d3dbaf0b6a1473f9253280ac93d619836ad4514facb70c0719d1"},
+]
+
+[package.dependencies]
+packaging = ">=20.9"
+
+[[package]]
 name = "email-validator"
 version = "2.1.2"
 description = "A robust email address syntax and deliverability validation library."
@@ -1365,6 +1408,18 @@ test = ["aiohttp (!=4.0.0a0,!=4.0.0a1)", "numpy", "pytest", "pytest-asyncio (!=0
 test-downstream = ["aiobotocore (>=2.5.4,<3.0.0)", "dask-expr", "dask[dataframe,test]", "moto[server] (>4,<5)", "pytest-timeout", "xarray"]
 test-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "cloudpickle", "dask", "distributed", "dropbox", "dropboxdrivefs", "fastparquet", "fusepy", "gcsfs", "jinja2", "kerchunk", "libarchive-c", "lz4", "notebook", "numpy", "ocifs", "pandas", "panel", "paramiko", "pyarrow", "pyarrow (>=1)", "pyftpdlib", "pygit2", "pytest", "pytest-asyncio (!=0.22.0)", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytest-recording", "pytest-rerunfailures", "python-snappy", "requests", "smbprotocol", "tqdm", "urllib3", "zarr", "zstandard"]
 tqdm = ["tqdm"]
+
+[[package]]
+name = "funcy"
+version = "2.0"
+description = "A fancy and practical functional tools"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "funcy-2.0-py2.py3-none-any.whl", hash = "sha256:53df23c8bb1651b12f095df764bfb057935d49537a56de211b098f4c79614bb0"},
+    {file = "funcy-2.0.tar.gz", hash = "sha256:3963315d59d41c6f30c04bc910e10ab50a3ac4a225868bfa96feed133df075cb"},
+]
 
 [[package]]
 name = "gitdb"
@@ -2109,6 +2164,25 @@ MarkupSafe = ">=2.0"
 
 [package.extras]
 i18n = ["Babel (>=2.7)"]
+
+[[package]]
+name = "jinja2-ansible-filters"
+version = "1.3.2"
+description = "A port of Ansible's jinja2 filters without requiring ansible core."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "jinja2-ansible-filters-1.3.2.tar.gz", hash = "sha256:07c10cf44d7073f4f01102ca12d9a2dc31b41d47e4c61ed92ef6a6d2669b356b"},
+    {file = "jinja2_ansible_filters-1.3.2-py3-none-any.whl", hash = "sha256:e1082f5564917649c76fed239117820610516ec10f87735d0338688800a55b34"},
+]
+
+[package.dependencies]
+Jinja2 = "*"
+PyYAML = "*"
+
+[package.extras]
+test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "jinja2-humanize-extension"
@@ -3637,7 +3711,7 @@ version = "4.3.6"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.8"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "platformdirs-4.3.6-py3-none-any.whl", hash = "sha256:73e575e1408ab8103900836b97580d5307456908a03e92031bab39e4554cc3fb"},
     {file = "platformdirs-4.3.6.tar.gz", hash = "sha256:357fb2acbc885b0419afd3ce3ed34564c13c9b95c89360cd9563f73aa5e2b907"},
@@ -3663,6 +3737,27 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
+
+[[package]]
+name = "plumbum"
+version = "1.9.0"
+description = "Plumbum: shell combinators library"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "plumbum-1.9.0-py3-none-any.whl", hash = "sha256:9fd0d3b0e8d86e4b581af36edf3f3bbe9d1ae15b45b8caab28de1bcb27aaa7f5"},
+    {file = "plumbum-1.9.0.tar.gz", hash = "sha256:e640062b72642c3873bd5bdc3effed75ba4d3c70ef6b6a7b907357a84d909219"},
+]
+
+[package.dependencies]
+pywin32 = {version = "*", markers = "platform_system == \"Windows\" and platform_python_implementation != \"PyPy\""}
+
+[package.extras]
+dev = ["coverage[toml]", "paramiko", "psutil", "pytest (>=6.0)", "pytest-cov", "pytest-mock", "pytest-timeout"]
+docs = ["sphinx (>=4.0.0)", "sphinx-rtd-theme (>=1.0.0)"]
+ssh = ["paramiko"]
+test = ["coverage[toml]", "paramiko", "psutil", "pytest (>=6.0)", "pytest-cov", "pytest-mock", "pytest-timeout"]
 
 [[package]]
 name = "polyfactory"
@@ -3845,7 +3940,7 @@ version = "3.0.47"
 description = "Library for building powerful interactive command lines in Python"
 optional = false
 python-versions = ">=3.7.0"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "prompt_toolkit-3.0.47-py3-none-any.whl", hash = "sha256:0d7bfa67001d5e39d02c224b663abc33687405033a8c422d0d675a5a13361d10"},
     {file = "prompt_toolkit-3.0.47.tar.gz", hash = "sha256:1e1b29cb58080b1e69f207c893a1a7bf16d127a5c30c9d17a25a5d77792e5360"},
@@ -4529,7 +4624,6 @@ description = "Python for Window Extensions"
 optional = false
 python-versions = "*"
 groups = ["main", "dev"]
-markers = "sys_platform == \"win32\""
 files = [
     {file = "pywin32-306-cp310-cp310-win32.whl", hash = "sha256:06d3420a5155ba65f0b72f2699b5bacf3109f36acbe8923765c22938a69dfc8d"},
     {file = "pywin32-306-cp310-cp310-win_amd64.whl", hash = "sha256:84f4471dbca1887ea3803d8848a1616429ac94a4a8d05f4bc9c5dcfd42ca99c8"},
@@ -4546,6 +4640,7 @@ files = [
     {file = "pywin32-306-cp39-cp39-win32.whl", hash = "sha256:e25fd5b485b55ac9c057f67d94bc203f3f6595078d1fb3b458c9c28b7153a802"},
     {file = "pywin32-306-cp39-cp39-win_amd64.whl", hash = "sha256:39b61c15272833b5c329a2989999dcae836b1eed650252ab1b7bfbe1d59f30f4"},
 ]
+markers = {main = "(platform_python_implementation != \"PyPy\" or sys_platform == \"win32\") and (platform_system == \"Windows\" or sys_platform == \"win32\")", dev = "sys_platform == \"win32\""}
 
 [[package]]
 name = "pyyaml"
@@ -4609,6 +4704,21 @@ files = [
     {file = "PyYAML-6.0.2-cp39-cp39-win_amd64.whl", hash = "sha256:39693e1f8320ae4f43943590b49779ffb98acb81f788220ea932a6b6c51004d8"},
     {file = "pyyaml-6.0.2.tar.gz", hash = "sha256:d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"},
 ]
+
+[[package]]
+name = "questionary"
+version = "2.1.0"
+description = "Python library to build pretty command line user prompts ⭐️"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "questionary-2.1.0-py3-none-any.whl", hash = "sha256:44174d237b68bc828e4878c763a9ad6790ee61990e0ae72927694ead57bab8ec"},
+    {file = "questionary-2.1.0.tar.gz", hash = "sha256:6302cdd645b19667d8f6e6634774e9538bfcd1aad9be287e743d96cacaf95587"},
+]
+
+[package.dependencies]
+prompt_toolkit = ">=2.0,<4.0"
 
 [[package]]
 name = "readchar"
@@ -5890,7 +6000,7 @@ version = "0.2.13"
 description = "Measures the displayed width of unicode strings in a terminal"
 optional = false
 python-versions = "*"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "wcwidth-0.2.13-py2.py3-none-any.whl", hash = "sha256:3da69048e4540d84af32131829ff948f1e022c1c6bdb8d6102117aac784f6859"},
     {file = "wcwidth-0.2.13.tar.gz", hash = "sha256:72ea0c06399eb286d978fdedb6923a9eb47e1c486ce63e9b4e64fc18303972b5"},
@@ -6304,4 +6414,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10, < 3.13"
-content-hash = "8856c4b28ee5a0830a428c8702cd3351727bc802eb9fffc4bdf331d0a59adbce"
+content-hash = "76951b23b1f6e1afc1846229870ff31978b63de3c88a1f08d295b2e5933349ba"
