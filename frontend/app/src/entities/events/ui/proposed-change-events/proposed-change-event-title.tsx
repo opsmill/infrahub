@@ -24,10 +24,17 @@ export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, () => ReactNode> = {
   },
 };
 
-export const ProposedChangeEventTitle = (props: any) => {
+interface ProposedChangeEventTitleProps {
+  event: string;
+  account_id: string;
+  branch: string;
+  related_nodes?: Array<{ id: string }>;
+}
+
+export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) => {
   const { event, account_id, branch } = props;
 
-  if (event === PROPOSED_CHANGE_THREAD && props.related_nodes?.[0].id) {
+  if (event === PROPOSED_CHANGE_THREAD && props.related_nodes?.[0]?.id) {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex text-sm gap-1">
