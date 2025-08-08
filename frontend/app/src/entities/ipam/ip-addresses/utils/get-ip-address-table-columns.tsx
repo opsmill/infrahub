@@ -8,6 +8,7 @@ import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cell
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
+import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
@@ -16,7 +17,6 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 
 const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 
