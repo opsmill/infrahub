@@ -11,5 +11,11 @@ export async function getProposedChangeThread(params: ProposedChangeThreadFromAp
     throw new Error(errors[0].message);
   }
 
-  return data[PROPOSED_CHANGES_THREAD_OBJECT].edges[0].node;
+  const edges = data?.[PROPOSED_CHANGES_THREAD_OBJECT]?.edges;
+
+  if (!edges?.length) {
+    throw new Error("No thread data found");
+  }
+
+  return edges[0].node;
 }
