@@ -18,7 +18,7 @@ export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   relationships: Array<RelationshipSchema>;
 }
 
-export function getIpAddressListGraphQLQuery({
+export function getIpAddressListWithAvailabilityGraphQLQuery({
   limit,
   offset,
   filters,
@@ -68,16 +68,63 @@ export function getIpAddressListGraphQLQuery({
   });
 }
 
+export function getIpAddressListWithoutAvailabilityGraphQLQuery({
+  limit,
+  offset,
+  filters,
+  objectKind,
+  attributes,
+  relationships,
+}: GetIpAddressListGraphQLQueryParams) {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${objectKind}`,
+      [objectKind]: {
+        __args: {
+          limit,
+          offset,
+          ...(filters ? addFiltersToRequest(filters) : {}),
+        },
+        edges: {
+          node: {
+            id: true,
+            display_label: true,
+            hfid: true,
+            ...addAttributesToRequest(attributes),
+            ...addRelationshipsToRequest(relationships),
+          },
+        },
+      },
+    },
+  });
+}
+
 export interface getIpAddressListFromApiParams
   extends ContextParams,
     GetIpAddressListGraphQLQueryParams {}
 
-export function getIpAddressListFromApi({
+export function getIpAddressListWithAvailabilityFromApi({
   branchName,
   atDate,
   ...params
 }: getIpAddressListFromApiParams) {
-  const graphqlQuery = getIpAddressListGraphQLQuery(params);
+  const graphqlQuery = getIpAddressListWithAvailabilityGraphQLQuery(params);
+
+  return graphqlClient.query({
+    query: gql(graphqlQuery),
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}
+
+export function getIpAddressListWithoutAvailabilityFromApi({
+  branchName,
+  atDate,
+  ...params
+}: getIpAddressListFromApiParams) {
+  const graphqlQuery = getIpAddressListWithoutAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
     query: gql(graphqlQuery),

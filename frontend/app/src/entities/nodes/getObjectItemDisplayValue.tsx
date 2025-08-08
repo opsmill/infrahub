@@ -175,7 +175,9 @@ export const ObjectAttributeValue = ({
   attributeSchema: FieldSchema;
   attributeValue: AttributeType;
 }) => {
-  if (!attributeValue.value && attributeValue.value !== 0) return "-";
+  if (!attributeValue.value && attributeValue.value !== 0 && attributeValue.value !== false) {
+    return "-";
+  }
 
   switch (attributeSchema.kind as AttributeKind) {
     case ATTRIBUTE_KIND.ID:
