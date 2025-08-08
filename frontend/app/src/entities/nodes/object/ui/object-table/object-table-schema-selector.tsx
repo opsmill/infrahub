@@ -20,7 +20,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [_kind, setKindInQsp] = useQueryParam(QSP.KIND, StringParam);
+  const [_kindInQsp, setKindInQsp] = useQueryParam(QSP.KIND, StringParam);
   const { filters, setFilters, baseSchema, selectedSchema } = useObjectTableContext();
 
   const items = React.useMemo<ModelSchema[]>(() => {
