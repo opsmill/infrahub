@@ -12,7 +12,7 @@ export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
     if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {
       return setKindInQsp(undefined, "replaceIn");
     }
-  }, [kindInQsp]);
+  }, [kindInQsp, schema.hash]);
 
   return React.useMemo<ModelSchema>(() => {
     if (!isGenericSchema(schema)) return schema;
@@ -32,5 +32,5 @@ export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
     if (!schemaOfInheritingKindInQsp) return schema;
 
     return schemaOfInheritingKindInQsp;
-  }, [kindInQsp, schema]);
+  }, [kindInQsp, schema.hash]);
 };
