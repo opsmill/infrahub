@@ -147,12 +147,14 @@ export interface GetEventsFromApiParams extends PaginationParams {
 
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
+  offset,
   filters,
 }: GetEventsFromApiParams) {
   return graphqlClient.query<Get_Infrahub_EventsQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,
+      offset,
       ...filters,
     },
   });
