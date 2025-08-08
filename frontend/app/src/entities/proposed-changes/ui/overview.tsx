@@ -82,8 +82,6 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
                     query.queryKey.includes(PROPOSED_CHANGES_THREAD_OBJECT) ||
                     query.queryKey.includes("events"),
                 });
-
-                formRef.current?.reset();
               },
               onError: async (error) => {
                 if (threadId) {
