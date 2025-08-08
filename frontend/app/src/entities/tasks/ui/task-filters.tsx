@@ -1,13 +1,13 @@
 import { SEARCH_FILTERS } from "@/config/constants";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
+import { TasksFilterForm } from "@/shared/components/filters/tasks-filter-form";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/shared/components/form/type";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { TasksFilterForm } from "../../../shared/components/filters/tasks-filter-form";
 
 export const TaskFilters = () => {
   const [filters, setFilters] = useFilters();
