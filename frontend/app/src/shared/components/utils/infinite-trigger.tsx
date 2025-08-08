@@ -1,6 +1,3 @@
-import { ScrollAreaProps } from "@/shared/components/ui/scroll-area";
-import React from "react";
-
 import React from "react";
 
 export interface InfiniteTriggerProps extends React.HTMLAttributes<HTMLDivElement> {
