@@ -1,3 +1,6 @@
+from collections import defaultdict
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core import registry
@@ -10,8 +13,15 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
-# TODO: test for attribute updates on branch for nodes created on main
 # TODO: test for reverting large attribute type on branch where value is too large to be indexed
+# TODO: test schema change on default branch when other branches exist
+
+
+@dataclass
+class BranchSchemaData:
+    branch: Branch
+    nodes: list[Node]
+    kind_attr_name_map: dict[str, list[str]]
 
 
 class TestMigration036:
@@ -191,6 +201,32 @@ class TestMigration036:
 
         return loaded_nodes
 
+    async def update_main_nodes_on_branches(
+        self, db: InfrahubDatabase, main_nodes: list[Node], branches: list[Branch]
+    ) -> dict[str, list[Node]]:
+        updated_nodes_map: dict[str, list[Node]] = defaultdict(list)
+        for branch in branches:
+            for main_node in main_nodes:
+                branch_node = await NodeManager.get_one(db=db, branch=branch, id=main_node.get_id())
+                for attr_name in branch_node.get_schema().attribute_names:
+                    current_value = getattr(branch_node, attr_name).value
+                    if isinstance(current_value, str):
+                        new_value = current_value + f"-update-{branch.name}"
+                    elif isinstance(current_value, list):
+                        new_value = current_value + [f"update-{branch.name}"]
+                    elif isinstance(current_value, bool):
+                        new_value = not current_value
+                    elif isinstance(current_value, int):
+                        new_value = current_value * 1000
+                    elif current_value is None:
+                        continue
+                    else:
+                        new_value = "dunno"
+                    getattr(branch_node, attr_name).value = new_value
+                await branch_node.save(db=db)
+                updated_nodes_map[branch.name].append(branch_node)
+        return updated_nodes_map
+
     async def verify_no_duplicate_has_value_edges(self, db: InfrahubDatabase) -> None:
         query = """
 MATCH (attr:Attribute)-[e:HAS_VALUE {status: "active"}]->()
@@ -295,58 +331,87 @@ RETURN node_uuid, branch, attr_name, av_id, should_not_be_indexed, should_be_ind
         branch_1: Branch,
         branch_2: Branch,
     ) -> None:
+        # do branch updates for nodes created on main
+        updated_nodes_map = await self.update_main_nodes_on_branches(
+            db=db, main_nodes=load_main_nodes, branches=[branch_1, branch_2]
+        )
+
         remove_attribute_value_indexed_labels_query = """
 MATCH (avi:AttributeValueIndexed)
 REMOVE avi:AttributeValueIndexed
         """
         await db.execute_query(query=remove_attribute_value_indexed_labels_query)
 
+        # data transfer objects to track all the testing data needed for a given branch
+        default_branch_schema_data = BranchSchemaData(
+            branch=default_branch,
+            nodes=load_main_nodes,
+            kind_attr_name_map={
+                "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring"],
+            },
+        )
+        # branch_0 is before schema changes on main, so mystring remains a text attribute
+        # name was updated to TextArea and mytextarea was updated to Text
+        branch_0_schema_data = BranchSchemaData(
+            branch=branch_0,
+            nodes=load_branch_0_nodes,
+            kind_attr_name_map={
+                "TestAllAttributeTypes": ["myjson", "mylist", "name"],
+            },
+        )
+        # no schema changes on branch_1
+        branch_1_schema_data = BranchSchemaData(
+            branch=branch_1,
+            nodes=load_branch_1_nodes + updated_nodes_map[branch_1.name],
+            kind_attr_name_map={
+                "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring"],
+            },
+        )
+        # branch_2 updates mylist to a Text attribute and myjson to a TextArea attribute
+        branch_2_schema_data = BranchSchemaData(
+            branch=branch_2,
+            nodes=load_branch_2_nodes + updated_nodes_map[branch_2.name],
+            kind_attr_name_map={
+                "TestAllAttributeTypes": ["mytextarea", "myjson", "mystring"],
+            },
+        )
+
         migration = Migration036()
         await migration.execute(db=db)
 
-        for branch, nodes in [
-            (default_branch, load_main_nodes),
-            (branch_0, load_branch_0_nodes),
-            (branch_1, load_branch_1_nodes),
-            (branch_2, load_branch_2_nodes),
-        ]:
-            for node in nodes:
-                schema = node.get_schema()
-                retrieved_node = await NodeManager.get_one(db=db, branch=branch, id=node.id)
-                for attr_name in schema.attribute_names:
-                    original_attr_value = getattr(node, attr_name).value
-                    retrieved_attr_value = getattr(retrieved_node, attr_name).value
-                    # this one went from a list to a text attribute
-                    if branch.name == "branch_2" and attr_name == "mylist":
-                        assert str(original_attr_value).replace("'", '"').replace(" ", "") == retrieved_attr_value
-                    else:
-                        assert original_attr_value == retrieved_attr_value
+        await self._verify_all(
+            db=db,
+            branch_schema_datas=[
+                default_branch_schema_data,
+                branch_0_schema_data,
+                branch_1_schema_data,
+                branch_2_schema_data,
+            ],
+        )
 
+    async def _verify_all(self, db: InfrahubDatabase, branch_schema_datas: list[BranchSchemaData]) -> None:
         await self.verify_no_duplicate_has_value_edges(db=db)
+        for branch_schema_data in branch_schema_datas:
+            await self._verify_all_on_branch(
+                db=db,
+                branch=branch_schema_data.branch,
+                nodes=branch_schema_data.nodes,
+                kind_attr_name_map=branch_schema_data.kind_attr_name_map,
+            )
 
-        # branch_0 is before schema changes on main, so mystring remains a text attribute
-        # name was updated to TextArea and mytextarea was updated to Text
-        kind_attr_name_map = {
-            "TestAllAttributeTypes": ["myjson", "mylist", "name"],
-        }
-        await self.verify_attributes_have_correct_indexing(
-            db=db, branch=branch_0, kind_attr_name_map=kind_attr_name_map
-        )
+    async def _verify_all_on_branch(
+        self, db: InfrahubDatabase, branch: Branch, nodes: list[Node], kind_attr_name_map: dict[str, list[str]]
+    ) -> None:
+        for node in nodes:
+            schema = node.get_schema()
+            retrieved_node = await NodeManager.get_one(db=db, branch=branch, id=node.id)
+            for attr_name in schema.attribute_names:
+                original_attr_value = getattr(node, attr_name).value
+                retrieved_attr_value = getattr(retrieved_node, attr_name).value
+                # this one went from a list to a text attribute
+                if branch.name == "branch_2" and attr_name == "mylist":
+                    assert str(original_attr_value).replace("'", '"').replace(" ", "") == retrieved_attr_value
+                else:
+                    assert original_attr_value == retrieved_attr_value
 
-        kind_attr_name_map = {
-            "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring"],
-        }
-        await self.verify_attributes_have_correct_indexing(
-            db=db, branch=default_branch, kind_attr_name_map=kind_attr_name_map
-        )
-        await self.verify_attributes_have_correct_indexing(
-            db=db, branch=branch_1, kind_attr_name_map=kind_attr_name_map
-        )
-
-        # branch_2 updates mylist to a Text attribute and myjson to a TextArea attribute
-        kind_attr_name_map = {
-            "TestAllAttributeTypes": ["mytextarea", "myjson", "mystring"],
-        }
-        await self.verify_attributes_have_correct_indexing(
-            db=db, branch=branch_2, kind_attr_name_map=kind_attr_name_map
-        )
+        await self.verify_attributes_have_correct_indexing(db=db, branch=branch, kind_attr_name_map=kind_attr_name_map)
