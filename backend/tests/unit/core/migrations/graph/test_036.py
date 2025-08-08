@@ -14,8 +14,6 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
-# TODO: test schema change on default branch when other branches exist
-
 
 @dataclass
 class BranchSchemaData:
@@ -84,7 +82,13 @@ class TestMigration036:
         # node on branch before main schema change
         branch_node_before = await Node.init(db=db, branch=branch_0, schema=all_attribute_types_schema)
         await branch_node_before.new(
-            db=db, mystring="-abc", mytextarea="-abc", myjson={"-a": "b"}, mylist=["-a", "-b", "-c"], name="123"
+            db=db,
+            mystring="-abc",
+            mytextarea="-abc",
+            myjson={"-a": "b"},
+            mylist=["-a", "-b", "-c"],
+            name="123",
+            myint=123,
         )
         await branch_node_before.save(db=db)
         loaded_nodes.append(branch_node_before)
@@ -104,7 +108,13 @@ class TestMigration036:
         # node on main after schema change
         branch_node_after = await Node.init(db=db, branch=branch_0, schema=all_attribute_types_schema.kind)
         await branch_node_after.new(
-            db=db, mystring="-def", mytextarea="-d" * 100, myjson={"-d": "e"}, mylist=["-d", "-e", "-f"], name="456"
+            db=db,
+            mystring="-def",
+            mytextarea="-d" * 100,
+            myjson={"-d": "e"},
+            mylist=["-d", "-e", "-f"],
+            name="456",
+            myint=456,
         )
         await branch_node_after.save(db=db)
         loaded_nodes.append(branch_node_after)
@@ -126,7 +136,7 @@ class TestMigration036:
         # node on main before schema change
         main_node_before = await Node.init(db=db, branch=default_branch, schema=all_attribute_types_schema.kind)
         await main_node_before.new(
-            db=db, mystring="abc", mytextarea="a" * 10_000, myjson={"a": "b"}, mylist=["a", "b", "c"]
+            db=db, mystring="abc", mytextarea="a" * 10_000, myjson={"a": "b"}, mylist=["a", "b", "c"], myint=789
         )
         await main_node_before.save(db=db)
         loaded_nodes.append(main_node_before)
@@ -142,7 +152,7 @@ class TestMigration036:
         # node on main after schema change
         main_node_after = await Node.init(db=db, branch=default_branch, schema=all_attribute_types_schema.kind)
         await main_node_after.new(
-            db=db, mystring="def", mytextarea="d" * 100, myjson={"d": "e"}, mylist=["d", "e", "f"]
+            db=db, mystring="def", mytextarea="d" * 100, myjson={"d": "e"}, mylist=["d", "e", "f"], myint=1234
         )
         await main_node_after.save(db=db)
         loaded_nodes.append(main_node_after)
@@ -160,7 +170,7 @@ class TestMigration036:
         # node on branch before branch schema change
         branch_node_before = await Node.init(db=db, branch=branch_1, schema=all_attribute_types_schema)
         await branch_node_before.new(
-            db=db, mystring="abc", mytextarea="g" * 10_000, myjson={"g": "h"}, mylist=["g", "h", "i"]
+            db=db, mystring="abc", mytextarea="g" * 10_000, myjson={"g": "h"}, mylist=["g", "h", "i"], myint=123
         )
         await branch_node_before.save(db=db)
         loaded_nodes.append(branch_node_before)
@@ -182,7 +192,13 @@ class TestMigration036:
         # node on branch after main schema change
         branch_node_before = await Node.init(db=db, branch=branch_2, schema=all_attribute_types_schema)
         await branch_node_before.new(
-            db=db, mystring="jkl", mytextarea="j" * 10_000, myjson={"j": "k"}, mylist=["j", "k", "l"], name="789"
+            db=db,
+            mystring="jkl",
+            mytextarea="j" * 10_000,
+            myjson={"j": "k"},
+            mylist=["j", "k", "l"],
+            name="789",
+            myint=2345,
         )
         await branch_node_before.save(db=db)
         loaded_nodes.append(branch_node_before)
@@ -219,7 +235,7 @@ class TestMigration036:
 
         branch_node_before = await Node.init(db=db, branch=branch_3, schema=all_attribute_types_schema)
         await branch_node_before.new(
-            db=db, mystring="qrs", mytextarea="q" * 10_000, myjson={"q": "r"}, mylist=["q", "r", "s"]
+            db=db, mystring="qrs", mytextarea="q" * 10_000, myjson={"q": "r"}, mylist=["q", "r", "s"], myint=3456
         )
         await branch_node_before.save(db=db)
         loaded_nodes.append(branch_node_before)
@@ -264,6 +280,19 @@ class TestMigration036:
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
         registry.schema.set_schema_branch(name=branch_1.name, schema=schema_branch)
         await registry.schema.load_schema_to_db(db=db, branch=branch_1, schema=schema_branch)
+
+    async def update_main_schema(
+        self, db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = schema_branch.duplicate(name=default_branch.name)
+        node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
+
+        name_attr_schema = node_schema.get_attribute(name="name")
+        name_attr_schema.kind = "TextArea"
+        schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
+        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
 
     async def verify_no_duplicate_has_value_edges(self, db: InfrahubDatabase) -> None:
         query = """
@@ -382,6 +411,9 @@ RETURN node_uuid, branch, attr_name, av_id, should_not_be_indexed, should_be_ind
         await self.update_branch_1_schema(
             db=db, branch_1=branch_1, all_attribute_types_schema=all_attribute_types_schema
         )
+        await self.update_main_schema(
+            db=db, default_branch=default_branch, all_attribute_types_schema=all_attribute_types_schema
+        )
 
         remove_attribute_value_indexed_labels_query = """
 MATCH (avi:AttributeValueIndexed)
@@ -394,7 +426,7 @@ REMOVE avi:AttributeValueIndexed
             branch=default_branch,
             nodes=load_main_nodes,
             kind_attr_name_map={
-                "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring"],
+                "TestAllAttributeTypes": ["mytextarea", "myjson", "mylist", "mystring", "name"],
             },
         )
         # branch_0 is before schema changes on main, so mystring remains a text attribute
