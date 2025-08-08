@@ -82,6 +82,46 @@ Two limitations could have an impact on your choice of node vs generic :
 
 :::
 
+### Field ordering with order weight
+
+The order in which attributes and relationships appear in the Infrahub frontend is controlled by the `order_weight` property. **Items with lower values appear before those with higher values.** When not explicitly specified, Infrahub automatically assigns default values in increments of 1000:
+
+```yaml title="Default Order Weight Assignment"
+nodes:
+  - name: Device
+    namespace: Example
+    attributes:
+      - name: hostname        # Gets order_weight: 1000
+        kind: Text
+      - name: description     # Gets order_weight: 2000
+        kind: Text
+        optional: true
+      - name: serial_number   # Gets order_weight: 3000
+        kind: Text
+    relationships:
+      - name: location        # Gets order_weight: 4000
+        peer: ExampleLocation
+        cardinality: one
+```
+
+This automatic assignment ensures predictable field ordering while leaving room for custom positioning. To customize field order, you can specify explicit `order_weight` values:
+
+```yaml title="Custom Field Ordering"
+attributes:
+  - name: asset_tag
+    kind: Text
+    order_weight: 100       # Appears first
+  - name: hostname
+    kind: Text
+    order_weight: 200       # Appears second
+  - name: description
+    kind: Text
+    optional: true
+    order_weight: 9000      # Appears last
+```
+
+<ReferenceLink title="For more details on order weight, refer to the dedicated topic" url="/topics/order-weight" openInNewTab />
+
 ### Node example
 
 In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by `owner`.
@@ -426,13 +466,63 @@ nodes:
         kind: Attribute
         optional: true
         description: "Employees who are part of this leader's team."
-````
+```
 
 </details>
 
-<!-- vale off -->
-### Uniqueness Constraints
-<!-- vale on -->
+##### Generic node relationships
+
+When creating relationships between generic nodes and their implementations, always explicitly define matching identifiers:
+
+<details>
+  <summary>Example: Generic Interface and Device Relationship</summary>
+
+```yaml {7,16,27,36} showLineNumbers
+generics:
+  - name: Interface
+    namespace: Test
+    relationships:
+      - name: device
+        peer: TestDevice
+        identifier: "device__interface"  # Must match on both sides
+        optional: false
+        cardinality: one
+        kind: Parent
+
+nodes:
+  - name: Device
+    namespace: Test
+    relationships:
+      - name: interfaces
+        peer: TestInterface
+        identifier: "device__interface"  # Must match generic's identifier
+        cardinality: many
+        kind: Component
+        on_delete: cascade
+
+  - name: NetworkInterface
+    namespace: Infra
+    inherit_from:
+      - TestInterface
+    # Inherits the device relationship with correct identifier
+
+  - name: Router
+    namespace: Infra
+    inherit_from:
+      - TestDevice
+    # Inherits the interfaces relationship with correct identifier
+```
+
+In this example:
+
+- The generic `TestInterface` and `TestDevice` define the relationship with explicit identifier `device__interface`
+- Specific implementations (`InfraNetworkInterface`, `InfraRouter`) inherit these relationships with matching identifiers
+- Cascade deletion will work correctly because identifiers match on both sides
+
+</details>
+
+### Uniqueness constraints
+
 More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the Node or Generic level with the property `uniqueness_constraints`.
 It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
 
@@ -443,7 +533,7 @@ In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` 
 - For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future, the plan is to allow additional metadata to be used as well.*
 - For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationships of cardinality `one` are supported and the relationship must be mandatory.*
 
-```yaml {10} showLineNumbers
+```yaml {10-11} showLineNumbers
 nodes:
   - name: Person
     namespace: Example
@@ -464,6 +554,38 @@ nodes:
         optional: false
         cardinality: one
 ```
+
+#### Optimizing uniqueness constraints
+
+When defining uniqueness constraints, the order of the elements in each constraint array can significantly impact performance. The uniqueness checker processes constraints from left to right, so listing the most selective elements first can dramatically improve performance.
+
+:::info How It Works
+
+The uniqueness checker runs Cypher queries to validate constraints. When elements are ordered from most to least selective, the database can quickly eliminate non-matching candidates earlier in the query execution.
+
+:::
+
+For example, consider an IP address model with a uniqueness constraint:
+
+```yaml
+uniqueness_constraints:
+  - ["ip_namespace", "address__value"]
+```
+
+If many IP addresses share the same namespace but few share the same address value, this constraint would require checking all nodes with the same namespace before filtering by address. A more efficient ordering would be:
+
+```yaml
+uniqueness_constraints:
+  - ["address__value", "ip_namespace"]
+```
+
+This allows the system to first filter by the more selective address value, resulting in fewer nodes to check against the namespace constraint.
+
+:::success Best Practice
+
+Order uniqueness constraint elements from most selective (returning fewer matches) to least selective (returning more matches) to optimize database query performance.
+
+:::
 
 ### Human friendly identifier (hfid)
 
@@ -948,9 +1070,8 @@ The full identifier of the icon must be used. Example `mdi:domain`
 
 Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration.
 
-<!-- vale off -->
 ### infrahubctl command
-<!-- vale on -->
+
 The `infrahubctl` command can be used to check & load individual schema files or multiple files as part of a directory.
 
 The `infrahub schema check` command will validate if a given schema is valid and it will return a summary of the changes

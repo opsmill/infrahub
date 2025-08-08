@@ -11,6 +11,7 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
+  - AI
   - Alpha
   - Ansible
   - API
@@ -20,14 +21,16 @@ exceptions:
   - BGP
   - CA certificates
   - CI
+  - CI/CD
   - Codespaces
   - Computed Attribute
   - Computed Attributes
   - CoreArtifactTarget
-  - CoreRepository
   - CoreGroup
+  - CoreRepository
   - Docker Compose
   - E2E
+  - Emma
   - Generics
   - Git
   - GitHub
@@ -36,32 +39,41 @@ exceptions:
   - GitPod
   - GraphQL
   - GraphQLQuery
-  - include_in_menu & menu_placement
   - Helm
   - High Availability
   - Human Friendly Identifier
+  - IDE
+  - include_in_menu & menu_placement
   - Infrahub
   - Infrahub Enterprise
   - infrahubctl
-  - IPHost
   - IP
-  - IPAM
-  - IPNetwork
   - IP Fabric
+  - IPAM
+  - IPHost
+  - IPNetwork
   - JavaScript
   - JetStream
   - Jinja
   - Jinja2
   - JWT
+  - LibreNMS
   - Namespace
   - NATS
+  - Nautobot
   - Neo4j
+  - Netbox
+  - NetBox
+  - Netpicker
+  - NetPicker
   - Node
   - NumberPool
   - OAuth2
+  - Observium
   - OIDC
   - Open ID Connect
   - OpsMill
+  - Peering Manager
   - Pydantic
   - Python
   - RabbitMQ
@@ -70,6 +82,7 @@ exceptions:
   - Schema
   - SDK
   - Single sign-on
+  - Slurp'it
   - SSO
   - Terraform
   - TLS
@@ -85,3 +98,11 @@ exceptions:
   - Slurp'it
   - IDE
   - AI
+  - OpenID Connect
+  - OAuth 2.0
+  - OAuth 2.0 vs OpenID Connect
+  - OpenID Connect (OIDC)
+  - Emma
+  - Helm
+  - Kubernetes
+  - Allocate VLAN ID

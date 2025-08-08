@@ -21,6 +21,13 @@ class SchemaNodeInfo(BaseModel):
 
 
 class NodeDuplicateQuery(Query):
+    """
+    Duplicates a Node to use a new kind or inheritance.
+    Creates a copy of each affected Node and sets the new kind/inheritance.
+    Adds duplicate edges to the new Node that match all the active edges on the old Node.
+    Sets all the edges on the old Node to deleted.
+    """
+
     name = "node_duplicate"
     type = QueryType.WRITE
     insert_return: bool = False
@@ -37,10 +44,27 @@ class NodeDuplicateQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
-        query = f"""
+        labels_str = ":".join(self.previous_node.labels)
+        query = """
         // Find all the active nodes
-        MATCH (node:{self.previous_node.kind})
-        """
+        MATCH (node:%(labels_str)s)
+        WITH DISTINCT node
+        // ----------------
+        // Filter out nodes that have already been migrated
+        // ----------------
+        CALL (node) {
+            WITH labels(node) AS node_labels
+            UNWIND node_labels AS n_label
+            ORDER BY n_label ASC
+            WITH collect(n_label) AS sorted_labels
+
+            RETURN (
+                node.kind = $new_node.kind AND
+                sorted_labels = $new_sorted_labels
+            ) AS already_migrated
+        }
+        WITH node WHERE already_migrated = FALSE
+        """ % {"labels_str": labels_str}
 
         return query
 
@@ -109,6 +133,7 @@ class NodeDuplicateQuery(Query):
 
         self.params["new_node"] = self.new_node.model_dump()
         self.params["previous_node"] = self.previous_node.model_dump()
+        self.params["new_sorted_labels"] = sorted(self.new_node.labels + ["Node"])
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch"] = self.branch.name
@@ -145,6 +170,7 @@ class NodeDuplicateQuery(Query):
         WITH active_node, new_node
         // Process Outbound Relationship
         MATCH (active_node)-[]->(peer)
+        WITH DISTINCT active_node, new_node, peer
         CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
@@ -164,6 +190,7 @@ class NodeDuplicateQuery(Query):
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
         MATCH (active_node)<-[]-(peer)
+        WITH DISTINCT active_node, new_node, peer
         CALL (active_node, peer) {
             MATCH (active_node)<-[r]-(peer)
             WHERE %(branch_filter)s

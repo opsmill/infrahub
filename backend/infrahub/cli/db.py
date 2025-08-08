@@ -56,6 +56,7 @@ from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
+from .db_commands.check_inheritance import check_inheritance
 from .patch import patch_app
 
 
@@ -174,6 +175,30 @@ async def migrate_cmd(
     dbdriver = await context.init_db(retry=1)
 
     await migrate_database(db=dbdriver, initialize=True, check=check, migration_number=migration_number)
+
+    await dbdriver.close()
+
+
+@app.command(name="check-inheritance")
+async def check_inheritance_cmd(
+    ctx: typer.Context,
+    fix: bool = typer.Option(False, help="Fix the inheritance of any invalid nodes."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Check the database for any vertices with incorrect inheritance"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+    await initialize_registry(db=dbdriver)
+
+    success = await check_inheritance(db=dbdriver, fix=fix)
+    if not success:
+        raise typer.Exit(code=1)
 
     await dbdriver.close()
 
@@ -915,6 +940,40 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
         rprint(f"  Detailed results written to: {output_file}")
     else:
         rprint(f"{SUCCESS_BADGE} No duplicated edges found")
+
+    # Check 4: Orphaned Relationships
+    rprint("\n[bold cyan]Check 4: Orphaned Relationships[/bold cyan]")
+    orphaned_rels_query = """
+    MATCH (r:Relationship)-[:IS_RELATED]-(peer:Node)
+    WITH DISTINCT r, peer
+    WITH r, count(*) AS num_peers
+    WHERE num_peers < 2
+    MATCH (r)-[e:IS_RELATED]-(peer:Node)
+    RETURN DISTINCT
+        r.name AS r_name,
+        e.branch AS branch,
+        e.status AS status,
+        e.from AS from_time,
+        e.to AS to_time,
+        peer.uuid AS peer_uuid,
+        peer.kind AS peer_kind
+    """
+    results = await db.execute_query(query=orphaned_rels_query)
+    if results:
+        rprint(f"[red]Found {len(results)} orphaned Relationships[/red]")
+        # Write detailed results to file
+        output_file = output_dir / "orphaned_relationships.csv"
+        with output_file.open(mode="w", newline="") as f:
+            writer = DictWriter(
+                f,
+                fieldnames=["r_name", "branch", "status", "from_time", "to_time", "peer_uuid", "peer_kind"],
+            )
+            writer.writeheader()
+            for result in results:
+                writer.writerow(dict(result))
+        rprint(f"  Detailed results written to: {output_file}")
+    else:
+        rprint(f"{SUCCESS_BADGE} No orphaned relationships found")
 
     rprint(f"\n{SUCCESS_BADGE} Database health checks completed")
     rprint(f"Detailed results saved to: {output_dir.absolute()}")

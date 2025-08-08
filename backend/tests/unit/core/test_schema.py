@@ -1,4 +1,4 @@
-from typing import Hashable
+from typing import Any, Hashable
 
 import pytest
 from pydantic import ValidationError
@@ -16,6 +16,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.attribute_schema import TextAttributeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -226,7 +227,7 @@ async def test_attribute_schema_choices_invalid_kind():
 
 
 async def test_attribute_schema_dropdown_missing_choices():
-    SCHEMA = {"name": "name", "kind": "Dropdown"}
+    SCHEMA: dict[str, Any] = {"name": "name", "kind": "Dropdown"}
 
     with pytest.raises(ValidationError) as exc:
         AttributeSchema(**SCHEMA)
@@ -247,3 +248,197 @@ def test_dropdown_choice_sort():
     active = DropdownChoice(name="active", color="#AAbb0f")
     passive = DropdownChoice(name="passive", color="#AAbb0f")
     assert active < passive
+
+
+def test_validate_python_keywords_with_attribute_and_relationship():
+    """Test that validate_python_keywords rejects Python keywords in attribute and relationship names."""
+    # Test schema with 'from' keyword as attribute name
+    SCHEMA_WITH_KEYWORD_ATTR: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "RoutingPolicy",
+                "namespace": "Infra",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ATTR)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+
+    assert "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'" in str(exc.value)
+
+    # Test schema with 'class' keyword as relationship name
+    SCHEMA_WITH_KEYWORD_REL: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "class", "peer": "TestType", "cardinality": "one", "optional": True},  # Python keyword
+                ],
+            },
+            {
+                "name": "Type",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_REL)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+
+    assert "Python keyword 'class' cannot be used as a relationship name on 'TestDevice' when using strict mode" in str(
+        exc.value
+    )
+
+    # Test schema with valid names (no keywords)
+    SCHEMA_VALID: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "ValidSchema",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "source", "kind": "Text"},  # Not a keyword
+                ],
+                "relationships": [
+                    {"name": "parent", "peer": "TestType", "cardinality": "one", "optional": True},  # Not a keyword
+                ],
+            },
+            {
+                "name": "Type",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_VALID)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # This should not raise any exception
+    schema_branch.process_validate()
+
+
+def test_validate_python_keywords_multiple_keywords():
+    """Test that validate_python_keywords catches multiple Python keywords."""
+    SCHEMA_WITH_MULTIPLE_KEYWORDS: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword
+                    {"name": "import", "kind": "Text"},  # Python keyword
+                ],
+                "relationships": [
+                    {"name": "class", "peer": "TestType", "cardinality": "one", "optional": True},  # Python keyword
+                    {"name": "def", "peer": "TestType", "cardinality": "one", "optional": True},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_MULTIPLE_KEYWORDS)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # Should raise ValueError on the first Python keyword encountered
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+
+    # Check that at least one Python keyword error is caught
+    error_message = str(exc.value)
+    keyword_found = False
+    for keyword in ["from", "import", "class", "def"]:
+        if f"Python keyword '{keyword}' cannot be used as a" in error_message:
+            keyword_found = True
+            break
+
+    assert keyword_found, f"Expected Python keyword error, got: {error_message}"
+
+
+def test_validate_namespaces_and_keyword_separation():
+    """Test that namespace and Python keyword validation work separately in their proper contexts."""
+    # Test that SchemaRoot.validate_namespaces() only catches namespace issues
+    SCHEMA_WITH_NAMESPACE_ISSUE: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Internal",  # Restricted namespace
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword (not caught by SchemaRoot.validate)
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_NAMESPACE_ISSUE)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 1
+    assert "Restricted namespace 'Internal' used on 'TestNode'" in errors[0]
+
+    # Test that SchemaBranch validation catches Python keywords when namespace is valid
+    SCHEMA_WITH_KEYWORD_ISSUE: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "TestNode",
+                "namespace": "Test",  # Valid namespace
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "from", "kind": "Text"},  # Python keyword
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ISSUE)
+    # SchemaRoot validation should pass (no namespace issues)
+    errors = schema_root.validate_namespaces()
+    assert len(errors) == 0
+
+    # But SchemaBranch validation should catch the Python keyword
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    with pytest.raises(ValueError) as exc:
+        schema_branch.process_validate()
+
+    assert "Python keyword 'from' cannot be used as an attribute name" in str(exc.value)

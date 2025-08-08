@@ -4,7 +4,7 @@ name: Keyword Scanner
 on: [push, pull_request]
 
 env:
-  KEYWORDS_LIST: ${{ secrets.KEYWORDS_LIST }}
+  KEYWORDS_LIST: "${{ secrets.KEYWORDS_LIST || '' }}"
 
 jobs:
   scan:

@@ -365,7 +365,7 @@ async def generate_request_artifact_definition(
             repository_kind=repository.get_kind(),
             branch_name=model.branch,
             query=query.name.value,
-            variables=member.extract(params=artifact_definition.parameters.value),
+            variables=await member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
             target_kind=member.get_kind(),
@@ -583,7 +583,7 @@ async def trigger_repository_user_checks_definitions(
                 branch_name=model.branch_name,
                 check_definition_id=model.check_definition_id,
                 proposed_change=model.proposed_change,
-                variables=member.extract(params=definition.parameters.value),
+                variables=await member.extract(params=definition.parameters.value),
                 branch_diff=model.branch_diff,
                 timeout=definition.timeout.value,
             )

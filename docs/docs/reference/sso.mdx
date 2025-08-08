@@ -1,0 +1,118 @@
+---
+title: SSO (Single sign-on)
+---
+
+This reference document describes the available SSO protocols, configuration options, and parameters in Infrahub.
+
+## Supported protocols
+
+:::info
+See [Authentication topic](../topics/authentication) for details on the differences between OIDC and OAuth2.
+:::
+
+### OpenID Connect (OIDC)
+
+OIDC is an identity layer built on top of OAuth 2.0 that standardizes user authentication and identity information exchange.
+
+### OAuth 2.0
+
+OAuth 2.0 is an industry-standard protocol for authorization that focuses on client developer simplicity.
+
+## Configuration slots
+
+Infrahub provides six predefined configuration slots for identity providers:
+
+| Protocol | Available Slots |
+|----------|----------------|
+| OIDC     | PROVIDER1, PROVIDER2, GOOGLE |
+| OAuth 2.0 | PROVIDER1, PROVIDER2, GOOGLE |
+
+:::info
+The Google provider configuration is simplified compared to standard providers. It only requires `client_id` and `client_secret` parameters, as the other endpoints are pre-configured. Otherwise, the functionality is identical to standard providers.
+:::
+
+## Configuration parameters
+
+### OIDC parameters
+
+| Parameter | Environment Variable | TOML Path | Description | Required |
+|-----------|---------------------|-----------|-------------|----------|
+| Client ID | `INFRAHUB_OIDC_<SLOT>_CLIENT_ID` | `security.oidc_provider_settings.<slot>.client_id` | The client identifier issued to the client by the identity provider | Yes |
+| Client Secret | `INFRAHUB_OIDC_<SLOT>_CLIENT_SECRET` | `security.oidc_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | Yes |
+| Discovery URL | `INFRAHUB_OIDC_<SLOT>_DISCOVERY_URL` | `security.oidc_provider_settings.<slot>.discovery_url` | The URL of the OIDC discovery document | Yes |
+| Display Label | `INFRAHUB_OIDC_<SLOT>_DISPLAY_LABEL` | `security.oidc_provider_settings.<slot>.display_label` | The label displayed on the login button | No |
+| Icon | `INFRAHUB_OIDC_<SLOT>_ICON` | `security.oidc_provider_settings.<slot>.icon` | The Material Design icon name to display on the login button | No |
+| Enabled Providers | `INFRAHUB_SECURITY_OIDC_PROVIDERS` | `security.oidc_providers` | Array of enabled OIDC provider slots | Yes* |
+
+*At least one provider must be specified if using OIDC.
+
+### OAuth 2.0 parameters
+
+| Parameter | Environment Variable | TOML Path | Description | Required |
+|-----------|---------------------|-----------|-------------|----------|
+| Client ID | `INFRAHUB_OAUTH2_<SLOT>_CLIENT_ID` | `security.oauth2_provider_settings.<slot>.client_id` | The client identifier issued to the client by the identity provider | Yes |
+| Client Secret | `INFRAHUB_OAUTH2_<SLOT>_CLIENT_SECRET` | `security.oauth2_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | Yes |
+| Authorization URL | `INFRAHUB_OAUTH2_<SLOT>_AUTHORIZATION_URL` | `security.oauth2_provider_settings.<slot>.authorization_url` | The authorization endpoint URL | Yes |
+| Token URL | `INFRAHUB_OAUTH2_<SLOT>_TOKEN_URL` | `security.oauth2_provider_settings.<slot>.token_url` | The token endpoint URL | Yes |
+| Userinfo URL | `INFRAHUB_OAUTH2_<SLOT>_USERINFO_URL` | `security.oauth2_provider_settings.<slot>.userinfo_url` | The userinfo endpoint URL | Yes |
+| Display Label | `INFRAHUB_OAUTH2_<SLOT>_DISPLAY_LABEL` | `security.oauth2_provider_settings.<slot>.display_label` | The label displayed on the login button | No |
+| Icon | `INFRAHUB_OAUTH2_<SLOT>_ICON` | `security.oauth2_provider_settings.<slot>.icon` | The Material Design icon name to display on the login button | No |
+| Enabled Providers | `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | `security.oauth2_providers` | Array of enabled OAuth 2.0 provider slots | Yes* |
+
+*At least one provider must be specified if using OAuth 2.0.
+
+## Redirect URI formats
+
+When configuring a provider in an external identity system, use the following format for the redirect URI:
+
+```text
+https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback
+```
+
+| Protocol | Format Example |
+|----------|----------------|
+| OIDC     | `https://infrahub.example.com/auth/oidc/provider1/callback` |
+| OAuth 2.0 | `https://infrahub.example.com/auth/oauth2/provider1/callback` |
+
+## User attributes mapping
+
+Infrahub maps standard profile attributes from identity providers to its internal user model:
+
+| Infrahub User Field | OIDC Claim | OAuth 2.0 Field |
+|---------------------|------------|-----------------|
+| Username | `preferred_username` or `email` | `preferred_username` or `email` |
+| Email | `email` | `email` |
+| First Name | `given_name` | `given_name` |
+| Last Name | `family_name` | `family_name` |
+
+## Examples
+
+### OIDC configuration example
+
+```toml
+[security.oidc_provider_settings.provider1]
+client_id = "client-id-from-idp"
+client_secret = "client-secret-from-idp"
+discovery_url = "https://login.microsoftonline.com/tenant-id/v2.0/.well-known/openid-configuration"
+display_label = "Microsoft Entra ID"
+icon = "mdi:microsoft"
+
+[security]
+oidc_providers = ["provider1"]
+```
+
+### OAuth 2.0 configuration example
+
+```toml
+[security.oauth2_provider_settings.provider1]
+client_id = "client-id-from-idp"
+client_secret = "client-secret-from-idp"
+authorization_url = "https://login.microsoftonline.com/tenant-id/oauth2/v2.0/authorize"
+token_url = "https://login.microsoftonline.com/tenant-id/oauth2/v2.0/token"
+userinfo_url = "https://graph.microsoft.com/oidc/userinfo"
+display_label = "Microsoft Entra ID"
+icon = "mdi:microsoft"
+
+[security]
+oauth2_providers = ["provider1"]
+```

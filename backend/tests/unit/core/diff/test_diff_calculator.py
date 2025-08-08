@@ -1,3 +1,5 @@
+from collections import defaultdict
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -19,6 +21,9 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.diff.model.path import DiffNode
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -3235,6 +3240,7 @@ async def test_calculate_with_migrated_kind_node(
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 2
     nodes_by_id_and_kind = {(n.uuid, n.kind): n for n in base_diff.nodes}
+    assert len(base_diff.nodes) == 2
     assert set(nodes_by_id_and_kind.keys()) == {
         (car_camry_main.id, "TestCar"),
         (person_jane_main.id, person_jane_main.get_kind()),
@@ -4011,3 +4017,282 @@ async def test_calculate_with_renamed_relationships(
 
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 0
+
+
+async def test_migrated_kind_node_then_peer_delete(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main,
+    car_camry_main,
+    person_john_main,
+    person_jane_main,
+    person_alfred_main,
+    person_albert_main,
+):
+    # migrate TestPerson kind on main
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    original_person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema.inherit_from = ["GenericThing"]
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=original_person_schema,
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+
+    # migrate TestPerson kind back to original on a different branch
+    branch = await create_branch(db=db, branch_name="branch-undo-kind-migrate")
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    original_person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema.inherit_from = []
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=original_person_schema,
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    # create a branch and delete a car on the branch
+    branch = await create_branch(db=db, branch_name="branch-delete-car")
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    branch_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_accord.delete(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers=None,
+        include_unchanged=True,
+    )
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert base_diff.nodes == []
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_id = {n.uuid: n for n in branch_diff.nodes}
+    assert len(branch_diff.nodes) == 2
+    assert set(nodes_by_id.keys()) == {person_john_main.id, car_accord_main.id}
+
+    person_node = nodes_by_id[person_john_main.id]
+    assert person_node.action is DiffAction.UPDATED
+    assert person_node.is_node_kind_migration is False
+    assert len(person_node.attributes) == 0
+    rels_by_identifier = {r.identifier: r for r in person_node.relationships}
+    cars_identifier = person_schema.get_relationship(name="cars").get_identifier()
+    assert set(rels_by_identifier.keys()) == {cars_identifier}
+    cars_rel = rels_by_identifier[cars_identifier]
+    assert cars_rel.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in cars_rel.relationships}
+    assert set(elements_by_id.keys()) == {car_accord_main.id}
+    element_diff = elements_by_id[car_accord_main.id]
+    assert element_diff.action is DiffAction.REMOVED
+
+    car_node = nodes_by_id[car_accord_main.id]
+    assert car_node.action is DiffAction.REMOVED
+    assert car_node.is_node_kind_migration is False
+
+
+async def test_migrated_kind_with_property_level_changes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main,
+    car_camry_main,
+    person_john_main,
+    person_jane_main,
+    person_alfred_main,
+):
+    branch = await create_branch(db=db, branch_name="lets-migrate")
+
+    # property-level changes before migration
+    branch_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+    branch_john.name.value = "John Branch"
+    await branch_john.save(db=db)
+    branch_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_accord.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_visible": False})
+    await branch_accord.save(db=db)
+
+    # migrate TestPerson kind on branch
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    original_person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema.inherit_from = ["GenericThing"]
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=original_person_schema,
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    # property-level change after migration
+    branch_jane = await NodeManager.get_one(db=db, branch=branch, id=person_jane_main.id)
+    branch_jane.name.value = "Jane Branch"
+    await branch_jane.save(db=db)
+    branch_camry = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await branch_camry.owner.update(db=db, data={"id": person_jane_main.id, "_relation__is_protected": True})
+    await branch_camry.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers=None,
+        include_unchanged=True,
+    )
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert base_diff.nodes == []
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_id: dict[str, list[DiffNode]] = defaultdict(list)
+    for node in branch_diff.nodes:
+        nodes_by_id[node.uuid].append(node)
+    assert len(branch_diff.nodes) == 8
+    assert set(nodes_by_id.keys()) == {
+        person_john_main.id,
+        person_jane_main.id,
+        person_alfred_main.id,
+        car_accord_main.id,
+        car_camry_main.id,
+    }
+
+    # validate person_alfred_main migrated
+    alfred_previous_diff = [n for n in nodes_by_id[person_alfred_main.id] if n.action is DiffAction.REMOVED][0]
+    alfred_new_diff = [n for n in nodes_by_id[person_alfred_main.id] if n.action is DiffAction.ADDED][0]
+    assert alfred_previous_diff.is_node_kind_migration is True
+    assert alfred_previous_diff.attributes == []
+    assert alfred_previous_diff.relationships == []
+    assert alfred_new_diff.is_node_kind_migration is True
+    assert alfred_new_diff.attributes == []
+    assert alfred_new_diff.relationships == []
+
+    # validate person_john_main migrated
+    john_previous_diff = [n for n in nodes_by_id[person_john_main.id] if n.action is DiffAction.REMOVED][0]
+    john_new_diff = [n for n in nodes_by_id[person_john_main.id] if n.action is DiffAction.ADDED][0]
+    assert john_previous_diff.is_node_kind_migration is True
+    assert john_previous_diff.attributes == []
+    assert john_previous_diff.relationships == []
+    assert john_new_diff.is_node_kind_migration is True
+    attributes_by_name = {a.name: a for a in john_new_diff.attributes}
+    assert set(attributes_by_name.keys()) == {"name"}
+    name_attr = attributes_by_name["name"]
+    # it would be more correct if this was DiffAction.UPDATED, but ADDED is also technically correct for a node kind migration
+    assert name_attr.action is DiffAction.ADDED
+    properties_by_type = {p.property_type: p for p in name_attr.properties}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+    has_value_prop = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert has_value_prop.action is DiffAction.UPDATED
+    assert has_value_prop.new_value == "John Branch"
+    assert has_value_prop.previous_value == "John"
+    relationships_by_identifier = {r.identifier: r for r in john_new_diff.relationships}
+    assert set(relationships_by_identifier.keys()) == {"testcar__testperson"}
+    cars_rel = relationships_by_identifier["testcar__testperson"]
+    assert cars_rel.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in cars_rel.relationships}
+    assert set(elements_by_id.keys()) == {car_accord_main.id}
+    element_diff = elements_by_id[car_accord_main.id]
+    assert element_diff.action is DiffAction.UPDATED
+    assert element_diff.peer_id == car_accord_main.id
+    properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_VISIBLE}
+    is_visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert is_visible_prop.action is DiffAction.UPDATED
+    assert is_visible_prop.new_value is False
+    assert is_visible_prop.previous_value is True
+
+    # validate person_jane_main migrated
+    jane_previous_diff = [n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.REMOVED][0]
+    jane_new_diff = [n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.ADDED][0]
+    assert jane_previous_diff.is_node_kind_migration is True
+    assert jane_previous_diff.attributes == []
+    assert jane_previous_diff.relationships == []
+    assert jane_new_diff.is_node_kind_migration is True
+    attributes_by_name = {a.name: a for a in jane_new_diff.attributes}
+    assert set(attributes_by_name.keys()) == {"name"}
+    name_attr = attributes_by_name["name"]
+    # it would be more correct if this was DiffAction.UPDATED, but ADDED is also technically correct for a node kind migration
+    assert name_attr.action is DiffAction.ADDED
+    properties_by_type = {p.property_type: p for p in name_attr.properties}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+    has_value_prop = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert has_value_prop.action is DiffAction.UPDATED
+    assert has_value_prop.new_value == "Jane Branch"
+    assert has_value_prop.previous_value == "Jane"
+    relationships_by_identifier = {r.identifier: r for r in jane_new_diff.relationships}
+    assert set(relationships_by_identifier.keys()) == {"testcar__testperson"}
+    cars_rel = relationships_by_identifier["testcar__testperson"]
+    assert cars_rel.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in cars_rel.relationships}
+    assert set(elements_by_id.keys()) == {car_camry_main.id}
+    element_diff = elements_by_id[car_camry_main.id]
+    assert element_diff.action is DiffAction.UPDATED
+    assert element_diff.peer_id == car_camry_main.id
+    properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_PROTECTED}
+    is_protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert is_protected_prop.action is DiffAction.UPDATED
+    assert is_protected_prop.new_value is True
+    assert is_protected_prop.previous_value is False
+
+    # validate car_accord
+    car_diffs = nodes_by_id[car_accord_main.id]
+    assert len(car_diffs) == 1
+    car_diff = car_diffs[0]
+    assert car_diff.action is DiffAction.UPDATED
+    assert car_diff.is_node_kind_migration is False
+    assert car_diff.attributes == []
+    rels_by_identifier = {r.identifier: r for r in car_diff.relationships}
+    assert set(rels_by_identifier.keys()) == {"testcar__testperson"}
+    person_rel = rels_by_identifier["testcar__testperson"]
+    assert person_rel.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in person_rel.relationships}
+    assert set(elements_by_id.keys()) == {person_john_main.id}
+    element_diff = elements_by_id[person_john_main.id]
+    assert element_diff.action is DiffAction.UPDATED
+    assert element_diff.peer_id == person_john_main.id
+    properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_VISIBLE}
+    is_visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
+    assert is_visible_prop.action is DiffAction.UPDATED
+    assert is_visible_prop.new_value is False
+    assert is_visible_prop.previous_value is True
+
+    # validate car_camry
+    car_diffs = nodes_by_id[car_camry_main.id]
+    assert len(car_diffs) == 1
+    car_diff = car_diffs[0]
+    assert car_diff.action is DiffAction.UPDATED
+    assert car_diff.is_node_kind_migration is False
+    assert car_diff.attributes == []
+    rels_by_identifier = {r.identifier: r for r in car_diff.relationships}
+    assert set(rels_by_identifier.keys()) == {"testcar__testperson"}
+    person_rel = rels_by_identifier["testcar__testperson"]
+    assert person_rel.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in person_rel.relationships}
+    assert set(elements_by_id.keys()) == {person_jane_main.id}
+    element_diff = elements_by_id[person_jane_main.id]
+    assert element_diff.action is DiffAction.UPDATED
+    assert element_diff.peer_id == person_jane_main.id
+    properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_PROTECTED}
+    is_protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert is_protected_prop.action is DiffAction.UPDATED
+    assert is_protected_prop.new_value is True
+    assert is_protected_prop.previous_value is False
