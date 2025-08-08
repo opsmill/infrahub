@@ -7,13 +7,10 @@ export interface InfiniteTriggerProps extends React.HTMLAttributes<HTMLDivElemen
 }
 
 export const InfiniteTrigger = ({
-  children,
   hasNextPage,
   onLoadMore,
   isFetchingNextPage,
-  ...props
 }: InfiniteTriggerProps) => {
-  const rootRef = React.useRef<HTMLDivElement>(null);
   const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -35,10 +32,5 @@ export const InfiniteTrigger = ({
     };
   }, [onLoadMore, hasNextPage, isFetchingNextPage]);
 
-  return (
-    <div {...props} ref={rootRef}>
-      {children}
-      <div ref={loadMoreRef} className="h-px" aria-hidden="true" />
-    </div>
-  );
+  return <div ref={loadMoreRef} className="h-px" aria-hidden="true" />;
 };

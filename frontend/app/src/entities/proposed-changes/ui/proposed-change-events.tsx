@@ -37,15 +37,15 @@ export const ProposedChangeEvents = () => {
   }
 
   return (
-    <InfiniteTrigger
-      hasNextPage={hasNextPage}
-      onLoadMore={fetchNextPage}
-      isFetchingNextPage={isFetchingNextPage}
-      className="flex flex-col gap-2 p-2"
-    >
+    <div className="flex flex-col gap-2 p-2">
       {flatData.map((activity) => (
         <EventCard key={activity.id} {...activity} />
       ))}
-    </InfiniteTrigger>
+      <InfiniteTrigger
+        hasNextPage={hasNextPage}
+        onLoadMore={fetchNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+      />
+    </div>
   );
 };
