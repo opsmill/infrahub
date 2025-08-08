@@ -4,7 +4,7 @@ import { InfiniteQueryConfig } from "@/shared/api/types";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
 interface GetEventsQueryOptions extends GetEventsParams {
-  config: InfiniteQueryConfig<typeof getEventsQueryOptions>;
+  config?: InfiniteQueryConfig<typeof getEventsQueryOptions>;
 }
 
 export function getEventsQueryOptions({ filters }: GetEventsParams) {
