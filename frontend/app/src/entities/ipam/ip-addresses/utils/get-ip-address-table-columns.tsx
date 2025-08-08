@@ -10,7 +10,7 @@ import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cell
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { NodeAttribute, NodeCore, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
@@ -25,7 +25,7 @@ const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 export const getIpAddressTableColumns = (
   schema: ModelSchema,
   headerProps?: PopoverTriggerProps
-): ColumnDef<NodeCore>[] => {
+): ColumnDef<NodeObject>[] => {
   const attributes = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getIpAddressRelationshipsVisibleInListView(schema.relationships ?? []);
 
@@ -82,7 +82,7 @@ export const getIpAddressTableColumns = (
             },
           }),
         ]
-      : ([] as Array<any>)),
+      : []),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
         header: () => (
@@ -122,5 +122,5 @@ export const getIpAddressTableColumns = (
         },
       });
     }),
-  ];
+  ] as ColumnDef<NodeObject>[];
 };

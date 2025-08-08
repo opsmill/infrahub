@@ -10,7 +10,7 @@ import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cel
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeAttribute, NodeCore, NodeRelationship } from "@/entities/nodes/types";
+import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Row } from "@/shared/components/container";
@@ -24,7 +24,7 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();
 
-export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore>[] => {
+export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeObject>[] => {
   const attributes = getAttributesVisibleInListView(
     schema.attributes?.filter((attribute) =>
       ["description", "member_type", "utilization"].includes(attribute.name)
@@ -148,5 +148,5 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
         },
       });
     }),
-  ];
+  ] as ColumnDef<NodeObject>[];
 };
