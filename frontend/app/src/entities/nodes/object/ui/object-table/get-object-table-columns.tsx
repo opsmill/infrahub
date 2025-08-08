@@ -1,3 +1,4 @@
+import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
@@ -20,17 +21,9 @@ import * as R from "remeda";
 
 const columnHelper = createColumnHelper<NodeObject>();
 
-export const getObjectTableColumns = (
-  schema: ModelSchema,
-  headerProps?: PopoverTriggerProps
-): ColumnDef<NodeObject>[] => {
-  const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
-  const sortedColumns = R.pipe(
-    [...attributes, ...relationships],
-    R.sortBy((column) => column.order_weight ?? 0)
-  );
-
+export function getObjectIdentifierColumns(
+  schema: ModelSchema
+): Array<ColumnDef<NodeObject, string>> {
   return [
     columnHelper.accessor((node) => getNodeLabel(node), {
       id: "id",
@@ -54,46 +47,77 @@ export const getObjectTableColumns = (
         );
       },
     }),
-    ...(isGenericSchema(schema)
-      ? [
-          columnHelper.accessor("__typename", {
-            header: () => {
-              return <KindHeaderCell schema={schema} />;
-            },
-            cell: ({ cell }) => {
-              const schemaKind = cell.getValue();
-              return <KindBodyCell schemaKind={schemaKind} />;
-            },
-          }),
-        ]
-      : []),
-    ...sortedColumns.map((columnSchema) => {
-      return columnHelper.accessor(columnSchema.name, {
-        header: () => {
-          return <TableColumnHeader columnSchema={columnSchema} schema={schema} {...headerProps} />;
-        },
-        cell: ({ cell }) => {
-          const value = cell.getValue();
-          if ("peer" in columnSchema) {
-            return (
-              <TableCell>
-                <TableRelationshipCell
-                  relationshipSchema={columnSchema}
-                  relationshipData={value as NodeRelationship}
-                />
-              </TableCell>
-            );
-          }
+  ];
+}
+
+export function getObjectGenericColumns(schema: ModelSchema): Array<ColumnDef<NodeObject, string>> {
+  return isGenericSchema(schema)
+    ? [
+        columnHelper.accessor("__typename", {
+          id: "objectKind",
+          header: () => {
+            return <KindHeaderCell schema={schema} />;
+          },
+          cell: ({ cell }) => {
+            const schemaKind = cell.getValue();
+            if (schemaKind === IP_ADDRESS_AVAILABLE_KIND) return null;
+            if (schemaKind === IP_PREFIX_AVAILABLE_KIND) return null;
+
+            return <KindBodyCell schemaKind={schemaKind} />;
+          },
+        }),
+      ]
+    : [];
+}
+
+export function getObjectFieldsColumns(
+  schema: ModelSchema,
+  headerProps?: PopoverTriggerProps
+): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
+  const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
+  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
+  const sortedColumns = R.pipe(
+    [...attributes, ...relationships],
+    R.sortBy((column) => column.order_weight ?? 0)
+  );
+
+  return sortedColumns.map((columnSchema) => {
+    return columnHelper.accessor(columnSchema.name, {
+      header: () => {
+        return <TableColumnHeader columnSchema={columnSchema} schema={schema} {...headerProps} />;
+      },
+      cell: ({ cell }) => {
+        const value = cell.getValue();
+        if ("peer" in columnSchema) {
           return (
             <TableCell>
-              <TableAttributeCell
-                attributeSchema={columnSchema}
-                attributeData={value as NodeAttribute}
+              <TableRelationshipCell
+                relationshipSchema={columnSchema}
+                relationshipData={value as NodeRelationship}
               />
             </TableCell>
           );
-        },
-      });
-    }),
-  ] as ColumnDef<NodeObject>[];
+        }
+        return (
+          <TableCell>
+            <TableAttributeCell
+              attributeSchema={columnSchema}
+              attributeData={value as NodeAttribute}
+            />
+          </TableCell>
+        );
+      },
+    });
+  });
+}
+
+export const getObjectTableColumns = (
+  schema: ModelSchema,
+  headerProps?: PopoverTriggerProps
+): Array<ColumnDef<NodeObject>> => {
+  return [
+    ...getObjectIdentifierColumns(schema),
+    ...getObjectGenericColumns(schema),
+    ...getObjectFieldsColumns(schema, headerProps),
+  ] as Array<ColumnDef<NodeObject>>;
 };
