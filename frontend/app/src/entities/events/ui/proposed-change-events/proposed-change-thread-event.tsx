@@ -4,7 +4,11 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-export const ProposedChangeThreadEvent = ({ id }: { id: string }) => {
+interface ProposedChangeThreadEventProps {
+  id: string;
+}
+
+export const ProposedChangeThreadEvent = ({ id }: ProposedChangeThreadEventProps) => {
   const { data, isPending, error } = useGetProposedChangeThread({ threadId: id });
 
   if (isPending) {
