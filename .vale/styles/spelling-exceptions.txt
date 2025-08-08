@@ -184,6 +184,10 @@ Widget's
 Yaml
 yamllint
 YouTube
+ASNs
+IPs
+Loopback
+anycast
 Kriten
 plaintext
 streamlit
