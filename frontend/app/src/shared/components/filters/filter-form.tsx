@@ -11,7 +11,7 @@ import { classNames } from "@/shared/utils/common";
 import { forwardRef } from "react";
 
 export interface FilterFormProps extends FormProps {
-  schema: ModelSchema | null;
+  schema: ModelSchema;
   filters: Array<Filter>;
   onCancel?: () => void;
 }
@@ -22,6 +22,8 @@ export const FilterForm = forwardRef<FormRef, FilterFormProps>(
       schema,
       isFilterForm: true,
       initialObject: getObjectFromFilters(schema, filters),
+      parentSchema: null,
+      parentData: null,
     });
 
     return (

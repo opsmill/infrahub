@@ -1,22 +1,15 @@
-import { SEARCH_FILTERS, TASK_OBJECT } from "@/config/constants";
-import { ModelSchema } from "@/entities/schema/types";
+import { SEARCH_FILTERS } from "@/config/constants";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { FilterForm } from "@/shared/components/filters/filter-form";
+import SlideOver from "@/shared/components/display/slide-over";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/shared/components/form/type";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { TasksFilterForm } from "./tasks-filter-form";
+import { TasksFilterForm } from "../../../shared/components/filters/tasks-filter-form";
 
-type FiltersProps = {
-  schema?: ModelSchema;
-  kind?: string;
-};
-
-export const Filters = ({ schema, kind }: FiltersProps) => {
+export const TaskFilters = () => {
   const [filters, setFilters] = useFilters();
   const [pagination, setPagination] = usePagination();
   const [showFilters, setShowFilters] = useState(false);
@@ -47,35 +40,6 @@ export const Filters = ({ schema, kind }: FiltersProps) => {
 
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
 
-  const getForm = () => {
-    if (kind === TASK_OBJECT) {
-      return (
-        <SlideOver title={"Apply filters"} open={showFilters} setOpen={setShowFilters}>
-          <TasksFilterForm
-            filters={filters}
-            onSubmit={handleSubmit}
-            onCancel={() => setShowFilters(false)}
-          />
-        </SlideOver>
-      );
-    }
-
-    return (
-      <SlideOver
-        title={<SlideOverTitle schema={schema} currentObjectLabel="All" title="Apply filters" />}
-        open={showFilters}
-        setOpen={setShowFilters}
-      >
-        <FilterForm
-          filters={filters}
-          schema={schema}
-          onSubmit={handleSubmit}
-          onCancel={() => setShowFilters(false)}
-        />
-      </SlideOver>
-    );
-  };
-
   return (
     <>
       <div className="flex items-center gap-1">
@@ -99,7 +63,13 @@ export const Filters = ({ schema, kind }: FiltersProps) => {
         )}
       </div>
 
-      {getForm()}
+      <SlideOver title={"Apply filters"} open={showFilters} setOpen={setShowFilters}>
+        <TasksFilterForm
+          filters={filters}
+          onSubmit={handleSubmit}
+          onCancel={() => setShowFilters(false)}
+        />
+      </SlideOver>
     </>
   );
 };
