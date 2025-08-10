@@ -157,7 +157,20 @@ class NodeCreateAllQuery(NodeQuery):
         relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
+            # Fetch all relationship peers through a single database call for performances.
+            peers = await rel_manager.get_peers(db=db, branch_agnostic=self.branch_agnostic)
+
             for rel in rel_manager._relationships:
+                try:
+                    rel.set_peer(value=peers[rel.get_peer_id()])
+                except KeyError:
+                    pass
+                except ValueError:
+                    # Relationship has not been initialized yet, it means the peer does not exist in db yet
+                    # typically because it will be allocated from a ressource pool. In that case, the peer
+                    # will be fetched using `rel.resolve` later.
+                    pass
+
                 rel_create_data = await rel.get_create_data(db=db, at=at)
                 if rel_create_data.peer_branch_level > deepest_branch_level or (
                     deepest_branch_name == GLOBAL_BRANCH_NAME and rel_create_data.peer_branch == registry.default_branch
