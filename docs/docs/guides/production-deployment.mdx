@@ -1,0 +1,427 @@
+---
+title: Production Deployment
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
+
+This guide walks you through deploying Infrahub in a production environment, covering essential steps and best practices for a robust, maintainable deployment.
+
+## Prerequisites
+
+Before beginning your production deployment:
+
+- Ensure your system meets the [hardware requirements](../topics/hardware-requirements)
+- Have administrative access to your deployment environment
+- Understand basic Git operations and infrastructure management concepts
+- Determine whether you need [Community or Enterprise](#choosing-between-community-and-enterprise) edition
+
+## Choosing Between Community and Enterprise
+
+### Community Edition
+
+Infrahub Community is ideal for:
+
+- Development and testing environments
+- Teams that don't require enterprise support
+
+**Key features:**
+
+- Full access to core Infrahub functionality
+- Docker and Kubernetes deployment options
+- Community support via GitHub and Discord
+
+### Enterprise Edition<EnterpriseBadge />
+
+Infrahub Enterprise provides:
+
+- Advanced high-availability configurations
+- Enhanced performance with parallel query execution
+- Enterprise support with SLAs
+- Additional security and compliance features
+- Professional services for deployment assistance
+
+See [Infrahub Enterprise pricing](https://opsmill.com/pricing) for more details on Enterprise licensing.
+
+## Deployment Options
+
+<Tabs>
+<TabItem value="community" label="Community" default>
+
+### Community Deployment Options
+
+Infrahub Community supports containerized deployments suitable for most production workloads:
+
+<Tabs>
+<TabItem value="docker" label="Docker" default>
+
+Docker deployment is suitable for single-node production environments.
+
+#### Requirements
+
+- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+- Sufficient system resources as outlined in [hardware requirements](../topics/hardware-requirements)
+
+#### Deployment Steps
+
+Follow the [installation guide](./installation#community) to set up your Docker-based deployment. For production:
+
+1. Configure persistent volumes for data storage
+2. Set appropriate resource limits in your Docker Compose configuration
+3. Configure environment-specific settings in your `.env` file
+
+</TabItem>
+<TabItem value="kubernetes" label="Kubernetes">
+
+Kubernetes deployment offers better scalability and resilience.
+
+#### Requirements
+
+- Kubernetes cluster (1.25+)
+- Helm (3.x)
+- kubectl configured with cluster access
+
+#### Deployment Steps
+
+Follow the [Kubernetes with Helm](./installation#community) installation instructions to setup your Kubernetes-based deployment.
+
+</TabItem>
+</Tabs>
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+### Enterprise Deployment Options<EnterpriseBadge />
+
+Enterprise deployments include additional options for high availability and performance:
+
+#### High Availability Architecture
+
+Enterprise supports multi-node deployments with:
+
+- Multiple API server instances behind a load balancer
+- Neo4j clustering for database redundancy
+- Redis clustering for cache redundancy
+- Dedicated message bus clustering
+
+See [high availability architecture](../topics/architecture#infrahub-high-availability-deployment) for detailed configuration.
+
+#### Performance Optimization
+
+Enterprise editions benefit from:
+
+- **Parallel query execution**: Leverages multiple CPU cores for Neo4j operations
+- **Advanced caching strategies**: Improved cache invalidation and distribution
+- **Query optimization**: Enterprise-specific query planners
+
+#### Enterprise Kubernetes Deployment
+
+Follow the [Kubernetes with Helm](./installation#enterprise) installation instructions to setup your Kubernetes-based deployment.
+
+</TabItem>
+</Tabs>
+
+## Git Repository Initialization
+
+A Git repository is essential for managing your infrastructure-as-code with Infrahub. This process is the same for both Community and Enterprise editions.
+
+### Step 1: Install infrahubctl
+
+Follow the [infrahubctl](https://docs.infrahub.app/python-sdk/guides/installation#ctl) installation instructions.
+
+### Step 2: Initialize Repository
+
+Follow the [infrahubctl repository init documentation](https://atg-20250711-cs60.infrahub-sdk-python.pages.dev/infrahubctl/infrahubctl-repository#infrahubctl-repository-init):
+
+```bash
+infrahubctl repository init
+```
+
+The initialization creates:
+
+- `.infrahub.yml` configuration file
+- Directory structure for schema, transforms, checks, and artifacts
+
+## Configure Git Synchronization
+
+After initializing your repository, configure Infrahub to synchronize with it. Navigate to the Infrahub UI and add your repository following the [repository configuration guide](./repository).
+
+For detailed repository configuration options, see the [repository topic documentation](../topics/repository).
+
+## Reverse Proxy & Certificate Setup
+
+For both Community and Enterprise deployments, consider using a reverse proxy with SSL/TLS certificates for production.
+
+### Certificate Management
+
+For production deployments, use trusted SSL certificates. Options include:
+
+1. **Let's Encrypt** (recommended for public-facing deployments):
+2. **Internal CA**: For internal deployments, use your organization's certificate authority
+
+## Backup Strategy
+
+Regular backups are critical for production deployments.
+
+### Community Backup Approach
+
+Follow the [database backup guide](./database-backup) for Community editions:
+
+1. **Schedule regular backups** using cron or system timers
+2. **Backup retention policy**: Keep backups for at least 30 days
+3. **Offsite storage**: Store backups in external storage (S3, Azure Blob, etc.)
+
+### Enterprise Backup Features<EnterpriseBadge />
+
+Enterprise editions include additional backup capabilities:
+
+- **Online backups**: Backup without stopping the database
+- **Incremental backups**: Only backup changes since last full backup
+- **Point-in-time recovery**: Restore to any specific moment
+- **Automated backup orchestration**: Built-in backup scheduling
+
+## Initial Admin Configuration
+
+After deploying Infrahub, immediately secure the default admin account:
+
+### Change Default Admin Password
+
+The default admin credentials are:
+
+- **Username**: `admin`
+- **Password**: `infrahub` (default)
+
+To change the admin password:
+
+<Tabs>
+<TabItem value="env" label="Environment Variable" default>
+
+Set a custom admin password during deployment using the environment variable:
+
+```bash
+INFRAHUB_INITIAL_ADMIN_PASSWORD=your-secure-password
+```
+
+For Docker deployments, add this to your `.env` file or docker-compose.yml:
+
+```yaml
+environment:
+  INFRAHUB_INITIAL_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-your-secure-password}
+```
+
+For Kubernetes, use a Secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infrahub-admin
+type: Opaque
+stringData:
+  INFRAHUB_INITIAL_ADMIN_PASSWORD: your-secure-password
+```
+
+</TabItem>
+<TabItem value="ui" label="Web UI">
+
+After initial deployment, change the password through the UI:
+
+1. Log in with the default credentials
+2. Navigate to your profile settings
+3. Select "Change Password"
+4. Enter your new secure password
+5. Save the changes
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+Use the GraphQL API to update the admin password:
+
+```graphql
+mutation UpdateAdminPassword {
+  CoreAccountUpdate(
+    data: {
+      id: "admin-account-id"
+      password: {
+        value: "new-secure-password"
+      }
+    }
+  ) {
+    ok
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Configure Admin API Token
+
+The default admin API token should be changed from its default value:
+
+#### Default Configuration
+
+```bash
+# Default token (CHANGE THIS!)
+INFRAHUB_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec
+```
+
+#### Set Custom Token
+
+<Tabs>
+<TabItem value="deployment" label="During Deployment" default>
+
+Generate a secure token and set it during deployment:
+
+```bash
+# Generate a secure token
+export INFRAHUB_INITIAL_ADMIN_TOKEN=$(uuidgen)
+
+# Or use openssl
+export INFRAHUB_INITIAL_ADMIN_TOKEN=$(openssl rand -hex 32)
+```
+
+Add to your deployment configuration:
+
+**Docker Compose:**
+
+```yaml
+environment:
+  INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN}
+```
+
+**Kubernetes:**
+
+```yaml
+env:
+  - name: INFRAHUB_INITIAL_ADMIN_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: infrahub-secrets
+        key: admin-token
+```
+
+</TabItem>
+<TabItem value="post-deployment" label="After Deployment">
+
+Manage API tokens after deployment following the [API token management guide](./managing-api-tokens):
+
+1. Log in to the Infrahub UI as admin
+2. Navigate to **Profile** → **API Tokens**
+3. Create a new token with appropriate expiration
+4. Delete or rotate the default token
+5. Update any automation using the old token
+
+</TabItem>
+</Tabs>
+
+### Security Best Practices
+
+1. **Strong Passwords**: Use passwords with at least 16 characters, including mixed case, numbers, and symbols
+2. **Token Rotation**: Regularly rotate API tokens
+3. **Least Privilege**: Create separate accounts for different users/services instead of sharing admin credentials
+4. **Audit Logging**: Monitor authentication attempts and admin actions through [activity logs](../topics/activity-log)
+5. **Disable Anonymous Access**: For production, consider disabling anonymous access:
+
+   ```bash
+   INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
+   ```
+
+## Security Considerations
+
+Implement these additional security best practices:
+
+1. **Network Security**:
+   - Restrict database access to application servers only
+   - Use firewall rules to limit access to necessary ports
+   - Enable SSL/TLS for all external communications
+
+2. **Authentication & Authorization**:
+   - Configure [SSO](./sso) for centralized authentication
+   - Implement proper [role-based access control](./accounts-permissions)
+   - Regularly audit user permissions
+
+3. **Secrets Management**:
+   - Store sensitive configuration in environment variables
+   - Use secrets management tools (Vault, Kubernetes Secrets)
+   - Rotate credentials regularly
+
+## Monitoring and Maintenance
+
+### Health Checks
+
+Configure monitoring for:
+
+- Service availability (API endpoints)
+- Database performance metrics
+- Resource utilization (CPU, memory, disk)
+- Application logs and errors
+
+### Monitoring
+
+For deployments, monitor Infrahub using your preferred infrastructure monitoring tools (such as Prometheus, Grafana, etc.) to track service health, resource usage, and application logs.
+
+### Updates and Upgrades
+
+Follow the [upgrade guide](./upgrade) for updating Infrahub:
+
+1. Review release notes before upgrading
+2. Test upgrades in a staging environment first
+3. Schedule maintenance windows for production upgrades
+4. Always backup before upgrading
+
+**Enterprise customers**: Contact support for guided upgrade assistance.
+
+## Troubleshooting
+
+Common issues and solutions:
+
+### Connection Issues
+
+If services cannot connect:
+
+1. Verify network connectivity between components
+2. Check firewall rules and security groups
+3. Validate SSL certificate configuration
+
+### Performance Issues
+
+For performance problems:
+
+1. Review [hardware requirements](../topics/hardware-requirements)
+2. Check database query performance
+3. Monitor resource utilization
+
+### Sync Issues
+
+If Git synchronization fails:
+
+1. Verify repository accessibility
+2. Check authentication credentials
+3. Review sync logs for specific errors
+
+## Support Options
+
+### Community Support
+
+- GitHub Issues: [github.com/opsmill/infrahub](https://github.com/opsmill/infrahub)
+- Discord Community: [discord.gg/infrahub](https://discord.gg/infrahub)
+- Documentation: [docs.infrahub.app](https://docs.infrahub.app)
+
+### Enterprise Support<EnterpriseBadge />
+
+- 24/7 support with SLA guarantees
+- Dedicated support engineer
+- Professional services for deployment
+- Training and certification programs
+
+Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support.
+
+## Related Resources
+
+- [Architecture Overview](../topics/architecture)
+- [Configuration Reference](../reference/configuration)
+- [API Server Reference](../reference/api-server)
+- [High Availability Deployment](../topics/architecture#infrahub-high-availability-deployment)
