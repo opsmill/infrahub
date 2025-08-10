@@ -233,7 +233,7 @@ class RelationshipRemove(Mutation):
                     # we should use RelationshipDataDeleteQuery to delete the relationship
                     # it would be more query efficient
                     rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
-                    await rel.load(db=db, data=existing_peers[node_data.get("id")])
+                    rel.load(db=db, data=existing_peers[node_data.get("id")])
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
