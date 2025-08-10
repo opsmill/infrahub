@@ -17,9 +17,9 @@ Before beginning your production deployment:
 - Understand basic Git operations and infrastructure management concepts
 - Determine whether you need [Community or Enterprise](#choosing-between-community-and-enterprise) edition
 
-## Choosing Between Community and Enterprise
+## Choosing between community and enterprise
 
-### Community Edition
+### Community edition
 
 Infrahub Community is ideal for:
 
@@ -32,7 +32,7 @@ Infrahub Community is ideal for:
 - Docker and Kubernetes deployment options
 - Community support via GitHub and Discord
 
-### Enterprise Edition<EnterpriseBadge />
+### Enterprise edition<EnterpriseBadge />
 
 Infrahub Enterprise provides:
 
@@ -44,12 +44,12 @@ Infrahub Enterprise provides:
 
 See [Infrahub Enterprise pricing](https://opsmill.com/pricing) for more details on Enterprise licensing.
 
-## Deployment Options
+## Deployment options
 
 <Tabs>
 <TabItem value="community" label="Community" default>
 
-### Community Deployment Options
+### Community deployment options
 
 Infrahub Community supports containerized deployments suitable for most production workloads:
 
@@ -64,7 +64,7 @@ Docker deployment is suitable for single-node production environments.
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - Sufficient system resources as outlined in [hardware requirements](../topics/hardware-requirements)
 
-#### Deployment Steps
+#### Deployment steps
 
 Follow the [installation guide](./installation#community) to set up your Docker-based deployment. For production:
 
@@ -83,7 +83,7 @@ Kubernetes deployment offers better scalability and resilience.
 - Helm (3.x)
 - kubectl configured with cluster access
 
-#### Deployment Steps
+#### Deployment steps
 
 Follow the [Kubernetes with Helm](./installation#community) installation instructions to setup your Kubernetes-based deployment.
 
@@ -93,11 +93,11 @@ Follow the [Kubernetes with Helm](./installation#community) installation instruc
 </TabItem>
 <TabItem value="enterprise" label="Enterprise">
 
-### Enterprise Deployment Options<EnterpriseBadge />
+### Enterprise deployment options<EnterpriseBadge />
 
 Enterprise deployments include additional options for high availability and performance:
 
-#### High Availability Architecture
+#### High availability architecture
 
 Enterprise supports multi-node deployments with:
 
@@ -108,7 +108,7 @@ Enterprise supports multi-node deployments with:
 
 See [high availability architecture](../topics/architecture#infrahub-high-availability-deployment) for detailed configuration.
 
-#### Performance Optimization
+#### Performance optimization
 
 Enterprise editions benefit from:
 
@@ -116,22 +116,22 @@ Enterprise editions benefit from:
 - **Advanced caching strategies**: Improved cache invalidation and distribution
 - **Query optimization**: Enterprise-specific query planners
 
-#### Enterprise Kubernetes Deployment
+#### Enterprise Kubernetes deployment
 
 Follow the [Kubernetes with Helm](./installation#enterprise) installation instructions to setup your Kubernetes-based deployment.
 
 </TabItem>
 </Tabs>
 
-## Git Repository Initialization
+## Git repository initialization
 
 A Git repository is essential for managing your infrastructure-as-code with Infrahub. This process is the same for both Community and Enterprise editions.
 
-### Step 1: Install infrahubctl
+### Step 1: install infrahubctl
 
 Follow the [infrahubctl](https://docs.infrahub.app/python-sdk/guides/installation#ctl) installation instructions.
 
-### Step 2: Initialize Repository
+### Step 2: initialize repository
 
 Follow the [infrahubctl repository init documentation](https://atg-20250711-cs60.infrahub-sdk-python.pages.dev/infrahubctl/infrahubctl-repository#infrahubctl-repository-init):
 
@@ -144,28 +144,28 @@ The initialization creates:
 - `.infrahub.yml` configuration file
 - Directory structure for schema, transforms, checks, and artifacts
 
-## Configure Git Synchronization
+## Configure Git synchronization
 
 After initializing your repository, configure Infrahub to synchronize with it. Navigate to the Infrahub UI and add your repository following the [repository configuration guide](./repository).
 
 For detailed repository configuration options, see the [repository topic documentation](../topics/repository).
 
-## Reverse Proxy & Certificate Setup
+## Reverse proxy and certificate setup
 
 For both Community and Enterprise deployments, consider using a reverse proxy with SSL/TLS certificates for production.
 
-### Certificate Management
+### Certificate management
 
 For production deployments, use trusted SSL certificates. Options include:
 
 1. **Let's Encrypt** (recommended for public-facing deployments):
 2. **Internal CA**: For internal deployments, use your organization's certificate authority
 
-## Backup Strategy
+## Backup strategy
 
 Regular backups are critical for production deployments.
 
-### Community Backup Approach
+### Community backup approach
 
 Follow the [database backup guide](./database-backup) for Community editions:
 
@@ -173,7 +173,7 @@ Follow the [database backup guide](./database-backup) for Community editions:
 2. **Backup retention policy**: Keep backups for at least 30 days
 3. **Offsite storage**: Store backups in external storage (S3, Azure Blob, etc.)
 
-### Enterprise Backup Features<EnterpriseBadge />
+### Enterprise backup features<EnterpriseBadge />
 
 Enterprise editions include additional backup capabilities:
 
@@ -182,11 +182,11 @@ Enterprise editions include additional backup capabilities:
 - **Point-in-time recovery**: Restore to any specific moment
 - **Automated backup orchestration**: Built-in backup scheduling
 
-## Initial Admin Configuration
+## Initial admin configuration
 
 After deploying Infrahub, immediately secure the default admin account:
 
-### Change Default Admin Password
+### Change default admin password
 
 The default admin credentials are:
 
@@ -257,18 +257,18 @@ mutation UpdateAdminPassword {
 </TabItem>
 </Tabs>
 
-### Configure Admin API Token
+### Configure admin API token
 
 The default admin API token should be changed from its default value:
 
-#### Default Configuration
+#### Default configuration
 
 ```bash
 # Default token (CHANGE THIS!)
 INFRAHUB_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec
 ```
 
-#### Set Custom Token
+#### Set custom token
 
 <Tabs>
 <TabItem value="deployment" label="During Deployment" default>
@@ -317,7 +317,7 @@ Manage API tokens after deployment following the [API token management guide](./
 </TabItem>
 </Tabs>
 
-### Security Best Practices
+### Security best practices
 
 1. **Strong Passwords**: Use passwords with at least 16 characters, including mixed case, numbers, and symbols
 2. **Token Rotation**: Regularly rotate API tokens
@@ -329,7 +329,7 @@ Manage API tokens after deployment following the [API token management guide](./
    INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
    ```
 
-## Security Considerations
+## Security considerations
 
 Implement these additional security best practices:
 
@@ -348,9 +348,9 @@ Implement these additional security best practices:
    - Use secrets management tools (Vault, Kubernetes Secrets)
    - Rotate credentials regularly
 
-## Monitoring and Maintenance
+## Monitoring and maintenance
 
-### Health Checks
+### Health checks
 
 Configure monitoring for:
 
@@ -363,7 +363,7 @@ Configure monitoring for:
 
 For deployments, monitor Infrahub using your preferred infrastructure monitoring tools (such as Prometheus, Grafana, etc.) to track service health, resource usage, and application logs.
 
-### Updates and Upgrades
+### Updates and upgrades
 
 Follow the [upgrade guide](./upgrade) for updating Infrahub:
 
@@ -378,7 +378,7 @@ Follow the [upgrade guide](./upgrade) for updating Infrahub:
 
 Common issues and solutions:
 
-### Connection Issues
+### Connection issues
 
 If services cannot connect:
 
@@ -386,7 +386,7 @@ If services cannot connect:
 2. Check firewall rules and security groups
 3. Validate SSL certificate configuration
 
-### Performance Issues
+### Performance issues
 
 For performance problems:
 
@@ -394,7 +394,7 @@ For performance problems:
 2. Check database query performance
 3. Monitor resource utilization
 
-### Sync Issues
+### Sync issues
 
 If Git synchronization fails:
 
@@ -402,15 +402,15 @@ If Git synchronization fails:
 2. Check authentication credentials
 3. Review sync logs for specific errors
 
-## Support Options
+## Support options
 
-### Community Support
+### Community support
 
 - GitHub Issues: [github.com/opsmill/infrahub](https://github.com/opsmill/infrahub)
 - Discord Community: [discord.gg/infrahub](https://discord.gg/infrahub)
 - Documentation: [docs.infrahub.app](https://docs.infrahub.app)
 
-### Enterprise Support<EnterpriseBadge />
+### Enterprise support<EnterpriseBadge />
 
 - 24/7 support with SLA guarantees
 - Dedicated support engineer
@@ -419,7 +419,7 @@ If Git synchronization fails:
 
 Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support.
 
-## Related Resources
+## Related resources
 
 - [Architecture Overview](../topics/architecture)
 - [Configuration Reference](../reference/configuration)
