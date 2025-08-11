@@ -16,5 +16,5 @@ export const updateProposedChangeCheckState: UpdateProposedChangeCheckState = as
     throw new Error(errors[0].message);
   }
 
-  return data.CoreProposedChangeReview.object;
+  return data.CoreProposedChangeCheckForApprovalRevoke.object;
 };
