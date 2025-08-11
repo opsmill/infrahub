@@ -9,7 +9,7 @@ from tests.helpers.graphql import graphql
 
 
 async def test_delete_last_dropdown_option(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     query = """
     mutation {
@@ -18,7 +18,9 @@ async def test_delete_last_dropdown_option(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -32,7 +34,7 @@ async def test_delete_last_dropdown_option(
 
 
 async def test_delete_last_enum_option(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     query = """
     mutation {
@@ -41,7 +43,9 @@ async def test_delete_last_enum_option(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -55,7 +59,7 @@ async def test_delete_last_enum_option(
 
 
 async def test_delete_enum_option_that_does_not_exist(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     query = """
     mutation {
@@ -64,7 +68,9 @@ async def test_delete_enum_option_that_does_not_exist(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -78,7 +84,7 @@ async def test_delete_enum_option_that_does_not_exist(
 
 
 async def test_delete_drop_option_that_does_not_exist(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     query = """
     mutation {
@@ -87,7 +93,9 @@ async def test_delete_drop_option_that_does_not_exist(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -101,7 +109,7 @@ async def test_delete_drop_option_that_does_not_exist(
 
 
 async def test_add_enum_option_that_exist(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     query = """
     mutation {
@@ -110,7 +118,9 @@ async def test_add_enum_option_that_exist(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -124,7 +134,7 @@ async def test_add_enum_option_that_exist(
 
 
 async def test_delete_dropdown_option_in_use(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     obj1 = await Node.init(db=db, schema="TestChoice")
     await obj1.new(db=db, name="test-passive-01", status="passive", temperature_scale="celsius")
@@ -137,7 +147,9 @@ async def test_delete_dropdown_option_in_use(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -151,7 +163,7 @@ async def test_delete_dropdown_option_in_use(
 
 
 async def test_delete_enum_option_in_use(
-    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
 ):
     obj1 = await Node.init(db=db, schema="TestChoice")
     await obj1.new(db=db, name="test-passive-01", status="passive")
@@ -164,7 +176,9 @@ async def test_delete_enum_option_in_use(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
