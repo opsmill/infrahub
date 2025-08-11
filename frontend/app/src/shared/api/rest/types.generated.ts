@@ -1274,6 +1274,7 @@ export interface components {
         ComputedAttributeKind: "User" | "Jinja2" | "TransformPython";
         /** ConfigAPI */
         ConfigAPI: {
+            policy: any;
             main: components["schemas"]["MainSettings"];
             logging: components["schemas"]["LoggingSettings"];
             analytics: components["schemas"]["AnalyticsSettings"];
