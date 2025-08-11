@@ -3,6 +3,7 @@ import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-coun
 import { NodeAttribute } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { queryClient } from "@/shared/api/rest/client";
+import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import Content from "@/shared/components/layout/content";
 import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
@@ -29,7 +30,10 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
     isPending,
     isRefetching,
     isError,
-  } = useObjectsCount({ objectKind: schema.kind as string, filters });
+  } = useObjectsCount({
+    objectKind: schema.kind as string,
+    filters: removeFiltersNotInSchema(filters, schema),
+  });
 
   const refetchObjects = () => {
     queryClient.invalidateQueries({

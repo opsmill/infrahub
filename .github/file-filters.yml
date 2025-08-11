@@ -94,3 +94,4 @@ e2e_all:
   - *demo_files
   - *ci_config
   - *development_files
+  - *infrahub_poetry_files

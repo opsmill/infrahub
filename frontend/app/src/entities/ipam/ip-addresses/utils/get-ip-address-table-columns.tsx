@@ -3,16 +3,14 @@ import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/type
 import { IpAddressAvailableCreateFormTrigger } from "@/entities/ipam/ip-addresses/ui/ip-address-available-create-form-trigger";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
-import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
-import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { NodeAttribute, NodeCore, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
+import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
@@ -25,7 +23,7 @@ const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 export const getIpAddressTableColumns = (
   schema: ModelSchema,
   headerProps?: PopoverTriggerProps
-): ColumnDef<NodeCore>[] => {
+): ColumnDef<NodeObject>[] => {
   const attributes = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getIpAddressRelationshipsVisibleInListView(schema.relationships ?? []);
 
@@ -70,19 +68,7 @@ export const getIpAddressTableColumns = (
         );
       },
     }),
-    ...(isGenericSchema(schema)
-      ? [
-          columnHelper.accessor("__typename", {
-            id: "objectKind",
-            header: () => <KindHeaderCell schema={schema} />,
-            cell: ({ cell }) => {
-              const schemaKind = cell.getValue();
-              if (schemaKind === IP_ADDRESS_AVAILABLE_KIND) return null;
-              return <KindBodyCell schemaKind={cell.getValue()} />;
-            },
-          }),
-        ]
-      : ([] as Array<any>)),
+    ...getObjectGenericColumns(schema),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
         header: () => (
@@ -122,5 +108,5 @@ export const getIpAddressTableColumns = (
         },
       });
     }),
-  ];
+  ] as ColumnDef<NodeObject>[];
 };

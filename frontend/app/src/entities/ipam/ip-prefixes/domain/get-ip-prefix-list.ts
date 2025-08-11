@@ -1,7 +1,11 @@
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { buildGetIpPrefixListQuery } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
+import {
+  buildGetIpPrefixListWithAvailabilityQuery,
+  buildGetIpPrefixListWithoutAvailabilityQuery,
+} from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
 import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { ModelSchema } from "@/entities/schema/types";
@@ -23,20 +27,23 @@ export const getIpPrefixList: GetIpPrefixList = async ({
   offset,
   branchName,
   atDate,
-  filters,
+  filters = [],
 }) => {
   const attributesVisible = getPrefixAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
 
+  const excludeIpAvailability = hasIncompatibleFiltersForIpAvailability(filters);
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
-  const queryString = buildGetIpPrefixListQuery({
+  const queryString = (
+    excludeIpAvailability
+      ? buildGetIpPrefixListWithoutAvailabilityQuery
+      : buildGetIpPrefixListWithAvailabilityQuery
+  )({
     limit,
     offset,
     filters,
-    objectKind: schemaKindToQuery,
+    objectKind: schemaKind,
     attributes: attributesVisible,
     relationships: relationshipsVisible,
   });
@@ -50,5 +57,9 @@ export const getIpPrefixList: GetIpPrefixList = async ({
     },
   });
 
-  return data[IP_PREFIX_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
+  return (
+    data[excludeIpAvailability ? schemaKind : IP_PREFIX_GENERIC]?.edges?.map(
+      (edge: any) => edge.node
+    ) ?? []
+  );
 };

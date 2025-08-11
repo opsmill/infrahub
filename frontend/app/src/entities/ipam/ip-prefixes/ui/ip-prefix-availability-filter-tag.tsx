@@ -3,6 +3,7 @@ import {
   HIDE_AVAILABLE_IP,
   SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 import useFilters from "@/shared/hooks/useFilters";
@@ -14,6 +15,7 @@ export function IpPrefixAvailabilityFilterTag({ ...props }: TagProps) {
   const { objectId } = useParams();
 
   if (!objectId) return null; // to hide it on IPAM homepage
+  if (hasIncompatibleFiltersForIpAvailability(filters)) return null;
 
   const currentIpAvailabilityFilter = filters.find(
     (filter) => filter.name === AVAILABLE_IP_FILTER_NAME

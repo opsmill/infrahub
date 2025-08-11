@@ -1,18 +1,16 @@
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
-import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
-import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
+import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
+import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeAttribute, NodeCore, NodeRelationship } from "@/entities/nodes/types";
+import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Row } from "@/shared/components/container";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
@@ -24,12 +22,8 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();
 
-export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore>[] => {
-  const attributes = getAttributesVisibleInListView(
-    schema.attributes?.filter((attribute) =>
-      ["description", "member_type", "utilization"].includes(attribute.name)
-    ) ?? []
-  );
+export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<NodeObject>> => {
+  const attributes = getPrefixAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
 
   return [
@@ -77,19 +71,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
         );
       },
     }),
-    ...(isGenericSchema(schema)
-      ? [
-          columnHelper.accessor("__typename", {
-            id: "objectKind",
-            header: () => <KindHeaderCell schema={schema} />,
-            cell: ({ cell }) => {
-              const schemaKind = cell.getValue();
-              if (schemaKind === IP_PREFIX_AVAILABLE_KIND) return null;
-              return <KindBodyCell schemaKind={schemaKind} />;
-            },
-          }),
-        ]
-      : ([] as Array<any>)),
+    ...getObjectGenericColumns(schema),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
         header: () => <TableColumnHeader columnSchema={attribute} schema={schema} />,
@@ -148,5 +130,5 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): ColumnDef<NodeCore
         },
       });
     }),
-  ];
+  ] as Array<ColumnDef<NodeObject>>;
 };

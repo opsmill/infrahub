@@ -1,8 +1,12 @@
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import { getIpAddressListFromApi } from "@/entities/ipam/ip-addresses/api/get-ip-address-list-from-api";
+import {
+  getIpAddressListWithAvailabilityFromApi,
+  getIpAddressListWithoutAvailabilityFromApi,
+} from "@/entities/ipam/ip-addresses/api/get-ip-address-list-from-api";
 import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
@@ -24,16 +28,19 @@ export const getIpAddressList: GetIpAddressList = async ({
   offset,
   branchName,
   atDate,
-  filters,
+  filters = [],
 }) => {
   const attributesVisible = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getIpAddressRelationshipsVisibleInListView(
     schema.relationships ?? []
   );
 
+  const excludeIpAvailability = hasIncompatibleFiltersForIpAvailability(filters);
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
+
+  const getIpAddressListFromApi = excludeIpAvailability
+    ? getIpAddressListWithoutAvailabilityFromApi
+    : getIpAddressListWithAvailabilityFromApi;
 
   const { data, errors } = await getIpAddressListFromApi({
     branchName,
@@ -41,7 +48,7 @@ export const getIpAddressList: GetIpAddressList = async ({
     limit,
     offset,
     filters,
-    objectKind: schemaKindToQuery,
+    objectKind: schemaKind,
     attributes: attributesVisible,
     relationships: relationshipsVisible,
   });
@@ -51,7 +58,7 @@ export const getIpAddressList: GetIpAddressList = async ({
   }
 
   return (
-    data[IP_ADDRESS_GENERIC]?.edges?.map(
+    data[excludeIpAvailability ? schemaKind : IP_ADDRESS_GENERIC]?.edges?.map(
       (edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node
     ) ?? []
   );

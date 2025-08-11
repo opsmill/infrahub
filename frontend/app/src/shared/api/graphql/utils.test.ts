@@ -258,17 +258,6 @@ describe("addRelationshipsToRequest", () => {
 });
 
 describe("addFiltersToRequest", () => {
-  it("should not include kind__value filter in the result", () => {
-    // GIVEN
-    const filters: Filter[] = [{ name: "kind__value", value: "test" }];
-
-    // WHEN
-    const result = addFiltersToRequest(filters);
-
-    // THEN
-    expect(result).toEqual({});
-  });
-
   it("should add partial_match flag and value for text-based value filters", () => {
     // GIVEN
     const filters: Filter[] = [{ name: "name__value", value: "test" }];
