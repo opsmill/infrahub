@@ -76,6 +76,8 @@ async def test_load_permissions_multiple_backends(
     assert "object_permissions" in permission_manager.permissions
     assert len(permission_manager.permissions["object_permissions"]) == 2
 
+    registry.permission_backends.clear()
+
 
 async def test_has_permission_global(
     db: InfrahubDatabase,
