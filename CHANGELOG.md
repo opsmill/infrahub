@@ -11,6 +11,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.3.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.6) - 2025-08-11
+
+### Added
+
+- Add the `infrahub db check-inheritance` command to validate and fix any schemas that have had their inheritance updated and a failed migration.
+
+### Changed
+
+- Improve performance of node creation, for nodes with a high number of relationships ([#6883](https://github.com/opsmill/infrahub/pull/6883))
+
 ## [Infrahub - v1.3.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.5) - 2025-08-05
 
 ### Added
