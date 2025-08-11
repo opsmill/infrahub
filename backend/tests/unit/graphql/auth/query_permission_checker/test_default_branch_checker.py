@@ -9,13 +9,12 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
-from infrahub.permissions import LocalPermissionBackend, PermissionManager
+from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -34,7 +33,6 @@ class TestDefaultBranchPermission:
         second_account: CoreAccount,
         permissions_helper: PermissionsHelper,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -77,7 +75,12 @@ class TestDefaultBranchPermission:
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        contains_mutation: bool,
+        branch_name: str,
     ):
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
@@ -117,7 +120,12 @@ class TestDefaultBranchPermission:
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        contains_mutation: bool,
+        branch_name: str,
     ):
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(

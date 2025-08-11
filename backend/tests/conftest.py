@@ -44,6 +44,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
+from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
@@ -165,6 +166,14 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
         registry.default_ipnamespace = ip_namespace.id
         return ip_namespace
     return None
+
+
+@pytest.fixture
+def default_permission_backend() -> Generator[None, Any, Any]:
+    if not registry.permission_backends:
+        registry.permission_backends = [LocalPermissionBackend()]
+    yield
+    registry.permission_backends = []
 
 
 @pytest.fixture
