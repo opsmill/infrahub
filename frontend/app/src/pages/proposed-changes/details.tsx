@@ -157,7 +157,7 @@ export function Component() {
           title="Proposed changes"
           reload={() => {
             queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes(proposedChangeData.id),
+              predicate: (query) => query.queryKey.includes(proposedChangeId),
             });
           }}
           isReloadLoading={isLoading}
@@ -212,7 +212,7 @@ export function Component() {
         }
         reload={() => {
           queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey.includes(proposedChangeData.id),
+            predicate: (query) => query.queryKey.includes(proposedChangeId),
           });
         }}
         isReloadLoading={isLoading}

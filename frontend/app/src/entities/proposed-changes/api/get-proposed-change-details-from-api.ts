@@ -63,12 +63,6 @@ const GET_DETAILS = gql`
           comments {
             count
           }
-          created_by {
-            node {
-              id
-              display_label
-            }
-          }
         }
       }
     }

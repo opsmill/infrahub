@@ -1,4 +1,3 @@
-import { ContextParams } from "@/shared/api/types";
 import { useMutation } from "@tanstack/react-query";
 import {
   UpdateProposedChangeCheckStateParams,
@@ -17,7 +16,7 @@ export function useUpdateProposedChangeStateCheck({
   onSettled,
 }: UpdateReviewProps) {
   return useMutation({
-    mutationFn: async (params: Omit<UpdateProposedChangeCheckStateParams, keyof ContextParams>) => {
+    mutationFn: async (params: UpdateProposedChangeCheckStateParams) => {
       return updateProposedChangeCheckState(params);
     },
     onSuccess,
