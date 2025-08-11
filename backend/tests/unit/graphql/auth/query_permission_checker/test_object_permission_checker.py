@@ -21,7 +21,6 @@ from infrahub.graphql.auth.query_permission_checker.object_permission_checker im
     RepositoryManagerPermissionChecker,
 )
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
