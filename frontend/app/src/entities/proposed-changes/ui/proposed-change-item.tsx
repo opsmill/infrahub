@@ -77,10 +77,7 @@ const ProposedChangesInfo = ({
         <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className={classNames(
-              "hover:text-gray-500 transition-all text-lg font-semibold",
-              isDraft && "text-gray-500"
-            )}
+            className={classNames("hover:text-gray-500 transition-all text-lg font-semibold")}
           >
             <Icon
               icon={"mdi:file-replace-outline"}
