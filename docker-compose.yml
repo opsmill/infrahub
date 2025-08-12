@@ -3,7 +3,7 @@
 # The following environment variables are part of the Infrahub configuration options.
 # For detailed information on these configuration options, please refer to the Infrahub documentation:
 # https://docs.infrahub.app/reference/configuration
-x-infrahub-config: &infrahub_base_config
+x-infrahub-config: &infrahub_config
   AWS_ACCESS_KEY_ID:
   AWS_DEFAULT_ACL: ${AWS_DEFAULT_ACL:-private}
   AWS_QUERYSTRING_AUTH: ${AWS_QUERYSTRING_AUTH:-false}
@@ -124,8 +124,7 @@ x-infrahub-config: &infrahub_base_config
   INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL: ${INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL:-2}
   OTEL_RESOURCE_ATTRIBUTES:
 
-x-infrahub-api-server: &infrahub_api_server
-  <<: *infrahub_base_config
+x-infrahub-sso: &infrahub_sso
   INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP:
   INFRAHUB_SECURITY_OAUTH2_PROVIDERS:
   INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS:
@@ -248,7 +247,7 @@ services:
       task-manager:
         condition: service_healthy
     environment:
-      <<: *infrahub_api_server
+      <<: [*infrahub_config, *infrahub_sso]
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-INFO}
       INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
@@ -283,7 +282,7 @@ services:
     depends_on:
       - infrahub-server
     environment:
-      <<: *infrahub_base_config
+      <<: *infrahub_config
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-DEBUG}
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-/opt/infrahub/git}
