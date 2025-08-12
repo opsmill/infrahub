@@ -13,11 +13,13 @@ import { useState } from "react";
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
   schema: ModelSchema;
   columnSchema: AttributeSchema | RelationshipSchema;
+  customLabel?: string;
 }
 
 export function ProposedChangeTableFilter({
   schema,
   columnSchema,
+  customLabel,
   ...props
 }: TableColumnHeaderProps) {
   const [filters] = useFilters();
@@ -36,7 +38,9 @@ export function ProposedChangeTableFilter({
       >
         <TableColumnHeaderIcon fieldSchema={columnSchema} />
 
-        <span className="truncate mr-1">{columnSchema.label ?? columnSchema.name}</span>
+        <span className="truncate mr-1">
+          {customLabel ?? columnSchema.label ?? columnSchema.name}
+        </span>
         <Icon
           icon="mdi:filter-variant"
           className={classNames(

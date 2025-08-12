@@ -19,7 +19,6 @@ export async function getProposedChangesCounts(
 
   return {
     opened: data.opened.count ?? 0,
-    draft: data.draft.count ?? 0,
     closed: data.closed.count ?? 0,
   };
 }

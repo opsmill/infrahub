@@ -5,16 +5,16 @@ export const getProposedChangesStateBadgeType = (
 ): BadgeProps["variant"] | undefined => {
   switch (state) {
     case "open": {
-      return "green";
+      return "green-outline";
     }
     case "closed": {
-      return "red";
+      return "red-outline";
     }
     case "merged": {
-      return "yellow";
+      return "yellow-outline";
     }
     case "canceled": {
-      return "gray";
+      return "gray-outline";
     }
     default: {
       return undefined;
