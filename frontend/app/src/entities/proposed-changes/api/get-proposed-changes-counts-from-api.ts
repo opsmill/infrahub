@@ -27,16 +27,6 @@ export const getProposedChangesCountsFromApi = async ({
           __args: {
             ...(filters ? addFiltersToRequest(filters) : {}),
             state__values: PROPOSED_CHANGE_STATES.opened,
-            is_draft__value: false,
-          },
-          count: true,
-        },
-        draft: {
-          __aliasFor: PROPOSED_CHANGE_OBJECT,
-          __args: {
-            ...(filters ? addFiltersToRequest(filters) : {}),
-            is_draft__value: true,
-            state__values: PROPOSED_CHANGE_STATES.draft,
           },
           count: true,
         },

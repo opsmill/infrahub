@@ -14,7 +14,6 @@ export const PROPOSED_CHANGE_OBJECT = "CoreProposedChange";
 
 export const PROPOSED_CHANGE_STATES = {
   opened: [OPEN_STATE, MERGING_STATE],
-  draft: [OPEN_STATE, MERGE_STATE, "canceled"],
   closed: [CLOSE_STATE, MERGE_STATE, "canceled"],
 };
 
