@@ -117,7 +117,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <div className="flex gap-2">
           {reviewers.map((reviewer: any, index: number) => (
             <Tooltip key={index} content={reviewer.display_label} enabled>
-              <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={reviewer.display_label} />
             </Tooltip>
           ))}
         </div>
