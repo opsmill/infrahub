@@ -170,10 +170,10 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 @pytest.fixture
 def default_permission_backend() -> Generator[None, Any, Any]:
-    if not registry.permission_backends:
-        registry.permission_backends = [LocalPermissionBackend()]
+    previous_backends = registry.permission_backends
+    registry.permission_backends = [LocalPermissionBackend()]
     yield
-    registry.permission_backends = []
+    registry.permission_backends = previous_backends
 
 
 @pytest.fixture
