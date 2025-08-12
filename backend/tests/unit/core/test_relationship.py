@@ -101,7 +101,7 @@ async def test_relationship_load_existing(
 
     assert peers[0].properties["is_protected"].value is True
 
-    await rel.load(db=db, data=peers[0])
+    rel.load(db=db, data=peers[0])
 
     assert rel.id == peers[0].rel_node_id
     assert rel.db_id == peers[0].rel_node_db_id
@@ -115,7 +115,7 @@ async def test_relationship_peer(db: InfrahubDatabase, tag_blue_main: Node, pers
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    await rel.set_peer(value=tag_blue_main)
+    rel.set_peer(value=tag_blue_main)
 
     assert rel.schema == rel_schema
     assert rel.name == rel_schema.name
@@ -131,7 +131,7 @@ async def test_relationship_save(db: InfrahubDatabase, tag_blue_main: Node, pers
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    await rel.set_peer(value=tag_blue_main)
+    rel.set_peer(value=tag_blue_main)
     await rel.save(db=db)
 
     p11 = await NodeManager.get_one(id=person_jack_main.id, db=db, branch=branch)
@@ -147,28 +147,28 @@ async def test_relationship_hash(
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    await rel.set_peer(value=tag_blue_main)
+    rel.set_peer(value=tag_blue_main)
     await rel.save(db=db)
     hash1 = hash(rel)
 
     # Update flag property back and forth and check that hash is the same
-    await rel.load(db=db, data={"_relation__is_protected": True})
+    rel.load(db=db, data={"_relation__is_protected": True})
     hash2 = hash(rel)
 
-    await rel.load(db=db, data={"_relation__is_protected": False})
+    rel.load(db=db, data={"_relation__is_protected": False})
     hash3 = hash(rel)
 
     assert hash1 == hash3
     assert hash1 != hash2
 
     # Update node property back and forth and check that hash is the same as well
-    await rel.load(db=db, data={"_relation__owner": first_account})
+    rel.load(db=db, data={"_relation__owner": first_account})
     hash4 = hash(rel)
 
-    await rel.load(db=db, data={"_relation__owner": None})
+    rel.load(db=db, data={"_relation__owner": None})
     hash5 = hash(rel)
 
-    await rel.load(db=db, data={"_relation__owner": first_account})
+    rel.load(db=db, data={"_relation__owner": first_account})
     hash6 = hash(rel)
 
     assert hash4 == hash6

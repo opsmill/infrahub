@@ -441,7 +441,7 @@ REMOVE av_no_index:AttributeValueNonIndexed
         self.add_to_query(query)
 
 
-class Migration036(ArbitraryMigration):
+class Migration037(ArbitraryMigration):
     """
     Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES
 
@@ -458,8 +458,8 @@ class Migration036(ArbitraryMigration):
     7. Add the index on AttributeValueIndexed again
     """
 
-    name: str = "036_index_attr_vals"
-    minimum_version: int = 35
+    name: str = "037_index_attr_vals"
+    minimum_version: int = 36
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()

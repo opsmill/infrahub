@@ -82,6 +82,46 @@ Two limitations could have an impact on your choice of node vs generic :
 
 :::
 
+### Field ordering with order weight
+
+The order in which attributes and relationships appear in the Infrahub frontend is controlled by the `order_weight` property. **Items with lower values appear before those with higher values.** When not explicitly specified, Infrahub automatically assigns default values in increments of 1000:
+
+```yaml title="Default Order Weight Assignment"
+nodes:
+  - name: Device
+    namespace: Example
+    attributes:
+      - name: hostname        # Gets order_weight: 1000
+        kind: Text
+      - name: description     # Gets order_weight: 2000
+        kind: Text
+        optional: true
+      - name: serial_number   # Gets order_weight: 3000
+        kind: Text
+    relationships:
+      - name: location        # Gets order_weight: 4000
+        peer: ExampleLocation
+        cardinality: one
+```
+
+This automatic assignment ensures predictable field ordering while leaving room for custom positioning. To customize field order, you can specify explicit `order_weight` values:
+
+```yaml title="Custom Field Ordering"
+attributes:
+  - name: asset_tag
+    kind: Text
+    order_weight: 100       # Appears first
+  - name: hostname
+    kind: Text
+    order_weight: 200       # Appears second
+  - name: description
+    kind: Text
+    optional: true
+    order_weight: 9000      # Appears last
+```
+
+<ReferenceLink title="For more details on order weight, refer to the dedicated topic" url="/topics/order-weight" openInNewTab />
+
 ### Node example
 
 In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by `owner`.

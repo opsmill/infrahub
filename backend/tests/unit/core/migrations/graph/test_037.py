@@ -8,7 +8,7 @@ from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m036_index_attr_vals import Migration036
+from infrahub.core.migrations.graph.m037_index_attr_vals import Migration037
 from infrahub.core.node import Node
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -22,7 +22,7 @@ class BranchSchemaData:
     kind_attr_name_map: dict[str, list[str]]
 
 
-class TestMigration036:
+class TestMigration037:
     @pytest.fixture
     async def load_start_schema(
         self,
@@ -388,7 +388,7 @@ RETURN node_uuid, branch, attr_name, av_id, should_not_be_indexed, should_be_ind
                     )
             assert len(error_messages) == 0, "\n".join(error_messages)
 
-    async def test_migration_036(
+    async def test_migration_037(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -463,7 +463,7 @@ REMOVE avi:AttributeValueIndexed
             },
         )
 
-        migration = Migration036()
+        migration = Migration037()
         await migration.execute(db=db)
 
         await self._verify_all(
