@@ -76,21 +76,24 @@ const ProposedChangesInfo = ({
   return (
     <div>
       <div className="flex flex-col gap-2">
-        <span className="space-x-2">
-          <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
-          {isDraft && <Badge variant={"gray"}>draft</Badge>}
+        <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className="hover:text-gray-500 transition-all"
+            className="hover:text-gray-500 transition-all text-lg font-semibold"
           >
-            {name}
+            <Icon icon={"mdi:file-replace-outline"} className="text-base" /> {name}
           </Link>
+
+          <div className="space-x-2">
+            <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
+            {isDraft && <Badge variant={"gray-outline"}>draft</Badge>}
+          </div>
         </span>
         <span className="flex items-center gap-1 text-xs">
-          <Badge className="flex items-center gap-1">
+          <span className="flex items-center gap-1 font-semibold">
             <Icon icon={"mdi:source-branch"} />
             {branchName}
-          </Badge>
+          </span>
           Opened <DateDisplay date={createdAt} /> by {author}
         </span>
       </div>
