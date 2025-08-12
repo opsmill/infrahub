@@ -97,24 +97,32 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     },
     {
       name: "Approved by",
-      value: approvedBy.map((user: any, index: number) => (
-        <Tooltip key={index} content={user.display_label} enabled>
-          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {approvedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={user.display_label} enabled>
+              <Avatar size={"sm"} name={user.display_label} className="mr-2" />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Rejected by",
-      value: rejectedBy.map((user: any, index: number) => (
-        <Tooltip key={index} content={user.display_label} enabled>
-          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {rejectedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={user.display_label} enabled>
+              <Avatar size={"sm"} name={user.display_label} className="mr-2" />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Reviewers",
       value: (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {reviewers.map((reviewer: any, index: number) => (
             <Tooltip key={index} content={reviewer.display_label} enabled>
               <Avatar size={"sm"} name={reviewer.display_label} />
