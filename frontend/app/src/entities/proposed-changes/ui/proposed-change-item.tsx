@@ -1,16 +1,15 @@
 import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { NodeCore } from "@/entities/nodes/types";
 import { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
@@ -30,6 +29,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
           author={node.created_by.node?.display_label}
           state={node.state?.value}
           isDraft={!!node.is_draft?.value}
+          isApproved={!!node.approved_by.edges.length}
           createdAt={node._updated_at}
           branchName={node.source_branch?.value}
         />
@@ -37,9 +37,6 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
         <ProposedChangesData
           id={node.id}
           branchName={node.source_branch?.value}
-          approvers={node.approved_by.edges.map((edge: { node: NodeCore }) => {
-            return edge.node;
-          })}
           comments={node.total_comments.value ?? 0}
           validations={node.validations.count}
         />
@@ -60,6 +57,7 @@ type ProposedChangesInfoProps = {
   author: string;
   state: string;
   isDraft: boolean;
+  isApproved: boolean;
   createdAt: string;
   branchName?: string;
 };
@@ -68,8 +66,8 @@ const ProposedChangesInfo = ({
   id,
   name,
   author,
-  state,
   isDraft,
+  isApproved,
   createdAt,
   branchName,
 }: ProposedChangesInfoProps) => {
@@ -79,14 +77,26 @@ const ProposedChangesInfo = ({
         <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className="hover:text-gray-500 transition-all text-lg font-semibold"
+            className={classNames(
+              "hover:text-gray-500 transition-all text-lg font-semibold",
+              isDraft && "text-gray-500"
+            )}
           >
-            <Icon icon={"mdi:file-replace-outline"} className="text-base" /> {name}
+            <Icon
+              icon={"mdi:file-replace-outline"}
+              className={classNames(
+                "text-base",
+                "text-green-700",
+                isDraft && "text-gray-500",
+                isApproved && "text-custom-blue-500"
+              )}
+            />{" "}
+            {name}
           </Link>
 
           <div className="space-x-2">
-            <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
             {isDraft && <Badge variant={"gray-outline"}>draft</Badge>}
+            {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
           </div>
         </span>
         <span className="flex items-center gap-1 text-xs">
@@ -104,7 +114,6 @@ const ProposedChangesInfo = ({
 type ProposedChangesDataProps = {
   id: string;
   branchName: string;
-  approvers: Array<NodeCore>;
   comments: number;
   validations: number;
 };
@@ -112,7 +121,6 @@ type ProposedChangesDataProps = {
 const ProposedChangesData = ({
   id,
   branchName,
-  approvers,
   comments,
   validations,
 }: ProposedChangesDataProps) => {
@@ -126,23 +134,7 @@ const ProposedChangesData = ({
           <ProposedChangesArtifacts id={id} />
           <ProposedChangesComments comments={comments} />
         </div>
-        <ProposedChangesApprovers approvers={approvers} />
       </div>
-    </div>
-  );
-};
-
-const ProposedChangesApprovers = ({ approvers }: { approvers: Array<NodeCore> }) => {
-  return (
-    <div className="flex flex-col gap-2 text-xs">
-      {!!approvers.length && (
-        <div className="flex items-center gap-2">
-          Approved by:{" "}
-          {approvers.map((approver) => {
-            return <span key={approver.id}>{approver.display_label}</span>;
-          })}
-        </div>
-      )}
     </div>
   );
 };
