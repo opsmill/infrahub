@@ -20,6 +20,10 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
 
   const { data } = useGetProposedChangesCounts({ filters });
 
+  const draftAttribute = schema.attributes?.find((attribute) => {
+    return attribute.name === "is_draft";
+  });
+
   const stateAttribute = schema.attributes?.find((attribute) => {
     return attribute.name === "state";
   });
@@ -62,12 +66,18 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
         </ProposedChangeTableFilterLink>
       </div>
       <div className="flex items-center">
+        {draftAttribute && (
+          <ProposedChangeTableFilter schema={schema} columnSchema={draftAttribute} />
+        )}
+
         {stateAttribute && (
           <ProposedChangeTableFilter schema={schema} columnSchema={stateAttribute} />
         )}
+
         {sourceBranchAttribute && (
           <ProposedChangeTableFilter schema={schema} columnSchema={sourceBranchAttribute} />
         )}
+
         {authorRelationship && (
           <ProposedChangeTableFilter
             schema={schema}
@@ -75,9 +85,11 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
             customLabel={"Author"}
           />
         )}
+
         {reviewersRelationship && (
           <ProposedChangeTableFilter schema={schema} columnSchema={reviewersRelationship} />
         )}
+
         {approversRelationship && (
           <ProposedChangeTableFilter schema={schema} columnSchema={approversRelationship} />
         )}
