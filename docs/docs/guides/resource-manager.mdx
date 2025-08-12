@@ -193,11 +193,11 @@ You can create a prefix (for example, `10.100.0.0/24`) either via the web interf
 
 Next, create a resource manager of kind `CoreIPAddressPool` with the following properties:
 
-* **Name**: My IP address pool
-* **Default Address Type**: `IpamIPAddress` (as defined in your schema)
-* **Default Prefix Length**: 24
-* **Resources**: `10.100.0.0/24`
-* **IP Namespace**: `default`
+- **Name**: My IP address pool
+- **Default Address Type**: `IpamIPAddress` (as defined in your schema)
+- **Default Prefix Length**: 24
+- **Resources**: `10.100.0.0/24`
+- **IP Namespace**: `default`
 
 The `CoreIPAddressPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
 
