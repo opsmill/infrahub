@@ -10,8 +10,7 @@ from infrahub.core.migrations.graph.m012_convert_account_generic import (
     Migration012RenameTypeAttributeSchema,
 )
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
-from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
@@ -134,13 +133,9 @@ ATTRIBUTE_SCHEMA = NodeSchema(
 
 
 @pytest.fixture
-async def migration_012_data(db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db):
-    #     # load the internal schema from
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = SchemaBranch(cache={}, name="default_branch")
-    schema_branch.load_schema(schema=schema)
-    schema_branch.process()
-
+async def migration_012_data(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
+):
     user1 = await Node.init(db=db, schema=ACCOUNT_SCHEMA)
     await user1.new(db=db, name="User1", type="User")
     await user1.save(db=db)
@@ -163,12 +158,9 @@ async def migration_012_data(db: InfrahubDatabase, reset_registry, default_branc
 
 
 @pytest.fixture
-async def migration_012_schema(db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db):
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = SchemaBranch(cache={}, name="default_branch")
-    schema_branch.load_schema(schema=schema)
-    schema_branch.process()
-
+async def migration_012_schema(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
+):
     node1 = await Node.init(db=db, schema=NODE_SCHEMA)
     await node1.new(
         db=db, name="Account", namespace="Core", inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE]

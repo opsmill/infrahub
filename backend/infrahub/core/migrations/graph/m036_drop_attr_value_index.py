@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 INDEX_TO_DELETE = IndexItem(name="attr_value", label="AttributeValue", properties=["value"], type=IndexType.RANGE)
 
 
-class Migration035(GraphMigration):
-    name: str = "035_drop_attr_value_index"
+class Migration036(GraphMigration):
+    name: str = "036_drop_attr_value_index"
     queries: Sequence[type[Query]] = []
-    minimum_version: int = 34
+    minimum_version: int = 35
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
