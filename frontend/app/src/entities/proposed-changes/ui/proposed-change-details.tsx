@@ -153,10 +153,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       )}
 
       <div className={classNames("grid grid-cols-3 gap-2", className)} {...props}>
-        <div className="col-start-1 col-end-3 space-y-4">
+        <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
-            <CardWithBorder contentClassName="p-4" data-testid="pc-description">
-              <div className="flex items-center gap-2 mb-2">
+            <CardWithBorder contentClassName="" data-testid="pc-description">
+              <CardWithBorder.Title className="flex gap-2 items-center">
                 <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
                 {proposedChangesDetails?.created_by?.node?.display_label}
@@ -165,9 +165,12 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
                   date={proposedChangesDetails.description.updated_at}
                   className="ml-auto text-xs font-normal text-gray-600"
                 />
-              </div>
+              </CardWithBorder.Title>
 
-              <MarkdownRender markdownText={proposedChangesDetails.description.value} />
+              <MarkdownRender
+                markdownText={proposedChangesDetails.description.value}
+                className="m-2"
+              />
             </CardWithBorder>
           )}
 
