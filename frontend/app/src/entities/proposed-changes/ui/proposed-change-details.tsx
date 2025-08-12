@@ -86,7 +86,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Created by",
       value: (
-        <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
+        <Tooltip content={proposedChangesDetails?.created_by?.node?.display_label} enabled>
           <Avatar
             size={"sm"}
             name={proposedChangesDetails?.created_by?.node?.display_label}
@@ -98,7 +98,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Approved by",
       value: approvedBy.map((user: any, index: number) => (
-        <Tooltip key={index} content={user.display_label}>
+        <Tooltip key={index} content={user.display_label} enabled>
           <Avatar size={"sm"} name={user.display_label} className="mr-2" />
         </Tooltip>
       )),
@@ -106,18 +106,22 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Rejected by",
       value: rejectedBy.map((user: any, index: number) => (
-        <Tooltip key={index} content={user.display_label}>
+        <Tooltip key={index} content={user.display_label} enabled>
           <Avatar size={"sm"} name={user.display_label} className="mr-2" />
         </Tooltip>
       )),
     },
     {
       name: "Reviewers",
-      value: reviewers.map((reviewer: any, index: number) => (
-        <Tooltip key={index} content={reviewer.display_label}>
-          <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex gap-2">
+          {reviewers.map((reviewer: any, index: number) => (
+            <Tooltip key={index} content={reviewer.display_label} enabled>
+              <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Updated",
