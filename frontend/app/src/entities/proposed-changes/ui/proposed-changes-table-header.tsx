@@ -69,7 +69,11 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
           <ProposedChangeTableFilter schema={schema} columnSchema={sourceBranchAttribute} />
         )}
         {authorRelationship && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={authorRelationship} />
+          <ProposedChangeTableFilter
+            schema={schema}
+            columnSchema={authorRelationship}
+            customLabel={"Author"}
+          />
         )}
         {reviewersRelationship && (
           <ProposedChangeTableFilter schema={schema} columnSchema={reviewersRelationship} />
