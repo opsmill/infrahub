@@ -693,6 +693,8 @@ Allocate an IP prefix when creating a customer service:
 
   Include an `identifier` field to ensure the same prefix is returned on repeated calls:
 
+  :::
+
   ```graphql
     mutation {
       CoreIPPrefixPoolCreate(data: {
@@ -1013,9 +1015,6 @@ mutation {
 Save the prefix IDs for the next step!
 
 :::
-
-  </TabItem>
-</Tabs>
 
 4. Create a `CoreIPAddressPool` resource manager:
 
