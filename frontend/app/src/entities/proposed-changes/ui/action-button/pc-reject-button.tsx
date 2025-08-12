@@ -5,7 +5,7 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 import { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/utils/has-user-rejected-proposed-change";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -22,7 +22,9 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   const { mutate, isPending } = useUpdateProposedChangeReview({
     onSuccess: async () => {
-      await graphqlClient.reFetchObservableQueries();
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
+      });
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}

@@ -3,7 +3,7 @@ import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-o
 import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -19,7 +19,9 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
-      await graphqlClient.reFetchObservableQueries();
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
+      });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
     },
   });
