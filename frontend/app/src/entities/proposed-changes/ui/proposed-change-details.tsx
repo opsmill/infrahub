@@ -90,7 +90,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           <Avatar
             size={"sm"}
             name={proposedChangesDetails?.created_by?.node?.display_label}
-            className="mr-2 bg-custom-blue-green"
+            className="bg-custom-blue-green"
           />
         </Tooltip>
       ),
@@ -101,7 +101,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <div className="flex flex-wrap gap-2">
           {approvedBy.map((user: any, index: number) => (
             <Tooltip key={index} content={user.display_label} enabled>
-              <Avatar size={"sm"} name={user.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={user.display_label} />
             </Tooltip>
           ))}
         </div>
@@ -113,7 +113,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <div className="flex flex-wrap gap-2">
           {rejectedBy.map((user: any, index: number) => (
             <Tooltip key={index} content={user.display_label} enabled>
-              <Avatar size={"sm"} name={user.display_label} className="mr-2" />
+              <Avatar size={"sm"} name={user.display_label} />
             </Tooltip>
           ))}
         </div>
