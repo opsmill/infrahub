@@ -48,12 +48,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         type={type}
-        className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
+        className={classNames(
+          "relative",
+          focusVisibleStyle,
+          buttonVariants({ variant, size, className })
+        )}
         ref={ref}
         {...props}
       >
-        {isLoading && <Spinner className="mr-2" />}
-        {children}
+        {isLoading && <Spinner className="absolute" />}
+        <div className={classNames(isLoading && "opacity-0")}>{children}</div>
       </button>
     );
   }

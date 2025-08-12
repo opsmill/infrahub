@@ -45,7 +45,7 @@ export const PcActionButton = () => {
     <PcActionsContext value={data}>
       <Combobox open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div className={classNames(inputStyle, "flex p-0 border-0 ")}>
+          <div className={classNames(inputStyle, "flex p-0 border-0 w-40")}>
             {isPending && <LoadingIndicator />}
             {!isPending && auth?.user?.id ? (
               actionsListMapping?.[action]?.({ setOpen })
