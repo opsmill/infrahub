@@ -4,7 +4,6 @@ import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
-import { useLocation } from "react-router";
 import { NodeLabel } from "../nodes/object/ui/node-label";
 
 function extractNodeId(path: string) {
@@ -184,8 +183,7 @@ export const getThreadLabel = (node?: any, currentBranch?: string, path?: string
 
 // Get thread title from the thread or a defined label
 export const getThreadTitle = (thread?: any, label?: string) => {
-  const location = useLocation();
-  const { pathname } = location;
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
 
   if (thread?.object_path?.value) {
     // should match the id in "data/185afbed-0447-a991-33a0-c51c1d4e20ef/description" or "data/185afbed-0447-a991-33a0-c51c1d4e20ef"
