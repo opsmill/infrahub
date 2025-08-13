@@ -173,7 +173,7 @@ export const getThreadTitle = (thread?: any, label?: string) => {
   }
 
   return (
-    <div className="flex mb-2">
+    <div className="flex">
       {string && <Badge variant={string === "Conversation" ? null : "green"}>{string}</Badge>}
     </div>
   );
