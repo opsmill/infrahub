@@ -36,6 +36,7 @@ from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError
 from infrahub.log import get_log_data, get_logger
+from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
@@ -287,13 +288,8 @@ async def load_schema(
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     permission_manager.raise_for_permission(
-        permission=GlobalPermission(
-            action=GlobalPermissions.MANAGE_SCHEMA.value,
-            decision=(
-                PermissionDecision.ALLOW_DEFAULT
-                if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-                else PermissionDecision.ALLOW_OTHER
-            ).value,
+        permission=define_global_permission_from_branch(
+            permission=GlobalPermissions.MANAGE_SCHEMA, branch_name=branch.name
         )
     )
 
