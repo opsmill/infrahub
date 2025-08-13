@@ -219,17 +219,32 @@ export const getThreadTitle = (thread?: any, label?: string) => {
     );
   }
 
+  if (thread?.artifact_id?.value) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <Badge variant={"gray-outline"}>Artifact</Badge>
+        <NodeLabel id={thread?.artifact_id.value} />
+      </div>
+    );
+  }
+
   const string = thread?.label?.value ?? thread?.display_label ?? label;
 
   if (!string) {
     return "";
   }
 
+  if (string === "Conversation") {
+    return (
+      <div className="flex">
+        <Badge variant={"gray-outline"}>{string}</Badge>
+      </div>
+    );
+  }
+
   return (
     <div className="flex">
-      {string && (
-        <Badge variant={string === "Conversation" ? "gray-outline" : "green"}>{string}</Badge>
-      )}
+      <Badge variant={"green"}>{string}</Badge>
     </div>
   );
 };
