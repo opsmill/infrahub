@@ -21,7 +21,6 @@ from infrahub.graphql.auth.query_permission_checker.object_permission_checker im
     RepositoryManagerPermissionChecker,
 )
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -216,12 +215,12 @@ class TestObjectPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permissions = []
@@ -374,13 +373,13 @@ class TestAccountManagerPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -502,13 +501,13 @@ class TestPermissionManagerPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -629,13 +628,13 @@ class TestRepositoryManagerPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
