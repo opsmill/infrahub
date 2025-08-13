@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 async def test_add_context_invalid_account(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     car_person_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
@@ -66,6 +67,7 @@ async def test_add_context_invalid_account(
 async def test_add_context_valid_account(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     car_person_schema: None,
     enable_broker_config: None,
     session_first_account: AccountSession,
@@ -120,6 +122,7 @@ async def test_add_context_valid_account(
 async def test_add_context_missing_permissions(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     car_person_schema: None,
     session_second_account: AccountSession,
     first_account: Node,

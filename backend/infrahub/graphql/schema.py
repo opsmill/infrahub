@@ -21,21 +21,10 @@ from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.proposed_change import ProposedChangeMerge, ProposedChangeRequestRunCheck
-from .mutations.relationship import (
-    RelationshipAdd,
-    RelationshipRemove,
-)
-from .mutations.repository import (
-    ProcessRepository,
-    ValidateRepositoryConnectivity,
-)
+from .mutations.relationship import RelationshipAdd, RelationshipRemove
+from .mutations.repository import ProcessRepository, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
-from .mutations.schema import (
-    SchemaDropdownAdd,
-    SchemaDropdownRemove,
-    SchemaEnumAdd,
-    SchemaEnumRemove,
-)
+from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .queries import (
     AccountPermissions,
     AccountToken,
