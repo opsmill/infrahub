@@ -1,4 +1,5 @@
 from .schema.attribute_name_update import AttributeNameUpdateMigration
+from .schema.attribute_kind_update import AttributeKindUpdateMigration
 from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
 from .schema.node_kind_update import NodeKindUpdateMigration
@@ -17,6 +18,7 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "node.relationship.remove": PlaceholderDummyMigration,
     "attribute.name.update": AttributeNameUpdateMigration,
     "attribute.branch.update": None,
+    "attribute.kind.update": AttributeKindUpdateMigration,
     "relationship.branch.update": None,
     "relationship.direction.update": None,
     "relationship.identifier.update": PlaceholderDummyMigration,
