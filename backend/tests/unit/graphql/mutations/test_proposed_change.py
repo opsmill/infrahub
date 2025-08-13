@@ -81,6 +81,23 @@ mutation UpdateProposedChange(
   }
 }
 """
+UPDATE_PROPOSED_CHANGE_WITH_DRAFT = """
+mutation UpdateProposedChange(
+    $proposed_change: String!,
+    $state: String
+    $draft: Boolean
+  ) {
+  CoreProposedChangeUpdate(data:
+    {
+      id: $proposed_change,
+      state: {value: $state},
+      is_draft: {value: $draft}
+    }
+  ) {
+    ok
+  }
+}
+"""
 
 
 async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_branch, register_core_models_schema):
@@ -346,6 +363,19 @@ async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_m
         query=UPDATE_PROPOSED_CHANGE,
         db=db,
         variables={"proposed_change": proposed_change.id, "state": "merged"},
+        service=service,
+    )
+
+    assert update_status.errors
+    assert "A draft proposed change is not allowed to be merged" in str(update_status.errors[0])
+
+    proposed_change.is_draft.value = False
+    await proposed_change.save(db=db)
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE_WITH_DRAFT,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged", "draft": True},
         service=service,
     )
 

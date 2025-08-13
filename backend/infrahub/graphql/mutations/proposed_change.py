@@ -137,6 +137,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
+        # Check if the draft state will change (defaults to current draft state)
+        will_be_draft = data.get("is_draft", {}).get("value", obj.is_draft.value)
+
         # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
         if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
             try:
@@ -150,7 +153,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 raise ValidationError(str(exc)) from exc
 
         if updated_state == ProposedChangeState.MERGED:
-            if obj.is_draft.value:
+            if obj.is_draft.value or will_be_draft:
                 raise ValidationError("A draft proposed change is not allowed to be merged")
             data["state"]["value"] = ProposedChangeState.MERGING.value
 
