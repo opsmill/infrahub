@@ -76,11 +76,7 @@ class TestDefaultBranchPermission:
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_with_permission(
-        self,
-        db: InfrahubDatabase,
-        permissions_helper: PermissionsHelper,
-        contains_mutation: bool,
-        branch_name: str,
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
     ):
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
@@ -120,11 +116,7 @@ class TestDefaultBranchPermission:
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_without_permission(
-        self,
-        db: InfrahubDatabase,
-        permissions_helper: PermissionsHelper,
-        contains_mutation: bool,
-        branch_name: str,
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, contains_mutation: bool, branch_name: str
     ):
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
