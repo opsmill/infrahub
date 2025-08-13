@@ -90,6 +90,7 @@ class TestObjectPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
@@ -165,9 +166,7 @@ class TestObjectPermissions:
         await group.members.add(db=db, data={"id": first_account.id})
         await group.members.save(db=db)
 
-    async def test_first_account_tags(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
-    ) -> None:
+    async def test_first_account_tags(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
         """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -192,7 +191,7 @@ class TestObjectPermissions:
         }
 
     async def test_first_account_tags_non_main_branch(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In other branches the permissions for the first account is less restrictive"""
         branch2 = await create_branch(branch_name="pr-12345", db=db)
@@ -215,7 +214,7 @@ class TestObjectPermissions:
         }
 
     async def test_first_account_list_permissions_for_generics(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In the main branch the first account doesn't have the permission to make changes"""
         session = AccountSession(
@@ -254,7 +253,7 @@ class TestObjectPermissions:
         } in result.data["BuiltinIPNamespace"]["permissions"]["edges"]
 
     async def test_first_account_ipprefix_pool(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
         session = AccountSession(
@@ -280,7 +279,7 @@ class TestObjectPermissions:
         }
 
     async def test_first_account_tags_non_main_branch_non_isolated(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In other branches the permissions for the first account should be updated if we modify the main branch"""
 
@@ -362,6 +361,7 @@ class TestAttributePermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
@@ -424,7 +424,7 @@ class TestAttributePermissions:
         await tag.save(db=db)
 
     async def test_first_account_tags_main_branch(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In the main branch the first account doesn't have the permission to make changes, so attribute cannot be changed"""
         session = AccountSession(
@@ -447,7 +447,7 @@ class TestAttributePermissions:
         }
 
     async def test_first_account_tags_non_main_branch(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """In other branches the permissions for the first account is less restrictive, attribute should be updatable"""
         branch2 = await create_branch(branch_name="pr-12345", db=db)

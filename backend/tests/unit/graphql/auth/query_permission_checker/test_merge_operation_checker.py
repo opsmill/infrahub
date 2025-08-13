@@ -27,6 +27,7 @@ class TestMergeBranchPermission:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
@@ -79,7 +80,6 @@ class TestMergeBranchPermission:
         operation_name: str,
         checker_resolution: CheckerResolution | None,
         db: InfrahubDatabase,
-        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
     ):
         checker = MergeBranchPermissionChecker()
@@ -117,7 +117,6 @@ class TestMergeBranchPermission:
         operation_name: str,
         checker_resolution: CheckerResolution | None,
         db: InfrahubDatabase,
-        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
     ):
         checker = MergeBranchPermissionChecker()

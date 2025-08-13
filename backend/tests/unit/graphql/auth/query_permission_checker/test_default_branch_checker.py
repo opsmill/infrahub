@@ -27,6 +27,7 @@ class TestDefaultBranchPermission:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         first_account: CoreAccount,
@@ -77,7 +78,6 @@ class TestDefaultBranchPermission:
     async def test_account_with_permission(
         self,
         db: InfrahubDatabase,
-        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
         contains_mutation: bool,
         branch_name: str,
@@ -122,7 +122,6 @@ class TestDefaultBranchPermission:
     async def test_account_without_permission(
         self,
         db: InfrahubDatabase,
-        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
         contains_mutation: bool,
         branch_name: str,
