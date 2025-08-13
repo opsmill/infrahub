@@ -65,7 +65,7 @@ export const EventCard = (props: EventType) => {
             <DateDisplay date={props.occurred_at} />
 
             <div className="flex items-center gap-4">
-              {props.branch && (
+              {!PROPOSED_CHANGE_EVENTS.includes(props.event) && props.branch && (
                 <div className="text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis">
                   <Icon icon={"mdi:source-branch"} />
 
