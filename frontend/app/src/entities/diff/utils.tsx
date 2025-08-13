@@ -7,14 +7,9 @@ import { Icon } from "@iconify-icon/react";
 import { NodeLabel } from "../nodes/object/ui/node-label";
 
 function extractNodeId(path: string) {
-  // Match: a slash, then the ID, then either a slash or the end of the string
-  const match = path.match(/\/([\w-]+)(?:\/|$)/);
-
-  if (match?.[1]) {
-    return match?.[1].replaceAll("/", "");
-  }
-
-  return null;
+  // Expect an ID immediately following "data/"; support optional leading slash
+  const match = path?.match(/(?:^|\/)data\/([\w-]+)(?:\/|$)/);
+  return match?.[1] ?? null;
 }
 
 function extractNodeProperty(path: string) {
