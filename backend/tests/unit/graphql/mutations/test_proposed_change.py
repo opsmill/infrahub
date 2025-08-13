@@ -329,6 +329,30 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     assert "A proposed change in the merged state is not allowed to be updated" in str(update_status.errors[0])
 
 
+async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_models_schema: None):
+    branch_name = "draft-proposed-change"
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db, name="draft-pc-1234", destination_branch="main", source_branch=branch_name, state="open", is_draft=True
+    )
+    await proposed_change.save(db=db)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        service=service,
+    )
+
+    assert update_status.errors
+    assert "A draft proposed change is not allowed to be merged" in str(update_status.errors[0])
+
+
 class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
     async def test_merge_proposed_change_permission_failure(
         self,

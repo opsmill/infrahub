@@ -150,6 +150,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 raise ValidationError(str(exc)) from exc
 
         if updated_state == ProposedChangeState.MERGED:
+            if obj.is_draft.value:
+                raise ValidationError("A draft proposed change is not allowed to be merged")
             data["state"]["value"] = ProposedChangeState.MERGING.value
 
         proposed_change, result = await super().mutate_update(
