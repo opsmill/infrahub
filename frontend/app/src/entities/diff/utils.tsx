@@ -18,14 +18,15 @@ function extractNodeId(path: string) {
 }
 
 function extractNodeProperty(path: string) {
-  const nodePath = path
-    ?.split("/")
-    // Get the path without the beginning "data/xxxx-xxxx-xxxx-xxxx"
-    .slice(2)
-    // Do not include some values from the path
-    .filter((item) => !NODE_PATH_EXCLUDELIST.includes(item));
-
-  return nodePath?.reduce((acc, item) => (acc ? `${acc} > ${item}` : item), "").trim();
+  // Split and drop empty parts to support "/data/..." and "data/..."
+  const parts = path?.split("/").filter(Boolean) ?? [];
+  // Find "data" segment and drop "data/<id>"
+  const dataIdx = parts.indexOf("data");
+  const afterId = dataIdx !== -1 ? parts.slice(dataIdx + 2) : parts.slice(2);
+  // Exclude specific path segments
+  const nodePath = afterId.filter((item) => !NODE_PATH_EXCLUDELIST.includes(item));
+  const label = nodePath.reduce((acc, item) => (acc ? `${acc} > ${item}` : item), "");
+  return label;
 }
 
 export const displayValue = (value: any) => {
