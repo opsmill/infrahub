@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from infrahub.core import registry
+from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     AttributeSchema,
@@ -16,6 +17,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.attribute_schema import TextAttributeSchema
+from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
@@ -111,6 +113,40 @@ async def test_node_schema_generate_fields_for_display_label():
 
     schema = NodeSchema(**SCHEMA)
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
+
+
+async def test_node_schema_generate_fields_for_display_label_with_generic(default_branch: Branch):
+    generic_schema = GenericSchema(
+        name="ThingGeneric",
+        namespace="Test",
+        attributes=[
+            AttributeSchema(name="name", kind="Text"),
+        ],
+    )
+    node_schema_1 = NodeSchema(
+        name="Thing1",
+        namespace="Test",
+        inherit_from=["TestThingGeneric"],
+        display_labels=["name__value", "height__value"],
+        attributes=[
+            AttributeSchema(name="height", kind="Text"),
+        ],
+    )
+    node_schema_2 = NodeSchema(
+        name="Thing2",
+        namespace="Test",
+        inherit_from=["TestThingGeneric"],
+        display_labels=["name"],
+        attributes=[
+            AttributeSchema(name="color", kind="Text"),
+        ],
+    )
+    schema_root = SchemaRoot(generics=[generic_schema], nodes=[node_schema_1, node_schema_2])
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    generic_display_label = schema_branch.generate_fields_for_display_label(name="TestThingGeneric")
+    assert generic_display_label == {"name": {"value": None}, "height": {"value": None}}
 
 
 async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
