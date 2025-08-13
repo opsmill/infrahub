@@ -1,7 +1,34 @@
 import { NODE_PATH_EXCLUDELIST } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
+import { useLocation } from "react-router";
+import { NodeLabel } from "../nodes/object/ui/node-label";
+
+function extractNodeId(path: string) {
+  // Match: a slash, then the ID, then either a slash or the end of the string
+  const match = path.match(/\/([\w-]+)(?:\/|$)/);
+
+  if (match?.[1]) {
+    return match?.[1].replaceAll("/", "");
+  }
+
+  return null;
+}
+
+function extractNodeProperty(path: string) {
+  const nodePath = path
+    ?.split("/")
+    // Get the path without the beginning "data/xxxx-xxxx-xxxx-xxxx"
+    .slice(2)
+    // Do not include some values from the path
+    .filter((item) => !NODE_PATH_EXCLUDELIST.includes(item));
+
+  return nodePath?.reduce((acc, item) => (acc ? `${acc} > ${item}` : item), "").trim();
+}
 
 export const displayValue = (value: any) => {
   if (typeof value === "boolean") {
@@ -147,15 +174,7 @@ export const getThreadLabel = (node?: any, currentBranch?: string, path?: string
   // Get main object name
   const objectName = node?.display_label && currentBranch && node?.display_label[currentBranch];
 
-  const nodePath = path
-    ?.split("/")
-    // Get the path without the beginning "data/xxxx-xxxx-xxxx-xxxx"
-    .slice(2)
-    // Do not include some values from the path
-    .filter((item) => !NODE_PATH_EXCLUDELIST.includes(item));
-
-  // Construct path like "item1 > item2 > item3"
-  const nodeLabel = nodePath?.reduce((acc, item) => (acc ? `${acc} > ${item}` : item), "").trim();
+  const nodeLabel = extractNodeProperty(path);
 
   if (objectName) {
     return `${objectName} > ${nodeLabel}`;
@@ -166,6 +185,40 @@ export const getThreadLabel = (node?: any, currentBranch?: string, path?: string
 
 // Get thread title from the thread or a defined label
 export const getThreadTitle = (thread?: any, label?: string) => {
+  const location = useLocation();
+  const { pathname } = location;
+
+  if (thread?.object_path?.value) {
+    // should match the id in "data/185afbed-0447-a991-33a0-c51c1d4e20ef/description" or "data/185afbed-0447-a991-33a0-c51c1d4e20ef"
+    const nodeId = extractNodeId(thread.object_path.value);
+    const nodeProperty = extractNodeProperty(thread.object_path.value);
+
+    if (!nodeId) {
+      return null;
+    }
+
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <Badge variant={"gray-outline"}>Object</Badge>
+
+        <LinkButton
+          to={constructPath(`${pathname}?${QSP.PROPOSED_CHANGES_TAB}=data#${nodeId}`)}
+          className="flex items-center gap-2 px-1"
+          variant={"ghost"}
+        >
+          <NodeLabel id={nodeId} />
+
+          {nodeProperty && (
+            <>
+              <Icon icon={"mdi:chevron-right"} />
+              {nodeProperty}
+            </>
+          )}
+        </LinkButton>
+      </div>
+    );
+  }
+
   const string = thread?.label?.value ?? thread?.display_label ?? label;
 
   if (!string) {
@@ -174,7 +227,9 @@ export const getThreadTitle = (thread?: any, label?: string) => {
 
   return (
     <div className="flex">
-      {string && <Badge variant={string === "Conversation" ? null : "green"}>{string}</Badge>}
+      {string && (
+        <Badge variant={string === "Conversation" ? "gray-outline" : "green"}>{string}</Badge>
+      )}
     </div>
   );
 };
