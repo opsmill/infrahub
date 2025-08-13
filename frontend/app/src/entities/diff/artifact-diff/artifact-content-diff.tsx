@@ -87,7 +87,7 @@ const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?:
 };
 
 export const ArtifactContentDiff = (props: any) => {
-  const { itemPrevious, itemNew } = props;
+  const { itemPrevious, itemNew, id } = props;
 
   const { proposedChangeId } = useParams();
   const auth = useAuth();
@@ -186,6 +186,9 @@ export const ArtifactContentDiff = (props: any) => {
       },
       storage_id: {
         value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
+      },
+      artifact_id: {
+        value: id,
       },
     };
 
