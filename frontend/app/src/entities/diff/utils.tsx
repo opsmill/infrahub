@@ -1,6 +1,5 @@
 import { NODE_PATH_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -202,7 +201,11 @@ export const getThreadTitle = (thread?: any, label?: string) => {
         <Badge variant={"gray-outline"}>Object</Badge>
 
         <LinkButton
-          to={constructPath(`${pathname}?${QSP.PROPOSED_CHANGES_TAB}=data#${nodeId}`)}
+          to={{
+            pathname,
+            search: `?${QSP.PROPOSED_CHANGES_TAB}=data`,
+            hash: `#${nodeId}`,
+          }}
           className="flex items-center gap-2 px-1"
           variant={"ghost"}
         >
