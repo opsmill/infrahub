@@ -1,1 +1,0 @@
-Add the `infrahub db check-inheritance` command to validate and fix any schemas that have had their inheritance updated and a failed migration.

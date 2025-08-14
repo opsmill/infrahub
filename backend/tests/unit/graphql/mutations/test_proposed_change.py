@@ -9,12 +9,10 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus.types import KVTTL
-from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -265,6 +263,7 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
     async def test_merge_proposed_change_permission_failure(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         session_first_account: AccountSession,
         session_admin: AccountSession,
@@ -280,8 +279,6 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         async with get_client(sync_client=False) as prefect_client:
             await setup_worker_pools(client=prefect_client)
             await setup_deployments(prefect_client)
-
-        registry.permission_backends = [LocalPermissionBackend()]
 
         branch_name = "merge-proposed-change-perm"
         branch = await create_branch(branch_name=branch_name, db=db)
