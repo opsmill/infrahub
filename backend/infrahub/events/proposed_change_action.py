@@ -151,8 +151,12 @@ class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
 
 
 class ProposedChangeApprovalsRevokedEvent(ProposedChangeEvent):
-    reviewer_account_ids: list[str] = Field(..., description="IDs of accounts whose approval was revoked")
-    reviewer_account_names: list[str] = Field(..., description="Names of accounts whose approval was revoked")
+    reviewer_account_ids: list[str] = Field(
+        default_factory=list, description="IDs of accounts whose approval was revoked"
+    )
+    reviewer_account_names: list[str] = Field(
+        default_factory=list, description="Names of accounts whose approval was revoked"
+    )
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
 
