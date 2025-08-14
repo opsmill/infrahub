@@ -1,5 +1,5 @@
-from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.attribute_kind_update import AttributeKindUpdateMigration
+from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
 from .schema.node_kind_update import NodeKindUpdateMigration
