@@ -274,10 +274,7 @@ class TestProposedChangeReview(TestInfrahubApp):
                 raise_for_error=False,
             )
 
-        assert (
-            exc.value.errors[0]["message"]
-            == "You do not have the following permission: global:review_proposed_change:allow_all"
-        )
+        assert exc.value.errors[0]["message"] == "You are not allowed to review proposed changes"
 
         # Verify the proposed change still exists and is in the correct state
         updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
