@@ -25,8 +25,8 @@ test.describe("Role management - READ", () => {
     await test.step("check roles view", async () => {
       await page.getByRole("link", { name: "Roles" }).click();
       await expect(page.getByText("General Access")).toBeVisible();
-      await expect(page.getByText("Infrahub Users")).toBeVisible();
-      await expect(page.getByText("global:edit_default_branch:")).toBeVisible();
+      await expect(page.getByText("Infrahub Users").first()).toBeVisible();
+      await expect(page.getByText("global:edit_default_branch:").first()).toBeVisible();
       await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
     });
 
