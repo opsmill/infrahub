@@ -86,6 +86,8 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         }}
         disabled={isPending}
         data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>
