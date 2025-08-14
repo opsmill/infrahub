@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from prefect.client.orchestration import PrefectClient, get_client
