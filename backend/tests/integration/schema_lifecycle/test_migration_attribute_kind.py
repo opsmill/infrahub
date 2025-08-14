@@ -74,6 +74,18 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
             )
         return attr_is_indexeds
 
+    async def validate_indexed_state(
+        self, db: InfrahubDatabase, branch: Branch, kind_index_map: dict[tuple[str, str], dict[str, bool]]
+    ):
+        kinds = {kind_and_uuid[0] for kind_and_uuid in kind_index_map.keys()}
+        num_expected_results = sum(len(attr_map) for attr_map in kind_index_map.values())
+        attr_is_indexeds = await self.get_indexed_state_for_attributes(db=db, branch=branch, kinds=list(kinds))
+        assert len(attr_is_indexeds) == num_expected_results
+        for attr_is_indexed in attr_is_indexeds:
+            kind_and_uuid = (attr_is_indexed.kind, attr_is_indexed.uuid)
+            assert kind_and_uuid in kind_index_map
+            assert attr_is_indexed.is_indexed == kind_index_map[kind_and_uuid][attr_is_indexed.attr_name]
+
     @pytest.fixture(scope="class")
     def schema_thing(self) -> dict[str, Any]:
         return {
@@ -82,6 +94,8 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
             "attributes": [
                 {"name": "text_value", "kind": "Text"},
                 {"name": "text_area_value", "kind": "TextArea"},
+                {"name": "list_value", "kind": "List"},
+                {"name": "url_value", "kind": "URL"},
             ],
         }
 
@@ -129,6 +143,54 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         }
 
     @pytest.fixture(scope="class")
+    def schema_thing_text_area_to_text(self, schema_thing_text_to_text_area: dict[str, Any]) -> dict[str, Any]:
+        updated_schema = deepcopy(schema_thing_text_to_text_area)
+        updated_schema["attributes"][1]["kind"] = "Text"
+        return updated_schema
+
+    @pytest.fixture(scope="class")
+    def schema_step_04(
+        self,
+        schema_thing_text_area_to_text,
+    ) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [schema_thing_text_area_to_text],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_thing_url_to_text(self, schema_thing_text_area_to_text: dict[str, Any]) -> dict[str, Any]:
+        updated_schema = deepcopy(schema_thing_text_area_to_text)
+        updated_schema["attributes"][3]["kind"] = "Text"
+        return updated_schema
+
+    @pytest.fixture(scope="class")
+    def schema_step_05(
+        self,
+        schema_thing_url_to_text,
+    ) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [schema_thing_url_to_text],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_thing_text_area_revert(self, schema_thing_url_to_text: dict[str, Any]) -> dict[str, Any]:
+        updated_schema = deepcopy(schema_thing_url_to_text)
+        updated_schema["attributes"][1]["kind"] = "TextArea"
+        return updated_schema
+
+    @pytest.fixture(scope="class")
+    def schema_step_06(
+        self,
+        schema_thing_text_area_revert,
+    ) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [schema_thing_text_area_revert],
+        }
+
+    @pytest.fixture(scope="class")
     async def initial_objects(
         self,
         db: InfrahubDatabase,
@@ -139,11 +201,23 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         await load_schema(db=db, schema=schema_step_01)
 
         thing_one = await Node.init(schema=THING_KIND, db=db)
-        await thing_one.new(db=db, text_value="ONE", text_area_value="longer ONE")
+        await thing_one.new(
+            db=db,
+            text_value="ONE",
+            text_area_value="longer ONE",
+            list_value=["a", "b"],
+            url_value="https://infrahub.com",
+        )
         await thing_one.save(db=db)
 
         thing_two = await Node.init(schema=THING_KIND, db=db)
-        await thing_two.new(db=db, text_value="TWO", text_area_value="longer TWO")
+        await thing_two.new(
+            db=db,
+            text_value="TWO",
+            text_area_value="longer TWO",
+            list_value=["c", "d"],
+            url_value="https://opsmill.com",
+        )
         await thing_two.save(db=db)
 
         objs = {
@@ -158,23 +232,21 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         objects = await NodeManager.get_many(db=db, ids=object_ids)
         assert len(objects) == len(object_ids)
 
-        # check that indexing is correct to start with
-        attr_is_indexeds = await self.get_indexed_state_for_attributes(db=db, branch=branch, kinds=[THING_KIND])
-        assert len(attr_is_indexeds) == 4
-        assert set(attr_is_indexeds) == {
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_one"].id, attr_name="text_value", is_indexed=True
-            ),
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_one"].id, attr_name="text_area_value", is_indexed=False
-            ),
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_two"].id, attr_name="text_value", is_indexed=True
-            ),
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_two"].id, attr_name="text_area_value", is_indexed=False
-            ),
+        kind_index_map = {
+            (THING_KIND, initial_objects["thing_one"].id): {
+                "text_value": True,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+            },
+            (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": True,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+            },
         }
+        await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
 
     async def test_step_02_illegal_kind_updates(
         self,
@@ -204,23 +276,99 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         response = await client.schema.load(schemas=[schema_step_03], branch=branch.name)
         assert not response.errors
 
-        attr_is_indexeds = await self.get_indexed_state_for_attributes(db=db, branch=branch, kinds=[THING_KIND])
-        assert len(attr_is_indexeds) == 4
-        assert set(attr_is_indexeds) == {
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_one"].id, attr_name="text_value", is_indexed=False
-            ),
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_one"].id, attr_name="text_area_value", is_indexed=False
-            ),
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_two"].id, attr_name="text_value", is_indexed=False
-            ),
-            AttributeIsIndexed(
-                kind=THING_KIND, uuid=initial_objects["thing_two"].id, attr_name="text_area_value", is_indexed=False
-            ),
+        kind_index_map = {
+            (THING_KIND, initial_objects["thing_one"].id): {
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+            },
+            (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+            },
         }
+        await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
 
+    async def test_step_04_text_area_to_text_update(
+        self,
+        db: InfrahubDatabase,
+        initial_objects: dict[str, Node],
+        branch: Branch,
+        schema_step_04: dict[str, Any],
+        client: InfrahubClient,
+    ):
+        response = await client.schema.load(schemas=[schema_step_04], branch=branch.name)
+        assert not response.errors
 
-# TODO: why are 4 migrations running in the step 03 test?
-# TODO: test for allowed kind update that does not change indexing
+        kind_index_map = {
+            (THING_KIND, initial_objects["thing_one"].id): {
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+            },
+            (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+            },
+        }
+        await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
+
+    async def test_step_05_url_to_text_update(
+        self,
+        db: InfrahubDatabase,
+        initial_objects: dict[str, Node],
+        branch: Branch,
+        schema_step_05: dict[str, Any],
+        client: InfrahubClient,
+    ):
+        response = await client.schema.load(schemas=[schema_step_05], branch=branch.name)
+        assert not response.errors
+
+        kind_index_map = {
+            (THING_KIND, initial_objects["thing_one"].id): {
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+            },
+            (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+            },
+        }
+        await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
+
+    async def test_step_06_text_area_revert(
+        self,
+        db: InfrahubDatabase,
+        initial_objects: dict[str, Node],
+        branch: Branch,
+        schema_step_06: dict[str, Any],
+        client: InfrahubClient,
+    ):
+        response = await client.schema.load(schemas=[schema_step_06], branch=branch.name)
+        assert not response.errors
+
+        kind_index_map = {
+            (THING_KIND, initial_objects["thing_one"].id): {
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+            },
+            (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+            },
+        }
+        await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)

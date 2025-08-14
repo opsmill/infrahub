@@ -29,38 +29,61 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         new_attr_value_labels = "AttributeValue"
         if needs_index:
             new_attr_value_labels += ":AttributeValueIndexed"
+        # ruff: noqa: S608
         query = """
+// ------------
+// start with all the Attribute vertices we might care about
+// ------------
 MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
+
+// ------------
+// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
+// ------------
 CALL (n, attr) {
     MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
     WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
     WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
-    ORDER BY r2.branch_level DESC, r2.from DESC, r1.branch_level DESC, r1.from DESC
+    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
     LIMIT 1
     WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
     WHERE is_active AND is_indexed <> $needs_index
     RETURN has_value_e, av
 }
 
+// ------------
+// check if the correct AttributeValue vertex to use exists
+// ------------
 CALL (av) {
     OPTIONAL MATCH (existing_av:AttributeValue {is_default: av.is_default, value: av.value})
     WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
     RETURN existing_av IS NOT NULL AS av_exists
     LIMIT 1
 }
+// ------------
+// create the AttributeValue vertex if it does not exist
+// ------------
 CALL (av, av_exists) {
     WITH av_exists
     WHERE NOT av_exists
     CREATE (:%(new_attr_value_labels)s {is_default: av.is_default, value: av.value})
 }
 
+// ------------
+// create and update the HAS_VALUE edges
+// ------------
 CALL (attr, has_value_e, av) {
+    // ------------
+    // get the correct AttributeValue vertex b/c it definitely exists now
+    // ------------
     MATCH (new_av:%(new_attr_value_labels)s {is_default: av.is_default, value: av.value})
     WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
     LIMIT 1
 
+    // ------------
+    // create the new HAS_VALUE edge
+    // ------------
     CREATE (attr)-[new_has_value_e:HAS_VALUE]->(new_av)
     SET new_has_value_e = properties(has_value_e)
     SET new_has_value_e.status = "active"
@@ -69,6 +92,10 @@ CALL (attr, has_value_e, av) {
     SET new_has_value_e.from = $at
     SET new_has_value_e.to = NULL
 
+    // ------------
+    // if we are updating on a branch and the existing edge is on the default branch,
+    // then create a new deleted edge on this branch
+    // ------------
     WITH attr, has_value_e, av
     WHERE has_value_e.branch <> $branch
     CREATE (attr)-[deleted_has_value_e:HAS_VALUE]->(av)
@@ -79,6 +106,11 @@ CALL (attr, has_value_e, av) {
     SET deleted_has_value_e.from = $at
     SET deleted_has_value_e.to = NULL
 }
+
+// ------------
+// if the existing edge is on the same branch as the update,
+// then set its "to" time
+// ------------
 CALL (has_value_e) {
     WITH has_value_e
     WHERE has_value_e.branch = $branch

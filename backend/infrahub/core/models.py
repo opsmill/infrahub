@@ -569,7 +569,10 @@ class HashableModel(BaseModel):
 
         for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
+                try:
+                    setattr(self, field_name, getattr(other, field_name))
+                except ValueError:
+                    pass
                 continue
 
             attr_other = getattr(other, field_name)
