@@ -98,7 +98,10 @@ class ConstraintValidatorDeterminer:
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
-            if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
+            if prop_field_update not in (
+                UpdateSupport.VALIDATE_CONSTRAINT.value,
+                UpdateSupport.MIGRATION_REQUIRED.value,
+            ):
                 continue
 
             if getattr(schema, prop_name) is None:
@@ -111,6 +114,13 @@ class ConstraintValidatorDeterminer:
                 property_name=prop_name,
             )
             constraint_name = f"node.{prop_name}.update"
+
+            do_constraint_validation = prop_field_update == UpdateSupport.VALIDATE_CONSTRAINT.value or (
+                prop_field_update == UpdateSupport.MIGRATION_REQUIRED.value
+                and CONSTRAINT_VALIDATOR_MAP.get(constraint_name)
+            )
+            if not do_constraint_validation:
+                continue
 
             constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
         return constraints
@@ -154,7 +164,10 @@ class ConstraintValidatorDeterminer:
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
-            if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
+            if prop_field_update not in (
+                UpdateSupport.VALIDATE_CONSTRAINT.value,
+                UpdateSupport.MIGRATION_REQUIRED.value,
+            ):
                 continue
 
             if prop_value is None:
@@ -167,6 +180,13 @@ class ConstraintValidatorDeterminer:
                     continue
                 path_type = SchemaPathType.RELATIONSHIP
                 constraint_name = f"relationship.{prop_name}.update"
+
+            do_constraint_validation = prop_field_update == UpdateSupport.VALIDATE_CONSTRAINT.value or (
+                prop_field_update == UpdateSupport.MIGRATION_REQUIRED.value
+                and CONSTRAINT_VALIDATOR_MAP.get(constraint_name)
+            )
+            if not do_constraint_validation:
+                continue
 
             schema_path = SchemaPath(
                 schema_kind=schema.kind,
