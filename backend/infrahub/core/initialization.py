@@ -37,7 +37,7 @@ from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
-from infrahub.permissions import PermissionBackend
+from infrahub.permissions import PermissionBackend, get_or_create_global_permission
 from infrahub.storage import InfrahubObjectStorage
 
 if TYPE_CHECKING:
@@ -371,20 +371,13 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     await proposed_change_permission.save(db=db)
 
     # Other permissions, created to keep references of them from the start
-    for permission_action, permission_description in (
-        (GlobalPermissions.EDIT_DEFAULT_BRANCH, "Allow a user to change data in the default branch"),
-        (GlobalPermissions.MANAGE_ACCOUNTS, "Allow a user to manage accounts, account roles and account groups"),
-        (GlobalPermissions.MANAGE_PERMISSIONS, "Allow a user to manage permissions"),
-        (GlobalPermissions.MERGE_BRANCH, "Allow a user to merge branches"),
+    for permission_action in (
+        GlobalPermissions.EDIT_DEFAULT_BRANCH,
+        GlobalPermissions.MANAGE_ACCOUNTS,
+        GlobalPermissions.MANAGE_PERMISSIONS,
+        GlobalPermissions.MERGE_BRANCH,
     ):
-        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await permission.new(
-            db=db,
-            action=permission_action.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
-            description=permission_description,
-        )
-        await permission.save(db=db)
+        await get_or_create_global_permission(db=db, permission=permission_action)
 
     view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await view_permission.new(
@@ -428,18 +421,31 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
 
 
 async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAccountRole:
-    reviewer_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await reviewer_permission.new(
-        db=db,
-        action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to approve or revoke proposed changes",
+    edit_default_branch_permission = await get_or_create_global_permission(
+        db=db, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH
     )
-    await reviewer_permission.save(db=db)
+    reviewer_permission = await get_or_create_global_permission(
+        db=db, permission=GlobalPermissions.REVIEW_PROPOSED_CHANGE
+    )
+
+    proposed_change_update_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await proposed_change_update_permission.new(
+        db=db,
+        name="ProposedChange",
+        namespace="Core",
+        action=PermissionAction.UPDATE.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to update proposed changes",
+    )
+    await proposed_change_update_permission.save(db=db)
 
     role_name = "Proposed Change Reviewer"
     role = await Node.init(db=db, schema=CoreAccountRole)
-    await role.new(db=db, name=role_name, permissions=[reviewer_permission])
+    await role.new(
+        db=db,
+        name=role_name,
+        permissions=[edit_default_branch_permission, reviewer_permission, proposed_change_update_permission],
+    )
     await role.save(db=db)
     log.info(f"Created account role: {role_name}")
 
@@ -497,7 +503,6 @@ async def create_default_account_groups(
 
     default_role = await create_default_role(db=db)
     proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
-
     await create_accounts_group(
         db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts or []
     )

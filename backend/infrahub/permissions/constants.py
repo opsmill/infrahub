@@ -31,3 +31,15 @@ GLOBAL_PERMISSION_DENIAL_MESSAGE = {
     GlobalPermissions.MANAGE_PERMISSIONS.value: "You are not allowed to manage permissions",
     GlobalPermissions.MANAGE_REPOSITORIES.value: "You are not allowed to manage repositories",
 }
+
+GLOBAL_PERMISSION_DESCRIPTION = {
+    GlobalPermissions.EDIT_DEFAULT_BRANCH: "Allow a user to change data in the default branch",
+    GlobalPermissions.MERGE_BRANCH: "Allow a user to merge branches",
+    GlobalPermissions.MERGE_PROPOSED_CHANGE: "Allow a user to merge proposed changes",
+    GlobalPermissions.REVIEW_PROPOSED_CHANGE: "Allow a user to approve or reject proposed changes",
+    GlobalPermissions.MANAGE_SCHEMA: "Allow a user to manage the schema",
+    GlobalPermissions.MANAGE_ACCOUNTS: "Allow a user to manage accounts, account roles and account groups",
+    GlobalPermissions.MANAGE_PERMISSIONS: "Allow a user to manage permissions",
+    GlobalPermissions.MANAGE_REPOSITORIES: "Allow a user to manage repositories",
+    GlobalPermissions.SUPER_ADMIN: "Allow a user to do anything",
+}
