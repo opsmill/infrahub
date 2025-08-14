@@ -24,7 +24,6 @@ from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemov
 from infrahub.events.models import EventNode
 from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
@@ -38,6 +37,7 @@ if TYPE_CHECKING:
 
 async def test_relationship_add(
     db: InfrahubDatabase,
+    default_permission_backend: None,
     person_jack_main: Node,
     tag_blue_main: Node,
     tag_red_main: Node,
@@ -180,6 +180,7 @@ async def test_relationship_add(
 
 async def test_relationship_remove(
     db: InfrahubDatabase,
+    default_permission_backend: None,
     person_jack_tags_main: Node,
     tag_blue_main: Node,
     tag_red_main: Node,
@@ -391,6 +392,7 @@ async def test_relationship_wrong_node(
 
 async def test_relationship_groups_add(
     db: InfrahubDatabase,
+    default_permission_backend: None,
     default_branch: Branch,
     car_person_generics_data: dict[str, Node],
     enable_broker_config: None,
@@ -538,6 +540,7 @@ async def test_relationship_groups_add(
 
 async def test_relationship_groups_remove(
     db: InfrahubDatabase,
+    default_permission_backend: None,
     default_branch: Branch,
     car_person_generics_data,
     enable_broker_config: None,
@@ -1154,14 +1157,13 @@ async def test_add_generic_related_node_with_hfid(
 
 async def test_with_permissions(
     db: InfrahubDatabase,
+    default_permission_backend: None,
     register_core_models_schema: None,
     default_branch: Branch,
     first_account: CoreAccount,
     person_jack_main: Node,
     tag_blue_main: Node,
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
-
     permissions = []
     for object_permission in [
         ObjectPermission(
@@ -1231,14 +1233,13 @@ async def test_with_permissions(
 
 async def test_without_permissions(
     db: InfrahubDatabase,
+    default_permission_backend: None,
     register_core_models_schema: None,
     default_branch: Branch,
     first_account: CoreAccount,
     person_jack_main: Node,
     tag_red_main: Node,
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
-
     first_session = AccountSession(
         authenticated=True, account_id=first_account.id, session_id=str(uuid4()), auth_type=AuthType.JWT
     )

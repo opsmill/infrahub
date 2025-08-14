@@ -176,6 +176,10 @@ VLANs
 vscode
 VSCode
 walkthrough
+Otternet
+check_color_tags_name
+colored_tags
+Widget's
 widget's
 Entra
 Okta
