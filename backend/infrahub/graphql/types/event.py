@@ -136,6 +136,13 @@ class ProposedChangeReviewRevokedEvent(ObjectType):
     payload = Field(GenericScalar, required=True)
 
 
+class ProposedChangeApprovalsRevokedEvent(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    payload = Field(GenericScalar, required=True)
+
+
 class ProposedChangeReviewRequestedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
@@ -220,6 +227,7 @@ EVENT_TYPES: dict[str, type[ObjectType]] = {
     events.ProposedChangeRejectedEvent.event_name: ProposedChangeReviewEvent,
     events.ProposedChangeRejectionRevokedEvent.event_name: ProposedChangeReviewRevokedEvent,
     events.ProposedChangeReviewRequestedEvent.event_name: ProposedChangeReviewRequestedEvent,
+    events.ProposedChangeApprovalsRevokedEvent.event_name: ProposedChangeApprovalsRevokedEvent,
     events.ProposedChangeMergedEvent.event_name: ProposedChangeMergedEvent,
     events.ProposedChangeThreadCreatedEvent.event_name: ProposedChangeThreadEvent,
     events.ProposedChangeThreadUpdatedEvent.event_name: ProposedChangeThreadEvent,

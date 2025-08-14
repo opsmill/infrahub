@@ -5,6 +5,7 @@ from .models import EventMeta, InfrahubEvent
 from .node_action import NodeCreatedEvent, NodeDeletedEvent, NodeUpdatedEvent
 from .proposed_change_action import (
     ProposedChangeApprovalRevokedEvent,
+    ProposedChangeApprovalsRevokedEvent,
     ProposedChangeApprovedEvent,
     ProposedChangeMergedEvent,
     ProposedChangeRejectedEvent,
@@ -32,6 +33,7 @@ __all__ = [
     "NodeDeletedEvent",
     "NodeUpdatedEvent",
     "ProposedChangeApprovalRevokedEvent",
+    "ProposedChangeApprovalsRevokedEvent",
     "ProposedChangeApprovedEvent",
     "ProposedChangeMergedEvent",
     "ProposedChangeRejectedEvent",

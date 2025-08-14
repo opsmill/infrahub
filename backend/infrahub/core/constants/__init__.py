@@ -66,6 +66,7 @@ class EventType(InfrahubStringEnum):
     PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
     PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
     PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
+    PROPOSED_CHANGE_APPROVALS_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
     PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
     PROPOSED_CHANGE_THREAD_CREATED = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
     PROPOSED_CHANGE_THREAD_UPDATED = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
