@@ -32,6 +32,18 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={
+            hasRejected
+              ? "An error occurred while canceling the rejection"
+              : "An error occurred while rejecting proposed change"
+          }
+        />
+      );
+    },
   });
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {

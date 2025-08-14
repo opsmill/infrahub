@@ -24,6 +24,14 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
     },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={"An error occurred while closing the propsoed change"}
+        />
+      );
+    },
   });
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
