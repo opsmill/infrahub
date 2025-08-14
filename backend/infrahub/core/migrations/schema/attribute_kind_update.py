@@ -54,21 +54,40 @@ CALL (n, attr) {
 
 // ------------
 // check if the correct AttributeValue vertex to use exists
+// create it if not
 // ------------
-CALL (av) {
-    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av.is_default, value: av.value})
+WITH DISTINCT av.is_default AS av_is_default, av.value AS av_value
+CALL (av_is_default, av_value) {
+    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
     WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
-    RETURN existing_av IS NOT NULL AS av_exists
+    WITH existing_av WHERE existing_av IS NULL
     LIMIT 1
+    CREATE (:%(new_attr_value_labels)s {is_default: av_is_default, value: av_value})
 }
+
 // ------------
-// create the AttributeValue vertex if it does not exist
+// get all the AttributeValue vertices that need to be updated again and run the updates
 // ------------
-CALL (av, av_exists) {
-    WITH av_exists
-    WHERE NOT av_exists
-    CREATE (:%(new_attr_value_labels)s {is_default: av.is_default, value: av.value})
+WITH 1 AS one
+LIMIT 1
+MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+WHERE attr.name = $attr_name
+WITH DISTINCT n, attr
+
+// ------------
+// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
+// ------------
+CALL (n, attr) {
+    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
+    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
+    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
+    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
+    LIMIT 1
+    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
+    WHERE is_active AND is_indexed <> $needs_index
+    RETURN has_value_e, av
 }
+
 
 // ------------
 // create and update the HAS_VALUE edges
