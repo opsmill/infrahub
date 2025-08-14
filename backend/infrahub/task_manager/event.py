@@ -253,10 +253,7 @@ class PrefectEventData(PrefectEventModel):
                     **self._return_proposed_change_reviewer_former_decision(),
                 }
             case "infrahub.proposed_change.approvals_revoked":
-                event_specifics = {
-                    **self._return_proposed_change_event(),
-                    **self._return_reviewers_of_revoked_approvals(),
-                }
+                event_specifics = self._return_proposed_change_event()
             case "infrahub.proposed_change.review_requested" | "infrahub.proposed_change.merged":
                 event_specifics = self._return_proposed_change_event()
 

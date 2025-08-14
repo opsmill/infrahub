@@ -1,6 +1,6 @@
-from typing import ClassVar, Self
+from typing import ClassVar
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from infrahub.core.constants import InfrahubKind, MutationAction
 
@@ -151,31 +151,22 @@ class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
 
 
 class ProposedChangeApprovalsRevokedEvent(ProposedChangeEvent):
-    reviewer_account_ids: list[str] = Field(
-        default_factory=list, description="IDs of accounts whose approval was revoked"
-    )
-    reviewer_account_names: list[str] = Field(
-        default_factory=list, description="Names of accounts whose approval was revoked"
+    reviewer_accounts: dict[str, str] = Field(
+        default_factory=dict, description="ID to name map of accounts whose approval was revoked"
     )
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
 
-    @model_validator(mode="after")
-    def check_same_length(self) -> Self:
-        if len(self.reviewer_account_ids) != len(self.reviewer_account_names):
-            raise ValueError("reviewer_account_ids and reviewer_account_names must have the same number of items")
-        return self
-
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
-        for i, account_id in enumerate(self.reviewer_account_ids):
+        for account_id, account_name in self.reviewer_accounts.items():
             related.append(
                 {
                     "prefect.resource.id": account_id,
                     "prefect.resource.role": "infrahub.related.node",
                     "infrahub.node.kind": InfrahubKind.GENERICACCOUNT,
                     "infrahub.node.id": account_id,
-                    "infrahub.reviewer.account.name": self.reviewer_account_names[i],
+                    "infrahub.reviewer.account.name": account_name,
                 }
             )
         return related

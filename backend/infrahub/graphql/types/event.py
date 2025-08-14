@@ -140,12 +140,6 @@ class ProposedChangeApprovalsRevokedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
-    reviewer_account_ids = List(
-        NonNull(String), required=True, description="IDs of accounts whose approvals were revoked"
-    )
-    reviewer_account_names = List(
-        NonNull(String), required=True, description="Names of accounts whose approvals were revoked"
-    )
     payload = Field(GenericScalar, required=True)
 
 
