@@ -30,6 +30,18 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={
+            isDraft
+              ? "An error occurred while removing draft status"
+              : "An error occurred while moving to draft"
+          }
+        />
+      );
+    },
   });
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -74,6 +86,8 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         }}
         disabled={isPending}
         data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

@@ -24,6 +24,14 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
     },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={"An error occurred while closing the propsoed change"}
+        />
+      );
+    },
   });
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -66,6 +74,8 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         }}
         disabled={isPending}
         data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

@@ -24,6 +24,14 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
     },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={"An error occurred while merging proposed change"}
+        />
+      );
+    },
   });
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -66,6 +74,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         }}
         disabled={isPending}
         data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

@@ -33,6 +33,18 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={
+            hasApproved
+              ? "An error occurred while canceling the approval"
+              : "An error occurred while approving"
+          }
+        />
+      );
+    },
   });
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -72,6 +84,8 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         }}
         disabled={isPending}
         data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>
