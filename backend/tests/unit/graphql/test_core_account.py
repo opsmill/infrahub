@@ -1,14 +1,12 @@
 import bcrypt
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions.local_backend import LocalPermissionBackend
 from tests.helpers.graphql import graphql
 
 
@@ -48,9 +46,13 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
 
 
 async def test_permissions(
-    db: InfrahubDatabase, default_branch: Branch, authentication_base, session_admin, first_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    authentication_base,
+    session_admin,
+    first_account,
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
     query = """
     query {
         InfrahubPermissions {

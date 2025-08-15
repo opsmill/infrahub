@@ -21,20 +21,12 @@ export const getProposedChangesCountsFromApi = async ({
   const query = gql(
     jsonToGraphQLQuery({
       query: {
+        __name: "GET_PROPOSED_CHANGE_COUNTS",
         opened: {
           __aliasFor: PROPOSED_CHANGE_OBJECT,
           __args: {
             ...(filters ? addFiltersToRequest(filters) : {}),
             state__values: PROPOSED_CHANGE_STATES.opened,
-            is_draft__value: false,
-          },
-          count: true,
-        },
-        draft: {
-          __aliasFor: PROPOSED_CHANGE_OBJECT,
-          __args: {
-            ...(filters ? addFiltersToRequest(filters) : {}),
-            is_draft__value: true,
           },
           count: true,
         },

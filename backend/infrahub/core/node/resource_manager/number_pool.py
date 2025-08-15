@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPoolGetUsed, NumberPoolSetReserved
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
@@ -62,24 +63,25 @@ class CoreNumberPool(Node):
         identifier: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
-        # NOTE: ideally we should use the HFID as the identifier (if available)
-        # one of the challenge with using the HFID is that it might change over time
-        # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
-        identifier = identifier or node.get_id()
+        async with lock.registry.get(name=self.get_id(), namespace="resource_pool"):
+            # NOTE: ideally we should use the HFID as the identifier (if available)
+            # one of the challenge with using the HFID is that it might change over time
+            # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
+            identifier = identifier or node.get_id()
 
-        # Check if there is already a resource allocated with this identifier
-        # if not, pull all existing number and allocate the next available
-        # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-        query_get = await NumberPoolGetReserved.init(db=db, branch=branch, pool_id=self.id, identifier=identifier)
-        await query_get.execute(db=db)
-        reservation = query_get.get_reservation()
-        if reservation is not None:
-            return reservation
+            # Check if there is already a resource allocated with this identifier
+            # if not, pull all existing number and allocate the next available
+            # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
+            query_get = await NumberPoolGetReserved.init(db=db, branch=branch, pool_id=self.id, identifier=identifier)
+            await query_get.execute(db=db)
+            reservation = query_get.get_reservation()
+            if reservation is not None:
+                return reservation
 
-        # If we have not returned a value we need to find one if avaiable
-        number = await self.get_next(db=db, branch=branch, attribute=attribute)
-        await self.reserve(db=db, number=number, identifier=identifier, at=at)
-        return number
+            # If we have not returned a value we need to find one if avaiable
+            number = await self.get_next(db=db, branch=branch, attribute=attribute)
+            await self.reserve(db=db, number=number, identifier=identifier, at=at)
+            return number
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:
         taken = await self.get_used(db=db, branch=branch)

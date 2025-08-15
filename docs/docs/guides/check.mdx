@@ -1,46 +1,232 @@
 ---
-title: Creating a Check
+title: How to Create a Check
 ---
-<!-- vale off -->
-## Creating a Check
-<!-- vale on -->
-Within Infrahub a [Check](../topics/check) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the check using [infrahubctl check]($(base_url)infrahubctl/infrahubctl-check).
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-The goal of this guide is to develop a `Check` and add it to Infrahub, we will achieve this by following these steps.
+# How to create a check in Infrahub
 
-1. Identify the relevant data in the database that you want to use as input for the check using a [GraphQL query](../topics/graphql), that can take an input parameter to filter the data
-2. Write a Python script that will process and validate the data using your custom business logic
-3. Create an entry for the check within an .infrahub.yml file
-4. Create a Git repository
-5. Test the Check with the `infrahubctl` command
-6. Add the repository to Infrahub as an external repository
-7. Test the Check in a proposed change
+Checks in Infrahub allow you to validate data based on custom business logic. They are defined in [external repositories](../topics/repository) and can be developed and tested locally using [infrahubctl check]($(base_url)infrahubctl/infrahubctl-check).
 
-In this guide we are going to work with the builtin tag objects in Infrahub. The goal will be to use a `Check` to validate the naming convention of an object using a Regex. Validating a string with a Regex is something we can do directly in the schema so this check won't be super helpful but the goal is instead to show how Checks work. Once you have mastered the basics you will be ready to go on to create more advanced Checks.
+:::info Global vs. Targeted Checks
 
-### 1. Creating a query to collect the desired data
+If you want to know more about the differences between these two types, refer to the topic on [Global vs. Targeted Checks](../topics/check).
 
-As the first step we need to have some data in the database to actually query.
+**TL;DR:**
 
-Create three tags, called "color-red", "color-green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
-Note that the "blue" tag is following a different naming scheme compared to the other tags. This is on purpose and is needed for the rest of the guide.
+- **Global Checks**: Apply to all instances of a specific object type in the database
+- **Targeted Checks**: Apply only to specific instances that you select (by adding them to a group)
 
-```graphql
-mutation CreateTags {
-  BuiltinTagCreate(
-      data: {name: {value: "color-red"}, description: {value: "The red tag"}}
-  ) {
-    ok
-    object {
-      id
+:::
+
+## What you'll build
+
+In this guide, you'll build a check that:
+
+1. Reads information about tag objects from the database
+2. Validates that the tags follow specific naming conventions using regex patterns
+3. Automatically runs when changes to tags are proposed
+
+## Steps overview
+
+1. Prepare sample data in your Infrahub instance
+2. Create a GraphQL query to fetch data from Infrahub
+3. Implement a Python check that validates the data
+4. Configure the check in an `.infrahub.yml` file
+5. Test the check locally with infrahubctl
+6. Deploy the check to Infrahub
+7. Validate that the check works in Infrahub's CI pipeline
+
+## Prerequisites
+
+Before you begin, you'll need:
+
+- Basic knowledge of Infrahub, Python, GraphQL, YAML, and Git
+- Familiarity with Checks and how they work in Infrahub (see [Checks topic](../topics/check))
+- An Infrahub instance running locally or remotely
+- A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository))
+- [infrahubctl]($(base_url)infrahubctl/infrahubctl) installed and configured locally
+- The repository cloned where you'll develop the check
+
+## Setting up your workspace
+
+:::warning Version Control & Branching
+
+We recommend creating a new branch in your Git repository for your check development to avoid affecting the main branch. In this guide, we'll use a branch named `create-tag-check`.
+
+```shell
+git checkout -b create-tag-check
+git push --set-upstream origin create-tag-check
+```
+
+:::
+
+## Step 1: Preparing sample data
+
+First, let's create some sample tag data to test our check against.
+
+:::warning
+
+This step is only necessary if you don't already have the objects affected by the check in your instance.
+
+:::
+
+:::important
+
+For targeted checks you will need to create a group that the check will target.
+
+:::
+
+Create three tags with different naming patterns:
+
+- `color-red` - Follows the "color-[name]" pattern (will pass validation)
+- `color-green` - Follows the "color-[name]" pattern (will pass validation)
+- `blue` - Doesn't follow the pattern (will fail our validation check)
+
+You can create these tags using the Infrahub UI or in batch using object file:
+
+<Tabs groupId="check-type">
+<TabItem value="Targeted Check">
+
+For targeted checks, you will also need to create a group that includes the tags you want to validate.
+
+<Tabs>
+<TabItem value="Using Object File" >
+
+  1. Create a file named `groups.yml` in the `objects` directory of your repository:
+
+  ```yaml title="objects/groups.yml"
+  ---
+  apiVersion: infrahub.app/v1
+  kind: Object
+  spec:
+    kind: CoreStandardGroup
+    data:
+      - name: colored_tags
+        description: Group for colored tags
+  ```
+
+  2. Create a file named `tags.yml` in the `objects` directory of your repository:
+
+  ```yaml title="objects/tags.yml"
+  ---
+  apiVersion: infrahub.app/v1
+  kind: Object
+  spec:
+    kind: BuiltinTag
+    data:
+      - name: "color-red"
+        description: "The red tag"
+        member_of_groups:
+          - ["colored_tags"]
+      - name: "color-green"
+        description: "The green tag"
+        member_of_groups:
+          - ["colored_tags"]
+      - name: "blue"
+        description: "The blue tag"
+        member_of_groups:
+          - ["colored_tags"]
+  ```
+
+  2. Use infrahubctl to load the objects:
+
+  ```shell
+  infrahubctl object load objects/groups.yml --branch=create-tag-check
+  infrahubctl object load objects/tags.yml --branch=create-tag-check
+  ```
+
+  </TabItem>
+  <TabItem value="Using the UI">
+  1. Open the **Infrahub UI** in your browser
+  2. Select the branch `create-tag-check`
+  3. Navigate to the **Groups** view (Object Management > Groups)
+  4. Create a group
+      - **Name**: `colored_tags`, **Description**: `Group for colored tags`
+  5. Navigate to the **Tags** view (Other > Tags)
+  6. Create the tags
+      - **Name**: `color-red`, **Description**: `The red tag`, **Member of Group**: `colored_tags`
+      - **Name**: `color-green`, **Description**: `The green tag`, **Member of Group**: `colored_tags`
+      - **Name**: `blue`, **Description**: `The blue tag`, **Member of Group**: `colored_tags`
+
+  </TabItem>
+</Tabs>
+</TabItem>
+<TabItem value="Global Check">
+<Tabs>
+<TabItem value="Using Object File" >
+  1. Create a file named `tags.yml` in the `objects` directory of your repository:
+
+  ```yaml title="objects/tags.yml"
+  ---
+  apiVersion: infrahub.app/v1
+  kind: Object
+  spec:
+    kind: BuiltinTag
+    data:
+      - name: "color-red"
+        description: "The red tag"
+      - name: "color-green"
+        description: "The green tag"
+      - name: "blue"
+        description: "The blue tag"
+  ```
+
+  2. Use infrahubctl to load the objects:
+
+  ```shell
+  infrahubctl object load objects/tags.yml --branch=create-tag-check
+  ```
+
+  </TabItem>
+  <TabItem value="Using the UI">
+  1. Open the **Infrahub UI** in your browser
+  2. Select the branch `create-tag-check`
+  3. Navigate to the **Tags** view (Other > Tags)
+  4. Create the tags
+      - **Name**: `color-red`, **Description**: `The red tag`
+      - **Name**: `color-green`, **Description**: `The green tag`
+      - **Name**: `blue`, **Description**: `The blue tag`
+  </TabItem>
+</Tabs>
+</TabItem>
+</Tabs>
+
+:::success
+
+To verify the tags were created successfully, navigate to the Tags view in the Infrahub UI (Other > Tags), select the `create-tag-check` branch, and check that the tags appear in the list.
+
+:::
+
+## Step 2: Create the GraphQL query
+
+Next, create a GraphQL query that fetches the data your check needs to process.
+
+### Create a query to fetch the tag data
+
+Create a `tags_query.gql` file in the `queries` directory of your repository:
+
+<Tabs groupId="check-type">
+<TabItem value="Targeted Check">
+```graphql title="queries/tags_query.gql"
+query TagsQuery($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
     }
   }
 }
 ```
-
-The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
-
-```graphql
+</TabItem>
+<TabItem value="Global Check">
+```graphql title="queries/tags_query.gql"
 query TagsQuery {
   BuiltinTag {
     edges {
@@ -56,8 +242,58 @@ query TagsQuery {
   }
 }
 ```
+</TabItem>
+</Tabs>
 
-Response to the tags query:
+### Test the query
+
+To test the query you can use **Infrahub's GraphQL Sandbox**.
+
+:::note GraphQL Sandbox
+
+Access the sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**. This tool allows you to run GraphQL queries and provides an interactive way to explore the schema.
+
+:::
+
+<Tabs groupId="check-type">
+<TabItem value="Targeted Check">
+
+1. Copy the above GraphQL query in the main section
+2. In the **variables** section, add:
+
+```json
+{
+  "name": "blue"
+}
+```
+
+3. Click the **Execute** button, this should return a response like:
+
+```json
+{
+  "data": {
+    "BuiltinTag": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "blue"
+            },
+            "description": {
+              "value": "The blue tag"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="Global Check">
+1. Copy the above GraphQL query in the main section
+2. Click the **Execute** button, this should return a response like:
 
 ```json
 {
@@ -100,433 +336,285 @@ Response to the tags query:
 }
 ```
 
-Create a local directory on your computer.
+</TabItem>
+</Tabs>
 
-```shell
-mkdir tags_check
-```
+:::success
 
-Then save the `TagsQuery` as a text file named `tags_check.gql`.
+You now have a working GraphQL query that retrieves the necessary data from Infrahub. You might want to keep the result of the query for later reference, as it will be useful when implementing the check.
 
-### 2. Create the Python check file
+:::
 
-The next step is to create the Check Python business logic. The check is a Python class that inherits from `InfrahubCheck` from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `tags_check.py`:
+## Step 3: Implement the check logic
 
-```python
+Now create a Python class that implements your check logic. The check makes sure that every tag's name follows the pattern `color-[name]`.
+
+The class must:
+
+- Inherit from `InfrahubCheck` from the [Python SDK]($(base_url)python-sdk/introduction)
+- Define a `query` class attribute that references your GraphQL query by name
+- Implement a `validate()` method that processes data from your GraphQL query
+- Log errors using `log_error()` when validation fails
+
+1. Create a file called `tags_check.py` in your `checks` directory:
+
+```python title="checks/tags_check.py"
 import re
 
 from infrahub_sdk.checks import InfrahubCheck
 
-
 RE_TAG = re.compile(r"^color-[a-z]+")
 
+
 class ColorTagsCheck(InfrahubCheck):
-    query = "tags_check"
+    query = "tags_query"  # This references the query name in .infrahub.yml
 
     def validate(self, data):
         for tag in data["BuiltinTag"]["edges"]:
             if not RE_TAG.match(tag["node"]["name"]["value"]):
                 self.log_error(
-                    message=f"Invalid tag name: {tag['node']['name']['value']}",
-                    object_id=tag["node"]["name"]["value"],
-                    object_type="BuiltinTag"
-                )
-
-```
-
-The example is an example of what a naming convention logic for a tag could look like.
-
-1. We import the `InfrahubCheck` class.
-
-```python
-from infrahub_sdk.checks import InfrahubCheck
-```
-
-2. We create and compile a regular expression against which we will match the tag names
-
-```python
-RE_TAG = re.compile(r"^color-[a-z]+")
-```
-
-3. We define our own class that inherits from `InfrahubCheck`.
-
-```python
-class ColorTagsCheck(InfrahubCheck):
-```
-
-Here we need to take note of the name of the class as we will need it later, optionally we can just call it `Check` which is the default name.
-
-4. We define the query that will provide us the input data
-
-```python
-    query = "tags_check"
-```
-
-The query references to the file `tags_check.gql` that we created earlier.
-
-5. We define the validate method
-
-```python
-    def validate(self, data):
-        for tag in data["BuiltinTag"]["edges"]:
-            if not RE_TAG.match(tag["node"]["name"]["value"]):
-                self.log_error(
-                    message=f"Invalid tag name: {tag['node']['name']['value']}",
+                    message=f"Invalid tag name: {tag['node']['name']['value']}. Tag names must follow pattern 'color-[name]'",
                     object_id=tag["node"]["name"]["value"],
                     object_type="BuiltinTag"
                 )
 ```
 
-When running the check, the `data` argument will contain the response to the GraphQL query we created. We loop over every `BuiltinTag` node in `data` and validate that the name of the tag matches with the regular expression we created earlier.
+## Step 4: Configure the check in the .infrahub.yml file
 
-If the name does not match the regular expression, we log an error. A check will have failed if it has encountered errors during the execution.
+Now that you have your GraphQL query and Python check, edit your [.infrahub.yml](../topics/infrahub-yml) file to tie everything together.
 
-### 3. Create a .infrahub.yml file
+1. Add the following configuration to the file `.infrahub.yml`:
 
-In the `.infrahub.yml` file you define what checks you have in your repository that you want to use in Infrahub.
+<Tabs groupId="check-type">
+<TabItem value="Targeted Check">
 
-Create a `.infrahub.yml` file in the root of the directory.
-
-```yaml
+```yaml title=".infrahub.yml"
 ---
+queries:
+  - name: tags_query
+    file_path: queries/tags_query.gql
+
 check_definitions:
-  - name: "check_color_tags_name"
-    class_name: "ColorTagsCheck"
-    file_path: "tags_check.py"
+  - name: check_color_tags_name
+    class_name: ColorTagsCheck
+    file_path: checks/tags_check.py
+    targets: colored_tags  # This specifies the group to target
+    parameters:
+      name: "name__value"
 ```
 
-Two parts here are required, first the `name` of the check which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name `ColorTagsCheck` instead of the default `Check`.
+</TabItem>
+<TabItem value="Global Check">
 
-### 4. Create a Git repository
+```yaml title=".infrahub.yml"
+---
+queries:
+  - name: tags_query
+    file_path: queries/tags_query.gql
 
-Within the `tags_check` folder you should now have 3 files:
+check_definitions:
+  - name: check_color_tags_name
+    class_name: ColorTagsCheck
+    file_path: checks/tags_check.py
+```
 
-- `tags_check.gql`: Contains the GraphQL query
-- `tags_check.py`: Contains the Python code with the business logic for the check
-- `.infrahub.yml`: Contains the definition of the check
+</TabItem>
+</Tabs>
 
-Before we can test our Transform we must add the files to a local Git repository.
+For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml).
+
+2. Verify the configuration
+
+Check that your `.infrahub.yml` file is correctly formatted by listing available checks:
 
 ```shell
-git init --initial-branch=main
-git add .
-git commit -m "First commit"
+infrahubctl check --list
 ```
 
-### 5. Test the check using infrahubctl
+:::success
 
-Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available checks.
+If successful, you'll see output like:
 
-```shell title="❯ infrahubctl check --list"
+<Tabs groupId="check-type">
+<TabItem value="Targeted Check">
+```shell
 Python checks defined in repository: 1
-check_color_tags_name (tags_check.py::ColorTagsCheck) Target: -global-
+check_color_tags_name (checks/tags_check.py::ColorTagsCheck) Target: colored_tags
+```
+</TabItem>
+<TabItem value="Global Check">
+```shell
+Python checks defined in repository: 1
+check_color_tags_name (checks/tags_check.py::ColorTagsCheck) Target: -global-
+```
+</TabItem>
+</Tabs>
+
+:::
+
+## Step 5: Test the check locally
+
+Before deploying your check to Infrahub, test it locally using the `infrahubctl` command-line tool.
+
+1. First, verify that your check is correctly configured:
+
+```shell
+infrahubctl check --list
 ```
 
-Run the check by specifying the name of the check as an argument.
+2. Run the check against your branch by specifying its name:
 
-```shell title="❯ infrahubctl check check_color_tags_name"
-[09:23:25] INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           ERROR    tags_check::ColorTagsCheck: FAILED
-           ERROR      Invalid tag name: blue
+```shell
+infrahubctl check check_color_tags_name --branch=create-tag-check
 ```
 
-We have now successfully created a check. Most of the checks you will create would be more complex than this, however the main building blocks will always remain the same.
+:::success
 
-### 6. Adding the repository to Infrahub
+If successful, you'll see output like:
 
-In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository) in order to sync the repository you created and make it available within Infrahub.
+<Tabs groupId="check-type">
+<TabItem value="Targeted Check">
+```shell
+INFO     HTTP Request: GET http://localhost:8000/api/schema?branch=create-tag-check2 "HTTP/1.1 200 OK"
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check2 "HTTP/1.1 200 OK"
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check2 "HTTP/1.1 200 OK"
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check2 "HTTP/1.1 200 OK"
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check2 "HTTP/1.1 200 OK"
+INFO     tags_check::ColorTagsCheck: PASSED - {'name': 'color-red'}
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check2 "HTTP/1.1 200 OK"
+INFO     tags_check::ColorTagsCheck: PASSED - {'name': 'color-green'}
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check2 "HTTP/1.1 200 OK"
+ERROR    tags_check::ColorTagsCheck: FAILED - {'name': 'blue'}
+ERROR      Invalid tag name: blue. Tag names must follow pattern 'color-[name]'
+```
+</TabItem>
+<TabItem value="Global Check">
+```shell
+INFO     HTTP Request: POST http://localhost:8000/graphql/create-tag-check "HTTP/1.1 200 OK"
+ERROR    tags_check::ColorTagsCheck: FAILED
+ERROR      Invalid tag name: blue. Tag names must follow pattern 'color-[name]'
+```
+</TabItem>
+</Tabs>
 
-### 7. Using the check within Infrahub
+The error message shows that our check correctly identified the tag named "blue" as invalid because it doesn't match our required naming pattern.
 
-Once the repository is synced to Infrahub, the check will be run as part of a proposed change.
+:::
 
-1. Open a branch named `test`
-2. Create a new `BuiltinTag` object named `orange` in the `test` branch
-3. Open a proposed change
-4. Navigate to the Checks tab
-5. The User Checks should have a red color, indicating a Check has failed
-6. Expanding the Check `check_color_tags_name` should show us that the check failed because the `BuiltinTag` objects `blue` and `orange` do not match with our naming scheme
+## Step 6: Deploy the check to Infrahub
 
-![Check details](../media/guides/check_proposed_change.png)
+Now that you've tested your check and confirmed it works locally, deploy it to Infrahub by pushing your code to the repository.
 
-## Creating a targeted check
+### Verify repository structure
 
-Let's extend our example. We want to introduce a second set of tags. The naming scheme for these tags is different so we would need to introduce a second check.
+Ensure your repository has the following structure before committing:
 
-Therefor we will redefine our `check_color_tags_name` check as a targeted check, and define a new targeted check for the tags with a different naming scheme.
-
-We will be performing the following steps:
-
-1. Define targets for the `check_color_tags_name` check in the repository configuration file
-2. Create a new group `ColorTags`
-3. Add the existing tags to a group named `ColorTags`
-4. Modify the `tags_check` GraphQL query
-5. Test the `check_color_tags_name` check
-6. Add new `BuiltinTags` using the other naming schema
-7. Create a new group `NumberTags`
-8. Add the tags with the number naming scheme to the group
-9. Add a new check to the Python `tags_checkk.py` script for the number naming scheme
-10. Define a new targeted check in the repository configuration file
-11. Test the new check
-
-Before we start, make sure that you switch back to the `main` branch in Infrahub.
-
-### 1. Define the targets for the `check_color_tags_name` check in the repository configuration file
-
-Replace the contents of the `.infrahub.yml` file with this content.
-
-```yaml
----
-check_definitions:
-  - name: "check_color_tags_name"
-    class_name: "ColorTagsCheck"
-    file_path: "tags_check.py"
-    targets: "ColorTags"
-    parameters:
-      name: "name__value"
+```shell
+your-repository/
+├── .infrahub.yml
+├── checks/
+│   └── tags_check.py
+└── queries/
+    └── tags_query.gql
 ```
 
-We added 2 definitions to the `check_color_tags_name`:
+:::note
 
-- `targets` the name of the group with the nodes that we want to target `ColorTags`
-- `parameters` we define a `name` parameter that will be passed to the check's GraphQL query, in this case we will pass the value of the name attribute of each tag in the group
+Depending on your organization, you might also have `schemas` and `objects` directories in your repository.
 
-### 2. Creating a `ColorTags` group
+:::
 
-Targeted checks use nodes in a group a their targets. Create the `ColorTags` group with this GraphQL query. Take node of the hfid of the group, we will use it in the next steps.
+### Commit and push your code
 
-```graphql
-mutation {
-  CoreStandardGroupCreate(data: {name: {value: "ColorTags"}}) {
-    ok
-    object {
-      id
-      hfid
-    }
-  }
-}
+Upload your check code to the repository:
+
+```shell
+git add .
+git commit -m "Add tags naming convention check"
+git push
 ```
 
-### 3. Add the existing tags to a the `ColorTags` group
+### Confirm the check is imported
 
-First we need to get the id of the existing tags.
+After pushing your changes, confirm that the check is imported correctly by checking the Infrahub UI:
 
-```graphql
-query {
-  BuiltinTag {
-    edges {
-      node {
-        id
-      }
-    }
-  }
-}
-```
+1. Open the **Infrahub UI** in your browser
+2. Select the `create-tag-check` branch
+3. Navigate to the **Check Definition view** (Actions > Check Definitions)
+4. You should see your `check_color_tags_name` check listed there
 
-We can then use the id's of the tags to add them to the `ColorTags` group.
+:::warning
 
-- replace the first id with the id of the group
-- replace the second id with the id of the first tag returned by the previous query
-- replace the third id with the id of the second tag returned by the previous query
-- replace the fourth id with the id of the third tag returned by the previous query
+If you don't see your check, verify the repository status in the **Repository view** (Integrations > Git Repositories) and ensure the sync status is `synced`.
 
-```graphql
-mutation {
-  CoreStandardGroupUpdate(
-    data: {
-      hfid: ["ColorTags"],
-      members: [
-        {id: "<id of tag1>"},
-        {id: "<id of tag2>"},
-        {id: "<id of tag3>"}
-      ]
-    }
-  ) {
-    ok
-  }
-}
-```
+:::
 
-### 4. Modify the `tags_check` GraphQL query
+:::success
 
-We need to modify the GraphQL query with the `name` parameter. The GraphQL query will be executed for every node that is part of the target group.
+Your check is now successfully deployed to Infrahub.
 
-Replace the contents of the `tags_check.gql` file with the following contents.
+:::
 
-```graphql
-query TagsQuery($name: String!) {
-  BuiltinTag(name__value: $name) {
-    edges {
-      node {
-        name {
-          value
-        }
-        description {
-          value
-        }
-      }
-    }
-  }
-}
-```
+## Step 7: Validate that the check works
 
-### 5. Test the `check_color_tags_name` check
+Let's verify that your check correctly validates data by creating a proposed change from your development branch `create-tag-check` to `main`.
 
-```shell title="❯ infrahubctl check check_color_tags_name"
-``[11:50:43] INFO     HTTP Request: GET http://localhost:8000/api/schema/?branch=main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           INFO     color_tags_check::ColorTagsCheck: PASSED - {'name': 'color-red'}
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           INFO     color_tags_check::ColorTagsCheck: PASSED - {'name': 'color-green'}
-[11:50:44] INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           ERROR    color_tags_check::ColorTagsCheck: FAILED - {'name': 'blue'}
-           ERROR      Invalid tag name: blue
-```
+### Create a proposed change
 
-Notice that the end-result is still the same, the check fails on the blue tag. However we can see that there was now an individual execution of the GraphQL and check per tag in the target group.
+1. In the Infrahub UI, navigate to the **Proposed Changes** view
+2. Click **New proposed change**
+3. Create the **Proposed Change** with the following parameters:
+   - Source branch: `create-tag-check`
+   - Destination branch: `main`
+   - Name: `Add tag naming convention check`
 
-### 6. Add new `BuiltinTags` using the other naming schema
+### Verify check results
 
-Create two tags, called "1-one", "2-two" either using the frontend or by submitting two GraphQL mutations as per below (just swapping out the name of the tag each time).
+After the proposed change is created:
 
-```graphql
-mutation CreateTags {
-  BuiltinTagCreate(
-      data: {name: {value: "1-one"}, description: {value: "The first tag"}}
-  ) {
-    ok
-    object {
-      id
-    }
-  }
-}
-```
+1. Navigate to the **Checks** tab of your proposed change
+2. Wait for the **User** CI check to complete
 
-Take note of their id as we will need it in the next steps.
+:::success
 
-### 7. Create a new group `NumberTags`
+You should see that the check has failed because the tag "blue" doesn't match the expected pattern.
 
-```grapql
-mutation {
-  CoreStandardGroupCreate(data: {name: {value: "NumberTags"}}) {
-    ok
-      object {
-        id
-        hfid
-      }
-  }
-}
-```
+![Check details in a proposed change](../media/guides/check_proposed_change.png)
 
-Take note of the hfid as we will use it in the next step.
+:::
 
-### 8. Add the tags with the number naming scheme to the group
+### Fix the validation issue and merge
 
-Add the newly created tags to the `NumberTags` group with the following mutation.
+Now let's fix the issue with the invalid tag and complete the merge:
 
-- replace the first id with the id of the group
-- replace the second id with the id of the first tag
-- replace the third id with the id of the second tag
+1. Navigate to **Tags** view (Other > Tags)
+2. Select the `create-tag-check` branch
+3. Delete the tag `blue` (as it doesn't follow the naming convention)
+   - Alternatively, you could rename it to `color-blue` to match the pattern
+   - For a targeted check you could also remove the tag `blue` from the `colored_tags` group
+4. Return to the **Proposed Change** view
+5. Navigate to the **Data** and **Files** tabs to review the changes
+6. Navigate to the **Checks**
+7. Hit the **Retry** button to re-run the check
+8. Verify that all checks now pass
+9. On the **Overview** tab, click the **Merge** button to merge your changes to main
 
-```graphql
-mutation {
-  CoreStandardGroupUpdate(
-    data: {
-      hfid: ["NumberTags]",
-      members: [
-        {id: "<id of tag1>"}, 
-        {id: "<id of tag2>"}
-      ]
-    }
-  ) {
-    ok
-  }
-}
-```
+:::success
 
-### 9. Add new check logic
+Your check is now deployed to Infrahub in the `main` branch and ready to be used. Any future tag creations will be validated against your naming convention rule.
 
-Add the following Python code to the `tags_check.py` script in the repository.
+:::
 
-```python
-RE_NUMBER_TAG = re.compile(r"^\d+-[a-z]+$")
+## Next steps
 
-class NumberTagsCheck(InfrahubCheck):
-    query = "tags_check"
+Now that you've created a basic check for data validation, you can expand your validation capabilities:
 
-    def validate(self, data):
-        for tag in data["BuiltinTag"]["edges"]:
-            if not RE_NUMBER_TAG.match(tag["node"]["name"]["value"]):
-                self.log_error(
-                    message=f"Invalid number tag name: {tag['node']['name']['value']}",
-                    object_id=tag["node"]["name"]["value"],
-                    object_type="BuiltinTag"
-                )
-```
+- Create more complex checks that validate relationships between objects
+- Build checks that validate business logic across multiple object types
+- Add detailed error messages with recommendations to help users understand and fix validation failures
 
-### 10. Define a new targeted check
+:::success
 
-Replace the contents of `.infrahub.yml` file with the following contents.
+Checks are a powerful way to enforce business rules in your data. By implementing validation rules that match your organization's requirements, you ensure data consistency and prevent configuration errors before they reach production environments.
 
-```yaml
----
-check_definitions:
-  - name: "check_color_tags_name"
-    class_name: "ColorTagsCheck"
-    file_path: "tags_check.py"
-    targets: "ColorTags"
-    parameters:
-      name: "name__value"
-  - name: "check_number_tags_name"
-    class_name: "NumberTagsCheck"
-    file_path: "tags_check.py"
-    targets: "NumberTags"
-    parameters:
-      name: "name__value"
-```
-
-We now have 2 targeted checks defined, each targeting its own set of tags, with its own validation logic.
-
-### 11. Test the new check
-
-Verify that we have 2 checks defined using the `infrahubctl` command.
-
-```shell title="❯ infrahubctl check --list"
-Python checks defined in repository: 2
-check_color_tags_name (tags_check.py::ColorTagsCheck) Target: ColorTags
-check_number_tags_name (tags_check.py::NumberTagsCheck) Target: NumberTags
-```
-
-Check that the `check_color_tags_name` fails because of the tag `blue` not complying with the naming scheme:
-
-```shell title="❯ infrahubctl check check_color_tags_name"
-[14:04:50] INFO     HTTP Request: GET http://localhost:8000/api/schema/?branch=main "HTTP/1.1 200 OK
-[14:04:51] INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           INFO     tags_check::ColorTagsCheck: PASSED - {'name': 'color-red'}
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           INFO     tags_check::ColorTagsCheck: PASSED - {'name': 'color-green'}
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           ERROR    tags_check::ColorTagsCheck: FAILED - {'name': 'blue'}
-           ERROR      Invalid tag name: blue
-```
-
-Check that the `check_number_tags_name` succeeds:
-
-```shell title="❯ infrahubctl check check_number_tags_name"
-[14:09:32] INFO     HTTP Request: GET http://localhost:8000/api/schema/?branch=main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql/main "HTTP/1.1 200 OK"
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           INFO     tags_check::NumberTagsCheck: PASSED - {'name': '1-one'}
-           INFO     HTTP Request: POST http://localhost:8000/graphql "HTTP/1.1 200 OK"
-           INFO     tags_check::NumberTagsCheck: PASSED - {'name': '2-two'}
-```
+:::

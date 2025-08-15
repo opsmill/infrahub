@@ -23,5 +23,5 @@ export const ProposedChangeThreadEvent = ({ id }: ProposedChangeThreadEventProps
     return <NoDataFound message="No conversation found for this thread." />;
   }
 
-  return <Thread thread={data} />;
+  return <Thread thread={data} displayContext />;
 };

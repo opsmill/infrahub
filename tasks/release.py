@@ -321,9 +321,9 @@ def update_docker_compose_env_vars(
         return existing_vars, infrahub_config_start, infrahub_config_end
 
     infrahub_base_config, infrahub_config_start, infrahub_config_end = get_env_vars_in_anchor(
-        "x-infrahub-config: &infrahub_base_config", docker_compose
+        "x-infrahub-config: &infrahub_config", docker_compose
     )
-    infrahub_sso_config, *_ = get_env_vars_in_anchor("x-infrahub-api-server: &infrahub_api_server", docker_compose)
+    infrahub_sso_config, *_ = get_env_vars_in_anchor("x-infrahub-sso: &infrahub_sso", docker_compose)
     all_vars = sorted(infrahub_base_config.keys() | set(env_vars) - infrahub_sso_config.keys())
     pattern = re.compile(r"\$\{(.+):-([^}]+)\}")
 

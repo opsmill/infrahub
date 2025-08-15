@@ -21,6 +21,7 @@ exceptions:
   - BGP
   - CA certificates
   - CI
+  - CI/CD
   - Codespaces
   - Computed Attribute
   - Computed Attributes
@@ -104,3 +105,4 @@ exceptions:
   - Emma
   - Helm
   - Kubernetes
+  - Allocate VLAN ID

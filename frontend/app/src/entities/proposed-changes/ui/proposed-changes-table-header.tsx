@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { CLOSE_STATE, DRAFT_STATE } from "@/entities/proposed-changes/constants";
+import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
 import { useGetProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
 import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
 import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";
@@ -19,6 +19,10 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
   const [filters] = useFilters();
 
   const { data } = useGetProposedChangesCounts({ filters });
+
+  const draftAttribute = schema.attributes?.find((attribute) => {
+    return attribute.name === "is_draft";
+  });
 
   const stateAttribute = schema.attributes?.find((attribute) => {
     return attribute.name === "state";
@@ -53,15 +57,6 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
         </ProposedChangeTableFilterLink>
 
         <ProposedChangeTableFilterLink
-          isActive={proposedChangeState === DRAFT_STATE}
-          onClick={() => {
-            setProposedChangeState(DRAFT_STATE);
-          }}
-        >
-          Draft {data?.draft ? `(${data.draft})` : null}
-        </ProposedChangeTableFilterLink>
-
-        <ProposedChangeTableFilterLink
           isActive={proposedChangeState === CLOSE_STATE}
           onClick={() => {
             setProposedChangeState(CLOSE_STATE);
@@ -71,18 +66,30 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
         </ProposedChangeTableFilterLink>
       </div>
       <div className="flex items-center">
+        {draftAttribute && (
+          <ProposedChangeTableFilter schema={schema} columnSchema={draftAttribute} />
+        )}
+
         {stateAttribute && (
           <ProposedChangeTableFilter schema={schema} columnSchema={stateAttribute} />
         )}
+
         {sourceBranchAttribute && (
           <ProposedChangeTableFilter schema={schema} columnSchema={sourceBranchAttribute} />
         )}
+
         {authorRelationship && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={authorRelationship} />
+          <ProposedChangeTableFilter
+            schema={schema}
+            columnSchema={authorRelationship}
+            customLabel={"Author"}
+          />
         )}
+
         {reviewersRelationship && (
           <ProposedChangeTableFilter schema={schema} columnSchema={reviewersRelationship} />
         )}
+
         {approversRelationship && (
           <ProposedChangeTableFilter schema={schema} columnSchema={approversRelationship} />
         )}

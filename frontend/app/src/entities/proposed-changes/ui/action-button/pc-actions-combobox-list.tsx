@@ -18,7 +18,7 @@ export interface ActionComboboxListProps {
 export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListProps>(
   ({ value, onSelect }, ref) => {
     const auth = useAuth();
-    const { setDraft, close, merge, approve, reject } = usePcActionsContext();
+    const { setDraft, unsetDraft, close, merge, approve, reject } = usePcActionsContext();
     const proposedChangesDetails = useAtomValue(proposedChangedState);
 
     const actionsList: Record<string, ActionItem> = {
@@ -55,8 +55,12 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
       draft: {
         value: "draft",
         name: proposedChangesDetails.is_draft?.value ? "Open" : "Move to draft",
-        isDisabled: !setDraft.available,
-        message: setDraft.unavailability_reason,
+        isDisabled: proposedChangesDetails.is_draft?.value
+          ? !unsetDraft.available
+          : !setDraft.available,
+        message: proposedChangesDetails.is_draft?.value
+          ? unsetDraft.unavailability_reason
+          : setDraft.unavailability_reason,
       },
     };
 
