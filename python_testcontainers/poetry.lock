@@ -935,14 +935,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "prefect-client"
-version = "3.4.11"
+version = "3.4.13"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect_client-3.4.11-py3-none-any.whl", hash = "sha256:4830901c4fb9b70498f463b575e6498cf323cd809fd7dad815cb855fd53dcbaf"},
-    {file = "prefect_client-3.4.11.tar.gz", hash = "sha256:9f6fb9b7ecdddc08f0644de38b9f21a424e9d0dfab18bcab79a5d452bdd7b612"},
+    {file = "prefect_client-3.4.13-py3-none-any.whl", hash = "sha256:24d0599c1c3135b8fd55c195312d1b6020d146762b2b046ea2902478f6402cd5"},
+    {file = "prefect_client-3.4.13.tar.gz", hash = "sha256:96572081a14892d7d02667e9e4fa3a3634f5421ab6389bc8aa1e18f475b9e3f2"},
 ]
 
 [package.dependencies]
@@ -2321,4 +2321,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9, < 3.14"
-content-hash = "5ab39a784e8b1a1010c09735c59b96f1b6b2a1c0c43f03afd0d95b9c75b2aec5"
+content-hash = "d635a9f65d7c46eb12cc998588609149bfc9ead6608fa71dc8638b3556c23cb0"
