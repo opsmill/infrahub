@@ -296,11 +296,12 @@ async def test_schema_integrity(
         await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
 
         checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
-        assert len(checks) == 1
-        check = checks[0]
-        assert check.conclusion.value.value == "failure"
+        assert len(checks) == 2
+        assert checks[0].conclusion.value.value == "failure"
+        assert checks[1].conclusion.value.value == "failure"
 
-        assert check.conflicts.value == [
+        all_conflicts = [c.conflicts.value for c in checks]
+        assert [
             {
                 "branch": "placeholder",
                 "id": person_john_main.id,
@@ -308,7 +309,23 @@ async def test_schema_integrity(
                 "name": "schema/TestPerson/name/parameters.regex",
                 "path": "schema/TestPerson/name/parameters.regex",
                 "type": ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
-                # ruff: noqa: E501
-                "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
+                "value": (
+                    f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id})"
+                    f" is not compliant. The error relates to field name='{person_john_main.name.value}'."
+                ),
             }
-        ]
+        ] in all_conflicts
+        assert [
+            {
+                "branch": "placeholder",
+                "id": person_john_main.id,
+                "kind": "TestPerson",
+                "name": "schema/TestPerson/name/kind",
+                "path": "schema/TestPerson/name/kind",
+                "type": "attribute.kind.update",
+                "value": (
+                    f"Attribute-level 'kind' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id})"
+                    f" is not compliant. The error relates to field name='{person_john_main.name.value}'."
+                ),
+            }
+        ] in all_conflicts

@@ -748,9 +748,15 @@ async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_
 
     large_string = "a" * 9_000  # It's over 9000!!!!
 
-    await obj.new(db=db, name="obj1", mystring=large_string)
-
     # Text field
+    with pytest.raises(
+        ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
+    ):
+        await obj.new(db=db, name="obj1", mystring=large_string)
+
+    # Updated text field
+    await obj.new(db=db, name="obj1")
+    obj.mystring.value = large_string
     with pytest.raises(
         ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
     ):

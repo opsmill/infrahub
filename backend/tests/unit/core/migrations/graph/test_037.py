@@ -275,6 +275,14 @@ class TestMigration037:
         schema_branch = schema_branch.duplicate(name=branch_1.name)
         node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
 
+        # we would prevent updating the schema from TextArea to Text if any nodes using the schema have
+        # an attribute value that is too large, so we change their data here before the schema
+        nodes = await NodeManager.query(db=db, branch=branch_1, schema=all_attribute_types_schema)
+        for node in nodes:
+            if node.mytextarea.value and len(node.mytextarea.value) > MAX_STRING_LENGTH:
+                node.mytextarea.value = node.mytextarea.value[:1000]
+                await node.save(db=db)
+
         name_attr_schema = node_schema.get_attribute(name="mytextarea")
         name_attr_schema.kind = "Text"
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
@@ -499,6 +507,9 @@ REMOVE avi:AttributeValueIndexed
                 # this one went from a list to a text attribute
                 if branch.name == "branch_2" and attr_name == "mylist":
                     assert str(original_attr_value).replace("'", '"').replace(" ", "") == retrieved_attr_value
+                # these ones might have been shortened to become Text attributes
+                elif branch.name == "branch_1" and attr_name == "mytextarea":
+                    assert original_attr_value.startswith(retrieved_attr_value)
                 else:
                     assert original_attr_value == retrieved_attr_value
 
