@@ -204,7 +204,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         await thing_one.new(
             db=db,
             text_value="ONE",
-            text_area_value="longer ONE",
+            text_area_value="a" * 5000,
             list_value=["a", "b"],
             url_value="https://infrahub.com",
         )
@@ -300,6 +300,20 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         schema_step_04: dict[str, Any],
         client: InfrahubClient,
     ):
+        # first attempt fails because thing_one.text_area_value is too long
+        response = await client.schema.load(schemas=[schema_step_04], branch=branch.name)
+        assert response.errors
+        error_messages = response.errors["errors"][0]["message"].split("\n")
+        assert len(error_messages) == 1
+        error_message = error_messages[0]
+        thing_one_id = initial_objects["thing_one"].id
+        assert error_message.startswith("Attribute-level 'kind' constraint violation on schema 'TestingThing")
+        assert f"Node (TestingThing(ID: {thing_one_id})) is not compliant." in error_message
+
+        thing_one = await NodeManager.get_one(db=db, branch=branch, id=initial_objects["thing_one"].id)
+        thing_one.text_area_value.value = "longer ONE"
+        await thing_one.save(db=db)
+
         response = await client.schema.load(schemas=[schema_step_04], branch=branch.name)
         assert not response.errors
 
