@@ -14,9 +14,9 @@ This explanation will answer:
 - How do the various components communicate and coordinate?
 - What design decisions were made and why?
 
-## Core Architectural Concepts
+## Core architectural concepts
 
-### The Problem Space
+### The problem space
 
 Traditional infrastructure management tools often struggle with:
 
@@ -27,7 +27,7 @@ Traditional infrastructure management tools often struggle with:
 
 Infrahub addresses these challenges through a unique architecture that combines the flexibility of a graph database with the version control capabilities of Git, all within a distributed, event-driven system.
 
-### Architectural Philosophy
+### Architectural philosophy
 
 Infrahub follows a **"microservices-in-a-monolith"** approach. While deployed as containers, the system internally uses service-oriented patterns with clean abstractions and dependency injection. This design provides:
 
@@ -36,7 +36,7 @@ Infrahub follows a **"microservices-in-a-monolith"** approach. While deployed as
 - **Clear separation of concerns** between components
 - **Pluggable implementations** for different deployment scenarios
 
-## System Architecture Overview
+## System architecture overview
 
 ![Infrahub Architecture](../media/high_level_architecture.excalidraw.svg)
 
@@ -46,7 +46,7 @@ The architecture consists of three conceptual layers:
 2. **Application Layer**: Business logic, workflow orchestration, and event processing
 3. **Data Layer**: Persistent storage, caching, and messaging
 
-### Detailed Component Architecture
+### Detailed component architecture
 
 The following diagram shows the detailed interactions between Infrahub components, including data flow, event handling, and artifact generation:
 
@@ -102,7 +102,7 @@ graph TB
         
         subgraph "Caching & Messaging"
             Redis[(Redis Cache<br/>+ Distributed Locks)]
-            MessageBus[Message Bus<br/>RabbitMQ/NATS]
+            MessageBus[Message Bus<br/>RabbitMQ]
         end
         
         subgraph "Object Storage"
@@ -209,9 +209,9 @@ This diagram illustrates:
 - **Service Abstraction**: How adapter patterns enable pluggable implementations
 - **Cross-Cutting Concerns**: Authentication, authorization, caching, and validation
 
-## Component Deep Dive
+## Component deep dive
 
-### API Server
+### API server
 
 The API server is the central hub for all client interactions. Built with FastAPI, it provides both REST and GraphQL endpoints with a sophisticated middleware stack.
 
@@ -219,7 +219,7 @@ The API server is the central hub for all client interactions. Built with FastAP
 
 - **FastAPI over Flask/Django**: Chosen for async support, automatic API documentation, and type validation
 - **Custom GraphQL implementation**: Allows branch-aware queries and dynamic schema generation
-- **Middleware pipeline**: Provides cross-cutting concerns like authentication, correlation tracking, and telemetry
+- **Middleware pipeline**: provides cross-cutting concerns like authentication, correlation tracking, and telemetry
 
 **Architectural Patterns:**
 
@@ -229,7 +229,7 @@ The API server is the central hub for all client interactions. Built with FastAP
 
 The API server can be horizontally scaled by running multiple instances behind a load balancer, with all instances sharing the same backend services.
 
-### Graph Database Layer
+### Graph database layer
 
 The graph database is the heart of Infrahub's data model, storing infrastructure data as nodes and relationships.
 
@@ -250,7 +250,7 @@ Graph databases excel at these scenarios, allowing natural representation of inf
 - **Transaction retry logic**: Resilience against transient failures
 - **Index management**: Automated index creation and maintenance
 
-### Branch Management System
+### Branch management system
 
 One of Infrahub's unique features is Git-like branching for infrastructure data.
 
@@ -272,7 +272,7 @@ The branch system is deeply integrated into the graph database layer, with:
 - Three-way merge algorithms for conflict detection
 - Diff calculations for change visualization
 
-### Event-Driven Architecture
+### Event-driven architecture
 
 Infrahub uses an event-driven architecture for loose coupling between components.
 
@@ -284,9 +284,9 @@ Infrahub uses an event-driven architecture for loose coupling between components
 4. **Repository Events**: Git synchronization and updates
 5. **Validation Events**: Data validation and check results
 
-**Message Bus Options:**
+**Message Bus:**
 
-Infrahub supports multiple message bus implementations:
+Infrahub supports RabbitMQ for the message bus implementation:
 
 - **RabbitMQ** (Primary):
   - AMQP protocol support
@@ -294,15 +294,7 @@ Infrahub supports multiple message bus implementations:
   - Complex routing capabilities
   - Durable message queues
 
-- **NATS JetStream** (Experimental support):
-  - Lightweight and fast
-  - Stream processing capabilities
-  - Built-in persistence
-  - Simpler operational model
-
-The message bus abstraction allows switching between implementations based on your requirements.
-
-### Workflow Orchestration
+### Workflow orchestration
 
 Infrahub uses Prefect for workflow orchestration, providing a robust task execution framework.
 
@@ -333,7 +325,7 @@ Workers execute tasks asynchronously, handling:
 
 Multiple workers can run simultaneously for horizontal scaling.
 
-### Cache and Lock System
+### Cache and lock system
 
 The caching layer serves two critical functions:
 
@@ -342,16 +334,11 @@ The caching layer serves two critical functions:
 
 **Cache Implementations:**
 
-- **Redis** (Primary):
+- **Redis**:
   - Sub-millisecond latency
   - Rich data structures
   - Pub/sub capabilities
   - Distributed lock primitives
-
-- **NATS** (Experimental support):
-  - Integrated with message bus
-  - Key-value storage
-  - Simplified deployment
 
 **Lock System:**
 
@@ -362,7 +349,7 @@ Distributed locks prevent race conditions in:
 - Repository synchronization
 - Concurrent data modifications
 
-### Service Layer Architecture
+### Service layer architecture
 
 Infrahub implements a sophisticated service layer with dependency injection.
 
@@ -375,28 +362,7 @@ Services are registered at startup and injected where needed:
 - Message bus publishers
 - Storage backends
 
-**Adapter Pattern:**
-
-Each external dependency has an adapter interface:
-
-```python
-# Abstract interface
-class CacheInterface:
-    async def get(self, key: str) -> Any
-    async def set(self, key: str, value: Any)
-
-# Concrete implementations
-class RedisCache(CacheInterface): ...
-class NatsCache(CacheInterface): ...
-```
-
-This pattern enables:
-
-- Easy testing with mock implementations
-- Runtime configuration of backends
-- Gradual migration between technologies
-
-### Storage Layer
+### Storage layer
 
 The storage layer handles file and artifact management.
 
@@ -412,9 +378,9 @@ The storage layer handles file and artifact management.
 - Backup data
 - User uploads
 
-## Security Architecture
+## Security architecture
 
-### Authentication and Authorization
+### Authentication and authorization
 
 Infrahub implements a multi-layered security model:
 
@@ -430,7 +396,7 @@ Infrahub implements a multi-layered security model:
 - **Object-Level Permissions**: Fine-grained access control
 - **Branch Permissions**: Control who can create, merge, or delete branches
 
-### TLS Security
+### TLS security
 
 All component connections support TLS encryption:
 
@@ -444,7 +410,7 @@ INFRAHUB_CACHE_TLS_ENABLED=true
 
 ## Scalability and High Availability
 
-### Horizontal Scaling
+### Horizontal scaling
 
 Components that can be horizontally scaled:
 
@@ -452,7 +418,7 @@ Components that can be horizontally scaled:
 - **Task Workers**: Parallel task execution across workers
 - **Message Consumers**: Multiple consumers for queue processing
 
-### High Availability Deployment
+### High availability deployment
 
 ![Infrahub HA Architecture](../media/high_level_architecture_ha.excalidraw.svg)
 
@@ -464,7 +430,7 @@ A highly available deployment includes:
 - **PostgreSQL Replication**: Task manager database HA
 - **Multiple API/Worker Instances**: Service redundancy
 
-### Performance Considerations
+### Performance considerations
 
 **Database Performance:**
 
@@ -480,9 +446,9 @@ A highly available deployment includes:
 - GraphQL query depth limiting
 - Request batching and dataloader patterns
 
-## Monitoring and Observability
+## Monitoring and observability
 
-### Telemetry Stack
+### Telemetry stack
 
 Infrahub includes comprehensive monitoring capabilities:
 
@@ -505,7 +471,7 @@ Infrahub includes comprehensive monitoring capabilities:
 - Correlation ID tracking
 - Log aggregation support
 
-### Health Monitoring
+### Health monitoring
 
 Each component provides health endpoints:
 
@@ -513,9 +479,9 @@ Each component provides health endpoints:
 - Readiness probes
 - Dependency health status
 
-## Alternative Deployment Patterns
+## Alternative deployment patterns
 
-### Development Deployment
+### Development deployment
 
 For development, a simplified stack can be used:
 
@@ -523,7 +489,7 @@ For development, a simplified stack can be used:
 - File-based storage
 - Single instance of each component
 
-### Cloud-Native Deployment
+### Cloud-native deployment
 
 For Kubernetes environments:
 
@@ -532,9 +498,9 @@ For Kubernetes environments:
 - Horizontal pod autoscaling
 - Persistent volume management
 
-## Design Trade-offs and Decisions
+## Design trade-offs and decisions
 
-### Why Not Microservices?
+### Why not microservices?
 
 While Infrahub uses service-oriented patterns internally, it's deployed as a coordinated set of containers rather than independent microservices. This decision was made because:
 
@@ -543,7 +509,7 @@ While Infrahub uses service-oriented patterns internally, it's deployed as a coo
 - **Development velocity**: Faster iteration without service boundaries
 - **Transaction consistency**: Easier to maintain data consistency
 
-### Choice of Technologies
+### Choice of technologies
 
 **Python over Go/Rust:**
 
@@ -566,7 +532,7 @@ While Infrahub uses service-oriented patterns internally, it's deployed as a coo
 - Simpler operational model
 - Better async support
 
-## Further Reading
+## Further reading
 
 - [Infrahub Installation Guide](../guides/installation.mdx) - Step-by-step installation instructions including high availability deployment examples
 - [Version Control Concepts](./version-control.mdx) - Understanding Infrahub's Git-like branching system

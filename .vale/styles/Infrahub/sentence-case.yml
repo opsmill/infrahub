@@ -12,6 +12,7 @@ scope:
 match: $sentence
 exceptions:
   - AI
+  - Allocate VLAN ID
   - Alpha
   - Ansible
   - API
@@ -28,6 +29,8 @@ exceptions:
   - CoreArtifactTarget
   - CoreGroup
   - CoreRepository
+  - Create an application in Entra ID
+  - Determine your redirect URI
   - Docker Compose
   - E2E
   - Emma
@@ -57,6 +60,7 @@ exceptions:
   - Jinja
   - Jinja2
   - JWT
+  - Kubernetes
   - LibreNMS
   - Namespace
   - NATS
@@ -68,15 +72,22 @@ exceptions:
   - NetPicker
   - Node
   - NumberPool
+  - OAuth 2.0
+  - OAuth 2.0 configuration example
+  - OAuth 2.0 parameters
+  - OAuth 2.0 vs OpenID Connect
   - OAuth2
   - Observium
   - OIDC
   - Open ID Connect
+  - OpenID Connect
+  - OpenID Connect (OIDC)
   - OpsMill
   - Peering Manager
   - Pydantic
   - Python
   - RabbitMQ
+  - Redirect URI formats
   - REST
   - RFile
   - Schema
@@ -95,14 +106,3 @@ exceptions:
   - VS Code
   - VS Code extensions
   - WebUI
-  - Slurp'it
-  - IDE
-  - AI
-  - OpenID Connect
-  - OAuth 2.0
-  - OAuth 2.0 vs OpenID Connect
-  - OpenID Connect (OIDC)
-  - Emma
-  - Helm
-  - Kubernetes
-  - Allocate VLAN ID
