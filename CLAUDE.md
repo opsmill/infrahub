@@ -34,6 +34,9 @@ poetry run invoke yamllint
 
 # Lint markdown files
 markdownlint --config .markdownlint.yaml --ignore "**/node_modules/**" "**/*.md" "**/*.mdx"
+
+# Lint documentation prose with Vale
+vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 ```
 
 ### Testing
@@ -92,6 +95,7 @@ poetry run invoke pull
 - Format all Python files: `poetry run invoke format`
 - Validate formatting: `poetry run invoke lint`
 - Lint markdown files: `markdownlint --config .markdownlint.yaml "**/*.md" "**/*.mdx"`
+- Lint documentation prose: `vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")`
 
 ### Tooling Standards (from .github/instructions/)
 

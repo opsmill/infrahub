@@ -1,0 +1,270 @@
+---
+title: About Infrahub Community vs Enterprise
+---
+
+# Understanding Infrahub Community vs Enterprise
+
+Infrahub is available in two distinct versions designed to meet different organizational needs and use cases. Both versions share the same core infrastructure data management platform, but differ in terms of features, support, and performance characteristics.
+
+## Introduction
+
+Infrahub follows an open-core business model, providing a robust community edition alongside an enterprise-grade offering. This approach ensures broad accessibility while enabling organizations with advanced requirements to access enhanced capabilities and professional support.
+
+The choice between Community and Enterprise depends on your organization's scale, performance requirements, support needs, and integration complexity. Understanding these differences helps you select the right version for your infrastructure automation journey.
+
+## Community Edition Overview
+
+### Philosophy and Purpose
+
+Infrahub Community represents the open-source foundation of the platform, built to democratize access to world-class infrastructure automation capabilities. Released under the Apache 2.0 license, it provides full transparency and enables community contributions while delivering production-ready functionality.
+
+The Community edition serves as both a complete solution for many organizations and a foundation for those who may later require enterprise features. It maintains feature parity with Enterprise for core infrastructure data management capabilities.
+
+### Ideal Use Cases
+
+#### Small to Medium Organizations
+
+- Teams managing infrastructure with fewer than 1,000 network devices
+- Organizations with straightforward deployment requirements
+- Companies comfortable with community-based support channels
+
+#### Development and Testing Environments
+
+- Proof of concepts and pilot deployments
+- Development teams learning infrastructure automation
+- Testing and validation environments
+
+#### Open Source Advocates
+
+- Organizations requiring full source code access
+- Teams contributing to the Infrahub ecosystem
+- Companies with open-source-first policies
+
+### Key Characteristics
+
+#### Licensing and Access
+
+- Apache 2.0 open-source license
+- Full source code availability on GitHub
+- No licensing fees or usage restrictions
+- Community-driven development and contributions
+
+#### Support Model
+
+- Community-based support through Discord and GitHub
+- Documentation and self-service resources
+- Community forums and knowledge sharing
+- No formal SLA or response time guarantees
+
+## Enterprise Edition Overview
+
+### Philosophy and Purpose
+
+Infrahub Enterprise extends the Community foundation with advanced capabilities designed for large-scale, mission-critical infrastructure management. It addresses the performance, integration, and support requirements of enterprise environments while maintaining the same core functionality and user experience.
+
+Enterprise features focus on scalability, reliability, advanced integrations, and professional support rather than fundamental feature differences. This ensures organizations can start with Community and migrate to Enterprise as their needs evolve.
+
+### Ideal Use Cases
+
+#### Large-Scale Infrastructure
+
+- Organizations managing thousands of network devices
+- Multi-site, multi-vendor infrastructure environments
+- High-transaction, performance-critical deployments
+
+#### Mission-Critical Operations
+
+- Infrastructure serving critical business operations
+- Environments requiring guaranteed uptime and support
+- Organizations with strict compliance and security requirements
+
+#### Complex Integration Requirements
+
+- Advanced authentication and authorization needs
+- Complex multi-system integration scenarios
+- Organizations requiring professional services and support
+
+### Key Characteristics
+
+#### Licensing and Support
+
+- Commercial licensing with OpsMill
+- SLA-backed professional support
+- Dedicated customer success resources
+- Priority feature development consideration
+
+#### Enhanced Capabilities
+
+- Performance optimizations for large-scale deployments
+- Advanced monitoring and observability features
+- Enterprise-grade security and compliance features
+- Priority bug fixes and security patches
+
+## Detailed Feature Comparison
+
+### Core Infrastructure Management
+
+Both Community and Enterprise provide identical capabilities for fundamental infrastructure data management:
+
+#### Schema and Data Modeling
+
+- Custom schema creation and management
+- Flexible attribute and relationship definitions
+- Schema versioning and migration support
+- Data validation and constraints
+
+#### Version Control and Branching
+
+- Git-like branch management for infrastructure data
+- Proposed changes with peer review workflows
+- Conflict resolution and merge capabilities
+- Immutable audit trails and rollback functionality
+
+#### Artifact Generation
+
+- Template-based configuration generation
+- Support for Jinja2 and Python transforms
+- Custom generator development
+- Integration with automation tools
+
+### Performance and Scalability
+
+#### Community Edition Characteristics
+
+- Suitable for infrastructures up to ~1,000 devices
+- Standard database optimization
+- Basic caching and query optimization
+- Single-instance deployment patterns
+
+#### Enterprise Edition Enhancements
+
+- Optimized for 10,000+ device environments
+- Advanced database tuning and indexing strategies
+- Enhanced caching layers and query optimization
+- High-availability clustering support
+- Load balancing and horizontal scaling capabilities
+
+### Authentication and Security
+
+#### Community Edition Features
+
+- Local account management
+- Basic role-based access control (RBAC)
+- API token authentication
+- Standard security headers and protections
+
+#### Enterprise Edition Additions
+
+- Advanced SSO integration (SAML, OAuth2, OIDC)
+- Enterprise directory integration (Active Directory, LDAP)
+- Advanced audit logging and compliance reporting
+- Enhanced security controls and governance features
+- Multi-factor authentication support
+
+### Support and Services
+
+#### Community Edition Support
+
+- Community Discord and GitHub channels
+- Documentation and self-service resources
+- Community-contributed examples and tutorials
+- Best-effort community assistance
+
+#### Enterprise Edition Support
+
+- Dedicated customer success manager
+- SLA-backed technical support (24/7 available)
+- Professional implementation services
+- Training and setup assistance
+- Priority feature requests and roadmap influence
+
+## Decision Framework
+
+### Choose Community Edition When
+
+#### Resource Constraints
+
+- Limited budget for infrastructure tooling
+- Preference for open-source solutions
+- Internal expertise for self-support
+
+#### Scale and Complexity
+
+- Managing fewer than 1,000 infrastructure components
+- Single-site or straightforward multi-site deployments
+- Standard integration requirements
+
+#### Timeline and Risk Tolerance
+
+- Non-critical infrastructure or development environments
+- Comfortable with community support timelines
+- Ability to handle issues through internal resources
+
+### Choose Enterprise Edition When
+
+#### Business Requirements
+
+- Mission-critical infrastructure management
+- Compliance and audit requirements
+- Need for guaranteed support response times
+
+#### Scale and Performance
+
+- Managing thousands of infrastructure components
+- High-transaction, performance-sensitive environments
+- Complex multi-vendor, multi-site infrastructures
+
+#### Integration Complexity
+
+- Advanced authentication and authorization needs
+- Complex enterprise system integrations
+- Requirements for professional services and training
+
+## Migration Path
+
+### From Community to Enterprise
+
+Organizations typically start with Community edition and migrate to Enterprise as their needs evolve. This migration path is designed to be seamless:
+
+#### Data and Configuration Preservation
+
+- All data and configurations transfer directly
+- No schema or workflow changes required
+- Existing integrations and automation continue functioning
+
+#### Feature Activation
+
+- Enterprise features activate without data migration
+- Gradual adoption of enhanced capabilities
+- Minimal disruption to existing operations
+
+#### Support Transition
+
+- Immediate access to professional support channels
+- Customer success team orientation
+- Transition assistance and best practices guidance
+
+### Planning Considerations
+
+#### Evaluation Timeline
+
+- Community edition provides complete evaluation capabilities
+- Enterprise features can be assessed through trials
+- Migration can occur at any point without data loss
+
+#### Cost-Benefit Analysis
+
+- Consider total cost of ownership including support overhead
+- Evaluate risk reduction from professional support
+- Assess performance gains from enterprise optimizations
+
+## Contact us
+
+For specific questions about Enterprise features, pricing, or migration planning, contact the OpsMill team through [Discord](https://discord.gg/opsmill) or [schedule a consultation](https://cal.com/team/opsmill/meet).
+
+## Further Reading
+
+- [Installation Guide](../guides/installation.mdx) - Setup instructions for both editions
+- [Architecture Overview](./architecture.mdx) - Understanding Infrahub's technical foundation
+- [FAQ](../faq/faq.mdx) - Frequently asked questions about Infrahub
+- [OpsMill Pricing](https://opsmill.com/pricing/) - Official pricing and feature details

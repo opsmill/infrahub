@@ -142,6 +142,7 @@ const sidebars: SidebarsConfig = {
             type: 'generated-index',
           },
           items: [
+            'topics/community-vs-enterprise',
             {
               type: 'category',
               label: 'Git Integration',
