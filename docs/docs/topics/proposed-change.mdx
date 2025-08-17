@@ -3,8 +3,6 @@ title: Understanding Proposed Changes
 ---
 import VideoPlayer from '../../src/components/VideoPlayer';
 
-# Understanding Proposed Changes
-
 A Proposed Change represents Infrahub's systematic approach to reviewing, validating, and merging changes between branches. It combines the familiar concepts of pull requests from software development with infrastructure-specific validation and safety mechanisms, creating a comprehensive change management system for infrastructure data.
 
 <center>
@@ -48,7 +46,7 @@ Proposed Changes present:
 
 Proposed Changes automatically trace how data modifications cascade through your infrastructure:
 
-- **Configuration generation**: Preview how device configs will change
+- **Configuration generation**: Preview how device configurations will change
 - **Template rendering**: See the effect on Jinja2/Python templates
 - **Dependency tracking**: Understand which systems are affected
 - **Change scope**: Visualize the blast radius of modifications
@@ -134,7 +132,7 @@ Validate that generated configurations remain valid:
 
 ### Conflict detection and resolution
 
-Conflicts arise when the same data changes in both the source and destination branches. Infrahub's conflict detection goes beyond simple text comparison to understand the semantic nature of changes.
+Conflicts arise when the same data changes in both the source and destination branches. Infrahub's conflict detection goes beyond text comparison to understand the semantic nature of changes.
 
 #### Types of conflicts
 

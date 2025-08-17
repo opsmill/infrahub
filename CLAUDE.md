@@ -34,6 +34,9 @@ poetry run invoke yamllint
 
 # Lint markdown files
 markdownlint --config .markdownlint.yaml --ignore "**/node_modules/**" "**/*.md" "**/*.mdx"
+
+# Check documentation with Vale for style issues
+vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 ```
 
 ### Testing
@@ -67,6 +70,9 @@ cd docs && npm run build
 
 # Serve documentation locally for testing
 cd docs && npm run serve
+
+# Check documentation style and writing quality after making changes
+vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 ```
 
 ## LLM Instructions for Code Generation
