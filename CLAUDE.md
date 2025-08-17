@@ -59,6 +59,16 @@ poetry install
 poetry run invoke pull
 ```
 
+### Documentation
+
+```bash
+# Build documentation (run this after any changes to docs/ directory)
+cd docs && npm run build
+
+# Serve documentation locally for testing
+cd docs && npm run serve
+```
+
 ## LLM Instructions for Code Generation
 
 ### Python Development Guidelines (from .github/instructions/)

@@ -1,158 +1,316 @@
 ---
-title: Immutability and version control
+title: Understanding version control in Infrahub
 ---
 
 import VideoPlayer from '../../src/components/VideoPlayer';
 
-# Immutability and version control
+# Understanding version control in Infrahub
 
-Infrahub integrate an immutable database with native support for version control that was designed with Infrastructure Management in mind.
+Infrahub's approach to infrastructure management combines an immutable database with Git-inspired version control, creating a unique system designed specifically for managing infrastructure data at scale.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=_I7liNBkNC8' light />
 </center>
 
-## Immutability
+## Core concepts
 
-:::info Data Immutability
+### Data immutability
 
-Immutability at the database level is the idea that information within the database cannot be deleted or changed,
-and that all previous version will remain accessible.
+At its foundation, Infrahub implements data immutability—a principle where information in the database cannot be deleted or modified in place. Instead, every change creates a new version while preserving all previous states. This architectural decision provides several critical benefits for infrastructure management:
 
-:::
+- **Complete audit trail**: Every modification is permanently recorded with who, what, and when
+- **Time travel queries**: Access the exact state of your infrastructure at any point in history
+- **Risk-free rollbacks**: Return to any previous state without data loss
+- **Compliance and forensics**: Meet regulatory requirements with immutable change history
 
-Data Immutability is a perfect match for infrastructure management as it offer a built-in audit trail of all changes
-and it's always possible to access the full content of the database at any previous time.
+The immutability guarantee applies to the default branch (`main`), ensuring production data integrity remains inviolable.
 
-Infrahub guarantee the immutability of the default branch by default (`main`)
+### Temporal queries
 
-### Query a previous version of the data
+Infrahub's temporal query system allows you to retrieve data from any point in time. When you query the database, you're not just accessing current data—you're accessing a specific moment in the database's history. By default, queries return the latest state, but you can specify any timestamp to see exactly how your infrastructure looked at that moment.
 
-It's possible to query a previous version of the database by providing a specific timestamp either via the UI, via GraphQL or via the REST API
+This capability extends across all interfaces:
 
-## Version control
+- Web UI with time navigation controls
+- GraphQL API with timestamp parameters
+- REST API with temporal query support
+- Python SDK with time-aware methods
 
-The implementation of version control in Infrahub is inspired by Git but also different in several ways
+## Version control architecture
 
-A branch provide a safe environment to prepare and validate a change before integrating it into the default branch by opening a [Proposed Change](../topics/proposed-change).
+### Mental model: Git meets infrastructure
 
-Branches are meant to be short lived, from a few seconds to a few weeks, and are hierarchical by nature which means that a branch can only be merged into the branch it was created from.
+Infrahub's version control borrows concepts from Git while adapting them for infrastructure data management. Like Git, Infrahub uses branches to isolate changes, but unlike Git, these branches operate on structured graph data rather than text files.
 
-> Currently only a single level of hierarchy is supported, meaning that all branches must be created from the default branch and be merged into the default branch.
+Key differences from traditional Git:
 
-:::info
+- **Graph-based storage**: Changes affect nodes and relationships in a graph database
+- **Schema awareness**: The system understands and validates your data model
+- **Atomic operations**: All changes within a transaction succeed or fail together
+- **Conflict detection**: Automatic identification of conflicting changes between branches
 
-The main branch in Infrahub has additional locks, which other branches don't have, to ensure data and schema integrity.
+### Branch architecture
 
-There is a downside to this approach. Creating data in bulk or concurrently will be slower in the main branch, compared to doing this in a branch other than main. The consequence is that you might create a data or schema integrity issue, when creating data concurrently in a branch.
+Branches in Infrahub serve as isolated workspaces where changes can be prepared, validated, and reviewed before merging into production. Each branch maintains its own view of the data while sharing the underlying immutable history.
 
-The proposed change process, running our internal CI pipeline, will detect these kind of issues and inform you about their existence. In such a scenario you will be unable to merge the branch and will be forced to remediate the integrity issues first.
+#### Branch hierarchy
 
-Typically triggering a rebase for the branch should be sufficient.
+Infrahub implements a hierarchical branch model where:
 
-:::
+- Branches are created from a parent branch (currently always `main`)
+- Changes flow back to the parent through controlled merge operations
+- Each branch tracks its creation point (`branched_from`) for accurate diffing
 
-### Create a branch
+Currently, Infrahub supports a single level of hierarchy—all branches must be created from and merged back to the default branch. This constraint simplifies conflict resolution and ensures clear change lineage.
 
-Branches in Infrahub are designed to be lightweight, while the recommendation is to keep the lifespan of a branch short, it's possible to have 10s of branches open at the same time.
-When creating a branch it's possible to provide a description and define if the branch should be **Data Only** or not. When a branch is flagged as **Data Only** it won't be extended to the Read-Write Repositories. By opposition, if a branch isn't **Data Only** it will be automatically created in all the Read-Write repositories.
+#### Branch isolation modes
 
-Branch names are fairly permissive, but must conform to git ref format. For example, slashes (/) are allowed, tildes (~) are not.
+When creating a branch, you choose how it interacts with external systems:
 
-A branch can be created via the UI, via GraphQL, via `infrahubctl` or by pushing a new branch to a managed Git repository.
+- **Full branches** (`sync_with_git: true`): Extend to Git repositories, allowing infrastructure-as-code changes
+- **Data-only branches** (`sync_with_git: false`): Isolate changes to Infrahub data without affecting Git repositories
 
-:::info
+This flexibility allows different workflows—from quick data fixes to comprehensive infrastructure changes involving both data and code.
 
-Creating a branch won't create a copy of the database, only the changes applied in the branch will be stored in order to keep track of all changes.
+### The default branch: Special protections
 
-:::
+The main branch in Infrahub has unique characteristics that distinguish it from feature branches:
 
-<details>
-  <summary>Create a new branch using the UI</summary>
+#### Integrity guarantees
 
-  You can create a new branch in the frontend by using the button with a `+ sign` in the top right corner, next to the name of the current branch, i.e., `main`.
+The main branch enforces strict integrity constraints:
 
-  ![](../media/tutorial_1_branch_creation.png)
+- **Schema validation**: All data must conform to the current schema
+- **Relationship integrity**: All references between objects must be valid
+- **Uniqueness constraints**: Duplicate values in unique fields are prevented
+- **Required fields**: All mandatory attributes must have values
 
-</details>
+These protections ensure production data remains consistent and valid.
 
-<details>
-  <summary>Create a new branch using GraphQL</summary>
+#### Performance trade-offs
 
-  Use the GraphQL mutation below to create a new branch named `cr1234`
+The integrity guarantees come with performance implications:
 
-  ```graphql
-  mutation {
-    BranchCreate(data: { name: "cr1234", sync_with_git: true}) {
-      ok
-      object {
-        id
-        name
-      }
-    }
-  }
-  ```
+- **Sequential writes**: Certain operations serialize to prevent conflicts
+- **Validation overhead**: Every change undergoes comprehensive validation
+- **Lock contention**: Concurrent modifications may experience delays
 
-</details>
+Feature branches relax some of these constraints for better performance during development, with full validation occurring during the merge process via Proposed Changes.
 
-<details>
-  <summary>Create a new branch using `infrahubctl`</summary>
+## Change management workflows
 
-  Use the command below to create a new branch named `cr1234`
+### Branch lifecycle
 
-  ```shell
-  infrahubctl branch create cr1234
-  ```
+Understanding the branch lifecycle helps explain how changes flow through the system:
 
-</details>
+1. **Branch creation**: Establishes an isolated workspace at a specific point in time
+2. **Development**: Changes accumulate in the branch without affecting main
+3. **Validation**: Proposed Changes run automated checks and tests
+4. **Conflict resolution**: Any conflicts with main are identified and resolved
+5. **Merge**: Approved changes integrate into the main branch
+6. **Cleanup**: The branch can be deleted after successful merge
 
-### Changes between branches
+### Merge semantics
 
-To view all the changes in a branch
+Infrahub's merge operation differs from Git in important ways:
 
-1. Navigate to the branch page in the menu on the left under the Change Control section (or [follow this link](http://localhost:8000/branches/)).
+#### Latest-value wins
 
-![Branches list](../media/tutorial_1_branch_list.png)
+During a merge, only the most recent value for each changed attribute transfers to the destination branch. The complete change history within the branch doesn't carry over—instead, the final state becomes a single change at the merge point.
 
-2. Select the branch in the list of available branches.
-3. Select on the Diff button and expand the changes to view the diff between the branch and `main`.
+This approach:
 
-![Branch diff](../media/tutorial_1_branch_diff.png)
+- Maintains immutability of the main branch
+- Simplifies conflict resolution
+- Provides clear merge points in history
+- Reduces storage overhead
 
-:::info
+#### Branch-aware vs branch-agnostic
 
-Only the changes in Branch Aware mode will be displayed in the diff view and only these changes will be included in a merge operation.
-Check the [Branch Support section in the Schema documentation](../topics/schema#branch-support) for more information.
+Not all data participates in version control equally:
 
-:::
+- **Branch-aware**: Changes are tracked, diffed, and merged (most user data)
+- **Branch-agnostic**: Changes apply globally regardless of branch (system data)
+- **Branch-local**: Changes exist only within the branch (temporary data)
 
-### Merge a branch
+Understanding these modes helps predict how changes will behave during merges.
 
-During a merge operation, only the latest modified values in the branch will be applied to the destination branch and the history of the branch won't be carried over to the main branch.
-This behavior is required to guarantee the immutability of the default branch.
+### Rebase operations
 
-The diagram below present how various changes to 2 objects in the Branch A will be applied to the main branch during a merge operation.
-After the merge operation, all changes will be accessible in main at the time of the merge operation, not at the time they were applied in the branch.
+Rebasing updates a branch with the latest changes from its parent, essential for:
 
-![](../media/branch_merge.excalidraw.svg)
+- Resolving conflicts before merge
+- Incorporating upstream changes
+- Maintaining a clean merge history
 
-:::info
+During rebase:
 
-Using a Proposed Change to merge a branch is recommended to guarantee that all changes are valid and compliant.
+1. The branch's base point (`branched_from`) updates to the current time
+2. Changes in the branch replay on top of the new base
+3. Conflicts require manual resolution
+4. The branch history resets, preserving only the final state
 
-:::
+### Conflict detection and resolution
 
-### Rebase a branch
+Conflicts occur when the same data changes in both a branch and main. Infrahub automatically detects:
 
-If a branch is out of sync with the default branch or if it has some conflicts, it's possible to rebase it with the latest version of the default branch.
-Similar to the merge operation, during a rebase only the latest modified values in the branch will be conserved and the history of the branch won't be carried over.
+- **Attribute conflicts**: Same field modified in both branches
+- **Relationship conflicts**: Conflicting changes to object relationships
+- **Schema conflicts**: Incompatible schema modifications
+- **Uniqueness conflicts**: Values that would violate uniqueness constraints
 
-The diagram below present how various changes to 2 objects in the Branch A will be updated during a rebase.
+The Proposed Change process provides tools for:
 
-![](../media/branch_rebase_no_conflict.excalidraw.svg)
+- Visualizing conflicts with side-by-side diffs
+- Choosing resolution strategies (keep mine, keep theirs, manual merge)
+- Validating the resolved state before merge
 
-#### Conflicts between branches
+## Design rationale
 
-If the same attribute or the same relationship has been modified both in a branch and in main, the conflict will need to be resolved manually before the branch can be merged.
+### Why immutability matters for infrastructure
 
-Conflicts in a branch can be resolved as part of a Proposed Change.
+Infrastructure changes carry significant risk—a misconfiguration can cause outages, security vulnerabilities, or data loss. Immutability provides a safety net:
+
+- **Instant rollback**: Return to a known-good state immediately
+- **Change correlation**: Link infrastructure issues to specific changes
+- **Compliance audit**: Prove infrastructure state at any point for auditors
+- **Learning from history**: Analyze past changes to prevent future issues
+
+### Trade-offs and constraints
+
+Every design decision involves trade-offs. Infrahub prioritizes:
+
+**Consistency over availability**: The system ensures data integrity even if it means rejecting conflicting changes.
+
+**Correctness over performance**: Validation and integrity checks may slow operations but prevent invalid states.
+
+**Explicitness over magic**: Changes are explicit and traceable rather than automatic or hidden.
+
+These choices reflect the critical nature of infrastructure data where correctness and auditability outweigh raw performance.
+
+## Implementation details
+
+### Branch naming conventions
+
+Branch names in Infrahub follow Git ref format conventions, with specific validation rules to ensure compatibility across systems:
+
+- **Allowed**: Alphanumeric characters, hyphens, underscores, forward slashes (for hierarchical organization)
+- **Forbidden**: Tildes (~), spaces, control characters, consecutive dots (..), `@{` sequences
+- **Restrictions**: Cannot start or end with slash, cannot end with .lock
+
+This standardization ensures branches work seamlessly with Git integration and command-line tools.
+
+### Storage optimization
+
+Despite supporting unlimited branches, Infrahub remains efficient through several optimizations:
+
+#### Copy-on-write semantics
+
+Branches don't duplicate the entire database. Instead, they maintain:
+
+- A pointer to their base (`branched_from` timestamp)
+- Only the delta of changes made within the branch
+- References to unchanged data in the parent branch
+
+This approach means creating a branch has minimal overhead, and storage grows only with actual changes.
+
+#### Change tracking granularity
+
+Infrahub tracks changes at the attribute level, not the object level. If you modify one field of an object with 50 attributes, only that single change is stored, not a complete copy of the object.
+
+### Merge algorithms
+
+The merge process follows a deterministic algorithm to ensure predictable outcomes:
+
+1. **Change detection**: Identify all modifications in the source branch since `branched_from`
+2. **Conflict analysis**: Compare changes against the destination branch state
+3. **Resolution**: Apply non-conflicting changes automatically
+4. **Validation**: Ensure the merged state maintains all integrity constraints
+5. **Atomicity**: Commit all changes or rollback entirely on failure
+
+![Merge operation diagram](../media/branch_merge.excalidraw.svg)
+
+### Rebase mechanics
+
+Rebasing reconstructs a branch on top of the latest main branch state:
+
+1. **Snapshot current changes**: Capture all modifications in the branch
+2. **Update base pointer**: Move `branched_from` to current timestamp
+3. **Replay changes**: Apply captured modifications on new base
+4. **Conflict detection**: Identify any conflicts with new base state
+5. **Cleanup**: Remove obsolete change records
+
+![Rebase operation diagram](../media/branch_rebase_no_conflict.excalidraw.svg)
+
+## Advanced concepts
+
+### Global branches
+
+While standard branches isolate changes, global branches affect all other branches immediately. These special branches, marked with `is_global: true`, bypass normal isolation for system-wide changes like schema updates that must be visible everywhere.
+
+### Branch isolation levels
+
+Infrahub supports different isolation levels for various use cases:
+
+- **Full isolation**: Complete separation from other branches (default)
+- **Schema sharing**: Schema changes visible across branches
+- **Read-through**: Can read data from parent branch
+- **Write-through**: Changes immediately visible in parent (global branches)
+
+### Distributed version control
+
+When integrated with Git repositories, Infrahub extends version control beyond the database:
+
+- **Bidirectional sync**: Database branches create Git branches and vice versa
+- **Unified merges**: Proposed Changes coordinate database and Git merges
+- **Conflict coordination**: Conflicts in either system prevent merge
+- **Atomic operations**: Both succeed or both fail, maintaining consistency
+
+## Performance characteristics
+
+Understanding performance implications helps in designing efficient workflows:
+
+### Operation costs
+
+Different operations have varying performance profiles:
+
+- **Branch creation**: O(1) - Near instantaneous regardless of data size
+- **Change tracking**: O(n) - Linear with number of changes in branch
+- **Merge complexity**: O(n*m) - Depends on changes and conflicts
+- **Rebase cost**: O(n) - Proportional to branch changes
+- **Conflict detection**: O(n*log m) - Efficient comparison algorithms
+
+### Scaling considerations
+
+Infrahub's version control scales with:
+
+- **Number of branches**: Supports hundreds of concurrent branches
+- **Change volume**: Handles thousands of changes per branch
+- **Data size**: Branch operations independent of total data volume
+- **User concurrency**: Multiple users can work in separate branches
+
+### Optimization strategies
+
+For optimal performance:
+
+- Keep branches short-lived (days to weeks, not months)
+- Merge frequently to minimize conflict complexity
+- Use data-only branches when Git sync isn't needed
+- Batch related changes in single transactions
+- Rebase before merge to simplify conflict resolution
+
+## Related topics
+
+To deepen your understanding of version control in Infrahub:
+
+- [Proposed Changes](../topics/proposed-change) - The review and approval process for branch merges
+- [Schema management](../topics/schema) - How data models evolve with version control
+- [Repository integration](../topics/repository) - How Git repositories integrate with branches
+
+## Further reading
+
+For practical guidance on using version control features:
+
+- [Repository management](../guides/repository) - Working with Git repositories
+- [API Server reference](../reference/api-server) - Programmatic access to version control
+- [Infrahub CLI tools](../reference/infrahub-cli/infrahub-server) - Command-line branch management
