@@ -67,6 +67,7 @@ healthcheck
 hfid
 hfids
 hostname
+hotfixes
 httpx
 human_friendly_id
 id_token
