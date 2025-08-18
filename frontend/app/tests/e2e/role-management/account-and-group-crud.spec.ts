@@ -62,7 +62,7 @@ test.describe("Account management - CRUD", () => {
     });
 
     await test.step("verify group creation", async () => {
-      await expect(page.getByRole("cell", { name: "New Group" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "New Group" }).first()).toBeVisible();
     });
   });
   // TODO: Update and Delete Tests
