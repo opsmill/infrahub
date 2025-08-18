@@ -20,12 +20,15 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import usePagination from "@/shared/hooks/usePagination";
 import { NetworkStatus } from "@apollo/client";
 import { getPermission } from "../../permission/utils";
 
 function Roles() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
+
   const {
     loading,
     networkStatus,
@@ -34,7 +37,7 @@ function Roles() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_ROLES, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
