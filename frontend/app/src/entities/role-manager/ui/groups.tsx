@@ -65,7 +65,11 @@ function Groups() {
       label: "Description",
     },
     {
-      name: "account_type",
+      name: "label",
+      label: "Label",
+    },
+    {
+      name: "group_type",
       label: "Type",
     },
     {
@@ -86,6 +90,7 @@ function Groups() {
         id: edge?.node?.id,
         name: { value: edge?.node?.name?.value },
         description: { value: edge?.node?.description?.value },
+        label: { value: edge?.node?.label?.value },
         group_type: { value: edge?.node?.group_type?.value },
         members: {
           value: { edges: edge?.node?.members?.edges },

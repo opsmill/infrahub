@@ -22,6 +22,9 @@ export const GET_ROLE_MANAGEMENT_GROUPS = gql`
           description {
             value
           }
+          label {
+            value
+          }
           group_type {
             value
           }
