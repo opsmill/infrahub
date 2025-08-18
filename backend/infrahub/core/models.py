@@ -572,6 +572,7 @@ class HashableModel(BaseModel):
                 try:
                     setattr(self, field_name, getattr(other, field_name))
                 except ValueError:
+                    # handles the case where self and other are different types and other has fields that self does not
                     pass
                 continue
 
