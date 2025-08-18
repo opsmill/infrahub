@@ -36,6 +36,12 @@ interface ProposedChangeEventTitleProps {
 export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) => {
   const { event, account_id, branch } = props;
 
+  if (event === "infrahub.proposed_change.approvals_revoked") {
+    return (
+      <div className="text-gray-600">Changes occured in the proposed change, approval revoked</div>
+    );
+  }
+
   if (event === PROPOSED_CHANGE_THREAD && props.related_nodes?.[0]?.id) {
     return (
       <div className="flex flex-col gap-2">
