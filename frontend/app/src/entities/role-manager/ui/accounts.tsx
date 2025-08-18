@@ -18,6 +18,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import usePagination from "@/shared/hooks/usePagination";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -26,6 +27,7 @@ import { getPermission } from "../../permission/utils";
 function Accounts() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
 
   const {
     loading,
@@ -35,7 +37,7 @@ function Accounts() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_ACCOUNTS, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
