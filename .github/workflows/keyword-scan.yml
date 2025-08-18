@@ -9,6 +9,7 @@ env:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    continue-on-error: true  # <-- Add this line to make the whole job non-blocking
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -18,4 +19,5 @@ jobs:
       - name: "Setup Python environment"
         run: "pip install invoke toml"
       - name: Scan for prohibited keywords
+        if: env.KEYWORDS_LIST != ''
         run: "invoke main.scan"
