@@ -89,7 +89,7 @@ class Migration033(GraphMigration):
     """
 
     name: str = "033_deduplicate_relationship_vertices"
-    minimum_version: int = 31
+    minimum_version: int = 32
     queries: Sequence[type[Query]] = [DeduplicateRelationshipVerticesQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

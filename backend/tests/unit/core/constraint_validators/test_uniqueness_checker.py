@@ -225,7 +225,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
-    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
+    @pytest.mark.skip("We technically don't support uniqueness constraints on properties of relationships")
     async def test_combined_uniqueness_constraints_with_violations(
         self,
         db: InfrahubDatabase,
@@ -357,7 +357,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
-    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
+    @pytest.mark.skip("We technically don't support uniqueness constraints on properties of relationships")
     async def test_generic_unique_attribute_multiple_relationship_violations_to_same_node(
         self,
         db: InfrahubDatabase,
@@ -440,7 +440,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
-    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
+    @pytest.mark.skip("We technically don't support uniqueness constraints on properties of relationships")
     async def test_generic_unique_constraint_relationship_with_and_without_attr(
         self,
         db: InfrahubDatabase,
