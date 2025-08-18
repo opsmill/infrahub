@@ -65,8 +65,12 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             if value in (None, NULL_VALUE):
                 continue
             try:
+                attr_value = result.get("attribute_value")
                 infrahub_attribute_class.validate_format(
-                    value=result.get("attribute_value"), name=self.attribute_schema.name, schema=self.attribute_schema
+                    value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
+                )
+                infrahub_attribute_class.validate_content(
+                    value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
                 )
             except ValidationError:
                 grouped_data_paths.add_data_path(
