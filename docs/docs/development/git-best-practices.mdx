@@ -91,12 +91,14 @@ git commit -m "update python_sdk to v1.10.0"
 Submodule conflicts appear as conflicting commit pointers. Here's how to resolve them:
 
 1. **Identify the conflict**:
+
    ```bash
    git status
    # Shows: both modified: python_sdk
    ```
 
 2. **Check the conflicting commits**:
+
    ```bash
    git diff python_sdk
    ```
@@ -195,6 +197,7 @@ Follow these practices to ensure smooth code review and integration.
 ### Before creating a pull request
 
 1. **Start from the correct base branch**:
+
    ```bash
    # For new features
    git checkout develop
@@ -213,6 +216,7 @@ Follow these practices to ensure smooth code review and integration.
    - Use conventional commit format: `type(scope): description`
 
 3. **Update submodules if needed**:
+
    ```bash
    # Ensure submodules are current
    git submodule update --recursive --remote
@@ -223,6 +227,7 @@ Follow these practices to ensure smooth code review and integration.
    ```
 
 4. **Test your changes**:
+
    ```bash
    # Run the full test suite
    poetry run invoke test
@@ -238,6 +243,7 @@ Follow these practices to ensure smooth code review and integration.
 ### Creating the pull request
 
 1. **Push to your feature branch**:
+
    ```bash
    git push -u origin feature/your-feature-name
    ```
@@ -281,12 +287,14 @@ Periodically sync `develop` with `stable` to incorporate fixes and releases.
 ### Regular sync process
 
 1. **Switch to develop and update**:
+
    ```bash
    git checkout develop
    git pull origin develop
    ```
 
 2. **Merge stable into develop**:
+
    ```bash
    git merge origin/stable
    ```
@@ -297,6 +305,7 @@ Periodically sync `develop` with `stable` to incorporate fixes and releases.
    - Test the merge thoroughly
 
 4. **Push the updated develop**:
+
    ```bash
    git push origin develop
    ```
@@ -306,6 +315,7 @@ Periodically sync `develop` with `stable` to incorporate fixes and releases.
 When a new version is released to `stable`:
 
 1. **Update your local branches**:
+
    ```bash
    git fetch origin --tags
    git checkout stable
@@ -315,16 +325,19 @@ When a new version is released to `stable`:
    ```
 
 2. **Merge stable to develop**:
+
    ```bash
    git merge stable
    ```
 
 3. **Update submodules if needed**:
+
    ```bash
    git submodule update --recursive --remote
    ```
 
 4. **Rebase your feature branches**:
+
    ```bash
    git checkout feature/your-feature
    git rebase develop
