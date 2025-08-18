@@ -1,0 +1,289 @@
+---
+title: Schema extensions
+---
+
+Schema extensions provide a powerful mechanism for augmenting existing nodes in Infrahub without modifying their original definitions. This approach enables modularity, maintainability, and collaborative schema development across teams and repositories.
+
+## What are schema extensions?
+
+Schema extensions allow you to add new attributes and relationships to existing nodes that are already defined in your Infrahub schema. Rather than editing the original node definition directly, you create an extension that gets merged with the base node at runtime.
+
+Think of extensions as "patches" or "mix-ins" that layer additional capabilities onto your existing data model. This is similar to how inheritance works in object-oriented programming, but without creating new types—you're enhancing existing ones.
+
+## Why use extensions?
+
+### Separation of concerns
+
+Different teams often need to track different aspects of the same infrastructure components. Network teams might care about VLAN assignments and port configurations, while operations teams need to track maintenance windows and SLA tiers. Extensions allow each team to manage their schema additions independently.
+
+### Modularity and reusability
+
+Extensions can be packaged as reusable modules. For example, you might create a "compliance" extension module that adds regulatory tracking fields to multiple node types. This module can be shared across projects or organizations.
+
+### Safer schema evolution
+
+Modifying core node definitions can be risky, especially in production environments. Extensions provide a safer path for schema evolution:
+
+- They can be tested in isolation
+- They can be rolled back without affecting the base schema
+- They preserve the integrity of vendor-provided or standard schemas
+
+### Multi-repository workflows
+
+In GitOps workflows, different teams might manage their schema definitions in separate repositories. Extensions enable this distributed approach while maintaining a cohesive data model when everything comes together in Infrahub.
+
+## How extensions work
+
+### The merge process
+
+When Infrahub loads a schema with extensions, it performs a merge operation:
+
+1. **Base schema loading**: First, all node definitions are loaded and processed
+2. **Extension application**: Extensions are then applied to their target nodes
+3. **Validation**: The final merged schema is validated for consistency
+4. **Runtime availability**: The extended schema becomes available for queries and mutations
+
+This process happens transparently—from the API and UI perspective, extended nodes appear as if they were defined with all their attributes and relationships from the start.
+
+### Extension precedence
+
+When multiple extensions target the same node, they're applied in the order they're loaded:
+
+```yaml
+# First extension adds 'maintenance_window'
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: maintenance_window
+          kind: Text
+
+# Second extension also adds attributes (applied after the first)
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: sla_tier
+          kind: Text
+```
+
+If extensions define the same attribute or relationship name, the last one loaded takes precedence. This allows for intentional overrides but requires careful coordination.
+
+### Schema validation
+
+Extensions undergo the same validation as regular node definitions:
+
+- Attribute names must be unique within the final merged node
+- Relationship peers must reference valid node types
+- Data types and constraints must be valid
+
+Validation happens after merging, ensuring the final schema is internally consistent.
+
+## Mental models for extensions
+
+### The decorator pattern
+
+Extensions follow the decorator pattern from software design. Each extension "decorates" the base node with additional capabilities without changing its fundamental identity. A device is still a device, just with more attributes.
+
+### Database views analogy
+
+Think of extensions like database views that add computed or joined columns to a base table. The underlying data structure remains unchanged, but the accessible schema is enriched.
+
+### Cascading style sheets analogy
+
+Similar to how CSS rules cascade and override each other based on specificity and order, schema extensions layer on top of base definitions, with later extensions having higher precedence.
+
+## Design considerations
+
+### When to use extensions vs. new nodes
+
+Use extensions when:
+
+- Adding domain-specific attributes to standard nodes
+- Enhancing vendor-provided schemas
+- Implementing optional features that not all deployments need
+- Different teams need to manage different aspects of the same entity
+
+Create new nodes when:
+
+- Modeling entirely new concepts
+- The relationship between concepts is primary, not supplementary
+- You need different inheritance hierarchies or generics
+
+### Naming conventions
+
+Establish clear naming conventions for extended attributes to avoid collisions:
+
+```yaml
+# Good: Prefixed with domain or team
+attributes:
+  - name: ops_maintenance_window
+  - name: sec_compliance_status
+  - name: net_vlan_assignment
+
+# Risk of collision: Generic names
+attributes:
+  - name: status  # Might conflict with existing or future attributes
+  - name: type    # Too generic
+```
+
+### Performance implications
+
+Extensions are merged at schema load time, not query time, so there's no runtime performance penalty. However, consider:
+
+- Large numbers of extensions can increase schema complexity
+- More attributes mean larger query responses if not properly filtered
+- UI forms become longer with many extended attributes
+
+### Migration strategies
+
+When moving from modified core schemas to extensions:
+
+1. **Identify customizations**: Audit your current schema for custom additions
+2. **Extract to extensions**: Move custom attributes and relationships to extension files
+3. **Reset base schema**: Restore original node definitions
+4. **Apply extensions**: Load the extracted extensions
+5. **Validate data**: Ensure existing data remains accessible
+
+## Best practices
+
+### Organize extensions logically
+
+Group related extensions together:
+
+```yaml
+# operations_extensions.yml
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: ops_maintenance_window
+        - name: ops_oncall_team
+    - kind: InfraRack
+      attributes:
+        - name: ops_access_policy
+
+# compliance_extensions.yml
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: compliance_audit_date
+        - name: compliance_certification
+```
+
+### Document extension purpose
+
+Include clear documentation in your extension files:
+
+```yaml
+# Purpose: Adds financial tracking capabilities to infrastructure nodes
+# Owner: Finance Team
+# Dependencies: Requires CoreAccount nodes for cost center relationships
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: purchase_date
+          description: "Date when the device was purchased"
+        - name: depreciation_period
+          description: "Depreciation period in months"
+```
+
+### Version control integration
+
+Leverage Git workflows for extension management:
+
+- Use feature branches for testing new extensions
+- Implement review processes for extension changes
+- Tag stable extension sets for production deployments
+- Use `.infrahub.yml` to control which extensions load in which environment
+
+### Testing extensions
+
+Before deploying extensions to production:
+
+1. Load them in a development environment
+2. Verify the merged schema via GraphQL introspection
+3. Test data creation and queries with extended attributes
+4. Validate that existing queries and mutations still work
+5. Check UI forms and displays
+
+## Common patterns
+
+### Multi-tenant extensions
+
+Different tenants or customers might need different extensions:
+
+```yaml
+# tenant_a_extensions.yml
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: tenant_a_asset_id
+
+# tenant_b_extensions.yml
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: tenant_b_cost_center
+```
+
+### Feature flags via extensions
+
+Use extensions to progressively roll out features:
+
+```yaml
+# beta_features.yml
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: beta_ai_classification
+          optional: true
+```
+
+## Limitations and constraints
+
+### Currently supported
+
+- Adding new attributes to nodes
+- Adding new relationships to nodes
+- Extending any user-defined node type
+
+### Not yet supported
+
+- Extending generics (planned for future releases)
+- Modifying existing attributes or relationships
+- Removing attributes or relationships via extensions
+- Changing node inheritance or hierarchy
+- Extending built-in system nodes
+
+### Technical constraints
+
+- Extension definitions cannot reference other extensions directly
+- Circular relationship dependencies between extensions and new nodes require careful ordering
+- Maximum practical limit of extensions per node depends on UI usability
+
+## Relationship to other concepts
+
+### Schema versioning
+
+Extensions complement schema versioning by providing a mechanism for non-breaking additions. While schema versions handle migrations and breaking changes, extensions handle additive changes.
+
+### Generics and inheritance
+
+Extensions differ from generics in that they don't create new types or establish inheritance relationships. They modify existing types in place. Use generics for shared structure, extensions for augmentation.
+
+### Profiles and node groups
+
+Extensions operate at the schema level, while profiles operate at the data level. Extensions define what attributes exist; profiles define which attributes are required or validated for specific use cases.
+
+## Related resources
+
+- [How to extend existing nodes](../guides/extend-schema) - Practical guide for implementing extensions
+- [Node extension reference](../reference/schema/node-extension) - Complete syntax documentation
+- [Schema concepts](./schema) - Overview of Infrahub's schema system
+- [Repository integration](./repository) - Using extensions with Git workflows

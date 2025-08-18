@@ -1,0 +1,266 @@
+---
+title: How to extend the schema
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+import CodeBlock from "@theme/CodeBlock";
+
+This guide shows you how to extend existing nodes in your Infrahub schema by adding custom attributes and relationships without modifying the original node definition.
+
+## Prerequisites
+
+Before starting this guide, ensure you have:
+
+- An Infrahub instance running with an existing schema
+- The `infrahubctl` CLI tool installed and configured
+- Basic understanding of [Infrahub schema concepts](../topics/schema)
+- A YAML editor with schema validation support (recommended)
+
+## Step 1: Identify the node to extend
+
+First, determine which existing node you want to extend. You'll need the exact node kind, which follows the format `NamespaceNodeName` (for example: `InfraDevice`, `CoreAccount`).
+
+To view available nodes in your schema:
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+query {
+  InfrahubSchema {
+    nodes {
+      edges {
+        node {
+          kind
+          namespace
+          name
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="cli" label="CLI">
+
+```bash
+infrahubctl schema get
+```
+
+</TabItem>
+</Tabs>
+
+## Step 2: Create the extension definition
+
+Create a new YAML file for your schema extension. The basic structure includes:
+
+```yaml
+---
+version: '1.0'
+extensions:
+  nodes:
+    - kind: <NodeKind>
+      attributes:
+        - <attribute definitions>
+      relationships:
+        - <relationship definitions>
+```
+
+### Example: Adding a maintenance window to devices
+
+Create a file named `device_extension.yml`:
+
+```yaml
+---
+version: '1.0'
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: maintenance_window
+          kind: Text
+          optional: true
+          description: "Scheduled maintenance window for this device"
+        - name: criticality
+          kind: Dropdown
+          choices:
+            - name: critical
+              label: Critical
+              color: "#ff0000"
+            - name: high
+              label: High
+              color: "#ff9900"
+            - name: medium
+              label: Medium
+              color: "#ffcc00"
+            - name: low
+              label: Low
+              color: "#00cc00"
+          default_value: "medium"
+      relationships:
+        - name: support_contact
+          peer: CoreAccount
+          optional: true
+          cardinality: one
+          kind: Attribute
+```
+
+## Step 3: Validate your extension
+
+Before loading your extension, validate the YAML syntax and structure:
+
+```bash
+# Check YAML syntax
+infrahubctl schema check device_extension.yml
+
+# Optionally, use the schema validation in your editor
+# Add this to the top of your YAML file:
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+```
+
+## Step 4: Load the extension
+
+Load your schema extension into Infrahub:
+
+<Tabs>
+<TabItem value="cli" label="CLI">
+
+```bash
+infrahubctl schema load device_extension.yml
+```
+
+</TabItem>
+<TabItem value="git" label="Git Repository">
+
+If using Git integration, add the extension file path to your `.infrahub.yml`:
+
+```yaml
+---
+schemas:
+  - schemas/device_extension.yml
+```
+
+Then commit and push the changes. Infrahub will automatically load the extension.
+
+</TabItem>
+</Tabs>
+
+## Step 5: Verify the extension
+
+Confirm that your extension has been applied:
+
+<Tabs>
+<TabItem value="graphql" label="GraphQL">
+
+Query for the extended node to see the new attributes:
+
+```graphql
+query {
+  InfraDevice {
+    edges {
+      node {
+        display_label
+        maintenance_window {
+          value
+        }
+        criticality {
+          value
+        }
+        support_contact {
+          node {
+            display_label
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="ui" label="Web UI">
+
+1. Navigate to the extended node type in the UI
+2. Create or edit an instance
+3. Verify that the new fields appear in the form
+
+</TabItem>
+</Tabs>
+
+## Advanced usage
+
+### Extending multiple nodes
+
+You can extend multiple nodes in a single file:
+
+```yaml
+---
+version: '1.0'
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: sla_tier
+          kind: Text
+    - kind: InfraRack
+      attributes:
+        - name: cooling_type
+          kind: Text
+    - kind: InfraSite
+      relationships:
+        - name: primary_contact
+          peer: CoreAccount
+          cardinality: one
+```
+
+### Combining new nodes with extensions
+
+You can define new nodes and extend existing ones in the same file:
+
+```yaml
+---
+version: '1.0'
+nodes:
+  - name: MaintenanceWindow
+    namespace: Ops
+    attributes:
+      - name: name
+        kind: Text
+      - name: start_time
+        kind: Text
+      - name: end_time
+        kind: Text
+extensions:
+  nodes:
+    - kind: InfraDevice
+      relationships:
+        - name: maintenance_windows
+          peer: OpsMaintenanceWindow
+          cardinality: many
+          kind: Attribute
+```
+
+### Extension conflicts and precedence
+
+If multiple extensions target the same node:
+
+- Extensions are applied in the order they're loaded
+- Later extensions override earlier ones if there are conflicts
+- Use descriptive, unique names for attributes and relationships to avoid collisions
+
+## Validation
+
+After applying extensions, verify that:
+
+✓ The extended fields appear in the UI forms
+✓ GraphQL queries include the new attributes and relationships
+✓ Data can be saved and retrieved correctly
+✓ Any existing automation or integrations continue to work
+
+## Related resources
+
+- [Understanding schema extensions](../topics/schema-extensions) - Conceptual overview of how extensions work
+- [Schema reference](../reference/schema/node-extension) - Complete extension syntax reference
+- [Import schema files](./import-schema) - Loading schema files into Infrahub

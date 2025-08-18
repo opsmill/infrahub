@@ -47,6 +47,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/create-schema',
             'guides/import-schema',
+            'guides/extend-schema',
             'guides/customize-field-ordering',
             'guides/menu',
             'guides/computed-attributes',
@@ -203,6 +204,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/schema',
+                'topics/schema-extensions',
                 'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
