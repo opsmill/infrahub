@@ -5,6 +5,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
+    create_branch,
     get_default_ipnamespace,
 )
 from infrahub.core.ipam.reconciler import IpamReconciler
@@ -248,3 +249,36 @@ async def test_ipprefix_reconciler_prefix_value_update(db: InfrahubDatabase, def
         child_parent_rels = await child.ip_prefix.get_relationships(db=db)
         assert len(child_parent_rels) == 1
         assert child_parent_rels[0].peer_id == updated_prefix.id
+
+
+async def test_ipprefix_reconciler_prefix_value_update_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+):
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_143 = ip_dataset_01["net143"]
+
+    branch = await create_branch(db=db, branch_name="branch-prefix-update")
+    net_143_branch = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    net_143_branch.prefix.value = "10.10.1.0/28"
+    await net_143_branch.save(db=db)
+
+    ip_network = ipaddress.ip_network(net_143_branch.prefix.value)
+    reconciler = IpamReconciler(db=db, branch=branch)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check prefix is updated
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    assert updated_prefix.prefix.value == "10.10.1.0/28"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 0
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 1
+    assert updated_address_rels[0].peer_id == ip_dataset_01["address11"].id
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 1
+    assert updated_parent_rel[0].peer_id == ip_dataset_01["net140"].id
