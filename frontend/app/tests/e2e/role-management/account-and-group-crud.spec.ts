@@ -49,7 +49,7 @@ test.describe("Account management - CRUD", () => {
       await page.getByRole("textbox", { name: "Name *" }).fill("New Group");
 
       await page.getByRole("combobox", { name: "Type" }).click();
-      await page.getByText("default").click();
+      await page.getByText("default").first().click();
       await page.getByTestId("side-panel-container").getByText("Roles").click();
       await page.getByTestId("side-panel-container").getByText("Own branches read-write").click();
       await page.getByTestId("side-panel-container").getByText("Members").click();
