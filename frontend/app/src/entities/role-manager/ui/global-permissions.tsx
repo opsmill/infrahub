@@ -95,7 +95,10 @@ function GlobalPermissions() {
             ),
             value: { edges: edge?.node?.roles?.edges },
           },
-          identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
           __typename: edge.node.__typename,
         },
       };
@@ -179,8 +182,8 @@ function GlobalPermissions() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.identifier?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -196,6 +199,7 @@ function GlobalPermissions() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}

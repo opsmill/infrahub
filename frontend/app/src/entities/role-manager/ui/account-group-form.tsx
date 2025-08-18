@@ -59,12 +59,15 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
+    console.log("data: ", data);
     const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+    console.log("newObject: ", newObject);
 
     if (!Object.keys(newObject).length) {
       return;
     }
 
+    console.log("currentObject: ", currentObject);
     if (currentObject) {
       try {
         const result = await graphqlClient.mutate({

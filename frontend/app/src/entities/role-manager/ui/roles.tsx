@@ -169,8 +169,8 @@ function Roles() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.name?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -186,6 +186,7 @@ function Roles() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}
