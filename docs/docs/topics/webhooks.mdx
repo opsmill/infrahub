@@ -67,6 +67,7 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 
 - **Description**: A description can be set to identify the webhooks purpose.
 - **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
+- **Transformation** (Custom Webhook only): The Python transformation used to customize the webhook payload before being sent to the webhook receiver.
 
 ### Shared key for security
 
@@ -75,7 +76,9 @@ A **shared key** can be configured to sign webhook requests. This key ensures th
 When a webhook is sent:
 
 1. The sender generates a signature using the shared key.
-2. The signature is included in the request headers.
+2. The signature is included in the request headers (`webhook-signature`).
+3. The message ID is included in the request headers (`webhook-id`).
+4. The timestamp is included in the request headers (`webhook-timestamp`).
 
 The receiver then uses the same shared key to verify the signature, confirming that the message has not been tampered with and that it is from a trusted source.
 
@@ -231,3 +234,13 @@ Here are some example payloads of some events that may be sent.
   </TabItem>
 </Tabs>
 <!-- vale on -->
+
+## Custom webhook transformation
+
+The `data` value from the payloads above gets passed into the [Python Transformation](../guides/python-transform.mdx) `transform` method.
+
+:::note
+In a future release, we will be providing the full event payload rather than only the `data` subset.
+
+https://github.com/opsmill/infrahub/issues/6815
+:::
