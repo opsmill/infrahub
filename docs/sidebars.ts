@@ -111,6 +111,7 @@ const sidebars: SidebarsConfig = {
             'guides/sso',
             'guides/managing-api-tokens',
             'guides/accounts-permissions',
+            'guides/change-approval-workflow',
           ],
         },
       ],
