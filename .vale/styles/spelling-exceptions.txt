@@ -71,6 +71,7 @@ hotfixes
 httpx
 human_friendly_id
 id_token
+idempotence
 idempotency
 idempotently
 include_in_menu
