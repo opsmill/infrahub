@@ -6,9 +6,18 @@ import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiver.txt';
 
-# Webhooks
+# What are webhooks?
 
-The **Webhook System** enables external notifications based on the [Events](./events.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
+Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](./events.mdx) occurs within Infrahub. They allow you to:
+
+- Notify external systems about changes in your infrastructure (for example new configuration generated)
+- Trigger automated workflows in CI/CD pipelines 
+- Keep other tools and services synchronized with your infrastructure data
+- Build custom integrations with your existing toolchain
+
+:::info
+The **Webhook System** also powers the [Activity Log](./activity-log.mdx).
+:::
 
 ## Configuring webhooks
 
@@ -237,10 +246,8 @@ Here are some example payloads of some events that may be sent.
 
 ## Custom webhook transformation
 
-The `data` value from the payloads above gets passed into the [Python Transformation](../guides/python-transform.mdx) `transform` method.
+The `data` object from the payloads above is passed to the `transform` method of your [Python transform](../guides/python-transform.mdx).
 
 :::note
-In a future release, we will be providing the full event payload rather than only the `data` subset.
-
-https://github.com/opsmill/infrahub/issues/6815
+In a future release, we plan to pass the full event payload (not just `data`). Track progress in [issue #6815](https://github.com/opsmill/infrahub/issues/6815).
 :::
