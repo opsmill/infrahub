@@ -91,10 +91,9 @@ export const getCreateMutationFromFormDataOnly = (
       return acc;
     }
 
-    if (currentObject && fieldData.value === currentObject[fieldName]?.value)
-      if (isFormFieldValueFromPool(fieldData)) {
-        return { ...acc, [fieldName]: fieldData.value };
-      }
+    if (isFormFieldValueFromPool(fieldData)) {
+      return { ...acc, [fieldName]: fieldData.value };
+    }
 
     if (fieldData.source?.type === "user") {
       if (fieldData.value === null) {
