@@ -58,10 +58,8 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    console.log("data: ", data);
     try {
       const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
-      console.log("newObject: ", newObject);
 
       if (!Object.keys(newObject).length) {
         return;
