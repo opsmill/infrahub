@@ -153,6 +153,7 @@ Subtyping
 Telecom
 template_path
 toml
+toolchain
 Tooltips
 towncrier
 Towncrier
