@@ -254,7 +254,7 @@ Now that we have a profile, let's create multiple interfaces that inherit config
     - **Interface Name**: GigabitEthernet0/0/0
 
 :::note
-You should see interface fields value automatically populated when selecting the profile.
+You should see interface field values automatically populated when selecting the profile.
 :::
 
 4. Click **Save** to create the interface
@@ -436,7 +436,7 @@ Create an interface with a custom MTU value that overrides the profile default:
 3. Fill in the interface details as follows:
     - **Profile**: end-user-interface
     - **Interface Name**: GigabitEthernet0/0/3
-    - **MTU**: 9000 (this override MTU value)
+    - **MTU**: 9000 (this overrides the MTU value)
 4. Click **Save** to create the interface
 
 </TabItem>
@@ -471,7 +471,7 @@ Confirm that the MTU was overridden while other values still come from the profi
 
 1. Navigate to **Interface**
 2. Click on **GigabitEthernet0/0/3** to view the details
-3. Click the "info" logo next to **MTU** to see the metadata
+3. Click the "info" icon next to **MTU** to see the metadata
 
 :::success
 
@@ -551,7 +551,7 @@ mutation {
   ProfileInfraInterfaceUpdate(
     data: {
       hfid: ["end-user-interface"]
-      mtu: {value: 9000} # Change MTU the profile
+      mtu: {value: 9000} # Change the profile's MTU
     }
   ) {
     ok
@@ -665,7 +665,7 @@ mutation {
 ![Apply multiple profiles form](../media/guides/profiles/form-profiles.png)
 
 :::note
-You should see interface fields value automatically populated when selecting the profiles.
+You should see interface field values automatically populated when selecting the profiles.
 :::
 
 4. Click **Save** to create the interface
