@@ -1,6 +1,5 @@
 from typing import Any
 
-from infrahub.proposed_change.constants import ProposedChangeState
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
@@ -8,6 +7,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.proposed_change.constants import ProposedChangeState
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA, LOCATION_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -276,7 +276,12 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         return diff_attribute_values_by_name
 
     async def test_retrieve_diff(
-        self, client: InfrahubClient, default_branch: Branch, branch: Branch, branch_data: dict[str, Node], proposed_change_id: str
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        branch: Branch,
+        branch_data: dict[str, Node],
+        proposed_change_id: str,
     ):
         result = await client.execute_graphql(
             query=DIFF_TREE_QUERY,
@@ -338,7 +343,14 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
                     "relationship_name": "children",
                 }
 
-    async def test_merge_proposed_change(self, client: InfrahubClient, default_branch: Branch, branch: Branch, branch_data: dict[str, Node], proposed_change_id: str):
+    async def test_merge_proposed_change(
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        branch: Branch,
+        branch_data: dict[str, Node],
+        proposed_change_id: str,
+    ):
         result = await client.execute_graphql(
             query=PROPOSED_CHANGE_UPDATE,
             variables={

@@ -152,7 +152,7 @@ class DiffTreeSummary(DiffSummaryCounts):
 
 
 class DiffTreeResolver:
-    def __init__(self):
+    def __init__(self) -> None:
         self.source_branch_name: str | None = None
 
     def initialize(self, enriched_diff_root: EnrichedDiffRoot) -> None:
