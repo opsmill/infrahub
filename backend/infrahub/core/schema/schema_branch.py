@@ -226,8 +226,18 @@ class SchemaBranch:
     def update(self, schema: SchemaBranch) -> None:
         """Update another SchemaBranch into this one."""
 
-        local_kinds = list(self.nodes.keys()) + list(self.generics.keys())
-        other_kinds = list(schema.nodes.keys()) + list(schema.generics.keys())
+        local_kinds = (
+            list(self.nodes.keys())
+            + list(self.generics.keys())
+            + list(self.profiles.keys())
+            + list(self.templates.keys())
+        )
+        other_kinds = (
+            list(schema.nodes.keys())
+            + list(schema.generics.keys())
+            + list(schema.profiles.keys())
+            + list(schema.templates.keys())
+        )
 
         in_both, _, other_only = compare_lists(list1=local_kinds, list2=other_kinds)
 
