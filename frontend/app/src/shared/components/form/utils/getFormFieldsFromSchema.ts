@@ -42,32 +42,69 @@ export const getFormFieldsFromSchema = ({
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  return orderedFields.map((field) => {
+  return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
     if ("peer" in field) {
-      return getFormFieldFromRelationship({
+      if (isBulkUpdate) {
+        return [
+          ...acc,
+          getFormFieldFromRelationship({
+            type: "relationship-add",
+            name: `add_${field.name}`,
+            auth,
+            relationshipSchema: field,
+            relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+            objectTemplate,
+            isFilterForm: !!isFilterForm,
+            isBulkUpdate: !!isBulkUpdate,
+            schema,
+            parentSchema,
+            parentData,
+          }),
+          getFormFieldFromRelationship({
+            type: "relationship-remove",
+            name: `remove_${field.name}`,
+            auth,
+            relationshipSchema: field,
+            relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+            objectTemplate,
+            isFilterForm: !!isFilterForm,
+            isBulkUpdate: !!isBulkUpdate,
+            schema,
+            parentSchema,
+            parentData,
+          }),
+        ];
+      }
+
+      return [
+        ...acc,
+        getFormFieldFromRelationship({
+          auth,
+          relationshipSchema: field,
+          relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+          objectTemplate,
+          isFilterForm: !!isFilterForm,
+          schema,
+          parentSchema,
+          parentData,
+        }),
+      ];
+    }
+
+    return [
+      ...acc,
+      getFormFieldFromAttribute({
         auth,
-        relationshipSchema: field,
-        relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+        attributeSchema: field,
+        currentObject: initialObject as Record<string, AttributeType>,
         objectTemplate,
         isFilterForm: !!isFilterForm,
         isBulkUpdate: !!isBulkUpdate,
+        isUpdate: !!isUpdate,
         schema,
-        parentSchema,
-        parentData,
-      });
-    }
-
-    return getFormFieldFromAttribute({
-      auth,
-      attributeSchema: field,
-      currentObject: initialObject as Record<string, AttributeType>,
-      objectTemplate,
-      isFilterForm: !!isFilterForm,
-      isBulkUpdate: !!isBulkUpdate,
-      isUpdate: !!isUpdate,
-      schema,
-      pools,
-      profiles,
-    });
-  });
+        pools,
+        profiles,
+      }),
+    ];
+  }, []);
 };
