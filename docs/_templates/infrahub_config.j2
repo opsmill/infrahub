@@ -2,47 +2,35 @@
 title: Infrahub Configuration
 ---
 
+{/*THIS FILE IS GENERATED AUTOMATICALLY, DO NOT EDIT MANUALLY*/}
+{/*SEE - invoke docs.generate-config and infrahub_config.j2*/}
+
 # Infrahub configuration
 
 The Infrahub containers have a number of environmental variables available at runtime to affect their behavior.
 
-## Usage
-
 Here are a few common methods of setting environmental variables:
 
-- Exporting in a shell, e.g.: `export INFRAHUB_ADDRESS="http://localhost:8000"`
+- Exporting in a shell, example: `export INFRAHUB_ADDRESS="http://localhost:8000"`
 - Using a [`.env` file](https://docs.docker.com/compose/environment-variables/set-environment-variables/#substitute-with-an-env-file)
 - Using [direnv](https://direnv.net/)
 
 :::note
 
-`infrahubctl` has it's own environmental variables. See the [infrahubctl documentation](../infrahubctl#environment-variables) for more information.
+`infrahubctl` has it's own environmental variables. See the [infrahubctl documentation]($(base_url)infrahubctl/infrahubctl#environment-variables) for more information.
 
 :::
-
-<!-- vale off -->
-
 {% for section in sections %}
-## Section: {{ section.name }}
 
-Description: {{ section.description }}
+## {{ section.name | title | replace("_", " ") }}
 
+{% if section.description %}
+{{ section.description }}
 
-
+{% endif %}
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
 {% for parameter in section.parameters %}
-
-###  {{ parameter.name }}
-
-Description: {{ parameter.description }}
-
-**Default setting:** {{ parameter.default }}
-
-**Type:** {{ parameter.type }}
-
-**Environment variable:** {{ parameter.env }}
-
+| `{{ parameter.env }}` | {{ parameter.description }} | {{ parameter.type }} | {{ parameter.default }} |
 {% endfor %}
-
 {% endfor %}
-
-<!-- vale on -->
