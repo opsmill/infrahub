@@ -176,6 +176,8 @@ query GetDiffTree($branch: String){
 
 
 class TestProposedChangeOnEmptyMain(TestInfrahubApp):
+    """Test adding schema and data on branch and merging it into a fresh default branch"""
+
     @pytest.fixture(scope="class")
     async def branch(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="branch")
