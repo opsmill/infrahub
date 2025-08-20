@@ -8,7 +8,7 @@ export const getRelationshipMutation = ({ id, data, mutation }: GetRelationshipM
   return Object.entries(data).reduce((acc, [fieldName, fieldValue]) => {
     return {
       ...acc,
-      [`ADD_${fieldName}_RELATIONSHIP`]: {
+      [`${mutation}_${fieldName}`]: {
         __aliasFor: mutation,
         __args: {
           data: {
