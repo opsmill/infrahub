@@ -1,10 +1,13 @@
+from enum import Enum
 from typing import Any
 
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
+from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.proposed_change.constants import ProposedChangeState
@@ -213,7 +216,6 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         sfp = await Node.init(db=db, branch=branch, schema=TestKind.SFP)
         await sfp.new(
             db=db,
-            name="sfp1",
             interface=interface,
             phys_type="SFP (1GE)",
             serial_number="54321",
@@ -345,12 +347,14 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
 
     async def test_merge_proposed_change(
         self,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         default_branch: Branch,
         branch: Branch,
         branch_data: dict[str, Node],
         proposed_change_id: str,
     ):
+        # merge proposed change
         result = await client.execute_graphql(
             query=PROPOSED_CHANGE_UPDATE,
             variables={
@@ -360,5 +364,38 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         )
         assert result["CoreProposedChangeUpdate"]["ok"]
 
+        # verify schema hashes match
+        branch_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        branch_schema_hash = branch_schema_branch.get_hash()
+        default_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        default_schema_hash = default_schema_branch.get_hash()
+        assert branch_schema_hash == default_schema_hash
 
-# TODO: verify schema/data on main
+        # verify data on main
+        node_uuids = [n.id for n in branch_data.values()]
+        branch_node_map = await NodeManager.get_many(db=db, branch=branch, ids=node_uuids, prefetch_relationships=True)
+        assert len(branch_node_map) == len(node_uuids)
+        main_node_map = await NodeManager.get_many(
+            db=db, branch=default_branch, ids=node_uuids, prefetch_relationships=True
+        )
+        assert len(main_node_map) == len(node_uuids)
+
+        for node_uuid, branch_node in branch_node_map.items():
+            main_node = main_node_map[node_uuid]
+            for attr_name in branch_node.get_schema().attribute_names:
+                branch_attr_value = getattr(branch_node, attr_name).value
+                if isinstance(branch_attr_value, Enum):
+                    branch_attr_value = branch_attr_value.value
+                main_attr_value = getattr(main_node, attr_name).value
+                if isinstance(main_attr_value, Enum):
+                    main_attr_value = main_attr_value.value
+                assert branch_attr_value == main_attr_value
+
+            for rel_name in branch_node.get_schema().relationship_names:
+                branch_rel_manager = getattr(branch_node, rel_name)
+                main_rel_manager = getattr(main_node, rel_name)
+                branch_rels = await branch_rel_manager.get_relationships(db=db)
+                main_rels = await main_rel_manager.get_relationships(db=db)
+                branch_peer_ids = {rel.peer_id for rel in branch_rels}
+                main_peer_ids = {rel.peer_id for rel in main_rels}
+                assert branch_peer_ids == main_peer_ids
