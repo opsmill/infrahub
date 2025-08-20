@@ -2,7 +2,7 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from invoke import Context, task
 
@@ -533,16 +533,16 @@ def _generate_infrahub_bus_events_documentation() -> None:
 class ConfigurationSectionParameter:
     name: str
     description: str
-    default: Optional[Any] = None
-    type: Optional[str] = None
-    env: Optional[str] = None
+    default: Any | None = None
+    type: str | None = None
+    env: str | None = None
 
 
 @dataclass
 class ConfigurationSection:
     name: str
     description: str
-    parameters: List[ConfigurationSectionParameter] = field(default_factory=list)
+    parameters: list[ConfigurationSectionParameter] = field(default_factory=list)
 
 
 def _generate_infrahub_events_documentation() -> None:
