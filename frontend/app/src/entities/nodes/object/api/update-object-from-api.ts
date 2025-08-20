@@ -89,7 +89,7 @@ export function updateObjectFromApi({
       ? getRelationshipMutation({
           id: objectData.id,
           data: relationshipRemoveData,
-          mutation: "RelationshipAdd",
+          mutation: "RelationshipRemove",
         })
       : {};
 
