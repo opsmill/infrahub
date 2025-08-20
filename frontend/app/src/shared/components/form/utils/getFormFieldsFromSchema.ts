@@ -88,6 +88,7 @@ export const getFormFieldsFromSchema = ({
           relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
           objectTemplate,
           isFilterForm: !!isFilterForm,
+          isBulkUpdate: !!isBulkUpdate,
           schema,
           parentSchema,
           parentData,
