@@ -27,6 +27,7 @@ exceptions:
   - Computed Attributes
   - CoreArtifactTarget
   - CoreGroup
+  - CSS-like cascading
   - CoreRepository
   - Docker Compose
   - E2E
