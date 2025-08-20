@@ -19,7 +19,7 @@ test.describe("Role management - READ", () => {
       await expect(
         page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Groups" })
       ).toBeVisible();
-      await expect(page.getByRole("cell", { name: "Operations Team" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Operations Team" }).first()).toBeVisible();
     });
 
     await test.step("check roles view", async () => {

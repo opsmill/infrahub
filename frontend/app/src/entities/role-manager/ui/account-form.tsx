@@ -6,7 +6,6 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-o
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
@@ -36,16 +35,17 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
   const { schema } = useSchema(ACCOUNT_OBJECT);
   const createObject = useCreateObjectMutation();
 
-  const groups = getRelationshipDefaultValue({
+  const memberDefaultValue = getRelationshipDefaultValue({
     relationshipData: currentObject?.member_of_groups?.value,
+    relationshipName: "member_of_groups",
   });
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    password: getCurrentFieldValue("password", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    description: getCurrentFieldValue("description", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    label: getCurrentFieldValue("label", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    member_of_groups: groups ?? DEFAULT_FORM_FIELD_VALUE,
+    name: getCurrentFieldValue("name", currentObject),
+    password: getCurrentFieldValue("password", currentObject),
+    description: getCurrentFieldValue("description", currentObject),
+    label: getCurrentFieldValue("label", currentObject),
+    member_of_groups: memberDefaultValue,
   };
 
   const form = useForm<FieldValues>({
@@ -145,7 +145,7 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
             cardinality: "many",
           }}
           schema={schema}
-          options={groups.value}
+          defaultValue={memberDefaultValue}
         />
 
         <div className="text-right">
