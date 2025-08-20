@@ -1,0 +1,82 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+generics:
+  - name: Service
+    namespace: Infra
+    description: "Services"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        order_weight: 1
+      - name: service_identifier
+        kind: NumberPool
+        read_only: true
+        parameters:
+          start_range: 100
+          end_range: 10000
+nodes:
+  - name: BackBoneService
+    namespace: Infra
+    description: "Backbone Service"
+    label: "Backbone Service"
+    icon: "carbon:container-services"
+    inherit_from:
+      - InfraService
+    uniqueness_constraints:
+      - ["circuit_id__value", "internal_circuit_id__value"]
+    attributes:
+      - name: circuit_id
+        kind: Text
+        label: Circuit ID
+        optional: false
+        order_weight: 3
+      - name: internal_circuit_id
+        kind: Text
+        label: Internal Circuit ID
+        optional: false
+        order_weight: 2
+    relationships:
+      - name: provider
+        cardinality: one
+        peer: OrganizationProvider
+        optional: false
+        kind: Attribute
+      - name: site_a
+        label: Site A
+        cardinality: one
+        peer: LocationSite
+        optional: false
+        identifier: infrabackboneservice__location_site_a
+        kind: Attribute
+        order_weight: 4
+      - name: site_b
+        label: Site B
+        cardinality: one
+        peer: LocationSite
+        optional: false
+        identifier: infrabackboneservice__location_site_b
+        kind: Attribute
+        order_weight: 5
+
+  - name: Service
+    namespace: Customer
+    description: "A Customer service"
+    icon: "carbon:ibm-cloud-internet-services"
+    label: "Customer Service"
+    inherit_from:
+      - InfraService
+    relationships:
+      - name: assigned_prefix
+        label: "Assigned prefix"
+        peer: IpamIPPrefix
+        optional: false
+        kind: Attribute
+        cardinality: one

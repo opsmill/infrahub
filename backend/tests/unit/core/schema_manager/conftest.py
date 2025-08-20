@@ -1,13 +1,17 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
-def _get_schema_by_kind(full_schema, kind):
+def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
         if schema_kind == kind:
             return schema_dict
+
+    pytest.fail(reason="Unable to find schema for kind")
 
 
 @pytest.fixture
@@ -167,7 +171,7 @@ def schema_all_in_one():
                 "namespace": "Infra",
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
-                    {"name": "mybool", "kind": "Boolean", "default_value": False},
+                    {"name": "mybool", "kind": "Boolean", "default_value": False, "optional": True},
                     {"name": "local_attr", "kind": "Number", "branch": BranchSupportType.LOCAL.value},
                 ],
                 "relationships": [

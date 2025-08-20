@@ -39,7 +39,7 @@
   ],
   "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
   "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
-  "postStartCommand": "./.devcontainer/postStartCommand.sh",
+  "updateContentCommand": "./.devcontainer/updateContentCommand.sh",
   "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
   "features": {
     "docker-in-docker": "latest",

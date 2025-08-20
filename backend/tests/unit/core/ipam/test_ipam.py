@@ -12,7 +12,7 @@ from infrahub.core.query.ipam import (
     IPPrefixSubnetFetch,
     get_ip_addresses,
 )
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 

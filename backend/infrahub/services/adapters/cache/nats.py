@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ssl
-from typing import TYPE_CHECKING, Dict, List, Optional
 
 import nats
 
@@ -9,26 +8,38 @@ from infrahub import config
 from infrahub.message_bus.types import KVTTL
 from infrahub.services.adapters.cache import InfrahubCache
 
-if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
+# Inherit from BaseModel to avoid implementing a `__init__` otherwise `cls(...)` fails.
 
 
 class NATSCache(InfrahubCache):
-    def __init__(self) -> None:
-        self.connection: nats.NATS
-        self.jetstream: nats.js.JetStreamContext
-        self.kv: Dict[int, nats.js.kv.KeyValue]
+    connection: nats.NATS
+    jetstream: nats.js.JetStreamContext
+    kv: dict[int, nats.js.kv.KeyValue]
+    kv_buckets: dict[str, KVTTL]
 
+    def __init__(
+        self,
+        connection: nats.NATS,
+        jetstream: nats.js.JetStreamContext,
+        kv: dict[int, nats.js.kv.KeyValue],
+        kv_buckets: dict[str, KVTTL],
+    ):
+        self.connection = connection
+        self.jetstream = jetstream
+        self.kv = kv
+        self.kv_buckets = kv_buckets
+
+    @classmethod
+    async def new(cls) -> NATSCache:
         # FIXME: remove once NATS supports TTL for keys (2.11)
-        self.kv_buckets = {
-            self._tokenize_key_name("validator_execution_id:"): KVTTL.TWO_HOURS,
-            self._tokenize_key_name("workers:primary:"): KVTTL.FIFTEEN,
-            self._tokenize_key_name("workers:schema_hash:branch:"): KVTTL.TWO_HOURS,
-            self._tokenize_key_name("workers:active:"): KVTTL.FIFTEEN,
-            self._tokenize_key_name("workers:worker:"): KVTTL.TWO_HOURS,
+        kv_buckets = {
+            NATSCache._tokenize_key_name("validator_execution_id:"): KVTTL.TWO_HOURS,
+            NATSCache._tokenize_key_name("workers:primary:"): KVTTL.FIFTEEN,
+            NATSCache._tokenize_key_name("workers:schema_hash:branch:"): KVTTL.TWO_HOURS,
+            NATSCache._tokenize_key_name("workers:active:"): KVTTL.FIFTEEN,
+            NATSCache._tokenize_key_name("workers:worker:"): KVTTL.TWO_HOURS,
         }
 
-    async def initialize(self, service: InfrahubServices) -> None:
         tls_context = None
         if config.SETTINGS.cache.tls_enabled:
             tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
@@ -38,25 +49,27 @@ class NATSCache(InfrahubCache):
                 tls_context.check_hostname = False
                 tls_context.verify_mode = ssl.CERT_NONE
 
-        self.connection = await nats.connect(
+        connection = await nats.connect(
             f"nats://{config.SETTINGS.cache.address}:{config.SETTINGS.cache.service_port}",
             user=config.SETTINGS.cache.username,
             password=config.SETTINGS.cache.password,
             tls=tls_context,
         )
-
-        self.jetstream = self.connection.jetstream()
+        jetstream = connection.jetstream()
 
         kv_config = nats.js.api.KeyValueConfig(bucket=f"kv_{config.SETTINGS.cache.database}")
-        self.kv = {0: await self.jetstream.create_key_value(config=kv_config)}
+        kv = {0: await jetstream.create_key_value(config=kv_config)}
 
         # FIXME: remove once NATS supports TTL for keys (2.11)
         for ttl in KVTTL.variations():
             kv_config.bucket = f"kv_{config.SETTINGS.cache.database}_ttl_{ttl.name.lower()}"
             kv_config.ttl = ttl.value
-            self.kv[ttl.value] = await self.jetstream.create_key_value(config=kv_config)
+            kv[ttl.value] = await jetstream.create_key_value(config=kv_config)
 
-    def _tokenize_key_name(self, key: str) -> str:
+        return cls(kv_buckets=kv_buckets, kv=kv, connection=connection, jetstream=jetstream)
+
+    @staticmethod
+    def _tokenize_key_name(key: str) -> str:
         return key.replace(":", ".")
 
     # FIXME: remove once NATS supports TTL for keys (2.11)
@@ -70,7 +83,7 @@ class NATSCache(InfrahubCache):
         key = self._tokenize_key_name(key)
         await self._get_kv(key).delete(key)
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         key = self._tokenize_key_name(key)
         try:
             entry = await self._get_kv(key).get(key=key)
@@ -80,10 +93,10 @@ class NATSCache(InfrahubCache):
             pass
         return None
 
-    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+    async def get_values(self, keys: list[str]) -> list[str | None]:
         return [await self.get(key) for key in keys]
 
-    async def _keys(self, kv: nats.js.kv.KeyValue, filter_pattern: str) -> List[str]:
+    async def _keys(self, kv: nats.js.kv.KeyValue, filter_pattern: str) -> list[str]:
         # code borrowed from py-nats keys()
         watcher = await kv.watch(
             filter_pattern,
@@ -104,7 +117,7 @@ class NATSCache(InfrahubCache):
 
         return keys
 
-    async def list_keys(self, filter_pattern: str) -> List[str]:
+    async def list_keys(self, filter_pattern: str) -> list[str]:
         # return await self.kv[None].keys() # does not support filtering
         filter_pattern = self._tokenize_key_name(filter_pattern)
         filter_pattern = filter_pattern.replace("*", ">")  # NATS uses * as token wildcard and > as full wildcard
@@ -121,8 +134,12 @@ class NATSCache(InfrahubCache):
         return [key.replace(".", ":") for key in keys]
 
     async def set(
-        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
-    ) -> Optional[bool]:
+        self,
+        key: str,
+        value: str,
+        expires: KVTTL | None = None,  # noqa: ARG002
+        not_exists: bool = False,
+    ) -> bool | None:
         key = self._tokenize_key_name(key)
         if not_exists:
             try:
@@ -132,3 +149,5 @@ class NATSCache(InfrahubCache):
                 return False
         await self._get_kv(key).put(key=key, value=value.encode())
         return True
+
+    async def close_connection(self) -> None: ...

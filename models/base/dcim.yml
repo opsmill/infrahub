@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 generics:
   - name: Interface
     namespace: Infra
@@ -8,7 +8,6 @@ generics:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -101,6 +100,7 @@ generics:
         identifier: "device__interface"
         optional: false
         cardinality: one
+        order_weight: 1
         kind: Parent
       - name: tags
         peer: BuiltinTag
@@ -150,7 +150,6 @@ generics:
     label: "MLAG Interface"
     icon: "mdi:ethernet"
     include_in_menu: true
-    menu_placement: "InfraDevice"
     attributes:
       - name: mlag_id
         label: MLAG Id
@@ -159,6 +158,7 @@ generics:
     relationships:
       - name: mlag_domain
         label: MLAG Domain
+        order_weight: 1
         peer: InfraMlagDomain
         kind: Attribute
         cardinality: one
@@ -185,6 +185,14 @@ nodes:
       - name: description
         kind: Text
         optional: true
+      - name: computed_description
+        kind: Text
+        description: Combine various attributes to provide a human frendly description of this device.
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "{{ type__value }} device used as {{ role__value }} on {{ site__name__value|lower }}"
+        read_only: true
+        optional: false
       - name: type
         kind: Text
       - name: status
@@ -239,13 +247,20 @@ nodes:
       - name: site
         label: Site
         peer: LocationSite
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
+        order_weight: 1
         identifier: "site__devices"
       - name: interfaces
         peer: InfraInterface
         identifier: "device__interface"
+        optional: true
+        cardinality: many
+        kind: Component
+      - name: bgp_sessions
+        peer: InfraBGPSession
+        identifier: device__bgp_session
         optional: true
         cardinality: many
         kind: Component
@@ -311,6 +326,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        common_parent: device
   - name: LagInterfaceL3
     namespace: Infra
     description: "Network Layer 3 Lag Interface"
@@ -331,6 +347,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Generic
+        common_parent: device
       - name: ip_addresses
         peer: IpamIPAddress
         optional: true
@@ -371,6 +388,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        common_parent: device
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -411,6 +429,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Generic
+        common_parent: device
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -430,7 +449,6 @@ nodes:
     description: "A Platform represents the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
-    menu_placement: "InfraDevice"
     default_filter: name__value
     human_friendly_id: ["name__value"]
     order_by:
@@ -467,7 +485,6 @@ nodes:
     namespace: Infra
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
-    icon: "mdi:cable-data"
     default_filter: circuit_id__value
     human_friendly_id: ["circuit_id__value"]
     order_by:
@@ -478,12 +495,14 @@ nodes:
       - name: circuit_id
         kind: Text
         unique: true
+        order_weight: 2
       - name: description
         kind: Text
         optional: true
       - name: vendor_id
         kind: Text
         optional: true
+        order_weight: 3
       - name: status
         kind: Dropdown
         choices:
@@ -518,13 +537,28 @@ nodes:
             label: Peering
             description: "Connect with other networks via an IX"
             color: "#85db9b"
+      - name: computed_description
+        kind: Text
+        computed_attribute:
+          kind: TransformPython
+          transform: computed_circuit_description
+        read_only: true
+        optional: true
     relationships:
       - name: provider
-        label: "Provider (Organization)"
-        peer: OrganizationGeneric
+        identifier: circuit__provider
+        peer: OrganizationProvider
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 1
+      - name: tenant
+        identifier: circuit__tenant
+        peer: OrganizationTenant
+        optional: true
+        cardinality: one
+        kind: Attribute
+        order_weight: 2
       - name: endpoints
         peer: InfraCircuitEndpoint
         optional: true
@@ -540,8 +574,6 @@ nodes:
     namespace: Infra
     description: "A Circuit endpoint is attached to each end of a circuit"
     label: "Circuit Endpoint"
-    icon: "mdi:ethernet-cable"
-    menu_placement: "InfraCircuit"
     include_in_menu: false
     attributes:
       - name: description
@@ -562,12 +594,11 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+  # --------------------  MLAG  --------------------
   - name: MlagDomain
     namespace: Infra
     description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
     label: "MLAG Domain"
-    icon: "eos-icons:cluster-management"
-    menu_placement: "InfraDevice"
     include_in_menu: true
     display_labels:
       - name__value
@@ -588,7 +619,7 @@ nodes:
         cardinality: many
         peer: InfraDevice
         kind: Attribute
-        optional: false
+        optional: true
       - name: peer_interfaces
         cardinality: many
         peer: InfraLagInterfaceL2
@@ -616,6 +647,7 @@ nodes:
     namespace: Infra
     description: "L3 MLAG Interface"
     label: "MLAG Interface L3"
+    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - mlag_id__value
@@ -629,3 +661,86 @@ nodes:
         optional: false
         cardinality: many
         identifier: mlag_member_lag_interface
+  # --------------------  Patch Panel  --------------------
+  - name: PatchPanel
+    label: Patch Panel
+    description: A Patch Panel used for managing network cable connections in a data center or telecom setup.
+    icon: ic:round-device-hub
+    namespace: Infra
+    generate_template: true
+    human_friendly_id:
+      - name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: module_capacity
+        label: Module Capacity
+        kind: Number
+        optional: true
+        description: The maximum number of modules that can be housed within this patch panel.
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 2000
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: front_interfaces
+        peer: InfraFrontPatchPanelInterface
+        identifier: front_interfaces
+        optional: true
+        cardinality: many
+        kind: Component
+
+  - name: FrontPatchPanelInterface
+    label: Patch Panel Front Interfaces
+    menu_placement: InfraPatchPanel
+    namespace: Infra
+    icon: mdi:ethernet
+    human_friendly_id:
+      - patch_panel__name__value
+      - name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    uniqueness_constraints:
+      - [patch_panel, name__value]
+    attributes:
+      - name: name
+        kind: Text
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 2000
+      - name: connector_type
+        kind: Dropdown
+        order_weight: 1100
+        choices:
+          - name: FC
+            label: FC
+            description: "Standardized fiber optic connector used primarily in datacom and telecom applications."
+          - name: LC
+            label: LC
+            description: "Compact fiber optic connector with a push-pull mechanism."
+          - name: MPO
+            label: MPO
+            description: "Multi-fiber Push-On connector typically used in data centers for high-speed applications."
+    relationships:
+      - name: patch_panel
+        peer: InfraPatchPanel
+        order_weight: 900
+        identifier: front_interfaces
+        optional: false
+        cardinality: one
+        kind: Parent

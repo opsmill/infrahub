@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
 
 import nats
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.log import clear_log_context, get_log_data
+from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -21,10 +21,11 @@ from infrahub.worker import WORKER_IDENTITY
 if TYPE_CHECKING:
     from infrahub.config import BrokerSettings
     from infrahub.message_bus.types import MessageTTL
-    from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+publish_tasks = set()
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -33,22 +34,27 @@ async def _add_request_id(message: InfrahubMessage) -> None:
 
 
 class NATSMessageBus(InfrahubMessageBus):
-    def __init__(self, settings: Optional[BrokerSettings] = None) -> None:
+    def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
 
-        self.service: InfrahubServices
         self.connection: nats.NATS
         self.jetstream: nats.js.JetStreamContext
         self.callback_queue: nats.js.api.StreamInfo
         self.events_queue: nats.js.api.StreamInfo
-        self.message_enrichers: List[MessageFunction] = []
+        self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        self.service = service
+        self.component_type: ComponentType = component_type
 
+    @classmethod
+    async def new(cls, component_type: ComponentType, settings: BrokerSettings | None = None) -> NATSMessageBus:
+        message_bus = cls(component_type=component_type, settings=settings)
+        await message_bus._initialize()
+        return message_bus
+
+    async def _initialize(self) -> None:
         tls_context = None
         if self.settings.tls_enabled:
             tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
@@ -67,9 +73,9 @@ class NATSMessageBus(InfrahubMessageBus):
 
         self.jetstream = self.connection.jetstream()
 
-        if self.service.component_type == ComponentType.API_SERVER:
+        if self.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
-        elif self.service.component_type == ComponentType.GIT_AGENT:
+        elif self.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
 
     async def shutdown(self) -> None:
@@ -94,9 +100,9 @@ class NATSMessageBus(InfrahubMessageBus):
 
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
-                    await execute_message(routing_key=message.subject, message_body=message.data, service=self.service)
+                    await execute_message(routing_key=message.subject, message_body=message.data, message_bus=self)
                 else:
-                    self.service.log.error("Invalid message received", message=f"{message!r}")
+                    get_logger().error("Invalid message received", message=f"{message!r}")
         finally:
             if is_instrumentation_enabled() and message.headers:
                 context.detach(token)
@@ -113,19 +119,19 @@ class NATSMessageBus(InfrahubMessageBus):
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
                     delay = await execute_message(
-                        routing_key=message.subject, message_body=message.data, service=self.service
+                        routing_key=message.subject, message_body=message.data, message_bus=self
                     )
                     if delay:
                         return await message.nak(delay / 1000)
                 else:
-                    self.service.log.error("Invalid message received", message=f"{message!r}")
+                    get_logger().error("Invalid message received", message=f"{message!r}")
 
                 return await message.ack()
         finally:
             if is_instrumentation_enabled() and message.headers:
                 context.detach(token)
 
-    async def _subscribe_events(self, events: List[str], identity: str) -> None:
+    async def _subscribe_events(self, events: list[str], identity: str) -> None:
         for subject in events:
             await self.jetstream.subscribe(
                 subject=subject,
@@ -167,7 +173,8 @@ class NATSMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        await self._subscribe_events(self.event_bindings, f"git-worker-{WORKER_IDENTITY}")
+        bindings = self.event_bindings + self.broadcasted_event_bindings
+        await self._subscribe_events(bindings, f"git-worker-{WORKER_IDENTITY}")
 
         consumer_config = nats.js.api.ConsumerConfig(
             ack_policy=nats.js.api.AckPolicy.EXPLICIT,
@@ -177,7 +184,7 @@ class NATSMessageBus(InfrahubMessageBus):
             # max_ack_pending=self.settings.maximum_concurrent_messages,
             # flow_control=True,
             # idle_heartbeat=5.0,  # default value
-            filter_subjects=self.worker_bindings,
+            filter_subjects=bindings,
             durable_name="git-workers",
             deliver_group="git-workers",
             deliver_subject=self.connection.new_inbox(),
@@ -189,7 +196,7 @@ class NATSMessageBus(InfrahubMessageBus):
             if exc.err_code != 10013:  # consumer name already in use
                 raise
 
-        for subject in self.worker_bindings:
+        for subject in bindings:
             await self.jetstream.subscribe(
                 subject=subject,
                 queue="git-workers",
@@ -206,7 +213,7 @@ class NATSMessageBus(InfrahubMessageBus):
         await self.publish(message, routing_key)
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
             span.set_attribute("routing_key", routing_key)
@@ -216,7 +223,9 @@ class NATSMessageBus(InfrahubMessageBus):
                     # Delayed retries are directly handled in the callback using Nack
                     return
                 # Use asyncio task for delayed publish since NATS does not support that out of the box
-                asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
+                task = asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
+                publish_tasks.add(task)
+                task.add_done_callback(publish_tasks.discard)
                 return
 
             for enricher in self.message_enrichers:
@@ -269,7 +278,7 @@ class NATSMessageBus(InfrahubMessageBus):
             headers=headers,
         )
 
-    async def rpc(self, message: InfrahubMessage, response_class: Type[ResponseClass]) -> ResponseClass:
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -281,7 +290,7 @@ class NATSMessageBus(InfrahubMessageBus):
             request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.config.name
         )
 
-        await self.service.send(message=message)
+        await self.send(message=message)
 
         response: nats.aio.msg.Msg = await future
         data = ujson.loads(response.data)

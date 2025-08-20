@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import enum
-from typing import List
+from enum import Flag, auto
 
-from infrahub.core.constants import infrahubkind as InfrahubKind
+from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
-from infrahub.utils import InfrahubStringEnum
+from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
 
 __all__ = [
-    "InfrahubKind",
     "FlagProperty",
+    "InfrahubKind",
     "NodeProperty",
+    "SchemaElementPathType",
     "UpdateSupport",
     "UpdateValidationErrorType",
-    "SchemaElementPathType",
+    "ValidationError",
 ]
 
 
@@ -43,18 +43,77 @@ RESERVED_ATTR_GEN_NAMES = ["type"]
 
 NULL_VALUE = "NULL"
 
+EVENT_NAMESPACE = "infrahub"
 
-class PermissionLevel(enum.Flag):
+
+class EventType(InfrahubStringEnum):
+    BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
+    BRANCH_DELETED = f"{EVENT_NAMESPACE}.branch.deleted"
+    BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
+    BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
+
+    SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.updated"
+
+    NODE_CREATED = f"{EVENT_NAMESPACE}.node.created"
+    NODE_UPDATED = f"{EVENT_NAMESPACE}.node.updated"
+    NODE_DELETED = f"{EVENT_NAMESPACE}.node.deleted"
+
+    GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
+    GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
+
+    PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
+    PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
+    PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
+    PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
+    PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
+    PROPOSED_CHANGE_APPROVALS_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
+    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
+    PROPOSED_CHANGE_THREAD_CREATED = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
+    PROPOSED_CHANGE_THREAD_UPDATED = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
+
+    REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
+
+    ARTIFACT_CREATED = f"{EVENT_NAMESPACE}.artifact.created"
+    ARTIFACT_UPDATED = f"{EVENT_NAMESPACE}.artifact.updated"
+
+    VALIDATOR_STARTED = f"{EVENT_NAMESPACE}.validator.started"
+    VALIDATOR_PASSED = f"{EVENT_NAMESPACE}.validator.passed"
+    VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
+
+
+class PermissionLevel(Flag):
     READ = 1
     WRITE = 2
     ADMIN = 3
     DEFAULT = 0
 
 
-class AccountRole(InfrahubStringEnum):
-    ADMIN = "admin"
-    READ_ONLY = "read-only"
-    READ_WRITE = "read-write"
+class GlobalPermissions(InfrahubStringEnum):
+    EDIT_DEFAULT_BRANCH = "edit_default_branch"
+    SUPER_ADMIN = "super_admin"
+    MERGE_BRANCH = "merge_branch"
+    MERGE_PROPOSED_CHANGE = "merge_proposed_change"
+    REVIEW_PROPOSED_CHANGE = "review_proposed_change"
+    MANAGE_SCHEMA = "manage_schema"
+    MANAGE_ACCOUNTS = "manage_accounts"
+    MANAGE_PERMISSIONS = "manage_permissions"
+    MANAGE_REPOSITORIES = "manage_repositories"
+    OVERRIDE_CONTEXT = "override_context"
+
+
+class PermissionAction(InfrahubStringEnum):
+    ANY = "any"
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    VIEW = "view"
+
+
+class PermissionDecision(InfrahubNumberEnum):
+    DENY = 1
+    ALLOW_DEFAULT = 2
+    ALLOW_OTHER = 4
+    ALLOW_ALL = 6
 
 
 class AccountType(InfrahubStringEnum):
@@ -62,6 +121,16 @@ class AccountType(InfrahubStringEnum):
     SCRIPT = "Script"
     BOT = "Bot"
     Git = "Git"
+
+
+class NumberPoolType(InfrahubStringEnum):
+    USER = "User"
+    SCHEMA = "Schema"
+
+
+class AccountStatus(InfrahubStringEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
 
 
 class ArtifactStatus(InfrahubStringEnum):
@@ -77,6 +146,12 @@ class BranchSupportType(InfrahubStringEnum):
     LOCAL = "local"
 
 
+class ComputedAttributeKind(InfrahubStringEnum):
+    USER = "User"
+    JINJA2 = "Jinja2"
+    TRANSFORM_PYTHON = "TransformPython"
+
+
 class BranchConflictKeep(InfrahubStringEnum):
     TARGET = "target"
     SOURCE = "source"
@@ -87,9 +162,20 @@ class AllowOverrideType(InfrahubStringEnum):
     ANY = "any"
 
 
+class RepositoryObjects(InfrahubStringEnum):
+    OBJECT = "object"
+    MENU = "menu"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
+    APPLICATION_YAML = "application/yaml"
+    APPLICATION_XML = "application/xml"
+    APPLICATION_HCL = "application/hcl"
     TEXT_PLAIN = "text/plain"
+    TEXT_MARKDOWN = "text/markdown"
+    TEXT_CSV = "text/csv"
+    IMAGE_SVG = "image/svg+xml"
 
 
 class CheckType(InfrahubStringEnum):
@@ -101,6 +187,27 @@ class CheckType(InfrahubStringEnum):
     TEST = "test"
     USER = "user"
     ALL = "all"
+
+
+class RepositoryInternalStatus(InfrahubStringEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    STAGING = "staging"
+
+
+class RepositorySyncStatus(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    IN_SYNC = "in-sync"
+    ERROR_IMPORT = "error-import"
+    SYNCING = "syncing"
+
+
+class RepositoryOperationalStatus(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    ERROR_CRED = "error-cred"
+    ERROR_CONNECTION = "error-connection"
+    ERROR = "error"
+    ONLINE = "online"
 
 
 class DiffAction(InfrahubStringEnum):
@@ -118,10 +225,22 @@ class GeneratorInstanceStatus(InfrahubStringEnum):
 
 
 class MutationAction(InfrahubStringEnum):
-    ADDED = "added"
-    REMOVED = "removed"
+    CREATED = "created"
+    DELETED = "deleted"
     UPDATED = "updated"
     UNDEFINED = "undefined"
+
+    @classmethod
+    def from_diff_action(cls, diff_action: DiffAction) -> MutationAction:
+        match diff_action:
+            case DiffAction.ADDED:
+                return MutationAction.CREATED
+            case DiffAction.REMOVED:
+                return MutationAction.DELETED
+            case DiffAction.UPDATED:
+                return MutationAction.UPDATED
+            case DiffAction.UNCHANGED:
+                return MutationAction.UNDEFINED
 
 
 class PathResourceType(InfrahubStringEnum):
@@ -150,47 +269,6 @@ class PathType(InfrahubStringEnum):
         return cls("relationship_many")
 
 
-class FilterSchemaKind(InfrahubStringEnum):
-    TEXT = "Text"
-    LIST = "Text"
-    NUMBER = "Number"
-    BOOLEAN = "Boolean"
-    OBJECT = "Object"
-    MULTIOBJECT = "MultiObject"
-    ENUM = "Enum"
-
-
-class ProposedChangeState(InfrahubStringEnum):
-    OPEN = "open"
-    MERGED = "merged"
-    CLOSED = "closed"
-    CANCELED = "canceled"
-
-    def validate_state_check_run(self) -> None:
-        if self == ProposedChangeState.OPEN:
-            return
-
-        raise ValidationError(input_value="Unable to trigger check on proposed changes that aren't in the open state")
-
-    def validate_editability(self) -> None:
-        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
-            raise ValidationError(
-                input_value=f"A proposed change in the {self.value} state is not allowed to be updated"
-            )
-
-    def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
-        if self == ProposedChangeState.OPEN:
-            return
-
-        if self == ProposedChangeState.CLOSED and updated_state not in [
-            ProposedChangeState.CANCELED,
-            ProposedChangeState.OPEN,
-        ]:
-            raise ValidationError(
-                input_value="A closed proposed change is only allowed to transition to the open state"
-            )
-
-
 class HashableModelState(InfrahubStringEnum):
     PRESENT = "present"
     ABSENT = "absent"
@@ -209,6 +287,7 @@ class RelationshipKind(InfrahubStringEnum):
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
     PROFILE = "Profile"
+    TEMPLATE = "Template"
 
 
 class RelationshipStatus(InfrahubStringEnum):
@@ -267,17 +346,21 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
-class AttributeDBNodeType(InfrahubStringEnum):
-    DEFAULT = "default"
-    IPHOST = "iphost"
-    IPNETWORK = "ipnetwork"
+class AttributeDBNodeType(Flag):
+    DEFAULT = auto()
+    INDEX_ONLY = auto()
+    IPHOST_ONLY = auto()
+    IPNETWORK_ONLY = auto()
+    INDEXED = DEFAULT | INDEX_ONLY
+    IPHOST = DEFAULT | INDEX_ONLY | IPHOST_ONLY
+    IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
-RESTRICTED_NAMESPACES: List[str] = [
+RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
     # "Builtin",
-    # "Core",
+    "Core",
     "Deprecated",
     "Diff",
     "Infrahub",
@@ -285,16 +368,22 @@ RESTRICTED_NAMESPACES: List[str] = [
     "Lineage",
     "Schema",
     "Profile",
+    "Template",
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 DEFAULT_NAME_MIN_LENGTH = 2
 NAME_REGEX = r"^[a-z0-9\_]+$"
+NAME_REGEX_OR_EMPTY = r"^[a-z0-9\_]*$"
 DEFAULT_DESCRIPTION_LENGTH = 128
 
 DEFAULT_NAME_MAX_LENGTH = 32
+DEFAULT_LABEL_MAX_LENGTH = 64
 DEFAULT_KIND_MIN_LENGTH = 3
 DEFAULT_KIND_MAX_LENGTH = 32
 NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
+
+OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
+OBJECT_TEMPLATE_NAME_ATTR = "template_name"

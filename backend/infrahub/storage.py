@@ -1,3 +1,4 @@
+import io
 import tempfile
 from typing import Any, BinaryIO
 
@@ -17,7 +18,7 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         super().__init__()
 
     def open(self, name: str) -> BinaryIO:
-        f = tempfile.NamedTemporaryFile()  # pylint: disable=consider-using-with
+        f = io.BytesIO()
         self._bucket.download_fileobj(name, f)
         f.flush()
         f.seek(0)
@@ -52,7 +53,5 @@ class InfrahubObjectStorage:
         try:
             with self._storage.open(identifier) as f:
                 return f.read().decode()
-        except (FileNotFoundError, botocore.exceptions.ClientError):
-            raise NodeNotFoundError(  # pylint: disable=raise-missing-from
-                node_type="StorageObject", identifier=identifier
-            )
+        except (FileNotFoundError, botocore.exceptions.ClientError) as err:
+            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err

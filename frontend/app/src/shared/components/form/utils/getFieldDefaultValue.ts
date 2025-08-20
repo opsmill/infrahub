@@ -1,0 +1,202 @@
+import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeAttribute, NodeCore, NodeObject } from "@/entities/nodes/types";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import { LineageSource } from "@/shared/api/graphql/generated/graphql";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { ProfileData } from "@/shared/components/form/object-form";
+import {
+  AttributeValueFromPool,
+  AttributeValueFromProfile,
+  AttributeValueFromTemplate,
+  AttributeValueFromUser,
+  FormAttributeValue,
+} from "@/shared/components/form/type";
+import * as R from "ramda";
+
+export type GetFieldDefaultValue = {
+  fieldSchema: FieldSchema;
+  initialObject?: Record<string, AttributeType>;
+  objectTemplate?: NodeObject | null;
+  profiles?: Array<ProfileData>;
+  isFilterForm?: boolean;
+};
+
+export const getFieldDefaultValue = ({
+  fieldSchema,
+  initialObject,
+  objectTemplate,
+  profiles = [],
+  isFilterForm,
+}: GetFieldDefaultValue): FormAttributeValue => {
+  // Do not use profiles nor default values in filters
+  if (isFilterForm) {
+    return getCurrentFieldValue(fieldSchema.name, initialObject) ?? DEFAULT_FORM_FIELD_VALUE;
+  }
+
+  return (
+    getCurrentFieldValue(fieldSchema.name, initialObject) ??
+    getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
+    getDefaultValueFromPool(fieldSchema.name, initialObject) ??
+    getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
+    getDefaultValueFromSchema(fieldSchema) ??
+    DEFAULT_FORM_FIELD_VALUE
+  );
+};
+
+export const getCurrentFieldValue = (
+  fieldName: string,
+  objectData?: Record<string, AttributeType>
+): AttributeValueFromUser | AttributeValueFromTemplate | null => {
+  if (!objectData) return null;
+
+  const currentField = objectData[fieldName];
+
+  if (!currentField) return null;
+
+  if (currentField.is_default || currentField.is_from_profile) {
+    return null;
+  }
+
+  if (currentField.source && "__typename" in currentField.source) {
+    const sourceKind = currentField.source.__typename as string;
+    const { schema: sourceSchema } = getSchema(sourceKind);
+
+    if (!sourceSchema) {
+      return {
+        source: { type: "user" },
+        value: currentField.value,
+      };
+    }
+
+    if (isPoolSchema(sourceSchema)) {
+      return null;
+    }
+
+    if (isTemplateSchema(sourceSchema)) {
+      return {
+        source: {
+          type: "template",
+          label: getNodeLabel(currentField.source as NodeCore),
+          kind: sourceKind,
+          id: currentField.source.id as string,
+        },
+        value: currentField.value,
+      };
+    }
+
+    if (sourceKind.includes("Pool")) {
+      return null;
+    }
+  }
+
+  return {
+    source: { type: "user" },
+    value: currentField.value,
+  };
+};
+
+const getDefaultValueFromProfiles = (
+  fieldName: string,
+  profiles: Array<ProfileData>
+): AttributeValueFromProfile | null => {
+  // Get value from profiles depending on the priority
+  const orderedProfiles = R.sortWith<ProfileData>([
+    R.ascend(R.path(["profile_priority", "value"])),
+    R.ascend(R.prop("id")),
+  ])(profiles);
+
+  const profileWithDefaultValueForField = orderedProfiles.find((profile) => {
+    const profileFieldData = profile[fieldName] as
+      | Pick<AttributeType, "value" | "__typename">
+      | undefined;
+
+    if (!profileFieldData) return false;
+    return profileFieldData.value !== null;
+  });
+
+  if (!profileWithDefaultValueForField) return null;
+
+  return {
+    source: {
+      type: "profile",
+      id: profileWithDefaultValueForField.id,
+      label: profileWithDefaultValueForField.display_label,
+      kind: profileWithDefaultValueForField.__typename,
+    },
+    value: (
+      profileWithDefaultValueForField[fieldName] as Pick<AttributeType, "value" | "__typename">
+    ).value,
+  };
+};
+
+const getDefaultValueFromPool = (
+  fieldName: string,
+  objectData?: Record<string, AttributeType>
+): AttributeValueFromPool | null => {
+  if (!objectData) return null;
+
+  const currentField = objectData[fieldName];
+  if (!currentField) return null;
+
+  if (!currentField.source?.__typename?.match(/Pool$/g)) {
+    return null;
+  }
+
+  const pool = currentField.source as LineageSource;
+
+  if (!pool) return null;
+  if (!pool.id) return null;
+
+  return {
+    source: {
+      type: "pool",
+      id: pool.id,
+      label: pool.display_label || null,
+      kind: pool.__typename,
+    },
+    value: currentField.value,
+  };
+};
+
+export const getDefaultValueFromTemplate = (
+  fieldName: string,
+  objectTemplate?: NodeObject | null
+): AttributeValueFromTemplate | null => {
+  if (!objectTemplate) return null;
+
+  const currentField = objectTemplate[fieldName] as NodeAttribute | undefined;
+  if (!currentField) return null;
+
+  if (currentField.value === null) return null;
+
+  return {
+    source: {
+      type: "template",
+      label: getNodeLabel(objectTemplate),
+      kind: objectTemplate.__typename,
+      id: objectTemplate.id,
+    },
+    value: currentField.value,
+  };
+};
+
+export const getDefaultValueFromSchema = (
+  fieldSchema: FieldSchema
+): AttributeValueFromUser | null => {
+  if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
+    return {
+      source: typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : null,
+      value: !!fieldSchema.default_value,
+    };
+  }
+
+  return "default_value" in fieldSchema
+    ? {
+        source: { type: "schema" },
+        value: fieldSchema.default_value as AttributeValueFromUser["value"],
+      }
+    : null;
+};

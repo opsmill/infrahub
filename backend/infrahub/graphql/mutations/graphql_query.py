@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
@@ -14,16 +14,13 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
-        cls,
-        schema: NodeSchema,
-        _meta: Optional[Any] = None,
-        **options: Dict[str, Any],
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema, _meta: Any | None = None, **options: dict[str, Any]
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -37,65 +34,67 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     async def extract_query_info(
-        cls,
-        info: GraphQLResolveInfo,
-        data: InputObjectType,
-        branch: Branch,
-    ) -> Dict[str, Any]:
+        cls, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch, db: InfrahubDatabase
+    ) -> dict[str, Any]:
         query_value = data.get("query", {}).get("value", None)
         if query_value is None:
             return {}
 
         query_info = {}
-        analyzer = InfrahubGraphQLQueryAnalyzer(query=query_value, schema=info.schema, branch=branch)
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+
+        analyzer = InfrahubGraphQLQueryAnalyzer(
+            query=query_value, schema=info.schema, branch=branch, schema_branch=schema_branch
+        )
 
         valid, errors = analyzer.is_valid
         if not valid:
             raise ValueError(f"Query is not valid, {str(errors)}")
 
-        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use(types=info.context.types)))}
+        query_info["models"] = {"value": analyzer.query_report.impacted_models}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
         query_info["operations"] = {
             "value": sorted([operation.operation_type.value for operation in analyzer.operations])
         }
-        query_info["variables"] = {"value": [variable.dict() for variable in analyzer.variables]}
+        query_info["variables"] = {"value": [variable.model_dump() for variable in analyzer.variables]}
 
         return query_info
 
     @classmethod
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-        database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
+    ) -> tuple[Node, Self]:
+        graphql_context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        data.update(
+            await cls.extract_query_info(info=info, data=data, branch=graphql_context.branch, db=graphql_context.db)
+        )
 
-        obj, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        obj, result = await super().mutate_create(info=info, data=data, branch=branch, override_data=override_data)
 
         return obj, result
 
     @classmethod
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
-    ) -> Tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
+    ) -> tuple[Node, Self]:
+        graphql_context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        data.update(
+            await cls.extract_query_info(info=info, data=data, branch=graphql_context.branch, db=graphql_context.db)
+        )
 
-        obj, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
+        obj, result = await super().mutate_update(info=info, data=data, branch=branch)
 
         return obj, result

@@ -1,31 +1,39 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Float, Int, List, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
+from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPPrefixUtilization
-from infrahub.core.query.resource_manager import IPAddressPoolGetIdentifiers, PrefixPoolGetIdentifiers
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.core.query.resource_manager import (
+    IPAddressPoolGetIdentifiers,
+    NumberPoolGetAllocated,
+    PrefixPoolGetIdentifiers,
+)
+from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
+from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNode
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class IPPoolUtilizationResource(ObjectType):
     id = Field(String, required=True, description="The ID of the current resource")
     display_label = Field(String, required=True, description="The common name of the resource")
     kind = Field(String, required=True, description="The resource kind")
-    weight = Field(Int, required=True, description="The relative weight of this resource.")
+    weight = Field(BigInt, required=True, description="The relative weight of this resource.")
     utilization = Field(Float, required=True, description="The overall utilization of the resource.")
     utilization_branches = Field(
         Float, required=True, description="The utilization of the resource on all non default branches."
@@ -51,30 +59,54 @@ class PoolAllocatedEdge(ObjectType):
     node = Field(PoolAllocatedNode, required=True)
 
 
-def _validate_pool_type(pool_id: str, pool: Optional[Node] = None) -> Node:
-    if not pool or pool._schema.kind not in [InfrahubKind.IPADDRESSPOOL, InfrahubKind.IPPREFIXPOOL]:
+def _validate_pool_type(pool_id: str, pool: CoreNode | None = None) -> CoreNode:
+    if not pool or pool.get_kind() not in [
+        InfrahubKind.IPADDRESSPOOL,
+        InfrahubKind.IPPREFIXPOOL,
+        InfrahubKind.NUMBERPOOL,
+    ]:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
     return pool
 
 
 class PoolAllocated(ObjectType):
-    count = Field(Int, required=True, description="The number of allocations within the selected pool.")
-    edges = Field(List(of_type=PoolAllocatedEdge, required=True), required=True)
+    count = Field(BigInt, required=True, description="The number of allocations within the selected pool.")
+    edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
     @staticmethod
-    async def resolve(  # pylint: disable=unused-argument
-        root: dict,
+    async def resolve(
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         pool_id: str,
         resource_id: str,
         offset: int = 0,
         limit: int = 10,
     ) -> dict:
-        context: GraphqlContext = info.context
-        pool = await NodeManager.get_one(id=pool_id, db=context.db, branch=context.branch)
+        graphql_context: GraphqlContext = info.context
+        pool: CoreNode | None = await NodeManager.get_one(
+            id=pool_id, db=graphql_context.db, branch=graphql_context.branch
+        )
 
+        fields = extract_graphql_fields(info=info)
+
+        allocated_kinds: list[str] = []
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
-        resources = await pool.resources.get_peers(db=context.db)  # type: ignore[attr-defined,union-attr]
+        match pool.get_kind():
+            case InfrahubKind.NUMBERPOOL:
+                return await resolve_number_pool_allocation(
+                    db=graphql_context.db,
+                    graphql_context=graphql_context,
+                    pool=pool,
+                    fields=fields,
+                    offset=offset,
+                    limit=limit,
+                )
+            case InfrahubKind.IPPREFIXPOOL:
+                allocated_kinds.append(InfrahubKind.IPPREFIX)
+            case InfrahubKind.IPADDRESSPOOL:
+                allocated_kinds.append(InfrahubKind.IPADDRESS)
+
+        resources = await pool.resources.get_peers(db=graphql_context.db)  # type: ignore[attr-defined,union-attr]
         if resource_id not in resources:
             raise ValidationError(
                 input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
@@ -83,15 +115,19 @@ class PoolAllocated(ObjectType):
         resource = resources[resource_id]
 
         query = await IPPrefixUtilization.init(
-            db=context.db, at=context.at, ip_prefixes=[resource], offset=offset, limit=limit
+            db=graphql_context.db,
+            at=graphql_context.at,
+            ip_prefixes=[resource],
+            allocated_kinds=allocated_kinds,
+            offset=offset,
+            limit=limit,
         )
-        fields = await extract_fields_first_node(info=info)
         response: dict[str, Any] = {}
         if "count" in fields:
-            response["count"] = await query.count(db=context.db)
+            response["count"] = await query.count(db=graphql_context.db)
 
         if edges := fields.get("edges"):
-            await query.execute(db=context.db)
+            await query.execute(db=graphql_context.db)
 
             node_fields = edges.get("node", {})
 
@@ -119,9 +155,9 @@ class PoolAllocated(ObjectType):
                 if not identifier_query_class:
                     raise ValidationError(input_value=f"This query doesn't get support {pool.get_kind()}")
                 identifier_query = await identifier_query_class.init(
-                    db=context.db, at=context.at, pool_id=pool_id, allocated=allocated_ids
+                    db=graphql_context.db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
                 )
-                await identifier_query.execute(db=context.db)
+                await identifier_query.execute(db=graphql_context.db)
 
                 reservations = {}
                 for result in identifier_query.get_results():
@@ -138,27 +174,40 @@ class PoolAllocated(ObjectType):
 
 
 class PoolUtilization(ObjectType):
-    count = Field(Int, required=True, description="The number of resources within the selected pool.")
+    count = Field(BigInt, required=True, description="The number of resources within the selected pool.")
     utilization = Field(Float, required=True, description="The overall utilization of the pool.")
     utilization_branches = Field(Float, required=True, description="The utilization in all non default branches.")
     utilization_default_branch = Field(
         Float, required=True, description="The overall utilization of the pool isolated to the default branch."
     )
-    edges = Field(List(of_type=IPPrefixUtilizationEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(IPPrefixUtilizationEdge), required=True), required=True)
 
     @staticmethod
-    async def resolve(  # pylint: disable=unused-argument,too-many-branches
-        root: dict,
+    async def resolve(
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         pool_id: str,
     ) -> dict:
-        context: GraphqlContext = info.context
-        db: InfrahubDatabase = context.db
-        pool = await NodeManager.get_one(id=pool_id, db=db, branch=context.branch)
-        _validate_pool_type(pool_id=pool_id, pool=pool)
-        resources_map: dict[str, Node] = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
-        utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=list(resources_map.values()), at=context.at)
-        fields = await extract_fields_first_node(info=info)
+        graphql_context: GraphqlContext = info.context
+        db: InfrahubDatabase = graphql_context.db
+        pool: CoreNode | None = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
+        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
+        if pool.get_kind() == "CoreNumberPool":
+            return await resolve_number_pool_utilization(
+                db=db, at=graphql_context.at, pool=pool, branch=graphql_context.branch
+            )
+
+        resources_map: dict[str, Node] = {}
+
+        try:
+            resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
+        except SchemaNotFoundError:
+            pass
+
+        utilization_getter = PrefixUtilizationGetter(
+            db=db, ip_prefixes=list(resources_map.values()), at=graphql_context.at
+        )
+        fields = extract_graphql_fields(info=info)
         response: dict[str, Any] = {}
         total_utilization = None
         default_branch_utilization = None
@@ -187,7 +236,7 @@ class PoolUtilization(ObjectType):
                 for resource_id, resource_node in resources_map.items():
                     resource_total = None
                     default_branch_total = None
-                    node_response: dict[str, Union[str, float, int]] = {}
+                    node_response: dict[str, str | float | int] = {}
                     if "id" in node_fields:
                         node_response["id"] = resource_id
                     if "kind" in node_fields:
@@ -225,6 +274,68 @@ class PoolUtilization(ObjectType):
         return response
 
 
+async def resolve_number_pool_allocation(
+    db: InfrahubDatabase, graphql_context: GraphqlContext, pool: CoreNode, fields: dict, offset: int, limit: int
+) -> dict:
+    response: dict[str, Any] = {}
+    query = await NumberPoolGetAllocated.init(
+        db=db, pool=pool, offset=offset, limit=limit, branch=graphql_context.branch, branch_agnostic=True
+    )
+
+    if "count" in fields:
+        response["count"] = await query.count(db=db)
+
+    if "edges" in fields:
+        await query.execute(db=db)
+        edges = []
+        for entry in query.results:
+            node = {
+                "node": {
+                    "id": entry.get_as_optional_type("id", str),
+                    "kind": pool.node.value,  # type: ignore[attr-defined]
+                    "branch": entry.get_as_optional_type("branch", str),
+                    "display_label": entry.get_as_optional_type("value", int),
+                }
+            }
+            edges.append(node)
+
+        response["edges"] = edges
+    return response
+
+
+async def resolve_number_pool_utilization(
+    db: InfrahubDatabase, pool: CoreNode, at: Timestamp | str | None, branch: Branch
+) -> dict:
+    """
+    Returns a mapping containg utilization info of a number pool.
+    The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
+    """
+
+    core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")
+    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
+    await number_pool.load_data()
+
+    return {
+        "count": 1,
+        "utilization": number_pool.utilization,
+        "utilization_default_branch": number_pool.utilization_default_branch,
+        "utilization_branches": number_pool.utilization_branches,
+        "edges": [
+            {
+                "node": {
+                    "id": pool.get_id(),
+                    "kind": "CoreNumberPool",
+                    "display_label": pool.name.value,  # type: ignore[attr-defined]
+                    "weight": 1,
+                    "utilization": number_pool.utilization,
+                    "utilization_default_branch": number_pool.utilization_default_branch,
+                    "utilization_branches": number_pool.utilization_branches,
+                }
+            }
+        ],
+    }
+
+
 InfrahubResourcePoolAllocated = Field(
     PoolAllocated,
     pool_id=String(required=True),
@@ -232,11 +343,10 @@ InfrahubResourcePoolAllocated = Field(
     limit=Int(required=False),
     offset=Int(required=False),
     resolver=PoolAllocated.resolve,
+    required=True,
 )
 
 
 InfrahubResourcePoolUtilization = Field(
-    PoolUtilization,
-    pool_id=String(required=True),
-    resolver=PoolUtilization.resolve,
+    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve, required=True
 )

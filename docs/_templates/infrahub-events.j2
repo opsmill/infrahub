@@ -1,0 +1,42 @@
+---
+title: Infrahub Events
+---
+
+# Infrahub events
+
+This document provides detailed documentation for all events used in the Infrahub event system.
+
+:::info
+
+For more detailed explanations on how these events are used within Infrahub, see the [Infrahub event](../topics/events.mdx) topic.
+
+:::
+
+{% for primary, events in event_groups.items() %}
+## {{ primary | replace("_", " ") | title }} events
+
+{% for event in events %}
+<!-- vale off -->
+### {{ event.event_name }}
+<!-- vale on -->
+
+**Type**: {{ event.event_type }}
+{% if event.description -%}
+**Description**: {{ event.description }}
+{% endif -%}
+
+
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: {% if event.infrahub_node_kind_event %}`true`{% else %}`false`{% endif %}
+
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+{% for field in event.fields -%}
+{{ "| **{}** | {} |".format(field.name, field.description | replace("\n", " ")) }}
+{% endfor -%}
+<!-- vale on -->
+{% endfor %}
+{% endfor %}

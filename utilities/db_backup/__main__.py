@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Any, Generator
 
 import docker
 from docker.models.containers import Container
@@ -102,7 +102,7 @@ class MissingCredentialsError(Exception): ...
 @dataclass
 class ContainerDetails:
     container: Container
-    networks: List[Network]
+    networks: list[Network]
 
     @property
     def name(self) -> str:
@@ -120,7 +120,7 @@ class Neo4jBackupRestoreBase:
         self.keep_helper_container = keep_helper_container
         self.docker_client = docker.from_env()
         self.use_host_network = use_host_network
-        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j/neo4j-admin:5.18.1-enterprise")
+        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j:2025.03.0-enterprise")
 
     def _print_message(self, message: str, force_print: bool = False, with_timestamp: bool = True) -> None:
         if self.be_quiet and not force_print:
@@ -133,7 +133,7 @@ class Neo4jBackupRestoreBase:
 
     @contextmanager
     def _print_task_status(
-        self, start: str, completion_message: Optional[str] = None, with_timestamp: bool = True
+        self, start: str, completion_message: str | None = None, with_timestamp: bool = True
     ) -> Generator[None, None, None]:
         end = "" if completion_message else "\n"
         to_print = start
@@ -149,9 +149,9 @@ class Neo4jBackupRestoreBase:
     def _execute_docker_container_command(
         self,
         container: Container,
-        command: List[str],
-        environment: Optional[Dict[str, str]] = None,
-        failure_message: Optional[str] = None,
+        command: list[str],
+        environment: dict[str, str] | None = None,
+        failure_message: str | None = None,
         display_error: bool = True,
         continue_on_error: bool = False,
     ) -> bool:
@@ -168,7 +168,7 @@ class Neo4jBackupRestoreBase:
             sys.exit(exit_code)
         return False
 
-    def _get_database_container_details(self, raise_error_on_fail: bool = True) -> Optional[ContainerDetails]:
+    def _get_database_container_details(self, raise_error_on_fail: bool = True) -> ContainerDetails | None:
         containers = self.docker_client.containers.list(filters={"label": "infrahub_role=database"})
         if len(containers) == 0:
             if raise_error_on_fail:
@@ -189,8 +189,8 @@ class Neo4jBackupRestoreBase:
     def _create_helper_container(
         self,
         local_backup_directory: Path,
-        local_docker_networks: Optional[List[Network]],
-        volumes_from_container_names: Optional[List[str]] = None,
+        local_docker_networks: list[Network] | None,
+        volumes_from_container_names: list[str] | None = None,
     ) -> Container:
         try:
             existing_exporter_container = self.docker_client.containers.get(self.backup_helper_container_name)
@@ -278,7 +278,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
     def backup(
         self,
         local_backup_directory: Path,
-        database_url: Optional[str],
+        database_url: str | None,
         database_backup_port: int,
         do_aggregate_backups: bool = True,
     ) -> None:
@@ -308,7 +308,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
 class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
     backup_helper_container_name = "neo4j-restore-helper"
 
-    def __init__(self, *args, database_cypher_port: int = 7687, **kwargs) -> None:
+    def __init__(self, *args: Any, database_cypher_port: int = 7687, **kwargs: dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
         self.database_cypher_port = database_cypher_port
         neo4j_auth = os.environ.get("NEO4J_AUTH")
@@ -349,16 +349,16 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
                 execution_container,
                 full_command,
                 environment=environment,
-                failure_message="neo4j metadata restore command failed for '{database_name}' database",
+                failure_message=f"neo4j metadata restore command failed for '{database_name}' database",
                 display_error=True,
                 continue_on_error=True,
             )
 
-    def _map_backups_to_database_name(self, local_backup_directory: Path) -> Dict[str, Path]:
+    def _map_backups_to_database_name(self, local_backup_directory: Path) -> dict[str, Path]:
         # expects name format of <database_name>-2024-02-07T22-12-16.backup
         backup_map = {}
         for backup_path in local_backup_directory.iterdir():
-            if not backup_path.suffix == ".backup":
+            if backup_path.suffix != ".backup":
                 continue
             split_name = backup_path.name.split("-")
             database_name = "-".join(split_name[:-5])
@@ -398,7 +398,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
                 success = self._execute_docker_container_command(
                     helper_container,
                     restore_command,
-                    failure_message="neo4j restore command failed for '{database_name}' database",
+                    failure_message=f"neo4j restore command failed for '{database_name}' database",
                     display_error=True,
                     continue_on_error=False,
                 )
@@ -414,7 +414,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         self,
         database_container: Container,
         helper_container: Container,
-        backup_path_map: Dict[str, Path],
+        backup_path_map: dict[str, Path],
     ) -> None:
         for database_name, local_path in backup_path_map.items():
             if database_name == "system":

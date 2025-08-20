@@ -1,8 +1,7 @@
-from graphql import graphql
-
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_relationship(
@@ -35,7 +34,7 @@ async def test_relationship(
     }
     """
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     # No identifiers
     result = await graphql(

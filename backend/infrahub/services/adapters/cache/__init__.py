@@ -1,36 +1,57 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional
+import importlib
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from infrahub.config import CacheDriver
     from infrahub.message_bus.types import KVTTL
-    from infrahub.services import InfrahubServices
 
 
-class InfrahubCache:
+class InfrahubCache(ABC):
     """Base class for caching services"""
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the cache"""
-
+    @abstractmethod
     async def delete(self, key: str) -> None:
         """Delete a key from the cache."""
         raise NotImplementedError()
 
-    async def get(self, key: str) -> Optional[str]:
+    @abstractmethod
+    async def get(self, key: str) -> str | None:
         """Retrieve a value from the cache."""
         raise NotImplementedError()
 
-    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+    @abstractmethod
+    async def get_values(self, keys: list[str]) -> list[str | None]:
         """Return a list the values for requested keys."""
         raise NotImplementedError()
 
-    async def list_keys(self, filter_pattern: str) -> List[str]:
+    @abstractmethod
+    async def list_keys(self, filter_pattern: str) -> list[str]:
         """Return a list of active keys that match the provided filter."""
         raise NotImplementedError()
 
-    async def set(
-        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
-    ) -> Optional[bool]:
+    @abstractmethod
+    async def set(self, key: str, value: str, expires: KVTTL | None = None, not_exists: bool = False) -> bool | None:
         """Set a value in the cache."""
+        raise NotImplementedError()
+
+    @classmethod
+    async def new_from_driver(cls, driver: CacheDriver) -> InfrahubCache:
+        """Imports and initializes the correct class based on the supplied driver.
+
+        This is to ensure that we only import the Python modules that we actually
+        need to operate and not import all possible options.
+        """
+        module = importlib.import_module(driver.driver_module_path)
+        broker_driver: InfrahubCache = getattr(module, driver.driver_class_name)
+        return await broker_driver.new()
+
+    @classmethod
+    async def new(cls) -> InfrahubCache:
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def close_connection(self) -> None:
         raise NotImplementedError()

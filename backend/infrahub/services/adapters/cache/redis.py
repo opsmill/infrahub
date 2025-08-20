@@ -1,11 +1,14 @@
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
 
 from infrahub import config
-from infrahub.message_bus.types import KVTTL
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
+
+if TYPE_CHECKING:
+    from infrahub.message_bus.types import KVTTL
 
 
 class RedisCache(InfrahubCache):
@@ -20,23 +23,20 @@ class RedisCache(InfrahubCache):
             ssl_ca_certs=config.SETTINGS.cache.tls_ca_file,
         )
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        pass
-
     async def delete(self, key: str) -> None:
         await self.connection.delete(key)
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         value = await self.connection.get(name=key)
         if value is not None:
             return value.decode()
         return None
 
-    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+    async def get_values(self, keys: list[str]) -> list[str | None]:
         values = await self.connection.mget(keys=keys)
         return [value.decode() if value is not None else value for value in values]
 
-    async def list_keys(self, filter_pattern: str) -> List[str]:
+    async def list_keys(self, filter_pattern: str) -> list[str]:
         cursor = 0
         has_remaining_keys = True
         keys = []
@@ -48,7 +48,12 @@ class RedisCache(InfrahubCache):
 
         return [key.decode() for key in keys]
 
-    async def set(
-        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
-    ) -> Optional[bool]:
+    async def set(self, key: str, value: str, expires: KVTTL | None = None, not_exists: bool = False) -> bool | None:
         return await self.connection.set(name=key, value=value, ex=expires.value if expires else None, nx=not_exists)
+
+    @classmethod
+    async def new(cls) -> RedisCache:
+        return cls()
+
+    async def close_connection(self) -> None:
+        await self.connection.aclose()

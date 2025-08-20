@@ -6,7 +6,7 @@ ROUTING_KEY = "send.echo.request"
 
 
 class SendEchoRequest(InfrahubMessage):
-    """Sent a echo request, i.e., ping message."""
+    """Sent a echo request, a ping message for example."""
 
     message: str = Field(..., description="The message to send")
 

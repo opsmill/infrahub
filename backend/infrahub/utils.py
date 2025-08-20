@@ -1,10 +1,11 @@
 import hashlib
-import os
 from enum import Enum, EnumMeta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from re import finditer
+from typing import Any, TypeVar
 
 KWARGS_TO_DROP = ["session"]
+AnyClass = TypeVar("AnyClass", bound=type)
 
 
 def get_fixtures_dir() -> Path:
@@ -19,14 +20,14 @@ def get_models_dir() -> Path:
     return here.parent.parent / "models"
 
 
-def find_first_file_in_directory(directory: str) -> Optional[str]:
-    top_level_files = os.listdir(directory)
-    for filename in top_level_files:
-        full_filename = os.path.join(directory, filename)
-        if os.path.isfile(full_filename):
-            return filename
+def find_first_file_in_directory(directory: Path) -> Path | None:
+    return next((f.resolve() for f in directory.iterdir() if f.is_file()), None)
 
-    return None
+
+def extract_camelcase_words(camel_case: str) -> list[str]:
+    """Extract the namespace and the name for a kind given its camel-case form."""
+    matches = finditer(r".+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)", camel_case)
+    return [m.group(0) for m in matches]
 
 
 def format_label(slug: str) -> str:
@@ -36,7 +37,7 @@ def format_label(slug: str) -> str:
 class MetaEnum(EnumMeta):
     def __contains__(cls, item: Any) -> bool:
         try:
-            cls(item)  # pylint: disable=no-value-for-parameter
+            cls(item)
         except ValueError:
             return False
         return True
@@ -48,7 +49,7 @@ class BaseEnum(Enum, metaclass=MetaEnum):
 
 class InfrahubNumberEnum(int, BaseEnum):
     @classmethod
-    def available_types(cls) -> List[int]:
+    def available_types(cls) -> list[int]:
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
     def get_hash(self) -> str:
@@ -57,14 +58,14 @@ class InfrahubNumberEnum(int, BaseEnum):
 
 class InfrahubStringEnum(str, BaseEnum):
     @classmethod
-    def available_types(cls) -> List[str]:
+    def available_types(cls) -> list[str]:
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
     def get_hash(self) -> str:
         return hashlib.md5(self.value.encode(), usedforsecurity=False).hexdigest()
 
 
-def get_nested_dict(nested_dict: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
+def get_nested_dict(nested_dict: dict[str, Any], keys: list[str]) -> dict[str, Any]:
     current_level = nested_dict
     for key in keys:
         # Check if the key exists and leads to a dictionary
@@ -73,3 +74,12 @@ def get_nested_dict(nested_dict: Dict[str, Any], keys: List[str]) -> Dict[str, A
         else:
             return {}
     return current_level if isinstance(current_level, dict) else {}
+
+
+def get_all_subclasses(cls: AnyClass) -> list[AnyClass]:
+    """Recursively get all subclasses of the given class."""
+    subclasses: list[AnyClass] = []
+    for subclass in cls.__subclasses__():
+        subclasses.append(subclass)
+        subclasses.extend(get_all_subclasses(subclass))
+    return subclasses

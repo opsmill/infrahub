@@ -1,0 +1,71 @@
+import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
+import InfrahubLogo from "@/assets/infrahub-logo.svg";
+import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { AccountMenu } from "@/shared/components/account-menu";
+import { Separator } from "@/shared/components/aria/separator";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
+import { SearchAnywhere } from "@/shared/components/search/search-anywhere";
+import { Card } from "@/shared/components/ui/card";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
+import { classNames } from "@/shared/utils/common";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { Link } from "react-router";
+
+export default function Sidebar() {
+  const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
+
+  const booleanCollapsed = collapsed === "true";
+
+  return (
+    <Card
+      data-collapsed={booleanCollapsed}
+      className={classNames(
+        "flex flex-col gap-3 shrink-0 w-[256px] relative",
+        "group/sidebar transition-all",
+        booleanCollapsed && "w-auto px-2 items-center"
+      )}
+      data-testid="sidebar"
+    >
+      <div className="flex justify-between items-center">
+        <Link to={constructPath("/")} className={classNames(focusVisibleStyle, "rounded-md")}>
+          <img
+            src={booleanCollapsed ? InfrahubLogo : InfrahubWithTextLogo}
+            alt="Infrahub logo"
+            className={"h-8 px-1 m-0.5"}
+          />
+        </Link>
+
+        {booleanCollapsed ? (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute -right-3.5 top-11 transition-all hidden group-hover/sidebar:inline-flex"
+            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+          >
+            <PanelLeftOpenIcon className="size-4 text-neutral-600" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 text-gray-400 hover:text-neutral-600"
+            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+          >
+            <PanelLeftCloseIcon className="size-5" />
+          </Button>
+        )}
+      </div>
+
+      <SearchAnywhere isCollapsed={booleanCollapsed} />
+
+      <Separator />
+
+      <MenuNavigation isCollapsed={booleanCollapsed} />
+
+      <AccountMenu />
+    </Card>
+  );
+}

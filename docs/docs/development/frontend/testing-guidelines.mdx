@@ -15,8 +15,7 @@ We're expecting to see proper tests for each feature/bugfix you make. If you're 
 Infrahub frontend has 3 types of testing:
 
 - [end-to-end (e2e) tests](#e2e-tests)
-- [integration tests (documentation WIP)](#integration-tests)
-- [unit tests (documentation WIP)](#unit-tests)
+- [unit & integration tests (documentation WIP)](#unit--integration-tests)
 
 ## E2E tests
 
@@ -24,13 +23,13 @@ Infrahub uses [Playwright](https://playwright.dev/) for e2e testing.
 
 ### Folder structure
 
-E2E tests are located in `/frontend/tests/e2e`.
+E2E tests are located in `/frontend/app/tests/e2e`.
 
 ### Writing e2e tests
 
 [Playwright](https://playwright.dev/docs/codegen) can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
-```bash
+```shell
 npx playwright codegen
 ```
 
@@ -81,7 +80,7 @@ page.getByRole("button", { name: "Save" });
 
 2. Structure tests with steps for better readability:
 
-```bash
+```shell
 # headless mode
 npm run test:e2e
 
@@ -95,15 +94,9 @@ npm run test:e2e:debug
 npm run test:e2e:ui
 ```
 
-## Integration tests
+## Unit & integration tests
 
-```bash
-npm run cypress:run:component
-```
-
-## Unit tests
-
-```bash
+```shell
 npm run test
 
 # same with coverage

@@ -1,17 +1,14 @@
-from infrahub_sdk import InfrahubClient
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import NULL_VALUE, PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages import SchemaValidatorPathResponse
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
-from infrahub.services import InfrahubServices
 
 
 async def test_query(
@@ -23,7 +20,7 @@ async def test_query(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -69,7 +66,7 @@ async def test_query_NULL_allowed(
 
     car_schema = registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
-    color_attr.regex = r"^#[a-z0-9]+$"
+    color_attr.parameters.regex = r"^#[a-z0-9]+$"
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color")
 
@@ -110,7 +107,7 @@ async def test_query_update_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -141,7 +138,7 @@ async def test_query_node_deleted_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -166,14 +163,15 @@ async def test_validator(
 
     person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
-        constraint_name="attribute.regex.update",
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = AttributeRegexChecker(db=db, branch=default_branch)
@@ -183,27 +181,3 @@ async def test_validator(
     data_paths = grouped_data_paths[0].get_all_data_paths()
     assert len(data_paths) == 1
     assert data_paths[0].node_id == person_john_main.id
-
-
-async def test_rpc(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main, helper
-):
-    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
-    name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
-
-    message = SchemaValidatorPath(
-        constraint_name="attribute.regex.update",
-        node_schema=person_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
-        branch=default_branch,
-    )
-
-    bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
-    bus_simulator.service = service
-
-    response = await service.message_bus.rpc(message=message, response_class=SchemaValidatorPathResponse)
-    assert len(response.data.violations) == 1
-    assert response.data.violations[0].display_label == f"Node (TestPerson: {person_john_main.id})"

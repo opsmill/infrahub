@@ -1,4 +1,5 @@
-from typing import Any, Dict
+import re
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -7,11 +8,11 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 from tests.helpers.test_app import TestInfrahubApp
 
 from ..shared import load_schema
 
-# pylint: disable=unused-argument
 ACCORD_COLOR = "#3443eb"
 PERSON_KIND = "TestingPerson"
 CAR_KIND = "TestingCar"
@@ -20,7 +21,7 @@ MANUFACTURER_KIND = "TestingManufacturer"
 
 class TestSDKNodeCreateConstraints(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def schema_person_base(self) -> Dict[str, Any]:
+    def schema_person_base(self) -> dict[str, Any]:
         return {
             "name": "Person",
             "namespace": "Testing",
@@ -37,7 +38,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_manufacturer_base(self) -> Dict[str, Any]:
+    def schema_manufacturer_base(self) -> dict[str, Any]:
         return {
             "name": "Manufacturer",
             "namespace": "Testing",
@@ -65,7 +66,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -98,7 +99,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step01(self, schema_car_base, schema_person_base, schema_manufacturer_base) -> Dict[str, Any]:
+    def schema_step01(self, schema_car_base, schema_person_base, schema_manufacturer_base) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_manufacturer_base],
@@ -169,28 +170,28 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_02_car_uniqueness_constraint(self, schema_car_base) -> Dict[str, Any]:
-        schema_car_base["uniqueness_constraints"] = [["owner", "color"]]
+    def schema_02_car_uniqueness_constraint(self, schema_car_base) -> dict[str, Any]:
+        schema_car_base["uniqueness_constraints"] = [["owner", "color__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
     def schema_02_uniqueness_constraint(
         self, schema_person_base, schema_02_car_uniqueness_constraint, schema_manufacturer_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_02_car_uniqueness_constraint, schema_manufacturer_base],
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_car_uniqueness_constraint(self, schema_car_base) -> Dict[str, Any]:
-        schema_car_base["uniqueness_constraints"] = [["owner", "nbr_seats"]]
+    def schema_03_car_uniqueness_constraint(self, schema_car_base) -> dict[str, Any]:
+        schema_car_base["uniqueness_constraints"] = [["owner", "nbr_seats__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
     def schema_03_uniqueness_constraint(
         self, schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base],
@@ -287,3 +288,16 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
             await new_car.save()
 
         assert "owner-nbr_seats" in exc.value.message
+
+    async def test_create_repository_with_slash_failure(self, db: InfrahubDatabase, initial_dataset):
+        repo = await Node.init(schema="CoreRepository", db=db)
+        with pytest.raises(
+            ValidationError, match=re.escape("repo/name must conform with the regex: '^[^/]*$' at name")
+        ):
+            await repo.new(db=db, name="repo/name", location="dummy")
+
+        repo = await Node.init(schema="CoreReadOnlyRepository", db=db)
+        with pytest.raises(
+            ValidationError, match=re.escape("repo/name must conform with the regex: '^[^/]*$' at name")
+        ):
+            await repo.new(db=db, name="repo/name", location="dummy")

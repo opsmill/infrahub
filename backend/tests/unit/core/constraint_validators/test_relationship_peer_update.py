@@ -9,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.relationship.peer import RelationshipPeerChecker, RelationshipPeerUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
@@ -316,9 +317,6 @@ async def test_query_update_on_branch_success(
     g_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=29, owner=p_1)
     await g_car.save(db=db)
-    await p_1.cars.get_relationships(db=db)
-    await p_1.cars.update(db=db, data=[*p_1.cars, g_car])
-    await p_1.save(db=db)
 
     await branch.rebase(db=db)
     p_1 = await NodeManager.get_one(db=db, id=p_1.id, branch=branch)
@@ -442,6 +440,7 @@ async def test_validator(
         constraint_name="relationship.peer.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = RelationshipPeerChecker(db=db, branch=default_branch)

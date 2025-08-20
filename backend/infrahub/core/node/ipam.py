@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core.ipam.size import get_prefix_space
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
@@ -16,12 +16,18 @@ class BuiltinIPPrefix(Node):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
+        permissions: dict | None = None,  # noqa: ARG002
+        include_properties: bool = True,
     ) -> dict:
         response = await super().to_graphql(
-            db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
+            db,
+            fields=fields,
+            related_node_ids=related_node_ids,
+            filter_sensitive=filter_sensitive,
+            include_properties=include_properties,
         )
 
         if fields:
@@ -34,8 +40,8 @@ class BuiltinIPPrefix(Node):
                     retrieved = await NodeManager.get_one(
                         db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
                     )
-                    self.member_type = retrieved.member_type  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
-                    self.prefix = retrieved.prefix  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+                    self.member_type = retrieved.member_type  # type: ignore[union-attr]
+                    self.prefix = retrieved.prefix  # type: ignore[union-attr]
                 utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
                 utilization = await utilization_getter.get_use_percentage(
                     ip_prefixes=[self], branch_names=[self._branch.name]
@@ -45,12 +51,12 @@ class BuiltinIPPrefix(Node):
         return response
 
     async def get_resource_weight(self, db: InfrahubDatabase) -> int:
-        member_type = self.member_type.value  # type: ignore[has-type]  # pylint: disable=access-member-before-definition
-        prefixlen = self.prefix.prefixlen  # type: ignore[has-type]  # pylint: disable=access-member-before-definition
+        member_type = self.member_type.value  # type: ignore[has-type]
+        prefixlen = self.prefix.prefixlen  # type: ignore[has-type]
         if member_type is None or prefixlen is None:
             retrieved = await NodeManager.get_one(
                 db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
             )
-            self.member_type = retrieved.member_type  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
-            self.prefix = retrieved.prefix  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+            self.member_type = retrieved.member_type  # type: ignore[union-attr]
+            self.prefix = retrieved.prefix  # type: ignore[union-attr]
         return get_prefix_space(self)

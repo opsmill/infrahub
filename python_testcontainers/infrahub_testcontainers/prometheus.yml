@@ -1,0 +1,30 @@
+---
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'infrahub-server'
+    dns_sd_configs:
+      - names:
+          - server
+        type: A
+        port: 8000
+
+  - job_name: 'infrahub-worker'
+    dns_sd_configs:
+      - names:
+          - task-worker
+        type: A
+        port: 8000
+
+  - job_name: 'cadvisor'
+    dns_sd_configs:
+      - names:
+          - cadvisor
+        type: A
+        port: 8080
+    metric_relabel_configs:
+      - source_labels: [container_label_namespace]
+        target_label: namespace
+      - source_labels: [container_label_pod]
+        target_label: pod

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.services import InfrahubServices
-from infrahub.services.scheduler import InfrahubScheduler, Schedule, run_schedule
+from infrahub.services.scheduler import Schedule
 
 if TYPE_CHECKING:
     from tests.adapters.log import FakeLogger
@@ -22,12 +22,9 @@ async def log_once_and_stop(service: InfrahubServices) -> None:
 
 async def test_scheduler_return_on_not_running(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
-    schedule_manager = InfrahubScheduler()
-    schedule_manager.running = False
-    service = InfrahubServices(log=fake_log)
-    service.scheduler = schedule_manager
+    service = await InfrahubServices.new(log=fake_log)
     schedule = Schedule(name="inactive", interval=10, start_delay=1, function=log_once_and_stop)
-    await run_schedule(schedule=schedule, service=service)
+    await service.scheduler.run_schedule(schedule=schedule)
 
     assert len(fake_log.info_logs) == 0
 
@@ -35,12 +32,10 @@ async def test_scheduler_return_on_not_running(fake_log: FakeLogger):
 async def test_scheduler_exit_after_first(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
 
-    schedule_manager = InfrahubScheduler()
-    schedule_manager.running = True
-    service = InfrahubServices(log=fake_log)
-    service.scheduler = schedule_manager
+    service = await InfrahubServices.new(log=fake_log)
     schedule = Schedule(name="inactive", interval=1, start_delay=1, function=log_once_and_stop)
-    await run_schedule(schedule=schedule, service=service)
+    service.scheduler.running = True
+    await service.scheduler.run_schedule(schedule=schedule)
 
     assert len(fake_log.info_logs) == 3
     assert fake_log.info_logs[0] == "Started recurring task"
@@ -50,12 +45,10 @@ async def test_scheduler_exit_after_first(fake_log: FakeLogger):
 
 async def test_scheduler_task_with_error(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
-    schedule_manager = InfrahubScheduler()
-    schedule_manager.running = True
-    service = InfrahubServices(log=fake_log)
-    service.scheduler = schedule_manager
+    service = await InfrahubServices.new(log=fake_log)
     schedule = Schedule(name="inactive", interval=1, start_delay=0, function=nothing_to_see)
-    await run_schedule(schedule=schedule, service=service)
+    service.scheduler.running = True
+    await service.scheduler.run_schedule(schedule=schedule)
 
     assert len(fake_log.info_logs) == 1
     assert len(fake_log.error_logs) == 1

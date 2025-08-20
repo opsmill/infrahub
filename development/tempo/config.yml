@@ -17,11 +17,12 @@ distributor:
         grpc:
 
 ingester:
-  max_block_duration: 5m
+  max_block_duration: 30m
+  complete_block_timeout: 12h
 
 compactor:
   compaction:
-    block_retention: 1h
+    block_retention: 96h
 
 metrics_generator:
   registry:
@@ -29,9 +30,9 @@ metrics_generator:
       source: tempo
   storage:
     path: /tmp/tempo/generator/wal
-    # remote_write:
-    #   - url: http://prometheus:9090/api/v1/write
-    #     send_exemplars: true
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
 
 storage:
   trace:
@@ -40,8 +41,9 @@ storage:
       path: /tmp/tempo/wal             # where to store the the wal locally
     local:
       path: /tmp/tempo/blocks
-#
-# overrides:
-#   defaults:
-#     metrics_generator:
-#       processors: [service-graphs, span-metrics] # enables metrics generator
+
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics] # enables metrics generator

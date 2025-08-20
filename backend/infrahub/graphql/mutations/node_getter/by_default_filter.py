@@ -1,4 +1,4 @@
-from typing import Optional
+from copy import copy
 
 from graphene import InputObjectType
 
@@ -12,7 +12,7 @@ from .interface import MutationNodeGetterInterface
 
 
 class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
-    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
+    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager) -> None:
         self.db = db
         self.node_manager = node_manager
 
@@ -21,27 +21,25 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-    ) -> Optional[Node]:
-        node = None
-        default_filter_value = None
+    ) -> Node | None:
         if not node_schema.default_filter:
-            return node
-        this_datum = data
+            return None
+
+        data = copy(data)
 
         for filter_key in node_schema.default_filter.split("__"):
-            if filter_key not in this_datum:
+            if filter_key not in data:
                 break
-            this_datum = this_datum[filter_key]
-        default_filter_value = this_datum
+            data = data[filter_key]
+
+        default_filter_value = data
 
         if not default_filter_value:
-            return node
+            return None
 
         return await self.node_manager.get_one_by_default_filter(
             db=self.db,
             id=default_filter_value,
             kind=node_schema.kind,
             branch=branch,
-            at=at,
         )

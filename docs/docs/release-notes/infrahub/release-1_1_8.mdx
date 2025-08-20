@@ -1,0 +1,93 @@
+---
+title: Release 1.1.8
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.1.8</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>March 7th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Lyon, Patch #8</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.1.8](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.1.8)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.1.8
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.1.7 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Changed
+
+- Improved the performance of the cypher query that saves a diff in the database.
+- Updated the DiffUpdate mutation to return the ID of the task when `wait_until_completion` is False. Also, the argument `wait_for_completion` under the data section is deprecated and it has been replaced with `wait_until_completion` at the root of the mutation instead to align with the format of the other mutations.
+
+### Fixed
+
+- Fixed an error in the query to count the number of peers for a given cardinality-many relationship. Existing logic could have resulted in the count being multiplied by a power of 2 if changes were made to the relationship during a merge.
+- Fixed the HFID format in the mutations `IPAddressPoolGetResource` and `IPPrefixPoolGetResource`.
+- Reduced the number of database queries we run when checking a uniqueness constraint during a node update or create mutation. Specifically in the instance that node uses a schema which inherits from a generic schema and the node schema's uniqueness constraints are contained within the generic schema's uniqueness constraints.
+- Removed duplicated edges that could have been added to the database during concurrent updates.
+
+## Migration guide
+
+The process to migrate your instance of Infrahub to the latest version may vary depending on your deployment of Infrahub.
+However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
+
+Please ensure you have a **backup of your Infrahub environment** prior to attempting any migration or upgrade activities.
+
+### Migration of an Infrahub instance
+
+**First**, update the Infrahub version running in your environment.
+
+Below are some example ways to get the latest version of Infrahub in your environment.
+
+- For deployments via Docker Compose, update your container version by updating the `VERSION` environment variable and relaunch:
+  - `export VERSION="1.1.8"; docker compose pull && docker compose up -d`
+- For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
+
+**Second**, once you have gotten the desired version of Infrahub in your environment, please run the following commands.
+
+> Note: If you are running Infrahub in Docker/K8s, these commands need to run from a container where Infrahub is installed.
+
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+
+**Finally**, restart all instances of Infrahub.
+
+### Migration of a dev or demo instance
+
+If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
+The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command.
+
+> **Warning: All data will be lost, please make sure to backup everything you need before running this command.**
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.

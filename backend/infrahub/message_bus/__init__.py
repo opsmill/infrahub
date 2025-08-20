@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -11,21 +11,19 @@ from infrahub.log import set_log_data
 
 class Meta(BaseModel):
     request_id: str = ""
-    correlation_id: Optional[str] = Field(default=None)
-    reply_to: Optional[str] = Field(default=None)
-    initiator_id: Optional[str] = Field(
+    correlation_id: str | None = Field(default=None)
+    reply_to: str | None = Field(default=None)
+    initiator_id: str | None = Field(
         default=None, description="The worker identity of the initial sender of this message"
     )
-    retry_count: Optional[int] = Field(
-        default=None, description="Indicates how many times this message has been retried."
-    )
-    headers: Optional[Dict[str, Any]] = Field(default=None)
-    validator_execution_id: Optional[str] = Field(
+    retry_count: int | None = Field(default=None, description="Indicates how many times this message has been retried.")
+    headers: dict[str, Any] | None = Field(default=None)
+    validator_execution_id: str | None = Field(
         default=None, description="Validator execution ID related to this message"
     )
-    check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
+    check_execution_id: str | None = Field(default=None, description="Check execution ID related to this message")
     priority: int = Field(default=3, description="Message Priority")
-    expiration: Optional[int] = Field(default=None, description="TTL before this message expires in seconds")
+    expiration: int | None = Field(default=None, description="TTL before this message expires in seconds")
 
     @classmethod
     def default(cls) -> Meta:
@@ -37,7 +35,7 @@ class InfrahubMessage(BaseModel):
 
     meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
 
-    def assign_meta(self, parent: "InfrahubMessage") -> None:
+    def assign_meta(self, parent: InfrahubMessage) -> None:
         """Assign relevant meta properties from a parent message."""
         self.meta.request_id = parent.meta.request_id
         self.meta.initiator_id = parent.meta.initiator_id
@@ -89,9 +87,9 @@ class InfrahubResponse(InfrahubMessage):
 
     passed: bool = True
     routing_key: str
-    data: Union[dict, InfrahubResponseData] = Field(default_factory=dict)
-    errors: List[str] = Field(default_factory=list)
-    initial_message: Optional[dict] = Field(
+    data: dict | InfrahubResponseData = Field(default_factory=dict)  # type: ignore[arg-type]
+    errors: list[str] = Field(default_factory=list)
+    initial_message: dict | None = Field(
         default=None,
         description="Initial message in dict format, the primary goal of this field is to provide additional context when there is an error",
     )

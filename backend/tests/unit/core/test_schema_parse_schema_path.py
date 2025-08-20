@@ -2,7 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.schema import AttributePathParsingError, SchemaAttributePath
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class TestSchemaParseSchemaPath:

@@ -3,6 +3,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from functools import partial
+from pathlib import Path
 from typing import AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -13,35 +14,42 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from infrahub_sdk.timestamp import TimestampFormatError
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor, Span
-from pydantic import ValidationError
+from infrahub_sdk.exceptions import TimestampFormatError
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.trace import Span
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
-from infrahub.core.graph.index import node_indexes, rel_indexes
+from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import Error
+from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub.services import InfrahubServices, services
-from infrahub.services.adapters.cache.nats import NATSCache
-from infrahub.services.adapters.cache.redis import RedisCache
-from infrahub.services.adapters.message_bus.nats import NATSMessageBus
-from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.services import InfrahubServices
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_component,
+    get_database,
+    get_installation_type,
+    get_message_bus,
+    get_workflow,
+    set_component_type,
+)
+
+CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
-async def app_initialization(application: FastAPI) -> None:
+async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
+    _validate_feature_selection(configuration=config.SETTINGS.active_settings)
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -53,33 +61,39 @@ async def app_initialization(application: FastAPI) -> None:
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
+    component_type = ComponentType.API_SERVER
+    set_component_type(component_type=component_type)
+
     # Initialize database Driver and load local registry
-    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
-    database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
+    database = application.state.db = await get_database()
 
     build_component_registry()
 
-    message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+    workflow = get_workflow()
+    message_bus = await get_message_bus()
+    cache = await get_cache()
+    component = await get_component()
+    service = await InfrahubServices.new(
+        cache=cache,
+        database=database,
+        message_bus=message_bus,
+        workflow=workflow,
+        component=component,
+        component_type=component_type,
     )
-    cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
-    )
-    service = InfrahubServices(
-        cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
-    )
-    await service.initialize()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
-        await initialization(db=db)
-    services.prepare(service=service)
+        await initialization(db=db, add_database_indexes=True)
+
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
+    if enable_scheduler:
+        await service.scheduler.start_schedule()
 
 
 async def shutdown(application: FastAPI) -> None:
-    await services.service.shutdown()
+    await application.state.service.shutdown()
     await application.state.db.close()
 
 
@@ -95,24 +109,24 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
     openapi_url="/api/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url=None,
+    redoc_url=None,
 )
 
 
-def server_request_hook(span: Span, scope: dict) -> None:  # pylint: disable=unused-argument
+def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
 
 
 FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
 
-FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
-FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
-FRONTEND_FAVICONS_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/favicons"
+FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
+FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"
+FRONTEND_FAVICONS_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "favicons"
 
-DOCS_DIRECTORY = os.environ.get("INFRAHUB_DOCS_DIRECTORY", os.path.abspath("docs"))
-DOCS_BUILD_DIRECTORY = f"{DOCS_DIRECTORY}/build"
+DOCS_DIRECTORY = Path(os.environ.get("INFRAHUB_DOCS_DIRECTORY", Path("docs").resolve()))
+DOCS_BUILD_DIRECTORY = DOCS_DIRECTORY / "build"
 
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
@@ -120,7 +134,7 @@ logger.handlers = gunicorn_logger.handlers
 
 app.include_router(api)
 
-templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
+templates = Jinja2Templates(directory=FRONTEND_DIRECTORY / "dist")
 
 
 @app.middleware("http")
@@ -179,16 +193,17 @@ app.add_exception_handler(ValidationError, partial(generic_api_exception_handler
 app.add_route(path="/metrics", route=handle_metrics)
 app.include_router(graphql_router)
 
+app.mount("/api-static", StaticFiles(directory=CURRENT_DIRECTORY / "api" / "static"), name="static")
 
-if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
+if FRONTEND_ASSET_DIRECTORY.exists() and FRONTEND_ASSET_DIRECTORY.is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
 
 
-if os.path.exists(FRONTEND_FAVICONS_DIRECTORY) and os.path.isdir(FRONTEND_FAVICONS_DIRECTORY):
+if FRONTEND_FAVICONS_DIRECTORY.exists() and FRONTEND_FAVICONS_DIRECTORY.is_dir():
     app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
 
 
-if os.path.exists(DOCS_BUILD_DIRECTORY) and os.path.isdir(DOCS_BUILD_DIRECTORY):
+if DOCS_BUILD_DIRECTORY.exists() and DOCS_BUILD_DIRECTORY.is_dir():
     app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
 
 
@@ -198,5 +213,14 @@ async def documentation() -> RedirectResponse:
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
-async def react_app(req: Request, rest_of_path: str) -> Response:  # pylint: disable=unused-argument
+async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
     return templates.TemplateResponse("index.html", {"request": req})
+
+
+def _validate_feature_selection(configuration: config.Settings) -> None:
+    if configuration.enterprise_features and not configuration.dev.allow_enterprise_configuration:
+        installation_type = get_installation_type()
+        if installation_type == INSTALLATION_TYPE:
+            raise ValidationError(
+                f"Enterprise features [{','.join(configuration.enterprise_features)}] are not supported when running Infrahub 'community'."
+            )

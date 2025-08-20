@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from infrahub.constants.database import EntityType, IndexType
+from infrahub.core.query import QueryType
 
-from .constants import EntityType, IndexType
 from .index import IndexInfo, IndexItem, IndexManagerBase
-from .manager import DatabaseManager
-
-if TYPE_CHECKING:
-    from . import InfrahubDatabase
 
 
 class IndexRelNeo4j(IndexItem):
@@ -43,14 +39,14 @@ class IndexNodeNeo4j(IndexItem):
 
 
 class IndexManagerNeo4j(IndexManagerBase):
-    def init(self, nodes: List[IndexItem], rels: List[IndexItem]) -> None:
+    def init(self, nodes: list[IndexItem], rels: list[IndexItem]) -> None:
         self.nodes = [IndexNodeNeo4j(**item.model_dump()) for item in nodes]
         self.rels = [IndexRelNeo4j(**item.model_dump()) for item in rels]
         self.initialized = True
 
-    async def list(self) -> List[IndexInfo]:
+    async def list(self) -> list[IndexInfo]:
         query = "SHOW INDEXES"
-        records = await self.db.execute_query(query=query, params={}, name="index_show")
+        records = await self.db.execute_query(query=query, params={}, name="index_show", type=QueryType.READ)
         results = []
         for record in records:
             if not record["labelsOrTypes"]:
@@ -66,9 +62,3 @@ class IndexManagerNeo4j(IndexManagerBase):
             )
 
         return results
-
-
-class DatabaseManagerNeo4j(DatabaseManager):
-    def __init__(self, db: InfrahubDatabase):
-        super().__init__(db=db)
-        self.index = IndexManagerNeo4j(db=db)

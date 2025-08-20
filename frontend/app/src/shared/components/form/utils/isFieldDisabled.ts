@@ -1,0 +1,43 @@
+import { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { PermissionDecisionData } from "@/entities/permission/types";
+import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
+import { store } from "@/shared/stores";
+
+export type IsFieldDisabledParams = {
+  owner?: LineageOwner | null;
+  auth?: AuthContextType;
+  isProtected?: boolean;
+  isReadOnly?: boolean;
+  permissions?: { update?: PermissionDecisionData | null };
+};
+
+export const isFieldDisabled = ({
+  owner,
+  auth,
+  isProtected,
+  isReadOnly,
+  permissions,
+}: IsFieldDisabledParams) => {
+  const currentBranch = store.get(currentBranchAtom);
+
+  switch (permissions?.update) {
+    case "ALLOW":
+      return false;
+    case "ALLOW_DEFAULT":
+      return !currentBranch?.is_default;
+    case "ALLOW_OTHER":
+      return !!currentBranch?.is_default;
+    case "DENY":
+      return true;
+    default: {
+      if (isReadOnly) return true;
+
+      // Field is enabled if there is no owner and if is_protected is not set to true
+      if (!isProtected || !owner) return false;
+
+      // Field is available only if is_protected is set to true and if the owner is the user
+      return owner?.id !== auth?.user?.id;
+    }
+  }
+};

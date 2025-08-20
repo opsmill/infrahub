@@ -1,36 +1,59 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from __future__ import annotations
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from typing import TYPE_CHECKING, Any, Self
+
+from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import lock
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
-from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
+from infrahub.core.constants import (
+    CheckType,
+    GlobalPermissions,
+    InfrahubKind,
+    PermissionDecision,
+)
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge import BranchMerger
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
-from infrahub.core.node import Node
-from infrahub.core.registry import registry
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.events import (
+    EventMeta,
+    ProposedChangeApprovalRevokedEvent,
+    ProposedChangeApprovedEvent,
+    ProposedChangeRejectedEvent,
+    ProposedChangeRejectionRevokedEvent,
+)
+from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
-from infrahub.log import get_log_data
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.graphql.types.task import TaskInfo
+from infrahub.lock import InfrahubLock, build_object_lock_name
+from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
+from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
+from infrahub.proposed_change.models import RequestProposedChangePipeline
+from infrahub.workers.dependencies import get_event_service
+from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from .. import GraphqlContext
+    from graphql import GraphQLResolveInfo
+
+    from infrahub.core.node import Node
+    from infrahub.events.models import InfrahubEvent
+
+    from ..initialization import GraphqlContext
+
+ProposedChangeApprovalDecisionInput = Enum.from_enum(ProposedChangeApprovalDecision)
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema, _meta: InfrahubMutationOptions | None = None, **options: dict[str, Any]
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -45,19 +68,22 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @retry_db_transaction(name="proposed_change_create")
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-        database: Optional[InfrahubDatabase] = None,
-    ):
-        context: GraphqlContext = info.context
-        db: InfrahubDatabase = info.context.db
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
+    ) -> tuple[Node, Self]:
+        graphql_context: GraphqlContext = info.context
 
-        async with db.start_transaction() as dbt:
+        override_data = {"created_by": {"id": graphql_context.active_account_session.account_id}}
+        state = data.get("state", {}).get("value")
+        if state and state != ProposedChangeState.OPEN.value:
+            raise ValidationError(input_value="A proposed change has to be in the open state during creation")
+
+        async with graphql_context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(
-                root=root, info=info, data=data, branch=branch, at=at, database=dbt
+                info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )
             destination_branch = proposed_change.destination_branch.value
             source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
@@ -68,111 +94,86 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     input_value="Currently only the 'main' branch is supported as a destination for a proposed change"
                 )
 
-        if context.service:
-            message = messages.RequestProposedChangePipeline(
+        if graphql_context.service:
+            request_proposed_change_model = RequestProposedChangePipeline(
                 proposed_change=proposed_change.id,
                 source_branch=source_branch.name,
                 source_branch_sync_with_git=source_branch.sync_with_git,
                 destination_branch=destination_branch,
             )
-            await context.service.send(message=message)
+
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+                parameters={"model": request_proposed_change_model},
+                context=graphql_context.get_context(),
+            )
 
         return proposed_change, result
 
     @classmethod
-    @retry_db_transaction(name="proposed_change_update")
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
-    ):
-        context: GraphqlContext = info.context
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
+    ) -> tuple[Node, Self]:
+        graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
-            db=context.db,
+            db=graphql_context.db,
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            at=at,
             include_owner=True,
             include_source=True,
         )
         state = ProposedChangeState(obj.state.value.value)
-        state.validate_editability()
+        state.validate_updatable()
 
         updated_state = None
         if state_update := data.get("state", {}).get("value"):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
-        merger: Optional[BranchMerger] = None
-        async with context.db.start_transaction() as dbt:
-            proposed_change, result = await super().mutate_update(
-                root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=obj
-            )
+        # Check if the draft state will change (defaults to current draft state)
+        will_be_draft = data.get("is_draft", {}).get("value", obj.is_draft.value)
 
-            if updated_state == ProposedChangeState.MERGED:
-                conflict_resolution: Dict[str, bool] = {}
-                source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
-                validations = await proposed_change.validations.get_peers(db=dbt)
-                for validation in validations.values():
-                    validator_kind = validation.get_kind()
-                    if (
-                        validator_kind != InfrahubKind.DATAVALIDATOR
-                        and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
-                    ):
-                        # Ignoring Data integrity checks as they are handled again later
-                        raise ValidationError("Unable to merge proposed change containing failing checks")
-                    if validator_kind == InfrahubKind.DATAVALIDATOR:
-                        data_checks = await validation.checks.get_peers(db=dbt)
-                        for check in data_checks.values():
-                            if check.conflicts.value and not check.keep_branch.value:
-                                raise ValidationError(
-                                    "Data conflicts found on branch and missing decisions about what branch to keep"
-                                )
-                            if check.conflicts.value:
-                                keep_source_value = check.keep_branch.value.value == "source"
-                                conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
-
-                async with lock.registry.global_graph_lock():
-                    merger = BranchMerger(db=dbt, source_branch=source_branch, service=context.service)
-                    await merger.merge(conflict_resolution=conflict_resolution)
-                    await merger.update_schema()
-
-                if context.background:
-                    log_data = get_log_data()
-                    request_id = log_data.get("request_id", "")
-                    differ = await merger.get_graph_diff()
-                    diff_parser = IpamDiffParser(
-                        db=context.db,
-                        differ=differ,
-                        source_branch_name=obj.name,
-                        target_branch_name=registry.default_branch,
+        # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
+        if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
+            try:
+                graphql_context.active_permissions.raise_for_permission(
+                    permission=GlobalPermission(
+                        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
+                        decision=PermissionDecision.ALLOW_ALL.value,
                     )
-                    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-                    message = messages.EventBranchMerge(
-                        source_branch=source_branch.name,
-                        target_branch=registry.default_branch,
-                        ipam_node_details=ipam_node_details,
-                        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-                    )
-                    context.background.add_task(services.send, message)
+                )
+            except PermissionDeniedError as exc:
+                raise ValidationError(str(exc)) from exc
 
-        if merger and merger.migrations:
-            errors = await schema_migrations_runner(
-                branch=merger.destination_branch,
-                new_schema=merger.destination_schema,
-                previous_schema=merger.initial_source_schema,
-                migrations=merger.migrations,
-                service=context.service,
+        if updated_state == ProposedChangeState.MERGED:
+            if will_be_draft:
+                raise ValidationError("A draft proposed change is not allowed to be merged")
+            data["state"]["value"] = ProposedChangeState.MERGING.value
+
+        proposed_change, result = await super().mutate_update(
+            info=info, data=data, branch=branch, database=graphql_context.db, node=obj
+        )
+
+        if updated_state == ProposedChangeState.MERGED:
+            await graphql_context.service.workflow.execute_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
             )
-            for error in errors:
-                context.service.log.error(error)
+            # When the PROPOSED_CHANGE_MERGE succeeds it will have correctly changed the state
+            # from the overridden "merging" value, so here we change it back to reflect the
+            # correct value for the event that will be generated.
+            proposed_change.node_changelog.attributes["state"].value = ProposedChangeState.MERGED.value
 
         return proposed_change, result
 
@@ -191,35 +192,284 @@ class ProposedChangeRequestRunCheck(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
-        data: Dict[str, Any],
-    ) -> Dict[str, bool]:
-        context: GraphqlContext = info.context
+        data: dict[str, Any],
+    ) -> dict[str, bool]:
+        graphql_context: GraphqlContext = info.context
 
         check_type = data.get("check_type") or CheckType.ALL
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=context.db
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=graphql_context.db
         )
         state = ProposedChangeState(proposed_change.state.value.value)
         state.validate_state_check_run()
 
         destination_branch = proposed_change.destination_branch.value
-        source_branch = await _get_source_branch(db=context.db, name=proposed_change.source_branch.value)
+        source_branch = await _get_source_branch(db=graphql_context.db, name=proposed_change.source_branch.value)
 
-        message = messages.RequestProposedChangePipeline(
+        request_proposed_change_model = RequestProposedChangePipeline(
             proposed_change=proposed_change.id,
             source_branch=source_branch.name,
             source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
         )
-        if context.service:
-            await context.service.send(message=message)
+        if graphql_context.service:
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+                parameters={"model": request_proposed_change_model},
+                context=graphql_context.get_context(),
+            )
 
         return {"ok": True}
+
+
+class ProposedChangeReviewInput(InputObjectType):
+    id = String(required=True, description="The ID of the proposed change to review.")
+    decision = ProposedChangeApprovalDecisionInput(
+        required=True, description="The decision for the proposed change review."
+    )
+
+
+class ProposedChangeReview(Mutation):
+    class Arguments:
+        data = ProposedChangeReviewInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: ProposedChangeReviewInput,
+    ) -> dict[str, bool]:
+        """
+        This mutation is used to approve or reject a proposed change.
+        It can also be used to undo an approval or rejection.
+        """
+
+        graphql_context: GraphqlContext = info.context
+        graphql_context.active_permissions.raise_for_permission(
+            permission=GlobalPermission(
+                action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value, decision=PermissionDecision.ALLOW_ALL.value
+            )
+        )
+        pc_id = str(data.id)
+        lock_name = build_object_lock_name(pc_id)
+        async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
+            proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+                id=pc_id, kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
+            )
+            state = ProposedChangeState(proposed_change.state.value.value)
+            state.validate_reviewable()
+
+            created_by = await proposed_change.created_by.get_peer(db=graphql_context.db)
+            if created_by and created_by.id == graphql_context.active_account_session.account_id:
+                raise ValidationError(input_value="You cannot review your own proposed changes")
+
+            current_user = await NodeManager.get_one_by_id_or_default_filter(
+                id=graphql_context.active_account_session.account_id,
+                kind=InfrahubKind.GENERICACCOUNT,
+                db=graphql_context.db,
+            )
+
+            async with graphql_context.db.start_session() as db:
+                event = await cls._handle_decision(
+                    db=db,
+                    decision=data.decision,
+                    proposed_change=proposed_change,
+                    current_user=current_user,
+                    context=graphql_context,
+                )
+                await proposed_change.save(db=db)
+
+                if event:
+                    event_service = await get_event_service()
+                    await event_service.send(event=event)
+
+        return {"ok": True}
+
+    @classmethod
+    async def _handle_decision(
+        cls,
+        db: InfrahubDatabase,
+        decision: ProposedChangeApprovalDecision,
+        proposed_change: CoreProposedChange,
+        current_user: Node,
+        context: GraphqlContext,
+    ) -> InfrahubEvent | None:
+        """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
+
+        approved_by = await proposed_change.approved_by.get_peers(db=db)
+        rejected_by = await proposed_change.rejected_by.get_peers(db=db)
+        approved_by_ids = [node.id for _, node in approved_by.items()]
+        rejected_by_ids = [node.id for _, node in rejected_by.items()]
+        event: InfrahubEvent | None = None
+        event_meta = EventMeta.from_context(context=context.get_context())
+
+        match decision:
+            case ProposedChangeApprovalDecision.APPROVE:
+                if current_user.id in approved_by_ids:
+                    raise ValidationError(input_value="You have already approved this proposed change")
+                await proposed_change.approved_by.add(db=db, data=current_user)
+                if current_user.id in rejected_by_ids:
+                    await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
+
+                event = ProposedChangeApprovedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_decision=decision.value,
+                    meta=event_meta,
+                )
+
+            case ProposedChangeApprovalDecision.CANCEL_APPROVE:
+                if current_user.id not in approved_by_ids:
+                    raise ValidationError(
+                        input_value="You did not approve this proposed change yet, it can't be un-approved"
+                    )
+                await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
+
+                event = ProposedChangeApprovalRevokedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_former_decision=ProposedChangeApprovalDecision.APPROVE.value,
+                    meta=event_meta,
+                )
+
+            case ProposedChangeApprovalDecision.REJECT:
+                if current_user.id in rejected_by_ids:
+                    raise ValidationError(input_value="You have already rejected this proposed change")
+                await proposed_change.rejected_by.add(db=db, data=current_user)
+                if current_user.id in approved_by_ids:
+                    await proposed_change.approved_by.remove_locally(db=db, peer_id=current_user.id)
+
+                event = ProposedChangeRejectedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_decision=decision.value,
+                    meta=event_meta,
+                )
+
+            case ProposedChangeApprovalDecision.CANCEL_REJECT:
+                if current_user.id not in rejected_by_ids:
+                    raise ValidationError(
+                        input_value="You did not reject this proposed change yet, it can't be un-rejected"
+                    )
+                await proposed_change.rejected_by.remove_locally(db=db, peer_id=current_user.id)
+
+                event = ProposedChangeRejectionRevokedEvent(
+                    proposed_change_id=proposed_change.id,
+                    proposed_change_name=proposed_change.name.value,
+                    proposed_change_state=proposed_change.state.value,
+                    reviewer_account_id=current_user.id,
+                    reviewer_account_name=current_user.name.value,
+                    reviewer_former_decision=ProposedChangeApprovalDecision.REJECT.value,
+                    meta=event_meta,
+                )
+
+            case _:
+                raise ValidationError(input_value=f"Invalid decision {decision}")
+
+        return event
+
+
+class ProposedChangeMergeInput(InputObjectType):
+    id = String(required=True)
+
+
+class ProposedChangeMerge(Mutation):
+    class Arguments:
+        data = ProposedChangeMergeInput(required=True)
+        wait_until_completion = Boolean(required=False)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: dict[str, Any],
+        wait_until_completion: bool = True,
+    ) -> dict[str, bool]:
+        graphql_context: GraphqlContext = info.context
+        task: dict | None = None
+
+        identifier = data.get("id", "")
+        proposed_change = await NodeManager.get_one(
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=graphql_context.db, raise_on_error=True
+        )
+        state = ProposedChangeState(proposed_change.state.value.value)
+        if state != ProposedChangeState.OPEN:
+            raise ValidationError("Only proposed change in OPEN state can be merged")
+
+        async with graphql_context.db.start_session() as db:
+            proposed_change.state.value = ProposedChangeState.MERGING.value
+            await proposed_change.save(db=db)
+
+        if wait_until_completion:
+            await graphql_context.service.workflow.execute_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
+            )
+        else:
+            workflow = await graphql_context.service.workflow.submit_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
+            )
+            task = {"id": workflow.id}
+
+        return cls(ok=True, task=task)
+
+
+class ProposedChangeCheckForApprovalRevokeInput(InputObjectType):
+    ids = Field(List(of_type=String, required=True), required=False)
+
+
+class ProposedChangeCheckForApprovalRevoke(Mutation):
+    class Arguments:
+        data = ProposedChangeCheckForApprovalRevokeInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: dict[str, Any],
+    ) -> dict[str, bool]:
+        db = info.context.db
+        ids: list[str] | None
+        try:
+            ids = data["ids"]
+        except KeyError:
+            ids = None
+
+        await do_revoke_approvals_on_updated_pcs(db=db, proposed_changes_ids=ids)
+        return cls(ok=True)
 
 
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:

@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, List, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
+from graphene import Boolean, Field, List, NonNull, ObjectType, String
 
-from infrahub.services import services
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class StatusSummary(ObjectType):
@@ -30,7 +29,7 @@ class StatusWorkerEdge(ObjectType):
 
 
 class StatusWorkerEdges(ObjectType):
-    edges = Field(List(of_type=StatusWorkerEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(StatusWorkerEdge), required=True), required=True)
 
 
 class Status(ObjectType):
@@ -39,15 +38,18 @@ class Status(ObjectType):
 
 
 async def resolve_status(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
-    context: GraphqlContext = info.context
-    service = context.service or services.service
-    fields = await extract_fields_first_node(info)
+    graphql_context: GraphqlContext = info.context
+    service = graphql_context.service
+    if service is None:
+        raise ValueError("GraphqlContext.service is None")
+
+    fields = extract_graphql_fields(info=info)
     response: dict[str, Any] = {}
     workers = await service.component.list_workers(
-        branch=context.branch.id if context.branch.id else context.branch.name, schema_hash=True
+        branch=str(graphql_context.branch.uuid) or graphql_context.branch.name, schema_hash=True
     )
 
     if summary := fields.get("summary"):
@@ -63,4 +65,6 @@ async def resolve_status(
     return response
 
 
-InfrahubStatus = Field(Status, resolver=resolve_status)
+InfrahubStatus = Field(
+    Status, description="Retrieve the status of all infrahub workers.", resolver=resolve_status, required=True
+)

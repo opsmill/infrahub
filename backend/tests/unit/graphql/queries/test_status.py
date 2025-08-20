@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.components import ComponentType
 from infrahub.core.registry import registry
 from infrahub.services import InfrahubServices
+from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
@@ -18,9 +19,15 @@ if TYPE_CHECKING:
 async def test_status_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None):
     cache = MemoryCache()
     bus = BusRecorder()
-    service = InfrahubServices(cache=cache, database=db, component_type=ComponentType.API_SERVER, message_bus=bus)
+    service = await InfrahubServices.new(
+        cache=cache,
+        database=db,
+        component_type=ComponentType.API_SERVER,
+        message_bus=bus,
+        component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
+    )
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    await service.component.initialize(service=service)
+
     await service.component.refresh_heartbeat()
     await service.component.refresh_schema_hash()
     response = await graphql_query(query=STATUS_QUERY, db=db, branch=default_branch, service=service)

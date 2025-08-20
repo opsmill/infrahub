@@ -2,10 +2,13 @@ import logging
 import random
 from ipaddress import IPv4Interface, IPv4Network
 
-from infrahub_sdk import InfrahubClient, InfrahubNode, NodeStore
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.store import NodeStore
+
+from infrahub_sdk.protocols import CoreAccount
 
 # flake8: noqa
-# pylint: skip-file
 
 ROLES = ["role11", "role21", "role31"]
 STATUSES = ["reserved", "provisioning", "active", "maintenance", "obsolete"]
@@ -18,9 +21,9 @@ ORGANIZATIONS = (
 )
 
 ACCOUNTS = (
-    # (name, type, password, rights)
-    ("security-builder", "Script", "Password123", "read-write"),
-    ("John Doe", "User", "Password123", "read-write"),
+    # (name, type, password)
+    ("security-builder", "Script", "Password123"),
+    ("John Doe", "User", "Password123"),
 )
 
 APPLICATIONS = (
@@ -164,7 +167,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="CoreAccount",
-            data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
+            data={"name": account[0], "password": account[2], "type": account[1]},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=account[0], node=obj)
@@ -179,8 +182,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     async for node, _ in batch.execute():
         prepare_log(node, log)
 
-    account_security = store.get("security-builder")
-    store.get("John Doe")
+    account_security = store.get(key="security-builder", kind=CoreAccount, raise_when_missing=True)
 
     # ------------------------------------------
     # Create Status, Role & Tags

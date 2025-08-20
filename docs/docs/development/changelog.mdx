@@ -1,0 +1,42 @@
+---
+title: Changelog guide
+---
+# Changelog guide
+
+Infrahub utilizes a tool called [`towncrier`](https://towncrier.readthedocs.io/) for Changelog management and generation.
+
+The Changelog is maintained in a `CHANGELOG.md` file in the main directory of each package in this repository.
+
+Multiple Changelogs can be merged into a single Release Note for the overall project.
+
+Infrahub follows the best practices from [Keep a Changelog](https://keepachangelog.com/), and our categories of change are:
+
+    - **Added** for new features
+    - **Changed** for changes in existing functionality
+    - **Deprecated** for soon-to-be removed features
+    - **Removed** for now removed features
+    - **Fixed** for any bug fixes
+    - **Security** in case of vulnerabilities
+
+## Creating changelog entries
+
+What this means in practice for contributing to Infrahub is:
+
+1. Any PR to the `develop` (or `stable`) branch that closes an issue should contain at least one Markdown formatted "Newsfragment" file in the related `changelog` directory
+    - `changelog/` for Infrahub changes
+    - `python-sdk/changelog` for Infrahub SDK changes
+1. This file should be named with the format `<github issue id>.<change type>.md`. For example:
+    - A Newsfragment file named `1234.fixed.md` represents a bug fix PR closing GitHub Issue #1234
+    - This allows `towncrier` to populate the correct section of the Changelog with the relevant information
+    - *Note*: If a PR doesn't close (or at least reference) a specific issue, you can utilize plain-text for the prefix by appending `+` to the filename.
+        - For example: `+this_is_not_a_github_issue.fixed.md`
+1. Available Newsfragment suffixes are:
+    - `added`
+    - `changed`
+    - `deprecated`
+    - `removed`
+    - `fixed`
+    - `security`
+1. Upon release of a new version, maintainers (and eventually CI) will execute `towncrier build` in each package directory which will do the following:
+    1. Consolidate all Newsfragment files in each `changelog` directories into a respective file each named `CHANGELOG.md`, and automatically prepend the changelog into the relevant release section
+    1. `git rm` all individual Newsfragment files

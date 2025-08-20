@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.registry import registry
@@ -27,12 +27,12 @@ class NodePropertyData(BaseModel):
 
 
 class FlagPropertyMixin:
-    _flag_properties: List[str] = [v.value for v in FlagProperty]
+    _flag_properties: list[str] = [v.value for v in FlagProperty]
 
     is_visible = True
     is_protected = False
 
-    def _init_flag_property_mixin(self, kwargs: Optional[dict] = None) -> None:
+    def _init_flag_property_mixin(self, kwargs: dict | None = None) -> None:
         if not kwargs:
             return
 
@@ -42,12 +42,12 @@ class FlagPropertyMixin:
 
 
 class NodePropertyMixin:
-    _node_properties: List[str] = [v.value for v in NodeProperty]
+    _node_properties: list[str] = [v.value for v in NodeProperty]
 
     branch: Branch
     at: Timestamp
 
-    def _init_node_property_mixin(self, kwargs: Optional[dict] = None) -> None:
+    def _init_node_property_mixin(self, kwargs: dict | None = None) -> None:
         for node in self._node_properties:
             setattr(self, f"_{node}", None)
             setattr(self, f"{node}_id", None)
@@ -66,7 +66,7 @@ class NodePropertyMixin:
         return self._get_node_property_from_cache(name="source")
 
     @source.setter
-    def source(self, value: Union[str, Node, UUID]) -> None:
+    def source(self, value: str | Node | UUID) -> None:
         self._set_node_property(name="source", value=value)
 
     @property
@@ -74,25 +74,25 @@ class NodePropertyMixin:
         return self._get_node_property_from_cache(name="owner")
 
     @owner.setter
-    def owner(self, value: Optional[Union[str, Node, UUID]]) -> None:
+    def owner(self, value: str | Node | UUID | None) -> None:
         self._set_node_property(name="owner", value=value)
 
     def clear_owner(self) -> None:
         self._set_node_property(name="owner", value=None)
 
-    async def get_source(self, db: InfrahubDatabase) -> Optional[Node]:
+    async def get_source(self, db: InfrahubDatabase) -> Node | None:
         return await self._get_node_property(name="source", db=db)
 
     def clear_source(self) -> None:
         self._set_node_property(name="source", value=None)
 
-    def set_source(self, value: Union[str, Node, UUID]) -> None:
+    def set_source(self, value: str | Node | UUID) -> None:
         self._set_node_property(name="source", value=value)
 
-    async def get_owner(self, db: InfrahubDatabase) -> Optional[Node]:
+    async def get_owner(self, db: InfrahubDatabase) -> Node | None:
         return await self._get_node_property(name="owner", db=db)
 
-    def set_owner(self, value: Union[str, Node, UUID]) -> None:
+    def set_owner(self, value: str | Node | UUID) -> None:
         self._set_node_property(name="owner", value=value)
 
     def _get_node_property_from_cache(self, name: str) -> Node:
@@ -107,7 +107,7 @@ class NodePropertyMixin:
 
         return item
 
-    async def _get_node_property(self, db: InfrahubDatabase, name: str) -> Optional[Node]:
+    async def _get_node_property(self, db: InfrahubDatabase, name: str) -> Node | None:
         """Return the node attribute.
         If the node is already present in cache, serve from the cache
         If the node is not present, query it on the fly using the node_id
@@ -117,13 +117,13 @@ class NodePropertyMixin:
 
         return getattr(self, f"_{name}", None)
 
-    def _set_node_property(self, name: str, value: Optional[Union[str, Node, UUID]]) -> None:
+    def _set_node_property(self, name: str, value: str | Node | UUID | None) -> None:
         """Set the value of the node_property.
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
         if the value is None, we just initialize the 2 variables."""
 
-        if isinstance(value, (str, UUID)):
+        if isinstance(value, str | UUID):
             setattr(self, f"{name}_id", value)
             setattr(self, f"_{name}", None)
         elif isinstance(value, dict) and "id" in value:

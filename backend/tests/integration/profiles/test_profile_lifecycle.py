@@ -1,5 +1,4 @@
 import pytest
-from graphql import graphql
 from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
@@ -8,7 +7,8 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -47,7 +47,7 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_01_one_person_no_profile(
         self, db: InfrahubDatabase, schema_person_base, person_1, person_profile_1, client: InfrahubClient
     ):
-        retrieved_person = await client.get(kind="TestingPerson", id=person_1.id)
+        retrieved_person = await client.get(kind="TestingPerson", id=person_1.id, property=True)
 
         assert retrieved_person.profiles.peer_ids == []
         assert retrieved_person.name.value == "Starbuck"
@@ -86,7 +86,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id, "profile_id": person_profile_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -134,7 +134,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -184,7 +184,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "person_id": person_1.id,
         }
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -229,7 +229,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -251,7 +251,7 @@ class TestProfileLifecycle(TestInfrahubApp):
 
     async def test_step_06_get_person_multiple_profiles(self, person_1, person_profile_1, client: InfrahubClient):
         person_profile_2 = await client.get(kind="ProfileTestingPerson", profile_name__value="profile-two")
-        retrieved_person = await client.get(kind="TestingPerson", id=person_1.id)
+        retrieved_person = await client.get(kind="TestingPerson", id=person_1.id, property=True)
         await retrieved_person.profiles.fetch()
 
         assert set(retrieved_person.profiles.peer_ids) == {person_profile_1.id, person_profile_2.id}
@@ -268,7 +268,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         default_branch,
         client,
     ):
-        person_2 = await client.get(kind="TestingPerson", name__value="Apollo")
+        person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
         mutation = """
             mutation {
                 TestingPersonUpdate(data: {id: "%(person_id)s", profiles: []}) {
@@ -291,7 +291,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_2.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -325,7 +325,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_2.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -341,9 +341,9 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_09_check_persons(
         self, db: InfrahubDatabase, person_1, person_profile_1, client: InfrahubClient
     ):
-        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id)
+        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
         await retrieved_person_1.profiles.fetch()
-        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo")
+        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
 
         assert retrieved_person_1.profiles.peer_ids == [person_profile_1.id]
         assert retrieved_person_1.name.value == "Kara Thrace"
@@ -389,7 +389,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -429,7 +429,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -450,9 +450,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert attributes["height"] == {"value": 134}
 
     async def test_step_12_check_persons_again(self, person_1, person_profile_1, client: InfrahubClient):
-        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id)
+        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
         await retrieved_person_1.profiles.fetch()
-        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo")
+        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
 
         assert retrieved_person_1.profiles.peer_ids == [person_profile_1.id]
         assert retrieved_person_1.name.value == "Kara Thrace"

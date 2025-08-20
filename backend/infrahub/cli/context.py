@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub.database import get_db
+from infrahub.workers.dependencies import get_database
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -11,8 +11,9 @@ if TYPE_CHECKING:
 
 @dataclass
 class CliContext:
-    database_class: type[InfrahubDatabase]
     application: str = "infrahub.server:app"
 
-    async def get_db(self, retry: int = 0) -> InfrahubDatabase:
-        return self.database_class(driver=await get_db(retry=retry))
+    # This method is inherited for Infrahub Enterprise.
+    @staticmethod
+    async def init_db(retry: int) -> InfrahubDatabase:  # type:ignore  # noqa
+        return await get_database()

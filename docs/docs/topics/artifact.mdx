@@ -2,9 +2,22 @@
 title: Artifact
 ---
 
+import VideoPlayer from '../../src/components/VideoPlayer';
+
 # Artifact
 
-An artifact is the result of a [Transformation](./transformation.mdx) for a specific context and/or object. It can be either plain text or JSON format.
+An artifact is the result of a [Transformation](./transformation.mdx) for a specific context and/or object.
+
+The following MIME types or formats are supported and will be rendered properly in Infrahub's web interface:
+
+- application/json
+- application/yaml
+- application/xml
+- application/hcl
+- text/plain
+- text/markdown
+- text/csv
+- image/svg+xml
 
 :::success Examples
 
@@ -23,6 +36,10 @@ While it's always possible to generate [Transformations](./transformation.mdx) o
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
+<center>
+  <VideoPlayer url='https://www.youtube.com/watch?v=ASGMKZVLCbY' light />
+</center>
+
 ## High level design
 
 Artifacts are defined by grouping a [transformation](./transformation.mdx) with a group of targets in an *Artifact Definition*.
@@ -34,17 +51,17 @@ An **artifact definition** centralizes all the information required to generate 
 - Format of the output
 - Information to extract from each target that must be passed to the transformation.
 
-From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the transformation is stored in the [object storage](./object-storage.mdx). The generation of the artifacts is performed by the Git agent(s).
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the transformation is stored in the [object storage](./object-storage.mdx). The generation of the artifacts is performed by the Task worker(s).
 
 ![](../media/topics/artifact/architecture.excalidraw.svg)
 
 ## CoreArtifactTarget
 
-Optionally, a Node can have a relation to an Artifact. The relation will be created when the Artifact is generated the first time. This has the benefit that querying the artifacts for a node becomes easier and that an extra artifacts tab will appear in the Node's detailed view in the UI.
+A node for which you want to generate an Artifact, must inherit from the `CoreArtifactTarget` generic.
+
+As a result of this, an Artifacts tab will show up in the node's detailed view in the UI, which allows you to access all of the artifacts that have been generated for this node.
 
 ![artifact tab](../media/topics/artifact/node_detail_view_artifact_tab.png)
-
-To achieve this we have to inherit from the **CoreArtifactTarget** Generic in the [schema](./schema.mdx) of the node.
 
 ```yaml
 nodes:

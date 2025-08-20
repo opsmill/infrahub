@@ -1,39 +1,49 @@
-import os
-from typing import Generator
+import asyncio
+from pathlib import Path
+from typing import AsyncGenerator, Generator
 
 import pytest
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from fast_depends import Provider
+from fast_depends import dependency_provider as provider
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
+from prefect.client.orchestration import PrefectClient
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_account,
+    create_default_account_groups,
     create_default_branch,
     create_global_branch,
     create_root_node,
     initialization,
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.server import app, app_initialization
+from infrahub.server import app, lifespan
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_cache, build_client, build_message_bus, build_workflow
+from infrahub.workflows.initialization import setup_task_manager
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.events import query_events_by_name
 
 from .test_client import InfrahubTestClient
 
 
-class TestInfrahubApp:
-    @pytest.fixture(scope="class")
-    def api_token(self) -> str:
-        return str(UUIDT())
+class TestInfrahub:
+    default_services: InfrahubServices
 
     @pytest.fixture(scope="class")
-    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> str:
-        storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
-        if not os.path.exists(storage_dir):
-            os.mkdir(storage_dir)
+    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> Path:
+        storage_dir = Path(tmpdir_factory.getbasetemp().strpath) / "storage"
+        storage_dir.mkdir(parents=True, exist_ok=True)
 
         config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
         config.SETTINGS.storage.local.path_ = storage_dir
@@ -41,15 +51,7 @@ class TestInfrahubApp:
         return storage_dir
 
     @pytest.fixture(scope="class")
-    def bus_simulator(self, db: InfrahubDatabase) -> Generator[BusSimulator, None, None]:
-        bus = BusSimulator(database=db)
-        original = config.OVERRIDE.message_bus
-        config.OVERRIDE.message_bus = bus
-        yield bus
-        config.OVERRIDE.message_bus = original
-
-    @pytest.fixture(scope="class")
-    async def default_branch(self, local_storage_dir: str, db: InfrahubDatabase) -> Branch:
+    async def default_branch(self, local_storage_dir: Path, db: InfrahubDatabase) -> Branch:
         registry.delete_all()
         await delete_all_nodes(db=db)
         await create_root_node(db=db)
@@ -57,6 +59,58 @@ class TestInfrahubApp:
         await create_global_branch(db=db)
         registry.schema = SchemaManager()
         return branch
+
+
+class TestInfrahubApp(TestInfrahub):
+    @pytest.fixture(scope="class")
+    def api_admin_token(self) -> str:
+        return str(UUIDT())
+
+    @pytest.fixture(scope="class")
+    def api_unprivileged_token(self) -> str:
+        return str(UUIDT())
+
+    @pytest.fixture(scope="class")
+    def dependency_provider(self) -> Provider:
+        return provider
+
+    @pytest.fixture(scope="class")
+    async def bus_simulator(
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[BusSimulator, None]:
+        # Creating another service object to get service correctly initialized is a hack.
+        # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
+        # or ideally properly patch production code responsible for Bus instantiation instead
+        bus = BusSimulator()
+        _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
+        config.OVERRIDE.message_bus = bus
+        with dependency_provider.scope(build_message_bus, lambda: bus):
+            yield bus
+
+    @pytest.fixture(scope="class")
+    async def memory_cache(
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[MemoryCache, None]:
+        cache = MemoryCache()
+        config.OVERRIDE.cache = cache
+        with dependency_provider.scope(build_cache, lambda: cache):
+            yield cache
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[WorkflowLocalExecution, None]:
+        original = config.OVERRIDE.workflow
+        workflow = WorkflowLocalExecution()
+        await setup_task_manager()
+        config.OVERRIDE.workflow = workflow
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
+        config.OVERRIDE.workflow = original
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+        return app.state.service
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
@@ -78,35 +132,91 @@ class TestInfrahubApp:
 
     @pytest.fixture(scope="class")
     async def test_client(
-        self,
-        initialize_registry: None,
-    ) -> InfrahubTestClient:
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
+        self, initialize_registry: None, redis: dict[int, int] | None, nats: dict[int, int] | None
+    ) -> AsyncGenerator[InfrahubTestClient, None]:
+        # NOTE 1: lifespan call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
+        # while services.service.client is not set. There might be a design issue here: a client is needed while
+        # the app is being initialized.
+        # NOTE 2: FastAPI does not have an asynchronous TestClient, thus we rely on httpx.AsyncClient which does not trigger
+        # lifespan events (see https://fastapi.tiangolo.com/advanced/async-tests/#in-detail).
+        async with lifespan(app):
+            yield InfrahubTestClient(app=app, base_url="http://testserver")
 
     @pytest.fixture(scope="class")
     async def client(
-        self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator
+        self,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        bus_simulator: BusSimulator,
+        service: InfrahubServices,
+        dependency_provider: Provider,
     ) -> InfrahubClient:
         config = Config(
-            api_token=api_token, requester=test_client.async_request, sync_requester=test_client.sync_request
+            api_token=api_admin_token,
+            requester=test_client.async_request,
+            sync_requester=test_client.sync_request,
+            schema_converge_timeout=5,
         )
 
-        sdk_client = await InfrahubClient.init(config=config)
+        sdk_client = InfrahubClient(config=config)
 
-        bus_simulator.service._client = sdk_client
+        # Some tests rely on infrahub worker which runs locally during testing. Thus, code supposed to run
+        # on worker rely on server's `services.service`, which is not initialized with a client,
+        # instead of the worker one. Thus, we temporarily set `services.service.client`
+        # here to mock worker's `services.service`.
+        assert isinstance(service.workflow, WorkflowLocalExecution), (
+            "These tests are currently meant to run with a local worker"
+        )
 
+        service._client = sdk_client
+        with dependency_provider.scope(build_client, lambda: sdk_client):
+            yield sdk_client
+
+    @pytest.fixture(scope="class")
+    async def unprivileged_client(
+        self,
+        test_client: InfrahubTestClient,
+        api_unprivileged_token: str,
+        bus_simulator: BusSimulator,
+        service: InfrahubServices,
+        dependency_provider: Provider,
+    ) -> InfrahubClient:
+        config = Config(
+            api_token=api_unprivileged_token,
+            requester=test_client.async_request,
+            sync_requester=test_client.sync_request,
+            schema_converge_timeout=5,
+        )
+
+        sdk_client = InfrahubClient(config=config)
         return sdk_client
 
     @pytest.fixture(scope="class")
     async def initialize_registry(
-        self, db: InfrahubDatabase, register_core_schema: SchemaBranch, bus_simulator: BusSimulator, api_token: str
+        self,
+        db: InfrahubDatabase,
+        register_core_schema: SchemaBranch,
+        bus_simulator: BusSimulator,
+        api_admin_token: str,
+        api_unprivileged_token: str,
     ) -> None:
-        await create_account(
-            db=db,
-            name="admin",
-            password=config.SETTINGS.initial.admin_password,
-            token_value=api_token,
+        unprivileged_account = await create_account(
+            db=db, name="unprivileged", password="testing_unprivileged_password", token_value=api_unprivileged_token
+        )
+        admin_account = await create_account(
+            db=db, name="admin", password=config.SETTINGS.initial.admin_password, token_value=api_admin_token
         )
 
+        await create_default_account_groups(db=db, admin_accounts=[admin_account], accounts=[unprivileged_account])
+
+        # This call emits a warning related to the fact database index manager has not been initialized.
         await initialization(db=db)
+
+    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
+        for _ in range(10):
+            events = await query_events_by_name(client=prefect_client, event_name=event_name)
+            if len(events) == 1:
+                return
+            await asyncio.sleep(1)
+
+        pytest.fail(f"unable to find prefect event '{event_name}'")

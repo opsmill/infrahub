@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
@@ -18,20 +19,17 @@ if TYPE_CHECKING:
 class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_length_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["min_length"] = self.attribute_schema.min_length
-        self.params["max_length"] = self.attribute_schema.max_length
+        self.params["min_length"] = self.attribute_schema.get_min_length()
+        self.params["max_length"] = self.attribute_schema.get_max_length()
 
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
-        CALL {
-            WITH n
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)
@@ -42,13 +40,12 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             LIMIT 1
         }
         WITH full_path, node, attribute_value, value_relationship
-        WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND (
             (toInteger($min_length) IS NOT NULL AND size(attribute_value) < toInteger($min_length))
             OR (toInteger($max_length) IS NOT NULL AND size(attribute_value) > toInteger($max_length))
         )
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship", "attribute_value"]
@@ -72,7 +69,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeLengthChecker(ConstraintCheckerInterface):
     query_classes = [AttributeLengthUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 
@@ -81,14 +78,21 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
         return "attribute.length.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in ("attribute.min_length.update", "attribute.max_length.update")
+        return request.constraint_name in (
+            "attribute.min_length.update",
+            "attribute.max_length.update",
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
+        )
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
-        if attribute_schema.min_length is None and attribute_schema.max_length is True:
+        min_length = attribute_schema.get_min_length()
+        max_length = attribute_schema.get_max_length()
+        if min_length is None and max_length is None:
             return grouped_data_paths_list
 
         for query_class in self.query_classes:

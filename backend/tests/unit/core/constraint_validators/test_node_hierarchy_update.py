@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pytest
 
 from infrahub.core import registry
@@ -8,6 +6,7 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.node.hierarchy import NodeHierarchyChecker, NodeHierarchyUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
@@ -16,7 +15,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.fixture
 async def hierarchical_location_data_simple_and_small(
     db: InfrahubDatabase, hierarchical_location_schema_simple
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     nodes = {}
 
     r1 = await Node.init(db=db, schema="LocationRegion")
@@ -117,7 +116,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r1_rack"].id,
         )
         in all_data_paths
@@ -128,7 +127,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r2_rack"].id,
         )
         in all_data_paths
@@ -139,7 +138,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r2_rack"].id,
         )
         in all_data_paths
@@ -150,7 +149,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r1_rack"].id,
         )
         in all_data_paths
@@ -181,7 +180,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r1"].id,
         )
         in all_data_paths
@@ -192,7 +191,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r2"].id,
         )
         in all_data_paths
@@ -203,7 +202,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r2"].id,
         )
         in all_data_paths
@@ -214,7 +213,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r1"].id,
         )
         in all_data_paths
@@ -249,7 +248,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r1_rack"].id,
         )
         in all_data_paths
@@ -260,7 +259,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=s1r1_rack2.id,
         )
         in all_data_paths
@@ -271,7 +270,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r2_rack"].id,
         )
         in all_data_paths
@@ -282,7 +281,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r2_rack"].id,
         )
         in all_data_paths
@@ -293,7 +292,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r1_rack"].id,
         )
         in all_data_paths
@@ -328,7 +327,7 @@ async def test_query_delete_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r2_rack"].id,
         )
         in all_data_paths
@@ -339,7 +338,7 @@ async def test_query_delete_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r2_rack"].id,
         )
         in all_data_paths
@@ -350,7 +349,7 @@ async def test_query_delete_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r1_rack"].id,
         )
         in all_data_paths
@@ -371,6 +370,7 @@ async def test_validator_parents_failure(
         constraint_name="node.parent.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -397,6 +397,7 @@ async def test_validator_parents_success(
         constraint_name="node.parent.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -421,6 +422,7 @@ async def test_validator_children_failure(
         constraint_name="node.children.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -447,6 +449,7 @@ async def test_validator_children_success(
         constraint_name="node.children.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)

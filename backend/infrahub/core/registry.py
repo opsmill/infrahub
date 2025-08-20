@@ -2,15 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional, Type, Union
+from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.exceptions import (
-    BranchNotFoundError,
-    DataTypeNotFoundError,
-    InitializationError,
-)
+from infrahub.exceptions import BranchNotFoundError, DataTypeNotFoundError, InitializationError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -19,45 +15,42 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.manager import NodeManager
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
-    from infrahub.core.schema_manager import SchemaManager
+    from infrahub.core.schema.manager import SchemaManager
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
     from infrahub.graphql.types import InfrahubObject
+    from infrahub.permissions import PermissionBackend
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
-
-# pylint: disable=too-many-public-methods
 
 
 @dataclass
 class Registry:
-    id: Optional[str] = None
-    attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
-    branch: dict = field(default_factory=dict)
+    id: str | None = None
+    attribute: dict[str, type[BaseAttribute]] = field(default_factory=dict)
+    branch: dict[str, Branch] = field(default_factory=dict)
     node: dict = field(default_factory=dict)
-    _default_branch: Optional[str] = None
-    _default_ipnamespace: Optional[str] = None
-    _schema: Optional[SchemaManager] = None
-    default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
+    _default_branch: str | None = None
+    _default_ipnamespace: str | None = None
+    _schema: SchemaManager | None = None
+    default_graphql_type: dict[str, InfrahubObject | type[BaseAttribute]] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
-    data_type: Dict[str, Type[InfrahubDataType]] = field(default_factory=dict)
-    input_type: Dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
-    account: dict = field(default_factory=dict)
-    account_id: dict = field(default_factory=dict)
-    node_group: dict = field(default_factory=dict)
+    data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
+    input_type: dict[str, type[BaseAttributeCreate | BaseAttributeUpdate]] = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
-    _branch_object: Optional[Type[Branch]] = None
-    _manager: Optional[Type[NodeManager]] = None
-    _storage: Optional[InfrahubObjectStorage] = None
+    _branch_object: type[Branch] | None = None
+    _manager: type[NodeManager] | None = None
+    _storage: InfrahubObjectStorage | None = None
+    permission_backends: list[PermissionBackend] = field(default_factory=list)
 
     @property
-    def branch_object(self) -> Type[Branch]:
+    def branch_object(self) -> type[Branch]:
         if not self._branch_object:
             raise InitializationError
         return self._branch_object
 
     @branch_object.setter
-    def branch_object(self, value: Type[Branch]) -> None:
+    def branch_object(self, value: type[Branch]) -> None:
         self._branch_object = value
 
     @property
@@ -94,14 +87,14 @@ class Registry:
         self._schema = value
 
     @property
-    def manager(self) -> Type[NodeManager]:
+    def manager(self) -> type[NodeManager]:
         if not self._manager:
             raise InitializationError
 
         return self._manager
 
     @manager.setter
-    def manager(self, value: Type[NodeManager]) -> None:
+    def manager(self, value: type[NodeManager]) -> None:
         self._manager = value
 
     @property
@@ -120,35 +113,29 @@ class Registry:
             return True
         return False
 
-    def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
+    def get_node_schema(self, name: str, branch: Branch | str | None = None) -> NodeSchema:
         return self.schema.get_node_schema(name=name, branch=branch)
 
-    def get_data_type(
-        self,
-        name: str,
-    ) -> Type[InfrahubDataType]:
+    def get_data_type(self, name: str) -> type[InfrahubDataType]:
         if name not in self.data_type:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
-    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, MainSchemaTypes]:
+    def get_full_schema(self, branch: Branch | str | None = None, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
-        return self.schema.get_full(branch=branch)
+        return self.schema.get_full(branch=branch, duplicate=duplicate)
 
     def delete_all(self) -> None:
         self.branch = {}
         self.node = {}
         self._schema = None
         self._default_ipnamespace = None
-        self.account = {}
-        self.account_id = {}
-        self.node_group = {}
         self.attr_group = {}
         self.data_type = {}
         self.attribute = {}
         self.input_type = {}
 
-    def get_branch_from_registry(self, branch: Optional[Union[Branch, str]] = None) -> Branch:
+    def get_branch_from_registry(self, branch: Branch | str | None = None) -> Branch:
         """Return a branch object from the registry based on its name.
 
         Args:
@@ -179,8 +166,8 @@ class Registry:
     async def get_branch(
         self,
         db: InfrahubDatabase,
-        session: Optional[AsyncSession] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        session: AsyncSession | None = None,
+        branch: Branch | str | None = None,
     ) -> Branch:
         """Return a branch object based on its name.
 
@@ -222,6 +209,33 @@ class Registry:
 
     def get_global_branch(self) -> Branch:
         return self.get_branch_from_registry(branch=GLOBAL_BRANCH_NAME)
+
+    def get_altered_schema_branches(self) -> list[str]:
+        """Return a list of branch names that has a different hash than the default branch"""
+        default_branch = self.branch[registry.default_branch]
+        return [
+            name
+            for name, branch in self.branch.items()
+            if name not in [registry.default_branch, GLOBAL_BRANCH_NAME]
+            and branch.active_schema_hash.main != default_branch.active_schema_hash.main
+        ]
+
+    async def purge_inactive_branches(
+        self, db: InfrahubDatabase, active_branches: list[Branch] | None = None
+    ) -> set[str]:
+        """Return a list of branches that were purged from the registry."""
+        active_branches = active_branches or await self.branch_object.get_list(db=db)
+        active_branch_names = [branch.name for branch in active_branches]
+        purged_branches: set[str] = set()
+
+        for branch_name in list(registry.branch.keys()):
+            if branch_name not in active_branch_names:
+                del registry.branch[branch_name]
+                purged_branches.add(branch_name)
+
+        purged_branches.update(self.schema.purge_inactive_branches(active_branches=active_branch_names))
+        purged_branches.update(db.purge_inactive_schemas(active_branches=active_branch_names))
+        return purged_branches
 
 
 registry = Registry()

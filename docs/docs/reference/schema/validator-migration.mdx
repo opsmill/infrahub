@@ -40,7 +40,9 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **order_by** | allowed |
 | **uniqueness_constraints** | validate_constraint |
 | **documentation** | allowed |
-| **inherit_from** | not_supported |
+| **inherit_from** | validate_constraint |
+| **generate_profile** | validate_constraint |
+| **generate_template** | allowed |
 | **hierarchy** | validate_constraint |
 | **parent** | validate_constraint |
 | **children** | validate_constraint |
@@ -51,8 +53,9 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | Name | Status |
 | ---- | ---- |
 | **name** | migration_required |
-| **kind** | validate_constraint |
+| **kind** | migration_required |
 | **enum** | validate_constraint |
+| **computed_attribute** | allowed |
 | **choices** | validate_constraint |
 | **regex** | validate_constraint |
 | **max_length** | validate_constraint |
@@ -66,6 +69,8 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **order_weight** | allowed |
 | **default_value** | allowed |
 | **allow_override** | allowed |
+| **parameters** | validate_constraint |
+| **deprecation** | allowed |
 
 
 ### Relationship
@@ -81,6 +86,8 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **cardinality** | validate_constraint |
 | **min_count** | validate_constraint |
 | **max_count** | validate_constraint |
+| **common_parent** | validate_constraint |
+| **common_relatives** | allowed |
 | **order_weight** | allowed |
 | **optional** | validate_constraint |
 | **branch** | not_supported |
@@ -89,6 +96,7 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **on_delete** | allowed |
 | **allow_override** | allowed |
 | **read_only** | allowed |
+| **deprecation** | allowed |
 
 
 ### Generic
@@ -110,5 +118,7 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **uniqueness_constraints** | validate_constraint |
 | **documentation** | allowed |
 | **hierarchical** | validate_constraint |
+| **generate_profile** | validate_constraint |
+| **generate_template** | allowed |
 
 

@@ -1,16 +1,27 @@
+from __future__ import annotations
+
 import re
-from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING
 
 import ujson
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from lunr.index import Index
 from pydantic import BaseModel
 
 from infrahub import config
-from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
+from infrahub.api.dependencies import get_current_user
+from infrahub.config import (  # noqa: TC001
+    AnalyticsSettings,
+    ExperimentalFeaturesSettings,
+    LoggingSettings,
+    MainSettings,
+)
 from infrahub.core import registry
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.workers.dependencies import get_installation_type
+
+if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
 
 router = APIRouter()
 
@@ -20,6 +31,9 @@ class ConfigAPI(BaseModel):
     logging: LoggingSettings
     analytics: AnalyticsSettings
     experimental_features: ExperimentalFeaturesSettings
+    sso: config.SSOInfo
+    installation_type: str
+    policy: config.PolicySettings
 
 
 class InfoAPI(BaseModel):
@@ -34,19 +48,22 @@ async def get_config() -> ConfigAPI:
         logging=config.SETTINGS.logging,
         analytics=config.SETTINGS.analytics,
         experimental_features=config.SETTINGS.experimental_features,
+        sso=config.SETTINGS.security.public_sso_config,
+        installation_type=get_installation_type(),
+        policy=config.SETTINGS.policy,
     )
 
 
 @router.get("/info")
-async def get_info(request: Request) -> InfoAPI:
+async def get_info(request: Request, _: AccountSession = Depends(get_current_user)) -> InfoAPI:
     return InfoAPI(deployment_id=str(registry.id), version=request.app.version)
 
 
 class SearchDocs:
     def __init__(self) -> None:
-        self._title_documents: List[dict] = []
-        self._heading_documents: List[dict] = []
-        self._heading_index: Optional[Index] = None
+        self._title_documents: list[dict] = []
+        self._heading_documents: list[dict] = []
+        self._heading_index: Index | None = None
 
     def _load_json(self) -> None:
         """
@@ -82,7 +99,7 @@ class SearchDocs:
         """
 
         try:
-            with Path(config.SETTINGS.main.docs_index_path).open(encoding="utf-8") as f:
+            with config.SETTINGS.main.docs_index_path.open(encoding="utf-8") as f:
                 search_index = ujson.loads(f.read())
                 self._title_documents = search_index[0]["documents"]
                 heading_json = search_index[1]
@@ -90,7 +107,7 @@ class SearchDocs:
                 self._heading_index = Index.load(heading_json["index"])
         except FileNotFoundError as exc:
             raise NodeNotFoundError(
-                identifier=config.SETTINGS.main.docs_index_path,
+                identifier=str(config.SETTINGS.main.docs_index_path),
                 message="documentation index not found",
                 node_type="file",
             ) from exc
@@ -103,14 +120,14 @@ class SearchDocs:
         return self._heading_index
 
     @property
-    def title_documents(self) -> List[dict]:
+    def title_documents(self) -> list[dict]:
         if not self._title_documents:
             self._load_json()
 
         return self._title_documents
 
     @property
-    def heading_documents(self) -> List[dict]:
+    def heading_documents(self) -> list[dict]:
         if not self._heading_documents:
             self._load_json()
 
@@ -120,7 +137,7 @@ class SearchDocs:
 search_docs_loader = SearchDocs()
 
 
-def tokenize(text: str) -> List[str]:
+def tokenize(text: str) -> list[str]:
     return re.findall(r"[^-\s]+", text.lower()) or []
 
 
@@ -137,11 +154,13 @@ def smart_queries(query: str) -> str:
 class SearchResultAPI(BaseModel):
     title: str
     url: str
-    breadcrumb: List[str]
+    breadcrumb: list[str]
 
 
 @router.get("/search/docs", include_in_schema=False)
-async def search_docs(query: str, limit: Optional[int] = None) -> List[SearchResultAPI]:
+async def search_docs(
+    query: str, limit: int | None = None, _: AccountSession = Depends(get_current_user)
+) -> list[SearchResultAPI]:
     smart_query = smart_queries(query)
     search_results = search_docs_loader.heading_index.search(smart_query)
     heading_results = [
@@ -152,7 +171,7 @@ async def search_docs(query: str, limit: Optional[int] = None) -> List[SearchRes
     if limit is not None:
         heading_results = heading_results[:limit]
 
-    response_list: List[SearchResultAPI] = [
+    response_list: list[SearchResultAPI] = [
         SearchResultAPI(
             title=result["t"],
             url=result["u"] + result["h"],

@@ -1,0 +1,195 @@
+import { QSP } from "@/config/qsp";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Menu, MenuItem } from "@/shared/components/aria/menu";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Badge } from "@/shared/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
+import { PlayIcon } from "lucide-react";
+import { useState } from "react";
+import { Text } from "react-aria-components";
+import { Link } from "react-router";
+import { toast } from "react-toastify";
+
+export interface RunGeneratorActionProps {
+  generatorId: string;
+  groupId: string;
+}
+
+export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGeneratorActionProps) {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [showTargetForm, setShowTargetForm] = useState(false);
+  const { isPending, mutate } = useRunGeneratorMutation();
+  const { isAuthenticated } = useAuth();
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    setIsPopoverOpen(open);
+    setShowTargetForm(false);
+  };
+
+  const handleRunGenerator = (targetNodeIds?: string[]) => {
+    mutate(
+      { generatorId, targetNodeIds },
+      {
+        onSuccess: ({ taskId }) => {
+          const url = constructPath(window.location.pathname, [
+            { name: QSP.TAB, value: "tasks" },
+            { name: QSP.TASK_ID, value: taskId },
+          ]);
+
+          toast(
+            <Alert
+              type={ALERT_TYPES.SUCCESS}
+              message={
+                <>
+                  Generator started successfully.
+                  <br />
+                  <Link to={url} className="underline flex items-center gap-1">
+                    View task details
+                  </Link>
+                </>
+              }
+            />
+          );
+        },
+      }
+    );
+    setIsPopoverOpen(false);
+  };
+
+  return (
+    <Popover open={isPopoverOpen} onOpenChange={handlePopoverOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="active" isLoading={isPending} disabled={isPending || !isAuthenticated}>
+          {!isPending && <PlayIcon className="size-4 mr-2" />}
+          Run
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent className="p-1 min-w-[200px] max-w-sm" align="end">
+        {showTargetForm ? (
+          <GeneratorTargetSelectionForm
+            generatorId={generatorId}
+            groupId={groupId}
+            onSubmit={handleRunGenerator}
+            onCancel={() => setShowTargetForm(false)}
+          />
+        ) : (
+          <Menu aria-label="Run generator options">
+            <MenuItem onAction={() => handleRunGenerator()} className="flex-col gap-0 items-start">
+              <Text slot="label" className="font-semibold">
+                All targets
+              </Text>
+              <Text slot="description" className="text-gray-600 text-xs">
+                Generate for all members in the target group
+              </Text>
+            </MenuItem>
+            <MenuItem
+              onAction={() => setShowTargetForm(true)}
+              className="flex-col gap-0 items-start"
+            >
+              <Text slot="label" className="font-semibold">
+                Selected targets
+              </Text>
+              <Text slot="description" className="text-gray-600 text-xs">
+                Choose specific members of target group
+              </Text>
+            </MenuItem>
+          </Menu>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+interface GeneratorTargetSelectionFormProps extends RunGeneratorActionProps {
+  onSubmit: (targetNodeIds: string[]) => void;
+  onCancel?: () => void;
+}
+
+export function GeneratorTargetSelectionForm({
+  groupId,
+  onSubmit,
+  onCancel,
+}: GeneratorTargetSelectionFormProps) {
+  const [selectedTargetNodes, setSelectedTargetNodes] = useState<RelationshipNode[]>([]);
+
+  const handleRemoveTarget = (nodeId: string) => {
+    setSelectedTargetNodes((prev) => prev.filter((node) => node.id !== nodeId));
+  };
+
+  const handleSelect = (selectedRelationship: RelationshipNode) => {
+    setSelectedTargetNodes((prev) => [...prev, selectedRelationship]);
+  };
+
+  const handleSubmit = () => {
+    onSubmit(selectedTargetNodes.map((node) => node.id));
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-sm font-medium">Select target nodes</h3>
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={onCancel}
+          className="text-gray-500 hover:text-gray-700 text-xs h-5 p-1"
+        >
+          Back
+        </Button>
+      </div>
+
+      <div className="rounded-sm border border-gray-200 p-2">
+        {selectedTargetNodes.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {selectedTargetNodes.map((node) => {
+              const label = getNodeLabel(node);
+
+              return (
+                <Badge key={node.id} className="flex items-center gap-1">
+                  {label}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTarget(node.id)}
+                    className={classNames(
+                      focusVisibleStyle,
+                      "text-xs hover:text-gray-900 border border-transparent rounded-full size-3.5 flex items-center justify-center"
+                    )}
+                    aria-label={`Remove ${label}`}
+                  >
+                    ×
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        ) : (
+          <span className="text-gray-400">No targets selected</span>
+        )}
+      </div>
+
+      <RelationshipComboboxList
+        autoFocus
+        className="rounded-sm border"
+        peer="CoreNode"
+        onSelect={handleSelect}
+        filterQuery={{
+          member_of_groups__ids: groupId,
+        }}
+        filterItem={(node) => !selectedTargetNodes.some((v) => v.id === node.id)}
+      />
+
+      <Button disabled={selectedTargetNodes.length === 0} variant="active" onClick={handleSubmit}>
+        Run Generator
+      </Button>
+    </div>
+  );
+}

@@ -1,0 +1,79 @@
+---
+infrahub:
+  global:
+    infrahubTag: 1.2.5
+  infrahubServer:
+    replicas: 3
+    persistence:
+      enabled: false
+    infrahubServer:
+      env:
+        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
+        INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
+        INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
+        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_WORKFLOW_ADDRESS: prefect-server
+        INFRAHUB_WORKFLOW_PORT: 4200
+        PREFECT_API_URL: "http://prefect-server:4200/api"
+        INFRAHUB_STORAGE_DRIVER: s3
+        AWS_ACCESS_KEY_ID: admin
+        AWS_SECRET_ACCESS_KEY: password
+        AWS_S3_BUCKET_NAME: infrahub-data
+        AWS_S3_ENDPOINT_URL: objectstore-minio:9000
+        AWS_S3_USE_SSL: "false"
+        INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+        INFRAHUB_DB_TYPE: neo4j
+        INFRAHUB_LOG_LEVEL: INFO
+        INFRAHUB_PRODUCTION: "false"
+        INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+        INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
+        INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                service: infrahub-server
+            topologyKey: kubernetes.io/hostname
+  infrahubTaskWorker:
+    replicas: 3
+    infrahubTaskWorker:
+      env:
+        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
+        INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
+        INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
+        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_WORKFLOW_ADDRESS: prefect-server
+        INFRAHUB_WORKFLOW_PORT: 4200
+        PREFECT_API_URL: "http://prefect-server:4200/api"
+        INFRAHUB_STORAGE_DRIVER: s3
+        AWS_ACCESS_KEY_ID: admin
+        AWS_SECRET_ACCESS_KEY: password
+        AWS_S3_BUCKET_NAME: infrahub-data
+        AWS_S3_ENDPOINT_URL: objectstore-minio:9000
+        AWS_S3_USE_SSL: "false"
+        INFRAHUB_DB_TYPE: neo4j
+        INFRAHUB_LOG_LEVEL: DEBUG
+        INFRAHUB_PRODUCTION: "false"
+        INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+        INFRAHUB_TIMEOUT: "60"
+        INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+        PREFECT_WORKER_QUERY_SECONDS: 3
+        PREFECT_AGENT_QUERY_INTERVAL: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                service: infrahub-task-worker
+            topologyKey: kubernetes.io/hostname
+  redis:
+    enabled: false
+  neo4j:
+    enabled: false
+  rabbitmq:
+    enabled: false
+  prefect-server:
+    enabled: false

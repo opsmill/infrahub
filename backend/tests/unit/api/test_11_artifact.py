@@ -1,127 +1,179 @@
-from fastapi.testclient import TestClient
+from unittest.mock import call, patch
 
+import pytest
+
+from infrahub import config
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import messages
+from infrahub.git.models import RequestArtifactDefinitionGenerate
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
+from tests.helpers.test_app import TestInfrahubApp
 
 
-async def test_artifact_definition_endpoint(
-    db: InfrahubDatabase,
-    admin_headers,
-    default_branch,
-    rpc_bus,
-    register_core_models_schema,
-    register_builtin_models_schema,
-    car_person_data_generic,
-    authentication_base,
-):
-    from infrahub.server import app
+class TestArtifact11(TestInfrahubApp):
+    async def setup_artifact_definition(
+        self, db: InfrahubDatabase, register_core_models_schema, register_builtin_models_schema, car_person_data_generic
+    ) -> tuple[Node, Node, Node]:
+        group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await group.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
+        await group.save(db=db)
 
-    client = TestClient(app)
+        transform = await Node.init(db=db, schema="CoreTransformPython")
+        await transform.new(
+            db=db,
+            name="transform01",
+            query=str(car_person_data_generic["q1"].id),
+            repository=str(car_person_data_generic["r1"].id),
+            file_path="transform01.py",
+            class_name="Transform01",
+        )
+        await transform.save(db=db)
 
-    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
-    await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
-    await g1.save(db=db)
+        definition = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+        await definition.new(
+            db=db,
+            name="artifactdef01",
+            targets=group,
+            transformation=transform,
+            content_type="application/json",
+            artifact_name="myartifact",
+            parameters={"value": {"name": "name__value"}},
+        )
+        await definition.save(db=db)
 
-    t1 = await Node.init(db=db, schema="CoreTransformPython")
-    await t1.new(
-        db=db,
-        name="transform01",
-        query=str(car_person_data_generic["q1"].id),
-        repository=str(car_person_data_generic["r1"].id),
-        file_path="transform01.py",
-        class_name="Transform01",
-    )
-    await t1.save(db=db)
+        return group, transform, definition
 
-    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
-    await ad1.new(
-        db=db,
-        name="artifactdef01",
-        targets=g1,
-        transformation=t1,
-        content_type="application/json",
-        artifact_name="myartifact",
-        parameters={"value": {"name": "name__value"}},
-    )
-    await ad1.save(db=db)
-
-    # Must execute in a with block to execute the startup/shutdown events
-    with client:
-        response = client.post(
-            f"/api/artifact/generate/{ad1.id}",
-            headers=admin_headers,
+    async def setup_artifact(
+        self, db: InfrahubDatabase, register_core_models_schema, register_builtin_models_schema, car_person_data_generic
+    ) -> Node:
+        _, _, definition = await self.setup_artifact_definition(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
         )
 
-    assert response.status_code == 200
-    assert (
-        messages.RequestArtifactDefinitionGenerate(artifact_definition=ad1.id, branch="main", limit=[])
-        in rpc_bus.messages
-    )
+        artifact = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+        await artifact.new(
+            db=db,
+            name="myyartifact",
+            definition=definition,
+            status="Ready",
+            object=car_person_data_generic["c1"],
+            storage_id="95008984-16ca-4e58-8323-0899bb60035f",
+            checksum="60d39063c26263353de24e1b913e1e1c",
+            content_type="application/json",
+        )
+        await artifact.save(db=db)
 
+        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=b'{"test": true}')
 
-async def test_artifact_endpoint(
-    db: InfrahubDatabase,
-    admin_headers,
-    register_core_models_schema,
-    register_builtin_models_schema,
-    car_person_data_generic,
-    authentication_base,
-):
-    from infrahub.server import app
+        return artifact
 
-    client = TestClient(app)
+    async def test_artifact_definition_endpoint(
+        self,
+        db: InfrahubDatabase,
+        admin_headers,
+        default_branch: Branch,
+        register_core_models_schema,
+        register_builtin_models_schema,
+        car_person_data_generic,
+        authentication_base: Node,
+        client,
+        test_client,
+    ):
+        _, _, definition = await self.setup_artifact_definition(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
 
-    with client:
-        response = client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
-    assert response.status_code == 404
+        # Must execute in a with block to execute the startup/shutdown events
+        with (
+            patch(
+                "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+            ) as mock_submit_workflow,
+        ):
+            response = await test_client.post(
+                f"/api/artifact/generate/{definition.id}",
+                headers=admin_headers,
+            )
 
-    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
-    await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
-    await g1.save(db=db)
+            assert response.status_code == 200
 
-    t1 = await Node.init(db=db, schema="CoreTransformPython")
-    await t1.new(
-        db=db,
-        name="transform01",
-        query=str(car_person_data_generic["q1"].id),
-        repository=str(car_person_data_generic["r1"].id),
-        file_path="transform01.py",
-        class_name="Transform01",
-    )
-    await t1.save(db=db)
+            context = InfrahubContext(
+                branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
+                account=AccountSession(
+                    authenticated=True, account_id=authentication_base.id, session_id=None, auth_type=AuthType.API
+                ),
+            )
 
-    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
-    await ad1.new(
-        db=db,
-        name="artifactdef01",
-        targets=g1,
-        transformation=t1,
-        content_type="application/json",
-        artifact_name="myartifact",
-        parameters={"value": {"name": "name__value"}},
-    )
-    await ad1.save(db=db)
+            expected_calls = [
+                call(
+                    workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                    parameters={
+                        "model": RequestArtifactDefinitionGenerate(
+                            artifact_definition_id=definition.id,
+                            artifact_definition_name=definition.name.value,
+                            branch="main",
+                            limit=[],
+                        )
+                    },
+                    context=context,
+                ),
+            ]
+            mock_submit_workflow.assert_has_calls(expected_calls)
 
-    art1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
-    await art1.new(
-        db=db,
-        name="myyartifact",
-        definition=ad1,
-        status="Ready",
-        object=car_person_data_generic["c1"],
-        storage_id="95008984-16ca-4e58-8323-0899bb60035f",
-        checksum="60d39063c26263353de24e1b913e1e1c",
-        content_type="application/json",
-    )
-    await art1.save(db=db)
+    async def test_artifact_endpoint(
+        self,
+        db: InfrahubDatabase,
+        admin_headers,
+        register_core_models_schema,
+        register_builtin_models_schema,
+        car_person_data_generic,
+        authentication_base,
+        test_client,
+    ):
+        response = await test_client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
+        assert response.status_code == 404
 
-    registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content='{"test": true}'.encode())
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
 
-    with client:
-        response = client.get(f"/api/artifact/{art1.id}", headers=admin_headers)
+        response = await test_client.get(f"/api/artifact/{artifact.id}", headers=admin_headers)
 
-    assert response.status_code == 200
-    assert response.json() == {"test": True}
+        assert response.status_code == 200
+        assert response.json() == {"test": True}
+
+    @pytest.mark.parametrize("allow_anonymous_access", [False, True])
+    async def test_artifact_endpoint_anonymous_account(
+        self,
+        db: InfrahubDatabase,
+        register_core_models_schema,
+        register_builtin_models_schema,
+        car_person_data_generic,
+        allow_anonymous_access: bool,
+        test_client,
+    ):
+        artifact = await self.setup_artifact(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+
+        config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+        response = await test_client.get(f"/api/artifact/{artifact.id}")
+
+        assert response.status_code == 200 if allow_anonymous_access else 401

@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from infrahub.constants.database import EntityType, IndexType
 
-from .constants import EntityType, IndexType
 from .index import IndexInfo, IndexItem, IndexManagerBase
-from .manager import DatabaseManager
-
-if TYPE_CHECKING:
-    from . import InfrahubDatabase
 
 
 class IndexNodeMemgraph(IndexItem):
@@ -21,7 +16,7 @@ class IndexNodeMemgraph(IndexItem):
 
 
 class IndexManagerMemgraph(IndexManagerBase):
-    def init(self, nodes: List[IndexItem], rels: List[IndexItem]) -> None:
+    def init(self, nodes: list[IndexItem], rels: list[IndexItem]) -> None:  # noqa: ARG002
         self.nodes = [IndexNodeMemgraph(**item.model_dump()) for item in nodes]
         self.initialized = True
 
@@ -33,7 +28,7 @@ class IndexManagerMemgraph(IndexManagerBase):
         for item in self.items:
             await self.db.execute_query(query=item.get_drop_query(), params={}, name="index_drop")
 
-    async def list(self) -> List[IndexInfo]:
+    async def list(self) -> list[IndexInfo]:
         query = "SHOW INDEX INFO"
         records = await self.db.execute_query(query=query, params={}, name="index_show")
         results = []
@@ -51,9 +46,3 @@ class IndexManagerMemgraph(IndexManagerBase):
             )
 
         return results
-
-
-class DatabaseManagerMemgraph(DatabaseManager):
-    def __init__(self, db: InfrahubDatabase):
-        super().__init__(db=db)
-        self.index = IndexManagerMemgraph(db=db)

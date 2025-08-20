@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Field, List, ObjectType, String
+from graphene import Field, List, NonNull, ObjectType, String
 
 
 class RelationshipPeer(ObjectType):
@@ -11,8 +11,8 @@ class RelationshipPeer(ObjectType):
 class Relationship(ObjectType):
     id = String(required=False)
     identifier = String(required=False)
-    peers = List(RelationshipPeer)
+    peers = List(NonNull(RelationshipPeer))
 
 
 class RelationshipNode(ObjectType):
-    node = Field(Relationship)
+    node = Field(Relationship, required=True)

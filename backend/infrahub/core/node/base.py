@@ -1,27 +1,25 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from ..utils import SubclassWithMeta, SubclassWithMeta_Meta
 
 
 class BaseOptions:
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
     _frozen: bool = False
 
     def __init__(self, class_type):
         self.class_type = class_type
 
-    def freeze(self):
+    def freeze(self) -> None:
         self._frozen = True
 
     def __setattr__(self, name, value):
         if not self._frozen:
-            super(BaseOptions, self).__setattr__(name, value)  # pylint: disable=super-with-arguments
+            super().__setattr__(name, value)
         else:
-            raise Exception(f"Can't modify frozen Options {self}")  # pylint: disable=broad-exception-raised
+            raise Exception(f"Can't modify frozen Options {self}")
 
     def __repr__(self):
         return f"<{self.__class__.__name__} name={repr(self.name)}>"
@@ -36,7 +34,7 @@ class BaseNode(SubclassWithMeta):
     #     return type(class_name, (cls,), {"Meta": options})
 
     @classmethod
-    def __init_subclass_with_meta__(cls, name=None, description=None, _meta=None, **_kwargs):
+    def __init_subclass_with_meta__(cls, name=None, description=None, _meta=None, **_kwargs) -> None:
         assert "_meta" not in cls.__dict__, "Can't assign meta directly"
         if not _meta:
             return
@@ -44,7 +42,7 @@ class BaseNode(SubclassWithMeta):
         _meta.description = description
         _meta.freeze()
         cls._meta = _meta
-        super(BaseNode, cls).__init_subclass_with_meta__()
+        super().__init_subclass_with_meta__()
 
 
 class BaseNodeOptions(BaseOptions):
@@ -54,7 +52,7 @@ class BaseNodeOptions(BaseOptions):
 
 
 class ObjectNodeMeta(BaseNodeMeta):
-    def __new__(mcs, name_, bases, namespace, **options):  # noqa: N804
+    def __new__(mcs, name_, bases, namespace, **options):
         # Note: it's safe to pass options as keyword arguments as they are still type-checked by NodeOptions.
 
         # We create this type, to then overload it with the dataclass attrs

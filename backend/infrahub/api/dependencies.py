@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator, Optional
+from typing import TYPE_CHECKING, AsyncIterator
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -8,11 +8,13 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.context import InfrahubContext
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import AuthorizationError, PermissionDeniedError
+from infrahub.database import InfrahubDatabase  # noqa: TC001
+from infrahub.exceptions import AuthorizationError
+from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -23,7 +25,7 @@ jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
 
 
-async def cookie_auth_scheme(request: Request) -> Optional[str]:
+async def cookie_auth_scheme(request: Request) -> str | None:
     return request.cookies.get("access_token")  # Replace with the actual name of your JWT cookie
 
 
@@ -47,8 +49,7 @@ async def get_db(request: Request) -> InfrahubDatabase:
 
 
 async def get_access_token(
-    request: Request,
-    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+    request: Request, jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme)
 ) -> AccountSession:
     if jwt_header:
         return await validate_jwt_access_token(token=jwt_header.credentials)
@@ -59,7 +60,9 @@ async def get_access_token(
 
 
 async def get_refresh_token(
-    request: Request, jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme)
+    request: Request,
+    db: InfrahubDatabase = Depends(get_db),
+    jwt_header: HTTPAuthorizationCredentials | None = Depends(jwt_scheme),
 ) -> RefreshTokenData:
     token = None
 
@@ -75,23 +78,22 @@ async def get_refresh_token(
     if not token:
         raise AuthorizationError("A JWT refresh token is required to perform this operation.")
 
-    return validate_jwt_refresh_token(token=token)
+    return await validate_jwt_refresh_token(db=db, token=token)
 
 
 async def get_branch_params(
     db: InfrahubDatabase = Depends(get_db),
-    branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
-    at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
+    branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
+    at: str | None = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
     branch = await registry.get_branch(db=db, branch=branch_name)
-    at = Timestamp(at)
 
-    return BranchParams(branch=branch, at=at)
+    return BranchParams(branch=branch, at=Timestamp(at))
 
 
 async def get_branch_dep(
     db: InfrahubDatabase = Depends(get_db),
-    branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
+    branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
 ) -> Branch:
     return await registry.get_branch(db=db, branch=branch_name)
 
@@ -112,13 +114,30 @@ async def get_current_user(
 
     account_session = await authentication_token(db=db, jwt_token=jwt_token, api_key=api_key)
 
-    if account_session.authenticated or request.url.path.startswith("/graphql"):
+    if (
+        account_session.authenticated
+        or request.url.path.startswith("/graphql")
+        or (config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"])
+    ):
         return account_session
-
-    if config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"]:
-        return account_session
-
-    if request.method.lower() == "post" and account_session.read_only:
-        raise PermissionDeniedError("You are not allowed to perform this operation")
 
     raise AuthorizationError("Authentication is required")
+
+
+async def get_permission_manager(
+    db: InfrahubDatabase = Depends(get_db),
+    branch_params: BranchParams = Depends(get_branch_params),
+    account_session: AccountSession = Depends(get_current_user),
+) -> PermissionManager:
+    """Return a `PermissionManager` for an account session based on a branch."""
+    permission_manager = PermissionManager(account_session=account_session)
+    await permission_manager.load_permissions(db=db, branch=branch_params.branch)
+
+    return permission_manager
+
+
+async def get_context(
+    branch: Branch = Depends(get_branch_dep),
+    account_session: AccountSession = Depends(get_current_user),
+) -> InfrahubContext:
+    return InfrahubContext.init(branch=branch, account=account_session)

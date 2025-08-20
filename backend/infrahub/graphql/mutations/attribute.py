@@ -1,7 +1,10 @@
-from graphene import Boolean, InputObjectType, Int, String
+from typing import Any
+
+from graphene import BigInt, Boolean, Field, InputObjectType, Int, String
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
+from infrahub.graphql.types.attribute import GenericPoolInput
 
 
 class BaseAttributeCreate(InputObjectType):
@@ -11,7 +14,7 @@ class BaseAttributeCreate(InputObjectType):
     owner = String(required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.input_type[cls.__name__] = cls
 
@@ -24,7 +27,7 @@ class BaseAttributeUpdate(InputObjectType):
     owner = String(required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.input_type[cls.__name__] = cls
 
@@ -46,11 +49,13 @@ class StringAttributeUpdate(BaseAttributeUpdate):
 
 
 class NumberAttributeCreate(BaseAttributeCreate):
-    value = Int(required=False)
+    value = BigInt(required=False)
+    from_pool = Field(GenericPoolInput, required=False)
 
 
 class NumberAttributeUpdate(BaseAttributeUpdate):
-    value = Int(required=False)
+    value = BigInt(required=False)
+    from_pool = Field(GenericPoolInput, required=False)
 
 
 class IntAttributeCreate(BaseAttributeCreate):

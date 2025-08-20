@@ -1,4 +1,5 @@
 import pytest
+from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError
 
 from infrahub.api.diff.validation_models import DiffQueryValidated
@@ -22,11 +23,11 @@ class TestDiffQueryValidation:
         assert query.branch_only is True
 
     def test_invalid_time_from(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(TimestampFormatError):
             DiffQueryValidated(branch=self.branch, time_from="notatime")
 
     def test_invalid_time_to(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(TimestampFormatError):
             DiffQueryValidated(branch=self.branch, time_to="notatime")
 
     def test_invalid_time_range(self):

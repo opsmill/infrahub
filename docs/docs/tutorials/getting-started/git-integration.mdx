@@ -6,7 +6,9 @@ title: Integration with Git
 
 One of the three pillars Infrahub is built on is the idea of having unified storage for data and files. The data is stored in the graph database and the files are stored in Git.
 
-When integrating a Git repository with Infrahub, the Git agent will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
+When integrating a Git repository with Infrahub, the Task worker will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
+
+Please refer to [Repository](../../topics/repository) to learn more about it.
 
 ## Fork & Clone the repository for the demo
 
@@ -22,7 +24,7 @@ The goal is to have a copy of this repository under your name. This way your tes
 
 Once you have created a fork in GitHub, you'll need a Personal Access Token to authorize Infrahub to access this repository.
 
-[How to create a Personal Access Token in GitHub](/guides/repository#personal-access-token)
+[How to create a Personal Access Token in GitHub](../../guides/repository#github-access-token)
 
 :::note
 
@@ -45,18 +47,18 @@ If you already cloned the repository in the past, ensure only the main branch is
 
 Currently the easiest way to add a repository is to use the web interface.
 
-Refer to [Adding a repository guide](/guides/repository).
+Refer to [Adding a repository guide](../../guides/repository).
 
-After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformations](/topics/transformation) and related objects:
+After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformations](../../topics/transformation) and related objects:
 
-- 3 Jinja Rendered File under [Jinja2 Transformation](http://localhost:8000/objects/CoreTransformJinja2/)
-- 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformPython)
-- 4 [Artifact Definition](http://localhost:8000/objects/CoreArtifactDefinition)
-- 7 GraphQL [Queries](/topics/graphql) under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
+- 2 Jinja Rendered File under [Jinja2 Transformation](http://localhost:8000/objects/CoreTransformJinja2/) (Menu > Actions > Transformation)
+- 2 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformPython) (Menu > Actions > Transformation)
+- 2 [Artifact Definition](http://localhost:8000/objects/CoreArtifactDefinition) (Menu > Actions > Artifact Definition)
+- 9 GraphQL [Queries](../../topics/graphql) under [Objects / GraphQL Query](http://localhost:8000/objects/CoreGraphQLQuery/) (Menu > Object Management > GraphQL Query)
 
 :::note Troubleshooting
 
-If you don't see additional objects under the transformations or `GraphQL Queries`, it's possible that the `Git agent` might not be running anymore.
+If you don't see additional objects under the transformations or `GraphQL Queries`, it's possible that the `Task worker` might not be running anymore.
 
 In this case, you should run `invoke demo.start` first to ensure that everything is working.
 

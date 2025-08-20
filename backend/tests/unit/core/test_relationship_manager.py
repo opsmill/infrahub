@@ -294,3 +294,14 @@ async def test_many_add(
         db=db, source_id=tag_red_main.db_id, destination_id=person_jack_main.db_id, max_length=2
     )
     assert len(paths) == 2
+
+
+async def test_get_parent(db: InfrahubDatabase, car_accord_main: Node, person_john_main: Node, branch: Branch):
+    car_schema = registry.schema.get(name="TestCar")
+    rel_schema = car_schema.get_relationship("owner")
+
+    relm = await RelationshipManager.init(db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=car_accord_main)
+    parent = await relm.get_parent(db=db)
+    assert parent
+    assert parent.get_peer_id() == person_john_main.id
+    assert parent.get_peer_kind() == person_john_main.get_kind()

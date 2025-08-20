@@ -1,21 +1,24 @@
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
+from infrahub.core.timestamp import current_timestamp
 
 if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.services import InfrahubServices
+
 
 registry: InfrahubLockRegistry = None
 
@@ -45,8 +48,8 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, _registry: InfrahubLockRegistry, locks: Optional[List[str]] = None):
-        self.registry = _registry
+    def __init__(self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None) -> None:
+        self.registry = lock_registry
         self.locks = locks or []
 
     async def __aenter__(self):
@@ -54,9 +57,9 @@ class InfrahubMultiLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         await self.release()
 
@@ -72,7 +75,7 @@ class InfrahubMultiLock:
 class NATSLock:
     """Context manager to lock using NATS"""
 
-    def __init__(self, service: InfrahubServices, name: str):
+    def __init__(self, service: InfrahubServices, name: str) -> None:
         self.name = name
         self.token = None
         self.service = service
@@ -82,14 +85,14 @@ class NATSLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         await self.release()
 
     async def acquire(self) -> None:
-        token = uuid.uuid1().hex
+        token = current_timestamp()
         while True:
             if await self.do_acquire(token):
                 self.token = token
@@ -102,6 +105,9 @@ class NATSLock:
     async def release(self) -> None:
         await self.service.cache.delete(key=self.name)
 
+    async def locked(self) -> bool:
+        return await self.service.cache.get(key=self.name) is not None
+
 
 class InfrahubLock:
     """InfrahubLock object to provide a unified interface for both Local and Distributed locks.
@@ -112,18 +118,19 @@ class InfrahubLock:
     def __init__(
         self,
         name: str,
-        connection: Optional[Union[redis.Redis, InfrahubServices]] = None,
-        local: Optional[bool] = None,
+        connection: redis.Redis | InfrahubServices | None = None,
+        local: bool | None = None,
         in_multi: bool = False,
-    ):
+    ) -> None:
         self.use_local: bool = local
         self.local: LocalLock = None
         self.remote: GlobalLock = None
         self.name: str = name
-        self.connection: Optional[redis.Redis] = connection
+        self.connection: redis.Redis | None = connection
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
-        self.acquire_time: Optional[int] = None
+        self.acquire_time: int | None = None
+        self.event = asyncio.Event()
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -140,19 +147,20 @@ class InfrahubLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         await self.release()
 
     async def acquire(self) -> None:
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
             if not self.use_local:
-                await self.remote.acquire()
+                await self.remote.acquire(token=current_timestamp())
             else:
                 await self.local.acquire()
         self.acquire_time = time.time_ns()
+        self.event.clear()
 
     async def release(self) -> None:
         duration_ns = time.time_ns() - self.acquire_time
@@ -161,6 +169,7 @@ class InfrahubLock:
             await self.remote.release()
         else:
             self.local.release()
+        self.event.set()
 
     async def locked(self) -> bool:
         if not self.use_local:
@@ -171,8 +180,8 @@ class InfrahubLock:
 
 class InfrahubLockRegistry:
     def __init__(
-        self, token: Optional[str] = None, local_only: bool = False, service: Optional[InfrahubServices] = None
-    ):
+        self, token: str | None = None, local_only: bool = False, service: InfrahubServices | None = None
+    ) -> None:
         if config.SETTINGS.cache.enable and not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 self.connection = redis.Redis(
@@ -190,10 +199,10 @@ class InfrahubLockRegistry:
             self.connection = None
 
         self.token = token or str(uuid.uuid4())
-        self.locks: Dict[str, InfrahubLock] = {}
+        self.locks: dict[str, InfrahubLock] = {}
 
     @classmethod
-    def _generate_name(cls, name: str, namespace: Optional[str] = None, local: Optional[bool] = None) -> str:
+    def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
         if namespace is None and local is None:
             return name
 
@@ -209,8 +218,19 @@ class InfrahubLockRegistry:
 
         return new_name
 
+    def get_existing(
+        self,
+        name: str,
+        namespace: str | None,
+        local: bool | None = None,
+    ) -> InfrahubLock | None:
+        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        if lock_name not in self.locks:
+            return None
+        return self.locks[lock_name]
+
     def get(
-        self, name: str, namespace: Optional[str] = None, local: Optional[bool] = None, in_multi: bool = False
+        self, name: str, namespace: str | None = None, local: bool | None = None, in_multi: bool = False
     ) -> InfrahubLock:
         lock_name = self._generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
@@ -224,24 +244,19 @@ class InfrahubLockRegistry:
         return self.get(name=GLOBAL_INIT_LOCK)
 
     async def local_schema_wait(self) -> None:
-        await self.wait_until_available(name=LOCAL_SCHEMA_LOCK)
+        await self.get(name=LOCAL_SCHEMA_LOCK).event.wait()
 
     def global_schema_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
+        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
 
     def global_graph_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
-
-    async def wait_until_available(self, name: str) -> None:
-        """Wait until a given lock is available.
-
-        This allow to block functions what shouldnt process during an event
-        but it's not a blocker if multiple of them happen at the same time.
-        """
-        while await self.get(name=name).locked():
-            await sleep(0.1)
+        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
 
-def initialize_lock(local_only: bool = False, service: Optional[InfrahubServices] = None):
-    global registry  # pylint: disable=global-statement
+def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
+    global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
+
+
+def build_object_lock_name(name: str) -> str:
+    return f"global.object.{name}"

@@ -6,7 +6,7 @@ generics:
     namespace: Security
     description: "Generic Security Address."
     label: "Security Address"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - "name__value"
     display_labels:
@@ -24,7 +24,7 @@ nodes:
     namespace: Infra
     description: "IP Address"
     label: "IP Address"
-    default_filter: address__value
+    human_friendly_id: ["address__value"]
     order_by:
       - "address__value"
     display_labels:
@@ -37,18 +37,7 @@ nodes:
         unique: true
     relationships:
       - name: organization
-        peer: CoreOrganization
-        optional: true
-        cardinality: one
-        kind: Attribute
-
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -62,31 +51,27 @@ nodes:
     namespace: Infra
     description: "IPv4 or IPv6 network (with mask)"
     label: "Prefix"
-    default_filter: name__value
+    human_friendly_id: ["prefix__value"]
+    order_by:
+      - "prefix__value"
+    display_labels:
+      - prefix__value
     inherit_from:
       - "SecurityAddress"
-    order_by:
-      - name__value
-    display_labels:
-      - name__value
     attributes:
       - name: prefix
         kind: IPNetwork
-      - name: name
-        kind: Text
-      - name: description
-        kind: Text
-        optional: true
+        unique: true
     relationships:
-      - name: status
-        peer: BuiltinStatus
-        optional: false
+      - name: organization
+        peer: OrganizationGeneric
+        optional: true
         cardinality: one
         kind: Attribute
-      - name: role
-        peer: BuiltinRole
+      - name: tags
+        peer: BuiltinTag
         optional: true
-        cardinality: one
+        cardinality: many
         kind: Attribute
 
   - name: IPRange
@@ -110,17 +95,6 @@ nodes:
         identifier: security_iprange__end_address
         cardinality: one
         kind: Attribute
-
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: tags
         peer: BuiltinTag
         optional: true
@@ -138,16 +112,6 @@ nodes:
     order_by:
       - name__value
     relationships:
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: tags
         peer: BuiltinTag
         optional: true
@@ -198,11 +162,6 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: tags
         peer: BuiltinTag
         optional: true
@@ -224,11 +183,6 @@ nodes:
         kind: Text
         optional: true
     relationships:
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: tags
         peer: BuiltinTag
         optional: true
@@ -280,17 +234,6 @@ nodes:
         identifier: security_rule__destination_applications
         peer: SecurityApplication
         cardinality: many
-
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: tags
         peer: BuiltinTag
         optional: true

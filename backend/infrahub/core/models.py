@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +17,10 @@ from infrahub.core.path import SchemaPath
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+
+GENERIC_ATTRIBUTES_TO_IGNORE = ["namespace", "name", "branch"]
+PROPERTY_NAMES_TO_IGNORE = ["regex", "min_length", "max_length"]
 
 
 class NodeKind(BaseModel):
@@ -29,47 +32,71 @@ class NodeKind(BaseModel):
 
 
 class SchemaBranchDiff(BaseModel):
-    nodes: List[str] = Field(default_factory=list)
-    generics: List[str] = Field(default_factory=list)
+    added_nodes: list[str] = Field(default_factory=list)
+    changed_nodes: list[str] = Field(default_factory=list)
+    added_generics: list[str] = Field(default_factory=list)
+    changed_generics: list[str] = Field(default_factory=list)
+    removed_nodes: list[str] = Field(default_factory=list)
+    removed_generics: list[str] = Field(default_factory=list)
 
     def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics)
 
-    def to_list(self) -> List[str]:
+    def to_list(self) -> list[str]:
         return self.nodes + self.generics
 
     @property
     def has_diff(self) -> bool:
-        if self.nodes or self.generics:
-            return True
-        return False
+        return any([self.has_node_diff, self.has_generic_diff])
+
+    @property
+    def has_node_diff(self) -> bool:
+        return bool(self.added_nodes + self.changed_nodes + self.removed_nodes)
+
+    @property
+    def has_generic_diff(self) -> bool:
+        return bool(self.added_generics + self.changed_generics + self.removed_generics)
+
+    @property
+    def nodes(self) -> list[str]:
+        """Return nodes that are still active."""
+        return self.added_nodes + self.changed_nodes
+
+    @property
+    def generics(self) -> list[str]:
+        """Return generics that are still active."""
+        return self.added_generics + self.changed_generics
 
 
 class SchemaBranchHash(BaseModel):
     main: str
-    nodes: Dict[str, str] = Field(default_factory=dict)
-    generics: Dict[str, str] = Field(default_factory=dict)
+    nodes: dict[str, str] = Field(default_factory=dict)
+    generics: dict[str, str] = Field(default_factory=dict)
 
-    def compare(self, other: SchemaBranchHash) -> Optional[SchemaBranchDiff]:
+    def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
             return None
 
         return SchemaBranchDiff(
-            nodes=[key for key, value in other.nodes.items() if key not in self.nodes or self.nodes[key] != value],
-            generics=[
-                key for key, value in other.generics.items() if key not in self.generics or self.generics[key] != value
+            added_nodes=[key for key in other.nodes if key not in self.nodes],
+            changed_nodes=[key for key, value in other.nodes.items() if key in self.nodes and self.nodes[key] != value],
+            removed_nodes=[key for key in self.nodes if key not in other.nodes],
+            added_generics=[key for key in other.generics if key not in self.generics],
+            changed_generics=[
+                key for key, value in other.generics.items() if key in self.generics and self.generics[key] != value
             ],
+            removed_generics=[key for key in self.generics if key not in other.generics],
         )
 
 
 class SchemaDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    added: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    changed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    removed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
+    added: dict[str, HashableModelDiff] = Field(default_factory=dict)
+    changed: dict[str, HashableModelDiff] = Field(default_factory=dict)
+    removed: dict[str, HashableModelDiff] = Field(default_factory=dict)
 
     @property
-    def all(self) -> List[str]:
+    def all(self) -> list[str]:
         return list(self.changed.keys()) + list(self.added.keys()) + list(self.removed.keys())
 
     def __add__(self, other: SchemaDiff) -> SchemaDiff:
@@ -81,7 +108,6 @@ class SchemaDiff(BaseModel):
 
         indent_str = " " * indentation
 
-        # pylint: disable=too-many-nested-blocks
         for node_action, node_info in data.items():
             for node_name, elements in node_info.items():
                 print(f"{str(node_name).ljust(column_size)} | {str(node_action).title()}")
@@ -92,7 +118,7 @@ class SchemaDiff(BaseModel):
                         )
                         if element_children and isinstance(element_children, dict):
                             for sub_action, sub_info in element_children.items():
-                                for sub_name, _ in sub_info.items():
+                                for sub_name in sub_info.keys():
                                     print(
                                         f"{indent_str * 2}{str(sub_name).ljust(column_size - indentation * 2)} | {str(sub_action).title()}"
                                     )
@@ -102,7 +128,7 @@ class SchemaUpdateValidationError(BaseModel):
     model_config = ConfigDict(extra="forbid")
     path: SchemaPath
     error: UpdateValidationErrorType
-    message: Optional[str] = None
+    message: str | None = None
 
     def to_string(self) -> str:
         return f"{self.error.value!r}: {self.path.schema_kind} {self.path.field_name} {self.message}"
@@ -128,24 +154,25 @@ class SchemaUpdateConstraintInfo(BaseModel):
         return "schema.validator.path"
 
     def __hash__(self) -> int:
-        return hash((type(self),) + tuple([self.constraint_name + self.path.get_path()]))
+        return hash((type(self),) + tuple(self.constraint_name + self.path.get_path()))
 
 
 class SchemaUpdateValidationResult(BaseModel):
-    errors: List[SchemaUpdateValidationError] = Field(default_factory=list)
-    constraints: List[SchemaUpdateConstraintInfo] = Field(default_factory=list)
-    migrations: List[SchemaUpdateMigrationInfo] = Field(default_factory=list)
+    errors: list[SchemaUpdateValidationError] = Field(default_factory=list)
+    constraints: list[SchemaUpdateConstraintInfo] = Field(default_factory=list)
+    migrations: list[SchemaUpdateMigrationInfo] = Field(default_factory=list)
+    enforce_update_support: bool = True
     diff: SchemaDiff
 
     @classmethod
-    def init(cls, diff: SchemaDiff, schema: SchemaBranch) -> Self:
-        obj = cls(diff=diff)
+    def init(cls, diff: SchemaDiff, schema: SchemaBranch, enforce_update_support: bool = True) -> Self:
+        obj = cls(diff=diff, enforce_update_support=enforce_update_support)
         obj.process_diff(schema=schema)
 
         return obj
 
     def process_diff(self, schema: SchemaBranch) -> None:
-        for schema_name, schema_diff in self.diff.removed.items():
+        for schema_name in self.diff.removed.keys():
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=SchemaPath(  # type: ignore[call-arg]
@@ -157,6 +184,15 @@ class SchemaUpdateValidationResult(BaseModel):
 
         for schema_name, schema_diff in self.diff.changed.items():
             schema_node = schema.get(name=schema_name, duplicate=False)
+            if "inherit_from" in schema_diff.changed:
+                self.migrations.append(
+                    SchemaUpdateMigrationInfo(
+                        path=SchemaPath(  # type: ignore[call-arg]
+                            schema_kind=schema_name, path_type=SchemaPathType.NODE
+                        ),
+                        migration_name="node.inherit_from.update",
+                    )
+                )
 
             # Nothing to do today if we add a new attribute to a node in the schema
             # for node_field_name, _ in schema_diff.added.items():
@@ -181,7 +217,7 @@ class SchemaUpdateValidationResult(BaseModel):
         node_field_diff: HashableModelDiff,
     ) -> None:
         path_type = SchemaPathType.ATTRIBUTE if node_field_name == "attributes" else SchemaPathType.RELATIONSHIP
-        for field_name, _ in node_field_diff.added.items():
+        for field_name in node_field_diff.added.keys():
             if path_type == SchemaPathType.ATTRIBUTE:
                 self.migrations.append(
                     SchemaUpdateMigrationInfo(
@@ -191,8 +227,17 @@ class SchemaUpdateValidationResult(BaseModel):
                         migration_name="node.attribute.add",
                     )
                 )
+            elif path_type == SchemaPathType.RELATIONSHIP:
+                self.constraints.append(
+                    SchemaUpdateConstraintInfo(
+                        path=SchemaPath(  # type: ignore[call-arg]
+                            schema_kind=schema.kind, path_type=path_type, field_name=field_name
+                        ),
+                        constraint_name="node.relationship.add",
+                    )
+                )
 
-        for field_name, _ in node_field_diff.removed.items():
+        for field_name in node_field_diff.removed.keys():
             self.migrations.append(
                 SchemaUpdateMigrationInfo(  # type: ignore[call-arg]
                     path=SchemaPath(  # type: ignore[call-arg]
@@ -208,11 +253,37 @@ class SchemaUpdateValidationResult(BaseModel):
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
-            for prop_name in sub_field_diff.changed:
+            for prop_name, prop_diff in sub_field_diff.changed.items():
+                if prop_name in PROPERTY_NAMES_TO_IGNORE:
+                    continue
+
                 field_info = field.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
-                schema_path = SchemaPath(  # type: ignore[call-arg]
+                if isinstance(prop_diff, HashableModelDiff):
+                    for param_field_name in prop_diff.changed:
+                        # override field_update if this field has its own json_schema_extra.update
+                        try:
+                            prop_field = getattr(field, prop_name)
+                            param_field_info = prop_field.model_fields[param_field_name]
+                            param_field_update = str(param_field_info.json_schema_extra.get("update"))
+                        except (AttributeError, KeyError):
+                            param_field_update = None
+
+                        schema_path = SchemaPath(
+                            schema_kind=schema.kind,
+                            path_type=path_type,
+                            field_name=field_name,
+                            property_name=f"{prop_name}.{param_field_name}",
+                        )
+
+                        self._process_field(
+                            schema_path=schema_path,
+                            field_update=param_field_update or field_update,
+                        )
+                    continue
+
+                schema_path = SchemaPath(
                     schema_kind=schema.kind,
                     path_type=path_type,
                     field_name=field_name,
@@ -227,6 +298,10 @@ class SchemaUpdateValidationResult(BaseModel):
     def _process_node_attributes(self, schema: MainSchemaTypes, node_field_name: str) -> None:
         field_info = schema.model_fields[node_field_name]
         field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+
+        # No need to execute a migration for generic nodes attributes because they are not stored in the database
+        if schema.is_generic_schema and node_field_name in GENERIC_ATTRIBUTES_TO_IGNORE:
+            return
 
         schema_path = SchemaPath(  # type: ignore[call-arg]
             schema_kind=schema.kind,
@@ -244,7 +319,7 @@ class SchemaUpdateValidationResult(BaseModel):
         schema_path: SchemaPath,
         field_update: str,
     ) -> None:
-        if field_update == UpdateSupport.NOT_SUPPORTED.value:
+        if field_update == UpdateSupport.NOT_SUPPORTED.value and self.enforce_update_support:
             self.errors.append(
                 SchemaUpdateValidationError(
                     path=schema_path,
@@ -268,11 +343,12 @@ class SchemaUpdateValidationResult(BaseModel):
                 )
             )
 
-    def validate_all(self, migration_map: Dict[str, Any], validator_map: Dict[str, Any]) -> None:
+    def validate_all(self, migration_map: dict[str, Any], validator_map: dict[str, Any]) -> None:
         self.validate_migrations(migration_map=migration_map)
         self.validate_constraints(validator_map=validator_map)
+        self.add_validator_for_migration(validator_map=validator_map)
 
-    def validate_migrations(self, migration_map: Dict[str, Any]) -> None:
+    def validate_migrations(self, migration_map: dict[str, Any]) -> None:
         for migration in self.migrations:
             if migration_map.get(migration.migration_name, None) is None:
                 self.errors.append(
@@ -283,7 +359,7 @@ class SchemaUpdateValidationResult(BaseModel):
                     )
                 )
 
-    def validate_constraints(self, validator_map: Dict[str, Any]) -> None:
+    def validate_constraints(self, validator_map: dict[str, Any]) -> None:
         for constraint in self.constraints:
             if validator_map.get(constraint.constraint_name, None) is None:
                 self.errors.append(
@@ -294,12 +370,22 @@ class SchemaUpdateValidationResult(BaseModel):
                     )
                 )
 
+    def add_validator_for_migration(self, validator_map: dict[str, Any]) -> None:
+        for migration in self.migrations:
+            if validator_map.get(migration.migration_name):
+                self.constraints.append(
+                    SchemaUpdateConstraintInfo(
+                        path=migration.path,
+                        constraint_name=migration.migration_name,
+                    )
+                )
+
 
 class HashableModelDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    added: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    changed: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
-    removed: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    added: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
+    changed: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
+    removed: dict[str, HashableModelDiff | None] = Field(default_factory=dict)
 
     @property
     def has_diff(self) -> bool:
@@ -309,11 +395,11 @@ class HashableModelDiff(BaseModel):
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: Optional[str] = None
+    id: str | None = None
     state: HashableModelState = HashableModelState.PRESENT
 
-    _exclude_from_hash: List[str] = []
-    _sort_by: List[str] = []
+    _exclude_from_hash: list[str] = []
+    _sort_by: list[str] = []
 
     def __hash__(self) -> int:
         return hash(self.get_hash())
@@ -339,7 +425,7 @@ class HashableModel(BaseModel):
                 md5hash.update(item)
 
         if display_values:
-            from rich import print as rprint  # pylint: disable=import-outside-toplevel
+            from rich import print as rprint
 
             rprint(tuple(values))
 
@@ -353,8 +439,8 @@ class HashableModel(BaseModel):
         return str(value).encode()
 
     @classmethod
-    def _get_signature_field(cls, value: Any) -> List[bytes]:
-        hashes: List[bytes] = []
+    def _get_signature_field(cls, value: Any) -> list[bytes]:
+        hashes: list[bytes] = []
         if isinstance(value, list):
             for item in sorted(value):
                 hashes.append(cls._get_hash_value(item))
@@ -365,13 +451,13 @@ class HashableModel(BaseModel):
         else:
             hashes.append(cls._get_hash_value(value))
 
-        return hashes
+        return sorted(hashes)
 
     @property
-    def _sorting_id(self) -> Tuple[Any]:
+    def _sorting_id(self) -> tuple[Any]:
         return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
 
-    def _sorting_keys(self, other: HashableModel) -> Tuple[List[Any], List[Any]]:
+    def _sorting_keys(self, other: HashableModel) -> tuple[list[Any], list[Any]]:
         """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
         if not self._sort_by:
             raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
@@ -381,8 +467,8 @@ class HashableModel(BaseModel):
                 f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
             )
 
-        self_sort_keys: List[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
-        other_sort_keys: List[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
+        self_sort_keys: list[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
+        other_sort_keys: list[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
 
         return self_sort_keys, other_sort_keys
 
@@ -407,16 +493,16 @@ class HashableModel(BaseModel):
         return self.model_copy(deep=True)
 
     @staticmethod
-    def is_list_composed_of_hashable_model(items: List[Any]) -> bool:
-        return all((isinstance(item, HashableModel) for item in items))
+    def is_list_composed_of_hashable_model(items: list[Any]) -> bool:
+        return all(isinstance(item, HashableModel) for item in items)
 
     @staticmethod
-    def _organize_sub_items(items: List[HashableModel], shared_ids: Set[str]) -> Dict[Tuple[Any], HashableModel]:
+    def _organize_sub_items(items: list[HashableModel], shared_ids: set[str]) -> dict[tuple[Any], HashableModel]:
         """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids"""
         sub_items = {}
         for item in items:
             if item.id and item.id in shared_ids:
-                sub_items[(item.id,)] = item
+                sub_items[item.id,] = item
                 continue
             sub_items[item._sorting_id] = item
 
@@ -424,8 +510,8 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def update_list_hashable_model(
-        field_name: str, attr_local: List[HashableModel], attr_other: List[HashableModel]
-    ) -> List[Any]:
+        field_name: str, attr_local: list[HashableModel], attr_other: list[HashableModel]
+    ) -> list[Any]:
         """
         Merging the list is not easy,
         we need to create a unique id based on the sorting keys
@@ -449,8 +535,8 @@ class HashableModel(BaseModel):
             raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
 
         shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
-        local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
-        other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
+        local_only_ids = set(local_sub_items.keys()) - set(shared_ids)
+        other_only_ids = set(other_sub_items.keys()) - set(shared_ids)
 
         new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
         new_list.extend(
@@ -470,19 +556,24 @@ class HashableModel(BaseModel):
 
         return new_list
 
-    def update(self, other: Self) -> Self:
+    def update(self, other: HashableModel) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
         Currently this method works for the following type of fields
             int, str, bool, float: If present the value from Other is overwriting the local value
             list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
+            HashableModel: the value will be merged using update()
 
         TODO Implement other fields type like dict
         """
 
-        for field_name, _ in other.model_fields.items():
+        for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
+                try:
+                    setattr(self, field_name, getattr(other, field_name))
+                except ValueError:
+                    # handles the case where self and other are different types and other has fields that self does not
+                    pass
                 continue
 
             attr_other = getattr(other, field_name)
@@ -490,7 +581,7 @@ class HashableModel(BaseModel):
             if attr_other is None or attr_local == attr_other:
                 continue
 
-            if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
+            if attr_local is None or isinstance(attr_other, int | str | bool | float):
                 setattr(self, field_name, attr_other)
                 continue
 
@@ -499,6 +590,11 @@ class HashableModel(BaseModel):
                     field_name=field_name, attr_local=attr_local, attr_other=attr_other
                 )
                 setattr(self, field_name, new_attr)
+                continue
+
+            if isinstance(attr_local, HashableModel) and isinstance(attr_other, HashableModel):
+                attr_local.update(attr_other)
+                continue
 
         return self
 
@@ -508,13 +604,14 @@ class HashableModel(BaseModel):
 
         return attr_other
 
+    def _get_field_names_for_diff(self) -> list[str]:
+        return list(self.model_fields.keys())
+
     def diff(self, other: Self) -> HashableModelDiff:
         in_both, local_only, other_only = compare_lists(
-            list1=list(self.model_fields.keys()), list2=list(other.model_fields.keys())
+            list1=self._get_field_names_for_diff(), list2=other._get_field_names_for_diff()
         )
-        diff_result = HashableModelDiff(
-            added={item: None for item in local_only}, removed={item: None for item in other_only}
-        )
+        diff_result = HashableModelDiff(added=dict.fromkeys(local_only), removed=dict.fromkeys(other_only))
 
         for field_name in in_both:
             if field_name.startswith("_") or field_name in self._exclude_from_hash:

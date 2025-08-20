@@ -1,20 +1,42 @@
 import os
 import shutil
+import subprocess  # noqa: S404
+import sys
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+from unittest.mock import patch
 
-import pendulum
 import pytest
-from infrahub_sdk import UUIDT
+from fast_depends import Provider
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
+from prefect.logging.loggers import disable_run_logger
+from prefect.settings import get_current_settings
+from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
+from infrahub.core.attribute import (
+    Boolean,
+    IntegerOptional,
+    JSONAttributeOptional,
+    ListAttributeOptional,
+    String,
+    StringOptional,
+)
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    BranchSupportType,
+    GlobalPermissions,
+    InfrahubKind,
+    PermissionAction,
+    PermissionDecision,
+)
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -26,32 +48,31 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.protocols_base import CoreNode
+from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
 )
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.test_data import dataset01 as ds01
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_workflow
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.test_client import dummy_async_request
+from tests.test_data import dataset01 as ds01
 
 
 @pytest.fixture(scope="module", autouse=True)
 def load_component_dependency_registry():
     build_component_registry()
-
-
-@pytest.fixture(params=["main", "branch2"])
-async def branch(request, db: InfrahubDatabase, default_branch: Branch):
-    if request.param == "main":
-        return default_branch
-
-    return await create_branch(branch_name=str(request.param), db=db)
 
 
 @pytest.fixture(scope="session")
@@ -65,6 +86,53 @@ def neo4j_factory():
     """
     hydration_scope = HydrationHandler().new_hydration_scope()
     return hydration_scope._graph_hydrator
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prefect_test_fixture():
+    def _run_uvicorn_command(self) -> subprocess.Popen[Any]:
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
+        # used to turn off serving the UI
+        server_env = {
+            "PREFECT_UI_ENABLED": "0",
+            "PREFECT__SERVER_EPHEMERAL": "1",
+            "PREFECT__SERVER_FINAL": "1",
+        }
+
+        return subprocess.Popen(
+            args=[
+                sys.executable,
+                "-m",
+                "uvicorn",
+                # "--app-dir",
+                # str(infrahub.__module_path__.parent),
+                "--factory",
+                "infrahub.prefect_server.app:create_infrahub_prefect",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(self.port),
+                "--log-level",
+                "error",
+                "--lifespan",
+                "on",
+            ],
+            env={
+                **os.environ,
+                **server_env,
+                **get_current_settings().to_environment_variables(exclude_unset=True),
+            },
+        )
+
+    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
+        with prefect_test_harness(server_startup_timeout=60):
+            yield
+
+
+@pytest.fixture(scope="session")
+def prefect_test(prefect_test_fixture):
+    with disable_run_logger():
+        yield
 
 
 @pytest.fixture
@@ -91,7 +159,8 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name="test_basename",
-        location=f"{git_sources_dir}/test_base",
+        location=str(git_sources_dir / "test_base"),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
@@ -113,14 +182,13 @@ def s3_storage_bucket() -> str:
 
 
 @pytest.fixture
-def file1_in_storage(local_storage_dir, helper) -> str:
-    fixture_dir = helper.get_fixtures_dir()
+def file1_in_storage(local_storage_dir: Path, helper) -> str:
     file1_identifier = str(UUIDT())
 
-    files_dir = os.path.join(fixture_dir, "schemas")
+    files_dir = helper.get_fixtures_dir() / "schemas"
 
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
-    shutil.copyfile(os.path.join(files_dir, filenames[0]), os.path.join(local_storage_dir, file1_identifier))
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
+    shutil.copyfile(files_dir / filenames[0], local_storage_dir / file1_identifier)
 
     return file1_identifier
 
@@ -131,8 +199,8 @@ async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
 
     params = {
         "branch": "main",
-        "time1": pendulum.now(tz="UTC").to_iso8601_string(),
-        "time2": pendulum.now(tz="UTC").subtract(seconds=5).to_iso8601_string(),
+        "time1": Timestamp().to_string(),
+        "time2": Timestamp().subtract(seconds=5).to_string(),
     }
 
     query = """
@@ -189,20 +257,20 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     """
 
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
-        "time0": time0.to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
-        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
-        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
-        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
-        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m25": time0.subtract(seconds=25).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
+        "time_m40": time0.subtract(seconds=40).to_string(),
+        "time_m45": time0.subtract(seconds=45).to_string(),
+        "time_m50": time0.subtract(seconds=50).to_string(),
+        "time_m60": time0.subtract(seconds=60).to_string(),
     }
 
     # Update Main Branch and Create new Branch1
@@ -368,10 +436,10 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
     CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "aware"})
-    CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
-    CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
-    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (c2)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (r2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (r2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
@@ -410,21 +478,21 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     """
 
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
         "global_branch": GLOBAL_BRANCH_NAME,
-        "time0": time0.to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
-        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
-        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
-        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
-        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m25": time0.subtract(seconds=25).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
+        "time_m40": time0.subtract(seconds=40).to_string(),
+        "time_m45": time0.subtract(seconds=45).to_string(),
+        "time_m50": time0.subtract(seconds=50).to_string(),
+        "time_m60": time0.subtract(seconds=60).to_string(),
     }
 
     # Update Main Branch and Create new Branch1
@@ -635,15 +703,15 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     """
 
     # ---- Create all timestamps and save them in Params -----------------
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
-        "time0": time0.to_iso8601_string(),
+        "time0": time0.to_string(),
     }
 
     for cnt in range(1, 30):
         nbr_sec = cnt * 5
-        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_iso8601_string()
+        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_string()
 
     # ---- Create all Branches and register them in the Registry -----------------
     # Update Main Branch
@@ -953,16 +1021,16 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 async def base_dataset_04(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
 ) -> dict:
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
-        "time0": time0.to_iso8601_string(),
-        "time_m5": time0.subtract(seconds=5).to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m5": time0.subtract(seconds=5).to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
     }
 
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
@@ -1130,7 +1198,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
     """
 
     q1 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-    await q1.new(db=db, name="query01", query=query)
+    await q1.new(db=db, name="query01", query=query, models=["TestPerson"])
     await q1.save(db=db)
 
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
@@ -1143,6 +1211,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
         "c1": c1,
         "c2": c2,
         "c3": c3,
+        "c4": c4,
         "q1": q1,
         "r1": r1,
     }
@@ -1201,10 +1270,8 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-async def car_person_schema_generics(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
-) -> SchemaRoot:
-    SCHEMA: dict[str, Any] = {
+async def car_person_schema_generics_unregistered(register_core_models_schema, data_schema) -> dict[str, Any]:
+    return {
         "generics": [
             {
                 "name": "Car",
@@ -1319,13 +1386,22 @@ async def car_person_schema_generics(
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
+
+@pytest.fixture
+async def car_person_schema_generics(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+    data_schema,
+    car_person_schema_generics_unregistered,
+) -> SchemaRoot:
+    schema = SchemaRoot(**car_person_schema_generics_unregistered)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
 
 @pytest.fixture
-async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
+async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> dict[str, Node]:
     ecar = registry.schema.get(name="TestElectricCar")
     gcar = registry.schema.get(name="TestGazCar")
     person = registry.schema.get(name="TestPerson")
@@ -1360,7 +1436,7 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 @pytest.fixture
 async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA: Dict[str, Any] = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1628,6 +1704,25 @@ async def group_group2_subscribers_main(
 
 
 @pytest.fixture
+async def optional_attr_uniqueness_constraint_schema(
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+) -> NodeSchema:
+    node_schema = NodeSchema(
+        name="AttrOptionalUniquenessSchema",
+        namespace="Test",
+        branch=BranchSupportType.AWARE.value,
+        uniqueness_constraints=[["name__value", "description__value"]],
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=True),
+            AttributeSchema(name="description", kind="TextArea", optional=True),
+        ],
+    )
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    return node_schema
+
+
+@pytest.fixture
 async def all_attribute_types_schema(
     db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
@@ -1638,6 +1733,7 @@ async def all_attribute_types_schema(
         "attributes": [
             {"name": "name", "kind": "Text", "optional": True},
             {"name": "mystring", "kind": "Text", "optional": True},
+            {"name": "mytextarea", "kind": "TextArea", "optional": True},
             {"name": "mybool", "kind": "Boolean", "optional": True},
             {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
@@ -1689,23 +1785,33 @@ async def all_attribute_default_types_schema(
 
 @pytest.fixture
 async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
-    SCHEMA: dict[str, Any] = {
+    generic_schema: dict[str, Any] = {
+        "name": "GenericCriticality",
+        "namespace": "Test",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "color", "kind": "Text", "default_value": "#444444", "optional": True},
+            {"name": "is_true", "kind": "Boolean", "default_value": True, "optional": True},
+            {"name": "is_false", "kind": "Boolean", "default_value": False, "optional": True},
+            {"name": "description", "kind": "Text", "optional": True},
+        ],
+    }
+    generic = GenericSchema(**generic_schema)
+    node_schema: dict[str, Any] = {
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["label__value"],
+        "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
             {"name": "level", "kind": "Number"},
-            {"name": "color", "kind": "Text", "default_value": "#444444"},
             {"name": "mylist", "kind": "List", "default_value": ["one", "two"]},
-            {"name": "is_true", "kind": "Boolean", "default_value": True},
-            {"name": "is_false", "kind": "Boolean", "default_value": False},
             {"name": "json_no_default", "kind": "JSON", "optional": True},
             {"name": "json_default", "kind": "JSON", "default_value": {"value": "bob"}},
-            {"name": "description", "kind": "Text", "optional": True},
+            {"name": "time", "kind": "DateTime", "optional": True},
             {
                 "name": "status",
                 "kind": "Dropdown",
@@ -1717,11 +1823,32 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
             },
         ],
     }
+    node = NodeSchema(**node_schema)
 
-    node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
+    registry.schema.set(name=generic.kind, schema=generic, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
     return registry.schema.get(name=node.kind, branch=default_branch.name)
+
+
+@pytest.fixture
+async def criticality_protocol():
+    class TestCriticality(CoreNode):
+        name: String
+        label: StringOptional
+        levvel: IntegerOptional
+        mylist: ListAttributeOptional
+        json_no_default: JSONAttributeOptional
+        json_default: JSONAttributeOptional
+        time: StringOptional
+        status: StringOptional
+
+        color: String
+        is_true: Boolean
+        is_false: Boolean
+        description: StringOptional
+
+    return TestCriticality
 
 
 @pytest.fixture
@@ -1957,13 +2084,15 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Generic",
                 "namespace": "Location",
                 "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
                 "hierarchical": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2004,6 +2133,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "name": "Thing",
                 "namespace": "Test",
                 "default_filter": "name__value",
+                "display_labels": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
@@ -2014,8 +2144,51 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return SchemaRoot(**SCHEMA)
+
+
+@pytest.fixture
+async def hierarchical_location_schema_simple(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple_unregistered: SchemaRoot
+) -> SchemaRoot:
+    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+    return hierarchical_location_schema_simple_unregistered
+
+
+@pytest.fixture
+async def location_generic_protocol():
+    class LocationGeneric(CoreNode):
+        name: String
+        status: StringOptional
+        things: RelationshipManager
+        parent: RelationshipManager
+        children: RelationshipManager
+
+    return LocationGeneric
+
+
+@pytest.fixture
+async def location_site_protocol(location_generic_protocol):
+    class LocationSite(location_generic_protocol):
+        pass
+
+    return LocationSite
+
+
+@pytest.fixture
+async def location_region_protocol(location_generic_protocol):
+    class LocationRegion(location_generic_protocol):
+        pass
+
+    return LocationRegion
+
+
+@pytest.fixture
+async def location_rack_protocol(location_generic_protocol):
+    class LocationRack(location_generic_protocol):
+        pass
+
+    return LocationRack
 
 
 @pytest.fixture
@@ -2027,18 +2200,18 @@ async def hierarchical_location_schema(
 @pytest.fixture
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
-) -> Dict[str, Node]:
-    return await _build_hierarchical_location_data(db=db)
+) -> dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
-) -> Dict[str, Node]:
-    return await _build_hierarchical_location_data(db=db)
+) -> dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
-async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, Node]:
+async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
     REGIONS = (
         ("north-america",),
         ("europe",),
@@ -2058,13 +2231,13 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, N
     nodes = {}
 
     for region in REGIONS:
-        obj = await Node.init(db=db, schema="LocationRegion")
+        obj = await Node.init(db=db, branch=branch, schema="LocationRegion")
         await obj.new(db=db, name=region[0])
         await obj.save(db=db)
         nodes[obj.name.value] = obj
 
     for site in SITES:
-        obj = await Node.init(db=db, schema="LocationSite")
+        obj = await Node.init(db=db, branch=branch, schema="LocationSite")
         await obj.new(db=db, name=site[0], parent=site[1])
         await obj.save(db=db)
         nodes[obj.name.value] = obj
@@ -2072,7 +2245,7 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, N
         for idx in range(1, NBR_RACKS_PER_SITE + 1):
             rack_name = f"{site[0]}-r{idx}"
             statuses = ["online", "offline"]
-            obj = await Node.init(db=db, schema="LocationRack")
+            obj = await Node.init(db=db, branch=branch, schema="LocationRack")
             await obj.new(db=db, name=rack_name, parent=site[0], status=statuses[idx - 1])
             await obj.save(db=db)
             nodes[obj.name.value] = obj
@@ -2082,8 +2255,8 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, N
 
 @pytest.fixture
 async def hierarchical_location_data_thing(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
-) -> Dict[str, Node]:
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+) -> dict[str, Node]:
     nodes = {}
     for item_name, item in hierarchical_location_data.items():
         obj = await Node.init(db=db, schema="TestThing")
@@ -2099,7 +2272,7 @@ async def hierarchical_location_data_thing(
 @pytest.fixture
 async def hierarchical_groups_data(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     def batched(iterable, n):
         """
         Local implementation of the new batched function that was added to itertools in 3.12
@@ -2321,7 +2494,7 @@ async def builtin_schema() -> SchemaRoot:
     return SchemaRoot(**SCHEMA)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def ipam_schema() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
@@ -2332,7 +2505,7 @@ async def ipam_schema() -> SchemaRoot:
                 "order_by": ["prefix__value"],
                 "display_labels": ["prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX],
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
             {
                 "name": "IPAddress",
@@ -2373,13 +2546,19 @@ async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, 
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = [
+        InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.ACCOUNTROLE,
+        InfrahubKind.GENERICACCOUNT,
         InfrahubKind.ACCOUNT,
         InfrahubKind.ACCOUNTTOKEN,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.REFRESHTOKEN,
+        InfrahubKind.BASEPERMISSION,
+        InfrahubKind.GLOBALPERMISSION,
+        InfrahubKind.OBJECTPERMISSION,
     ]
-    nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
-    generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
+    nodes = [item for item in core_models["nodes"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
+    generics = [item for item in core_models["generics"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
     registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
 
 
@@ -2440,21 +2619,43 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 
 @pytest.fixture
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
+    """Create a test admin account, group and role with all global permissions."""
+    permissions: list[Node] = []
+    global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await global_permission.new(
+        db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
+    await global_permission.save(db=db)
+    permissions.append(global_permission)
+
+    object_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await object_permission.new(
+        db=db,
+        namespace="*",
+        name="*",
+        action=PermissionAction.ANY.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await object_permission.save(db=db)
+    permissions.append(object_permission)
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="admin", permissions=permissions)
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="admin", roles=[role])
+    await group.save(db=db)
+
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await account.new(
-        db=db,
-        name="test-admin",
-        type="User",
-        password=config.SETTINGS.initial.admin_password,
-        role="admin",
-    )
+    await account.new(db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password)
     await account.save(db=db)
+
+    await group.members.add(db=db, data=account)
+    await group.members.save(db=db)
+
     token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
-    await token.new(
-        db=db,
-        token="admin-security",
-        account=account,
-    )
+    await token.new(db=db, token="admin-security", account=account)
     await token.save(db=db)
 
     return account
@@ -2462,7 +2663,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
 
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id, role="admin")
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
     return session
 
 
@@ -2474,24 +2675,36 @@ async def authentication_base(
     register_core_models_schema,
     register_builtin_models_schema,
     register_organization_schema,
-):
-    pass
+) -> Node:
+    return create_test_admin
 
 
 @pytest.fixture
 async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="First Account", type="Git", password="FirstPassword123", role="read-write")
+    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123")
     await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
+async def session_first_account(db: InfrahubDatabase, first_account: Node) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
+    return session
+
+
+@pytest.fixture
 async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="Second Account", type="Git", password="SecondPassword123")
+    await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
     await obj.save(db=db)
     return obj
+
+
+@pytest.fixture
+async def session_second_account(db: InfrahubDatabase, second_account) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
+    return session
 
 
 @pytest.fixture
@@ -2549,7 +2762,7 @@ async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_sch
 @pytest.fixture
 async def mock_core_schema_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = helper.schema_file(file_name="core_schema_01.json")
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response_text)
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=response_text)
     return httpx_mock
 
 
@@ -2727,3 +2940,140 @@ async def ip_dataset_prefix_v4(
         "net147": net147,
     }
     return data
+
+
+@pytest.fixture
+async def person_ip_schema_unregistered(db: InfrahubDatabase, data_schema, register_ipam_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                "relationships": [
+                    {
+                        "name": "ip_addresses",
+                        "peer": "IpamIPAddress",
+                        "identifier": "person__addresses",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "ip_prefixes",
+                        "peer": "IpamIPPrefix",
+                        "identifier": "person__prefixes",
+                        "cardinality": "many",
+                    },
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def person_ip_schema(db: InfrahubDatabase, default_branch: Branch, person_ip_schema_unregistered) -> SchemaBranch:
+    return registry.schema.register_schema(schema=person_ip_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
+async def prefix_pool_01(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    init_nodes_registry,
+    person_ip_schema,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await prefix_pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net140],
+        ip_namespace=ns1,
+    )
+    await prefix_pool.save(db=db)
+
+    ip_dataset_prefix_v4["prefix_pool"] = prefix_pool
+
+    return ip_dataset_prefix_v4
+
+
+@pytest.fixture
+def workflow_local(dependency_provider: Provider):
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowLocalExecution()
+    config.OVERRIDE.workflow = workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+async def generic_car_person_schema(default_branch: Branch, data_schema):
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "cardinality": "one",
+                        "identifier": "person__car",
+                        "name": "owner",
+                        "optional": True,
+                        "peer": "TestPerson",
+                    }
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "ElectricCar",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value", "color__value"],
+                "inherit_from": ["TestCar"],
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                    {
+                        "kind": "Text",
+                        "name": "color",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {"cardinality": "one", "identifier": "person__car", "name": "car", "peer": "TestCar"}
+                ],
+            },
+        ],
+    }
+
+    schema_root = SchemaRoot(**schema)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)

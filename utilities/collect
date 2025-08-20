@@ -1,0 +1,177 @@
+#!/bin/sh
+# Collect - A script to run Infrahub's support data collection in Docker mode.
+#
+# This script runs the following docker command:
+#
+# docker run --rm \
+#   -v /var/run/docker.sock:/var/run/docker.sock \
+#   -v "$(pwd)/exports":/source/exports \
+#   --entrypoint="" \
+#   registry.opsmill.io/opsmill/infrahub invoke bundle.collect [additional options]
+#
+# Usage:
+#   curl https://infrahub.opsmill.io/collect | sh [options]
+#
+# Options:
+#   --include-queries             Pass an extra flag to collect database queries logs
+#   --version VERSION             Specify the version of the Infrahub image to use (default: latest)
+#   --project PROJECT             Specify the Infrahub project name to collect from
+#   --list-only                   Only list available Infrahub projects, don't collect data
+#   --log-lines LINES             Number of log lines to collect per container (default: 100000)
+#   --no-benchmark                Skip running performance benchmark (default: benchmark is run)
+#   --metrics-interval SECONDS    Interval between metrics samples in seconds (default: 30)   
+#
+# Environment Variables:
+#   INFRAHUB_BUILD_NAME   Name of the Infrahub build (default: discover automatically)
+#   VERSION               Version of the Infrahub image to use (default: latest)
+
+set -e
+
+# Check if docker is available
+if ! command -v docker >/dev/null 2>&1; then
+    echo "Error: Docker is not installed or not in PATH."
+    exit 1
+fi
+
+# Use VERSION from the environment or default to "latest"
+if [ -z "$VERSION" ]; then
+    export VERSION="latest"
+fi
+
+# Default: no extra options
+EXTRA_OPTS=""
+PROJECT_NAME=""
+LIST_ONLY=0
+RUN_BENCHMARK=1
+
+# Process command-line options
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --include-queries)
+      EXTRA_OPTS="$EXTRA_OPTS --include-queries"
+      ;;
+    --version)
+      if [ -z "$2" ]; then
+        echo "Error: --version requires an argument."
+        exit 1
+      fi
+      export VERSION="$2"
+      shift
+      ;;
+    --project)
+      if [ -z "$2" ]; then
+        echo "Error: --project requires an argument."
+        exit 1
+      fi
+      PROJECT_NAME="$2"
+      shift
+      ;;
+    --log-lines)
+      if [ -z "$2" ]; then
+        echo "Error: --log-lines requires an argument."
+        exit 1
+      fi
+      EXTRA_OPTS="$EXTRA_OPTS --log-lines $2"
+      shift
+      ;;
+    --metrics-interval)
+      if [ -z "$2" ]; then
+        echo "Error: --metrics-interval requires an argument."
+        exit 1
+      fi
+      METRICS_INTERVAL="$2"
+      EXTRA_OPTS="$EXTRA_OPTS --metrics-interval $2"
+      shift
+      ;;
+    --no-benchmark)
+      RUN_BENCHMARK=0
+      EXTRA_OPTS="$EXTRA_OPTS --no-benchmark"
+      ;;
+    --list-only)
+      LIST_ONLY=1
+      ;;
+    --help|-h)
+      echo "Usage: sh collect.sh [options]"
+      echo ""
+      echo "Options:"
+      echo "  --include-queries             Pass an extra flag to collect database queries logs"
+      echo "  --version VERSION             Specify the version of the Infrahub image to use (default: latest)"
+      echo "  --project PROJECT             Specify the Infrahub project name to collect from"
+      echo "  --list-only                   Only list available Infrahub projects, don't collect data"
+      echo "  --log-lines LINES             Number of log lines to collect per container (default: 100000)"
+      echo "  --no-benchmark                Skip running performance benchmark (default: benchmark is run)"
+      echo "  --metrics-interval SECONDS    Interval between metrics samples in seconds (default: 30)"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: sh collect.sh [options]"
+      echo "Use --help for more information"
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+# Create the exports directory if it doesn't exist
+if [ ! -d "$(pwd)/exports" ]; then
+    mkdir -p "$(pwd)/exports"
+fi
+
+# If we're only listing projects, run a special command
+if [ "$LIST_ONLY" -eq 1 ]; then
+    echo "Listing available Infrahub projects..."
+    
+    # Use a proper Python script with escaped newlines
+    PYTHON_SCRIPT="from invoke import Context; \
+from tasks.container_ops import discover_infrahub_projects, display_infrahub_projects; \
+projects = discover_infrahub_projects(Context()); \
+display_infrahub_projects(projects)"
+    
+    DOCKER_CMD="docker run --rm \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      registry.opsmill.io/opsmill/infrahub:${VERSION} python -c \"${PYTHON_SCRIPT}\""
+    
+    eval $DOCKER_CMD
+    exit 0
+fi
+
+# If a project name is specified, use it
+if [ -n "$PROJECT_NAME" ]; then
+    export INFRAHUB_BUILD_NAME="$PROJECT_NAME"
+    echo "Using specified project: $PROJECT_NAME"
+    EXTRA_OPTS="$EXTRA_OPTS --project $PROJECT_NAME"
+else
+    # Unset INFRAHUB_BUILD_NAME to allow automatic discovery
+    unset INFRAHUB_BUILD_NAME
+    echo "No project specified. The script will discover available projects and let you choose."
+fi
+
+# Build the docker run command
+DOCKER_CMD="docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --entrypoint="" \
+  -v $(pwd)/exports:/source/exports"
+
+# Add INFRAHUB_BUILD_NAME if it's set
+if [ -n "$INFRAHUB_BUILD_NAME" ]; then
+    DOCKER_CMD="$DOCKER_CMD \
+  -e INFRAHUB_BUILD_NAME=${INFRAHUB_BUILD_NAME}"
+fi
+
+# Complete the command
+DOCKER_CMD="$DOCKER_CMD \
+  registry.opsmill.io/opsmill/infrahub:${VERSION} invoke bundle.collect $EXTRA_OPTS"
+
+if [ $RUN_BENCHMARK -eq 1 ]; then
+    echo "Performance benchmark will be run (use --no-benchmark to skip)"
+else
+    echo "Performance benchmark will be skipped"
+fi
+
+echo "Running command with image version: ${VERSION}"
+echo "$DOCKER_CMD"
+
+# Execute the command
+eval $DOCKER_CMD
+echo "Support archive created in the ./exports directory."

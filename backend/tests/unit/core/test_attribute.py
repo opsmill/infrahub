@@ -1,18 +1,31 @@
+import re
 from enum import Enum
 
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
-from infrahub.core.attribute import URL, Dropdown, Integer, IPHost, IPNetwork, String
+from infrahub.core.attribute import (
+    MAX_STRING_LENGTH,
+    URL,
+    DateTime,
+    Dropdown,
+    Integer,
+    IPHost,
+    IPNetwork,
+    ListAttribute,
+    MacAddress,
+    String,
+)
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 
 
 async def test_init(
@@ -97,6 +110,38 @@ async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branc
     assert URL(
         name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="ftp://api.example.com"
     )
+
+
+async def test_validate_format_datetime_valid(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("time")
+
+    assert DateTime(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=current_timestamp()
+    )
+    assert DateTime(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2024-06-04T03:13:03.386270"
+    )
+
+
+async def test_validate_format_datetime_invalid(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("time")
+
+    with pytest.raises(ValidationError, match=r"invalid-datetime is not a valid DateTime"):
+        DateTime(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-datetime")
+
+    with pytest.raises(ValidationError, match=r"10:1010 is not a valid DateTime"):
+        DateTime(
+            name="test",
+            schema=schema,
+            branch=default_branch,
+            at=Timestamp(),
+            node=None,
+            data="10:1010",
+        )
 
 
 async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -210,6 +255,45 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
     }
 
 
+async def test_validate_mac_address_returns(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("name")
+
+    mac_address = "60:23:6c:c4:9f:7e"
+    test_mac = MacAddress(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=mac_address
+    )
+
+    assert test_mac.value == mac_address
+    assert test_mac.version == 48
+    assert test_mac.binary == "0b11000000010001101101100110001001001111101111110"
+    assert test_mac.oui == "60-23-6C"
+    assert test_mac.ei == "C4-9F-7E"
+    assert test_mac.bare == "60236CC49F7E"
+    assert test_mac.dot_notation == "6023.6cc4.9f7e"
+    assert test_mac.semicolon_notation == "60:23:6c:c4:9f:7e"
+    assert test_mac.split_notation == "60236c:c49f7e"
+    assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E"}
+
+    test_mac = MacAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=None)
+
+    assert test_mac.value is None
+    assert test_mac.version is None
+    assert test_mac.binary is None
+    assert test_mac.oui is None
+    assert test_mac.ei is None
+    assert test_mac.bare is None
+    assert test_mac.dot_notation is None
+    assert test_mac.semicolon_notation is None
+    assert test_mac.split_notation is None
+
+    with pytest.raises(ValidationError, match=r"thisisnotamacaddress is not a valid"):
+        MacAddress(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisisnotamacaddress"
+        )
+
+
 async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("status")
     Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
@@ -217,6 +301,39 @@ async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: B
     with pytest.raises(ValidationError) as exc:
         Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-choice")
     assert "invalid-choice must be one of" in str(exc.value)
+
+
+@pytest.mark.parametrize("params_only", [False, True])
+async def test_validate_content_text_parameters(db: InfrahubDatabase, default_branch: Branch, params_only: bool):
+    regex = "^[a-z]*$"
+    min_length = 2
+    max_length = 5
+    node_schema = NodeSchema(
+        namespace="Test",
+        name="Node",
+        attributes=[
+            AttributeSchema(name="text_test", kind="Text", regex=regex, min_length=min_length, max_length=max_length)
+        ],
+    )
+    attr_schema = node_schema.get_attribute("text_test")
+    assert attr_schema.regex == attr_schema.parameters.regex
+    assert attr_schema.min_length == attr_schema.parameters.min_length
+    assert attr_schema.max_length == attr_schema.parameters.max_length
+    if params_only:
+        attr_schema.regex = attr_schema.min_length = attr_schema.min_length = None
+
+    new_node = await Node.init(db=db, branch=default_branch, schema=node_schema)
+    with pytest.raises(ValidationError, match=r"must have a minimum length of 2"):
+        await new_node.new(db=db, text_test="a")
+
+    with pytest.raises(ValidationError, match=r"must have a maximum length of 5"):
+        await new_node.new(db=db, text_test="abcdef")
+
+    with pytest.raises(ValidationError, match=rf"must conform with the regex: '{re.escape(regex)}'"):
+        await new_node.new(db=db, text_test="Ab")
+
+    await new_node.new(db=db, text_test="abc")
+    assert new_node.text_test.value == "abc"
 
 
 async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -283,7 +400,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 2/ a regex is defined and a valid value is provided
-    schema.regex = "^[A-Z7-9]+$"
+    schema.parameters.regex = "^[A-Z7-9]+$"
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
     # 3/ a regex is defined and a non-valid value is provided
@@ -291,7 +408,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 4/ An invalid regex is defined
-    schema.regex = "^[A-Z7-9"
+    schema.parameters.regex = "^[A-Z7-9"
     with pytest.raises(ValidationError):
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
@@ -303,8 +420,8 @@ async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, cri
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
 
     # 2/ min_length or max_length are defined and a valid value is provided
-    schema.min_length = 5
-    schema.max_length = 10
+    schema.parameters.min_length = 5
+    schema.parameters.max_length = 10
     String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
     # 3/ min_length or max_length are defined and a non-valid value is provided
@@ -350,7 +467,7 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue { value: $attr_description_value })",
+        "(av:AttributeValueIndexed { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
@@ -363,7 +480,7 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue { value: $attr_description_value })",
+        "(av:AttributeValueIndexed { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
@@ -378,7 +495,7 @@ async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue { value: $attr_any_value })",
+        "(av:AttributeValueIndexed { value: $attr_any_value })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_any_value": "test"}
@@ -429,11 +546,32 @@ async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_br
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_name_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue)",
+        "(av:AttributeValueIndexed)",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": ["test1", "test2"]}
     assert matchs == ["av.value IN $attr_name_value"]
+
+
+async def test_get_query_filter_list_attribute(db: InfrahubDatabase, default_branch: Branch):
+    attr_schema = AttributeSchema(name="something", kind="List")
+    filters, params, matchs = await attr_schema.get_query_filter(
+        name="name", filter_name="values", filter_value=["test1", "test2"]
+    )
+    expected_response = [
+        "(n)",
+        "-[:HAS_ATTRIBUTE]-",
+        "(i:Attribute { name: $attr_name_name })",
+        "-[:HAS_VALUE]-",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {
+        "attr_name_name": "name",
+        "attr_name_value": ["test1", "test2"],
+        "attr_name_values": '.*("test1"|"test2").*',
+    }
+    assert matchs == ["toString(av.value) =~ $attr_name_values"]
 
 
 async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
@@ -452,7 +590,7 @@ async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_name_name })",
         "-[:HAS_VALUE]-",
-        "(av:AttributeValue)",
+        "(av:AttributeValueIndexed)",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": ["thing-two"]}
@@ -546,7 +684,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, critical
         "source": {
             "id": first_account.id,
             "display_label": "First Account",
-            "type": InfrahubKind.ACCOUNT,
+            KIND_GRAPHQL_FIELD_NAME: InfrahubKind.ACCOUNT,
         },
         "value": "mystring",
     }
@@ -598,8 +736,151 @@ async def test_to_graphql_no_fields(
             "__typename": InfrahubKind.ACCOUNT,
             "display_label": "First Account",
             "id": first_account.id,
-            "type": InfrahubKind.ACCOUNT,
+            KIND_GRAPHQL_FIELD_NAME: InfrahubKind.ACCOUNT,
         },
         "value": "mystring",
     }
     assert await attr2.to_graphql(db=db) == expected_data
+
+
+async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes")
+
+    large_string = "a" * 9_000  # It's over 9000!!!!
+
+    # Text field
+    with pytest.raises(
+        ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
+    ):
+        await obj.new(db=db, name="obj1", mystring=large_string)
+
+    # Updated text field
+    await obj.new(db=db, name="obj1")
+    obj.mystring.value = large_string
+    with pytest.raises(
+        ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
+    ):
+        await obj.save(db=db)
+
+    # TextArea field should have no size limitation
+    await obj.new(db=db, name="obj2", mytextarea=large_string)
+    await obj.save(db=db)
+
+
+@pytest.mark.parametrize("updated_status,expected_is_default", [(None, True), ("online", True), ("offline", False)])
+async def test_enum_with_default_preserves_is_default(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data_simple: dict[str, Node],
+    updated_status,
+    expected_is_default,
+):
+    site = hierarchical_location_data_simple["paris"]
+    rack = await Node.init(db=db, schema="LocationRack")
+    await rack.new(db=db, name="new-rack", parent=site)
+    await rack.save(db=db)
+    status_enum_by_value = {
+        "online": rack.status.value.ONLINE,
+        "offline": rack.status.value.OFFLINE,
+    }
+    assert rack.status.is_default
+    assert rack.status.value.value == "online"
+
+    retrieved_rack = await NodeManager.get_one(db=db, id=rack.id)
+    assert retrieved_rack.status.value.value == "online"
+    assert retrieved_rack.status.is_default
+    retrieved_rack.name.value = "updated-rack"
+    expected_status = "online"
+    if updated_status:
+        retrieved_rack.status.value = status_enum_by_value[updated_status]
+        expected_status = updated_status
+    await retrieved_rack.save(db=db)
+    assert retrieved_rack.status.value.value == expected_status
+    assert retrieved_rack.status.is_default is expected_is_default
+
+    updated_rack = await NodeManager.get_one(db=db, id=rack.id)
+    assert updated_rack.name.value == "updated-rack"
+    assert updated_rack.status.value.value == expected_status
+    assert updated_rack.status.is_default is expected_is_default
+
+
+@pytest.mark.parametrize(
+    "regex_value,input_value,error",
+    [
+        pytest.param(
+            "^box_",
+            ["mystring"],
+            "mystring must conform with the regex: '^box_' at test",
+            id="not-a-box",
+        ),
+        pytest.param(
+            "^box_",
+            ["box_a", "box_b", "chest_a"],
+            "chest_a must conform with the regex: '^box_' at test",
+            id="is-chest",
+        ),
+    ],
+)
+def test_attribute_list_invalid_regex(
+    default_branch: Branch, regex_value: str, input_value: list[str], error: str
+) -> None:
+    storage_attribute = AttributeSchema(name="storage", kind="List", regex=regex_value)
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        label="Widget",
+        attributes=[
+            storage_attribute,
+        ],
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        ListAttribute(
+            id=str(UUIDT()),
+            name="test",
+            schema=storage_attribute,
+            branch=default_branch,
+            at=Timestamp(),
+            node=Node(schema=widget, branch=default_branch, at=Timestamp()),
+            data=input_value,
+        )
+
+    assert error in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "regex_value,input_value",
+    [
+        pytest.param(
+            "^box_",
+            ["box_one"],
+            id="a-box",
+        ),
+        pytest.param(
+            "^box_",
+            ["box_a", "box_b", "box_another"],
+            id="several_boxes",
+        ),
+    ],
+)
+def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_value: list[str]) -> None:
+    storage_attribute = AttributeSchema(name="storage", kind="List", regex=regex_value)
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        label="Widget",
+        attributes=[
+            storage_attribute,
+        ],
+    )
+
+    list_attrib = ListAttribute(
+        id=str(UUIDT()),
+        name="test",
+        schema=storage_attribute,
+        branch=default_branch,
+        at=Timestamp(),
+        node=Node(schema=widget, branch=default_branch, at=Timestamp()),
+        data=input_value,
+    )
+    assert list_attrib.value == input_value

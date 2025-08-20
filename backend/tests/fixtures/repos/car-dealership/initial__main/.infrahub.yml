@@ -16,6 +16,26 @@ jinja2_transforms:
     description: "Template to a report card showing a person and the cars they own"
     query: "person_with_cars"
     template_path: "templates/person_with_cars.j2"
+  - name: person_with_cars_yaml
+    description: "Template to a report card showing a person and the cars they own"
+    query: "person_with_cars"
+    template_path: "templates/person_with_cars_yaml.j2"
+
+
+python_transforms:
+  - name: PersonWithCarsTransform
+    class_name: PersonWithCarsTransform
+    file_path: "transforms/person_with_cars_transform.py"
+  - name: ConvertedPersonWithCarsTransform
+    class_name: ConvertedPersonWith
+    file_path: "transforms/converted_person_with_cars.py"
+    convert_query_response: true
+  - name: CarSpecMarkdown
+    class_name: CarSpecMarkdown
+    file_path: "transforms/car_spec_markdown.py"
+  - name: WebhookTransformer
+    class_name: WebhookTransformer
+    file_path: "transforms/webhook_transformer.py"
 
 artifact_definitions:
   - name: "Ownership report"
@@ -25,6 +45,34 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "people"
     transformation: "person_with_cars"
+  - name: "Ownership report Yaml"
+    artifact_name: "car-owner-yaml"
+    parameters:
+      name: "name__value"
+    content_type: "application/yaml"
+    targets: "people"
+    transformation: "person_with_cars_yaml"
+  - name: "name report"
+    artifact_name: "car-name"
+    parameters:
+      name: "name__value"
+    content_type: "application/json"
+    targets: "people"
+    transformation: "PersonWithCarsTransform"
+  - name: "car spec markdown"
+    artifact_name: "car-spec-markdown"
+    parameters:
+      name: "name__value"
+    content_type: "text/markdown"
+    targets: "people"
+    transformation: "CarSpecMarkdown"
+  - name: "converted-owner"
+    artifact_name: "car-converted-owner"
+    parameters:
+      name: "name__value"
+    content_type: "application/json"
+    targets: "people"
+    transformation: "ConvertedPersonWithCarsTransform"
 
 generator_definitions:
   - name: cartags
@@ -40,3 +88,21 @@ generator_definitions:
     convert_query_response: true
     parameters:
       name: "name__value"
+
+queries:
+  - name: car_overview
+    file_path: "checks/car_overview.gql"
+  - name: car_owner_age
+    file_path: "checks/car_owner_age.gql"
+  - name: cartags
+    file_path: "generators/cartags.gql"
+  - name: person_with_cars
+    file_path: "templates/person_with_cars.gql"
+
+objects:
+  - "objects/persons.yml"
+  - "objects/manufacturers.yml"
+
+menus:
+  - "menus/person_base.yml"
+  - "menus/manufacturer_base.yml"

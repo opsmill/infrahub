@@ -8,7 +8,7 @@ This document provides detailed documentation for all events used in the Infrahu
 
 :::info
 
-For more detailed explanations on how to use these events within Infrahub, see the [event handling](/topics/event-handling) topic.
+For more detailed explanations on how these events are used within Infrahub, see the [bus event handling](../topics/bus-event-handling) topic.
 
 :::
 
@@ -33,16 +33,16 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 {% for field in event.fields -%}
-{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type , field.default if field.default else "None") }}
+{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type, field.default if field.default else "None") }}
 {% endfor -%}
 <!-- vale on -->
 {% endfor %}
-{% endfor %}
+{% endfor -%}
 {% endfor %}
 
 ## Responses events
 
-{% for primary, secondaries in message_classes.items() -%}
+{% for primary, secondaries in response_classes.items() -%}
 {% for secondary, events in secondaries.items() -%}
 <!-- vale off -->
 ### {{ primary | replace("_", " ") | title  }} {{ secondary.split('.')[-1] | replace("_", " ") | title  }}
@@ -52,19 +52,16 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale off -->
 #### Event {{ event.event_name }}
 <!-- vale on -->
-{% if event.description %}
-**Description**: {{ event.description }}
-{% endif %}
+{% if event.description %}**Description**: {{ event.description }}{%- endif -%}
 **Priority**: {{ event.priority }}
-
 
 <!-- vale off -->
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 {% for field in event.fields -%}
-{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type , field.default if field.default else "None") }}
+{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type, field.default if field.default else "None") }}
 {% endfor -%}
 <!-- vale on -->
 {% endfor %}
-{% endfor %}
+{% endfor -%}
 {% endfor %}

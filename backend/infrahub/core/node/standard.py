@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union, get_args, get_origin
-from uuid import UUID  # noqa: TCH003
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
+from uuid import UUID
 
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
 from infrahub.core.constants import NULL_VALUE
@@ -18,8 +19,6 @@ from infrahub.core.query.standard_node import (
     StandardNodeUpdateQuery,
 )
 from infrahub.exceptions import Error, InitializationError
-
-# pylint: disable=redefined-builtin
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
@@ -34,12 +33,17 @@ class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
 
-    _query: Type[StandardNodeQuery] = StandardNodeCreateQuery
-    _exclude_attrs: List[str] = ["id", "uuid", "_query"]
+    _query: type[StandardNodeQuery] = StandardNodeCreateQuery
+    _exclude_attrs: list[str] = ["id", "uuid", "_query"]
 
     @classmethod
     def get_type(cls) -> str:
         return cls.__name__
+
+    def get_id(self) -> str:
+        if not self.id:
+            raise ValueError("id isn't defined yet")
+        return self.id
 
     @staticmethod
     def guess_field_type(field: FieldInfo) -> Any:
@@ -145,7 +149,7 @@ class StandardNode(BaseModel):
         return result.get("n")
 
     @classmethod
-    def from_db(cls, node: Neo4jNode, extras: Optional[Dict[str, Any]] = None) -> Self:
+    def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
@@ -168,14 +172,14 @@ class StandardNode(BaseModel):
 
             if value == NULL_VALUE:
                 attrs[key] = None
-            elif issubclass(field_type, (int, float, bool, str, UUID)):
+            elif issubclass(field_type, int | float | bool | str | UUID):
                 attrs[key] = value
-            elif isinstance(value, (str, bytes)):
+            elif isinstance(value, str | bytes):
                 attrs[key] = ujson.loads(value)
 
         return cls(**attrs)
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         data = {}
 
         if not self.uuid:
@@ -188,17 +192,20 @@ class StandardNode(BaseModel):
                 continue
 
             attr_value = getattr(self, attr_name)
+            if isinstance(attr_value, Enum):
+                attr_value = attr_value.value
+
             field_type = self.guess_field_type(field)
 
             if attr_value is None:
                 data[attr_name] = NULL_VALUE
             elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
                 if isinstance(attr_value, list):
-                    clean_value = [item.dict() for item in attr_value]
+                    clean_value = [item.model_dump() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
                     data[attr_name] = attr_value.model_dump_json()
-            elif issubclass(field_type, (int, float, bool, str, UUID)):
+            elif issubclass(field_type, int | float | bool | str | UUID):
                 data[attr_name] = attr_value
             else:
                 data[attr_name] = ujson.dumps(attr_value)
@@ -210,10 +217,13 @@ class StandardNode(BaseModel):
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
-        ids: Optional[List[str]] = None,
-        **kwargs,
-    ) -> List[Self]:
-        query: Query = await StandardNodeGetListQuery.init(db=db, node_class=cls, ids=ids, limit=limit, **kwargs)
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> list[Self]:
+        query: Query = await StandardNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+        )
         await query.execute(db=db)
 
         return [cls.from_db(result.get("n")) for result in query.get_results()]

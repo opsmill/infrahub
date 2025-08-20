@@ -4,37 +4,51 @@ title: .infrahub.yml file format
 
 # `.infrahub.yml` file {#infrahub-yaml}
 
-To make full use of a [remote repository](/topics/repository) within Infrahub, the remote repository must have a `.infrahub.yml` file defined at the root of the repository. Without this file, Infrahub will only load GraphQL queries (`.gql` extension) defined within the repository and it will ignore any other Infrahub data types.
+To make full use of a [remote repository](../topics/repository) within Infrahub, the remote repository must have a `.infrahub.yml` file defined at the root of the repository. This file enables Infrahub to identify the required imports and tie together the various components.
 
 An external repository can be used to link the following Infrahub objects to an Infrahub instance:
 
-- [GraphQL Query](/topics/graphql)
-- [Schema](/topics/schema)
-- [Jinja2 Transform](/topics/transformation#rendered-file-jinja2-plugin)
-- [Python Transformation](/topics/transformation#transformpython-python-plugin)
-- [Artifact Definition](/topics/artifact)
+- [GraphQL Query](../topics/graphql)
+- [Schema](../topics/schema)
+- [Menu](../guides/menu)
+- [Object File](../guides/object-load)
+- [Jinja2 Transform](../topics/transformation#rendered-file-jinja2-plugin)
+- [Python Transformation](../topics/transformation#transformpython-python-plugin)
+- [Artifact Definition](../topics/artifact)
+- [Generator Definition](../topics/generator)
 
 :::info
 
-- See [this guide](/guides/repository) for how to add or update an external repository in Infrahub
-- See [this topic](/topics/repository) for more information on remote repositories in Infrahub
-- See [this reference](/reference/dotinfrahub) for more information on the `.infrahub.yml` file format
+- See [this guide](../guides/repository) for how to add or update an external repository in Infrahub
+- See [this topic](../topics/repository) for more information on remote repositories in Infrahub
+- See [this reference](../reference/dotinfrahub) for more information on the `.infrahub.yml` file format
 
 :::
 
 :::note
 
-To help with the development process of a repository configuration file, you can leverage [schema validation](/reference/schema-validation) within your editor.
+To help with the development process of a repository configuration file, you can leverage [schema validation](../reference/schema-validation) within your editor.
 
 :::
 
 ## GraphQL query {#graphql-query}
 
-This is the easiest type of object to link to Infrahub through an external repository because they do not need to be specified in the `.infrahub.yml` file. When Infrahub creates a Repository or pulls changes from the associated external repository, it will scan all the files in the repository and save any that have a `.gql` extension as GraphQLQuery objects in Infrahub.
+GraphQL queries could be defined in file(s) with a `.gql` extension. Then queries must also be explicitly identified in the `.infrahub.yml` file under `queries`.
+
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  queries:
+    - name: topology_info                      # Here goes the query's name
+      file_path: "topology/topology_info.gql"  # Here is the path to query's file
+  ```
+
+</details>
 
 ## Schema {#schema}
 
-Schemas to be loaded as part of an external repository can be defined in file(s) as described [here](/topics/schema). The schemas must also be explicitly identified in the `.infrahub.yml` file under `schemas`.
+Schemas to be loaded as part of an external repository can be defined in file(s) as described [here](../topics/schema). The schemas must also be explicitly identified in the `.infrahub.yml` file under `schemas`.
 
 <details>
   <summary>Example</summary>
@@ -48,9 +62,43 @@ Schemas to be loaded as part of an external repository can be defined in file(s)
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
 
+## Objects
+
+Objects to be loaded as part of an external repository can be defined in file(s) as described [objects topic]($(base_url)python-sdk/topics/object_file). The objects must also be explicitly identified in the `.infrahub.yml` file under `objects`.
+
+:::info
+
+The order defined in the `.infrahub.yml` file is maintained. If a folder is defined in the list, the folders/files within the folder are loaded in alphabetical order. This means that if you have a dependency between objects, you must ensure that the dependent object is defined before the object that depends on it.
+
+:::
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  objects:
+    - objects/locations.yml
+    - objects/devices
+  ```
+
+</details>
+
+## Menus
+
+Menus to be loaded as part of an external repository can be defined in file(s) as described [here](../guides/menu). The menus must also be explicitly identified in the `.infrahub.yml` file under `menus`.
+
+<details>
+  <summary>Example</summary>
+
+  ```yaml
+  menus:
+    - menus/base.yml
+  ```
+
+</details>
+
 ## Jinja2 transformation {#transform-jinja-2}
 
-Jinja2 Transformations can be defined as described [here](/topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
+Jinja2 Transformations can be defined as described [here](../topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
 
 - `name`: name of the transform
 - `query`: the name of an Infrahub `GraphQL query` to use with the transform
@@ -72,7 +120,7 @@ Jinja2 Transformations can be defined as described [here](/topics/transformation
 
 ## Python transformation {#transform-python}
 
-Python Transformations can be defined as described [here](/topics/transformation#transformpython-python-plugin). To load Python Transformations from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. The definition in `.infrahub.yml` includes the following
+Python Transformations can be defined as described [here](../topics/transformation#transformpython-python-plugin). To load Python Transformations from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. The definition in `.infrahub.yml` includes the following
 
 - `name`: name of the transformation
 - `file_path`: path to the Python transformation within this repository
@@ -92,7 +140,7 @@ Python Transformations can be defined as described [here](/topics/transformation
 
 ## Artifact definition {#artifact-definition}
 
-Artifact Definitions can be created as described [here](/topics/artifact). To load Artifact Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Artifact Definition in `.infrahub.yml` must include the following:
+Artifact Definitions can be created as described [here](../topics/artifact). To load Artifact Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Artifact Definition in `.infrahub.yml` must include the following:
 
 - `name`: the name of the Artifact Definition
 - `artifact_name`: the name of the Artifact created by this Artifact Definition
@@ -116,3 +164,13 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
   ```
 
 </details>
+
+## Generator definition {#generator-definition}
+
+Generator Definitions can be created as described [here](../topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
+
+- `name`: the name of the Generator Definition
+- `file_path`: path to the Generator Python file within this repository
+- `query`: the name of an Infrahub `GraphQL query` to use with the Generator
+- `class_name`: the class defining the generator in the Python file designated by file_path
+- `targets`: the Infrahub Group containing the targets for which we want to run the Generator

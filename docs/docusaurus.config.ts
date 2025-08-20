@@ -1,6 +1,8 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+import globalVars from './globalVars'
+import path from 'path';
 
 const config: Config = {
   title: "Infrahub Documentation",
@@ -11,6 +13,8 @@ const config: Config = {
       src: 'https://plausible.io/js/script.js',
       defer: true,
       'data-domain': 'docs.infrahub.app'
+    }, {
+      src: '/js/custom-reo.js'
     }
   ] : [],
 
@@ -103,9 +107,32 @@ const config: Config = {
     },
     prism: {
       theme: prismThemes.oneDark,
-      additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml", "yaml"],
+      additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml", "yaml", "hcl"],
     },
   } satisfies Preset.ThemeConfig,
+
+  markdown: {
+    format: "mdx",
+    preprocessor: ({ filePath, fileContent }) => {
+      console.log(`Processing ${filePath}`);
+      const transformedContent = fileContent.replace(/\$\(\s*(\w+)\s*\)/g, (match, variableName) => {
+        if (variableName === 'base_url' && globalVars.base_url === 'RELATIVE') {
+          return getDocsRelative(filePath);
+        }
+        return globalVars[variableName] || match;
+      });
+      return transformedContent;
+    },
+  },
 };
+
+function getDocsRelative(filePath) {
+  const rootDocsDir = path.join(process.cwd(), 'docs');
+  const currentDir = path.dirname(filePath);
+  const nestedDocsDir = path.join(rootDocsDir, 'docs');
+  const relativePath = path.relative(currentDir, nestedDocsDir);
+  const segments = relativePath.split(path.sep);
+  return '../'.repeat(segments.length - 1);
+}
 
 export default config;

@@ -10,8 +10,10 @@ async def exec_async(event_loop):
 
             def _():
                 return event_loop.run_until_complete(func(*args, **kwargs))
-        else:
-            return func(*args, **kwargs)
+
+            return _()
+
+        return func(*args, **kwargs)
 
     return _wrapper
 
@@ -26,5 +28,7 @@ async def aio_benchmark(benchmark, event_loop):
                 return event_loop.run_until_complete(func(*args, **kwargs))
         else:
             return benchmark(func, *args, **kwargs)
+
+        return None
 
     return _wrapper

@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List
+from typing import TYPE_CHECKING
 
-from infrahub.core.path import GroupedDataPaths  # noqa: TCH001
+if TYPE_CHECKING:
+    from infrahub.core.path import GroupedDataPaths
 
-from .model import SchemaConstraintValidatorRequest
+    from .model import SchemaConstraintValidatorRequest
 
 
 class ConstraintCheckerInterface(ABC):
@@ -15,4 +18,4 @@ class ConstraintCheckerInterface(ABC):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool: ...
 
     @abstractmethod
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]: ...
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]: ...

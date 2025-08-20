@@ -6,8 +6,11 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_branch,
 )
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.exceptions import InitializationError, SchemaNotFoundError
 
 from ..shared import load_schema
 from .shared import (
@@ -19,22 +22,43 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
+
+class BranchState:
+    def __init__(self) -> None:
+        self._branch: Branch | None = None
+
+    @property
+    def branch(self) -> Branch:
+        if self._branch:
+            return self._branch
+        raise InitializationError
+
+    @branch.setter
+    def branch(self, value: Branch) -> None:
+        self._branch = value
+
+
+state = BranchState()
 
 
 class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
-        return pytest.state["branch1"]  # type: ignore[index]
+        return state.branch
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01, client: InfrahubClient):
         await load_schema(db=db, schema=schema_step01)
 
         # Load data in the MAIN branch first
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
+
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
 
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
@@ -60,12 +84,17 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         # Create Branch1
         branch1 = await create_branch(db=db, branch_name="branch1")
-        pytest.state = {"branch1": branch1}
+        state.branch = branch1
 
         # Load data in BRANCH1
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
+
+        deleted_chuck = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
+        await deleted_chuck.new(db=db, name="Deleted Chuck", height=175, description="He's not here")
+        await deleted_chuck.save(db=db)
+        await deleted_chuck.delete(db=db)
 
         mercedes = await Node.init(schema=MANUFACTURER_KIND_01, db=db, branch=branch1)
         await mercedes.new(
@@ -158,6 +187,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                                 },
                                 "removed": {},
                             },
+                            "uniqueness_constraints": None,
+                            "human_friendly_id": None,
                         },
                         "removed": {},
                     },
@@ -201,7 +232,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         john = persons[0]
         assert john.name.value == "John"  # type: ignore[attr-defined]
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
 
@@ -233,7 +263,10 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                     },
                     "TestingCarMaker": {
                         "added": {},
-                        "changed": {"label": None, "name": None},
+                        "changed": {
+                            "label": None,
+                            "name": None,
+                        },
                         "removed": {},
                     },
                     "TestingPerson": {
@@ -253,9 +286,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         }
         assert success
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
+        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
+        height_attr_schema = person_schema.get_attribute(name="height")
+        assert height_attr_schema.id
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
@@ -273,6 +308,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         john = persons[0]
         assert not hasattr(john, "height")
 
+        updated_height_attr_schema = await registry.manager.get_one(
+            db=db, branch=self.branch1.name, id=height_attr_schema.id
+        )
+        assert updated_height_attr_schema is None
+
         manufacturers = await registry.manager.query(
             db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "renault"}, branch=self.branch1.name
         )
@@ -281,12 +321,18 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(renault_cars) == 2
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
-    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
+    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset):
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
+        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=default_branch)
+        height_attr_schema = person_schema.get_attribute(name="height")
+        assert height_attr_schema.id
 
         # Validate that all data added to main after the creation of the branch has been migrated properly
+        updated_height_attr_schema = await registry.manager.get_one(
+            db=db, branch=self.branch1.name, id=height_attr_schema.id
+        )
+        assert updated_height_attr_schema is None
         persons = await registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1.name
         )
@@ -302,7 +348,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
 
@@ -315,7 +360,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
         assert success
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
 
@@ -330,5 +374,79 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         # FIXME after loading the new schema, TestingTag is still present in the branch, need to investigate
         # assert registry.schema.has(name=TAG_KIND, branch=self.branch1) is False
 
+        # check that tag attributes/relationships are deleted on branch
+        attr_schemas = await NodeManager.query(
+            db=db, branch=self.branch1, schema="SchemaAttribute", filters={"node__id": tag_schema.id}
+        )
+        assert len(attr_schemas) == 0
+        rel_schemas = await NodeManager.query(
+            db=db, branch=self.branch1, schema="SchemaRelationship", filters={"node__id": tag_schema.id}
+        )
+        assert len(rel_schemas) == 0
+        # check that tag attributes/relationships still exist on main
+        attr_schemas = await NodeManager.query(db=db, schema="SchemaAttribute", filters={"node__id": tag_schema.id})
+        assert len(attr_schemas) == 1
+        assert {a.name.value for a in attr_schemas} == {"name"}
+        rel_schemas = await NodeManager.query(db=db, schema="SchemaRelationship", filters={"node__id": tag_schema.id})
+        assert len(rel_schemas) == 5
+        assert {r.name.value for r in rel_schemas} == {
+            "cars",
+            "persons",
+            "profiles",
+            "subscriber_of_groups",
+            "member_of_groups",
+        }
+
         tags = await registry.manager.query(db=db, schema=TAG_KIND)
         assert len(tags) == 2
+
+    async def test_step05_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+        success, response = await client.schema.check(schemas=[schema_step05], branch=self.branch1.name)
+
+        assert response == {
+            "diff": {
+                "added": {},
+                "removed": {},
+                "changed": {
+                    "TestingCar": {
+                        "added": {},
+                        "changed": {
+                            "generate_profile": None,
+                        },
+                        "removed": {},
+                    },
+                },
+            }
+        }
+        assert success
+
+    async def test_step05_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+        response = await client.schema.load(schemas=[schema_step05], branch=self.branch1.name)
+        assert not response.errors
+
+        with pytest.raises(SchemaNotFoundError):
+            registry.schema.get(name=f"Profile{CAR_KIND}", branch=self.branch1, check_branch_only=True)
+        car_schema = registry.schema.get(name=CAR_KIND, branch=self.branch1, duplicate=False)
+        assert "profiles" in car_schema.relationship_names
+
+    async def test_step05_merge(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step06, schema_interior_base
+    ):
+        response = await client.schema.load(schemas=[schema_step06], branch=self.branch1.name)
+        assert not response.errors
+
+        await client.branch.merge(branch_name=self.branch1.name)
+
+        updated_branch = await Branch.get_by_name(name=self.branch1.name, db=db)
+        updated_schema_default = await registry.schema.load_schema_from_db(db=db)
+        default_interiors_schema = updated_schema_default.get(name="TestingInterior", duplicate=False)
+        assert default_interiors_schema.attribute_names == ["material"]
+        assert "cars" in default_interiors_schema.relationship_names
+        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=updated_branch)
+        updated_interiors_schema = updated_schema_branch.get(name="TestingInterior", duplicate=False)
+        assert updated_interiors_schema.attribute_names == ["material"]
+        assert "cars" in updated_interiors_schema.relationship_names
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

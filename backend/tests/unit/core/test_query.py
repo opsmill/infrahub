@@ -1,4 +1,3 @@
-import pendulum
 import pytest
 
 from infrahub.core.query import (
@@ -11,10 +10,13 @@ from infrahub.core.query import (
     cleanup_return_labels,
     sort_results_by_time,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
 class Query01(Query):
+    type = QueryType.READ
+
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.order_by = ["at.name", "r2.from"]
 
@@ -30,7 +32,7 @@ class Query01(Query):
 
 
 class Query02(Query):
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
@@ -56,6 +58,7 @@ async def test_query_base(db: InfrahubDatabase):
 
 async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01):
     params = {
+        "my": "tooshort",
         "mystring": "5ffa45d4",
         "mylist1": ["1", "2", "3"],
         "mylist2": [1, 2, 3],
@@ -69,6 +72,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "MATCH (n3) WHERE n3.uuid in $mylist2",
         "MATCH (n4) WHERE n4.uuid in $myint",
         "CREATE (a)-[:HAS_VALUE $mydict ]->(av)",
+        "MATCH (n6) WHERE n4.uuid = $mydict.name",
     ]
 
     expected_query_lines = [
@@ -77,6 +81,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "MATCH (n3) WHERE n3.uuid in [1, 2, 3]",
         "MATCH (n4) WHERE n4.uuid in 198",
         'CREATE (a)-[:HAS_VALUE { name: "myprop", value: 12 } ]->(av)',
+        'MATCH (n6) WHERE n4.uuid = "myprop"',
     ]
 
     result = Query.insert_variables_in_query(query="\n".join(query_lines), variables=params)
@@ -143,7 +148,7 @@ async def test_query_count(db: InfrahubDatabase, simple_dataset_01):
 
 
 async def test_query_result_getters(neo4j_factory):
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
     n2 = neo4j_factory.hydrate_node(222, {"AttributeValue"}, {"uuid": "n1a1", "name": "name"}, "222")
@@ -154,8 +159,8 @@ async def test_query_result_getters(neo4j_factory):
         "HAS_ATTRIBUTE",
         {
             "branch": "main",
-            "from": time0.subtract(seconds=60).to_iso8601_string(),
-            "to": time0.subtract(seconds=30).to_iso8601_string(),
+            "from": time0.subtract(seconds=60).to_string(),
+            "to": time0.subtract(seconds=30).to_string(),
             "status": "active",
         },
     )
@@ -164,17 +169,19 @@ async def test_query_result_getters(neo4j_factory):
         111,
         222,
         "HAS_ATTRIBUTE",
-        {"branch": "main", "from": time0.subtract(seconds=30).to_iso8601_string(), "to": None, "status": "active"},
+        {"branch": "main", "from": time0.subtract(seconds=30).to_string(), "to": None, "status": "active"},
     )
 
     qr = QueryResult(
         data=[n1, r1, r2, n2],
-        labels=[
-            "n1",
-            "r1",
-            "r2",
-            "n2",
-        ],
+        labels=cleanup_return_labels(
+            [
+                "n1",
+                "r1",
+                "r2",
+                "n2",
+            ]
+        ),
     )
     assert list(qr.get_rels()) == [r1, r2]
     assert list(qr.get_nodes()) == [n1, n2]
@@ -187,7 +194,7 @@ async def test_query_result_getters(neo4j_factory):
 
 
 async def test_sort_results_by_time(neo4j_factory):
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
     n2 = neo4j_factory.hydrate_node(222, {"AttributeValue"}, {"uuid": "n1a1", "name": "name"}, "222")
@@ -198,8 +205,8 @@ async def test_sort_results_by_time(neo4j_factory):
         "HAS_ATTRIBUTE",
         {
             "branch": "main",
-            "from": time0.subtract(seconds=60).to_iso8601_string(),
-            "to": time0.subtract(seconds=30).to_iso8601_string(),
+            "from": time0.subtract(seconds=60).to_string(),
+            "to": time0.subtract(seconds=30).to_string(),
             "status": "active",
         },
     )
@@ -208,7 +215,7 @@ async def test_sort_results_by_time(neo4j_factory):
         111,
         222,
         "HAS_ATTRIBUTE",
-        {"branch": "main", "from": time0.subtract(seconds=30).to_iso8601_string(), "to": None, "status": "active"},
+        {"branch": "main", "from": time0.subtract(seconds=30).to_string(), "to": None, "status": "active"},
     )
     r3 = neo4j_factory.hydrate_relationship(
         1112223,
@@ -217,15 +224,15 @@ async def test_sort_results_by_time(neo4j_factory):
         "HAS_ATTRIBUTE",
         {
             "branch": "main",
-            "from": time0.subtract(seconds=90).to_iso8601_string(),
-            "to": time0.subtract(seconds=60).to_iso8601_string(),
+            "from": time0.subtract(seconds=90).to_string(),
+            "to": time0.subtract(seconds=60).to_string(),
             "status": "active",
         },
     )
 
-    qr1 = QueryResult(data=[n1, n2, r1], labels=["n1", "n2", "r"])
-    qr2 = QueryResult(data=[n1, n2, r2], labels=["n1", "n2", "r"])
-    qr3 = QueryResult(data=[n1, n2, r3], labels=["n1", "n2", "r"])
+    qr1 = QueryResult(data=[n1, n2, r1], labels=cleanup_return_labels(["n1", "n2", "r"]))
+    qr2 = QueryResult(data=[n1, n2, r2], labels=cleanup_return_labels(["n1", "n2", "r"]))
+    qr3 = QueryResult(data=[n1, n2, r3], labels=cleanup_return_labels(["n1", "n2", "r"]))
 
     results = sort_results_by_time(results=[qr1, qr2, qr3], rel_label="r")
     assert list(results) == [qr3, qr1, qr2]

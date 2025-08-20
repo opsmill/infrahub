@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
 
 from ..interface import ConstraintCheckerInterface
-from ..shared import (
-    SchemaValidatorQuery,
-)
+from ..shared import SchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -26,12 +24,12 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         check_children: bool = False,
         check_parent: bool = False,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.check_children = check_children
         self.check_parent = check_parent
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         if self.check_children and self.check_parent:
             raise RuntimeError("Cannot check children and parent at same time")
         if self.check_children:
@@ -52,7 +50,6 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         if hierarchy := getattr(self.node_schema, "hierarchy", None):
             self.params["hierarchy_kind"] = hierarchy
         else:
@@ -61,10 +58,8 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 
         # ruff: noqa: E501
         query = """
-        MATCH (n:Node)
-        WHERE $node_kind IN LABELS(n)
-        CALL {
-            WITH n
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
             RETURN path as full_path, n as active_node
@@ -74,8 +69,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         WITH full_path, active_node
         WITH full_path, active_node
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH path = (active_node)%(to_children)s-[hrel1:IS_RELATED]-%(to_parent)s(:Relationship {name: "parent__child"})%(to_children)s-[hrel2:IS_RELATED]-%(to_parent)s(peer:Node)
             WHERE all(
                 r in relationships(path)
@@ -95,8 +89,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             collect([branch_level_sum, from_times, active_relationship_count, hierarchy_path, deepest_branch_name]) as enriched_paths,
             start_node,
             peer_node
-        CALL {
-            WITH enriched_paths, peer_node
+        CALL (enriched_paths, peer_node) {
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[3] as current_path, path_to_check[4] as branch_name, peer_node as current_peer
             ORDER BY
@@ -117,7 +110,12 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             any(r in relationships(current_path) WHERE r.hierarchy <> $hierarchy_kind)
             OR NOT ($peer_kind IN labels(current_peer))
         )
-        """ % {"branch_filter": branch_filter, "to_children": to_children, "to_parent": to_parent}
+        """ % {
+            "branch_filter": branch_filter,
+            "to_children": to_children,
+            "to_parent": to_parent,
+            "node_kind": self.node_schema.kind,
+        }
 
         self.add_to_query(query)
         self.return_labels = ["start_node.uuid", "branch_name", "current_peer.uuid"]
@@ -130,7 +128,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
                     branch=str(result.get("branch_name")),
                     path_type=PathType.NODE,
                     node_id=str(result.get("start_node.uuid")),
-                    property_name="children" if self.check_children else "parent",
+                    field_name="children" if self.check_children else "parent",
                     peer_id=str(result.get("current_peer.uuid")),
                     kind=self.node_schema.kind,
                 )
@@ -142,7 +140,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 
@@ -153,8 +151,8 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name in ("node.parent.update", "node.children.update")
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
 
         if not isinstance(request.node_schema, NodeSchema):
             return grouped_data_paths_list

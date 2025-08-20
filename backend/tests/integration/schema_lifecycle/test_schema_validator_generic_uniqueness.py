@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -20,12 +21,10 @@ PERSON_KIND = "TestingPerson"
 CYLON_KIND = "TestingCylon"
 CAR_KIND = "TestingCar"
 
-# pylint: disable=unused-argument
-
 
 class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -49,7 +48,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_humanoid_base(self) -> Dict[str, Any]:
+    def schema_humanoid_base(self) -> dict[str, Any]:
         return {
             "name": "Humanoid",
             "namespace": "Testing",
@@ -67,7 +66,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_person_base(self) -> Dict[str, Any]:
+    def schema_person_base(self) -> dict[str, Any]:
         return {
             "name": "Person",
             "namespace": "Testing",
@@ -80,7 +79,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_cylon_base(self) -> Dict[str, Any]:
+    def schema_cylon_base(self) -> dict[str, Any]:
         return {
             "name": "Cylon",
             "namespace": "Testing",
@@ -101,23 +100,36 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await load_schema(db=db, schema=schema_step_01)
 
         starbuck = await Node.init(schema=PERSON_KIND, db=db)
-        await starbuck.new(db=db, name="Kara", height=175, description="Starbuck", homeworld="Caprica")
+        await starbuck.new(
+            db=db, name="Kara", height=175, description="Starbuck", homeworld="Caprica", favorite_color="army green"
+        )
         await starbuck.save(db=db)
 
         president = await Node.init(schema=PERSON_KIND, db=db)
         await president.new(db=db, name="Laura", height=175, description="President", homeworld="Caprica")
         await president.save(db=db)
 
+        deleted_person = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_person.new(db=db, name="Deleted", height=175, homeworld="Caprica")
+        await deleted_person.save(db=db)
+        await deleted_person.delete(db=db)
+
         gaius = await Node.init(schema=PERSON_KIND, db=db)
-        await gaius.new(db=db, name="Gaius", height=155, description="'Scientist'", homeworld="Aerilon")
+        await gaius.new(
+            db=db, name="Gaius", height=155, description="'Scientist'", homeworld="Aerilon", favorite_color="Gaius"
+        )
         await gaius.save(db=db)
 
         boomer = await Node.init(schema=CYLON_KIND, db=db)
-        await boomer.new(db=db, name="Sharon", height=165, model_number=8, description="8 (Boomer)")
+        await boomer.new(
+            db=db, name="Sharon", height=165, model_number=8, description="8 (Boomer)", favorite_color="Cylon silver"
+        )
         await boomer.save(db=db)
 
         athena = await Node.init(schema=CYLON_KIND, db=db)
-        await athena.new(db=db, name="Sharon", height=165, model_number=8, description="8 (Athena)")
+        await athena.new(
+            db=db, name="Sharon", height=165, model_number=8, description="8 (Athena)", favorite_color="Cylon chrome"
+        )
         await athena.save(db=db)
 
         caprica = await Node.init(schema=CYLON_KIND, db=db)
@@ -153,7 +165,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_01(
         self, schema_humanoid_base, schema_car_base, schema_person_base, schema_cylon_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_humanoid_base],
@@ -161,15 +173,15 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_01_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
+    def schema_01_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
         """Add uniqueness constraint to TestHumanoid that does not fit existing data"""
-        schema_humanoid_base["uniqueness_constraints"] = [["height", "name"]]
+        schema_humanoid_base["uniqueness_constraints"] = [["height__value", "name__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
     def schema_01_generic_uniqueness_failure(
         self, schema_01_humanoid_uniqueness_constraint_failure, schema_car_base, schema_cylon_base, schema_person_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_01_humanoid_uniqueness_constraint_failure],
@@ -177,14 +189,14 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
-        schema_humanoid_base["uniqueness_constraints"] = [["name", "favorite_color"]]
+    def schema_02_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
+        schema_humanoid_base["uniqueness_constraints"] = [["name__value", "favorite_color__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
     def schema_02_generic_uniqueness_failure(
         self, schema_02_humanoid_uniqueness_constraint_failure, schema_car_base, schema_cylon_base, schema_person_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_02_humanoid_uniqueness_constraint_failure],
@@ -192,18 +204,18 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
-        schema_humanoid_base["uniqueness_constraints"] = [["height", "name"]]
+    def schema_03_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
+        schema_humanoid_base["uniqueness_constraints"] = [["height__value", "name__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
-    def schema_03_person_constraint_failure(self, schema_person_base) -> Dict[str, Any]:
-        schema_person_base["uniqueness_constraints"] = [["height", "homeworld"]]
+    def schema_03_person_constraint_failure(self, schema_person_base) -> dict[str, Any]:
+        schema_person_base["uniqueness_constraints"] = [["height__value", "homeworld__value"]]
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_03_cylon_constraint_failure(self, schema_cylon_base) -> Dict[str, Any]:
-        schema_cylon_base["uniqueness_constraints"] = [["model_number", "favorite_color"]]
+    def schema_03_cylon_constraint_failure(self, schema_cylon_base) -> dict[str, Any]:
+        schema_cylon_base["uniqueness_constraints"] = [["model_number__value", "favorite_color__value"]]
         return schema_cylon_base
 
     @pytest.fixture(scope="class")
@@ -213,7 +225,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_car_base,
         schema_03_cylon_constraint_failure,
         schema_03_person_constraint_failure,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_03_humanoid_uniqueness_constraint_failure],
@@ -221,18 +233,18 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_04_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
-        schema_humanoid_base["uniqueness_constraints"] = [["name", "favorite_color"]]
+    def schema_04_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
+        schema_humanoid_base["uniqueness_constraints"] = [["name__value", "favorite_color__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
-    def schema_04_person_constraint_failure(self, schema_person_base) -> Dict[str, Any]:
-        schema_person_base["uniqueness_constraints"] = [["homeworld", "favorite_color"]]
+    def schema_04_person_constraint_failure(self, schema_person_base) -> dict[str, Any]:
+        schema_person_base["uniqueness_constraints"] = [["homeworld__value", "favorite_color__value"]]
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_04_cylon_constraint_failure(self, schema_cylon_base) -> Dict[str, Any]:
-        schema_cylon_base["uniqueness_constraints"] = [["model_number", "favorite_color"]]
+    def schema_04_cylon_constraint_failure(self, schema_cylon_base) -> dict[str, Any]:
+        schema_cylon_base["uniqueness_constraints"] = [["model_number__value", "favorite_color__value"]]
         return schema_cylon_base
 
     @pytest.fixture(scope="class")
@@ -242,7 +254,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_car_base,
         schema_04_cylon_constraint_failure,
         schema_04_person_constraint_failure,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_04_humanoid_uniqueness_constraint_failure],
@@ -268,7 +280,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         err_msg = response["errors"][0]["message"]
         assert initial_dataset["boomer"] in err_msg
         assert initial_dataset["athena"] in err_msg
-        assert "node.uniqueness_constraints.update" in err_msg
+        assert "Node-level 'uniqueness_constraints'" in err_msg
 
     async def test_step_02_check_generic_uniqueness_constraint_rebase_failure(
         self,
@@ -297,7 +309,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         assert initial_dataset["boomer"] in exc.value.message
         assert initial_dataset["athena"] in exc.value.message
-        assert "node.uniqueness_constraints.update" in exc.value.message
+        assert "Node-level 'uniqueness_constraints'" in exc.value.message
 
     async def test_step_03_check_generic_and_node_uniqueness_constraint_failure(
         self,
@@ -328,7 +340,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert initial_dataset["starbuck"] in err_msg
         assert initial_dataset["president"] in err_msg
         assert initial_dataset["gaius"] not in err_msg
-        assert "node.uniqueness_constraints.update" in err_msg
+        assert "Node-level 'uniqueness_constraints'" in err_msg
 
     async def test_step_03_reset(self, db: InfrahubDatabase, initial_dataset):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
@@ -381,17 +393,46 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         assert initial_dataset["gaius"] not in exc.value.message
         assert initial_dataset["caprica"] not in exc.value.message
-        for display_label, kind in [
-            (await boomer_main.render_display_label(db=db), "TestingHumanoid"),
-            (await athena_branch.render_display_label(db=db), "TestingHumanoid"),
-            (await boomer_main.render_display_label(db=db), "TestingCylon"),
-            (await athena_branch.render_display_label(db=db), "TestingCylon"),
-            (await starbuck_main.render_display_label(db=db), "TestingPerson"),
-            (await president_branch.render_display_label(db=db), "TestingPerson"),
-        ]:
-            expected_error_msg = (
-                f"Node {display_label} is not compatible with the constraint 'node.uniqueness_constraints.update'"
-                f" at 'schema/{kind}/uniqueness_constraints'"
-            )
+        for node in [boomer_main, athena_branch]:
+            # boomer_main,
+            # athena_branch,
+            # starbuck_main,
+            # president_branch,
+            display_label = await node.render_display_label(db=db)
+            kind = "TestingHumanoid"
+            for field in ("name", "favorite_color"):
+                value = getattr(node, field).value
+                expected_error_msg = (
+                    f"Node-level 'uniqueness_constraints' constraint violation on schema '{kind}'."
+                    f" Node ({display_label}) is not compliant."
+                    f" The error relates to field {field}.value='{value}'"
+                )
+                assert expected_error_msg in exc.value.errors[0]["message"]
 
-            assert expected_error_msg in exc.value.errors[0]["message"]
+        for node in [boomer_main, athena_branch]:
+            display_label = await node.render_display_label(db=db)
+            kind = "TestingCylon"
+            for field in ("model_number", "favorite_color"):
+                value = getattr(node, field).value
+                expected_error_msg = (
+                    f"Node-level 'uniqueness_constraints' constraint violation on schema '{kind}'."
+                    f" Node ({display_label}) is not compliant."
+                    f" The error relates to field {field}.value='{value}'"
+                )
+                assert expected_error_msg in exc.value.errors[0]["message"]
+
+        for node in [starbuck_main, president_branch]:
+            display_label = await node.render_display_label(db=db)
+            kind = "TestingPerson"
+            for field in ("homeworld", "favorite_color"):
+                value = getattr(node, field).value
+                expected_error_msg = (
+                    f"Node-level 'uniqueness_constraints' constraint violation on schema '{kind}'."
+                    f" Node ({display_label}) is not compliant."
+                    f" The error relates to field {field}.value='{value}'"
+                )
+                assert expected_error_msg in exc.value.errors[0]["message"]
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

@@ -1,34 +1,132 @@
 ---
 title: Documentation guide
 ---
+import ReferenceLink from "../../src/components/Card";
+import SnippetBaseReqs from "../snippets/pre-reqs-base.mdx"
+import SnippetFrontendReqs from "../snippets/pre-reqs-frontend.mdx"
 
 # Documentation guide
 
 Welcome to the Infrahub documentation guide. This document aims to answer any questions that may come up when creating or updating documentation.
 
+## Base prerequisites
+
+<SnippetBaseReqs />
+
+## Frontend prerequisites
+
+<SnippetFrontendReqs />
+
 ## Working with the docs site locally
 
-The recommended way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks. To run the commands, you should:
+The recommended way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks.
 
-1. Install [`python`](https://www.python.org/).
-2. Install [`invoke`](https://www.pyinvoke.org/).
-3. Install [`poetry`](https://python-poetry.org/).
-4. Run `poetry install` from the Infrahub project directory.
-5. Install [Node.js (and npm)](https://nodejs.org/en).
+Use the Invoke tasks to build the documentation and generate source code derived documentation.
 
-Once these requirements are met, you'll have access to the doc task list.
+```shell
+invoke docs.build docs.generate
+```
 
-```bash
+Once the documentation has been built, make sure to validate the documentation.
+
+```shell
+invoke docs.validate
+```
+
+After the documentation has been validated, it can be served locally on port **3000**.
+
+```shell
+invoke docs.serve
+```
+
+<ReferenceLink title="Explore the local documentation" url="http://localhost:3000/" openInNewTab />
+
+To see more documentation Invoke tasks use the help functionality.
+
+```shell
 invoke -l docs
 ```
 
-The primary commands are as follows:
+```shell
+Available 'docs' tasks:
 
-- `invoke docs.install`: Install the documentation dependencies via `npm`.
-- `invoke docs.build`: Build the documentation website.
-- `invoke docs.generate`: Generate source-derived documentation pages (such as the schema and Jinja templates).
-- `invoke docs.serve`: Run a local development server for the documentation website.
-- `invoke docs.validate`: Validate that the generated documentation has been committed to git.
+  .build                   Build documentation website.
+  .format                  This will run all formatter.
+  .format-markdownlint     Run markdownlint-cli2 to format all .md/mdx files.
+  .generate                Generate all documentation output from code.
+  .generate-bus-events     Generate documentation for the Bus events.
+  .generate-infrahub-cli   Generate documentation for the infrahub cli.
+  .generate-infrahubctl    Generate documentation for the infrahubctl cli.
+  .generate-python-sdk     Generate documentation for the Python SDK.
+  .generate-repository     Generate documentation for the repository configuration file.
+  .generate-schema         Generate documentation for the schema.
+  .install                 Install documentation dependencies.
+  .lint                    This will run all linter.
+  .markdownlint
+  .serve                   Run documentation server in development mode.
+  .vale                    Run vale to validate the documentation.
+  .validate                Validate that the generated documentation is committed to Git.
+```
+
+## Writing documentation with AI
+
+We are increasingly using AI to assist developers in writing technical documentation. To ensure consistency, we maintain a set of instructions that guide the AI when generating documentation for Infrahub.
+
+You can find these instructions in the `.github/instructions/documentation.instructions.md` file.
+
+:::warning
+
+This process is experimental. We are evaluating available options and will refine the process as we learn more.
+
+:::
+
+### Example use cases and prompts
+
+Below are some examples of how to use AI to write documentation. These are not exhaustive, but should give you a good starting point.
+
+- **Writing new documentation**: `Write a new documentation guide about [feature]. You can find the existing topic in [topic file]. The feature works like this: [description]. Make sure to include examples for [graphql, cli, etc.].`
+- **Updating existing documentation**: `We recently changed [this feature] to include [change]. Identify the documentation that needs to be updated and update it accordingly.`
+- **Assessing documentation quality**: `Review the documentation in [folder], evaluate it against our guidelines, and draft a report prioritizing which pages need updates.`
+
+### General guidelines
+
+- Always use the `.github/instructions/documentation.instructions.md` file as your reference when writing documentation.
+- We have not yet committed to a specific LLM, so you may use the one you prefer.
+- Treat AI-generated documentation as a starting point. Always review and refine the content to ensure it meets our standards and accurately reflects the intended message.
+- Provide clear, specific prompts to the AI. The more context and detail you give, the better the output will be.
+
+### Using an IDE
+
+:::success
+
+Using an agent like GitHub Copilot, Cursor, or windsurf in your IDE improves the documentation writing experience. These tools can access files directly and provide better context.
+
+:::
+
+Example steps using GitHub Copilot in VSCode:
+
+- Open a chat with GitHub Copilot.
+- Add the `.github/instructions/documentation.instructions.md` file to the chat context.
+- Prompt the AI to perform tasks on documentation files.
+- Depending on the task, switch between `Ask`, `Edit`, and `Agent` modes.
+
+### Using a web interface
+
+If you prefer a web interface, more manual work is required.
+
+Example steps using OpenAI's ChatGPT:
+
+- Create a new project dedicated to writing documentation for Infrahub.
+- Copy the instructions from `.github/instructions/documentation.instructions.md` into the project.
+- Copy the content of reference files (`docs/docs/development/docs.mdx`, `.vale/styles/`, `.markdownlint.yaml`) into the project.
+- Prompt the AI to perform documentation tasks.
+- Copy the generated content into the appropriate `.mdx` file in the `docs/docs` folder.
+
+:::warning
+
+Update the instructions and reference files in your project whenever they change in the repository.
+
+:::
 
 ## Linting and automation
 
@@ -38,9 +136,12 @@ Infrahub uses [Vale](https://vale.sh) to check grammar, style, and word usage. Y
 
 Most Vale warnings match up with the [style guide](#style-guide) explanations below. Other warnings often fall into the `Infrahub.spelling` rule. These are caused by misspellings, product names, names of people, or otherwise unknown technical terms. See the [procedures for updating rules](#spelling-errors) below for details on adding terms to the approved list.
 
-### Install linters locally
+### Install VS Code linting extensions
 
-The preferred way to work on the documentation with Vale and markdownlint is directly in an editor. Install the [Vale](https://marketplace.visualstudio.com/items?itemName=chrischinchilla.vale-vscode) and [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint) VS Code plugins to enable in-editor warnings.
+It is preferred to install extensions into VSCode so that you can see the visual errors and fix them as you write documentation.
+
+- [Vale](https://marketplace.visualstudio.com/items?itemName=chrischinchilla.vale-vscode)
+- [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint)
 
 ### Disabling Vale and markdownlint
 
@@ -74,7 +175,7 @@ Add special case capitalization words to the `branded-terms-case-swap.yml` rule.
 
 ## Writing markdown
 
-Pages are written in MDX, which is a superset of markdown or generated by the app source.
+Pages are written in MDX, which is a enhanced version of markdown or generated by the app source.
 
 In addition, Docusaurus has its own [markdown-inspired components](https://docusaurus.io/docs/markdown-features). You'll often find reference links, panels, and snippets used throughout the Infrahub docs.
 
@@ -91,28 +192,55 @@ When writing documentation, it's essential to guide the reader's attention to sp
 - **Info:** Use info blocks for additional, helpful information that isn't required to complete the task but offers more context or useful tips.
 
   ```markdown
-  > **Info**: This feature is available in version 2.1 and later.
+  :::info
   ```
+
+  **Example**
+  :::info This feature is available in version 2.1 and later.
+  :::
 
 - **Success:** Use success blocks to highlight expected outcomes and "status checks" to ensure the reader is on track with the guide. These blocks can reinforce the reader's progress and provide positive feedback.
 
   ```markdown
-  > **Success**: If you've followed the steps correctly, your installation should now be complete.
+  :::success
   ```
+
+  **Example**
+  :::success If you've followed the steps correctly, your installation should now be complete.
+  :::
 
 - **Warning:** Warning blocks should be used to highlight common errors or mistakes that may occur during the process. They serve as preventive measures to help the reader avoid potential pitfalls.
 
   ```markdown
-  > **Warning**: Ensure you've backed up your files before proceeding with this step to prevent data loss.
+  :::warning
   ```
+
+  **Example**
+  :::warning Ensure you've backed up your files before proceeding with this step to prevent data loss.
+  :::
 
 - **Danger:** Use danger blocks to highlight irreversible or breaking actions. These notifications are critical for steps that could significantly affect the system or data if mishandled.
 
   ```markdown
-  > **Danger**: This action will permanently delete your data and cannot be undone.
+  :::danger
   ```
 
+  **Example**
+  :::danger This action will permanently delete your data and cannot be undone.
+  :::
+
 Incorporating these blocks into your documentation makes it more interactive and user-friendly, guiding the reader through different stages of their learning or implementation process with visual cues that emphasize the significance of each piece of information.
+
+## Documentation sync to `infrahub-docs`
+
+Infrahub documentation is synced and ultimately published via the [`infrahub-docs`](https://github.com/opsmill/infrahub-docs) repository. This is done via the GitHub action `.github/workflows/sync-docs.yml`.
+
+Please note the following important points:
+
+- Today, spelling (the `.vale` directory) is authoritative in the `infrahub` repository, not the `infrahub-docs` repository. If you need to add a spelling exception in another repository (i.e. `infrahub-demo-dc-fabric`), you have to add the exception to the `infrahub` repository.
+- All documentation URLs need to be relative:
+  - Do this: `[some page](../path/to/file)`
+  - Not this: `[some page](/absolute_path/to/file)`
 
 ## Organizing new pages
 
@@ -126,6 +254,8 @@ Here are questions to ask when deciding where to place a new document:
 - Are you providing APIs, command references, or concise reference information? Select **Reference**.
 
 If you're unsure where something goes, diátaxis offers a [map](https://diataxis.fr/needs/) and [compass](https://diataxis.fr/compass/) to help.
+
+When creating a new page in the documentation, in addition to creating the `.mdx` file containing the documentation itself, you must also add the page to the relevant section of the `sidebars.ts` file.
 
 ### Tutorials
 
@@ -181,9 +311,48 @@ Reference docs serve a single purpose. To provide quick, clear information when 
 
 For a deeper dive into reference docs, refer to the [diátaxis reference page](https://diataxis.fr/reference/).
 
-## Creating and updating application screenshots
+## Application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](/development/frontend/testing-guidelines#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/tests/e2e/tutorial`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](./frontend/testing-guidelines#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
+
+### Updating all screenshots manually
+
+#### 1. Start with a fresh data environment
+
+Start with fresh demo data each time you want to take new screenshots, as the tests are not idempotent. This ensures consistency across screenshots.
+
+```shell
+invoke dev.destroy dev.start dev.load-infra-schema dev.load-infra-data dev.infra-git-import dev.infra-git-create
+```
+
+#### 2. run the e2e tests
+
+E2E test commands are accessible through inside the `frontend/app` directory. To run the tests with screenshots, execute:
+
+```shell
+cd frontend/app
+npm run test:e2e:screenshots
+```
+
+:::info
+By default, tests are run in headless mode. To run them in a visible browser, use `npm run test:e2e:screenshots:headed` instead.
+:::
+
+#### 3. Check the results
+
+The screenshots will be saved in `docs/docs/media`. You can then use them in our documentation:
+
+```markdown
+![optional caption](../../media/my-screenshot-name.png)
+```
+
+### Add a screenshot
+
+#### 1. Locate on which test the screenshot should be added
+
+If the test does not exist yet, create must create it first. Refer to the [write e2e tests](./frontend/testing-guidelines#writing-e2e-tests) for more information.
+
+#### 2. Add the screenshot
 
 To add a new screenshot in the documentation, use this command within the tutorial e2e test:
 
@@ -191,17 +360,10 @@ To add a new screenshot in the documentation, use this command within the tutori
 await saveScreenshotForDocs(page, "my-screenshot-name");
 ```
 
-To update all documentation screenshots, run:
+You can also organize your screenshots using folders, by specifying the folder name like this:
 
-```bash
-cd frontend
-npm run test:e2e:screenshots
-```
-
-The screenshots will be saved in `docs/media`. You can then use them in our documentation:
-
-```markdown
-![optional caption](../../media/my-screenshot-name.png)
+```ts
+await saveScreenshotForDocs(page, "my-folder/my-screenshot-name" );
 ```
 
 ## Style guide
@@ -225,7 +387,7 @@ We use American English for most standard text. Unique technical terms are [incl
 
 Use a trailing comma when listing multiple items. This is commonly known as the Oxford comma or serial comma.
 
-**:x: Don't do this:** There are devices, organizations and users.
+**:x: Don't do this:** There are devices, organizations, and users.
 
 **:white_check_mark: Do this:** There are devices, organizations, and users.
 
@@ -290,7 +452,7 @@ Feature: Explanation of feature
 When creating a code block or snippet with three backticks, make sure to include a language designation.
 <!-- markdownlint-disable -->
 ~~~md
-```bash
+```shell
 this is a shell script
 ```
 ~~~
@@ -299,6 +461,14 @@ this is a shell script
 ### Marking code items
 
 Sometimes you need to mention a `function` or `ModelName`. To do so, use the inline code backticks in markdown.
+
+### Excalidraw diagrams
+
+You can attach `.excalidraw` diagrams to visually explain concepts, workflows, or processes within the documentation.
+
+:::warning
+Always save Excalidraw files with the "Embed Scene" option checked to maintain the ability to edit in VS Code.
+:::
 
 ### Use i.e. for examples
 
@@ -328,7 +498,7 @@ Before publishing new changes to documentation, complete the following tasks:
   - [ ] Confirm build of `infrahubctl` pages.
   - [ ] Confirm build of `infrahub-cli` pages.
   - [ ] Confirm build of schema pages.
-- [ ] [Generate application screenshots](#creating-and-updating-application-screenshots).
+- [ ] [Update application screenshots](#updating-all-screenshots-manually).
 - [ ] If there is a new app version, create a new release notes document in `docs/release-notes`.
 - [ ] Run [linters](#linting-and-automation) and fix valid errors on all source files.
 - [ ] Perform test build of docs, `invoke docs.build`.

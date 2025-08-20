@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -18,7 +18,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
+    async def check(self, node: Node, at: Timestamp | None = None, filters: list[str] | None = None) -> None:
         at = Timestamp(at)
         node_schema = node.get_schema()
         for unique_attr in node_schema.unique_attributes:
@@ -45,7 +45,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
                 at=at,
             )
 
-            if any((n for n in nodes if n.get_id() != node.id)):
+            if any(n for n in nodes if n.get_id() != node.id):
                 raise ValidationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                 )

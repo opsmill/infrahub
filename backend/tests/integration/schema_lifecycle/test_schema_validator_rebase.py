@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -9,6 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -19,8 +20,6 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
-
 
 class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
@@ -30,6 +29,11 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
+
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
 
         jane = await Node.init(schema=PERSON_KIND, db=db)
         await jane.new(db=db, name="Jane", height=165, description="The famous Jane Doe")
@@ -88,7 +92,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         return await create_branch(db=db, branch_name="branch_2")
 
     @pytest.fixture(scope="class")
-    def schema_01_person_name_regex(self, schema_person_base) -> Dict[str, Any]:
+    def schema_01_person_name_regex(self, schema_person_base) -> dict[str, Any]:
         """Add regex to TestPerson.name that does not fit existing data"""
         new_schema = {**schema_person_base}
         new_schema["attributes"][0]["regex"] = "^[A-Z][a-z]+$"
@@ -97,14 +101,14 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_01_attr_regex(
         self, schema_car_base, schema_01_person_name_regex, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_01_person_name_regex, schema_car_base, schema_manufacturer_base, schema_tag_base],
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_car_unique(self, schema_car_base) -> Dict[str, Any]:
+    def schema_02_car_unique(self, schema_car_base) -> dict[str, Any]:
         new_schema = {**schema_car_base}
         new_schema["uniqueness_constraints"] = [["owner", "manufacturer"]]
         return new_schema
@@ -112,7 +116,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_02_node_unique(
         self, schema_car_base, schema_person_base, schema_02_car_unique, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_02_car_unique, schema_tag_base],
@@ -139,7 +143,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             await client.branch.rebase(branch_name=branch_2.name)
 
         assert little_john.id in exc.value.message
-        assert "attribute.regex.update" in exc.value.message
+        assert "Attribute-level 'regex' constraint violation" in exc.value.message
 
     async def test_step_02_node_unique_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_02_node_unique, branch_2
@@ -161,10 +165,13 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         )
         await another_civic.save()
 
-        exc = None
         with pytest.raises(GraphQLError) as exc:
             await client.branch.rebase(branch_name=branch_2.name)
 
-        assert initial_dataset["accord"] in exc.value.message
-        assert another_civic.id in exc.value.message
-        assert "node.uniqueness_constraints.update" in exc.value.message
+            assert initial_dataset["accord"] in exc.value.message
+            assert another_civic.id in exc.value.message
+            assert "node.uniqueness_constraints.update" in exc.value.message
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

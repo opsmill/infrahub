@@ -1,25 +1,33 @@
-from .account import AccountToken
+from .account import AccountPermissions, AccountToken
 from .branch import BranchQueryList
-from .diff.diff import DiffSummary
-from .diff.old import DiffSummaryOld
 from .internal import InfrahubInfo
-from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
+from .ipam import (
+    DeprecatedIPAddressGetNextAvailable,
+    DeprecatedIPPrefixGetNextAvailable,
+    InfrahubIPAddressGetNextAvailable,
+    InfrahubIPPrefixGetNextAvailable,
+)
+from .proposed_change import ProposedChangeAvailableActions
 from .relationship import Relationship
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
+from .search import InfrahubSearchAnywhere
 from .status import InfrahubStatus
 from .task import Task
 
 __all__ = [
+    "AccountPermissions",
     "AccountToken",
     "BranchQueryList",
-    "DiffSummary",
-    "DiffSummaryOld",
-    "InfrahubInfo",
-    "InfrahubStatus",
+    "DeprecatedIPAddressGetNextAvailable",
+    "DeprecatedIPPrefixGetNextAvailable",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
+    "InfrahubInfo",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
+    "InfrahubSearchAnywhere",
+    "InfrahubStatus",
+    "ProposedChangeAvailableActions",
     "Relationship",
     "Task",
 ]

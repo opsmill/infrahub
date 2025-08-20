@@ -1,18 +1,27 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 from infrahub import config
-from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, RelationshipHierarchyDirection
+from infrahub.core import registry
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    AttributeDBNodeType,
+    RelationshipDirection,
+    RelationshipHierarchyDirection,
+)
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
-from infrahub.core.utils import extract_field_filters
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
+from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
@@ -22,17 +31,15 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema
-    from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
+    from infrahub.core.schema.template_schema import TemplateSchema
     from infrahub.database import InfrahubDatabase
-
-# pylint: disable=consider-using-f-string,redefined-builtin,too-many-lines
 
 
 @dataclass
 class NodeToProcess:
-    schema: Optional[Union[NodeSchema, ProfileSchema]]
+    schema: NodeSchema | ProfileSchema | TemplateSchema | None
 
     node_id: str
     node_uuid: str
@@ -42,25 +49,25 @@ class NodeToProcess:
 
     branch: str
 
-    labels: List[str]
+    labels: list[str]
 
 
 @dataclass
 class AttributeNodePropertyFromDB:
     uuid: str
-    labels: List[str]
+    labels: list[str]
 
 
 @dataclass
 class AttributeFromDB:
     name: str
 
-    attr_labels: List[str]
+    attr_labels: list[str]
     attr_id: str
     attr_uuid: str
 
     attr_value_id: str
-    attr_value_uuid: Optional[str]
+    attr_value_uuid: str | None
 
     value: Any
     content: Any
@@ -72,24 +79,31 @@ class AttributeFromDB:
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
 
-    node_properties: Dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
-    flag_properties: Dict[str, bool] = dataclass_field(default_factory=dict)
+    node_properties: dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
+    flag_properties: dict[str, bool] = dataclass_field(default_factory=dict)
 
 
 @dataclass
 class NodeAttributesFromDB:
     node: Neo4jNode
-    attrs: Dict[str, AttributeFromDB] = dataclass_field(default_factory=dict)
+    attrs: dict[str, AttributeFromDB] = dataclass_field(default_factory=dict)
+
+
+@dataclass
+class PeerInfo:
+    uuid: str
+    kind: str
+    db_id: str
 
 
 class NodeQuery(Query):
     def __init__(
         self,
-        node: Optional[Node] = None,
-        node_id: Optional[str] = None,
-        node_db_id: Optional[int] = None,
-        id: Optional[str] = None,
-        branch: Optional[Branch] = None,
+        node: Node | None = None,
+        node_id: str | None = None,
+        node_db_id: int | None = None,
+        id: str | None = None,
+        branch: Branch | None = None,
         **kwargs,
     ) -> None:
         # TODO Validate that Node is a valid node
@@ -111,12 +125,11 @@ class NodeQuery(Query):
 
 class NodeCreateAllQuery(NodeQuery):
     name = "node_create_all"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002, PLR0915
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -124,38 +137,66 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["kind"] = self.node.get_kind()
         self.params["branch_support"] = self.node._schema.branch
 
-        attributes: List[AttributeCreateData] = []
-        attributes_iphost: List[AttributeCreateData] = []
-        attributes_ipnetwork: List[AttributeCreateData] = []
+        attributes: list[AttributeCreateData] = []
+        attributes_iphost: list[AttributeCreateData] = []
+        attributes_ipnetwork: list[AttributeCreateData] = []
+        attributes_indexed: list[AttributeCreateData] = []
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
             attr_data = attr.get_create_data()
+            node_type = attr.get_db_node_type()
 
-            if attr_data.node_type == AttributeDBNodeType.IPHOST:
+            if AttributeDBNodeType.IPHOST in node_type:
                 attributes_iphost.append(attr_data)
-            elif attr_data.node_type == AttributeDBNodeType.IPNETWORK:
+            elif AttributeDBNodeType.IPNETWORK in node_type:
                 attributes_ipnetwork.append(attr_data)
+            elif AttributeDBNodeType.INDEXED in node_type:
+                attributes_indexed.append(attr_data)
             else:
                 attributes.append(attr_data)
 
-        relationships: List[RelationshipCreateData] = []
+        deepest_branch_name = self.branch.name
+        deepest_branch_level = self.branch.hierarchy_level
+        relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
-            for rel in rel_manager._relationships:
-                relationships.append(await rel.get_create_data(db=db))
+            if rel_manager.schema.cardinality == "many":
+                # Fetch all relationship peers through a single database call for performances.
+                peers = await rel_manager.get_peers(db=db, branch_agnostic=self.branch_agnostic)
 
-        self.params["attrs"] = [attr.dict() for attr in attributes]
-        self.params["attrs_iphost"] = [attr.dict() for attr in attributes_iphost]
-        self.params["attrs_ipnetwork"] = [attr.dict() for attr in attributes_ipnetwork]
+            for rel in rel_manager._relationships:
+                if rel_manager.schema.cardinality == "many":
+                    try:
+                        rel.set_peer(value=peers[rel.get_peer_id()])
+                    except KeyError:
+                        pass
+                    except ValueError:
+                        # Relationship has not been initialized yet, it means the peer does not exist in db yet
+                        # typically because it will be allocated from a ressource pool. In that case, the peer
+                        # will be fetched using `rel.resolve` later.
+                        pass
+
+                rel_create_data = await rel.get_create_data(db=db, at=at)
+                if rel_create_data.peer_branch_level > deepest_branch_level or (
+                    deepest_branch_name == GLOBAL_BRANCH_NAME and rel_create_data.peer_branch == registry.default_branch
+                ):
+                    deepest_branch_name = rel_create_data.peer_branch
+                    deepest_branch_level = rel_create_data.peer_branch_level
+                relationships.append(rel_create_data)
+
+        self.params["attrs"] = [attr.model_dump() for attr in attributes]
+        self.params["attrs_indexed"] = [attr.model_dump() for attr in attributes_indexed]
+        self.params["attrs_iphost"] = [attr.model_dump() for attr in attributes_iphost]
+        self.params["attrs_ipnetwork"] = [attr.model_dump() for attr in attributes_ipnetwork]
         self.params["rels_bidir"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
         ]
         self.params["rels_out"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
         ]
         self.params["rels_in"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
         ]
 
         self.params["node_prop"] = {
@@ -171,7 +212,7 @@ class NodeCreateAllQuery(NodeQuery):
             "from": at.to_string(),
         }
 
-        rel_prop_str = "{ branch: rel.branch, branch_level: rel.branch_level, status: rel.status, hierarchy: rel.hierarchical, from: $at, to: null }"
+        rel_prop_str = "{ branch: rel.branch, branch_level: rel.branch_level, status: rel.status, hierarchy: rel.hierarchical, from: $at }"
 
         iphost_prop = {
             "value": "attr.content.value",
@@ -188,130 +229,252 @@ class NodeCreateAllQuery(NodeQuery):
             "binary_address": "attr.content.binary_address",
             "version": "attr.content.version",
             "prefixlen": "attr.content.prefixlen",
-            # "num_addresses": "attr.content.num_addresses",
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
-        query = """
+        attrs_nonindexed_query = """
+        WITH distinct n
+        UNWIND $attrs AS attr
+        // Try to find a matching vertex
+        OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+        WHERE NOT existing_av:AttributeValueIndexed
+        CALL (attr, existing_av) {
+            // If none found, create a new one
+            WITH existing_av
+            WHERE existing_av IS NULL
+            CREATE (:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+        }
+        CALL (attr) {
+            MATCH (av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+            WHERE NOT av:AttributeValueIndexed
+            RETURN av
+            LIMIT 1
+        }
+        CALL (n, attr, av) {
+            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
+            WITH a, ip, iv
+            LIMIT 1
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+        }"""
+
+        attrs_indexed_query = """
+        WITH distinct n
+        UNWIND $attrs_indexed AS attr
+        CALL (n, attr) {
+            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
+            MERGE (av:AttributeValue:AttributeValueIndexed { value: attr.content.value, is_default: attr.content.is_default })
+            WITH av, a
+            LIMIT 1
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+        }"""
+
+        attrs_iphost_query = """
+        WITH distinct n
+        UNWIND $attrs_iphost AS attr
+        CALL (n, attr) {
+            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
+            MERGE (av:AttributeValue:AttributeValueIndexed:AttributeIPHost { %(iphost_prop)s })
+            WITH attr, av, a
+            LIMIT 1
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
+            WITH a, ip, iv
+            LIMIT 1
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+        }
+        """ % {"iphost_prop": ", ".join(iphost_prop_list)}
+
+        attrs_ipnetwork_query = """
+        WITH distinct n
+        UNWIND $attrs_ipnetwork AS attr
+        CALL (n, attr) {
+            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
+            MERGE (av:AttributeValue:AttributeValueIndexed:AttributeIPNetwork { %(ipnetwork_prop)s })
+            WITH attr, av, a
+            LIMIT 1
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
+            WITH a, ip, iv
+            LIMIT 1
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
+            )
+        }
+        """ % {"ipnetwork_prop": ", ".join(ipnetwork_prop_list)}
+
+        deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)
+        branch_filter, branch_params = deepest_branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["default_branch_name"] = registry.default_branch
+
+        dest_node_subquery = """
+        CALL (rel) {
+            MATCH (dest_node:Node { uuid: rel.destination_id })-[r:IS_PART_OF]->(root:Root)
+            WHERE (
+                // if the relationship is on a branch, use the regular filter
+                (rel.peer_branch_level = 2 AND %(branch_filter)s)
+                // simplified filter for the global branch
+                OR (
+                    rel.peer_branch_level = 1
+                    AND rel.peer_branch = $global_branch_name
+                    AND r.branch = $global_branch_name
+                    AND r.from <= $at AND (r.to IS NULL or r.to > $at)
+                )
+                // simplified filter for the default branch
+                OR (
+                    rel.peer_branch_level = 1 AND
+                    rel.peer_branch = $default_branch_name AND
+                    r.branch IN [$default_branch_name, $global_branch_name]
+                    AND r.from <= $at AND (r.to IS NULL or r.to > $at)
+                )
+            )
+            // r.status is a tie-breaker when there are nodes with the same UUID added/deleted at the same time
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            WITH dest_node, r
+            LIMIT 1
+            WITH dest_node, r
+            WHERE r.status = "active"
+            RETURN dest_node
+        }
+        """ % {"branch_filter": branch_filter}
+
+        rels_bidir_query = """
+        WITH distinct n
+        UNWIND $rels_bidir AS rel
+        %(dest_node_subquery)s
+        CALL (n, rel, dest_node) {
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (dest_node)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            WITH rl, ip, iv
+            LIMIT 1
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
+            )
+        }
+        """ % {"rel_prop": rel_prop_str, "dest_node_subquery": dest_node_subquery}
+
+        rels_out_query = """
+        WITH distinct n
+        UNWIND $rels_out AS rel
+        %(dest_node_subquery)s
+        CALL (n, rel, dest_node) {
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (dest_node)<-[:IS_RELATED %(rel_prop)s ]-(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            WITH rl, ip, iv
+            LIMIT 1
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
+            )
+        }
+        """ % {"rel_prop": rel_prop_str, "dest_node_subquery": dest_node_subquery}
+
+        rels_in_query = """
+        WITH distinct n
+        UNWIND $rels_in AS rel
+        %(dest_node_subquery)s
+        CALL (n, rel, dest_node) {
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
+            CREATE (dest_node)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            WITH rl, ip, iv
+            LIMIT 1
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
+            )
+        }
+        """ % {"rel_prop": rel_prop_str, "dest_node_subquery": dest_node_subquery}
+
+        query = f"""
         MATCH (root:Root)
         CREATE (n:Node:%(labels)s $node_prop )
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
-        WITH distinct n
-        FOREACH ( attr IN $attrs |
-            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
-            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
-            MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
-            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
-            MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(iv)
-            FOREACH ( prop IN attr.source_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
-            )
-            FOREACH ( prop IN attr.owner_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
-            )
-        )
-        FOREACH ( attr IN $attrs_iphost |
-            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
-            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
-            MERGE (av:AttributeValue:AttributeIPHost { %(iphost_prop)s })
-            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
-            MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(iv)
-            FOREACH ( prop IN attr.source_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
-            )
-            FOREACH ( prop IN attr.owner_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
-            )
-        )
-        FOREACH ( attr IN $attrs_ipnetwork |
-            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
-            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
-            MERGE (av:AttributeValue:AttributeIPNetwork { %(ipnetwork_prop)s })
-            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
-            MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(iv)
-            FOREACH ( prop IN attr.source_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
-            )
-            FOREACH ( prop IN attr.owner_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
-            )
-        )
-        FOREACH ( rel IN $rels_bidir |
-            MERGE (d:Node { uuid: rel.destination_id })
-            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
-            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
-            FOREACH ( prop IN rel.source_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
-            )
-            FOREACH ( prop IN rel.owner_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
-            )
-        )
-        FOREACH ( rel IN $rels_out |
-            MERGE (d:Node { uuid: rel.destination_id })
-            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            CREATE (d)<-[:IS_RELATED %(rel_prop)s ]-(rl)
-            MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
-            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
-            FOREACH ( prop IN rel.source_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
-            )
-            FOREACH ( prop IN rel.owner_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
-            )
-        )
-        FOREACH ( rel IN $rels_in |
-            MERGE (d:Node { uuid: rel.destination_id })
-            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
-            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
-            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
-            FOREACH ( prop IN rel.source_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
-            )
-            FOREACH ( prop IN rel.owner_prop |
-                MERGE (peer:Node { uuid: prop.peer_id })
-                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
-            )
-        )
+        {attrs_nonindexed_query if self.params["attrs"] else ""}
+        {attrs_indexed_query if self.params["attrs_indexed"] else ""}
+        {attrs_iphost_query if self.params["attrs_iphost"] else ""}
+        {attrs_ipnetwork_query if self.params["attrs_ipnetwork"] else ""}
+        {rels_bidir_query if self.params["rels_bidir"] else ""}
+        {rels_out_query if self.params["rels_out"] else ""}
+        {rels_in_query if self.params["rels_in"] else ""}
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
         """ % {
             "labels": ":".join(self.node.get_labels()),
-            "rel_prop": rel_prop_str,
-            "iphost_prop": ", ".join(iphost_prop_list),
-            "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
         }
 
         self.params["at"] = at.to_string()
@@ -319,16 +482,16 @@ class NodeCreateAllQuery(NodeQuery):
         self.add_to_query(query)
         self.return_labels = ["n", "rn", "rv"]
 
-    def get_self_ids(self) -> Tuple[str, str]:
+    def get_self_ids(self) -> tuple[str, str]:
         result = self.get_result()
         node = result.get("n")
 
         if node is None:
-            raise QueryError(self.get_query(), self.params)
+            raise QueryError(query=self.get_query(), params=self.params)
 
         return node["uuid"], node.element_id
 
-    def get_ids(self) -> Dict[str, Tuple[str, str]]:
+    def get_ids(self) -> dict[str, tuple[str, str]]:
         data = {}
         for result in self.get_results():
             node = result.get("rn")
@@ -349,14 +512,36 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
 
+        if self.branch.is_global or self.branch.is_default:
+            node_query_match = """
+            MATCH (n:Node { uuid: $uuid })
+            OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH n WHERE delete_edge IS NULL
+            """
+        else:
+            node_filter, node_filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
+            node_query_match = """
+                MATCH (n:Node { uuid: $uuid })
+                CALL (n) {
+                    MATCH (n)-[r:IS_PART_OF]->(:Root)
+                    WHERE %(node_filter)s
+                    RETURN r.status = "active" AS is_active
+                    ORDER BY r.from DESC
+                    LIMIT 1
+                }
+                WITH n WHERE is_active = TRUE
+                """ % {"node_filter": node_filter}
+            self.params.update(node_filter_params)
+        self.add_to_query(node_query_match)
+
         query = """
         MATCH (root:Root)
-        MATCH (n:Node { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 
@@ -379,7 +564,7 @@ class NodeCheckIDQuery(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["uuid"] = self.node_id
 
         query = """
@@ -391,7 +576,8 @@ class NodeCheckIDQuery(Query):
 
 
 class NodeListGetAttributeQuery(Query):
-    name: str = "node_list_get_attribute"
+    name = "node_list_get_attribute"
+    type = QueryType.READ
 
     property_type_mapping = {
         "HAS_VALUE": ("r2", "av"),
@@ -403,8 +589,8 @@ class NodeListGetAttributeQuery(Query):
 
     def __init__(
         self,
-        ids: List[str],
-        fields: Optional[dict] = None,
+        ids: list[str],
+        fields: dict | None = None,
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
@@ -418,7 +604,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -437,8 +623,7 @@ class NodeListGetAttributeQuery(Query):
         self.add_to_query(query)
 
         query = """
-        CALL {
-            WITH n, a
+        CALL (n, a) {
             MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1, a as a1
@@ -448,9 +633,9 @@ class NodeListGetAttributeQuery(Query):
         WITH n1 as n, r1, a1 as a
         WHERE r1.status = "active"
         WITH n, r1, a
-        MATCH (a)-[:HAS_VALUE]-(av:AttributeValue)
-        CALL {
-            WITH a, av
+        MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+        WHERE %(branch_filter)s
+        CALL (a, av) {
             MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
             WHERE %(branch_filter)s
             RETURN a as a1, r as r2, av as av1
@@ -466,11 +651,17 @@ class NodeListGetAttributeQuery(Query):
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
         # Add Is_Protected and Is_visible
+        rel_isv_branch_filter, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isv"
+        )
+        rel_isp_branch_filter, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isp"
+        )
         query = """
         MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
         MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
-        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %(branch_filter)s ))
-        """ % {"branch_filter": branch_filter}
+        WHERE (%(rel_isv_branch_filter)s) AND (%(rel_isp_branch_filter)s)
+        """ % {"rel_isv_branch_filter": rel_isv_branch_filter, "rel_isp_branch_filter": rel_isp_branch_filter}
         self.add_to_query(query)
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
@@ -491,8 +682,8 @@ class NodeListGetAttributeQuery(Query):
             self.add_to_query(query)
             self.return_labels.extend(["owner", "rel_owner"])
 
-    def get_attributes_group_by_node(self) -> Dict[str, NodeAttributesFromDB]:
-        attrs_by_node: Dict[str, NodeAttributesFromDB] = {}
+    def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
+        attrs_by_node: dict[str, NodeAttributesFromDB] = {}
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
             node_id: str = result.get_node("n").get("uuid")
@@ -507,7 +698,7 @@ class NodeListGetAttributeQuery(Query):
 
         return attrs_by_node
 
-    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> Tuple[AttributeFromDB, QueryResult]:
+    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> tuple[AttributeFromDB, QueryResult]:
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
             if result.get_node("n").get("uuid") == node_id and result.get_node("a").get("name") == attr_name:
                 return self._extract_attribute_data(result=result), result
@@ -549,59 +740,204 @@ class NodeListGetAttributeQuery(Query):
         return data
 
 
+class GroupedPeerNodes:
+    def __init__(self):
+        # {node_id: [rel_name, ...]}
+        self._rel_names_by_node_id: dict[str, set[str]] = defaultdict(set)
+        # {(node_id, rel_name): {RelationshipDirection: {peer_id, ...}}}
+        self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
+
+    def add_peer(self, node_id: str, rel_name: str, peer_id: str, direction: RelationshipDirection) -> None:
+        self._rel_names_by_node_id[node_id].add(rel_name)
+        if direction not in self._rel_directions_map[node_id, rel_name]:
+            self._rel_directions_map[node_id, rel_name][direction] = set()
+        self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
+
+    def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
+        if (node_id, rel_name) not in self._rel_directions_map:
+            return set()
+        return self._rel_directions_map[node_id, rel_name].get(direction, set())
+
+    def get_all_peers(self) -> set[str]:
+        all_peers_set = set()
+        for peer_direction_map in self._rel_directions_map.values():
+            for peer_ids in peer_direction_map.values():
+                all_peers_set.update(peer_ids)
+        return all_peers_set
+
+    def has_node(self, node_id: str) -> bool:
+        return node_id in self._rel_names_by_node_id
+
+
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
+    type: QueryType = QueryType.READ
+    insert_return: bool = False
 
     def __init__(
         self,
-        ids: List[str],
+        ids: list[str],
+        outbound_identifiers: list[str] | None = None,
+        inbound_identifiers: list[str] | None = None,
+        bidirectional_identifiers: list[str] | None = None,
         **kwargs,
     ):
         self.ids = ids
-
+        self.outbound_identifiers = outbound_identifiers
+        self.inbound_identifiers = inbound_identifiers
+        self.bidirectional_identifiers = bidirectional_identifiers
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
+        self.params["outbound_identifiers"] = self.outbound_identifiers
+        self.params["inbound_identifiers"] = self.inbound_identifiers
+        self.params["bidirectional_identifiers"] = self.bidirectional_identifiers
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
-        query = (
-            """
-        MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """
-            % rels_filter
-        )
-
+        query = """
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        CALL (n) {
+            MATCH (n)<-[:IS_RELATED]-(rel:Relationship)<-[:IS_RELATED]-(peer)
+            WHERE ($inbound_identifiers IS NULL OR rel.name in $inbound_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL (n, rel, peer) {
+                MATCH (n)<-[r:IS_RELATED]-(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)<-[r:IS_RELATED]-(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "inbound" as direction
+            UNION
+            WITH n
+            MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
+            WHERE ($outbound_identifiers IS NULL OR rel.name in $outbound_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL (n, rel, peer) {
+                MATCH (n)-[r:IS_RELATED]->(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)-[r:IS_RELATED]->(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "outbound" as direction
+            UNION
+            WITH n
+            MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
+            WHERE ($bidirectional_identifiers IS NULL OR rel.name in $bidirectional_identifiers)
+            AND n.uuid <> peer.uuid
+            WITH DISTINCT n, rel, peer
+            CALL (n, rel, peer) {
+                MATCH (n)-[r:IS_RELATED]->(rel)
+                WHERE (%(filters)s)
+                WITH n, rel, peer, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH n, rel, peer, r AS r1
+                WHERE r1.status = "active"
+                MATCH (rel)<-[r:IS_RELATED]-(peer)
+                WHERE (%(filters)s)
+                WITH r1, r
+                ORDER BY r.from DESC
+                LIMIT 1
+                WITH r1, r AS r2
+                WHERE r2.status = "active"
+                RETURN 1 AS is_active
+            }
+            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "bidirectional" as direction
+        }
+        RETURN DISTINCT n_uuid, rel_name, peer_uuid, direction
+        """ % {"filters": rels_filter}
         self.add_to_query(query)
+        self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
 
-        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+    def get_peers_group_by_node(self) -> GroupedPeerNodes:
+        gpn = GroupedPeerNodes()
+        for result in self.get_results():
+            node_id = result.get("n_uuid")
+            rel_name = result.get("rel_name")
+            peer_id = result.get("peer_uuid")
+            direction = str(result.get("direction"))
+            direction_enum = {
+                "inbound": RelationshipDirection.INBOUND,
+                "outbound": RelationshipDirection.OUTBOUND,
+                "bidirectional": RelationshipDirection.BIDIR,
+            }.get(direction)
+            gpn.add_peer(node_id=node_id, rel_name=rel_name, peer_id=peer_id, direction=direction_enum)
 
-    def get_peers_group_by_node(self) -> Dict[str, Dict[str, List[str]]]:
-        peers_by_node = defaultdict(lambda: defaultdict(list))
+        return gpn
 
-        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
-            node_id = result.get("n").get("uuid")
-            rel_name = result.get("rel").get("name")
-            peer_id = result.get("peer").get("uuid")
 
-            peers_by_node[node_id][rel_name].append(peer_id)
+class NodeGetKindQuery(Query):
+    name = "node_get_kind_query"
+    type = QueryType.READ
 
-        return peers_by_node
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+        self.ids = ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ids"] = self.ids
+        query = """
+MATCH (n:Node)-[r:IS_PART_OF {status: "active"}]->(:Root)
+WHERE toString(n.uuid) IN $ids
+        """
+        # only add the branch filter logic if a branch is included in the query parameters
+        if branch := getattr(self, "branch", None):
+            branch = await registry.get_branch(db=db, branch=branch)
+            branch_filter, branch_params = branch.get_query_filter_path(at=self.at)
+            self.params.update(branch_params)
+            query += f"AND {branch_filter}"
+        query += """
+WITH n.uuid AS node_id, n.kind AS node_kind
+ORDER BY r.from DESC
+WITH node_id, head(collect(node_kind)) AS node_kind
+        """
+        self.add_to_query(query)
+        self.return_labels = ["node_id", "node_kind"]
+
+    async def get_node_kind_map(self) -> dict[str, str]:
+        node_kind_map: dict[str, str] = {}
+        for result in self.get_results():
+            node_kind_map[str(result.get("node_id"))] = str(result.get("node_kind"))
+        return node_kind_map
 
 
 class NodeListGetInfoQuery(Query):
-    name: str = "node_list_get_info"
+    name = "node_list_get_info"
+    type = QueryType.READ
 
-    def __init__(self, ids: List[str], account=None, **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
         self.account = account
         self.ids = ids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -610,8 +946,7 @@ class NodeListGetInfoQuery(Query):
         query = """
         MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
         WHERE n.uuid IN $ids
-        CALL {
-            WITH root, n
+        CALL (root, n) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1
@@ -636,13 +971,16 @@ class NodeListGetInfoQuery(Query):
 
         for result in self.get_results_group_by(("n", "uuid")):
             schema = find_node_schema(db=db, node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
+            node_branch = self.branch
+            if self.branch_agnostic:
+                node_branch = result.get_rel("rb").get("branch")
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get_node("n").element_id,
                 node_uuid=result.get_node("n").get("uuid"),
                 profile_uuids=[str(puuid) for puuid in result.get("profile_uuids")],
                 updated_at=result.get_rel("rb").get("from"),
-                branch=self.branch.name,
+                branch=node_branch,
                 labels=list(result.get_node("n").labels),
             )
 
@@ -667,7 +1005,7 @@ class FieldAttributeRequirementType(Enum):
 @dataclass
 class FieldAttributeRequirement:
     field_name: str
-    field: Optional[Union[AttributeSchema, RelationshipSchema]]
+    field: AttributeSchema | RelationshipSchema | None
     field_attr_name: str
     field_attr_value: Any
     index: int
@@ -675,7 +1013,7 @@ class FieldAttributeRequirement:
 
     @property
     def supports_profile(self) -> bool:
-        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values"))
+        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values", "isnull"))
 
     @property
     def is_filter(self) -> bool:
@@ -705,19 +1043,75 @@ class FieldAttributeRequirement:
     def final_value_query_variable(self) -> str:
         return f"attr{self.index}_final_value"
 
+    @property
+    def comparison_operator(self) -> str:
+        if self.field_attr_name == "isnull":
+            return "=" if self.field_attr_value is True else "<>"
+        if self.field_attr_name == "values":
+            return "IN"
+        return "="
+
+    @property
+    def field_attr_comparison_value(self) -> Any:
+        if self.field_attr_name == "isnull":
+            return "NULL"
+        return self.field_attr_value
+
 
 class NodeGetListQuery(Query):
     name = "node_get_list"
+    type = QueryType.READ
 
     def __init__(
-        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
+        self,
+        schema: NodeSchema,
+        filters: dict | None = None,
+        partial_match: bool = False,
+        order: OrderModel | None = None,
+        **kwargs: Any,
     ) -> None:
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
         self._variables_to_track = ["n", "rb"]
+        self._validate_filters()
+
+        # Force disabling order when `limit` is 1 as it simplifies the query a lot.
+        if "limit" in kwargs and kwargs["limit"] == 1:
+            if order is None:
+                order = OrderModel(disable=True)
+            else:
+                order = copy(order)
+                order.disable = True
+
+        self.order = order
 
         super().__init__(**kwargs)
+
+    @property
+    def has_filters(self) -> bool:
+        if not self.filters or self.has_filter_by_id:
+            return False
+        return True
+
+    @property
+    def has_filter_by_id(self) -> bool:
+        if self.filters and "id" in self.filters:
+            return True
+        return False
+
+    def _validate_filters(self) -> None:
+        if not self.filters:
+            return
+        filter_errors = []
+        for filter_str in self.filters:
+            split_filter = filter_str.split("__")
+            if len(split_filter) > 2 and split_filter[-1] == "isnull":
+                filter_errors.append(
+                    f"{filter_str} is not allowed: 'isnull' is not supported for attributes of relationships"
+                )
+        if filter_errors:
+            raise RuntimeError(*filter_errors)
 
     def _track_variable(self, variable: str) -> None:
         if variable not in self._variables_to_track:
@@ -732,56 +1126,77 @@ class NodeGetListQuery(Query):
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
-        self.params["node_kind"] = self.schema.kind
 
-        self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
-        where_clause_elements = []
+        self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
-        query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
-        CALL {
-            WITH n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+        # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
+        #   and we need to filter out the one that have been deleted in the branch.
+        # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
+        if not self.branch.is_default:
+            topquery = """
+            MATCH (n:%(node_kind)s)
+            CALL (n) {
+                MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+                WHERE %(branch_filter)s
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC
+                LIMIT 1
+            }
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            self.add_to_query(topquery)
+        else:
+            topquery = """
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
             WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r as rb
-        WHERE rb.status = "active"
-        """ % {"branch_filter": branch_filter}
-        self.add_to_query(query)
-        use_simple = False
-        if self.filters and "id" in self.filters:
-            use_simple = True
-            where_clause_elements.append("n.uuid = $uuid")
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            self.add_to_query(topquery)
+
+        if self.has_filter_by_id and self.filters:
             self.params["uuid"] = self.filters["id"]
-        if not self.filters and not self.schema.order_by:
-            use_simple = True
+            self.add_to_query(" AND n.uuid = $uuid")
+            return
+
+        disable_order = not self.schema.order_by or (self.order is not None and self.order.disable)
+        if not self.has_filters and disable_order:
+            # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
             self.order_by = ["n.uuid"]
-        if use_simple:
-            if where_clause_elements:
-                self.add_to_query(" AND " + " AND ".join(where_clause_elements))
             return
 
         if self.filters and "ids" in self.filters:
             self.add_to_query("AND n.uuid IN $node_ids")
             self.params["node_ids"] = self.filters["ids"]
 
-        field_attribute_requirements = self._get_field_requirements()
+        field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
         use_profiles = any(far for far in field_attribute_requirements if far.supports_profile)
         await self._add_node_filter_attributes(
             db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
-        await self._add_node_order_attributes(
-            db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
-        )
+
+        if not disable_order:
+            await self._add_node_order_attributes(
+                db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
+            )
+            for far in field_attribute_requirements:
+                if not far.is_order:
+                    continue
+                if far.supports_profile:
+                    self.order_by.append(far.final_value_query_variable)
+                    continue
+                self.order_by.append(far.node_value_query_variable)
+
+        # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
+        self.order_by.append("n.uuid")
 
         if use_profiles:
             await self._add_profiles_per_node_query(db=db, branch_filter=branch_filter)
@@ -791,14 +1206,6 @@ class NodeGetListQuery(Query):
             await self._add_profile_rollups(field_attribute_requirements=field_attribute_requirements)
 
         self._add_final_filter(field_attribute_requirements=field_attribute_requirements)
-        self.order_by = []
-        for far in field_attribute_requirements:
-            if not far.is_order:
-                continue
-            if far.supports_profile:
-                self.order_by.append(far.final_value_query_variable)
-                continue
-            self.order_by.append(far.node_value_query_variable)
 
     async def _add_node_filter_attributes(
         self,
@@ -810,8 +1217,8 @@ class NodeGetListQuery(Query):
         if not field_attribute_requirements:
             return
 
-        filter_query: List[str] = []
-        filter_params: Dict[str, Any] = {}
+        filter_query: list[str] = []
+        filter_params: dict[str, Any] = {}
 
         for far in field_attribute_requirements:
             extra_tail_properties = {far.node_value_query_variable: "value"}
@@ -840,7 +1247,7 @@ class NodeGetListQuery(Query):
             )
 
             filter_params.update(subquery_params)
-            filter_query.append("CALL {")
+            filter_query.append("CALL (n) {")
             filter_query.append(subquery)
             filter_query.append("}")
             filter_query.append(f"WITH {with_str}")
@@ -861,8 +1268,8 @@ class NodeGetListQuery(Query):
         if not field_attribute_requirements:
             return
 
-        sort_query: List[str] = []
-        sort_params: Dict[str, Any] = {}
+        sort_query: list[str] = []
+        sort_params: dict[str, Any] = {}
 
         for far in field_attribute_requirements:
             if far.field is None:
@@ -889,7 +1296,7 @@ class NodeGetListQuery(Query):
             with_str = ", ".join(self._get_tracked_variables())
 
             sort_params.update(subquery_params)
-            sort_query.append("CALL {")
+            sort_query.append("CALL (n) {")
             sort_query.append(subquery)
             sort_query.append("}")
             sort_query.append(f"WITH {with_str}")
@@ -903,8 +1310,7 @@ class NodeGetListQuery(Query):
         froms_str = db.render_list_comprehension(items="relationships(profile_path)", item_name="from")
         profiles_per_node_query = (
             """
-            CALL {
-                WITH n
+            CALL (n) {
                 OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(maybe_profile_n:Node)-[:IS_PART_OF]->(:Root)
                 WHERE profile_r.name = "node__profile"
                 AND all(r in relationships(profile_path) WHERE %(branch_filter)s)
@@ -922,8 +1328,7 @@ class NodeGetListQuery(Query):
             WITH %(with_str)s, CASE
                 WHEN ordered_is_actives[0] = True THEN maybe_profile_n ELSE NULL
             END AS profile_n
-            CALL {
-                WITH profile_n
+            CALL (profile_n) {
                 OPTIONAL MATCH profile_priority_path = (profile_n)-[pr1:HAS_ATTRIBUTE]->(a:Attribute)-[pr2:HAS_VALUE]->(av:AttributeValue)
                 WHERE a.name = "profile_priority"
                 AND all(r in relationships(profile_priority_path) WHERE %(branch_filter)s and r.status = "active")
@@ -941,8 +1346,8 @@ class NodeGetListQuery(Query):
     async def _add_profile_attributes(
         self, db: InfrahubDatabase, field_attribute_requirements: list[FieldAttributeRequirement], branch_filter: str
     ) -> None:
-        attributes_queries: List[str] = []
-        attributes_params: Dict[str, Any] = {}
+        attributes_queries: list[str] = []
+        attributes_params: dict[str, Any] = {}
         profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
 
         for profile_attr in profile_attributes:
@@ -964,7 +1369,7 @@ class NodeGetListQuery(Query):
             self._track_variable(profile_attr.profile_value_query_variable)
             with_str = ", ".join(self._get_tracked_variables())
 
-            attributes_queries.append("CALL {")
+            attributes_queries.append("CALL (profile_n) {")
             attributes_queries.append(subquery)
             attributes_queries.append("}")
             attributes_queries.append(f"WITH {with_str}")
@@ -1018,23 +1423,34 @@ class NodeGetListQuery(Query):
             if not far.is_filter or not far.supports_profile:
                 continue
             var_name = f"final_attr_value{far.index}"
-            self.params[var_name] = far.field_attr_value
+            self.params[var_name] = far.field_attr_comparison_value
             if self.partial_match:
-                where_parts.append(
-                    f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
-                )
+                if isinstance(far.field_attr_comparison_value, list):
+                    # If the any filter is an array/list
+                    var_array = f"{var_name}_array"
+                    where_parts.append(
+                        f"any({var_array} IN ${var_name} WHERE toLower(toString({far.final_value_query_variable})) CONTAINS toLower({var_array}))"
+                    )
+                else:
+                    where_parts.append(
+                        f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
+                    )
                 continue
-            if far.field_attr_name == "values":
-                operator = "IN"
-            else:
-                operator = "="
+            if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
+                if isinstance(far.field_attr_comparison_value, list):
+                    self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
+                else:
+                    self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
 
-            where_parts.append(f"{far.final_value_query_variable} {operator} ${var_name}")
+                where_parts.append(f"toString({far.final_value_query_variable}) =~ ${var_name}")
+                continue
+
+            where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")
         if where_parts:
             where_str = "WHERE " + " AND ".join(where_parts)
         self.add_to_query(where_str)
 
-    def _get_field_requirements(self) -> list[FieldAttributeRequirement]:
+    def _get_field_requirements(self, disable_order: bool) -> list[FieldAttributeRequirement]:
         internal_filters = ["any", "attribute", "relationship"]
         field_requirements_map: dict[tuple[str, str], FieldAttributeRequirement] = {}
         index = 1
@@ -1045,7 +1461,7 @@ class NodeGetListQuery(Query):
                     continue
                 field = self.schema.get_field(field_name, raise_on_error=False)
                 for field_attr_name, field_attr_value in attr_filters.items():
-                    field_requirements_map[(field_name, field_attr_name)] = FieldAttributeRequirement(
+                    field_requirements_map[field_name, field_attr_name] = FieldAttributeRequirement(
                         field_name=field_name,
                         field=field,
                         field_attr_name=field_attr_name,
@@ -1056,7 +1472,8 @@ class NodeGetListQuery(Query):
                         types=[FieldAttributeRequirementType.FILTER],
                     )
                     index += 1
-        if not self.schema.order_by:
+
+        if disable_order:
             return list(field_requirements_map.values())
 
         for order_by_path in self.schema.order_by:
@@ -1075,36 +1492,37 @@ class NodeGetListQuery(Query):
                 ),
             )
             field_req.types.append(FieldAttributeRequirementType.ORDER)
-            field_requirements_map[(order_by_field_name, order_by_attr_property_name)] = field_req
+            field_requirements_map[order_by_field_name, order_by_attr_property_name] = field_req
             index += 1
 
         return list(field_requirements_map.values())
 
-    def get_node_ids(self) -> List[str]:
+    def get_node_ids(self) -> list[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]
 
 
 class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,
         node_id: str,
         direction: RelationshipHierarchyDirection,
-        node_schema: Union[NodeSchema, GenericSchema],
-        filters: Optional[dict] = None,
+        node_schema: NodeSchema | GenericSchema,
+        filters: dict | None = None,
+        hierarchical_ordering: bool = False,
         **kwargs: Any,
     ) -> None:
         self.filters = filters or {}
         self.direction = direction
         self.node_id = node_id
         self.node_schema = node_schema
+        self.hierarchical_ordering = hierarchical_ordering
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -1132,34 +1550,43 @@ class NodeGetHierarchyQuery(Query):
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
         WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
         WITH n, collect(last(nodes(path))) AS peers_with_duplicates
-        CALL {
-            WITH peers_with_duplicates
+        CALL (peers_with_duplicates) {
             UNWIND peers_with_duplicates AS pwd
             RETURN DISTINCT pwd AS peer
         }
-        CALL {
-            WITH n, peer
+
+        """ % {"filter": filter_str, "branch_filter": branch_filter}
+
+        if not self.branch.is_default:
+            query += """
+        CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
-            RETURN peer as peer1, path as path1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+            RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
+            LIMIT 1
         }
-        WITH peer1 as peer, path1 as path, is_active
-        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        WITH peer1 as peer, is_active
+            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        else:
+            query += """
+        WITH peer
+            """
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"]
+        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
-        if clean_filters and "id" in clean_filters or "ids" in clean_filters:
+        if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
             self.params["peer_ids"] = clean_filters.get("ids", [])
             if clean_filters.get("id", None):
                 self.params["peer_ids"].append(clean_filters.get("id"))
 
-        self.add_to_query("WHERE " + " AND ".join(where_clause))
+        if where_clause:
+            self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
@@ -1197,11 +1624,13 @@ class NodeGetHierarchyQuery(Query):
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
 
-            self.add_subquery(subquery=subquery, with_clause=with_str)
+            self.add_subquery(subquery=subquery, node_alias="peer", with_clause=with_str)
 
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
+        if self.hierarchical_ordering:
+            return
         if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
             order_cnt = 1
 
@@ -1223,7 +1652,7 @@ class NodeGetHierarchyQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                self.add_subquery(subquery=subquery)
+                self.add_subquery(subquery=subquery, node_alias="peer")
 
                 order_cnt += 1
         else:
@@ -1233,3 +1662,12 @@ class NodeGetHierarchyQuery(Query):
         for result in self.get_results_group_by(("peer", "uuid")):
             data = result.get("peer").get("uuid")
             yield data
+
+    def get_relatives(self) -> Generator[PeerInfo, None, None]:
+        for result in self.get_results_group_by(("peer", "uuid")):
+            peer_node = result.get("peer")
+            yield PeerInfo(
+                uuid=peer_node.get("uuid"),
+                kind=peer_node.get("kind"),
+                db_id=peer_node.element_id,
+            )

@@ -32,16 +32,34 @@
                     "optional": false
                 }
             ],
-            "filters": [
+            "relationships": [
                 {
-                    "name": "name__value",
-                    "kind": "String",
-                    "description": null
-                },
+                    "name": "credential",
+                    "kind": "Attribute",
+                    "peer": "CoreCredential",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ]
+        },
+        {
+            "name": "Credential",
+            "namespace": "Core",
+            "description": null,
+            "label": null,
+            "branch": "aware",
+            "default_filter": "name__value",
+            "attributes": [
                 {
-                    "name": "location__value",
+                    "name": "name",
                     "kind": "String",
-                    "description": null
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": "aware",
+                    "optional": false
                 }
             ]
         }
@@ -96,69 +114,19 @@
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
-                    "optional": true,
-                    "filters": [
-                        {
-                            "name": "id",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "name__value",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "description__value",
-                            "kind": "String",
-                            "description": null
-                        }
-                    ]
+                    "optional": true
                 }
             ],
             "label": null,
             "inherit_from": [],
             "branch": "aware",
-            "default_filter": "name__value",
-            "filters": [
-                {
-                    "name": "ids",
-                    "kind": "List",
-                    "description": null
-                },
-                {
-                    "name": "query__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "description__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "name__value",
-                    "kind": "String",
-                    "description": null
-                }
-            ]
+            "default_filter": "name__value"
         },
         {
             "name": "Repository",
             "namespace": "Core",
             "description": null,
             "attributes": [
-                {
-                    "name": "username",
-                    "kind": "String",
-                    "label": null,
-                    "description": null,
-                    "default_value": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": true
-                },
                 {
                     "name": "type",
                     "kind": "String",
@@ -215,17 +183,6 @@
                     "optional": false
                 },
                 {
-                    "name": "password",
-                    "kind": "String",
-                    "label": null,
-                    "description": null,
-                    "default_value": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": true
-                },
-                {
                     "name": "default_branch",
                     "kind": "String",
                     "label": null,
@@ -247,24 +204,7 @@
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
-                    "optional": true,
-                    "filters": [
-                        {
-                            "name": "id",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "name__value",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "description__value",
-                            "kind": "String",
-                            "description": null
-                        }
-                    ]
+                    "optional": true
                 },
                 {
                     "name": "queries",
@@ -275,29 +215,15 @@
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
+                    "optional": true
+                },
+                {
+                    "name": "credential",
+                    "kind": "Attribute",
+                    "peer": "CoreCredential",
                     "optional": true,
-                    "filters": [
-                        {
-                            "name": "id",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "query__value",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "description__value",
-                            "kind": "String",
-                            "description": null
-                        },
-                        {
-                            "name": "name__value",
-                            "kind": "String",
-                            "description": null
-                        }
-                    ]
+                    "cardinality": "one",
+                    "inherited": true
                 }
             ],
             "label": null,
@@ -307,52 +233,35 @@
                 "CoreGenericRepository"
             ],
             "branch": "aware",
-            "default_filter": "name__value",
-            "filters": [
+            "default_filter": "name__value"
+        },
+        {
+            "name": "PasswordCredential",
+            "namespace": "Core",
+            "description": null,
+            "inherit_from": ["CoreCredential"],
+            "attributes": [
                 {
-                    "name": "ids",
-                    "kind": "List",
-                    "description": null
+                    "name": "username",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": false
                 },
                 {
-                    "name": "username__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "type__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "name__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "description__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "commit__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "location__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "password__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "default_branch__value",
-                    "kind": "String",
-                    "description": null
+                    "name": "password",
+                    "kind": "Password",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": false
                 }
             ]
         },
@@ -388,24 +297,7 @@
             "label": null,
             "inherit_from": [],
             "branch": "aware",
-            "default_filter": "name__value",
-            "filters": [
-                {
-                    "name": "ids",
-                    "kind": "List",
-                    "description": null
-                },
-                {
-                    "name": "name__value",
-                    "kind": "String",
-                    "description": null
-                },
-                {
-                    "name": "description__value",
-                    "kind": "String",
-                    "description": null
-                }
-            ]
+            "default_filter": "name__value"
         },
         {
             "name": "Location",

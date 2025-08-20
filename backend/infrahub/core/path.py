@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from typing_extensions import Self
@@ -56,12 +56,26 @@ class DataPath(InfrahubPath):
     path_type: PathType
     node_id: str = Field(..., description="Kind of the model in the schema")
     kind: str = Field(..., description="Kind of the main node")
-    field_name: Optional[str] = Field(
+    field_name: str | None = Field(
         default=None, description="Name of the field (either an attribute or a relationship)"
     )
-    property_name: Optional[str] = Field(default=None, description="Name of the property")
-    peer_id: Optional[str] = Field(default=None, description="")
-    value: Optional[Any] = Field(default=None, description="Optional value of the resource")
+    property_name: str | None = Field(default=None, description="Name of the property")
+    peer_id: str | None = Field(default=None, description="")
+    value: Any | None = Field(default=None, description="Optional value of the resource")
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.branch,
+                self.path_type,
+                self.node_id,
+                self.kind,
+                self.field_name,
+                self.property_name,
+                self.peer_id,
+                str(self.value),
+            )
+        )
 
     @property
     def resource_type(self) -> PathResourceType:
@@ -88,32 +102,32 @@ class DataPath(InfrahubPath):
 
 class GroupedDataPaths:
     def __init__(self) -> None:
-        self._grouped_data_paths: Dict[str, List[DataPath]] = defaultdict(list)
+        self._grouped_data_paths: dict[str, list[DataPath]] = defaultdict(list)
 
     def add_data_path(self, data_path: DataPath, grouping_key: str = "") -> None:
         self.add_data_paths([data_path], grouping_key)
 
-    def add_data_paths(self, data_paths: List[DataPath], grouping_key: str = "") -> None:
+    def add_data_paths(self, data_paths: list[DataPath], grouping_key: str = "") -> None:
         self._grouped_data_paths[grouping_key].extend(data_paths)
 
-    def get_data_paths(self, grouping_key: str = "") -> List[DataPath]:
+    def get_data_paths(self, grouping_key: str = "") -> list[DataPath]:
         return self._grouped_data_paths.get(grouping_key, [])
 
-    def get_all_data_paths(self) -> List[DataPath]:
+    def get_all_data_paths(self) -> list[DataPath]:
         return list(chain(*self._grouped_data_paths.values()))
 
-    def get_grouping_keys(self) -> List[str]:
+    def get_grouping_keys(self) -> list[str]:
         return list(self._grouped_data_paths.keys())
 
 
 class SchemaPath(InfrahubPath):
     path_type: SchemaPathType
     schema_kind: str = Field(..., description="Kind of the model in the schema")
-    schema_id: Optional[str] = Field(default=None, description="UUID of the model in the schema")
-    field_name: Optional[str] = Field(
+    schema_id: str | None = Field(default=None, description="UUID of the model in the schema")
+    field_name: str | None = Field(
         default=None, description="Name of the field (either an attribute or a relationship)"
     )
-    property_name: Optional[str] = Field(default=None, description="Name of the property")
+    property_name: str | None = Field(default=None, description="Name of the property")
 
     @property
     def resource_type(self) -> PathResourceType:
@@ -125,7 +139,7 @@ class SchemaPath(InfrahubPath):
         if self.field_name:
             identifier += f"/{self.field_name}"
 
-        if self.property_name and not self.path_type == SchemaPathType.NODE:
+        if self.property_name and self.path_type != SchemaPathType.NODE:
             identifier += f"/{self.property_name}"
 
         return identifier
@@ -133,10 +147,10 @@ class SchemaPath(InfrahubPath):
     @classmethod
     def init(
         cls,
-        schema: Union[NodeSchema, GenericSchema],
-        schema_id: Optional[str] = None,
-        field_name: Optional[str] = None,
-        property_name: Optional[str] = None,
+        schema: NodeSchema | GenericSchema,
+        schema_id: str | None = None,
+        field_name: str | None = None,
+        property_name: str | None = None,
     ) -> Self:
         if field_name and not schema.get_field(name=field_name, raise_on_error=False):
             raise ValueError(f"Field : {field_name} is not valid for {schema.kind}")

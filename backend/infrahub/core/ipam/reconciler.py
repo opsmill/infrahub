@@ -1,5 +1,5 @@
 import ipaddress
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -7,7 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
 
 from .constants import AllIPTypes
@@ -20,8 +20,8 @@ class IPNodesToReconcile:
     def __init__(
         self,
         node_uuid: str,
-        current_parent_uuid: Optional[str],
-        calculated_parent_uuid: Optional[str],
+        current_parent_uuid: str | None,
+        calculated_parent_uuid: str | None,
         current_child_uuids: set[str],
         calculated_child_uuids: set[str],
         node_map: dict[str, Node],
@@ -46,13 +46,13 @@ class IPNodesToReconcile:
         return self.node_map[self.node_uuid]
 
     @property
-    def current_parent(self) -> Optional[Node]:
+    def current_parent(self) -> Node | None:
         if not self.current_parent_uuid:
             return None
         return self.node_map.get(self.current_parent_uuid)
 
     @property
-    def calculated_parent(self) -> Optional[Node]:
+    def calculated_parent(self) -> Node | None:
         if not self.calculated_parent_uuid:
             return None
         return self.node_map.get(self.calculated_parent_uuid)
@@ -68,7 +68,7 @@ class IPNodesToReconcile:
     def get_node_by_uuid(self, uuid: str) -> Node:
         return self.node_map[uuid]
 
-    async def _get_child_uuids(self, db: InfrahubDatabase, node: Optional[Node]) -> set[str]:
+    async def _get_child_uuids(self, db: InfrahubDatabase, node: Node | None) -> set[str]:
         if not node:
             return set()
         child_uuids = set()
@@ -83,16 +83,17 @@ class IpamReconciler:
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
-        self.at: Optional[Timestamp] = None
+        self.at: Timestamp | None = None
 
+    @retry_db_transaction(name="ipam_reconcile")
     async def reconcile(
         self,
         ip_value: AllIPTypes,
-        namespace: Optional[Union[Node, str]] = None,
-        node_uuid: Optional[str] = None,
+        namespace: Node | str | None = None,
+        node_uuid: str | None = None,
         is_delete: bool = False,
-        at: Optional[Timestamp] = None,
-    ) -> Optional[Node]:
+        at: Timestamp | None = None,
+    ) -> Node | None:
         self.at = Timestamp(at)
 
         query = await IPPrefixReconcileQuery.init(
@@ -103,7 +104,7 @@ class IpamReconciler:
         ip_node_uuid = query.get_ip_node_uuid()
         if not ip_node_uuid:
             node_type = InfrahubKind.IPPREFIX
-            if isinstance(ip_value, (ipaddress.IPv6Interface, ipaddress.IPv4Interface)):
+            if isinstance(ip_value, ipaddress.IPv6Interface | ipaddress.IPv4Interface):
                 node_type = InfrahubKind.IPADDRESS
             raise NodeNotFoundError(node_type=node_type, identifier=str(ip_value))
         current_parent_uuid = query.get_current_parent_uuid()
@@ -151,7 +152,7 @@ class IpamReconciler:
 
         return reconcile_nodes.node
 
-    async def _update_node_parent(self, node: Node, new_parent_uuid: Optional[str]) -> None:
+    async def _update_node_parent(self, node: Node, new_parent_uuid: str | None) -> None:
         node_kinds = {node.get_kind()} | set(node.get_schema().inherit_from)
         is_prefix = False
         if InfrahubKind.IPADDRESS in node_kinds:

@@ -1,15 +1,9 @@
-from typing import Any, Dict
+from typing import Any
 
-from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
+from tests.helpers.schema import load_schema as load_schema_root
 
 
-async def load_schema(db: InfrahubDatabase, schema: Dict[str, Any]):
-    default_branch_name = registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
-    tmp_schema = branch_schema.duplicate()
-    tmp_schema.load_schema(schema=SchemaRoot(**schema))
-    tmp_schema.process()
-
-    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
+async def load_schema(db: InfrahubDatabase, schema: dict[str, Any]):
+    await load_schema_root(db=db, schema=SchemaRoot(**schema), update_db=True)

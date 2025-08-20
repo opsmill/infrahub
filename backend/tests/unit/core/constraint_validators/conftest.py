@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pytest
 
 from infrahub.core import registry
@@ -87,7 +85,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
 
 
 @pytest.fixture
-async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schema_generics_simple) -> Dict[str, Node]:
+async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schema_generics_simple) -> dict[str, Node]:
     ecar = registry.schema.get(name="TestElectricCar")
     gcar = registry.schema.get(name="TestGazCar")
     person = registry.schema.get(name="TestPerson")
@@ -118,3 +116,46 @@ async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schem
     }
 
     return nodes
+
+
+@pytest.fixture
+async def car_person_schema_hfid(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value", "owner__name__value"],
+                "order_by": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "identifier": "person__car",
+                        "optional": False,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "cars", "peer": "TestCar", "identifier": "person__car", "cardinality": "many"}
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema

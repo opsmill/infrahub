@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -28,19 +28,16 @@ class NodeAttributeValue:
 class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_kind_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
         self.params["null_value"] = NULL_VALUE
 
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
-        CALL {
-            WITH n
+        MATCH p = (n:%(node_kind)s)
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)
@@ -51,11 +48,10 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             LIMIT 1
         }
         WITH full_path, node, attribute_value, value_relationship
-        WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship.branch as value_branch"]
@@ -69,8 +65,12 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             if value in (None, NULL_VALUE):
                 continue
             try:
-                infrahub_attribute_class.validate(
-                    value=result.get("attribute_value"), name=self.attribute_schema.name, schema=self.attribute_schema
+                attr_value = result.get("attribute_value")
+                infrahub_attribute_class.validate_format(
+                    value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
+                )
+                infrahub_attribute_class.validate_content(
+                    value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
                 )
             except ValidationError:
                 grouped_data_paths.add_data_path(
@@ -89,7 +89,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeKindChecker(ConstraintCheckerInterface):
     query_classes = [AttributeKindUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 
@@ -100,8 +100,8 @@ class AttributeKindChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(

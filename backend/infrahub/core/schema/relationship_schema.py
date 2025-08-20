@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from enum import Enum
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -8,6 +9,7 @@ from infrahub import config
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
+from infrahub.exceptions import InitializationError
 
 from .generated.relationship_schema import GeneratedRelationshipSchema
 
@@ -19,8 +21,8 @@ if TYPE_CHECKING:
 
 
 class RelationshipSchema(GeneratedRelationshipSchema):
-    _exclude_from_hash: List[str] = ["filters"]
-    _sort_by: List[str] = ["name"]
+    _exclude_from_hash: list[str] = ["filters"]
+    _sort_by: list[str] = ["name"]
 
     @property
     def is_attribute(self) -> bool:
@@ -30,10 +32,21 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     def is_relationship(self) -> bool:
         return True
 
+    @property
+    def is_deprecated(self) -> bool:
+        return bool(self.deprecation)
+
+    def to_dict(self) -> dict:
+        data = self.model_dump(exclude_unset=True, exclude_none=True)
+        for field_name, value in data.items():
+            if isinstance(value, Enum):
+                data[field_name] = value.value
+        return data
+
     def get_class(self) -> type[Relationship]:
         return Relationship
 
-    def get_peer_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> MainSchemaTypes:
+    def get_peer_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> MainSchemaTypes:
         return db.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
@@ -45,6 +58,11 @@ class RelationshipSchema(GeneratedRelationshipSchema):
             raise ValueError("RelationshipSchema is not initialized")
         return self.identifier
 
+    def get_id(self) -> str:
+        if not self.id:
+            raise InitializationError("The relationship schema has not been saved yet and doesn't have an id")
+        return self.id
+
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
 
@@ -55,23 +73,31 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
         return QueryArrows(left=QueryArrowOutband(), right=QueryArrowInband())
 
+    def update_from_generic(self, other: RelationshipSchema) -> None:
+        fields_to_exclude = ("id", "order_weight", "branch", "inherited", "filters")
+        for name in self.model_fields:
+            if name in fields_to_exclude:
+                continue
+            if getattr(self, name) != getattr(other, name):
+                setattr(self, name, getattr(other, name))
+
     async def get_query_filter(
         self,
         db: InfrahubDatabase,
         filter_name: str,
-        filter_value: Optional[Union[str, int, bool]] = None,
-        name: Optional[str] = None,  # pylint: disable=unused-argument
-        branch: Optional[Branch] = None,
+        filter_value: str | int | bool | None = None,
+        name: str | None = None,  # noqa: ARG002
+        branch: Branch | None = None,
         include_match: bool = True,
-        param_prefix: Optional[str] = None,
+        param_prefix: str | None = None,
         partial_match: bool = False,
-        support_profiles: bool = False,  # pylint: disable=unused-argument
-    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+        support_profiles: bool = False,  # noqa: ARG002
+    ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
 
-        query_filter: List[QueryElement] = []
-        query_params: Dict[str, Any] = {}
-        query_where: List[str] = []
+        query_filter: list[QueryElement] = []
+        query_params: dict[str, Any] = {}
+        query_where: list[str] = []
 
         prefix = param_prefix or f"rel_{self.name}"
 
@@ -115,7 +141,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
             return query_filter, query_params, query_where
 
-        if filter_name == "ids":
+        if filter_name in ("ids", "isnull"):
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
@@ -125,7 +151,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
                 ]
             )
 
-            if filter_value is not None:
+            if filter_name == "ids" and filter_value is not None:
                 query_params[f"{prefix}_peer_ids"] = filter_value
                 query_where.append(f"peer.uuid IN ${prefix}_peer_ids")
 

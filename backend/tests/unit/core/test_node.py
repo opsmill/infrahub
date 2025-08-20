@@ -1,17 +1,19 @@
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 
 
 async def test_node_init(
@@ -133,10 +135,14 @@ async def test_node_init_mandatory_field_null(db: InfrahubDatabase, default_bran
 async def test_node_init_invalid_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     obj = await Node.init(db=db, schema=criticality_schema)
 
-    with pytest.raises(ValidationError) as exc:
-        await obj.new(db=db, name="low", level=4, notvalid=False)
+    await obj.new(db=db, name="low", level=4, notvalid=False)
+    await obj.save(db=db)
 
-    assert "not a valid input" in str(exc.value)
+    node = await NodeManager.get_one(db=db, id=obj.id)
+
+    assert node.name.value == "low"
+    assert node.level.value == 4
+    assert not hasattr(node, "notvalid")
 
 
 async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -144,13 +150,13 @@ async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Bra
     with pytest.raises(ValidationError) as exc:
         await obj.new(db=db, name="low", level="notanint")
 
-    assert "not of type Number" in str(exc.value)
+    assert "notanint is not a valid Number at level" in str(exc.value)
 
     obj = await Node.init(db=db, schema=criticality_schema)
     with pytest.raises(ValidationError) as exc:
         await obj.new(db=db, name=False, level=3)
 
-    assert "not of type Text" in str(exc.value)
+    assert "False is not a valid Text at name" in str(exc.value)
 
 
 async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch):
@@ -196,6 +202,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
             {"name": "firstname", "kind": "Text"},
             {"name": "lastname", "kind": "Text"},
             {"name": "age", "kind": "Number"},
+            {"name": "color", "kind": "Text", "enum": ["blue", "red"], "default_value": "red"},
+            {"name": "height", "kind": "Number", "enum": [170, 180], "default_value": 170},
         ],
     }
 
@@ -223,6 +231,24 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+
+    # Display Labels with an ENUM String
+    schema_01["display_labels"] = ["firstname__value", "color__value"]
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99, color="red")
+    assert await obj.render_display_label(db=db) == "John red"
+
+    # Display Labels with an ENUM Number
+    schema_01["display_labels"] = ["firstname__value", "height__value"]
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99, height=180)
+    assert await obj.render_display_label(db=db) == "John 180"
 
 
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
@@ -317,7 +343,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
             "id": c1.nbr_seats.id,
             "value": 4,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
     assert await c1.to_graphql(db=db, fields={"nbr_seats": {"value": None}}) == expected_data
 
@@ -328,7 +354,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
             "id": c1.name.id,
             "is_protected": False,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
 
     assert await c1.to_graphql(db=db, fields={"display_label": None, "name": {"is_protected": None}}) == expected_data
@@ -394,9 +420,49 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "owner": None,
             "source": None,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
     assert await c1.to_graphql(db=db) == expected_data
+
+
+async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
+
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+
+    c1 = await Node.init(db=db, schema=car)
+    await c1.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(db=db)
+
+    graphql_data_properties = await c1.to_graphql(db=db, include_properties=True)
+    graphql_data_no_properties = await c1.to_graphql(db=db, include_properties=False)
+    top_level_keys = [
+        "__kind__",
+        "__typename",
+        "color",
+        "display_label",
+        "id",
+        "is_electric",
+        "name",
+        "nbr_seats",
+        "transmission",
+    ]
+
+    assert sorted(graphql_data_properties.keys()) == top_level_keys
+    assert sorted(graphql_data_no_properties.keys()) == top_level_keys
+    assert sorted(graphql_data_properties["name"].keys()) == [
+        "__typename",
+        "id",
+        "is_protected",
+        "is_visible",
+        "owner",
+        "source",
+        "value",
+    ]
+    assert sorted(graphql_data_no_properties["name"].keys()) == ["__typename", "id", "value"]
 
 
 # --------------------------------------------------------------------------
@@ -425,7 +491,17 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj.json_no_default.value is None
 
     obj = await Node.init(db=db, schema=criticality_schema)
-    await obj.new(db=db, name="medium", level=3, description="My desc", is_true=False, is_false=True, color="#333333")
+    await obj.new(
+        db=db,
+        name="medium",
+        level=3,
+        description="My desc",
+        is_true=False,
+        is_false=True,
+        color="#333333",
+        json_default={"value": {"value": "xxxxx"}},
+        json_no_default={"value": {"testing": True}},
+    )
     await obj.save(db=db)
 
     assert obj.id
@@ -440,6 +516,8 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj.color.id
     assert obj.is_true.value is False
     assert obj.is_false.value is True
+    assert obj.json_default.value == {"value": "xxxxx"}
+    assert obj.json_no_default.value == {"testing": True}
 
 
 async def test_node_create_attribute_with_source(
@@ -560,7 +638,7 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
     assert c1.nbr_seats.value == 4
     assert c1.is_electric.value is True
     c1_owner = await c1.owner.get_peer(db=db)
-    assert c1_owner == p1
+    assert c1_owner.id == p1.id
 
     paths = await get_paths_between_nodes(
         db=db, source_id=c1.db_id, destination_id=p1.db_id, max_length=2, relationships=["IS_RELATED"]
@@ -638,6 +716,105 @@ async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, defa
     assert len(paths) == 2
     paths = await get_paths_between_nodes(db=db, source_id=f1.db_id, destination_id=t3.db_id, max_length=2)
     assert len(paths) == 2
+
+
+async def test_node_create_with_object_template(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+):
+    DUMMY = NodeSchema(
+        name="Dummy",
+        namespace="Testing",
+        generate_template=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+        ],
+    )
+
+    SIMPLE_DEVICE = NodeSchema(
+        name="Device",
+        namespace="Testing",
+        generate_template=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, order_weight=500),
+            AttributeSchema(name="manufacturer", kind="Text", order_weight=500),
+            AttributeSchema(name="height", kind="Number", order_weight=300),
+            AttributeSchema(name="weight", kind="Number", order_weight=1000),
+            AttributeSchema(
+                name="airflow",
+                kind="Text",
+                enum=["Front to rear", "Rear to front"],
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="dummy",
+                peer="TestingDummy",
+                cardinality=RelationshipCardinality.ONE,
+                order_weight=5000,
+                optional=True,
+            )
+        ],
+    )
+    registry.schema.set(name=DUMMY.kind, schema=DUMMY, branch=default_branch.name)
+    registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    template_schema = registry.schema.get(name=f"Template{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+    node_schema = registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
+
+    # Validate that the attributes respect the order_weight defined on the original schema
+    template_weights = {
+        attr.name: attr.order_weight for attr in template_schema.attributes + template_schema.relationships
+    }
+
+    assert "name" not in template_weights
+    assert template_weights["manufacturer"] == 10500
+    assert template_weights["dummy"] == 15000
+
+    template = await Node.init(db=db, schema=template_schema)
+    await template.new(
+        db=db,
+        template_name="Juniper MX204",
+        manufacturer="Juniper",
+        height=1,
+        weight=8,
+        airflow="Front to rear",
+    )
+    await template.save(db=db)
+
+    device: Node = await Node.init(db=db, schema=node_schema)
+    await device.new(db=db, name="par-th2-br01", object_template={"id": template.id})
+    await device.save(db=db)
+
+    assert device.id
+    assert device.db_id
+    assert device.name.value == device.node_changelog.attributes["name"].value == "par-th2-br01"
+    assert device.node_changelog.attributes["name"].value_update_status == DiffAction.ADDED
+    assert "source" not in device.node_changelog.attributes["name"].properties
+    assert device.manufacturer.value == device.node_changelog.attributes["manufacturer"].value == "Juniper"
+    assert device.node_changelog.attributes["manufacturer"].value_update_status == DiffAction.ADDED
+    assert (
+        device.manufacturer.source_id
+        == device.node_changelog.attributes["manufacturer"].properties["source"].value
+        == template.id
+    )
+    assert device.height.value == device.node_changelog.attributes["height"].value == 1
+    assert device.node_changelog.attributes["height"].value_update_status == DiffAction.ADDED
+    assert (
+        device.height.source_id == device.node_changelog.attributes["height"].properties["source"].value == template.id
+    )
+    assert device.weight.value == device.node_changelog.attributes["weight"].value == 8
+    assert device.node_changelog.attributes["weight"].value_update_status == DiffAction.ADDED
+    assert (
+        device.weight.source_id == device.node_changelog.attributes["weight"].properties["source"].value == template.id
+    )
+    assert device.airflow.value.value == device.node_changelog.attributes["airflow"].value.value == "Front to rear"
+    assert device.node_changelog.attributes["airflow"].value_update_status == DiffAction.ADDED
+    assert (
+        device.airflow.source_id
+        == device.node_changelog.attributes["airflow"].properties["source"].value
+        == template.id
+    )
 
 
 # --------------------------------------------------------------------------

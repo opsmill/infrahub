@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Response
 
 from infrahub import config, models
@@ -8,16 +12,16 @@ from infrahub.auth import (
     create_fresh_access_token,
     invalidate_refresh_token,
 )
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
 
 router = APIRouter(prefix="/auth")
 
 
 @router.post("/login")
 async def login_user(
-    credentials: models.PasswordCredential,
-    response: Response,
-    db: InfrahubDatabase = Depends(get_db),
+    credentials: models.PasswordCredential, response: Response, db: InfrahubDatabase = Depends(get_db)
 ) -> models.UserToken:
     token = await authenticate_with_password(db=db, credentials=credentials)
     response.set_cookie(
@@ -45,9 +49,7 @@ async def refresh_jwt_token(
 
 @router.post("/logout")
 async def logout(
-    response: Response,
-    db: InfrahubDatabase = Depends(get_db),
-    user_session: AccountSession = Depends(get_access_token),
+    response: Response, db: InfrahubDatabase = Depends(get_db), user_session: AccountSession = Depends(get_access_token)
 ) -> None:
     if user_session.session_id:
         await invalidate_refresh_token(db=db, token_id=user_session.session_id)

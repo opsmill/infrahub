@@ -2,6 +2,8 @@
 title: IP address management
 ---
 
+import VideoPlayer from '../../src/components/VideoPlayer';
+
 # IP address management
 
 IP address management, also known as IPAM, is a critical part of any infrastructure involving IP network and address allocations. Depending on the scale of networks, it can be challenging to keep track of all IP resources, how they are used, and which ones remain available.
@@ -11,6 +13,10 @@ IP address management, also known as IPAM, is a critical part of any infrastruct
 Building an IPAM serves a different purpose as using the `IPHost` or `IPNetwork` attribute kinds in other node definitions. In fact, the IPAM feature leverage those attribute kinds.
 
 :::
+
+<center>
+  <VideoPlayer url='https://www.youtube.com/watch?v=vF7dUftSDBs' light />
+</center>
 
 ## IPAM generics
 
@@ -24,7 +30,7 @@ By default, Infrahub comes with a node inheriting from the `BuiltinIPNamespace` 
 
 ## Building an IPAM
 
-As mentioned in the previous section, an IPAM namespace is already provided with Infrahub, so there are no needs to redefined this unless more attributes are required. The default implementation is very minimal and attributes only include a name and a description.
+As mentioned in the previous section, an IPAM namespace is already provided with Infrahub, so there is no need to redefine this unless more attributes are required. The default implementation is very minimal and attributes only include a name and a description.
 
 The below schema defines two nodes: one for IP prefixes `IpamIPPrefix` and one for IP addresses `IpamIPAddress`. Both of these nodes inherit from the built-in generics.
 
@@ -92,10 +98,3 @@ IP prefixes also have default read-only attributes which can be queried and can 
 - `hostmask`, host mask of an IP prefix like `0.0.0.255`
 - `network_address`, network address of an IP prefix, usually the first IP address of the prefix
 - `broadcast_address`, broadcast address of an IP prefix, usually the last IP address of the prefix
-
-## Known limitations
-
-These are a non-exhaustive list of known issues and limitations of Infrahub IPAM. These will be addressed in future releases.
-
-- [2955](https://github.com/opsmill/infrahub/issues/2955) There are no ways to programmatically know the next IP prefix available in a namespace or an IP prefix
-- [2954](https://github.com/opsmill/infrahub/issues/2954) There are no ways to programmatically know the next IP address available in a namespace or an IP prefix

@@ -47,6 +47,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_PASSWORD:
   INFRAHUB_DB_PORT:
   INFRAHUB_DB_PROTOCOL:
+  INFRAHUB_DB_POLICY:
   INFRAHUB_DB_QUERY_SIZE_LIMIT:
   INFRAHUB_DB_RETRY_LIMIT:
   INFRAHUB_DB_TLS_CA_FILE:
@@ -56,7 +57,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_USERNAME:
   INFRAHUB_DOCS_INDEX_PATH:
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:
-  INFRAHUB_EXPERIMENTAL_PULL_REQUEST:
+  INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY:
   INFRAHUB_GIT_SYNC_INTERVAL:
   INFRAHUB_INITIAL_ADMIN_PASSWORD:
@@ -73,9 +74,22 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_MISC_RESPONSE_DELAY:
   INFRAHUB_MISC_START_BACKGROUND_RUNNER:
   INFRAHUB_PRODUCTION:
-  INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME:
-  INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:
+  INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME:-3600}
+  INFRAHUB_SECURITY_OAUTH2_PROVIDERS:
+  INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS:
+  INFRAHUB_SECURITY_OIDC_PROVIDERS:
+  INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS:
+  INFRAHUB_OIDC_PROVIDER1_CLIENT_ID:
+  INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET:
+  INFRAHUB_OAUTH2_GOOGLE_CLIENT_ID:
+  INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET:
+  INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL:
+  INFRAHUB_OIDC_PROVIDER1_SCOPES:
+  INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL:
+  INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_SCHEMA_STRICT_MODE:-true}
+  INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:-2592000}
   INFRAHUB_SECURITY_SECRET_KEY:
+  INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP:
   INFRAHUB_STORAGE_BUCKET_NAME:
   INFRAHUB_STORAGE_CUSTOM_DOMAIN:
   INFRAHUB_STORAGE_DEFAULT_ACL:
@@ -87,23 +101,50 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_TELEMETRY_ENDPOINT:
   INFRAHUB_TELEMETRY_INTERVAL:
   INFRAHUB_TELEMETRY_OPTOUT:
+  INFRAHUB_TIMEOUT:
   INFRAHUB_TRACE_ENABLE:
   INFRAHUB_TRACE_EXPORTER_ENDPOINT:
   INFRAHUB_TRACE_EXPORTER_PROTOCOL:
   INFRAHUB_TRACE_EXPORTER_TYPE:
   INFRAHUB_TRACE_INSECURE:
+  INFRAHUB_WORKFLOW_ADDRESS:
+  INFRAHUB_WORKFLOW_PORT:
   OTEL_RESOURCE_ATTRIBUTES:
 
 services:
-  infrahub-server:
+  server:
+    profiles: [demo, dev]
     build:
       context: ../
+      args:
+        CI_ARG: ${CI:-0}
+        POETRY_VER: ${POETRY_VERSION:-2.1.0}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
     pull_policy: always
+    environment:
+      <<: *infrahub_config
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+      INFRAHUB_PRODUCTION: "${INFRAHUB_PRODUCTION:-false}"
+      INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
+      INFRAHUB_BROKER_ADDRESS: message-queue
+      INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
+      INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
+      INFRAHUB_DB_ADDRESS: database
+      INFRAHUB_DB_USERNAME: neo4j
+      INFRAHUB_DB_PASSWORD: admin
+      INFRAHUB_DB_PORT: 7687
+      INFRAHUB_DB_PROTOCOL: bolt
+      INFRAHUB_STORAGE_DRIVER: local
+      # INFRAHUB_SERVER_COMMAND is defined while running with reload option as it requires to run server using `uvicorn`.
+      COMMAND: ${INFRAHUB_SERVER_COMMAND:- gunicorn --config backend/infrahub/serve/gunicorn_config.py -w ${WEB_CONCURRENCY:-4} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app}
     command: >
-      gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
+      sh -c "$$COMMAND"
     depends_on:
       database:
         condition: service_healthy
@@ -111,14 +152,8 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
-    environment:
-      <<: *infrahub_config
-      INFRAHUB_CONFIG: /source/development/infrahub.toml
-      INFRAHUB_PRODUCTION: false
-      INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
-      INFRAHUB_BROKER_ADDRESS: message-queue
-      INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      task-manager:
+        condition: service_healthy
     volumes:
       - "storage_data:/opt/infrahub/storage"
     tty: true
@@ -126,44 +161,58 @@ services:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
     healthcheck:
-      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
+      test: curl -s -f -o /dev/null http://localhost:8000/api/config || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
-  infrahub-git:
+  task-worker:
+    profiles: [demo, dev]
     deploy:
       mode: replicated
       replicas: 2
     build:
       context: ../
+      args:
+        CI_ARG: ${CI:-0}
+        POETRY_VER: ${POETRY_VERSION:-2.1.0}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
     pull_policy: always
-    command: infrahub git-agent start --debug
+    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
-      - infrahub-server
+      server:
+        condition: service_healthy
     environment:
       <<: *infrahub_config
-      INFRAHUB_CONFIG: /source/development/infrahub.toml
-      INFRAHUB_ADDRESS: http://infrahub-server:8000
+      INFRAHUB_ADDRESS: http://server:8000
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
+      INFRAHUB_DB_ADDRESS: "database"
       INFRAHUB_PRODUCTION: false
-      INFRAHUB_LOG_LEVEL: DEBUG
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      INFRAHUB_TIMEOUT: 20
+      INFRAHUB_TIMEOUT: "${INFRAHUB_TIMEOUT:-60}"
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      INFRAHUB_WORKFLOW_ADDRESS: "${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}"
+      INFRAHUB_WORKFLOW_PORT: "${INFRAHUB_WORKFLOW_PORT:-4200}"
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
+      INFRAHUB_DB_USERNAME: neo4j
+      INFRAHUB_DB_PASSWORD: admin
+      INFRAHUB_DB_PORT: 7687
+      INFRAHUB_DB_PROTOCOL: bolt
+      INFRAHUB_STORAGE_DRIVER: local
     volumes:
-      - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
+      namespace: "prefect"
+      pod: "prefect-agent"
 
 volumes:
-  git_data:
   git_remote_data:
   storage_data:

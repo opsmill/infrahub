@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 from typing import TYPE_CHECKING, Any
 
@@ -15,14 +16,13 @@ from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
-from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.cache.nats import NATSCache
-from infrahub.services.adapters.cache.redis import RedisCache
-from infrahub.services.adapters.message_bus.nats import NATSMessageBus
-from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.services.adapters.cache import InfrahubCache
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ log = get_logger()
 shutdown_event = asyncio.Event()
 
 
-def signal_handler(*args: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+def signal_handler(*args: Any, **kwargs: Any) -> None:  # noqa: ARG001
     shutdown_event.set()
 
 
@@ -49,11 +49,8 @@ def callback() -> None:
 
 
 async def initialize_git_agent(service: InfrahubServices) -> None:
-    log.info("Initializing Git Agent ...")
+    service.log.info("Initializing Git Agent ...")
     initialize_repositories_directory()
-
-    # TODO Validate access to the GraphQL API with the proper credentials
-    await sync_remote_repositories(service=service)
 
 
 @app.command()
@@ -72,8 +69,12 @@ async def start(
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)
     logging.getLogger("git").setLevel(logging.ERROR)
+    logging.getLogger("aiosqlite").setLevel(logging.ERROR)
 
     log.debug(f"Config file : {config_file}")
+    # Prevent git from interactively prompting the user for passwords if the credentials provided
+    # by the credential helper is failing.
+    os.environ["GIT_TERMINAL_PROMPT"] = "0"
 
     context: CliContext = ctx.obj
 
@@ -96,7 +97,7 @@ async def start(
         await client.branch.all()
     except SdkError as exc:
         log.error(f"Error in communication with Infrahub: {exc.message}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -108,23 +109,28 @@ async def start(
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
-    database = await context.get_db(retry=1)
+    database = await context.init_db(retry=1)
 
+    workflow = config.OVERRIDE.workflow or (
+        WorkflowWorkerExecution()
+        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
+        else WorkflowLocalExecution()
+    )
+
+    component_type = ComponentType.GIT_AGENT
     message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+        await InfrahubMessageBus.new_from_driver(component_type=component_type, driver=config.SETTINGS.broker.driver)
     )
-    cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
-    )
+    cache = config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
 
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         cache=cache,
         client=client,
         database=database,
+        workflow=workflow,
         message_bus=message_bus,
-        component_type=ComponentType.GIT_AGENT,
+        component_type=component_type,
     )
-    await service.initialize()
 
     # Initialize the lock
     initialize_lock(service=service)
@@ -140,8 +146,7 @@ async def start(
 
     log.info("Initialized Git Agent ...")
 
-    while not shutdown_event.is_set():
-        await asyncio.sleep(1)
+    await shutdown_event.wait()
 
     log.info("Shutdown of Git agent requested")
 

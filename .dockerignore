@@ -15,9 +15,13 @@ node_modules
 coverage.xml
 .git*
 .devcontainer
-.husky
-frontend/node_modules
-frontend/playwright-report
+frontend/**/node_modules
+frontend/**/playwright-report
+
+# Documentation
+docs/build
+docs/node_modules
+docs/.docusaurus
 
 # Direnv files (https://direnv.net/)
 .direnv/
@@ -26,3 +30,4 @@ frontend/playwright-report
 # Generated files
 generated/
 query_performance_results/
+**/infrahub.toml

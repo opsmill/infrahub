@@ -2,11 +2,11 @@
 title: Extend the schema
 ---
 import CodeBlock from '@theme/CodeBlock';
-import dcimYaml from '!!raw-loader!../../../../models/base/dcim.yml';
-import ipamYaml from '!!raw-loader!../../../../models/base/ipam.yml';
-import locationYaml from '!!raw-loader!../../../../models/base/location.yml';
-import organizationYaml from '!!raw-loader!../../../../models/base/organization.yml';
-import routingYaml from '!!raw-loader!../../../../models/base/routing.yml';
+import import_dcimYaml from '!!raw-loader!../../../../models/base/dcim.yml';
+import import_ipamYaml from '!!raw-loader!../../../../models/base/ipam.yml';
+import import_locationYaml from '!!raw-loader!../../../../models/base/location.yml';
+import import_organizationYaml from '!!raw-loader!../../../../models/base/organization.yml';
+import import_routingYaml from '!!raw-loader!../../../../models/base/routing.yml';
 
 import ReferenceLink from "../../../src/components/Card";
 
@@ -20,13 +20,13 @@ The version of Infrahub we currently use for the demo only included a default sc
 
 ## Visualize the active schema
 
-You can explore the current schema by visiting the schema page, you can find it in the left menu under the Unified Storage section.
+You can explore the current schema by visiting the schema page, you can find it in the left menu under the `Object Management` section.
 
-<ReferenceLink title="Explore the current schema" url="http://localhost:8000/api/schema" openInNewTab />
+<ReferenceLink title="Explore the current schema" url="http://localhost:8000/schema" openInNewTab />
 
 ![schema page screenshot](../../media/tutorial_3_schema.png)
 
-<ReferenceLink title="Check the schema documentation for more information" url="/reference/schema" />
+<ReferenceLink title="Check the schema documentation for more information" url="../../reference/schema" />
 
 ## Extend the schema with some network related models
 
@@ -36,22 +36,22 @@ A "base" schema with these types of models and more is available in the `models/
 
 <details>
   <summary>Infrastructure Base Schema</summary>
-  <CodeBlock language="yaml" title="DCIM Base Schema">{dcimYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="IPAM Base Schema">{ipamYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="Location Base Schema">{locationYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="Organization Base Schema">{organizationYaml}</CodeBlock>
-  <CodeBlock language="yaml" title="Routing Base Schema">{routingYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="DCIM Base Schema">{import_dcimYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="IPAM Base Schema">{import_ipamYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Location Base Schema">{import_locationYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Organization Base Schema">{import_organizationYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Routing Base Schema">{import_routingYaml}</CodeBlock>
 </details>
 
 Use the following command to load these new models into Infrahub
 
-```bash
+```shell
 invoke demo.load-infra-schema
 ```
 
 <details>
   <summary>Expected Results</summary>
-  ```bash
+  ```shell
   > invoke demo.load-infra-schema
   --- abbreviated ---
   schema 'models/base/dcim.yml' loaded successfully
@@ -82,13 +82,13 @@ In order to have more meaningful data to explore, we'll use a sample topology of
 
 Use the following command to load these new models into Infrahub:
 
-```bash
+```shell
 invoke demo.load-infra-data
 ```
 
 <details>
   <summary>Expected Results</summary>
-  ```bash
+  ```shell
   > invoke demo.load-infra-data
   --- abbreviated ---
   [13:27:39] INFO     Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site            infrastructure_edge.py:648

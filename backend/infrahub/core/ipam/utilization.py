@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional, Union
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -19,9 +18,7 @@ class PrefixChildDetails:
 
 
 class PrefixUtilizationGetter:
-    def __init__(
-        self, db: InfrahubDatabase, ip_prefixes: list[Node], at: Optional[Union[Timestamp, str]] = None
-    ) -> None:
+    def __init__(self, db: InfrahubDatabase, ip_prefixes: list[Node], at: Timestamp | str | None = None) -> None:
         self.db = db
         self.ip_prefixes = ip_prefixes
         self.at = at
@@ -35,7 +32,12 @@ class PrefixUtilizationGetter:
 
     async def _run_and_parse_query(self) -> None:
         self._results_by_prefix_id = {}
-        query = await IPPrefixUtilization.init(db=self.db, at=self.at, ip_prefixes=self.ip_prefixes)
+        query = await IPPrefixUtilization.init(
+            db=self.db,
+            at=self.at,
+            ip_prefixes=self.ip_prefixes,
+            allocated_kinds=[InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS],
+        )
         await query.execute(db=self.db)
 
         for result in query.get_results():
@@ -61,9 +63,9 @@ class PrefixUtilizationGetter:
 
     async def get_children(
         self,
-        ip_prefixes: Optional[list[Node]] = None,
-        prefix_member_type: Optional[PrefixMemberType] = None,
-        branch_names: Optional[list[str]] = None,
+        ip_prefixes: list[Node] | None = None,
+        prefix_member_type: PrefixMemberType | None = None,
+        branch_names: list[str] | None = None,
     ) -> list[PrefixChildDetails]:
         await self._fetch_data()
         prefix_child_details_list: list[PrefixChildDetails] = []
@@ -75,7 +77,7 @@ class PrefixUtilizationGetter:
             return prefix_child_details_list
         for prefix_id in prefix_ids:
             child_details_by_branch = self._results_by_prefix_id[prefix_id]
-            branch_names_to_check = branch_names if branch_names else list(child_details_by_branch.keys())
+            branch_names_to_check = branch_names or list(child_details_by_branch.keys())
             for branch_name in branch_names_to_check:
                 for child_details in child_details_by_branch.get(branch_name, []):
                     if prefix_member_type and child_details.child_type != prefix_member_type:
@@ -85,9 +87,9 @@ class PrefixUtilizationGetter:
 
     async def get_num_children_in_use(
         self,
-        ip_prefixes: Optional[list[Node]] = None,
-        prefix_member_type: Optional[PrefixMemberType] = None,
-        branch_names: Optional[list[str]] = None,
+        ip_prefixes: list[Node] | None = None,
+        prefix_member_type: PrefixMemberType | None = None,
+        branch_names: list[str] | None = None,
     ) -> int:
         children = await self.get_children(
             ip_prefixes=ip_prefixes, prefix_member_type=prefix_member_type, branch_names=branch_names
@@ -95,7 +97,7 @@ class PrefixUtilizationGetter:
         return len(children)
 
     async def _get_prefix_use_fraction(
-        self, ip_prefixes: Optional[list[Node]] = None, branch_names: Optional[list[str]] = None
+        self, ip_prefixes: list[Node] | None = None, branch_names: list[str] | None = None
     ) -> tuple[int, int]:
         total_prefix_space = 0
         total_used_space = 0
@@ -112,7 +114,7 @@ class PrefixUtilizationGetter:
         return total_used_space, total_prefix_space
 
     async def _get_address_use_fraction(
-        self, ip_prefixes: Optional[list[Node]] = None, branch_names: Optional[list[str]] = None
+        self, ip_prefixes: list[Node] | None = None, branch_names: list[str] | None = None
     ) -> tuple[int, int]:
         total_prefix_space = 0
         if ip_prefixes is None:
@@ -125,7 +127,7 @@ class PrefixUtilizationGetter:
         return total_used_space, total_prefix_space
 
     async def get_use_percentage(
-        self, ip_prefixes: Optional[list[Node]] = None, branch_names: Optional[list[str]] = None
+        self, ip_prefixes: list[Node] | None = None, branch_names: list[str] | None = None
     ) -> float:
         grand_total_used, grand_total_space = 0, 0
         address_prefixes, prefix_prefixes = [], []
@@ -148,4 +150,6 @@ class PrefixUtilizationGetter:
             )
             grand_total_used += prefix_total_used
             grand_total_space += prefix_total_space
+        if grand_total_space == 0:
+            return 0.0
         return (grand_total_used / grand_total_space) * 100

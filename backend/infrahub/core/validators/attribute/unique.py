@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_unique_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         self.params["node_kind"] = self.node_schema.kind
@@ -31,12 +31,10 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         query = """
         MATCH (potential_node:Node)
         WHERE $node_kind IN LABELS(potential_node)
-        CALL {
-            WITH potential_node
+        CALL (potential_node) {
             MATCH potential_path = (potential_node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name })-[potential_value_relationship:HAS_VALUE]-(potential_value:AttributeValue)
             WHERE all(r IN relationships(potential_path) WHERE (%(branch_filter)s))
             WITH
-                potential_node,
                 potential_value,
                 potential_value_relationship,
                 potential_path,
@@ -91,7 +89,7 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeUniquenessChecker(ConstraintCheckerInterface):
     query_classes = [AttributeUniqueUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 
@@ -102,10 +100,14 @@ class AttributeUniquenessChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
+        if request.node_schema.namespace == "Schema":
+            # We don't need to run uniqueness constraints for attributes within the Schema nodes
+            return []
+
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
         if attribute_schema.unique is False:
             return []

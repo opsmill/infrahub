@@ -1,0 +1,48 @@
+import { QSP } from "@/config/qsp";
+import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import { Link } from "@/shared/components/ui/link";
+import { useAtomValue } from "jotai";
+
+const NodeEventTitleContent = ({ primary_node, event, branch }: NodeMutatedEvent) => {
+  if (!primary_node?.id || !primary_node?.kind) {
+    return "-";
+  }
+
+  if (event.includes("deleted")) {
+    return <NodeLabel id={primary_node.id} kind={primary_node.kind} branch={branch} />;
+  }
+
+  return (
+    <Link
+      to={getObjectDetailsUrl(primary_node.kind, primary_node.id, [
+        { name: QSP.BRANCH, value: branch },
+      ])}
+    >
+      <NodeLabel id={primary_node.id} kind={primary_node.kind} branch={branch} />
+    </Link>
+  );
+};
+
+export const NodeEventTitle = (props: NodeMutatedEvent) => {
+  const schemaLabels = useAtomValue(schemaKindLabelState);
+
+  const { event, account_id, payload, branch } = props;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 text-sm">
+      {account_id ? <NodeLabel id={account_id} kind="CoreAccount" branch={branch} /> : "-"}
+
+      <span className="text-gray-600 whitespace-nowrap">{NODE_EVENTS_MAPPING[event] ?? event}</span>
+
+      <div className="text-gray-600 whitespace-nowrap">
+        {schemaLabels[payload.data.node_kind] ?? "-"}
+      </div>
+
+      <NodeEventTitleContent {...props} />
+    </div>
+  );
+};

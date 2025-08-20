@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 import hashlib
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user
 from infrahub.core import registry
 from infrahub.log import get_logger
+
+if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
 
 log = get_logger()
 router = APIRouter(prefix="/storage")
@@ -22,10 +28,7 @@ class UploadContentPayload(BaseModel):
 
 
 @router.get("/object/{identifier:str}")
-def get_file(
-    identifier: str,
-    _: str = Depends(get_current_user),
-) -> Response:
+def get_file(identifier: str, _: AccountSession = Depends(get_current_user)) -> Response:
     content = registry.storage.retrieve(identifier=identifier)
     return Response(content=content)
 
@@ -48,10 +51,7 @@ def upload_content(
 
 
 @router.post("/upload/file")
-def upload_file(
-    file: UploadFile = File(...),
-    _: str = Depends(get_current_user),
-) -> UploadResponse:
+def upload_file(file: UploadFile = File(...), _: AccountSession = Depends(get_current_user)) -> UploadResponse:
     # TODO need to optimized how we read the content of the file, especially if the file is really large
     # Check this discussion for more details
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi

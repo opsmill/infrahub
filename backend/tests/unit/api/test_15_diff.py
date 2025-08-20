@@ -1,6 +1,6 @@
 import pytest
-from deepdiff import DeepDiff
 
+from infrahub import config
 from infrahub.core.constants import NULL_VALUE, InfrahubKind
 from infrahub.core.diff.payload_builder import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
@@ -200,4 +200,31 @@ async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_p
         },
     }
 
-    assert DeepDiff(expected_response, data, ignore_order=True).to_dict() == {}
+    assert set(data.keys()) == set(expected_response.keys())
+
+    for artifact_id, serial_artifact in expected_response.items():
+        assert data[artifact_id] == serial_artifact
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_diff_artifact_anonymous_access(
+    db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff, allow_anonymous_access: bool
+):
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    with client:
+        response = client.get("/api/diff/artifacts?branch=branch3")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_diff_files_anonymous_access(
+    db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff, allow_anonymous_access: bool
+):
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    with client:
+        response = client.get("/api/diff/files?branch=branch3")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401

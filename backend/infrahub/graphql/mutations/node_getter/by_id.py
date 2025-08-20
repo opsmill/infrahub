@@ -1,5 +1,3 @@
-from typing import Optional
-
 from graphene import InputObjectType
 
 from infrahub.core.branch import Branch
@@ -12,7 +10,7 @@ from .interface import MutationNodeGetterInterface
 
 
 class MutationNodeGetterById(MutationNodeGetterInterface):
-    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
+    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager) -> None:
         self.db = db
         self.node_manager = node_manager
 
@@ -21,9 +19,8 @@ class MutationNodeGetterById(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-    ) -> Optional[Node]:
+    ) -> Node | None:
         node = None
         if "id" not in data:
             return node
-        return await self.node_manager.get_one(id=data["id"], db=self.db, at=at, branch=branch, kind=node_schema.kind)
+        return await self.node_manager.get_one(id=str(data["id"]), db=self.db, branch=branch, kind=node_schema.kind)

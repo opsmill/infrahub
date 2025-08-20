@@ -1,0 +1,198 @@
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
+import {
+  AttributeKind,
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/types";
+import { DropdownOption } from "@/shared/components/inputs/dropdown";
+import { SelectOption } from "@/shared/components/inputs/select-old";
+import { FormField } from "@/shared/components/ui/form";
+import { ComponentProps } from "react";
+
+type SourceType = "schema" | "user";
+
+export type EmptyFieldValue = {
+  source: null;
+  value: null;
+};
+
+export type PoolSource = {
+  type: "pool";
+  label: string | null;
+  kind: string;
+  id: string;
+};
+
+export type ProfileSource = {
+  type: "profile";
+  label: string | null;
+  kind: string;
+  id: string;
+};
+
+export type TemplateSource = {
+  type: "template";
+  label: string | null;
+  kind: string;
+  id: string;
+};
+
+export type AttributeValueFromProfile = {
+  source: ProfileSource;
+  value: string | number | boolean | null;
+};
+
+export type AttributeValueFromPool = {
+  source: PoolSource;
+  value: { from_pool: { id: string } };
+};
+
+export type AttributeValueForCheckbox = {
+  source: null;
+  value: boolean;
+};
+
+export type AttributeValueFromUser =
+  | {
+      source: {
+        type: SourceType;
+      };
+      value: string | string[] | number | boolean | null;
+    }
+  | AttributeValueForCheckbox;
+
+export type AttributeValueFromTemplate = {
+  source: TemplateSource;
+  value: string | string[] | number | boolean | null;
+};
+
+export type FormAttributeValue =
+  | AttributeValueFromUser
+  | AttributeValueFromProfile
+  | AttributeValueFromPool
+  | AttributeValueFromTemplate
+  | EmptyFieldValue;
+
+export type RelationshipOneValueFromUser = {
+  source: {
+    type: SourceType;
+  };
+  value: Node | null;
+};
+
+export type RelationshipManyValueFromUser = {
+  source: {
+    type: SourceType;
+  };
+  value: Array<Node> | null;
+};
+
+export type RelationshipOneValueFromTemplate = {
+  source: TemplateSource;
+  value: Node | null;
+};
+
+export type RelationshipManyValueFromTemplate = {
+  source: TemplateSource;
+  value: Array<Node> | null;
+};
+
+export type RelationshipValueFromPool = {
+  source: PoolSource;
+  value: Node | { from_pool: { id: string } };
+};
+
+export type RelationshipValueFromUser =
+  | RelationshipOneValueFromUser
+  | RelationshipManyValueFromUser;
+
+export type RelationshipValueFromTemplate =
+  | RelationshipOneValueFromTemplate
+  | RelationshipManyValueFromTemplate;
+
+export type FormRelationshipValue =
+  | RelationshipValueFromUser
+  | RelationshipValueFromPool
+  | RelationshipValueFromTemplate
+  | EmptyFieldValue;
+
+export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
+
+export type FormFieldProps = {
+  defaultValue?: FormAttributeValue;
+  description?: string;
+  disabled?: boolean;
+  label?: string;
+  name: string;
+  placeholder?: string;
+  unique?: boolean;
+  rules?: ComponentProps<typeof FormField>["rules"];
+  onChange?: (value: FormFieldValue) => void;
+  pool?: {
+    kind: string;
+    defaultAllocatedObjectKind: string;
+  };
+};
+
+export type DynamicInputFieldProps = FormFieldProps & {
+  type: Exclude<AttributeKind, "Dropdown">;
+};
+
+export type DynamicNumberFieldProps = FormFieldProps & {
+  type: "Number";
+  pools?: Array<NumberPool>;
+};
+
+export type DynamicDropdownFieldProps = FormFieldProps & {
+  type: "Dropdown";
+  items: Array<DropdownOption>;
+  field?: AttributeSchema;
+  schema?: ModelSchema;
+};
+
+export type DynamicEnumFieldProps = FormFieldProps & {
+  type: "enum";
+  items: Array<unknown>;
+  field?: AttributeSchema;
+  schema?: ModelSchema;
+};
+
+export type DynamicSelectFieldProps = FormFieldProps & {
+  type: "select";
+  items: Array<{ key: string; label: string }>;
+};
+
+export type DynamicKindFieldProps = FormFieldProps & {
+  type: "kind";
+};
+
+export type DynamicAttributeFieldProps =
+  | DynamicInputFieldProps
+  | DynamicNumberFieldProps
+  | DynamicDropdownFieldProps
+  | DynamicEnumFieldProps
+  | DynamicSelectFieldProps
+  | DynamicKindFieldProps;
+
+export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
+  type: "relationship";
+  defaultValue?: FormRelationshipValue;
+  peer?: string;
+  parent?: string;
+  options?: SelectOption[];
+  relationship: RelationshipSchema;
+  schema: ModelSchema;
+  peerField?: string;
+};
+
+export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;
+
+export const isFormFieldValueFromPool = (
+  fieldData: FormFieldValue
+): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
+
+export const isFormFieldValueFromTemplate = (
+  fieldData: FormFieldValue
+): fieldData is AttributeValueFromTemplate => fieldData.source?.type === "template";

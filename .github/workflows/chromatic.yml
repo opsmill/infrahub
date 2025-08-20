@@ -1,0 +1,42 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: 'Chromatic Publish'
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'frontend/packages/ui/**'
+
+permissions:
+  contents: read
+
+jobs:
+  chromatic:
+    defaults:
+      run:
+        working-directory: ./frontend/packages/ui
+    name: Run Chromatic
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      - name: Install dependencies
+        run: npm install
+      - name: Run Chromatic
+        id: chromatic
+        uses: chromaui/action@latest
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          workingDir: ./frontend/packages/ui
+      - name: Outputs Storybook URL
+        run: |
+          echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"

@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from types import GenericAlias
-from typing import Any, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import TypedDict
@@ -13,10 +13,12 @@ from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
+    DEFAULT_LABEL_MAX_LENGTH,
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_NAME_MIN_LENGTH,
     DEFAULT_REL_IDENTIFIER_LENGTH,
     NAME_REGEX,
+    NAME_REGEX_OR_EMPTY,
     NAMESPACE_REGEX,
     NODE_KIND_REGEX,
     NODE_NAME_REGEX,
@@ -29,10 +31,16 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
-from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TCH001
+from infrahub.core.schema.attribute_parameters import (
+    AttributeParameters,
+    NumberAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
-from infrahub.core.schema.filter import FilterSchema
-from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TCH001
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
 
 
@@ -45,17 +53,17 @@ class SchemaAttribute(BaseModel):
     kind: str
     description: str
     extra: ExtraField
-    internal_kind: Optional[Union[type[Any], GenericAlias]] = None
-    regex: Optional[str] = None
-    unique: Optional[bool] = None
-    optional: Optional[bool] = None
-    min_length: Optional[int] = None
-    max_length: Optional[int] = None
-    enum: Optional[list[str]] = None
-    default_value: Optional[Any] = None
-    default_factory: Optional[str] = None
+    internal_kind: type[Any] | GenericAlias | list[type[Any]] | None = None
+    regex: str | None = None
+    unique: bool | None = None
+    optional: bool | None = None
+    min_length: int | None = None
+    max_length: int | None = None
+    enum: list[str] | None = None
+    default_value: Any | None = None
+    default_factory: str | None = None
     default_to_none: bool = False
-    override_default_value: Optional[Any] = Field(
+    override_default_value: Any | None = Field(
         default=None,
         description="Currently optional is defined with different defaults for the Pydantic models compared to the internal_schema dictionary",
     )
@@ -74,7 +82,7 @@ class SchemaAttribute(BaseModel):
 
     @property
     def optional_in_model(self) -> bool:
-        if self.optional and self.default_value is None and self.default_factory is None or self.default_to_none:
+        if (self.optional and self.default_value is None and self.default_factory is None) or self.default_to_none:
             return True
 
         return False
@@ -82,7 +90,7 @@ class SchemaAttribute(BaseModel):
     @property
     def type_annotation(self) -> str:
         if self.optional_in_model:
-            return f"Optional[{self.object_kind}]"
+            return f"{self.object_kind} | None"
 
         return self.object_kind
 
@@ -90,6 +98,9 @@ class SchemaAttribute(BaseModel):
     def object_kind(self) -> str:
         if isinstance(self.internal_kind, GenericAlias):
             return str(self.internal_kind)
+
+        if isinstance(self.internal_kind, list):
+            return " | ".join([internal_kind.__name__ for internal_kind in self.internal_kind])
 
         if self.internal_kind and self.kind == "List":
             return f"list[{self.internal_kind.__name__}]"
@@ -149,8 +160,8 @@ class SchemaAttribute(BaseModel):
 class SchemaRelationship(BaseModel):
     name: str
     peer: str
-    description: Optional[str] = None
-    kind: Optional[str] = None
+    description: str | None = None
+    kind: str | None = None
     identifier: str
     cardinality: str
     branch: str
@@ -165,7 +176,7 @@ class SchemaNode(BaseModel):
     namespace: str
     branch: str
     include_in_menu: bool
-    default_filter: Optional[str]
+    default_filter: str | None = None
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_labels: list[str]
@@ -180,7 +191,7 @@ class SchemaNode(BaseModel):
             "attributes": [
                 attribute.to_dict()
                 for attribute in self.attributes
-                if attribute.name not in ["id", "filters", "attributes", "relationships"]
+                if attribute.name not in ["id", "attributes", "relationships"]
             ],
             "relationships": [relationship.to_dict() for relationship in self.relationships],
             "display_labels": self.display_labels,
@@ -198,7 +209,7 @@ class SchemaNode(BaseModel):
 
 @dataclass
 class InternalSchema:
-    version: Optional[str]
+    version: str | None
     nodes: list[SchemaNode]
 
     def to_dict(self) -> dict[str, Any]:
@@ -252,7 +263,7 @@ base_node_schema = SchemaNode(
             kind="Text",
             description="Human friendly representation of the name/kind",
             optional=True,
-            max_length=DEFAULT_NAME_MAX_LENGTH,
+            max_length=DEFAULT_LABEL_MAX_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
@@ -268,7 +279,7 @@ base_node_schema = SchemaNode(
         SchemaAttribute(
             name="default_filter",
             kind="Text",
-            regex=str(NAME_REGEX),
+            regex=str(NAME_REGEX_OR_EMPTY),
             description="Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
@@ -346,15 +357,6 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
         SchemaAttribute(
-            name="filters",
-            kind="List",
-            internal_kind=FilterSchema,
-            description="Node filters",
-            default_factory="list",
-            optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
-        ),
-        SchemaAttribute(
             name="attributes",
             kind="List",
             internal_kind=AttributeSchema,
@@ -392,7 +394,23 @@ node_schema = SchemaNode(
             default_factory="list",
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="generate_profile",
+            kind="Boolean",
+            description="Indicate if a profile schema should be generated for this schema",
+            default_value=True,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="generate_template",
+            kind="Boolean",
+            description="Indicate if an object template schema should be generated for this schema",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="hierarchy",
@@ -469,7 +487,7 @@ attribute_schema = SchemaNode(
             kind="Text",
             description="Defines the type of the attribute.",
             enum=ATTRIBUTE_KIND_LABELS,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="enum",
@@ -477,6 +495,14 @@ attribute_schema = SchemaNode(
             description="Define a list of valid values for the attribute.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="computed_attribute",
+            kind="JSON",
+            internal_kind=ComputedAttribute,
+            description="Defines how the value of this attribute will be populated.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="choices",
@@ -489,21 +515,21 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="regex",
             kind="Text",
-            description="Regex uses to limit the characters allowed in for the attributes.",
+            description="Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="max_length",
             kind="Number",
-            description="Set a maximum number of characters allowed for a given attribute.",
+            description="Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="min_length",
             kind="Number",
-            description="Set a minimum number of characters allowed for a given attribute.",
+            description="Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
@@ -544,7 +570,7 @@ attribute_schema = SchemaNode(
             name="optional",
             kind="Boolean",
             description="Indicate if this attribute is mandatory or optional.",
-            default_value=True,
+            default_value=False,
             override_default_value=False,
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
@@ -598,6 +624,28 @@ attribute_schema = SchemaNode(
             enum=AllowOverrideType.available_types(),
             default_value=AllowOverrideType.ANY,
             optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="parameters",
+            kind="JSON",
+            internal_kind=[
+                AttributeParameters,
+                TextAttributeParameters,
+                NumberAttributeParameters,
+                NumberPoolParameters,
+            ],
+            optional=True,
+            description="Extra parameters specific to this kind of attribute",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            default_factory="AttributeParameters",
+        ),
+        SchemaAttribute(
+            name="deprecation",
+            kind="Text",
+            optional=True,
+            description="Mark attribute as deprecated and provide a user-friendly message to display",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
@@ -707,6 +755,21 @@ relationship_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="common_parent",
+            kind="Text",
+            optional=True,
+            description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="common_relatives",
+            kind="List",
+            internal_kind=str,
+            optional=True,
+            description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="order_weight",
             kind="Number",
             description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
@@ -768,15 +831,6 @@ relationship_schema = SchemaNode(
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
         SchemaAttribute(
-            name="filters",
-            kind="List",
-            internal_kind=FilterSchema,
-            description="Relationship filters",
-            default_factory="list",
-            optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
-        ),
-        SchemaAttribute(
             name="on_delete",
             kind="Text",
             internal_kind=RelationshipDeleteBehavior,
@@ -802,6 +856,14 @@ relationship_schema = SchemaNode(
             description="Set the relationship as read-only, users won't be able to change its value.",
             default_value=False,
             optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="deprecation",
+            kind="Text",
+            optional=True,
+            description="Mark relationship as deprecated and provide a user-friendly message to display",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
@@ -834,6 +896,22 @@ generic_schema = SchemaNode(
             optional=True,
             default_value=False,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="generate_profile",
+            kind="Boolean",
+            description="Indicate if a profile schema should be generated for this schema",
+            default_value=True,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="generate_template",
+            kind="Boolean",
+            description="Indicate if an object template schema should be generated for this schema",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="used_by",

@@ -1,0 +1,32 @@
+import { classNames } from "@/shared/utils/common";
+import {
+  Dialog as AriaDialog,
+  DialogProps as AriaDialogProps,
+  DialogTrigger as AriaDialogTrigger,
+  Popover as AriaPopover,
+  PopoverProps as AriaPopoverProps,
+  composeRenderProps,
+} from "react-aria-components";
+
+export const PopoverTrigger = AriaDialogTrigger;
+
+export type PopoverProps = AriaPopoverProps;
+export const Popover = ({ className, offset = 4, ...props }: PopoverProps) => (
+  <AriaPopover
+    offset={offset}
+    className={composeRenderProps(className, (className) =>
+      classNames(
+        "z-50 rounded-md border border-gray-200 bg-white shadow-md outline-hidden",
+        "data-entering:animate-in data-entering:fade-in-0 data-entering:zoom-in-95",
+        "data-exiting:animate-out data-exiting:fade-out-0 data-exiting:zoom-out-95",
+        "data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2",
+        className
+      )
+    )}
+    {...props}
+  />
+);
+
+export function PopoverDialog({ className, ...props }: AriaDialogProps) {
+  return <AriaDialog className={classNames("p-2 outline-hidden", className)} {...props} />;
+}

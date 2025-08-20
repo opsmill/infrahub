@@ -7,13 +7,13 @@ from infrahub.core.constants import (
 from infrahub.core.schema import (
     SchemaRoot,
 )
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
 class TestValidateSchemaPath:
     @pytest.fixture
-    async def schema(db: InfrahubDatabase, reset_registry, default_branch: Branch) -> SchemaBranch:
+    async def schema(self, db: InfrahubDatabase, reset_registry, default_branch: Branch) -> SchemaBranch:
         FULL_SCHEMA = {
             "nodes": [
                 {

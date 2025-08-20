@@ -1,9 +1,12 @@
 import inspect
+from copy import deepcopy
 
 import graphene
+import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.types import InfrahubObject
@@ -21,18 +24,20 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
     assert result._meta.name == "TestVehicule"
-    assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "hfid", "id", "name"]
+    assert sorted(result._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
 async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     result = gqlm.generate_graphql_object(schema=criticality_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "TestCriticality"
-    assert sorted(list(result._meta.fields.keys())) == [
+    assert sorted(result._meta.fields.keys()) == [
         "_updated_at",
         "color",
         "description",
@@ -48,6 +53,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
         "mylist",
         "name",
         "status",
+        "time",
     ]
 
 
@@ -62,7 +68,7 @@ async def test_generate_graphql_object_with_interface(
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "TestCar"
-    assert sorted(list(result._meta.fields.keys())) == [
+    assert sorted(result._meta.fields.keys()) == [
         "_updated_at",
         "description",
         "display_label",
@@ -77,20 +83,24 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     input_type = gqlm.generate_graphql_mutation_create_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_create(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
-    assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
+    assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
 async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
+    generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
+    gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     input_type = gqlm.generate_graphql_mutation_update_input(schema=criticality_schema)
     result = gqlm.generate_graphql_mutation_update(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
-    assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
+    assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
 async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
@@ -115,10 +125,11 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
     assert issubclass(nested_edged_person, InfrahubObject)
     assert issubclass(relationship_property, graphene.ObjectType)
 
-    assert sorted(list(car._meta.fields.keys())) == [
+    assert sorted(car._meta.fields.keys()) == [
         "_updated_at",
         "color",
         "display_label",
+        "driver",
         "hfid",
         "id",
         "is_electric",
@@ -131,15 +142,16 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "transmission",
     ]
 
-    assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
+    assert sorted(edged_car._meta.fields.keys()) == ["node"]
     assert str(edged_car._meta.fields["node"].type) == "TestCar"
-    assert sorted(list(nested_edged_car._meta.fields.keys())) == ["node", "properties"]
+    assert sorted(nested_edged_car._meta.fields.keys()) == ["node", "properties"]
     assert str(nested_edged_car._meta.fields["node"].type) == "TestCar"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
-    assert sorted(list(person._meta.fields.keys())) == [
+    assert sorted(person._meta.fields.keys()) == [
         "_updated_at",
         "cars",
+        "cars_driven",
         "display_label",
         "height",
         "hfid",
@@ -149,12 +161,12 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "profiles",
         "subscriber_of_groups",
     ]
-    assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
+    assert sorted(edged_person._meta.fields.keys()) == ["node"]
     assert str(edged_person._meta.fields["node"].type) == "TestPerson"
-    assert sorted(list(nested_edged_person._meta.fields.keys())) == ["node", "properties"]
+    assert sorted(nested_edged_person._meta.fields.keys()) == ["node", "properties"]
     assert str(nested_edged_person._meta.fields["node"].type) == "TestPerson"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
-    assert sorted(list(relationship_property._meta.fields.keys())) == [
+    assert sorted(relationship_property._meta.fields.keys()) == [
         "is_protected",
         "is_visible",
         "owner",
@@ -172,6 +184,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
     expected_filters = [
         "offset",
         "limit",
+        "order",
         "partial_match",
         "ids",
         "any__is_protected",
@@ -187,6 +200,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "cars__color__value",
         "cars__color__values",
         "cars__ids",
+        "cars__isnull",
         "cars__name__is_protected",
         "cars__name__is_visible",
         "cars__name__owner__id",
@@ -201,30 +215,31 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "cars__nbr_seats__values",
         "height__is_protected",
         "height__is_visible",
+        "height__isnull",
         "height__owner__id",
         "height__source__id",
         "height__value",
         "height__values",
+        "hfid",
         "member_of_groups__description__value",
         "member_of_groups__description__values",
+        "member_of_groups__group_type__value",
+        "member_of_groups__group_type__values",
         "member_of_groups__ids",
+        "member_of_groups__isnull",
         "member_of_groups__label__value",
         "member_of_groups__label__values",
         "member_of_groups__name__value",
         "member_of_groups__name__values",
         "name__is_protected",
         "name__is_visible",
+        "name__isnull",
         "name__owner__id",
         "name__source__id",
         "name__value",
         "name__values",
-        "profiles__height__is_protected",
-        "profiles__height__is_visible",
-        "profiles__height__owner__id",
-        "profiles__height__source__id",
-        "profiles__height__value",
-        "profiles__height__values",
         "profiles__ids",
+        "profiles__isnull",
         "profiles__profile_name__is_protected",
         "profiles__profile_name__is_visible",
         "profiles__profile_name__owner__id",
@@ -239,10 +254,92 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "profiles__profile_priority__values",
         "subscriber_of_groups__description__value",
         "subscriber_of_groups__description__values",
+        "subscriber_of_groups__group_type__value",
+        "subscriber_of_groups__group_type__values",
         "subscriber_of_groups__ids",
+        "subscriber_of_groups__isnull",
         "subscriber_of_groups__label__value",
         "subscriber_of_groups__label__values",
         "subscriber_of_groups__name__value",
         "subscriber_of_groups__name__values",
     ]
-    assert sorted(list(filters.keys())) == sorted(expected_filters)
+    assert sorted(filters.keys()) == sorted(expected_filters)
+
+
+@pytest.mark.parametrize(
+    "schema_changed_at_null,schema_hash_null", [(False, False), (True, False), (False, True), (True, True)]
+)
+async def test_branch_caching_hit(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema,
+    car_person_schema_generics,
+    schema_changed_at_null: bool,
+    schema_hash_null: bool,
+):
+    default_branch.update_schema_hash()
+    same_branch = default_branch.model_copy()
+    if schema_changed_at_null:
+        same_branch.schema_changed_at = None
+    if schema_hash_null:
+        same_branch.schema_hash = None
+    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+
+    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
+
+    assert manager1 is manager2
+
+
+@pytest.mark.parametrize("schema_changed_at_new,schema_hash_updated", [(True, False), (False, True), (True, True)])
+async def test_branch_caching_miss(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema,
+    car_person_schema_generics,
+    schema_changed_at_new: bool,
+    schema_hash_updated: bool,
+):
+    default_branch.update_schema_hash()
+    same_branch = default_branch.model_copy()
+    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+    if schema_changed_at_new:
+        same_branch.schema_changed_at = Timestamp().to_string()
+    if schema_hash_updated:
+        default_branch.schema_hash.main = "abc"
+        same_branch.update_schema_hash()
+
+    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
+
+    assert manager1 is not manager2
+
+
+async def test_branch_purge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema: None,
+    car_person_schema_generics: None,
+) -> None:
+    default_branch.update_schema_hash()
+    purged_branch = "i-will-be-purged"
+    active_branch = "i-will-not-be-purged"
+    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+
+    GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    GraphQLSchemaManager.purge_inactive(active_branches=[default_branch.name])
+    GraphQLSchemaManager._branch_details_by_name[active_branch] = deepcopy(
+        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
+    )
+    GraphQLSchemaManager._branch_details_by_name[purged_branch] = deepcopy(
+        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
+    )
+
+    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert purged_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    purged_branches = GraphQLSchemaManager.purge_inactive(active_branches=[active_branch, default_branch.name])
+    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert purged_branch not in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert purged_branches == {purged_branch}

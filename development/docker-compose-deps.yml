@@ -1,7 +1,10 @@
+# yamllint disable rule:line-length
 ---
 services:
   message-queue:
-    image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:latest}"
+    profiles: [demo, dev]
+    user: rabbitmq
+    image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}"
     environment:
       - "RABBITMQ_DEFAULT_USER=infrahub"
       - "RABBITMQ_DEFAULT_PASS=infrahub"
@@ -9,11 +12,51 @@ services:
       test: rabbitmq-diagnostics -q check_port_connectivity
       interval: 5s
       timeout: 30s
-      retries: 3
+      retries: 10
+      start_period: 3s
   cache:
-    image: "${CACHE_DOCKER_IMAGE:-redis:latest}"
+    profiles: [demo, dev]
+    image: "${CACHE_DOCKER_IMAGE:-redis:7.2.4}"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 5s
       timeout: 5s
       retries: 3
+  task-manager:
+    profiles: [demo, dev]
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
+    command: "${PREFECT_SERVER_COMMAND:-uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect}"
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+      PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      task-manager-db:
+        condition: service_healthy
+    labels:
+      namespace: "prefect"
+      pod: "prefect-server"
+  task-manager-db:
+    profiles: [demo, dev]
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -q -d ${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect} -U ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  workflow_db:

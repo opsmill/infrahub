@@ -1,74 +1,87 @@
 [tool.poetry]
-name = "infrahub"
-version = "0.14.0"
+name = "infrahub-server"
+version = "1.4.0b1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
-license = "AGPL-3.0-only"
+license = "Apache-2.0"
 homepage = "https://opsmill.com"
 repository = "https://github.com/opsmill/infrahub"
 documentation = "https://docs.infrahub.app/"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
 packages = [
-    { include = "infrahub", from = "backend" }
+    { include = "infrahub", from = "backend" },
+    { include = "infrahub_sdk", from = "python_sdk" },
+    { include = "infrahub_testcontainers", from = "python_testcontainers" },
 ]
 
-
-[tool.poetry.group.test-scale]
-optional = true
-
 [tool.poetry.dependencies]
-python = "^3.9, < 3.13"
-neo4j = "~5.20"
-neo4j-rust-ext = "^5.20.0.0"
-infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
-pydantic = "2.7.2"
-pydantic-settings = "~2.2"
+python = "^3.10, < 3.13"
+neo4j = "~5.28"
+neo4j-rust-ext = "~5.28"
+pydantic = "~2.10"
+pydantic-settings = "~2.8"
 pytest = "~7.4"
 aio-pika = "~9.4"
 structlog = "24.1.0"
-boto3 = "~1.33.11"
+boto3 = "1.34.129"
 email-validator = "~2.1"
-redis = { version = "^5.0.0", extras = ["hiredis"]}
-typer = "~0.7"
+redis = { version = "^6.0.0", extras = ["hiredis"] }
+typer = "0.12.5"
+prefect = "3.4.13"
+prefect-redis = "0.2.4"
+ujson = "^5"
+Jinja2 = "^3"
+gitpython = "^3"
+pyyaml = "^6"
+toml = "^0.10"
 
 # Dependencies specific to the API Server
-fastapi = "~0.110"
+fastapi = "0.116.1"
 fastapi-storages = "~0.3"
-graphene = "~3.3"
-gunicorn = "^22.0.0"
+graphene = "~3.4"
+gunicorn = "^23.0.0"
 lunr = "^0.7.0.post1"
-starlette-exporter = "~0.21"
-python-multipart = "0.0.9"          # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                     # Used to hash and validate password
-pyjwt = "~2.8"                      # Used to manage JWT tokens
-uvicorn = {version = "~0.27", extras = ["standard"]}
-opentelemetry-instrumentation-aio-pika = "^0.45b0"
-opentelemetry-instrumentation-fastapi = "^0.45b0"
-opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
-opentelemetry-exporter-otlp-proto-http = "^1.24.0"
+starlette-exporter = "~0.23"
+python-multipart = "0.0.18"                            # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                                        # Used to hash and validate password
+pyjwt = "~2.8"                                         # Used to manage JWT tokens
+uvicorn = { version = "~0.32", extras = ["standard"] }
+opentelemetry-instrumentation-aio-pika = "0.49b1"
+opentelemetry-instrumentation-fastapi = "0.49b1"
+opentelemetry-exporter-otlp-proto-grpc = "1.28.1"
+opentelemetry-exporter-otlp-proto-http = "1.28.1"
 nats-py = "^2.7.2"
 netaddr = "1.3.0"
+authlib = "1.3.2"
+aiodataloader = "0.4.0"
+fast-depends = "^2.4.12"
+
+# Dependencies specific to the SDK
+rich = "^13"
+pyarrow = "^14"
+numpy = [
+    { version = "^1.24.2", python = ">=3.9,<3.12" },
+    { version = "^1.26.2", python = ">=3.12" },
+]
+dulwich = "^0.22.7"
+whenever = "0.7.3"
+netutils = "1.12.0"
+copier = "^9.8.0"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
-pylint = "*"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
-pytest-httpx = [
-    { version = "~0.21", python = "<3.9"},
-    { version = ">=0.30", python = ">=3.9"},
-]
 pytest-clarity = "~1.0"
 pytest-cov = "~4.1"
 pytest-xdist = "~3.4"
@@ -77,107 +90,79 @@ pre-commit = "^2.20.0"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
-typer-cli = "*"
-ruff = "0.4.6"
+ruff = "0.11.9"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
 deepdiff = "^6.2"
+polyfactory = "^2.16.2"
+towncrier = "^24.8"
+pytest-env = "^1.1.3"
+testcontainers = "^4.8.1"
+pytest-timeout = "^2.3.1"
+matplotlib = "^3.9.2"
+pandas = "^2.2.3"
+semver = "^3.0.2"
+ruamel-yaml = "^0.18.6"
 
-[tool.poetry.group.test-scale.dependencies]
-locust = "^2.20.1"
-docker = "^7.0.0"
-matplotlib = "^3.8"
-pandas = "^2.2"
+# [tool.poetry.group.test-scale.dependencies]
+# locust = "^2.20.1"
+# docker = "^7.0.0"
+# matplotlib = "^3.8"
+# pandas = "^2.2"
+pytest-httpx = ">=0.30"
+docker = "^7.1.0"
+psutil = "^6.1.0"
+jwcrypto = "1.5.6"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
+infrahubctl = "infrahub_sdk.ctl.cli:app"
+
+[tool.poetry.plugins."pytest11"]
+"pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
+"pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
+
+[tool.poetry.plugins."prefect.collections"]
+"infrahubasync" = "infrahub.workers.infrahub_async"
 
 [tool.coverage.run]
 branch = true
 
 [tool.coverage.report]
-exclude_lines = [
-    "if TYPE_CHECKING:",
-    "raise NotImplementedError()"
-]
-
-[tool.pylint.general]
-extension-pkg-whitelist = [
-    "pydantic",
-    "ujson",
-]
-
-[tool.pylint.format]
-disable = "logging-fstring-interpolation"
-
-[tool.pylint.basic]
-# No docstrings required for private methods (Pylint default), or for test_ functions.
-no-docstring-rgx="^(_|test_)"
-
-[tool.pylint.messages_control]
-# Line length is enforced by Black, so pylint doesn't need to check it.
-# Pylint and Black disagree about how to format multi-line arrays; Black wins.
-# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
-# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
-disable = """,
-    line-too-long,
-    missing-module-docstring,
-    missing-function-docstring,
-    missing-class-docstring,
-    consider-using-from-import,
-    invalid-name,
-    too-many-arguments,
-    too-many-locals,
-    keyword-arg-before-vararg,
-    too-few-public-methods,
-    too-many-instance-attributes,
-    fixme,
-    consider-using-f-string,
-    protected-access,
-    import-self,
-    wrong-import-order,
-    assigning-non-slot,
-    no-member,
-    unsupported-membership-test,
-    unsubscriptable-object,
-    unsupported-assignment-operation,
-    not-an-iterable,
-    too-many-return-statements,
-    unnecessary-comprehension,
-    multiple-statements,
-    """
-
-[tool.pylint.miscellaneous]
-notes = """,
-    FIXME,
-    XXX,
-    """
-
-[tool.pylint.similarities]
-min-similarity-lines = 20
+exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = [
-    "tests"
-]
+timeout = 300 # 5 minutes
+session_timeout = 1800 # 30 minutes
+testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
     "ignore:Deprecated call to",
+    "ignore:pkg_resources is deprecated as an API",          # Remove on https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2181 has been fixed
 ]
-addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
+addopts = "-v --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
 junit_duration_report = "call"
+
+[tool.pytest_env]
+PREFECT_LOGGING_LEVEL = "CRITICAL"
+INFRAHUB_LOG_LEVEL = "CRITICAL"
+INFRAHUB_PRODUCTION = false
 
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
+disable_error_code = ["type-abstract"]
 exclude = [
+    "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
     "^backend/tests/unit",
+    "^backend/tests/test_data",
+    "^backend/tests/query_benchmark"
 ]
 
 [[tool.mypy.overrides]]
@@ -201,306 +186,400 @@ module = "tests.integration.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "infrahub.api.artifact"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.api.diff.diff"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.auth"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.account"
-ignore_errors = true
+module = "tests.functional.*"
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.attribute"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "misc",
+    "operator",
+    "return",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.manager"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "index",
+    "no-untyped-def",
+    "return-value",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "list-item",
+    "no-redef",
+    "override",
+    "return",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node.base"
-ignore_errors = true
+disable_error_code = [
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node.standard"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "return-value",
+]
 
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.attribute"
-ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.diff"
-ignore_errors = true
+disable_error_code = [
+    "assignment",
+    "call-overload",
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.ipam"
-ignore_errors = true
+disable_error_code = [
+    "attr-defined",
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.node"
-ignore_errors = true
+disable_error_code = [
+    "annotation-unchecked",
+    "arg-type",
+    "assignment",
+    "no-untyped-def",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.relationship"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.standard_node"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+    "index",
+    "misc",
+    "no-untyped-def",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.subquery"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "index",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "no-redef",
+    "return-value",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.schema_manager"
-ignore_errors = true
+module = "infrahub.core.schema.schema_branch"
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "index",
+    "operator",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.utils"
-ignore_errors = true
+module = "infrahub.core.schema.manager"
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "assignment",
+    "func-returns-value",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.database"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "index",
+    "misc",
+    "return-value",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
-module = "infrahub.exceptions"
-ignore_errors = true
+module = "infrahub.git.base"
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "index",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.git.repository"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.git_credential.askpass"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.api.endpoints"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.app"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.attribute"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "list-item",
+    "union-attr",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.main"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-arg",
+    "return-value",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.proposed_change"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.relationship"
-ignore_errors = true
+disable_error_code = [
+    "assignment",
+    "attr-defined",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.repository"
-ignore_errors = true
+disable_error_code = [
+    "assignment",
+    "attr-defined",
+    "no-redef",
+    "no-untyped-def",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.schema"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "operator",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.query"
-ignore_errors = true
+module = "infrahub.graphql.resolvers.ipam"
+disable_error_code = [
+    "attr-defined",
+    "operator",
+    "union-attr",
+]
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.resolver"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.schema"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.subscription"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.subscription.graphql_query"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.types.attribute"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.types.mixin"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.types.node"
-ignore_errors = true
+module = "infrahub.graphql.resolvers.resolver"
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "no-untyped-def",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.types.standard_node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.utils"
-ignore_errors = true
+disable_error_code = [
+    "attr-defined",
+    "call-arg",
+    "no-untyped-def",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.lock"
-ignore_errors = true
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "no-untyped-def",
+    "operator",
+    "return-value",
+]
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.trace"
-ignore_errors = true
+module = "infrahub.message_bus.operations"
+disable_error_code = [
+    "operator",
+    "return",
+]
 
 [tool.ruff]
 line-length = 120
+target-version = "py310"
 
 exclude = [
-        ".git",
-        ".tox",
-        ".venv",
-        "env",
-        "_build",
-        "build",
-        "dist",
-        "examples",
+    ".git",
+    ".tox",
+    ".venv",
+    "env",
+    "_build",
+    "build",
+    "dist",
+    "examples",
 ]
-
 
 
 [tool.ruff.lint]
 preview = true
 
-task-tags = [
-    "FIXME",
-    "TODO",
-    "XXX",
-]
+task-tags = ["FIXME", "TODO", "XXX"]
 
-select = [
-    "ASYNC", # flake8-async
-    "B",     # flake8-bugbear
-    "C4",    # flake8-comprehensions
-    "C90",   # mccabe complexity
-    "DJ",    # flake8-django
-    "DTZ",   # flake8-datetimez
-    "E",     # pycodestyle errors
-    "EXE",   # flake8-executable
-    "F",     # pyflakes
-    "I",     # isort-like checks
-    "ICN",   # flake8-import-conventions
-    "INP",   # flake8-no-pep420
-    "N",     # pep8-naming
-    "PIE",   # flake8-pie
-    "PL",    # pylint
-    "PTH",   # flake8-use-pathlib
-    "PYI",   # flake8-pyi
-    "Q",     # flake8-quotes
-    "RET",   # flake8-return
-    "S",     # flake8-bandit
-    "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
-    "T10",   # flake8-debugger
-    "W",     # pycodestyle warnings
-    "YTT",   # flake8-2020
-]
+select = ["ALL"]
 
 ignore = [
+    "D",        # pydocstyle
+    "DOC",      # pydoclint
+    "CPY",      # flake8-copyright
+    "T201",     # use of `print`
+    "ISC",      # flake8-implicit-str-concat
+    "COM812",   # missing-trailing-comma
 
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one. Alternatively ignored after further       #
-# investigation if they are deemed to not make sense.                                            #
-##################################################################################################
-    "ASYNC101", # Async functions should not call `open`, `time.sleep`, or `subprocess` methods
-    "B007",     # Loop control variable not used within loop body
-    "B008",     # Do not perform function call `Depends` in argument defaults;
-    "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
-    "B010",     # [*] Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.
-    "B904",     # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
-    "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
-    "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
-    "C414",     # Unnecessary `list` call within `sorted()`
-    "N801",     # Class name should use CapWords convention
-    "N802",     # Function name should be lowercase
-    "N805",     # First argument of a method should be named self
-    "N806",     # Variable in function should be lowercase
-    "N812",     # Lowercase imported as non-lowercase
-    "PLC0415",  # `import` should be at the top-level of a file
-    "PLC2701",  # Private name import from external module
-    "PLR0904",  # Too many public methods
-    "PLR0912",  # Too many branches
-    "PLR0913",  # Too many arguments in function definition
-    "PLR0914",  # Too many local variables
-    "PLR0915",  # Too many statements
-    "PLR0916",  # Too many Boolean expressions
-    "PLR0917",  # Too many positional arguments
-    "PLR1702",  # Too many nested blocks
-    "PLR2004",  # Magic value used in comparison this could possibly be fine in the tests folders
-    "PLR6201",  # Use a `set` literal when testing for membership
-    "PLR6301",  # Method could be a function, class method, or static method
-    "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
-    "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
-    "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
-    "PTH100",   # `os.path.abspath()` should be replaced by `Path.resolve()`
-    "PTH102",   # `os.mkdir()` should be replaced by `Path.mkdir()`
-    "PTH103",   # `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
-    "PTH107",   # `os.remove()` should be replaced by `Path.unlink()`
-    "PTH108",   # `os.unlink()` should be replaced by `Path.unlink()`
-    "PTH109",   # `os.getcwd()` should be replaced by `Path.cwd()`
-    "PTH110",   # `os.path.exists()` should be replaced by `Path.exists()`
-    "PTH112",   # `os.path.isdir()` should be replaced by `Path.is_dir()`
-    "PTH113",   # `os.path.isfile()` should be replaced by `Path.is_file()`
-    "PTH117",   # `os.path.isabs()` should be replaced by `Path.is_absolute()`
-    "PTH118",   # `os.path.join()` should be replaced by `Path` with `/` operator
-    "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
-    "RET504",   # Unnecessary assignment before `return` statement
-    "S101",     # Use of `assert` detected
-    "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
-    "S108",     # Probable insecure usage of temporary file or directory
-    "S202",     # Uses of `tarfile.extractall()`
-    "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
-    "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    ##################################################################################################
+    # Rules below needs to be Investigated                                                           #
+    ##################################################################################################
+    "FA",       # flake8-future-annotations
+    "PGH",      # pygrep-hooks
+    "ERA",      # eradicate commented-out code
+    "SLF001",   # flake8-self
+    "EM",       # flake8-errmsg
+    "TRY",      # tryceratops
+    "TD",       # flake8-todos
+    "FIX",      # flake8-fixme
+    "TID",      # flake8-tidy-imports
+    "FBT",      # flake8-boolean-trap
+    "G",        # flake8-logging-format
+    "RSE",      # flake8-raise
+    "BLE",      # flake8-blind-except (BLE)
+    "PD",       # pandas-vet
+    "FAST002",  # FastAPI dependency without `Annotated`
+
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
+    "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
+    "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
+    "FURB140", # Use `itertools.starmap` instead of the generator
+    "FURB171", # Membership test against single-item container
+    "FURB192", # Prefer `min` over `sorted()` to compute the minimum value in a sequence
+    "INP001",  # File declares a package, but is nested under an implicit namespace package.
+    "LOG015",  # `info()` call on root logger
+    "N801",    # Class name should use CapWords convention
+    "N802",    # Function name should be lowercase
+    "N806",    # Variable in function should be lowercase
+    "PERF203", # `try`-`except` within a loop incurs performance overhead
+    "PERF401", # Use a list comprehension to create a transformed list
+    "PERF402", # Use `list` or `list.copy` to create a copy of a list
+    "PERF403", # Use a dictionary comprehension instead of a for-loop
+    "PLC0415", # `import` should be at the top-level of a file
+    "PLC2701", # Private name import from external module
+    "PLR0904", # Too many public methods
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments in function definition
+    "PLR0914", # Too many local variables
+    "PLR0916", # Too many Boolean expressions
+    "PLR0917", # Too many positional arguments
+    "PLR2004", # Magic value used in comparison this could possibly be fine in the tests folders
+    "PLR6201", # Use a `set` literal when testing for membership
+    "PLR6301", # Method could be a function, class method, or static method
+    "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
+    "PLW1508", # Invalid type for environment variable default; expected `str` or `None`
+    "RET504",  # Unnecessary assignment before `return` statement
+    "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
+    "RUF010",  # Use explicit conversion flag
+    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF015",  # Prefer `next(...)` over single element slice
+    "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
+    "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
+    "RUF052",  # Local dummy variable `_meta` is accessed
+    "S101",    # Use of `assert` detected
+    "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
+    "S108",    # Probable insecure usage of temporary file or directory
+    "S202",    # Uses of `tarfile.extractall()`
+    "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "SIM108",  # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
+    "SIM102",  # Use a single `if` statement instead of nested `if` statements
+    "SIM103",  # Return the condition `identifier in self.sub_by_id.keys()` directly
+    "SIM105",  # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
+    "SIM110",  # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
+    "SIM114",  # Combine `if` branches using logical `or` operator
+    "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
+    "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
+    "TC006",   # [*] Add quotes to type expression in `typing.cast()`
+    "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
+    "UP031",   # Use format specifiers instead of percent format
+    "UP035",   # `typing.List` is deprecated, use `list` instead
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.File",
+    "fastapi.Query",
+    "fastapi.params.Query",
+    "typer.Argument",
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -510,6 +589,17 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
+[tool.ruff.lint.flake8-builtins]
+ignorelist = [
+    "id",
+    # Review and update builtin shadowing below this line
+    "filter",
+    "format",
+    "input",
+    "property",
+    "type",
+]
+
 [tool.ruff.lint.isort]
 known-first-party = ["infrahub"]
 
@@ -518,20 +608,241 @@ max-line-length = 150
 
 [tool.ruff.lint.mccabe]
 # Target max-complexity=10
-max-complexity = 33
+max-complexity = 30
+
+[tool.ruff.lint.pylint]
+
+allow-dunder-method-names = [
+    "__init_subclass_with_meta__", # Dunder method used within Graphene
+]
 
 [tool.ruff.lint.per-file-ignores]
 
-"backend/infrahub/git/repository.py" = [
-    "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
+"backend/infrahub/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001", # Missing type annotation for function argument
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN204", # Missing return type annotation for special method
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
+"backend/infrahub/cli/db.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR1702", # Too many nested blocks
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/config.py" = [
+    "S323", # Allow users to create an SSL context that doesn't validate certificates
+]
+
+"backend/infrahub/core/branch/models.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+    "UP045",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/graph/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP045",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/node/__init__.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
+]
+
+"backend/infrahub/core/node/standard.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP045",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/query/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "UP007",  # Use X | Y for type annotations
+]
+
+"backend/infrahub/core/models.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR1702", # Too many nested blocks
+]
+
+
+"backend/infrahub/core/query/attribute.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+
+"backend/infrahub/core/query/relationship.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/core/schema/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/menu/generator.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/serve/log.py" = [
+    "LOG004",  # `.exception()` call outside exception handlers
 ]
 
 "backend/tests/**.py" = [
-    "S101", # Use of assert detected
-    "S105", #  Possible hardcoded password assigned to variable
-    "S106", #  Possible hardcoded password assigned to argument
+    "S101",    # Use of assert detected
+    "S105",    # Possible hardcoded password assigned to variable
+    "S106",    # Possible hardcoded password assigned to argument
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "ARG003",  # Unused class method argument
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN001",  # Missing type annotation for function argument
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    "PLR0915", # Too many statements
+    "PT003",   # `scope='function'` is implied in `@pytest.fixture()`
+    "PT007",   # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",   # `pytest.raises()` block should contain a single simple statement
+    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
+    "PT018",   # Assertion should be broken down into multiple parts
+    "PT021",   # Use `yield` instead of `request.addfinalizer`
 ]
 
+"backend/tests/integration_docker/test_schema_migration.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ASYNC230", # Async functions should not open files with blocking methods like `open`
+]
+
+
+"models/infrastructure_edge.py" = [
+    "S106", # Hardcoded password
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
+    "C901",   # `generate_site` is too complex (34 > 33)"
+    "E501",   # Line too long
+    "PLR0915", # Too many statements
+]
+
+"python_testcontainers/infrahub_testcontainers/helpers.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PT021",   # Use `yield` instead of `request.addfinalizer`
+]
+
+"tasks/**.py" = [
+    "PT028", # Test function parameter has default argument (these are not tests)
+]
+
+"tasks/release.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+
+"utilities/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
+[tool.towncrier]
+
+package = "infrahub"
+directory = "changelog"
+filename = "CHANGELOG.md"
+start_string = "<!-- towncrier release notes start -->\n"
+underlines = ["", "", ""]
+title_format = "## [Infrahub - v{version}](https://github.com/opsmill/infrahub/tree/infrahub-v{version}) - {project_date}"
+issue_format = "[#{issue}](https://github.com/opsmill/infrahub/issues/{issue})"
+orphan_prefix = "+"
+template = "changelog/towncrier.md.template"
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removed"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecated"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "housekeeping"
+name = "Housekeeping"
+showcontent = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

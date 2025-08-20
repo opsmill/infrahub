@@ -6,7 +6,7 @@ RUN apt-get update && \
 
 COPY entrypoint.sh /entrypoint.sh
 
-RUN bash -c 'curl -o pt_linux.zip https://www.passmark.com/downloads/pt_linux_$([ "$TARGETPLATFORM" == "linux/amd64" ] && echo "x64" || echo "arm64").zip' && \
+RUN bash -c 'curl -L -o pt_linux.zip https://www.passmark.com/downloads/pt_linux_$([ "$TARGETPLATFORM" == "linux/amd64" ] && echo "x64" || echo "arm64").zip' && \
     unzip pt_linux.zip && \
     mv PerformanceTest/pt_linux_* /usr/local/bin/pt_linux && \
     rm -rf PerformanceTest pt_linux.zip && \
@@ -14,5 +14,10 @@ RUN bash -c 'curl -o pt_linux.zip https://www.passmark.com/downloads/pt_linux_$(
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /data
+RUN chmod 777 /data
+
+WORKDIR /data
 
 CMD /entrypoint.sh

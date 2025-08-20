@@ -17,7 +17,7 @@ class TaskLogNodeCreateQuery(StandardNodeQuery):
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
         self.params["task_id"] = self.node.task_id

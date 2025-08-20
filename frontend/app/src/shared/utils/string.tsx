@@ -1,0 +1,22 @@
+/**
+ * Same as JSON.stringify, but this will remove the quotes around keys/properties from the output
+ *
+ * const data = {a: 1, b: [{tags: ["Tag A"]}, {tags: ["Tag B"]}]}
+ *
+ * JSON.stringify(data)
+ * '{"a":1,"b":[{"tags":["Tag A"]},{"tags":["Tag B"]}]}'
+ *
+ * stringifyWithoutQuotes(data)
+ * '{a:1,b:[{tags:["Tag A"]},{tags:["Tag B"]}]}'
+ */
+
+export const stringifyWithoutQuotes = (obj: object): string => {
+  return JSON.stringify(obj, null, 4).replace(/"([^"]+)":/g, "$1:");
+};
+
+export const capitalizeFirstLetter = (string: string) => {
+  return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+};
+
+export const pluralize = (count: number, word: string, suffix = "s") =>
+  `${count} ${word}${count > 1 ? suffix : ""}`;

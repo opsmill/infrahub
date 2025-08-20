@@ -1,0 +1,192 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+generics:
+  - name: Generic
+    namespace: Location
+    description: "Generic hierarchical location"
+    label: "Location"
+    hierarchical: true
+    icon: "mingcute:location-line"
+    human_friendly_id: ["name__value"]
+    include_in_menu: true
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+
+  - name: Wearable
+    namespace: Testing
+    human_friendly_id: ["name__value"]
+    include_in_menu: true
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+      - name: name_code
+        kind: Text
+        optional: false
+        read_only: true
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "WEARABLE-{{ name__value | upper }}"
+
+nodes:
+  - name: Color
+    namespace: Testing
+    description: "A color"
+    icon: "jam:world"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        optional: false
+  - name: TShirt
+    namespace: Testing
+    description: "A color"
+    icon: "jam:world"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    inherit_from:
+      - TestingWearable
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+      - name: description
+        kind: Text
+        optional: false
+        read_only: true
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "A {{color__name__value }} {{ name__value}} t-shirt. {{ color__description__value }}"
+      - name: pitch
+        kind: Text
+        optional: true
+        read_only: true
+        computed_attribute:
+          kind: TransformPython
+          transform: TShirtPitch
+    relationships:
+      - name: color
+        optional: false
+        peer: TestingColor
+        cardinality: one
+  - name: Continent
+    namespace: Location
+    description: "A continent on planet earth"
+    icon: "jam:world"
+    inherit_from:
+      - "LocationGeneric"
+    generate_profile: false
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "LocationCountry"
+    parent: ""
+  - name: Country
+    namespace: Location
+    description: "A country within a continent..."
+    icon: "gis:search-country"
+    inherit_from:
+      - "LocationGeneric"
+    generate_profile: false
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "LocationSite"
+    parent: "LocationContinent"
+    attributes:
+      - name: country_details
+        kind: Text
+        description: "Country Details"
+        computed_attribute:
+          kind: TransformPython
+          transform: CountryDetails
+        read_only: true
+        optional: true
+  - name: Site
+    namespace: Location
+    description: "A site within a country!!"
+    icon: "ri:building-line"
+    inherit_from:
+      - "LocationGeneric"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    parent: "LocationCountry"
+    attributes:
+      - name: city
+        kind: Text
+        optional: true
+      - name: address
+        kind: Text
+        optional: true
+      - name: contact
+        kind: Text
+        optional: true
+      - name: slug
+        kind: Text
+        description: "The slug"
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "Welcome to {{ name__value }}!"
+        read_only: true
+        optional: false
+    relationships:
+      - name: devices
+        identifier: "site__devices"
+        cardinality: many
+        peer: InfraDevice
+        optional: true
+  - name: Device
+    namespace: Infra
+    label: "Device"
+    icon: "mdi:server"
+    display_labels:
+      - name__value
+    human_friendly_id: ["name__value"]
+    attributes:
+      - name: device_type
+        kind: Text
+        unique: false
+      - name: instance
+        kind: Number
+        unique: false
+      - name: description
+        kind: Text
+        optional: true
+      - name: name
+        kind: Text
+        description: "Device name"
+        computed_attribute:
+          kind: TransformPython
+          transform: DeviceNameAttribute
+        read_only: true
+        optional: true
+    relationships:
+      - name: site
+        peer: LocationSite
+        optional: false
+        cardinality: one
+        kind: Component

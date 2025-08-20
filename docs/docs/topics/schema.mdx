@@ -1,10 +1,12 @@
 ---
-title: Schema
+title: Overview
 ---
 
-import CodeBlock from "@theme/CodeBlock";
+import VideoPlayer from '../../src/components/VideoPlayer';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
+import SnippetAttributeKindParams from "../snippets/attribute-kind-params.mdx"
 
 # Schema
 
@@ -14,24 +16,113 @@ Out of the box, Infrahub doesn't have a schema for most things and it's up to us
 
 Unlike traditional databases that can only have one schema at a time, in Infrahub it is possible to have a different schema per branch. This is possible because the schema itself is stored in the database like any other object.
 
-There are several ways to [load a new schema](/guides/schema).
+There are several ways to [load a new schema](../guides/import-schema).
 
-:::note
+:::info Editor validation
 
-To help with the development process of a schema definition file, you can leverage the schemas we publish for validation within your [editor](/reference/schema-validation)
+To help with the development process of a schema definition file, you can leverage the schemas we publish for validation within your [editor](../reference/schema-validation)
 
 :::
 
+## Exploring the Infrahub Schema video
+
+A recording of a livestream that covers:
+
+- What the Infrahub schema actually is
+- Why we built it this way (and what we rejected)
+- How it compares to other source of truth tools
+- Best practices for customizing the schema to your environment
+
+<center>
+  <VideoPlayer url='https://www.youtube.com/live/0Z_SBoPmGws' light />
+</center>
+
 ## Schema definition
 
-### Namespace, Node, Attributes, Relationships & Generics
+### Node, Attributes, Relationships, and Generics
 
 The schema is composed of 4 primary types of objects: `Nodes`- that are themselves composed of `Attributes` and `Relationships` and finally `Generics`.
 
-- A `Node` in Infrahub represents a `Model`.
+- A `Node` in Infrahub represents a `Model`. Nodes are instances of a specific object within your infrastructure. Nodes have attributes that define specific values, such as text or numbers, and relationships that link them to other nodes.
 - An `Attribute` represents a direct value associated with a `Node` like a `Text`, a `Number` etc ...
 - A `Relationship` represents a link between 2 `Node`, a `Relationship` can be of cardinality `one` or `many`.
-- A `Generic` can be used to share some attributes between multiple `Node`, if you're familiar with programming concept, it's close to class inheritance.
+- A `Generic` can be used to share attributes and relationships between different types of `Node`s. They can connect multiple types of nodes to the same relationship or define attributes and relationships on a specific list of nodes. Generics are similar to class inheritance in programming languages like Java or Python.
+
+:::info Reserved Namespaces & Attributes Names
+
+Some namespace like `Core`, `Infrahub`, `Profile`, and `Builtin` are reserved and can't be used by users to defined new Nodes and Generics.
+
+In a similar fashion, some attributes name can't be used, like `attribute` or `relationship`.
+
+<ReferenceLink
+  title="See the file in GitHub"
+  url="https://github.com/opsmill/infrahub/blob/stable/backend/infrahub/core/constants/__init__.py"
+  openInNewTab />
+
+:::
+
+### Nodes vs. Generics
+
+Use a `Node` when you need to represent a concrete object in your infrastructure model with specific attributes and relationships.
+
+Use a `Generic` when you want to share common attributes or relationships across multiple node types. This helps to avoid redundancy and ensures consistency across your schema. For example, if you have different types of network interfaces (physical, logical) that share common attributes like name and description, you can define a `Generic` interface with these attributes and have the specific interface types inherit from it.
+
+`Generic`s can also be used to connect multiple types of Nodes to the same relationship.
+
+:::info Instantiation Requirement
+A `Generic` cannot exist independently; it must be instantiated by at least one `Node`.
+:::
+
+:::warning Limitations
+
+Two limitations could have an impact on your choice of node vs generic :
+
+- computed attributes can only be used on Nodes, see [computed attribute topic](./computed-attributes) for more information.
+- Generic's properties are propagated to Nodes only during the first import see the section [Inherited properties](./schema#inherited-properties) below.
+
+:::
+
+### Field ordering with order weight
+
+The order in which attributes and relationships appear in the Infrahub frontend is controlled by the `order_weight` property. **Items with lower values appear before those with higher values.** When not explicitly specified, Infrahub automatically assigns default values in increments of 1000:
+
+```yaml title="Default Order Weight Assignment"
+nodes:
+  - name: Device
+    namespace: Example
+    attributes:
+      - name: hostname        # Gets order_weight: 1000
+        kind: Text
+      - name: description     # Gets order_weight: 2000
+        kind: Text
+        optional: true
+      - name: serial_number   # Gets order_weight: 3000
+        kind: Text
+    relationships:
+      - name: location        # Gets order_weight: 4000
+        peer: ExampleLocation
+        cardinality: one
+```
+
+This automatic assignment ensures predictable field ordering while leaving room for custom positioning. To customize field order, you can specify explicit `order_weight` values:
+
+```yaml title="Custom Field Ordering"
+attributes:
+  - name: asset_tag
+    kind: Text
+    order_weight: 100       # Appears first
+  - name: hostname
+    kind: Text
+    order_weight: 200       # Appears second
+  - name: description
+    kind: Text
+    optional: true
+    order_weight: 9000      # Appears last
+```
+
+<ReferenceLink title="For more details on order weight, refer to the dedicated topic" url="/topics/order-weight" openInNewTab />
+
+### Node example
 
 In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by `owner`.
 
@@ -71,15 +162,18 @@ The `kind` of a model is generated by concatenating the `namespace` and the `nam
 
 - `Text`: Standard Text
 - `Number`: Standard Number
+- `NumberPool`: Standard Number that creates a `CoreNumberPool` resource manager tied to the attribute
 - `TextArea`: Long-form Text that can span multiple lines
-- `Boolean`: Flag that can be either True or False
-- `DateTime`: A Data and a Time
+- `DateTime`: A Date and a Time
+- `Dropdown`: A list of choices, each choice can have a color and description
 - `Email`: Email address
-- `Password`: A Text String that should be obfuscated
+- `Password`: A Text String that should be obfuscated but which can be read with enough right in the UI
+- `HashedPassword`: Similar to Password but it will not be shown in the UI and can't be re-read.
 - `URL`: An URL to a website or a resource over HTTP
 - `File`: Path to a file on the filesystem
 - `MacAddress`: Mac Address following the format (XX:XX:XX:XX:XX:XX)
 - `Color`: An HTML color
+- `Boolean`: Flag that can be either True or False
 - `Bandwidth`: Bandwidth in kbps
 - `IPHost`: IP Address in either IPV4 or IPv6 format
 - `IPNetwork`: IP Network in either IPV4 or IPv6 format
@@ -87,14 +181,6 @@ The `kind` of a model is generated by concatenating the `namespace` and the `nam
 - `List`: List of any value
 - `JSON`: Any data structure compatible with JSON
 - `Any`: Can be anything
-
-#### Relationship kinds
-
-- `Generic`: Default relationship without specific significance
-- `Attribute`: Relationship of type Attribute are represented in the detailed view and the list view
-- `Component`: Indicate a relationship with another node that is a component of the current node. Example: Interface is a component to a Device
-- `Parent`: Indicate a relationship with another node that is a parent to the current node. Example: Device is a parent to an Interface
-- `Group`: Indicate a relationship to a member or a subscriber of a group
 
 <details>
   <summary>Attribute kinds behavior in the UI</summary>
@@ -104,6 +190,7 @@ The `kind` of a model is generated by concatenating the `namespace` and the `nam
   | `ID`         | No                    | Yes                       |
   | `Text`       | Yes                   | Yes                       |
   | `Number`     | Yes                   | Yes                       |
+  | `NumberPool` | Yes                   | Yes                       |
   | `Boolean`    | Yes                   | Yes                       |
   | `Dropdown`   | Yes                   | Yes                       |
   | `TextArea`   | No                    | Yes                       |
@@ -121,24 +208,436 @@ The `kind` of a model is generated by concatenating the `namespace` and the `nam
   | `List`       | No                    | Yes                       |
   | `JSON`       | No                    | Yes                       |
   | `Any`        | No                    | Yes                       |
+
 </details>
+
+#### Attribute parameters
+
+There are some attribute kinds that allow optional `parameters` to be defined to control the behavior of the attribute. Below are the attribute kinds and their accepted parameters.
+
+<SnippetAttributeKindParams />
+
+#### Relationship kinds
+
+- `Generic`: A flexible relationship with no specific functional significance. It is commonly used when an entity doesn't fit into specialized categories like `Component` or `Parent`.
+- `Attribute`: A relationship where related entities' attributes appear directly in the detailed view and list views. It's used for linking key information, like statuses or roles.
+- `Component`: This relationship indicates that one entity is part of another and appears in a separate tab in the detailed view of a node in the UI. It represents a composition-like relationship where one node is a component of the current node.
+- `Parent`: This relationship defines a hierarchical link, with the parent entity often serving as a container or owner of another node. **Parent relationships are mandatory** and allow filtering in the UI, such as showing all components for a given parent.
+- `Group`: Defines a relationship where a node (inheriting from `CoreNode`) is a member or subscriber to a group (inheriting from `CoreGroup`). These relationships appear in the "Manage Groups" form.
+- `Profile`: A special relationship where a node is assigned a profile (inheriting from `CoreProfile`), visible during creation or updates through a "select profile" dropdown.
 
 <details>
   <summary>Relationship kinds behavior in the UI</summary>
 
-  | ID          | cardinality | Display in  List View | Display in  Detailed View | Display in Tab |
-  | ----------- | ----------- | --------------------- | ------------------------- | -------------- |
-  | `Generic`   | `one`       | No                    | Yes                       | No             |
-  | `Generic`   | `many`      | No                    | No                        | Yes            |
-  | `Attribute` | `one`       | Yes                   | Yes                       | No             |
-  | `Attribute` | `many`      | Yes                   | Yes                       | No             |
-  | `Component` | `one`       | No                    | Yes                       | No             |
-  | `Component` | `many`      | No                    | No                        | Yes            |
-  | `Hierarchy` | `one`       | Yes                   | Yes                       | No             |
-  | `Hierarchy` | `many`      | No                    | No                        | Yes            |
-  | `Parent`    | `one`       | No                    | Yes                       | No             |
-  | `Parent`    | `many`      | No                    | Yes                       | No             |
+  | ID                        | cardinality | Display in  List View | Display in  Detailed View | Display in Tab |
+  | ------------------------- | ----------- | --------------------- | ------------------------- | -------------- |
+  | `Generic`                 | `one`       | No                    | Yes                       | No             |
+  | `Generic`                 | `many`      | No                    | No                        | Yes            |
+  | `Attribute`               | `one`       | Yes                   | Yes                       | No             |
+  | `Attribute`               | `many`      | Yes                   | Yes                       | No             |
+  | `Component`               | `one`       | No                    | Yes                       | No             |
+  | `Component`               | `many`      | No                    | No                        | Yes            |
+  | `Hierarchical Parent`     | `one`       | Yes                   | Yes                       | No             |
+  | `Hierarchical  Children`  | `many`      | No                    | No                        | Yes            |
+  | `Parent`                  | `one`       | No                    | Yes                       | No             |
+
 </details>
+
+:::info Complementary relationship
+
+Component and Parent typically belong together:
+The `Component` relationship is typically paired with the `Parent` relationship.
+This ensures a strong relationship in both directions, where the parent node can manage its components, and the component refers back to its parent.
+
+:::
+
+:::warning Cascade deletion
+
+Relationships of kind `Component` include an implicit `on_delete: cascade`. This means that if you delete a node with a `Component` relationship, the related nodes connected by this relationship will also be deleted.
+
+:::
+
+:::info Internal Usage
+
+Group and Profile are **internal** relationship:
+The `Group` and `Profile` relationship kinds are internal types and should not be directly used by the user in their schema.
+These are automatically handled by the system for managing memberships and configurations.
+
+:::
+
+:::info Object Template
+
+Relationships of kind `Component` will automatically be covered by the template when enabling template generation on a given schema node. See the [object-template topic](../topics/object-template) for more information.
+
+:::
+
+To help you understand the relationship types better, here’s an example schema using a real-world model of **Car**, **Person** and **Wheel**.
+
+```yaml
+version: "1.0"
+
+nodes:
+  - name: Car
+    namespace: Auto
+    description: "A vehicle used for transportation."
+    attributes:
+      - name: model
+        kind: Text
+        description: "The model of the car."
+      - name: year
+        kind: Number
+        description: "The manufacturing year of the car."
+      - name: license_plate
+        kind: Text
+        unique: true
+        description: "License plate number."
+    relationships:
+      - name: owner
+        peer: AutoPerson
+        kind: Attribute
+        cardinality: one
+        optional: false
+      - name: wheels
+        peer: AutoWheel
+        kind: Component
+        cardinality: many
+
+  - name: Wheel
+    namespace: Auto
+    description: "A wheel of the car, a critical component for movement."
+    attributes:
+      - name: wheel_size
+        kind: Number
+        description: "Size of the wheel in inches."
+      - name: type
+        kind: Text
+        description: "Type of the wheel (e.g., alloy, steel)."
+    relationships:
+      # A wheel must belong to a car, hence the Parent relationship is mandatory
+      - name: car
+        peer: AutoCar
+        kind: Parent
+        cardinality: one
+        optional: false
+
+  - name: Person
+    namespace: Auto
+    description: "A person who may own a car."
+    attributes:
+      - name: first_name
+        kind: Text
+        description: "First name of the person."
+      - name: last_name
+        kind: Text
+        description: "Last name of the person."
+      - name: driver_license_number
+        kind: Text
+        unique: true
+        description: "Driver's license number."
+    relationships:
+      - name: cars
+        peer: AutoCar
+        kind: Component
+        cardinality: many
+        optional: true
+```
+
+- A `Car` node might have an `owner` attribute linking it to a `Person`. This relationship will be visible in the car's detailed view.
+- A `Wheel` is a component of a `Car`, meaning wheels are an essential part of the car. The wheels will be displayed in a separate "Components" tab.
+- A `Car` can have a `ProfileCar` selected during its creation or update. The insurance details appear in the form where you can pick or assign a profile for the car.
+
+#### Direction and Identifier in relationships
+
+Relationships in Infrahub schema connect nodes while defining how those connections behave and are traversed.
+Direction and identifier both constitute critical qualities for good relationship management.
+
+##### Direction
+
+The **direction** attribute defines the flow of the relationship:
+
+- **Bidirectional**: Supports traversal in both directions. This is the **default value** if no direction is indicated.
+- **Outbound**: Defines a relationship that runs from the source node to the target node.
+- **Inbound**: Defines a relationship that flows from the target node to the source node.
+
+Even if a relationship is `bidirectional`, you still have to create it on both nodes to allow you to easily traverse them in both directions.
+
+For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship#direction)
+
+##### Identifier
+
+To maintain consistent traversal, the **identifier** serves as the relationship's unique key and must match on both ends.
+If no identifier is provided, one will be generated automatically. It is encouraged to establish distinct ones for clarity and maintenance.
+
+If no identifier is specified, one will be automatically generated in the format `<node_kind_a>__<node_kind_z>`.
+Example: `infraautonomoussystem__organizationgeneric`
+
+For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship#identifier)
+
+##### Examples
+
+<details>
+  <summary>Example 1: Bidirectional Relationship with `device__interfaces`</summary>
+
+Here's an example schema that uses the identifier `device__interfaces` in a bidirectional connection to ensure that devices and interfaces can refer to each other seamlessly.
+
+```yaml {6,15} showLineNumbers
+  - name: Interface
+    namespace: Infra
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__interfaces"
+        optional: false
+        cardinality: one
+        kind: Parent
+
+  - name: Device
+    namespace: Infra
+    relationships:
+      - name: interfaces
+        peer: InfraInterface
+        identifier: "device__interfaces"
+        cardinality: many
+        kind: Component
+```
+
+</details>
+
+<details>
+  <summary>Example 2: Relationships in InfraBGPGroup</summary>
+
+`InfraBGPGroup` has two relationships with the same node, `InfraAutonomousSystem`. To avoid issues with the auto-generated identifiers, we should specifically specify the ones we want.
+By including `bgppeergroup__local_as` and `bgppeergroup__remote_as`, we can clearly represent each relationship role.
+
+```yaml {5-6,11-12} showLineNumbers
+- name: BGPGroup
+  namespace: Infra
+  relationships:
+    - name: local_as
+      identifier: "bgppeergroup__local_as"
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+    - name: remote_as
+      identifier: "bgppeergroup__remote_as"
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+```
+
+</details>
+
+<details>
+  <summary>info Example 3: Reflexive Relationships in Employee</summary>
+
+This example demonstrates how direction (`inbound` for `leader` and `outbound` for `team_members`) distinguishes connections within the same node type `OrganizationEmployee`.
+The `employee_team_relationship` identifier connects the `leader` and `team_members` relationships while maintaining their distinct roles.
+Since both sides of the relationship share the same `Kind`, we must avoid the default `bidrectional` assumption, therefore we have to specify a direction.
+
+```yaml {15-16,24-25} showLineNumbers
+nodes:
+  - name: Employee
+    namespace: Organization
+    description: "An employee in the organization with leadership and team relationships."
+    label: "Employee"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        description: "Name of the employee."
+    relationships:
+      - name: leader
+        label: Leader
+        peer: OrganizationEmployee
+        direction: inbound
+        identifier: "employee_team_relationship"
+        cardinality: one
+        kind: Attribute
+        optional: true
+        description: "The leader guiding this team member."
+      - name: team_members
+        label: Team Members
+        peer: OrganizationEmployee
+        direction: outbound
+        identifier: "employee_team_relationship"
+        cardinality: many
+        kind: Attribute
+        optional: true
+        description: "Employees who are part of this leader's team."
+```
+
+</details>
+
+##### Generic node relationships
+
+When creating relationships between generic nodes and their implementations, always explicitly define matching identifiers:
+
+<details>
+  <summary>Example: Generic Interface and Device Relationship</summary>
+
+```yaml {7,16,27,36} showLineNumbers
+generics:
+  - name: Interface
+    namespace: Test
+    relationships:
+      - name: device
+        peer: TestDevice
+        identifier: "device__interface"  # Must match on both sides
+        optional: false
+        cardinality: one
+        kind: Parent
+
+nodes:
+  - name: Device
+    namespace: Test
+    relationships:
+      - name: interfaces
+        peer: TestInterface
+        identifier: "device__interface"  # Must match generic's identifier
+        cardinality: many
+        kind: Component
+        on_delete: cascade
+
+  - name: NetworkInterface
+    namespace: Infra
+    inherit_from:
+      - TestInterface
+    # Inherits the device relationship with correct identifier
+
+  - name: Router
+    namespace: Infra
+    inherit_from:
+      - TestDevice
+    # Inherits the interfaces relationship with correct identifier
+```
+
+In this example:
+
+- The generic `TestInterface` and `TestDevice` define the relationship with explicit identifier `device__interface`
+- Specific implementations (`InfraNetworkInterface`, `InfraRouter`) inherit these relationships with matching identifiers
+- Cascade deletion will work correctly because identifiers match on both sides
+
+</details>
+
+### Uniqueness constraints
+
+More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the Node or Generic level with the property `uniqueness_constraints`.
+It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
+
+In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` guarantees that a car will be unique based on the `owner` and the `model` of the car.
+
+`uniqueness_constraints` can be composed of a list of N number of attributes or relationships of cardinality one:
+
+- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future, the plan is to allow additional metadata to be used as well.*
+- For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationships of cardinality `one` are supported and the relationship must be mandatory.*
+
+```yaml {10-11} showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+  - name: Car
+    namespace: Example
+    uniqueness_constraints:
+      - ["owner", "model__value"]
+    attributes:
+      - name: model
+        kind: Text
+    relationships:
+      - name: owner
+        peer: ExamplePerson
+        optional: false
+        cardinality: one
+```
+
+#### Optimizing uniqueness constraints
+
+When defining uniqueness constraints, the order of the elements in each constraint array can significantly impact performance. The uniqueness checker processes constraints from left to right, so listing the most selective elements first can dramatically improve performance.
+
+:::info How It Works
+
+The uniqueness checker runs Cypher queries to validate constraints. When elements are ordered from most to least selective, the database can quickly eliminate non-matching candidates earlier in the query execution.
+
+:::
+
+For example, consider an IP address model with a uniqueness constraint:
+
+```yaml
+uniqueness_constraints:
+  - ["ip_namespace", "address__value"]
+```
+
+If many IP addresses share the same namespace but few share the same address value, this constraint would require checking all nodes with the same namespace before filtering by address. A more efficient ordering would be:
+
+```yaml
+uniqueness_constraints:
+  - ["address__value", "ip_namespace"]
+```
+
+This allows the system to first filter by the more selective address value, resulting in fewer nodes to check against the namespace constraint.
+
+:::success Best Practice
+
+Order uniqueness constraint elements from most selective (returning fewer matches) to least selective (returning more matches) to optimize database query performance.
+
+:::
+
+### Human friendly identifier (hfid)
+
+In addition to the internal ID automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitute a human friendly identifier (HFID).
+
+:::success Use Case
+
+The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
+Having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent script.
+
+In the network industry:
+
+- The `hfid` of a device could be its `name` : `atl1-edge01`
+- The `hfid` of an interface could be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
+
+:::
+
+In the example below, each `ExamplePerson`, will have a `hfid` composed of his/her `lastname` and `firstname`.
+
+`human_friendly_id` can be composed of N number of attributes or relationships of cardinality one:
+
+- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future, the plan is to allow additional metadata to be used as well.*
+- For a relationship, the name of the relationship and the name of a unique attribute must be provided `<relationshipname>__<attributename>__value`. *Only relationships of cardinality `one` are supported and the relationship must be mandatory.*
+
+```yaml {4} showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    human_friendly_id: ["lastname__value", "firstname__value"]
+    attributes:
+      - name: firstname
+        kind: Text
+      - name: lastname
+        kind: Text
+```
+
+:::info
+
+If a `human_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `human_friendly_id` will be automatically created.
+
+If at least one attribute is marked as unique, and `human_friendly_id` hasn't been defined, `human_friendly_id` will be automatically created.
+
+:::
+
+#### `hfid` support in GraphQL
+
+`hfid` can be used as a alternative to `id` in most places in GraphQL, including :
+
+- Update Mutation
+- Upsert Mutation
+- Delete Mutation
+- Related Node in all Mutations
 
 ### Generics
 
@@ -161,7 +660,7 @@ generics:
         name: name
         unique: true
       - name: color
-        kind: Colo
+        kind: Color
     relationships:
       - cardinality: one
         identifier: person__car
@@ -197,119 +696,118 @@ nodes:
         peer: Example1Car
 ```
 
-### Object Uniqueness
+### Inheritance between generics and nodes
 
-The schema provides 2 mechanisms to enforce the uniqueness of an object, within all the objects of the same kind:
+#### Basic inheritance
 
-- At the attribute level, with the property `unique`
-- At the Node or Generic level with the property `uniqueness_constraints`
+Inheritance allows Nodes to derive properties from Generics. This relationship ensures that Nodes maintain a consistent set of attributes defined at the Generic level, reducing redundancy and simplifying updates.
 
-Both type of uniqueness constraints will be automatically validated during the following events:
+#### Single generic inheritance
 
-- Branch merge
-- Proposed Change
-- Branch rebase
-- Schema update
+When a Node is derived from a single Generic, it inherits all properties defined in that Generic unless overridden at the Node level.
 
-#### Unique attribute
-
-Each attribute with the property `unique: true` will be evaluated individually and will automatically enforce a uniqueness constraint for all the nodes of the same kind.
-If a unique attribute is defined on a Generic, all nodes inheriting from this Generic will respect the uniqueness constraint defined at the Generic level.
-
-```yaml {7}  showLineNumbers
-nodes:
-  - name: Person
-    namespace: Example
+```yaml
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    description: "Generic Device object."
+    label: "Device"
+    icon: "mdi:server"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
     attributes:
       - name: name
         kind: Text
         unique: true
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 1100
+
+nodes:
+  - name: Device
+    namespace: Infra
+    inherit_from:
+      - "GenericDevice"
+    attributes:
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: core
+            label: Core Router
+            description: Central part of the network.
+            color: "#7f7fff"
+          - name: spine
+            label: Spine Router
+            description: "Aggregation router part of a Fabric."
+            color: "#aeeeee"
+          - name: leaf
+            label: Leaf Switch
+            description: "Top of Rack part of a Fabric."
+            color: "#e6e6fa"
+        order_weight: 1400
 ```
 
-#### Uniqueness Constraints
+#### Multiple generics inheritance
 
-More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the Node or Generic level with the property `uniqueness_constraints`.
-It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
+When multiple Generics are involved, determining which properties to inherit can be challenging. The implemented solution prioritizes the first Generic listed in the `inherited_from` array.
 
-In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` guarantee that a car will unique based on the `owner` and the `model` of the car.
+:::info First Generic Preference
 
-`uniqueness_constraints` can be composed of N number of attribute or relationship of cardinality one:
+Properties will be inherited from the first Generic in the `inherited_from` list if not explicitly defined at the Node level. This approach simplifies conflict resolution.
 
-- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additional metadata to be used as well.*
-- For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
+:::
 
-```yaml {10} showLineNumbers
-nodes:
-  - name: Person
-    namespace: Example
+```yaml
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    icon: "mdi:router"
+    default_filter: "name__value"
     attributes:
       - name: name
         kind: Text
         unique: true
-  - name: Car
-    namespace: Example
-    uniqueness_constraints: ["owner", "model__value"]
+        order_weight: 1000
+
+  - name: Asset
+    namespace: Infra
+    icon: "mdi:server"
     attributes:
-      - name: model
+      - name: asset_tag
+        label: Asset Tag
         kind: Text
-    relationships:
-      - name: owner
-        peer: ExamplePerson
-        optional: false
-        cardinality: one
-```
+        unique: true
+        order_weight: 1000
 
-### Human friendly identifier (hfid)
-
-In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a human friendly identifier (hfid).
-
-:::success Use Case
-
-The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
-Having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent script.
-
-In the network industry:
-
-- the `hfid` of a device will be could be its `name` : `atl1-edge01`
-- the `hfid` of an interface will be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
-
-:::
-
-In the example below, each `ExamplePerson`,  will have a `hfid` composed of his/her `lastname` and `firstname`.
-
-`human_friendly_id` can be composed of N number of attribute or relationship of cardinality one:
-
-- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additional metadata to be used as well.*
-- For a relationship, the name of the relationship and the name of a unique attribute must be provided `<relationshipname>__<attributename>__value`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
-
-```yaml {4} showLineNumbers
 nodes:
-  - name: Person
-    namespace: Example
-    human_friendly_id: ["lastname__value", "firstname__value"]
-    attributes:
-      - name: firstname
-        kind: Text
-      - name: lastname
-        kind: Text
+  - name: Device
+    namespace: Infra
+    inherit_from:
+      - "InfraGenericDevice"
+      - "InfraAsset"
 ```
 
-:::info
+### Inherited properties
 
-If a `human_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `human_friendly_id` will be automatically created.
+#### List of inheritable properties
 
-If at least one attribute is marked as unique, and `human_friendly_id` hasn't been defined, `human_friendly_id` will be automatically created.
+- **human_friendly_id**: A user-friendly identifier for the entity.
+- **display_labels**: Labels used for display purposes.
+- **default_filter**: The default filter applied to the entity.
+- **menu_placement**: Defines where the entity appears in menus.
+- **uniqueness_constraints**: Constraints ensuring unique values for certain attributes.
+- **icon**: The icon representing the entity.
+- **order_by**: The default order in which entities are listed.
 
+:::warning Limitations and Considerations
+Inheritance of properties occurs only during the first import. If a Generic's properties are updated after the Node has been created, these updates will not be propagated to the Node. Users must manually update Nodes if they want to reflect changes made to Generics.
 :::
-
-#### `hfid` support in GraphQL
-
-`hfid` can be used as a alternative to `id` in most places in GraphQL, including :
-
-- Update Mutation
-- Upsert Mutation
-- Delete Mutation
-- Related Node in all Mutations
 
 ### Branch support
 
@@ -388,7 +886,7 @@ All nodes with hierarchical support will automatically have 2 new relationships:
 - `parent` of cardinality one
 - `children` of cardinality many
 
-#### Specific the structure of the hierarchy
+#### Specify the structure of the hierarchy
 
 By default, any node inheriting from the main `Generic` can be a parent or a children, which might not be always desirable. It's possible to limit which type of models are valid `parent` or `children` in the schema with the attributes `parent` & `children` at the node level.
 
@@ -462,6 +960,61 @@ query {
 }
 ```
 
+### Common parent relationships
+
+When defining relationships between nodes, you can ensure that related nodes share the same parent using the `common_parent` property.
+
+This is particularly useful for components that must belong to the same parent entity.
+
+```yaml {8} showLineNumbers
+- name: LagInterfaceL3
+  [...]
+  relationships:
+    - name: members
+      peer: InfraInterfaceL3
+      optional: true
+      cardinality: many
+      kind: Generic
+      common_parent: device
+    - name: device
+      peer: InfraDevice
+      kind: Parent
+      optional: false
+      cardinality: one
+- name: InterfaceL3
+  [...]
+  relationships:
+    - name: lag
+      peer: InfraLagInterfaceL3
+      optional: true
+      cardinality: one
+      kind: Generic
+      common_parent: device
+    - name: device
+      peer: InfraDevice
+      kind: Parent
+      optional: false
+      cardinality: one
+```
+
+:::info Important
+
+You need to define it on the **two** sides of the relationship.
+
+:::
+
+In this example, the `common_parent: device` property ensures that all members of this relationship must have the same device as their parent.
+
+This prevents users from adding interfaces from different devices to the same LAG interface group.
+
+:::warning Limitations
+
+- The parent relationship name must be the same on both sides of the relationship
+- Only standard parent relationships are supported (hierarchical parent relationships are not supported)
+- The parent relationship must be of kind `Parent` (and cardinality `one`)
+
+:::
+
 ### Menu
 
 The position of a model in the frontend sidebar menu, is controlled by the schema itself.
@@ -473,6 +1026,8 @@ At the node (or generic) level, 3 attributes are available to control where a gi
 
 `menu_placement` makes it possible to create a nested structure within the menu to display a given model under another one.
 
+You can read this [guide](../guides/menu) for a more detailed explanation of how to operate the menu.
+
 #### Icon
 
 `icon` can be used to indicate which icon should be displayed next to the model in the menu.
@@ -480,11 +1035,9 @@ Any icon from the [Material Design Icons library / iconify.design](https://icon-
 
 The full identifier of the icon must be used. Example `mdi:domain`
 
-#### Examples
+#### Menu rendering example
 
-<div className="container">
-  <div className="row">
-  <div className="col col--6">
+#### Menu schema
 
   ```yaml title="Schema" {6-7,11-12,17-18} showLineNumbers
   ---
@@ -509,35 +1062,28 @@ The full identifier of the icon must be used. Example `mdi:domain`
       label: "Rack"
   ```
 
-  </div>
+#### Menu rendering
 
-  <div className="col col--6 padding-top--md">
-  #### Rendering
-
-  ![Location Menu](../media/reference/schema/location_menu.png)
-  </div>
-  </div>
-</div>
+![Location Menu](../media/location_menu.png)
 
 ## Load a schema into Infrahub
 
 Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration.
 
-<!-- vale off -->
 ### infrahubctl command
-<!-- vale on -->
+
 The `infrahubctl` command can be used to check & load individual schema files or multiple files as part of a directory.
 
 The `infrahub schema check` command will validate if a given schema is valid and it will return a summary of the changes
 that will be applied to the schema if the schema was loaded.
 
-```bash
+```shell
 infrahubctl schema check <path to schema file or a directory> <path to schema file or a directory> [--branch <branch_name>]
 ```
 
 The `infrahub schema load` command will load the schemas into Infrahub into the specified branch.
 
-```bash
+```shell
 infrahubctl schema load <path to schema file or a directory> <path to schema file or a directory> [--branch <branch_name>]
 ```
 
@@ -549,7 +1095,7 @@ The `infrahubctl schema load` command can be used to both upload a new schema an
 
 ### Git integration
 
-You can defined a schema in an [external repository](/topics/repository).
+You can defined a schema in an [external repository](../topics/repository).
 The schemas that should be loaded must be declared in the ``.infrahub.yml`` file, under schemas.
 
 Individual files and directory are both supported.
@@ -581,10 +1127,9 @@ the recommendation is to create a new branch and to integrate the changes into t
 
 :::
 
-### Isolated mode
-
-When a new schema is loaded into a branch, the branch will automatically be converted into isolated mode in order to apply the required data migrations for this branch.
-A branch rebase will be required to bring the latest changes from main into the branch.
+<center>
+  <VideoPlayer url='https://www.youtube.com/watch?v=1ZWznJga1Tc' light />
+</center>
 
 ### State: absent or present
 
@@ -608,6 +1153,11 @@ Without this flag the element will be ignored but it will not be removed.
 The default value is `state: present` and doesn't have to be provided on all elements of the schema.
 
 :::
+
+### Remove existing text fields values
+
+Removing an existing value for a text field of a schema node, like `description` or `default_filter`, can be performed by specifying
+an empty string value for this field and re-loading the schema.
 
 ### Rename existing elements
 
@@ -648,16 +1198,42 @@ The internal identifier should be an UUID4, with 36 characters.
 </TabItem>
 </Tabs>
 
-### Restrictions and limitations
+### Restrictions
 
 Most changes to an existing schema are supported but there are a few properties that can't be updated in the current release:
 
 - Properties that can't be updated on a Node or a Generic: `branch`
 - Properties that can't be updated on an Attribute: `branch`
 - Properties that can't be updated on an Relationship: `branch`, `direction`, `hierarchical`
+- Properties that can't be updated on an Attribute inherited from a Generic: `optional`
 
-[A reference guide for validators and migrations is available](/reference/schema/validator-migration)
+[A reference guide for validators and migrations is available](../reference/schema/validator-migration)
 
 ### Known limitations
 
 - When updating the identifier on a relationship, the existing relationships won't be impacted or updated even if it was the last relationship using a given identifier. [ISSUE-2472](https://github.com/opsmill/infrahub/issues/2472)
+- Updating Nodes when Generics are updated [ISSUE-5793](https://github.com/opsmill/infrahub/issues/5793)
+
+## Schema strict mode
+
+By default, Infrahub operates in schema strict mode. This means that all the schema validators will be run every time we make a schema change, or when the CI pipeline runs schema validation checks.
+
+There are certain scenarios, where Infrahub introduces new schema validators in new versions. This may happen because new features are introduced or because we didn't have a validator in place for certain scenarios. This may mean that you have to make changes to the existing data or schema in your instance of Infrahub before you can upgrade to a newer version. In some situations it might not be possible to make these changes immediately.
+
+For this reason we allow you to disable schema strict mode, using the `INFRAHUB_SCHEMA_STRICT_MODE` environment variable.
+
+The following schema validators will be disabled when the environment variable `INFRAHUB_SCHEMA_STRICT_MODE` is set to `false`:
+
+- relationships same parent constraint validator
+- `min_length` less than `max_length` attribute parameter validator
+- `min_value` less than `max_value` attribute parameter validator
+- HFID uses only unique attribute validator
+- `min_value`, `max_value`, `excluded_values` number attribute constraints validator
+
+We recommend that you re-enable schema strict mode, after you were able to make the required schema or data changes.
+
+:::info
+
+Schema strict mode should only be disable temporarily to ease the process of upgrading when new schema validations have been introduced. We recommend that you re-enable schema strict mode as quickly as possible.
+
+:::

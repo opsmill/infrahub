@@ -2,9 +2,15 @@
 title: Immutability and version control
 ---
 
+import VideoPlayer from '../../src/components/VideoPlayer';
+
 # Immutability and version control
 
 Infrahub integrate an immutable database with native support for version control that was designed with Infrastructure Management in mind.
+
+<center>
+  <VideoPlayer url='https://www.youtube.com/watch?v=_I7liNBkNC8' light />
+</center>
 
 ## Immutability
 
@@ -28,11 +34,23 @@ It's possible to query a previous version of the database by providing a specifi
 
 The implementation of version control in Infrahub is inspired by Git but also different in several ways
 
-A branch provide a safe environment to prepare and validate a change before integrating it into the default branch by opening a [Proposed Change](/topics/proposed-change).
+A branch provide a safe environment to prepare and validate a change before integrating it into the default branch by opening a [Proposed Change](../topics/proposed-change).
 
 Branches are meant to be short lived, from a few seconds to a few weeks, and are hierarchical by nature which means that a branch can only be merged into the branch it was created from.
 
 > Currently only a single level of hierarchy is supported, meaning that all branches must be created from the default branch and be merged into the default branch.
+
+:::info
+
+The main branch in Infrahub has additional locks, which other branches don't have, to ensure data and schema integrity.
+
+There is a downside to this approach. Creating data in bulk or concurrently will be slower in the main branch, compared to doing this in a branch other than main. The consequence is that you might create a data or schema integrity issue, when creating data concurrently in a branch.
+
+The proposed change process, running our internal CI pipeline, will detect these kind of issues and inform you about their existence. In such a scenario you will be unable to merge the branch and will be forced to remediate the integrity issues first.
+
+Typically triggering a rebase for the branch should be sufficient.
+
+:::
 
 ### Create a branch
 
@@ -82,7 +100,7 @@ Creating a branch won't create a copy of the database, only the changes applied 
 
   Use the command below to create a new branch named `cr1234`
 
-  ```bash
+  ```shell
   infrahubctl branch create cr1234
   ```
 
@@ -104,7 +122,7 @@ To view all the changes in a branch
 :::info
 
 Only the changes in Branch Aware mode will be displayed in the diff view and only these changes will be included in a merge operation.
-Check the [Branch Support section in the Schema documentation](/topics/schema#branch-support) for more information.
+Check the [Branch Support section in the Schema documentation](../topics/schema#branch-support) for more information.
 
 :::
 

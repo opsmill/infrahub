@@ -14,28 +14,20 @@ backend_files: &backend_files
   - "backend/**"
 
 sdk_files: &sdk_files
-  - "python_sdk/**"
+  - "python_sdk" # Catch updates to the submodule commit
 
-sync_files: &sync_files
-  - "sync/**"
+testcontainers_files:
+  - "python_testcontainers/**"
 
 infrahub_poetry_files: &infrahub_poetry_files
-  - "pyproject.toml"
-  - "poetry.lock"
-
-python_sdk_poetry_files: &python_sdk_poetry_files
-  - "python_sdk/pyproject.toml"
-  - "python_sdk/poetry.lock"
-
-sync_poetry_files: &sync_poetry_files
-  - "sync/pyproject.toml"
-  - "sync/poetry.lock"
+  - "**/pyproject.toml"
+  - "**/poetry.lock"
 
 frontend_files: &frontend_files
-  - "frontend/**"
+  - "frontend/app/**"
 
 e2e_test_files:
-  - "frontend/tests/e2e/**"
+  - "frontend/app/tests/e2e/**"
 
 demo_files: &demo_files
   - "models/**"
@@ -45,8 +37,10 @@ doc_files: &doc_files
   - package.json
   - package-lock.json
 
-helm_files: &helm_files
-  - "helm/**"
+release_files: &release_files
+  - "changelog/*.md"
+  - CHANGELOG.md
+  - "docs/docs/release_notes/infrahub/*.mdx"
 
 python_all: &python_all
   - "**/*.py"
@@ -60,36 +54,34 @@ yaml_all: &yaml_all
 markdown_all: &markdown_all
   - "**/*.{md,mdx}"
 
+infrahub_reference_generated: &infrahub_reference_generated
+  - "docs/docs/reference/infrahub-cli/*.mdx"
+  - "docs/docs/reference/schema/*.mdx"
+  - "docs/docs/reference/dotinfrahub.mdx"
+  - "docs/docs/python-sdk/reference/config.mdx"
+  - "docs/docs/reference/message-bus-events.mdx"
+
+infrahub_ctl_generated: &infrahub_ctl_generated
+  - "docs/docs/infrahubctl/*.mdx"
 
 backend_all:
-  - *sdk_files
   - *backend_files
   - *ci_config
   - *development_files
   - *infrahub_poetry_files
+  - *sdk_files
 
 documentation_all:
   - *development_files
   - *doc_files
   - *markdown_all
 
-helm_all:
-  - *helm_files
+documentation_generated_all:
+  - *infrahub_reference_generated
+  - *infrahub_ctl_generated
 
-sdk_all:
-  - *sdk_files
-  - *backend_files
-  - *ci_config
-  - *development_files
-  - *python_sdk_poetry_files
-
-sync_all:
-  - *sync_files
-  - *sdk_files
-  - *backend_files
-  - *ci_config
-  - *development_files
-  - *sync_poetry_files
+release_all:
+  - *release_files
 
 frontend_all:
   - *frontend_files
@@ -97,9 +89,9 @@ frontend_all:
   - *development_files
 
 e2e_all:
-  - *sdk_files
   - *backend_files
   - *frontend_files
   - *demo_files
   - *ci_config
   - *development_files
+  - *infrahub_poetry_files

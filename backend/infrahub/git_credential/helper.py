@@ -1,11 +1,13 @@
+import logging
 import sys
 
 import typer
 from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk.protocols import CoreGenericRepository
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
 
+logging.getLogger("httpx").setLevel(logging.ERROR)
 app = typer.Typer()
 
 
@@ -48,23 +50,26 @@ def get(
         print(str(exc))
         raise typer.Exit(1) from exc
 
-    # FIXME currently we are only querying the repo in the main branch,
-    # this will not work if a new repository is added in a branch first.
-    client = InfrahubClientSync.init(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
-    repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
+    client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
+    repo = client.get(kind=CoreGenericRepository.__name__, location__value=location)
 
     if not repo:
         print("Repository not found in the database.")
         raise typer.Exit(1)
 
-    print(f"username={repo.username.value}")
-    print(f"password={repo.password.value}")
+    if not repo.credential._id:
+        print("Repository doesn't have credentials defined.")
+        raise typer.Exit(1)
+
+    repo.credential.fetch()
+
+    print(f"username={repo.credential.peer.username.value}")
+    print(f"password={repo.credential.peer.password.value}")
 
 
-# pylint: disable=unused-argument
 @app.command()
 def store(
-    input_str: str = typer.Argument(None),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    input_str: str = typer.Argument(None),  # noqa: ARG001
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),  # noqa: ARG001
 ) -> None:
     raise typer.Exit()

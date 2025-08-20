@@ -1,0 +1,89 @@
+import { Row } from "@/shared/components/container";
+import { LabelFormField } from "@/shared/components/form/fields/common";
+import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import {
+  updateAttributeFieldValue,
+  updateFormFieldValue,
+} from "@/shared/components/form/utils/updateFormFieldValue";
+import { PoolSelect } from "@/shared/components/inputs/pool-select";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
+import { Input, InputProps } from "@/shared/components/ui/input";
+import { inputStyle } from "@/shared/components/ui/style";
+import React from "react";
+import { Button } from "react-aria-components";
+
+export interface InputFieldProps
+  extends FormFieldProps,
+    Omit<InputProps, "defaultValue" | "name"> {}
+
+const InputField = ({
+  defaultValue = { source: null, value: null },
+  description,
+  label,
+  name,
+  rules,
+  unique,
+  pool,
+  ...props
+}: InputFieldProps) => {
+  return (
+    <FormField
+      key={name}
+      name={name}
+      rules={rules}
+      defaultValue={defaultValue}
+      render={({ field }) => {
+        const [override, setOverride] = React.useState(false);
+        const fieldData: FormAttributeValue = field.value;
+        const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
+
+        return (
+          <div className="space-y-2">
+            <LabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+              fieldData={fieldData}
+            />
+
+            <Row>
+              <FormInput>
+                {!selectedPoolId || override ? (
+                  <Input
+                    {...field}
+                    {...props}
+                    value={selectedPoolId ? "" : ((fieldData?.value as string) ?? "")}
+                    onChange={(event) => {
+                      field.onChange(updateFormFieldValue(event.target.value, defaultValue));
+                    }}
+                    autoFocus={override}
+                    onBlur={() => setOverride(false)}
+                  />
+                ) : (
+                  <Button className={inputStyle} onPress={() => setOverride(true)}>
+                    Allocated by pool
+                  </Button>
+                )}
+              </FormInput>
+              {pool && (
+                <PoolSelect
+                  poolKind={pool.kind}
+                  poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
+                  selectedPoolId={selectedPoolId}
+                  onChange={(value) =>
+                    field.onChange(updateAttributeFieldValue(value, defaultValue))
+                  }
+                />
+              )}
+            </Row>
+
+            <FormMessage />
+          </div>
+        );
+      }}
+    />
+  );
+};
+
+export default InputField;

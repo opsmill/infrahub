@@ -1,5 +1,7 @@
+import copy
+
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -7,10 +9,14 @@ from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
+from infrahub.core.relationship import Relationship
 from infrahub.core.schema import NodeSchema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
+from tests.constants import TestKind
+from tests.helpers.schema import DEVICE_SCHEMA
 
 
 async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -138,6 +144,12 @@ async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch
     assert p11.height.value == 180
     assert len(list(await p11.cars.get(db=db))) == 2
 
+    not_exist = await NodeManager.get_one(db=db, id="e57fef37-d9eb-4548-b890-b5e31d76f56b")
+    assert not not_exist
+
+    with pytest.raises(NodeNotFoundError, match=r"Unable to find the node"):
+        await NodeManager.get_one(db=db, id="e57fef37-d9eb-4548-b890-b5e31d76f56b", raise_on_error=True)
+
 
 async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     p1 = await Node.init(db=db, schema="TestPerson")
@@ -233,21 +245,97 @@ async def test_get_one_by_hfid(
     assert isinstance(node1, Node)
     assert node1.id == dog1.id
 
+    not_a_dog = await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind)
+    assert not not_a_dog
+
+    with pytest.raises(NodeNotFoundError, match=r"Unable to find the node"):
+        await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind, raise_on_error=True)
+
+
+async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branch):
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    # Change device schema to add a HFID
+    schema.nodes[0].human_friendly_id = ["name__value"]
+    schema.nodes[0].generate_template = False
+
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+
+    device = await Node.init(db=db, schema=TestKind.DEVICE, branch=branch)
+    await device.new(db=db, name="device-01", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear")
+    await device.save(db=db)
+    device_hfid = await device.get_hfid(db=db)
+
+    with pytest.raises(NodeNotFoundError, match=r"does not have a HFID defined"):
+        await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.INTERFACE_HOLDER, hfid=device_hfid)
+
+    with pytest.raises(NodeNotFoundError, match=r"HFID does not contain the same number of elements"):
+        await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.DEVICE, hfid=device_hfid + ["foo"])
+
 
 async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
     nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(nodes) == 2
 
 
-async def test_get_many_prefetch(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):
-    nodes = await NodeManager.get_many(db=db, ids=[person_jack_tags_main.id], prefetch_relationships=True)
+async def test_get_many_prefetch(
+    db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch
+):
+    nodes = await NodeManager.get_many(
+        db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
+    )
 
     assert len(nodes) == 1
     assert nodes[person_jack_tags_main.id]
-    tags = await nodes[person_jack_tags_main.id].tags.get(db=db)
-    assert len(tags) == 2
-    assert tags[0]._peer
-    assert tags[1]._peer
+    tag_rels = await nodes[person_jack_tags_main.id].tags.get(db=db)
+    assert len(tag_rels) == 2
+    assert {t.peer_id for t in tag_rels} == {tag_blue_main.id, tag_red_main.id}
+    assert isinstance(tag_rels[0]._peer, Node)
+    assert tag_rels[0]._peer.get_kind() == "BuiltinTag"
+    assert isinstance(tag_rels[1]._peer, Node)
+    assert tag_rels[1]._peer.get_kind() == "BuiltinTag"
+
+    # remove a tag
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
+    await person_branch.tags.update(db=db, data=[tag_blue_main])
+    await person_branch.save(db=db)
+
+    # check that prefetch respects removed relationships
+    updated_nodes = await NodeManager.get_many(
+        db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
+    )
+    assert len(updated_nodes) == 1
+    assert updated_nodes[person_jack_tags_main.id]
+    tag_rels = await updated_nodes[person_jack_tags_main.id].tags.get(db=db)
+    assert len(tag_rels) == 1
+    assert {t.peer_id for t in tag_rels} == {tag_blue_main.id}
+    assert isinstance(tag_rels[0]._peer, Node)
+    assert tag_rels[0]._peer.get_kind() == "BuiltinTag"
+
+
+async def test_get_many_prefetch_hierarchical(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
+    node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
+    nodes = await NodeManager.get_many(db=db, ids=node_ids, prefetch_relationships=True)
+    assert len(nodes) == 5
+
+    paris_id = hierarchical_location_data["paris"].id
+    europe_id = hierarchical_location_data["europe"].id
+
+    assert nodes[paris_id]
+    children_paris = await nodes[paris_id].children.get(db=db)
+    assert len(children_paris) == 2
+    parent_paris = await nodes[paris_id].parent.get(db=db)
+    assert isinstance(parent_paris, Relationship)
+    assert parent_paris.peer_id == europe_id
+
+    europe_id = hierarchical_location_data["europe"].id
+    assert nodes[europe_id]
+    children_europe = await nodes[europe_id].children.get(db=db)
+    assert len(children_europe) == 2
+    parent_europe = await nodes[europe_id].parent.get(db=db)
+    assert parent_europe is None
 
 
 async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
@@ -267,6 +355,28 @@ async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branc
     assert node_map[criticality_low.id].color.value == "green"
     source = await node_map[criticality_low.id].color.get_source(db=db)
     assert source.id == crit_profile_1.id
+
+
+async def test_get_many_with_profile_generic(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+):
+    generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
+    generic_profile = await Node.init(db=db, schema=generic_profile_schema)
+    await generic_profile.new(db=db, profile_name="generic_profile", color="green", profile_priority=1001)
+    await generic_profile.save(db=db)
+    crit_profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    crit_profile = await Node.init(db=db, schema=crit_profile_schema)
+    await crit_profile.new(db=db, profile_name="crit_profile", color="blue", profile_priority=1002)
+    await crit_profile.save(db=db)
+    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
+    await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
+    await crit_low.save(db=db)
+
+    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
+    assert len(node_map) == 2
+    assert node_map[criticality_low.id].color.value == "green"
+    source = await node_map[criticality_low.id].color.get_source(db=db)
+    assert source.id == generic_profile.id
 
 
 async def test_get_many_with_multiple_profiles_same_priority(
@@ -291,6 +401,78 @@ async def test_get_many_with_multiple_profiles_same_priority(
     assert source.id == lowest_uuid_profile.id
 
 
+async def test_get_many_branch_agnostic(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    crit_schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
+    new_crit = await Node.init(schema=crit_schema, db=db, branch=branch)
+    await new_crit.new(db=db, name="new crit", level=42)
+    await new_crit.save(db=db)
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=default_branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id], branch_agnostic=True
+    )
+    assert len(node_map) == 3
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=default_branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
+    )
+    assert len(node_map) == 2
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == default_branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == default_branch.name
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id, new_crit.id]
+    )
+    assert len(node_map) == 3
+    assert node_map[criticality_low.id].get_branch_based_on_support_type().name == branch.name
+    assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == branch.name
+    assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
+
+
+async def test_get_many_relationship_fields(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
+    node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
+    fields = {"parent": None}
+    nodes = await NodeManager.get_many(db=db, ids=node_ids, fields=fields)
+    assert len(nodes) == 5
+
+    paris_id = hierarchical_location_data["paris"].id
+    europe_id = hierarchical_location_data["europe"].id
+
+    assert nodes[paris_id]
+    parent_europe_rel = nodes[paris_id].parent.get_one()
+    assert parent_europe_rel.peer_id == europe_id
+    # make sure we did not get the whole peer node, just the ID
+    assert parent_europe_rel._peer is None
+    europe_parent_node = await nodes[paris_id].parent.get_peer(db=db)
+    assert europe_parent_node.get_kind() == "LocationRegion"
+    assert europe_parent_node.get_id() == europe_id
+    # make sure we didn't get the children relationships even though they have the same identifier
+    with pytest.raises(LookupError):
+        list(nodes[paris_id].children)
+    # make sure we didn't get other relationships
+    with pytest.raises(LookupError):
+        list(nodes[paris_id].things)
+
+    assert nodes[europe_id]
+    # europe has no parent
+    with pytest.raises(LookupError):
+        nodes[europe_id].parent.get_one()
+    # make sure we didn't get the children relationships even though they have the same identifier
+    with pytest.raises(LookupError):
+        list(nodes[europe_id].children)
+    # make sure we didn't get other relationships
+    with pytest.raises(LookupError):
+        list(nodes[europe_id].things)
+
+
 async def test_query_no_filter(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -300,6 +482,18 @@ async def test_query_no_filter(
     criticality_high: Node,
 ):
     nodes = await NodeManager.query(db=db, schema=criticality_schema)
+    assert len(nodes) == 3
+
+
+async def test_query_protocol(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_protocol,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+):
+    nodes = await NodeManager.query(db=db, schema=criticality_protocol)
     assert len(nodes) == 3
 
 

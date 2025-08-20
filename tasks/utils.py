@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from typing import Tuple
 
 from invoke import Context, UnexpectedExit
 
@@ -47,11 +46,11 @@ ESCAPED_REPO_PATH = escape_path(REPO_BASE)
 def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
 
-    with Path(f"{REPO_BASE}/pyproject.toml").open(encoding="utf-8") as file:
+    with (REPO_BASE / "pyproject.toml").open(encoding="utf-8") as file:
         return toml.load(file)["tool"]["poetry"].get("version", "latest")
 
 
-def git_info(context: Context) -> Tuple[str, str]:
+def git_info(context: Context) -> tuple[str, str]:
     """Return the name of the current branch and hash of the current commit."""
     branch_name = context.run("git rev-parse --abbrev-ref HEAD", hide=True, pty=False)
     hash_value = context.run("git rev-parse --short HEAD", hide=True, pty=False)
@@ -100,3 +99,17 @@ def str_to_bool(value: str) -> bool:
         return MAP[value.lower()]
     except KeyError as exc:
         raise ValueError(f"{value} can not be converted into a boolean") from exc
+
+
+def get_version_from_pyproject() -> str:
+    """Retrieve the current version from the pyproject.toml file."""
+
+    return toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+
+
+def get_yamllint_rules() -> dict:
+    from ruamel.yaml import YAML
+
+    yaml = YAML(typ="rt")
+    yamllint_rules = yaml.load(Path(".yamllint.yml"))
+    return yamllint_rules

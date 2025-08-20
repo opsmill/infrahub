@@ -44,8 +44,8 @@ nodes:
     icon: mdi:domain
     inherit_from:
       - OrganizationGeneric
+    generate_profile: false
     include_in_menu: true
-    menu_placement: OrganizationGeneric
     relationships:
       - name: platform
         peer: InfraPlatform
@@ -62,7 +62,6 @@ nodes:
     inherit_from:
       - OrganizationGeneric
     include_in_menu: true
-    menu_placement: OrganizationGeneric
     relationships:
       - name: location
         peer: LocationSite
@@ -70,6 +69,7 @@ nodes:
         optional: true
       - name: circuit
         peer: InfraCircuit
+        identifier: circuit__provider
         cardinality: many
         optional: true
   - name: Tenant
@@ -83,7 +83,6 @@ nodes:
     inherit_from:
       - OrganizationGeneric
     include_in_menu: true
-    menu_placement: OrganizationGeneric
     relationships:
       - name: location
         peer: LocationSite
@@ -91,5 +90,6 @@ nodes:
         optional: true
       - name: circuit
         peer: InfraCircuit
+        identifier: circuit__tenant
         cardinality: many
         optional: true

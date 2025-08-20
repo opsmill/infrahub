@@ -1,4 +1,6 @@
-from typing import Any, Dict
+import asyncio
+import uuid
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -10,6 +12,8 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
 from .shared import (
@@ -20,13 +24,29 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
+
+class BranchState:
+    def __init__(self) -> None:
+        self._branch: Branch | None = None
+
+    @property
+    def branch(self) -> Branch:
+        if self._branch:
+            return self._branch
+        raise InitializationError
+
+    @branch.setter
+    def branch(self, value: Branch) -> None:
+        self._branch = value
+
+
+state = BranchState()
 
 
 class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
-        return pytest.state["branch1"]  # type: ignore[index]
+        return state.branch
 
     @pytest.fixture(scope="class")
     async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
@@ -36,6 +56,11 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
+
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
 
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
@@ -60,13 +85,18 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await red.save(db=db)
 
         # Create Branch1
-        branch1 = await create_branch(db=db, branch_name="branch1")
-        pytest.state = {"branch1": branch1}
+        branch1 = await create_branch(db=db, branch_name=f"branch1-{uuid.uuid4()}")
+        state.branch = branch1
 
         # Load data in BRANCH1
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
+
+        deleted_chuck = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
+        await deleted_chuck.new(db=db, name="Deleted Chuck", height=175, description="He's not here")
+        await deleted_chuck.save(db=db)
+        await deleted_chuck.delete(db=db)
 
         mercedes = await Node.init(schema=MANUFACTURER_KIND_01, db=db, branch=branch1)
         await mercedes.new(
@@ -109,8 +139,10 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         objs = {
             "john": john.id,
+            "deleted_bob": deleted_bob.id,
             "jane": jane.id,
             "richard": richard.id,
+            "deleted_chuck": deleted_chuck.id,
             "honda": honda.id,
             "renault": renault.id,
             "mercedes": mercedes.id,
@@ -129,7 +161,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step02(
         self, schema_car_base, schema_person_02_first_last, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_02_first_last, schema_car_base, schema_manufacturer_base, schema_tag_base],
@@ -138,7 +170,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step03(
         self, schema_car_base, schema_person_03_no_height, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [
@@ -182,6 +214,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                                 },
                                 "removed": {},
                             },
+                            "human_friendly_id": None,
+                            "uniqueness_constraints": None,
                         },
                         "removed": {},
                     },
@@ -206,6 +240,14 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         # Check if the branch has been properly updated
         branches = await client.branch.all()
         assert branches[self.branch1.name].has_schema_changes is True
+
+        # Check schema properties
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=self.branch1)
+        updated_person_schema = schema_branch.get(name=PERSON_KIND)
+        assert updated_person_schema.uniqueness_constraints == [["firstname__value"]]
+        assert updated_person_schema.human_friendly_id == ["firstname__value"]
+        assert updated_person_schema.display_labels is None
+        assert updated_person_schema.order_by is None
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
         persons = await registry.manager.query(
@@ -273,6 +315,46 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         jane = persons[0]
         assert not hasattr(jane, "height")
 
+        for _ in range(10):
+            parent_event = await client.execute_graphql(
+                query=QUERY_EVENT,
+                variables={
+                    "event_type_filter": {"branch_rebased": {"branches": self.branch1.name}},
+                },
+            )
+            if parent_event["InfrahubEvent"]["count"] == 1:
+                break
+            await asyncio.sleep(1)
+
+        assert parent_event["InfrahubEvent"]["count"] == 1
+        parent_id = parent_event["InfrahubEvent"]["edges"][0]["node"]["id"]
+
+        for _ in range(10):
+            mutation_events = await client.execute_graphql(
+                query=QUERY_EVENT,
+                variables={
+                    "parent__ids": [parent_id],
+                },
+            )
+            if mutation_events["InfrahubEvent"]["count"] == 5:
+                break
+            await asyncio.sleep(1)
+
+        assert mutation_events["InfrahubEvent"]["count"] == 5
+
+        janes_events = [
+            event["node"]
+            for event in mutation_events["InfrahubEvent"]["edges"]
+            if event["node"]["primary_node"]["id"] == jane.id
+        ]
+        assert len(janes_events) == 1
+        janes_event = janes_events[0]
+        # Validate that the generated event for the name attribute is using the updated attribute name "firstname"
+        assert {"name": "firstname", "value": "Jane"} in janes_event["attributes"]
+        assert {"name": "description", "value": "The famous Jane Doe"} in janes_event["attributes"]
+
+        await verify_no_edges_added_after_node_delete(db=db)
+
     async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
         branch = await client.branch.merge(branch_name=self.branch1.name)
         assert branch
@@ -293,3 +375,52 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert jane.lastname.value is None  # type: ignore[attr-defined]
         assert not hasattr(jane, "height")
         assert not hasattr(jane, "name")
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
+
+
+QUERY_EVENT = """
+query(
+    $branch: [String!],
+    $parent__ids: [String!],
+    $event_type: [String!]
+    $event_type_filter: EventTypeFilter
+) {
+  InfrahubEvent(
+    branches: $branch,
+    parent__ids: $parent__ids
+    event_type: $event_type
+    event_type_filter: $event_type_filter
+  ) {
+    count
+    edges {
+      node {
+        id
+        event
+        branch
+        has_children
+        parent_id
+        level
+        occurred_at
+        primary_node {
+          id
+          kind
+        }
+        related_nodes {
+            id
+            kind
+        }
+       ... on NodeMutatedEvent {
+          id
+          attributes {
+            name
+            value
+          }
+        }
+      }
+    }
+  }
+}
+"""

@@ -1,4 +1,5 @@
 import pytest
+from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
@@ -111,7 +112,7 @@ async def test_branch_branched_form_format_validator(db: InfrahubDatabase):
     time1 = Timestamp().to_string()
     assert Branch(name="cr1234", branched_from=time1).branched_from == time1
 
-    with pytest.raises(PydanticValidationError):
+    with pytest.raises(TimestampFormatError):
         Branch(name="cr1234", branched_from="not a date")
 
 
@@ -229,8 +230,8 @@ async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, ba
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
     start_times, end_times = branch1.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
-    assert sorted(list(start_times.keys())) == ["branch1", "main"]
-    assert sorted(list(end_times.keys())) == ["branch1", "main"]
+    assert sorted(start_times.keys()) == ["branch1", "main"]
+    assert sorted(end_times.keys()) == ["branch1", "main"]
     assert end_times["branch1"] == now.to_string()
     assert end_times["main"] == now.to_string()
     assert start_times["branch1"] == base_dataset_02["time_m45"]
@@ -239,8 +240,8 @@ async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, ba
     t1 = Timestamp("2s")
     t10 = Timestamp("10s")
     start_times, end_times = branch1.get_branches_and_times_for_range(start_time=t10, end_time=t1)
-    assert sorted(list(start_times.keys())) == ["branch1", "main"]
-    assert sorted(list(end_times.keys())) == ["branch1", "main"]
+    assert sorted(start_times.keys()) == ["branch1", "main"]
+    assert sorted(end_times.keys()) == ["branch1", "main"]
     assert end_times["branch1"] == t1.to_string()
     assert end_times["main"] == t1.to_string()
     assert start_times["branch1"] == t10.to_string()
@@ -252,8 +253,8 @@ async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, ba
     branch2 = await registry.get_branch(branch="branch2", db=db)
 
     start_times, end_times = branch2.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
-    assert sorted(list(start_times.keys())) == ["branch2", "main"]
-    assert sorted(list(end_times.keys())) == ["branch2", "main"]
+    assert sorted(start_times.keys()) == ["branch2", "main"]
+    assert sorted(end_times.keys()) == ["branch2", "main"]
     assert end_times["branch2"] == now.to_string()
     assert end_times["main"] == now.to_string()
     assert start_times["branch2"] == base_dataset_03["time_m90"]
@@ -262,8 +263,8 @@ async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, ba
     t1 = Timestamp("2s")
     t10 = Timestamp("10s")
     start_times, end_times = branch2.get_branches_and_times_for_range(start_time=t10, end_time=t1)
-    assert sorted(list(start_times.keys())) == ["branch2", "main"]
-    assert sorted(list(end_times.keys())) == ["branch2", "main"]
+    assert sorted(start_times.keys()) == ["branch2", "main"]
+    assert sorted(end_times.keys()) == ["branch2", "main"]
     assert end_times["branch2"] == t1.to_string()
     assert end_times["main"] == t1.to_string()
     assert start_times["branch2"] == t10.to_string()

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import Field
 
 from infrahub.core.schema.basenode_schema import BaseNodeSchema
@@ -13,19 +11,29 @@ class GeneratedNodeSchema(BaseNodeSchema):
     inherit_from: list[str] = Field(
         default_factory=list,
         description="List of Generic Kind that this node is inheriting from",
-        json_schema_extra={"update": "not_supported"},
+        json_schema_extra={"update": "validate_constraint"},
     )
-    hierarchy: Optional[str] = Field(
+    generate_profile: bool = Field(
+        default=True,
+        description="Indicate if a profile schema should be generated for this schema",
+        json_schema_extra={"update": "validate_constraint"},
+    )
+    generate_template: bool = Field(
+        default=False,
+        description="Indicate if an object template schema should be generated for this schema",
+        json_schema_extra={"update": "allowed"},
+    )
+    hierarchy: str | None = Field(
         default=None,
         description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
         json_schema_extra={"update": "validate_constraint"},
     )
-    parent: Optional[str] = Field(
+    parent: str | None = Field(
         default=None,
         description="Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
         json_schema_extra={"update": "validate_constraint"},
     )
-    children: Optional[str] = Field(
+    children: str | None = Field(
         default=None,
         description="Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
         json_schema_extra={"update": "validate_constraint"},

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk import Timestamp as BaseTimestamp
+from infrahub_sdk.timestamp import Timestamp as BaseTimestamp
 
 if TYPE_CHECKING:
-    from pendulum.datetime import DateTime
+    from datetime import datetime
 
 
 class Timestamp(BaseTimestamp):
-    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
-        return self.obj
+    async def to_graphql(self, *args: Any, **kwargs: Any) -> datetime:  # noqa: ARG002
+        return self.to_datetime()
 
-    def get_query_filter_path(self, rel_name: str = "r") -> Tuple[str, Dict]:
+    def get_query_filter_path(self, rel_name: str = "r") -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time on all branches.
 

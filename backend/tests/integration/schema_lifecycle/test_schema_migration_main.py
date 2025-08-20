@@ -4,6 +4,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -15,8 +16,6 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
-
 
 class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
@@ -26,6 +25,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
+
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
 
         jane = await Node.init(schema=PERSON_KIND, db=db)
         await jane.new(db=db, name="Jane", height=165, description="The famous Jane Doe")
@@ -112,6 +116,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
                                 },
                                 "removed": {},
                             },
+                            "uniqueness_constraints": None,
+                            "human_friendly_id": None,
                         },
                         "removed": {},
                     },
@@ -139,7 +145,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         john = persons[0]
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
@@ -171,7 +176,10 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
                     },
                     "TestingCarMaker": {
                         "added": {},
-                        "changed": {"label": None, "name": None},
+                        "changed": {
+                            "label": None,
+                            "name": None,
+                        },
                         "removed": {},
                     },
                     "TestingPerson": {
@@ -191,7 +199,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         }
         assert success
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
@@ -208,6 +215,13 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         john = persons[0]
         assert not hasattr(john, "height")
 
+        # Ensure that we can query the existing node with graphql endpoint
+        await client.schema.all(refresh=True)
+        api_persons = await client.filters(kind=PERSON_KIND, firstname__value="John")
+        assert len(api_persons) == 1
+        api_john = api_persons[0]
+        assert not hasattr(api_john, "height")
+
         manufacturers = await registry.manager.query(
             db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}
         )
@@ -216,7 +230,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
@@ -229,7 +242,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
         assert success
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
@@ -241,3 +253,35 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         assert registry.schema.has(name=TAG_KIND) is False
+
+    async def test_step05_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+        success, response = await client.schema.check(schemas=[schema_step05])
+
+        assert response == {
+            "diff": {
+                "added": {},
+                "removed": {},
+                "changed": {
+                    "TestingCar": {
+                        "added": {},
+                        "changed": {
+                            "generate_profile": None,
+                        },
+                        "removed": {},
+                    },
+                },
+            }
+        }
+        assert success
+
+    async def test_step05_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+        response = await client.schema.load(schemas=[schema_step05])
+        assert not response.errors
+
+        assert registry.schema.has(name=f"Profile{CAR_KIND}") is False
+        car_schema = registry.schema.get(name=CAR_KIND, duplicate=False)
+        assert "profiles" in car_schema.relationship_names
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

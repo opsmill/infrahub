@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Iterable, Optional
-
-from infrahub.core.constants import NULL_VALUE
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     from infrahub.core.query import QueryResult
@@ -31,7 +29,7 @@ class GroupedIndexKey:
 
 
 class UniquenessQueryResultsIndex:
-    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Optional[set[str]] = None):
+    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: set[str] | None = None) -> None:
         self._relationship_index: dict[str, dict[str, set[str]]] = {}
         self._attribute_index: dict[str, dict[Any, set[str]]] = {}
         self._node_index: dict[str, dict[str, Any]] = {}
@@ -49,13 +47,13 @@ class UniquenessQueryResultsIndex:
             if relationship_identifier:
                 if relationship_identifier not in self._relationship_index:
                     self._relationship_index[relationship_identifier] = defaultdict(set)
-                if attr_value and attr_value != NULL_VALUE and node_id:
+                if attr_value and node_id:
                     self._relationship_index[relationship_identifier][attr_value].add(node_id)
                     self._node_index[node_id][relationship_identifier] = attr_value
             elif attr_name:
                 if attr_name not in self._attribute_index:
                     self._attribute_index[attr_name] = defaultdict(set)
-                if attr_value and attr_value != NULL_VALUE and node_id:
+                if attr_value and node_id:
                     self._attribute_index[attr_name][attr_value].add(node_id)
                     self._node_index[node_id][attr_name] = attr_value
 

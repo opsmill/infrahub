@@ -3,6 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.unique import (
     AttributeUniquenessChecker,
     AttributeUniqueUpdateValidatorQuery,
@@ -183,6 +184,7 @@ async def test_validator(
         constraint_name="attribute.regex.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
+        schema_branch=SchemaBranch(cache={}),
     )
 
     constraint_checker = AttributeUniquenessChecker(db=db, branch=branch)

@@ -1,6 +1,5 @@
 from functools import partial
 from pathlib import Path
-from typing import List, Optional
 
 import yaml
 from infrahub_sdk import InfrahubClientSync
@@ -12,9 +11,9 @@ from .utils import prepare_node_attributes
 def load_schema(
     client: InfrahubClientSync,
     schema: Path,
-    branch: Optional[str] = None,
-    attributes: Optional[List[dict]] = None,
-    relationships: Optional[List[dict]] = None,
+    branch: str | None = None,
+    attributes: list[dict] | None = None,
+    relationships: list[dict] | None = None,
 ):
     attributes = attributes or []
     relationships = relationships or []

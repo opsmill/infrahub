@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.node import Node
 from infrahub.core.query.node import NodeListGetInfoQuery
+from infrahub.core.schema import MainSchemaTypes
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -17,16 +18,16 @@ from .interface import RelationshipManagerConstraintInterface
 class NodeToValidate:
     uuid: str
     cardinality: RelationshipCardinality
-    min_count: Optional[int] = None
-    max_count: Optional[int] = None
+    min_count: int | None = None
+    max_count: int | None = None
 
 
 class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager) -> None:
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
         peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
         if isinstance(peer_schema, GenericSchema):

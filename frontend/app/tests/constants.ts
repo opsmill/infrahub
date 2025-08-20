@@ -1,0 +1,25 @@
+export const ADMIN_CREDENTIALS = {
+  username: "admin",
+  password: "infrahub",
+};
+
+export const READ_WRITE_CREDENTIALS = {
+  username: "cobrian",
+  password: "Password123",
+};
+
+export const READ_ONLY_CREDENTIALS = {
+  username: "jbauer",
+  password: "Password123",
+};
+
+export const ENG_TEAM_ONLY_CREDENTIALS = {
+  username: "shernandez",
+  password: "Password123",
+};
+
+export const ACCOUNT_STATE_PATH = {
+  ADMIN: "tests/e2e/.auth/admin.json",
+  READ_WRITE: "tests/e2e/.auth/read-write.json",
+  READ_ONLY: "tests/e2e/.auth/read-only.json",
+};

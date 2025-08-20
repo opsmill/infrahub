@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ValidationError, field_validator
 from ujson import loads
 
@@ -8,17 +6,17 @@ from infrahub.exceptions import Error
 
 
 class ModelForTesting(BaseModel):
-    field_1: Optional[str] = None
+    field_1: str | None = None
     field_2: str
 
     @field_validator("field_1", mode="before")
     @classmethod
-    def always_fail(cls, value: Optional[str] = None) -> str:
+    def always_fail(cls, value: str | None = None) -> str:
         raise ValueError("this is the error message")
 
     @field_validator("field_2", mode="before")
     @classmethod
-    def always_fail_more(cls, value: Optional[str] = None) -> str:
+    def always_fail_more(cls, value: str | None = None) -> str:
         raise ValueError("another error message")
 
 
@@ -26,7 +24,7 @@ class MockError(Error):
     HTTP_CODE = 418
     DESCRIPTION = "the teapot error"
 
-    def __init__(self, message: Optional[str]):
+    def __init__(self, message: str | None) -> None:
         self.message = message or ""
 
 

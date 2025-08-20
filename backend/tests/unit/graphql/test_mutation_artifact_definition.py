@@ -1,21 +1,25 @@
-from typing import Dict
+from unittest.mock import call, patch
 
 import pytest
-from graphql import graphql
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
-from infrahub.message_bus import messages
+from infrahub.git.models import RequestArtifactDefinitionGenerate
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.adapters.message_bus import BusRecorder
+from tests.helpers.graphql import graphql
 
 
 @pytest.fixture
-async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: Dict[str, Node]) -> Node:
+async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]) -> Node:
     g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)
@@ -24,7 +28,7 @@ async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_g
 
 @pytest.fixture
 async def transformation1(
-    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]
 ) -> Node:
     t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
@@ -43,7 +47,7 @@ async def transformation1(
 async def definition1(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_data_generic: Dict[str, Node],
+    car_person_data_generic: dict[str, Node],
     group1: Node,
     transformation1: Node,
 ) -> Node:
@@ -66,10 +70,10 @@ async def test_create_artifact_definition(
     default_branch: Branch,
     register_core_models_schema,
     car_person_data_generic,
+    create_test_admin: Node,
     group1: Node,
     transformation1: Node,
     branch: Branch,
-    patch_services,
 ):
     query = """
     mutation {
@@ -92,29 +96,55 @@ async def test_create_artifact_definition(
         transformation1.id,
     )
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
+    service = await InfrahubServices.new(message_bus=recorder, workflow=WorkflowLocalExecution())
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=account_session
     )
 
-    assert result.errors is None
-    assert result.data["CoreArtifactDefinitionCreate"]["ok"] is True
-    ad_id = result.data["CoreArtifactDefinitionCreate"]["object"]["id"]
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+    ) as mock_submit_workflow:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    ad1 = await NodeManager.get_one(db=db, id=ad_id, include_owner=True, include_source=True, branch=branch)
+        assert result.errors is None
+        assert result.data
+        assert result.data["CoreArtifactDefinitionCreate"]["ok"] is True
+        ad_id = result.data["CoreArtifactDefinitionCreate"]["object"]["id"]
 
-    assert ad1.name.value == "Artifact 01"
+        ad1 = await NodeManager.get_one(db=db, id=ad_id, include_owner=True, include_source=True, branch=branch)
 
-    assert (
-        messages.RequestArtifactDefinitionGenerate(artifact_definition=ad_id, branch=branch.name, limit=[])
-        in service.message_bus.messages
-    )
+        assert ad1.name.value == "Artifact 01"
+
+        context = InfrahubContext.init(
+            branch=branch,
+            account=account_session,
+        )
+
+        expected_calls = [
+            call(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                parameters={
+                    "model": RequestArtifactDefinitionGenerate(
+                        artifact_definition_id=ad1.id,
+                        artifact_definition_name=ad1.name.value,
+                        branch=branch.name,
+                        limit=[],
+                    )
+                },
+                context=context,
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)
 
 
 async def test_update_artifact_definition(
@@ -122,6 +152,7 @@ async def test_update_artifact_definition(
     default_branch: Branch,
     register_core_models_schema,
     car_person_data_generic,
+    create_test_admin: Node,
     definition1: Node,
     branch: Branch,
 ):
@@ -140,27 +171,51 @@ async def test_update_artifact_definition(
     """ % (definition1.id)
 
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
+    service = await InfrahubServices.new(message_bus=recorder, workflow=WorkflowLocalExecution())
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
     )
-
-    assert result.errors is None
-    assert result.data["CoreArtifactDefinitionUpdate"]["ok"] is True
-
-    ad1_post = await NodeManager.get_one(
-        db=db, id=definition1.id, include_owner=True, include_source=True, branch=branch
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=account_session
     )
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+    ) as mock_submit_workflow:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    assert ad1_post.artifact_name.value == "myartifact2"
+        assert result.errors is None
+        assert result.data
+        assert result.data["CoreArtifactDefinitionUpdate"]["ok"] is True
 
-    assert (
-        messages.RequestArtifactDefinitionGenerate(artifact_definition=definition1.id, branch=branch.name, limit=[])
-        in service.message_bus.messages
-    )
+        ad1_post = await NodeManager.get_one(
+            db=db, id=definition1.id, include_owner=True, include_source=True, branch=branch
+        )
+
+        assert ad1_post.artifact_name.value == "myartifact2"
+
+        context = InfrahubContext.init(
+            branch=branch,
+            account=account_session,
+        )
+
+        expected_calls = [
+            call(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                parameters={
+                    "model": RequestArtifactDefinitionGenerate(
+                        artifact_definition_id=definition1.id,
+                        artifact_definition_name=definition1.name.value,
+                        branch=branch.name,
+                        limit=[],
+                    )
+                },
+                context=context,
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)

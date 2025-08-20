@@ -36,6 +36,8 @@ datasources:
     access: proxy
     basicAuth: false
     jsonData:
+      serviceMap:
+        datasourceUid: 'localprometheus'
       tracesToLogsV2:
         datasourceUid: 'localloki'
         spanStartTimeShift: '1h'

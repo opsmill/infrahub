@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.database import InfrahubDatabase
@@ -22,6 +23,7 @@ class TestUniquenessChecker:
             constraint_name="node.uniqueness_constraints.update",
             node_schema=schema,
             schema_path=schema_path,
+            schema_branch=SchemaBranch(cache={}),
         )
         return await checker.check(request)
 
@@ -55,7 +57,8 @@ class TestUniquenessChecker:
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
 
-        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+        schema_uniqueness_constraint_synced = registry.schema.get(name="TestCar", branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema_uniqueness_constraint_synced)
 
         assert len(grouped_data_paths) == 1
         all_data_paths = grouped_data_paths[0].get_all_data_paths()
@@ -143,7 +146,86 @@ class TestUniquenessChecker:
         assert len(grouped_data_paths) == 1
         assert not grouped_data_paths[0].get_all_data_paths()
 
-    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
+    async def test_combined_uniqueness_constraint_attribute_violations(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_volt_main,
+        car_yaris_main,
+        person_john_main,
+        default_branch: Branch,
+        branch: Branch,
+    ):
+        cars_to_update = await NodeManager.get_many(
+            db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id], branch=branch
+        )
+        accord_branch = cars_to_update[car_accord_main.id]
+        accord_branch.color.value = "#123456"
+        await accord_branch.save(db=db)
+        prius_branch = cars_to_update[car_prius_main.id]
+        prius_branch.color.value = None
+        await prius_branch.save(db=db)
+        volt_branch = cars_to_update[car_volt_main.id]
+        volt_branch.color.value = None
+        await volt_branch.save(db=db)
+        schema = registry.schema.get("TestCar", branch=branch)
+        schema.uniqueness_constraints = [["color__value", "owner"]]
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 4
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="NULL",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_volt_main.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="NULL",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_volt_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+
+    @pytest.mark.skip("We technically don't support uniqueness constraints on properties of relationships")
     async def test_combined_uniqueness_constraints_with_violations(
         self,
         db: InfrahubDatabase,
@@ -275,7 +357,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
-    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
+    @pytest.mark.skip("We technically don't support uniqueness constraints on properties of relationships")
     async def test_generic_unique_attribute_multiple_relationship_violations_to_same_node(
         self,
         db: InfrahubDatabase,
@@ -358,7 +440,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
-    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
+    @pytest.mark.skip("We technically don't support uniqueness constraints on properties of relationships")
     async def test_generic_unique_constraint_relationship_with_and_without_attr(
         self,
         db: InfrahubDatabase,
@@ -589,7 +671,7 @@ class TestUniquenessChecker:
         await car_camry_main.save(db=db)
 
         schema = registry.schema.get("TestCar", branch=default_branch)
-        schema.uniqueness_constraints = [["owner", "color"]]
+        schema.uniqueness_constraints = [["owner", "color__value"]]
         grouped_data_paths = await self.__call_system_under_test(db, default_branch, schema)
 
         assert len(grouped_data_paths) == 1
@@ -635,7 +717,7 @@ class TestUniquenessChecker:
         await car_3_branch.save(db=db)
 
         schema = registry.schema.get("TestCar", branch=branch)
-        schema.uniqueness_constraints = [["owner", "color"], ["color", "nbr_seats"]]
+        schema.uniqueness_constraints = [["owner", "color__value"], ["color__value", "nbr_seats__value"]]
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)

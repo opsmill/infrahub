@@ -8,6 +8,7 @@ CAR = NodeSchema(
     include_in_menu=True,
     label="Car",
     default_filter="name__value",
+    display_labels=["name__value", "color__value"],
     attributes=[
         AttributeSchema(name="name", kind="Text"),
         AttributeSchema(name="description", kind="Text", optional=True),
@@ -20,6 +21,14 @@ CAR = NodeSchema(
             optional=False,
             peer=TestKind.PERSON,
             cardinality=RelationshipCardinality.ONE,
+        ),
+        RelationshipSchema(
+            name="previous_owner",
+            kind=RelationshipKind.ATTRIBUTE,
+            optional=True,
+            peer=TestKind.PERSON,
+            cardinality=RelationshipCardinality.ONE,
+            identifier="testingcar__previousowners",
         ),
         RelationshipSchema(
             name="manufacturer",

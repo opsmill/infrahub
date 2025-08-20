@@ -1,35 +1,21 @@
 import pytest
-from infrahub_sdk.client import NodeDiff
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, SchemaPathType
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.constants import SchemaPathType
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 
 @pytest.fixture
 def person_name_node_diff(
     person_john_main: Node, default_branch: Branch
-) -> tuple[NodeDiff, set[SchemaUpdateConstraintInfo]]:
-    node_diff = {
-        "branch": default_branch.name,
-        "kind": "TestPerson",
-        "id": person_john_main.id,
-        "action": DiffAction.UPDATED.value,
-        "display_label": "Person John Main Display Label",
-        "elements": [
-            {
-                "name": "name",
-                "element_type": DiffElementType.ATTRIBUTE.value,
-                "action": DiffAction.UPDATED.value,
-                "summary": {"added": 0, "updated": 1, "removed": 0},
-            }
-        ],
-    }
+) -> tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]]:
+    node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_names={"name"})
     schema_updated_constraint_infos = {
         SchemaUpdateConstraintInfo(
             path=SchemaPath(
@@ -59,6 +45,24 @@ def person_name_node_diff(
                 property_name="unique",
             ),
         ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.inherit_from.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestPerson",
+                field_name="inherit_from",
+                property_name="inherit_from",
+            ),
+        ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.inherit_from.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestCar",
+                field_name="inherit_from",
+                property_name="inherit_from",
+            ),
+        ),
     }
     return node_diff, schema_updated_constraint_infos
 
@@ -66,26 +70,8 @@ def person_name_node_diff(
 @pytest.fixture
 def person_cars_node_diff(
     person_john_main: Node, default_branch: Branch
-) -> tuple[NodeDiff, set[SchemaUpdateConstraintInfo]]:
-    node_diff = {
-        "branch": default_branch.name,
-        "kind": "TestPerson",
-        "id": person_john_main.id,
-        "action": DiffAction.UPDATED.value,
-        "display_label": "Person John Main Display Label",
-        "elements": [
-            {
-                "name": "cars",
-                "element_type": DiffElementType.RELATIONSHIP_MANY.value,
-                "action": DiffAction.UPDATED.value,
-                "summary": {"added": 0, "updated": 1, "removed": 0},
-                "peers": [
-                    {"action": DiffAction.REMOVED.value, "summary": {"added": 0, "updated": 0, "removed": 1}},
-                    {"action": DiffAction.ADDED.value, "summary": {"added": 1, "updated": 0, "removed": 0}},
-                ],
-            }
-        ],
-    }
+) -> tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]]:
+    node_diff = NodeDiffFieldSummary(kind="TestPerson", relationship_names={"cars"})
     schema_updated_constraint_infos = {
         SchemaUpdateConstraintInfo(
             constraint_name="relationship.min_count.update",
@@ -152,8 +138,13 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        relevant_constraints = [
+            c
+            for c in constraints
+            if c.constraint_name not in ["node.generate_profile.update", "node.uniqueness_constraints.update"]
+        ]
+        assert len(relevant_constraints) == len(constraint_info_set)
+        assert set(relevant_constraints) == constraint_info_set
 
     async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -162,15 +153,17 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        assert len(constraints) >= len(constraint_info_set)
+        assert constraint_info_set < set(constraints)
 
     async def test_node_property_constraints_included(self, car_person_schema, default_branch, person_name_node_diff):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["name", "height"]]
+        name_attr_schema = person_schema.get_attribute("name")
+        name_attr_schema.parameters.max_length = 30
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
-        car_schema.uniqueness_constraints = [["owner", "color"]]
+        car_schema.uniqueness_constraints = [["owner", "color__value"]]
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
         person_uniqueness_constraint_info = SchemaUpdateConstraintInfo(
@@ -191,10 +184,25 @@ class TestConstraintDeterminer:
                 property_name="uniqueness_constraints",
             ),
         )
+        max_length_param_constraint_info = SchemaUpdateConstraintInfo(
+            constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
+            path=SchemaPath(
+                path_type=SchemaPathType.ATTRIBUTE,
+                schema_kind="TestPerson",
+                field_name="name",
+                property_name="parameters.max_length",
+            ),
+        )
         constraint_info_set.add(person_uniqueness_constraint_info)
         constraint_info_set.add(car_uniqueness_constraint_info)
+        constraint_info_set.add(max_length_param_constraint_info)
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        relevant_constraints = [
+            c
+            for c in constraints
+            if c.constraint_name != "node.generate_profile.update" and c.path.schema_kind in {"TestCar", "TestPerson"}
+        ]
+        assert len(relevant_constraints) == len(constraint_info_set)
+        assert set(relevant_constraints) == constraint_info_set

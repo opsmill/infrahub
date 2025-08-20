@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType, RelationshipCardinality
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -22,34 +22,35 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
     def __init__(
         self,
-        min_count_override: Optional[int] = None,
-        max_count_override: Optional[int] = None,
+        min_count_override: int | None = None,
+        max_count_override: int | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.min_count_override = min_count_override
         self.max_count_override = max_count_override
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["relationship_id"] = self.relationship_schema.identifier
+        self.params["relationship_direction"] = self.relationship_schema.direction.value
         self.params["min_count"] = (
             self.min_count_override if self.min_count_override is not None else self.relationship_schema.min_count
         )
-        self.params["max_count"] = (
-            self.max_count_override if self.max_count_override is not None else self.relationship_schema.max_count
-        )
+        max_count: int | None = self.relationship_schema.max_count
+        if self.max_count_override:
+            max_count = self.max_count_override
+        if max_count == 0:
+            max_count = None
+        self.params["max_count"] = max_count
 
         # ruff: noqa: E501
         query = """
         // get the nodes on these branches nodes
-        MATCH (n:Node)
-        WHERE $node_kind IN LABELS(n)
-        CALL {
-            WITH n
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
             RETURN path as full_path, n as active_node
@@ -58,13 +59,13 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // filter to only the active nodes
         WITH full_path, active_node
-        WITH full_path, active_node
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         // get the relationships using the given identifier for each node
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $relationship_id })-[rrel2:IS_RELATED]-(peer:Node)
-            WHERE all(
+            WHERE ($relationship_direction <> "outbound" OR (startNode(rrel1) = active_node AND startNode(rrel2) = rel))
+            AND ($relationship_direction <> "inbound" OR (startNode(rrel1) = rel AND startNode(rrel2) = peer))
+            AND all(
                 r in relationships(path)
                 WHERE (%(branch_filter)s)
             )
@@ -83,8 +84,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
             start_node,
             peer_node
         // make sure to only use the latest version of this particular path
-        CALL {
-            WITH enriched_paths, peer_node
+        CALL (enriched_paths, peer_node) {
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[3] as current_path, path_to_check[4] as branch_name, peer_node as current_peer
             ORDER BY
@@ -96,8 +96,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // filter to only the current active paths
         WITH collect([current_peer, current_path]) as peers_and_paths, start_node, branch_name
-        CALL {
-            WITH peers_and_paths
+        CALL (peers_and_paths) {
             UNWIND peers_and_paths AS peer_and_path
             WITH peer_and_path
             WHERE all(r in relationships(peer_and_path[1]) WHERE r.status = "active")
@@ -105,9 +104,8 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // sum all the relationships across branches and identify the violators
         WITH collect([branch_name, num_relationships_on_branch]) as branches_and_counts, start_node
-        CALL {
-            WITH start_node, branches_and_counts
-            WITH start_node, branches_and_counts, reduce(rel_total = 0, bnc in branches_and_counts | rel_total + bnc[1]) AS total_relationships_count
+        CALL (start_node, branches_and_counts) {
+            WITH reduce(rel_total = 0, bnc in branches_and_counts | rel_total + bnc[1]) AS total_relationships_count
             WHERE
                 (toInteger($min_count) IS NOT NULL AND total_relationships_count < toInteger($min_count))
                 OR (toInteger($max_count) IS NOT NULL AND total_relationships_count > toInteger($max_count))
@@ -115,7 +113,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // return a row for each node-branch combination with a count for that branch
         UNWIND violation_branches_and_counts as violation_branch_and_count
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = [
@@ -146,7 +144,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 class RelationshipCountChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipCountUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 
@@ -161,8 +159,8 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
             "relationship.cardinality.update",
         )
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list: List[GroupedDataPaths] = []
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         relationship_schema = request.node_schema.get_relationship(name=request.schema_path.field_name)

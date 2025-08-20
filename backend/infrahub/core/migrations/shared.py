@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
 
 from infrahub.core import registry
-from infrahub.core.path import SchemaPath  # noqa: TCH001
-from infrahub.core.query import Query, QueryType
+from infrahub.core.path import SchemaPath  # noqa: TC001
+from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -16,16 +16,18 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.timestamp import Timestamp
+
+from .query import MigrationQuery  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema_manager import SchemaBranch
-    from infrahub.core.timestamp import Timestamp
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 class MigrationResult(BaseModel):
-    errors: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
     nbr_migrations_executed: int = 0
 
     @property
@@ -41,35 +43,61 @@ class SchemaMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
 
-    new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
-    previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    new_node_schema: NodeSchema | GenericSchema | None = None
+    previous_node_schema: NodeSchema | GenericSchema | None = None
     schema_path: SchemaPath
 
-    async def execute(
-        self, db: InfrahubDatabase, branch: Branch, at: Optional[Union[Timestamp, str]] = None
+    async def execute_pre_queries(
+        self,
+        db: InfrahubDatabase,  # noqa: ARG002
+        result: MigrationResult,
+        branch: Branch,  # noqa: ARG002
+        at: Timestamp,  # noqa: ARG002
     ) -> MigrationResult:
+        return result
+
+    async def execute_post_queries(
+        self,
+        db: InfrahubDatabase,  # noqa: ARG002
+        result: MigrationResult,
+        branch: Branch,  # noqa: ARG002
+        at: Timestamp,  # noqa: ARG002
+    ) -> MigrationResult:
+        return result
+
+    async def execute_queries(
+        self, db: InfrahubDatabase, result: MigrationResult, branch: Branch, at: Timestamp
+    ) -> MigrationResult:
+        for migration_query in self.queries:
+            try:
+                query = await migration_query.init(db=db, branch=branch, at=at, migration=self)
+                await query.execute(db=db)
+                result.nbr_migrations_executed += query.get_nbr_migrations_executed()
+            except Exception as exc:
+                result.errors.append(str(exc))
+                return result
+
+        return result
+
+    async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
+            at = Timestamp(at)
 
-            for migration_query in self.queries:
-                try:
-                    query = await migration_query.init(db=ts, branch=branch, at=at, migration=self)
-                    await query.execute(db=ts)
-                    result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-                except Exception as exc:  # pylint: disable=broad-exception-caught
-                    result.errors.append(str(exc))
-                    return result
+            await self.execute_pre_queries(db=ts, result=result, branch=branch, at=at)
+            await self.execute_queries(db=ts, result=result, branch=branch, at=at)
+            await self.execute_post_queries(db=ts, result=result, branch=branch, at=at)
 
         return result
 
     @property
-    def new_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def new_schema(self) -> NodeSchema | GenericSchema:
         if self.new_node_schema:
             return self.new_node_schema
         raise ValueError("new_node_schema hasn't been initialized")
 
     @property
-    def previous_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def previous_schema(self) -> NodeSchema | GenericSchema:
         if self.previous_node_schema:
             return self.previous_node_schema
         raise ValueError("previous_node_schema hasn't been initialized")
@@ -110,7 +138,7 @@ class GraphMigration(BaseModel):
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @classmethod
-    def init(cls, **kwargs: Dict[str, Any]) -> Self:
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
@@ -118,15 +146,17 @@ class GraphMigration(BaseModel):
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         async with db.start_transaction() as ts:
-            result = MigrationResult()
+            return await self.do_execute(db=ts)
 
-            for migration_query in self.queries:
-                try:
-                    query = await migration_query.init(db=ts)
-                    await query.execute(db=ts)
-                except Exception as exc:  # pylint: disable=broad-exception-caught
-                    result.errors.append(str(exc))
-                    return result
+    async def do_execute(self, db: InfrahubDatabase) -> MigrationResult:
+        result = MigrationResult()
+        for migration_query in self.queries:
+            try:
+                query = await migration_query.init(db=db)
+                await query.execute(db=db)
+            except Exception as exc:
+                result.errors.append(str(exc))
+                return result
 
         return result
 
@@ -139,7 +169,7 @@ class InternalSchemaMigration(BaseModel):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema_manager import SchemaBranch  # pylint: disable=import-outside-toplevel
+        from infrahub.core.schema.schema_branch import SchemaBranch
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)
@@ -150,7 +180,7 @@ class InternalSchemaMigration(BaseModel):
         return schema_branch
 
     @classmethod
-    def init(cls, **kwargs: Dict[str, Any]) -> Self:
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
@@ -165,38 +195,23 @@ class InternalSchemaMigration(BaseModel):
             try:
                 execution_result = await migration.execute(db=db, branch=default_branch)
                 result.errors.extend(execution_result.errors)
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:
                 result.errors.append(str(exc))
                 return result
 
         return result
 
 
-class MigrationQuery(Query):
-    type: QueryType = QueryType.WRITE
+class ArbitraryMigration(BaseModel):
+    name: str = Field(..., description="Name of the migration")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
-    def __init__(
-        self,
-        migration: SchemaMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
+    @classmethod
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
 
-    def get_nbr_migrations_executed(self) -> int:
-        return self.num_of_results
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()
 
-
-class AttributeMigrationQuery(Query):
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: AttributeSchemaMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
-
-    def get_nbr_migrations_executed(self) -> int:
-        return self.num_of_results
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()

@@ -15,7 +15,7 @@ class InfrahubClientUser(User):
     delete_this_node = None
     update_this_node = None
 
-    def __init__(self, environment):
+    def __init__(self, environment) -> None:
         super().__init__(environment)
 
         self.address = environment.custom_options["config"].url

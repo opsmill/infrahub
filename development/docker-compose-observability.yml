@@ -1,0 +1,181 @@
+---
+services:
+  # --------------------------------------------------------------------------------
+  #  - Prometheus to collect all metrics endpoints
+  #  - Tempo to receive traces
+  #  - Grafana to visualize these metrics
+  #  - Loki to receive logs from promtail
+  #  - Promtail to parse logs from different source
+  # --------------------------------------------------------------------------------
+  promtail:
+    profiles: [debug]
+    image: grafana/promtail:2.8.4
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    depends_on:
+      - loki
+
+  loki:
+    profiles: [debug]
+    image: grafana/loki:3.3.2
+    command:
+      - '-config.file=/etc/loki/config.yml'
+      - '-config.expand-env=true'
+    volumes:
+      - type: bind
+        source: ./loki/config.yml
+        target: /etc/loki/config.yml
+        read_only: true
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  init:
+    profiles: [trace]
+    image: grafana/tempo:latest
+    user: root
+    entrypoint:
+      - "chown"
+      - "10001:10001"
+      - "/var/tempo"
+    volumes:
+      - tempo_data:/var/tempo
+
+  tempo:
+    profiles: [trace]
+    image: grafana/tempo:2.6.1
+    volumes:
+      - type: bind
+        source: ./tempo/config.yml
+        target: /etc/tempo.yaml
+        read_only: true
+      - tempo_data:/tmp/tempo
+    command:
+      - '-config.file=/etc/tempo.yaml'
+    ports:
+      - "3200:3200"
+    depends_on:
+      - init
+
+  task-manager-exporter:
+    profiles: [debug]
+    image: prefecthq/prometheus-prefect-exporter:latest
+    environment:
+      PREFECT_API_URL: http://task-manager:4200/api
+      LOG_LEVEL: WARNING
+    ports:
+      - "4201:8000"
+    depends_on:
+      task-manager:
+        condition: service_healthy
+    labels:
+      namespace: "prefect"
+      pod: "prefect-exporter"
+
+  prometheus:
+    profiles: [debug]
+    image: prom/prometheus:latest
+    volumes:
+      - type: bind
+        source: ./prometheus/config.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=4d'
+      - '--storage.tsdb.retention.size=20GB'
+      - '--storage.tsdb.wal-compression'
+      - '--storage.tsdb.min-block-duration=1h'
+      - '--storage.tsdb.max-block-duration=2h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
+      - '--log.level=warn'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    ports:
+      - "9090:9090"
+
+  node-exporter:
+    profiles: [debug]
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    ports:
+      - "9100:9100"
+
+  cadvisor:
+    profiles: [debug]
+    image: gcr.io/cadvisor/cadvisor:latest
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    ports:
+      - "8080:8080"
+
+  grafana:
+    profiles: [debug]
+    image: grafana/grafana:11.4.0
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+      - grafana_logs:/var/log/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_LOG_LEVEL=warn
+      - GF_LOG_MODE=console,file
+      - GF_LOG_DIR=/var/log/grafana
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    ports:
+      - "3500:3000"
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  grafana_data:
+  grafana_logs:
+  prometheus_data:
+  loki_data:
+  tempo_data:

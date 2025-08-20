@@ -3,7 +3,7 @@
     "nodes": [
         {
             "name": "Device",
-            "namespace": "Infra",
+            "namespace": "Test",
             "default_filter": "name__value",
             "display_labels": ["name__value"],
             "attributes": [
@@ -16,7 +16,7 @@
             "relationships": [
                 {
                     "name": "interfaces",
-                    "peer": "InfraInterface",
+                    "peer": "TestInterface",
                     "optional": true,
                     "cardinality": "many",
                     "kind": "Component",
@@ -27,7 +27,7 @@
         },
         {
             "name": "Interface",
-            "namespace": "Infra",
+            "namespace": "Test",
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text"},
@@ -36,11 +36,11 @@
                 {"name": "enabled", "kind": "Boolean", "default_value": true}
             ],
             "relationships": [
-                {"name": "device", "peer": "InfraDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
+                {"name": "device", "peer": "TestDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
                 {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many", "kind": "Attribute"},
                 {
                     "name": "ip_addresses",
-                    "peer": "InfraIPAddress",
+                    "peer": "TestIPAddress",
                     "optional": true,
                     "cardinality": "many",
                     "kind": "Component"
@@ -49,7 +49,7 @@
         },
         {
             "name": "IPAddress",
-            "namespace": "Infra",
+            "namespace": "Test",
             "default_filter": "address__value",
             "display_labels": ["address__value"],
             "attributes": [
@@ -57,7 +57,58 @@
                 {"name": "description", "kind": "Text", "optional": true}
             ],
             "relationships": [
-                {"name": "interface", "peer": "InfraInterface", "optional": false, "cardinality": "one", "kind": "Parent"}
+                {"name": "interface", "peer": "TestInterface", "optional": false, "cardinality": "one", "kind": "Parent"}
+            ]
+        },
+        {
+            "name": "Organization",
+            "namespace": "Testing",
+            "description": "An organization represent a legal entity, a company.",
+            "include_in_menu": true,
+            "label": "Organization",
+            "icon": "mdi:domain",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "branch": "aware",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": true},
+                {"name": "label", "kind": "Text", "optional": true},
+                {"name": "description", "kind": "Text", "optional": true}
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": true,
+                    "cardinality": "many"
+                }
+            ]
+        },
+        {
+            "name": "Site",
+            "namespace": "Infra",
+            "description": "A location represent a physical element site",
+            "include_in_menu": true,
+            "icon": "mdi:map-marker-radius-outline",
+            "label": "Site",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": true},
+                {"name": "description", "kind": "Text", "optional": true},
+                {"name": "type", "kind": "Text"}
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": true,
+                    "cardinality": "many"
+                }
             ]
         }
     ]

@@ -2,7 +2,7 @@
 ---
 version: '1.0'
 generics:
-  - name: Interface
+  - name: Interface  # InfraInterface
     namespace: Infra
     description: "Generic Network Interface"
     label: "Interface"
@@ -11,9 +11,8 @@ generics:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
-    uniqueness_constraints:
-      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -63,20 +62,20 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Endpoint
+  - name: Endpoint  # InfraEndpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together"
     include_in_menu: false
     label: "Endpoint"
     relationships:
       - name: connected_endpoint
+        identifier: connected__endpoint
         peer: InfraEndpoint
         optional: true
         cardinality: one
         kind: Attribute
-        identifier: connected__endpoint
-  - name: Choice
-    namespace: Template
+  - name: Generic  # ChoiceGeneric
+    namespace: Choice
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
@@ -103,7 +102,7 @@ generics:
         kind: Attribute
 
 nodes:
-  - name: AutonomousSystem
+  - name: AutonomousSystem  # InfraAutonomousSystem
     namespace: Infra
     description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
     label: "Autonomous System"
@@ -130,7 +129,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
-  - name: BGPPeerGroup
+  - name: BGPPeerGroup  # InfraBGPPeerGroup
     namespace: Infra
     description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
     label: "BGP Peer Group"
@@ -166,7 +165,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-  - name: BGPSession
+  - name: BGPSession  # InfraBGPSession
     namespace: Infra
     description: "A BGP Session represent a point to point connection between two routers"
     label: "BGP Session"
@@ -238,12 +237,12 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-  - name: Circuit
+  - name: Circuit  # InfraCircuit
     namespace: Infra
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     icon: "mdi:transit-connection-variant"
-    default_filter: circuit_id__value
+    human_friendly_id: [circuit_id__value]
     order_by:
       - circuit_id__value
     display_labels:
@@ -281,7 +280,7 @@ nodes:
         kind: Component
       - name: type
         label: type
-        peer: TemplateCircuitType
+        peer: ChoiceCircuitType
         optional: false
         cardinality: one
         kind: Attribute
@@ -290,7 +289,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: CircuitEndpoint
+  - name: CircuitEndpoint  # InfraCircuitEndpoint
     namespace: Infra
     description: "A Circuit endpoint is attached to each end of a circuit"
     label: "Circuit Endpoint"
@@ -313,8 +312,8 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
-  - name: CircuitType
-    namespace: Template
+  - name: CircuitType  # ChoiceCircuitType
+    namespace: Choice
     description: "A type of Circuit"
     label: "Circuit Type"
     icon: "mdi:poll"
@@ -324,31 +323,27 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     relationships:
       - cardinality: many
         identifier: circuit__type
         name: circuit
         optional: true
         peer: InfraCircuit
-  - name: Device
+  - name: Device  # InfraDevice
     namespace: Infra
     description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
-    # default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
       - name__value
     display_labels:
       - name__value
-    uniqueness_constraints:
-      - ["name__value", "rack", "location", "organization"]
     attributes:
       - name: name
         kind: Text
-        # unique: true
         optional: true
       - name: description
         kind: Text
@@ -357,12 +352,10 @@ nodes:
         label: Serial Number
         kind: Text
         optional: true
-        # unique: true
       - name: asset_tag
         label: Asset Tag
         kind: Text
         optional: true
-        # unique: true
     relationships:
       - name: location
         peer: LocationGeneric
@@ -371,7 +364,7 @@ nodes:
         kind: Attribute
       - name: model
         label: Model
-        peer: TemplateDeviceType
+        peer: ChoiceDeviceType
         optional: false
         cardinality: one
         kind: Attribute
@@ -424,8 +417,8 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-  - name: DeviceType
-    namespace: Template
+  - name: DeviceType  # ChoiceDeviceType
+    namespace: Choice
     description: "A model of device"
     label: "Device Type"
     icon: "mdi:poll"
@@ -436,7 +429,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     attributes:
       - name: part_number
         label: Part Number
@@ -461,7 +454,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
-  - name: InterfaceL2L3
+  - name: InterfaceL2L3  # InfraInterfaceL2L3
     namespace: Infra
     description: "Network Interface"
     label: "Network Interface"
@@ -469,6 +462,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -502,7 +496,7 @@ nodes:
         cardinality: many
         kind: Attribute
         identifier: interface_l2__tagged_vlan
-  - name: InterfaceL3
+  - name: InterfaceL3  # InfraInterfaceL3
     namespace: Infra
     description: "Network Layer 3 Interface"
     label: "Interface L3"
@@ -510,6 +504,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -521,7 +516,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
-  - name: InterfaceL2
+  - name: InterfaceL2  # InfraInterfaceL2
     namespace: Infra
     description: "Network Layer 2 Interface"
     label: "Interface L2"
@@ -529,6 +524,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -554,25 +550,13 @@ nodes:
         cardinality: many
         kind: Attribute
         identifier: interface_l2__tagged_vlan
-  - name: IPAddress
+  - name: IPAddress  # InfraIPAddress
     namespace: Infra
     description: "IP Address"
     label: "IP Address"
-    icon: "mdi:ip-outline"
-    menu_placement: "InfraPrefix"
-    default_filter: address__value
-    order_by:
-      - "address__value"
-    display_labels:
-      - address__value
-    uniqueness_constraints:
-      - ["prefix", "address__value"]
-    attributes:
-      - name: address
-        kind: IPHost
-      - name: description
-        kind: Text
-        optional: true
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPAddress"
     relationships:
       - name: organization
         peer: OrganizationGeneric
@@ -583,13 +567,8 @@ nodes:
         peer: InfraInterfaceL3
         optional: true
         cardinality: one
-      - name: prefix
-        peer: InfraPrefix
-        identifier: "prefix__address"
-        optional: true
-        cardinality: one
       - name: vrf
-        identifier: "vrf__prefix"
+        identifier: "vrf__ipaddress"
         peer: InfraVRF
         optional: true
         cardinality: one
@@ -599,7 +578,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-  - name: Platform
+  - name: Platform  # InfraPlatform
     namespace: Infra
     description: "A Platform represent the type of software running on a device"
     label: "Platform"
@@ -634,7 +613,7 @@ nodes:
         peer: InfraDevice
         optional: true
         cardinality: many
-  - name: ProviderNetwork
+  - name: ProviderNetwork  # InfraProviderNetwork
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant"
     label: "Provider Network"
@@ -673,25 +652,12 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Prefix
+  - name: Prefix  # InfraPrefix
     namespace: Infra
     description: "IPv4 or IPv6 network (with mask)"
-    icon: "mdi:ip-network"
-    label: "Prefix"
-    default_filter: prefix__value
-    order_by:
-      - vrf__name__value
-      - prefix__value
-    display_labels:
-      - prefix__value
-    uniqueness_constraints:
-      - ["vrf", "prefix__value"]
-    attributes:
-      - name: prefix
-        kind: IPNetwork
-      - name: description
-        kind: Text
-        optional: true
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPPrefix"
     relationships:
       - name: organization
         peer: OrganizationGeneric
@@ -730,26 +696,17 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: ip_addresses
-        peer: InfraIPAddress
-        identifier: "prefix__address"
-        cardinality: many
-        kind: Component
-  - name: Rack
+  - name: Rack  # InfraRack
     namespace: Infra
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     icon: "mdi:server"
     menu_placement: "LocationGeneric"
-    # default_filter: name__value
     display_labels:
       - name__value
-    uniqueness_constraints:
-      - ["name__value", "location"]
     attributes:
       - name: name
         kind: Text
-        # unique: true
       - name: description
         kind: Text
         optional: true
@@ -790,7 +747,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: RouteTarget
+  - name: RouteTarget  # InfraRouteTarget
     namespace: Infra
     description: "Route Target (RFC 4360)"
     label: "Route Target"
@@ -819,19 +776,16 @@ nodes:
         peer: InfraVRF
         optional: true
         cardinality: many
-  - name: VLAN
+  - name: VLAN  # InfraVLAN
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
     icon: "mdi:lan-pending"   # mdi:lan
-    default_filter: name__value
     order_by:
       - vlan_id__value
     display_labels:
       - name__value
       - vlan_id__value
-    uniqueness_constraints:
-      - ["location", "vlan_group", "vlan_id__value"]
     attributes:
       - name: name
         kind: Text
@@ -872,7 +826,7 @@ nodes:
         peer: CoreStandardGroup
         optional: true
         cardinality: one
-  - name: VRF
+  - name: VRF  # InfraVRF
     namespace: Infra
     description: "A VRF is isolated layer three domain"
     label: "VRF"
@@ -929,7 +883,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Generic  # Organization
+  - name: Generic  # OrganizationGeneric
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
@@ -963,7 +917,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Generic  # Status
+  - name: Generic  # StatusGeneric
     namespace: Status
     label: Status
     description: 'Represent the status of an object: active, maintenance'
@@ -981,7 +935,7 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Generic  # Role
+  - name: Generic  # RoleGeneric
     namespace: Role
     label: Role
     description: Represent the role of an object
@@ -1000,7 +954,7 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Generic  # Location
+  - name: Generic  # LocationGeneric
     namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'

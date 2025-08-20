@@ -1,0 +1,47 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Sync Folders
+
+on:
+  push:
+    branches:
+      - stable
+    paths:
+      - '.vale/**'
+      - 'docs/docs/**'
+      - 'docs/sidebars.ts'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          path: source-repo
+
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: opsmill/infrahub-docs
+          token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
+          path: target-repo
+
+      - name: Sync folders
+        run: |
+          # Remove existing files in target repo
+          rm -rf target-repo/.vale/*
+          rm -rf target-repo/docs/docs/*
+          rm -f target-repo/docs/sidebars.ts
+
+          # Copy files from source repo to target repo
+          cp -r source-repo/.vale/* target-repo/.vale/
+          cp -r source-repo/docs/docs/* target-repo/docs/docs/
+          cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
+
+          # Commit and push changes to target repository
+          cd target-repo
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          if ! (git diff --quiet && git diff --staged --quiet); then git commit -m "Sync docs from infrahub repo" && git push; fi

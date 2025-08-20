@@ -11,46 +11,99 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
+  - AI
   - Alpha
   - Ansible
   - API
   - Attributes
+  - AWS S3
   - Beta
   - BGP
+  - CA certificates
   - CI
+  - CI/CD
   - Codespaces
+  - Computed Attribute
+  - Computed Attributes
   - CoreArtifactTarget
+  - CoreGroup
+  - CSS-like cascading
   - CoreRepository
   - Docker Compose
   - E2E
+  - Emma
   - Generics
   - Git
   - GitHub
+  - GitHub Codespaces
   - GitLab
   - GitPod
   - GraphQL
   - GraphQLQuery
-  - include_in_menu & menu_placement
   - Helm
+  - High Availability
+  - Human Friendly Identifier
+  - IDE
+  - include_in_menu & menu_placement
   - Infrahub
+  - Infrahub Enterprise
   - infrahubctl
   - IP
+  - IP Fabric
   - IPAM
+  - IPHost
+  - IPNetwork
   - JavaScript
   - JetStream
   - Jinja
   - Jinja2
+  - JWT
+  - LibreNMS
   - Namespace
   - NATS
+  - Nautobot
+  - Neo4j
+  - Netbox
+  - NetBox
+  - Netpicker
+  - NetPicker
   - Node
+  - NumberPool
+  - OAuth2
+  - Observium
+  - OIDC
+  - Open ID Connect
+  - OpsMill
+  - Peering Manager
+  - Pydantic
   - Python
   - RabbitMQ
   - REST
   - RFile
+  - Schema
   - SDK
+  - Single sign-on
+  - Slurp'it
+  - SSO
+  - Terraform
   - TLS
+  - Tony Stark
   - TransformPython
+  - TruffleHog
+  - Trusted Root Certificate Store
+  - UI
   - Vale
   - VS Code
   - VS Code extensions
   - WebUI
+  - Slurp'it
+  - IDE
+  - AI
+  - OpenID Connect
+  - OAuth 2.0
+  - OAuth 2.0 vs OpenID Connect
+  - OpenID Connect (OIDC)
+  - Emma
+  - Helm
+  - Kubernetes
+  - Allocate VLAN ID

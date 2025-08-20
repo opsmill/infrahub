@@ -1,0 +1,1 @@
+KIND_GRAPHQL_FIELD_NAME = "__kind__"

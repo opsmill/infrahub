@@ -1,0 +1,181 @@
+import { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import {
+  AttributeKind,
+  AttributeSchema,
+  ModelSchema,
+  NumberAttributeParameters,
+  TextAttributeParameters,
+} from "@/entities/schema/types";
+import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
+import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
+import { components } from "@/shared/api/rest/types.generated";
+import { ProfileData } from "@/shared/components/form/object-form";
+import {
+  DynamicAttributeFieldProps,
+  DynamicDropdownFieldProps,
+  DynamicEnumFieldProps,
+  DynamicInputFieldProps,
+  DynamicNumberFieldProps,
+  FormFieldValue,
+} from "@/shared/components/form/type";
+import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
+import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
+import { isRequired } from "@/shared/components/form/utils/validation";
+
+export const getFormFieldFromAttribute = ({
+  auth,
+  attributeSchema,
+  currentObject,
+  objectTemplate,
+  schema,
+  isFilterForm,
+  isUpdate,
+  isBulkUpdate,
+  pools,
+  profiles,
+}: {
+  auth: AuthContextType | undefined;
+  attributeSchema: AttributeSchema;
+  currentObject: Record<string, AttributeType> | undefined;
+  objectTemplate: NodeObject | null | undefined;
+  schema: ModelSchema;
+  isFilterForm: boolean;
+  isUpdate: boolean;
+  isBulkUpdate: boolean;
+  pools?: Array<NumberPool>;
+  profiles?: Array<ProfileData>;
+}): DynamicAttributeFieldProps => {
+  const attributeData = currentObject?.[attributeSchema.name];
+
+  const basicFomFieldProps: DynamicInputFieldProps = {
+    name: attributeSchema.name,
+    label: attributeSchema.label ?? undefined,
+    defaultValue: getFieldDefaultValue({
+      fieldSchema: attributeSchema,
+      initialObject: currentObject,
+      objectTemplate,
+      profiles,
+      isFilterForm,
+    }),
+    description: attributeSchema.description ?? undefined,
+    disabled: isFieldDisabled({
+      auth,
+      owner: attributeData?.owner,
+      isProtected: !!attributeData?.is_protected,
+      permissions: { update: attributeData?.permissions?.update_value },
+      isReadOnly: attributeSchema.read_only,
+    }),
+    type:
+      schema.namespace === "Core" && attributeSchema.name === "node_kind"
+        ? "NodeKind"
+        : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
+    unique: attributeSchema.unique,
+    rules: {
+      required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
+      validate: (formFieldValue: FormFieldValue) => {
+        if (isFilterForm || isBulkUpdate) return true;
+        if (formFieldValue.source?.type === "pool") return true;
+
+        const attributeKind = attributeSchema.kind as AttributeKind;
+
+        if (attributeSchema.parameters) {
+          if (attributeKind === ATTRIBUTE_KIND.TEXT) {
+            const attributeParameters = attributeSchema.parameters as TextAttributeParameters;
+            const validation = validateTextAttribute(
+              {
+                isRequired: !attributeSchema.optional,
+                minLength: attributeParameters.min_length,
+                maxLength: attributeParameters.max_length,
+              },
+              formFieldValue.value as string | null
+            );
+            return validation.success || validation.error;
+          }
+
+          if (attributeKind === ATTRIBUTE_KIND.NUMBER) {
+            const attributeParameters = attributeSchema.parameters as NumberAttributeParameters;
+            const validation = validateNumberAttribute(
+              {
+                isRequired: !attributeSchema.optional,
+                min: attributeParameters.min_value,
+                max: attributeParameters.max_value,
+              },
+              formFieldValue.value as number | null
+            );
+            return validation.success || validation.error;
+          }
+        }
+
+        if (attributeSchema.optional) return true;
+        return isRequired(formFieldValue);
+      },
+    },
+  };
+
+  if (attributeSchema.kind === ATTRIBUTE_KIND.DROPDOWN) {
+    const dropdownField: DynamicDropdownFieldProps = {
+      ...basicFomFieldProps,
+      type: ATTRIBUTE_KIND.DROPDOWN,
+      field: attributeSchema,
+      schema,
+      items: (attributeSchema.choices ?? []).map(
+        (choice: components["schemas"]["DropdownChoice"]) => ({
+          value: choice.name,
+          label: choice.label ?? choice.name,
+          color: choice.color ?? undefined,
+          description: choice.description ?? undefined,
+        })
+      ),
+    };
+
+    return dropdownField;
+  }
+
+  if (Array.isArray(attributeSchema.enum)) {
+    const enumField: DynamicEnumFieldProps = {
+      ...basicFomFieldProps,
+      type: "enum",
+      field: attributeSchema,
+      schema,
+      items: attributeSchema.enum,
+    };
+
+    return enumField;
+  }
+
+  if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
+    const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attributeSchema.name);
+
+    const dropdownField: DynamicNumberFieldProps = {
+      ...basicFomFieldProps,
+      type: "Number",
+      pools: numberPools,
+    };
+
+    return dropdownField;
+  }
+
+  if (isUpdate) {
+    return basicFomFieldProps;
+  }
+
+  if (attributeSchema.name === "prefix" || attributeSchema.name === "address") {
+    const poolKind = getPoolKindFromSchema(schema);
+    if (poolKind) {
+      return {
+        ...basicFomFieldProps,
+        pool: {
+          kind: poolKind,
+          defaultAllocatedObjectKind: schema.kind as string,
+        },
+      };
+    }
+  }
+
+  return basicFomFieldProps;
+};

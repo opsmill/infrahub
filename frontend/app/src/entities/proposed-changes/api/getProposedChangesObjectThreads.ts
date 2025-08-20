@@ -1,0 +1,32 @@
+import Handlebars from "@/shared/libs/handlebars";
+
+export const getProposedChangesObjectThreads = Handlebars.compile(`
+query getProposedChangesThreadsFor{{kind}} {
+  {{kind}}(
+    change__ids: "{{id}}"
+    object_path__value: "{{path}}"
+  ) {
+    count
+    edges {
+      node {
+        __typename
+        id
+        comments {
+          count
+        }
+      }
+    }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
+  }
+}
+`);

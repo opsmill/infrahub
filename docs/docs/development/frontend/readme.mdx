@@ -20,17 +20,16 @@ Infrahub frontend is developed with:
 For testing, we rely on:
 
 - **Unit testing**: [Vitest](https://vitest.dev/)
-- **Integration testing**: [Cypress Component Testing](https://docs.cypress.io/guides/component-testing/overview)
+- **Integration testing**: [Vitest browser react](https://github.com/vitest-dev/vitest-browser-react)
 - **end-to-end testing**: [Playwright](https://playwright.dev/)
 
 ## Accessing the frontend code
 
 To access Infrahub's codebase, use Git and switch to the `develop` branch to access the latest changes. All frontend code resides in `/frontend`.
 
-```bash
-git clone git@github.com:opsmill/infrahub.git
+```shell
+git clone --recursive git@github.com:opsmill/infrahub.git
 cd infrahub/frontend
-git switch develop
 ```
 
-Before contributing, we recommended starting with [Getting set up with frontend](getting-set-up).
+Before contributing, we recommended starting with [Getting set up with frontend](./getting-set-up.mdx).

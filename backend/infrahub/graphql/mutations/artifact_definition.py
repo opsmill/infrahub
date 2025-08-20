@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from typing_extensions import Self
 
 from infrahub.core.schema import NodeSchema
+from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
-from infrahub.message_bus import messages
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
@@ -17,18 +18,18 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 log = get_logger()
 
 
 class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
-        _meta: Optional[Any] = None,
-        **options: Dict[str, Any],
+        _meta: Any | None = None,
+        **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -44,48 +45,55 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def mutate_create(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-        database: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
+    ) -> tuple[Node, Self]:
+        graphql_context: GraphqlContext = info.context
 
-        artifact_definition, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        artifact_definition, result = await super().mutate_create(
+            info=info, data=data, branch=branch, override_data=override_data
+        )
 
-        events = [
-            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
-        ]
-
-        if context.service:
-            for event in events:
-                await context.service.send(message=event)
+        if graphql_context.service:
+            model = RequestArtifactDefinitionGenerate(
+                branch=branch.name,
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
+            )
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
+            )
 
         return artifact_definition, result
 
     @classmethod
     async def mutate_update(
         cls,
-        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
-    ) -> Tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
+    ) -> tuple[Node, Self]:
+        graphql_context: GraphqlContext = info.context
 
-        artifact_definition, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
+        artifact_definition, result = await super().mutate_update(info=info, data=data, branch=branch)
 
-        events = [
-            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
-        ]
-
-        if context.service:
-            for event in events:
-                await context.service.send(message=event)
+        if graphql_context.service:
+            model = RequestArtifactDefinitionGenerate(
+                branch=branch.name,
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
+            )
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
+            )
 
         return artifact_definition, result

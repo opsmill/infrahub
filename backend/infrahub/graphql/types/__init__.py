@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict
-
 from .attribute import (
     AnyAttributeType,
     AttributeInterface,
@@ -15,55 +13,57 @@ from .attribute import (
     IPNetworkType,
     JSONAttributeType,
     ListAttributeType,
+    MacAddressType,
     NumberAttributeType,
     RelatedIPAddressNodeInput,
+    RelatedIPPrefixNodeInput,
     RelatedNodeInput,
-    RelatedPrefixNodeInput,
     StrAttributeType,
     TextAttributeType,
 )
 from .branch import BranchType
 from .interface import InfrahubInterface
-from .mixin import GetListMixin
 from .node import InfrahubObject
+from .permission import PaginatedObjectPermission
 from .relationship import RelationshipNode
 from .standard_node import InfrahubObjectType
 from .task import TaskNodes
 from .task_log import TaskLog, TaskLogEdge, TaskLogNodes
 
 __all__ = [
+    "AnyAttributeType",
     "AttributeInterface",
     "BaseAttribute",
+    "BoolAttributeType",
+    "BranchType",
+    "CheckboxAttributeType",
     "DropdownFields",
     "DropdownType",
     "IPHostType",
     "IPNetworkType",
-    "TextAttributeType",
-    "NumberAttributeType",
-    "CheckboxAttributeType",
-    "StrAttributeType",
-    "IntAttributeType",
-    "BoolAttributeType",
-    "ListAttributeType",
-    "JSONAttributeType",
-    "AnyAttributeType",
-    "BranchType",
     "InfrahubInterface",
-    "GetListMixin",
     "InfrahubObject",
     "InfrahubObjectType",
+    "IntAttributeType",
+    "JSONAttributeType",
+    "ListAttributeType",
+    "MacAddressType",
+    "NumberAttributeType",
+    "PaginatedObjectPermission",
     "RelatedIPAddressNodeInput",
+    "RelatedIPPrefixNodeInput",
     "RelatedNodeInput",
-    "RelatedPrefixNodeInput",
     "RelationshipNode",
+    "StrAttributeType",
     "TaskLog",
     "TaskLogEdge",
     "TaskLogNodes",
     "TaskNodes",
+    "TextAttributeType",
 ]
 
 
-RELATIONS_PROPERTY_MAP: Dict[str, str] = {
+RELATIONS_PROPERTY_MAP: dict[str, str] = {
     "is_visible": "_relation__is_visible",
     "is_protected": "_relation__is_protected",
     "owner": "_relation__owner",

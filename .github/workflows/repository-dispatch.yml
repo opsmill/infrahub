@@ -1,0 +1,56 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Trigger Infrahub update in other repositories
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs-on:
+        description: "The OS to run the job on"
+        required: false
+        default: "ubuntu-22.04"
+        type: string
+      version:
+        type: string
+        required: false
+        description: The string to extract semver from.
+        default: ''
+  workflow_call:
+    inputs:
+      runs-on:
+        description: "The OS to run the job on"
+        required: false
+        default: "ubuntu-22.04"
+        type: string
+      version:
+        type: string
+        required: false
+        description: The string to extract semver from.
+        default: ''
+
+jobs:
+  repository-dispatch:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        # Either a literal path, or the name of a secret...
+        repo:
+          - "opsmill/infrahub-demo-dc-fabric"
+          - "INFRAHUB_ENTERPRISE_REPOSITORY"
+          - "INFRAHUB_CUSTOMER1_REPOSITORY"
+          - "INFRAHUB_CUSTOMER2_REPOSITORY"
+          - "INFRAHUB_CUSTOMER3_REPOSITORY"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          # if matrix.repo contains a slash, use it literally; otherwise look up the secret named by matrix.repo
+          repository: ${{ contains(matrix.repo, '/') && matrix.repo || secrets[matrix.repo] }}
+          event-type: trigger-infrahub-update
+          client-payload: |
+            {"version":"${{ inputs.version }}"}

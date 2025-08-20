@@ -1,9 +1,8 @@
-from graphql import graphql
-
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -33,7 +32,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -63,6 +62,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
             "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
             "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
             "description": {"value": None, "is_default": True, "is_from_profile": False},
+            "time": {"value": None, "is_default": True, "is_from_profile": False},
             "status": {"value": None, "is_default": True, "is_from_profile": False},
         }
     } in result.data["TestCriticality"]["edges"]
@@ -89,7 +89,7 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -117,6 +117,7 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
             "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
             "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
             "description": {"value": None, "is_default": True, "is_from_profile": False},
+            "time": {"value": None, "is_default": True, "is_from_profile": False},
             "status": {"value": None, "is_default": True, "is_from_profile": False},
         }
     } in result.data["TestCriticality"]["edges"]
@@ -146,7 +147,7 @@ async def test_directive_merge_fields(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(

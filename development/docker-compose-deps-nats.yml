@@ -2,6 +2,7 @@
 # yamllint disable rule:line-length
 services:
   message-queue:
+    profiles: [demo, dev]
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-nats:alpine}"  # need alpine since latest is based on scratch (no wget available)
     volumes:
       - ./nats-server.conf:/etc/nats/nats-server.conf
@@ -13,6 +14,7 @@ services:
       start_period: 10s
   # This is actually unused but required to not break all the other compose files requiring this service...
   cache:
+    profiles: [demo, dev]
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-nats:alpine}"
     healthcheck:
       test: wget -O /dev/null http://localhost:8222/varz || exit 1
@@ -20,3 +22,39 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+  task-manager:
+    profiles: [demo, dev]
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+      PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
+      PREFECT_WORKER_QUERY_SECONDS: 3
+      PREFECT_AGENT_QUERY_INTERVAL: 3
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      - task-manager-db
+  task-manager-db:
+    profiles: [demo, dev]
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -q -d ${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect} -U ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  workflow_db:

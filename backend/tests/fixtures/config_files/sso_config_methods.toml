@@ -1,0 +1,42 @@
+[security]
+oauth2_providers = ["provider1", "provider2"]
+oidc_providers = ["provider1", "provider2"]
+
+
+[security.oauth2_provider_settings.provider1]
+client_id = "infrahub-user-client"
+client_secret = "edPf4IaquQaqns7t3s95mLhKKYdwL1up"
+authorization_url = "http://localhost:8180/realms/infrahub-users/protocol/openid-connect/auth"
+token_url = "http://localhost:8180/realms/infrahub-users/protocol/openid-connect/token"
+userinfo_url = "http://localhost:8180/infrahub-users/infrahub/protocol/openid-connect/userinfo"
+display_label = "Keycloak Users"
+icon = "mdi:security-lock-outline"
+userinfo_method = "post"
+
+[security.oauth2_provider_settings.provider2]
+client_id = "infrahub-admin-client"
+client_secret = "t3s95mLhKKYdwL1up-edPf4IaquQaqns7"
+authorization_url = "http://localhost:8180/realms/infrahub-admins/protocol/openid-connect/auth"
+token_url = "http://localhost:8180/realms/infrahub-admins/protocol/openid-connect/token"
+userinfo_url = "http://localhost:8180/realms/infrahub-admins/protocol/openid-connect/userinfo"
+display_label = "Keycloak Users"
+icon = "mdi:security-lock-outline"
+
+
+[security.oidc_provider_settings.provider1]
+client_id = "infrahub-user-client"
+client_secret = "edPf4IaquQaqns7t3s95mLhKKYdwL1up"
+discovery_url = "http://localhost:8180/realms/infrahub-users/.well-known/openid-configuration"
+display_label = "OIDC Users"
+icon = "mdi:security-lock-outline"
+userinfo_method = "post"
+
+
+[security.oidc_provider_settings.provider2]
+client_id = "infrahub-admin-client"
+client_secret = "t3s95mLhKKYdwL1up-edPf4IaquQaqns7"
+discovery_url = "http://localhost:8180/realms/infrahub-admins/.well-known/openid-configuration"
+display_label = "OIDC Admins"
+icon = "mdi:security-lock-outline"
+userinfo_method = "get"
+

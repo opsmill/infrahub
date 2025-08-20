@@ -1,0 +1,21 @@
+---
+# yamllint disable rule:truthy
+name: Keyword Scanner
+on: [push, pull_request]
+
+env:
+  KEYWORDS_LIST: "${{ secrets.KEYWORDS_LIST || '' }}"
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: "Setup Python environment"
+        run: "pip install invoke toml"
+      - name: Scan for prohibited keywords
+        run: "invoke main.scan"

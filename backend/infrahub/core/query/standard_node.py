@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from infrahub.core.node.standard import StandardNode
     from infrahub.database import InfrahubDatabase
 
@@ -12,30 +15,36 @@ if TYPE_CHECKING:
 class StandardNodeQuery(Query):
     def __init__(
         self,
-        node: StandardNode = None,
-        node_id: Optional[str] = None,
-        node_db_id: Optional[int] = None,
+        node: StandardNode | None = None,
+        node_id: UUID | None = None,
+        node_db_id: str | None = None,
         **kwargs: Any,
-    ):
-        self.node = node
+    ) -> None:
+        self._node = node
         self.node_id = node_id
         self.node_db_id = node_db_id
 
-        if not self.node_id and self.node:
+        if not self.node_id and self._node:
             self.node_id = self.node.uuid
 
-        if not self.node_db_id and self.node:
+        if not self.node_db_id and self._node:
             self.node_db_id = self.node.id
 
         super().__init__(**kwargs)
 
+    @property
+    def node(self) -> StandardNode:
+        if self._node:
+            return self._node
+
+        raise InitializationError("The query is not initialized with a node")
+
 
 class RootNodeCreateQuery(StandardNodeQuery):
-    name: str = "standard_node_create"
+    name = "standard_node_create"
+    type = QueryType.WRITE
 
-    type: QueryType = QueryType.WRITE
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -48,11 +57,10 @@ class RootNodeCreateQuery(StandardNodeQuery):
 
 
 class StandardNodeCreateQuery(StandardNodeQuery):
-    name: str = "standard_node_create"
+    name = "standard_node_create"
+    type = QueryType.WRITE
 
-    type: QueryType = QueryType.WRITE
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -66,11 +74,10 @@ class StandardNodeCreateQuery(StandardNodeQuery):
 
 
 class StandardNodeUpdateQuery(StandardNodeQuery):
-    name: str = "standard_node_update"
+    name = "standard_node_update"
+    type = QueryType.WRITE
 
-    type: QueryType = QueryType.WRITE
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
         self.params["node_prop"]["uuid"] = str(self.node.uuid)
@@ -86,12 +93,11 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
 
 
 class StandardNodeDeleteQuery(StandardNodeQuery):
-    name: str = "standard_node_delete"
-    insert_return: bool = False
+    name = "standard_node_delete"
+    insert_return = False
+    type = QueryType.WRITE
 
-    type: QueryType = QueryType.WRITE
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (n:%s { uuid: $uuid })
         DETACH DELETE (n)
@@ -102,29 +108,20 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
 
 
 class StandardNodeGetItemQuery(Query):
-    name: str = "standard_node_get"
+    name = "standard_node_get"
+    type = QueryType.READ
 
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        node_id: str,
-        node_type: str,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, node_id: str, node_type: str, **kwargs: Any) -> None:
         self.node_id = node_id
         self.node_type = node_type
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        query = (
-            """
-            MATCH (n:%s)
-            WHERE ID(n) = $node_id OR n.uuid = $node_id
-            """
-            % self.node_type
-        )
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = """
+            MATCH (n:%(node_type)s)
+            WHERE %(id_func)s(n) = $node_id OR n.uuid = $node_id
+            """ % {"node_type": self.node_type, "id_func": db.get_id_function_name()}
 
         self.params["node_id"] = self.node_id
         self.add_to_query(query)
@@ -133,31 +130,26 @@ class StandardNodeGetItemQuery(Query):
 
 
 class StandardNodeGetListQuery(Query):
-    name: str = "standard_node_list"
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_list"
+    type = QueryType.READ
 
     def __init__(
-        self,
-        node_class: StandardNode,
-        ids: Optional[List[str]] = None,
-        name: Optional[str] = None,
-        **kwargs: Any,
+        self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, **kwargs: Any
     ) -> None:
         self.ids = ids
-        self.name = name
+        self.node_name = node_name
         self.node_class = node_class
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         filters = []
         if self.ids:
             filters.append("n.uuid in $ids_value")
             self.params["ids_value"] = self.ids
-        if self.name:
+        if self.node_name:
             filters.append("n.name = $name")
-            self.params["name"] = self.name
+            self.params["name"] = self.node_name
 
         where = ""
         if filters:
@@ -174,4 +166,4 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        self.order_by = ["ID(n)"]
+        self.order_by = [f"{db.get_id_function_name()}(n)"]

@@ -1,5 +1,3 @@
-from infrahub_sdk import UUIDT, InfrahubClient
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
@@ -8,12 +6,13 @@ from infrahub.core.migrations.schema.node_remove import (
     NodeRemoveMigrationQueryIn,
     NodeRemoveMigrationQueryOut,
 )
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import Meta
-from infrahub.message_bus.messages import SchemaMigrationPath, SchemaMigrationPathResponse
-from infrahub.services import InfrahubServices
+from tests.helpers.schema import load_schema
+from tests.unit.core.migrations.schema.test_node_kind_update import validate_node_relationships
 
 
 async def test_query_out_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
@@ -81,7 +80,7 @@ async def test_query_in_default_branch(db: InfrahubDatabase, default_branch: Bra
     assert await count_nodes(db=db, label="TestCar") == 2
 
 
-async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
@@ -102,31 +101,39 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
     assert await count_relationships(db=db) == count_rels + 14
     assert await count_nodes(db=db, label="TestCar") == 2
 
+    await validate_node_relationships(node=car_accord_main, db=db, branch=default_branch)
+    await validate_node_relationships(node=car_camry_main, db=db, branch=default_branch)
 
-async def test_rpc(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, helper):
+
+async def test_migration_agnostic_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
+):
+    await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
+
+    person_john = await Node.init(db=db, schema="TestPerson")
+    await person_john.new(db=db, name={"value": "John"})
+    await person_john.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar")
+    await car.new(db=db, name="yaris", agnostic_owner=person_john.id)
+    await car.save(db=db)
+
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
 
-    correlation_id = str(UUIDT())
-    message = SchemaMigrationPath(
-        migration_name="node.remove",
-        new_node_schema=None,
+    assert await count_nodes(db=db, label="TestCar") == 1
+
+    migration = NodeRemoveMigration(
         previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
-        branch=default_branch,
-        meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
 
-    bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
-    bus_simulator.service = service
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 1
+    assert await count_nodes(db=db, label="TestCar") == 1
 
-    assert await count_nodes(db=db, label="TestCar") == 2
-
-    response = await service.message_bus.rpc(message=message, response_class=SchemaMigrationPathResponse)
-    assert response.passed
-    assert not response.data.errors
-    assert response.data.nbr_migrations_executed == 2
-
-    assert await count_nodes(db=db, label="TestCar") == 2
+    await validate_node_relationships(node=person_john, db=db, branch=registry.get_global_branch())
+    await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())

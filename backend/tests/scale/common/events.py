@@ -68,7 +68,7 @@ def request_event_handler(
         "name": name,
         "start_time": f"{start_time:.2f}",
         "response_time": f"{response_time:.2f}ms",
-        "failed": True if exception else False,
+        "failed": bool(exception),
     }
 
     if exception:

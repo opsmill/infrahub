@@ -1,17 +1,82 @@
+from pathlib import Path
+
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.initialization import (
+    create_ipam_namespace,
+)
 from infrahub.core.node import Node
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.query.delete import DeleteAfterTimeQuery
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
+from tests.conftest import (
+    do_default_branch,
+    do_empty_database,
+    do_local_storage_dir,
+    do_register_core_models_schema,
+    do_register_internal_models_schema,
+    do_reset_registry,
+)
 
 
-@pytest.fixture
-async def ip_dataset_01(
+@pytest.fixture(scope="module")
+async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
+    return await do_register_internal_models_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="module")
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+    return await do_register_core_models_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="module")
+def local_storage_dir(tmp_path_module_scope: Path) -> Path:
+    return do_local_storage_dir(tmp_path=tmp_path_module_scope)
+
+
+@pytest.fixture(scope="module")
+async def empty_database(db: InfrahubDatabase) -> None:
+    await do_empty_database(db=db)
+
+
+@pytest.fixture(scope="module")
+async def reset_registry(db: InfrahubDatabase) -> None:
+    await do_reset_registry(db=db)
+
+
+@pytest.fixture(scope="module")
+async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+    return await do_default_branch(db=db)
+
+
+@pytest.fixture(scope="module")
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
+    if not registry._default_ipnamespace:
+        ip_namespace = await create_ipam_namespace(db=db)
+        registry.default_ipnamespace = ip_namespace.id
+        return ip_namespace
+    return None
+
+
+@pytest.fixture(scope="module")
+async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture(scope="module")
+async def ip_dataset_01_load(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -103,3 +168,35 @@ async def ip_dataset_01(
         "net242": net242,
     }
     return data
+
+
+@pytest.fixture(scope="module")
+async def diff_repository(db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
+    component_registry = get_component_registry()
+    return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+
+
+@pytest.fixture(scope="module")
+def start_time():
+    return Timestamp()
+
+
+@pytest.fixture(scope="function")
+async def ip_dataset_01(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ip_dataset_01_load,
+    diff_repository: DiffRepository,
+    start_time: Timestamp,
+):
+    yield ip_dataset_01_load
+
+    all_diff_roots = await diff_repository.get_roots_metadata()
+    root_uuids_to_delete = []
+    for diff_root in all_diff_roots:
+        if start_time <= diff_root.from_time:
+            root_uuids_to_delete.append(diff_root.uuid)
+    await diff_repository.delete_diff_roots(diff_root_uuids=root_uuids_to_delete)
+
+    query = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)
+    await query.execute(db=db)

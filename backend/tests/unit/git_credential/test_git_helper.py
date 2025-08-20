@@ -1,7 +1,13 @@
+from unittest.mock import patch
+
 import pytest
 from typer.testing import CliRunner
 
-from infrahub.git_credential.helper import app, parse_helper_get_input
+# This patch prevents `OSError: pytest: reading from stdin while output is captured!  Consider using `-s`.`
+# to be raised at import time. Patching is not an issue as `sys.stdin` is not used
+# as runner.invoke also patches `sys.stdin`.
+with patch("sys.stdin"):
+    from infrahub.git_credential.helper import app, parse_helper_get_input
 
 runner = CliRunner(mix_stderr=False)
 
@@ -19,10 +25,12 @@ def test_parse_helper_get_input():
         parse_helper_get_input(text=data_in)
 
 
-def test_get_with_path(mock_core_schema_01, mock_repositories_query):
+def test_get_with_path(mock_core_schema_01, mock_repositories_query, mock_credential_query):
     input_data = "protocol=https\nhost=github.com\npath=opsmill/infrahub-demo-edge.git"
 
-    result = runner.invoke(app=app, args=["get", input_data])
+    result = runner.invoke(
+        app=app, args=["get", input_data], env={"INFRAHUB_INSERT_TRACKER": "true"}, catch_exceptions=False
+    )
     assert not result.stderr
     assert result.stdout == "username=myusername\npassword=mypassword\n"
     assert result.exit_code == 0

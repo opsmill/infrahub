@@ -77,8 +77,8 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-  - name: Choice
-    namespace: Template
+  - name: Generic
+    namespace: Choice
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
@@ -314,7 +314,7 @@ nodes:
         kind: Component
       - name: type
         label: type
-        peer: TemplateCircuitType
+        peer: ChoiceCircuitType
         optional: false
         cardinality: one
         kind: Attribute
@@ -347,7 +347,7 @@ nodes:
         cardinality: one
         kind: Parent
   - name: CircuitType
-    namespace: Template
+    namespace: Choice
     description: "A type of Circuit"
     label: "Circuit Type"
     icon: "mdi:poll"
@@ -357,7 +357,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     relationships:
       - name: circuit
         cardinality: many
@@ -399,7 +399,7 @@ nodes:
         kind: Attribute
       - name: model
         label: Model
-        peer: TemplateDeviceType
+        peer: ChoiceDeviceType
         optional: false
         cardinality: one
         kind: Attribute
@@ -453,7 +453,7 @@ nodes:
         cardinality: one
         kind: Attribute
   - name: DeviceType
-    namespace: Template
+    namespace: Choice
     description: "A model of device"
     label: "Device Type"
     icon: "mdi:poll"
@@ -467,7 +467,7 @@ nodes:
     uniqueness_constraints:
       - ["manufacturer", "name__value"]
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     attributes:
       - name: part_number
         label: Part Number
@@ -555,19 +555,9 @@ nodes:
     namespace: Infra
     description: "IP Address"
     label: "IP Address"
-    icon: "mdi:ip-outline"
-    menu_placement: "InfraPrefix"
-    default_filter: address__value
-    order_by:
-      - "address__value"
-    display_labels:
-      - address__value
-    attributes:
-      - name: address
-        kind: IPHost
-      - name: description
-        kind: Text
-        optional: true
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPAddress"
     relationships:
       - name: organization
         peer: OrganizationGeneric
@@ -580,11 +570,6 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-      - name: prefix
-        peer: InfraPrefix
-        identifier: "prefix__address"
-        optional: true
-        cardinality: one
       - name: vrf
         identifier: "vrf__address"
         peer: InfraVRF
@@ -596,8 +581,13 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+      - name: status
+        peer: StatusGeneric
+        optional: true
+        cardinality: one
+        kind: Attribute
   - name: LocationType
-    namespace: Template
+    namespace: Choice
     description: "A type of Location"
     label: "Location Type"
     icon: "mdi:map-marker-question"
@@ -607,7 +597,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "ChoiceGeneric"
     relationships:
       - name: location
         identifier: location__type
@@ -617,20 +607,15 @@ nodes:
   - name: Namespace
     namespace: Nautobot
     label: "Nautobot Namespace"
-    icon: "mdi:checkbox-multiple-blank-outline"
-    menu_placement: "OrganizationGeneric"
+    include_in_menu: false
+    default_filter: name__value
     display_labels:
       - name__value
     order_by:
       - name__value
     inherit_from:
-      - "TemplateChoice"
+      - "BuiltinIPNamespace"
     relationships:
-      - name: prefixes
-        peer: InfraPrefix
-        identifier: namespace__prefixes
-        cardinality: many
-        optional: true
       - name: vrfs
         peer: InfraVRF
         identifier: namespace__vrfs
@@ -648,7 +633,9 @@ nodes:
     display_labels:
       - name__value
     uniqueness_constraints:
-      - ["manufacturer", "name__value"]
+      - ["name__value"]
+    human_friendly_id:
+      - name__value
     attributes:
       - name: name
         kind: Text
@@ -671,8 +658,9 @@ nodes:
     relationships:
       - name: manufacturer
         peer: OrganizationGeneric
-        optional: false
+        optional: true
         cardinality: one
+        kind: Attribute
   - name: ProviderNetwork
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant"
@@ -715,33 +703,17 @@ nodes:
   - name: Prefix
     namespace: Infra
     description: "IPv4 or IPv6 network (with mask)"
-    icon: "mdi:ip-network"
-    label: "Prefix"
-    default_filter: prefix__value
-    order_by:
-      - prefix__value
-    display_labels:
-      - prefix__value
+    include_in_menu: false
     uniqueness_constraints:
-      - ["nautobot_namespace", "prefix__value"]
-    attributes:
-      - name: prefix
-        kind: IPNetwork
-      - name: description
-        kind: Text
-        optional: true
+      - ["prefix__value", "ip_namespace"]
+    inherit_from:
+      - "BuiltinIPPrefix"
     relationships:
       - name: organization
         peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
-      - name: nautobot_namespace
-        peer: NautobotNamespace
-        identifier: namespace__prefixes
-        cardinality: one
-        optional: false
-        kind: Parent
       - name: locations
         peer: LocationGeneric
         optional: true
@@ -774,11 +746,6 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: ip_addresses
-        peer: InfraIPAddress
-        identifier: "prefix__address"
-        cardinality: many
-        kind: Component
   - name: Rack
     namespace: Infra
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
@@ -884,11 +851,14 @@ nodes:
     label: "VLAN"
     icon: "mdi:lan-pending"
     default_filter: name__value
+    uniqueness_constraints:
+      - ["name__value"]
     order_by:
       - vlan_id__value
-    display_labels:
       - name__value
+    display_labels:
       - vlan_id__value
+      - name__value
     attributes:
       - name: name
         kind: Text
@@ -934,14 +904,14 @@ nodes:
     description: "A VRF is isolated layer three domain"
     label: "VRF"
     icon: "mdi:router"
-    default_filter: name__value
     order_by:
-      - nautobot_namespace__name__value
+      - ip_namespace__name__value
       - name__value
     display_labels:
       - name__value
     uniqueness_constraints:
-      - ["nautobot_namespace", "name__value"]
+      - ["ip_namespace", "name__value"]
+    human_friendly_id: ["name__value", "ip_namespace__name__value"]
     attributes:
       - name: name
         kind: Text
@@ -958,7 +928,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: nautobot_namespace
+      - name: ip_namespace
         peer: NautobotNamespace
         identifier: namespace__vrfs
         cardinality: one
@@ -1105,7 +1075,7 @@ nodes:
         cardinality: one
         kind: Generic
       - name: location_type
-        peer: TemplateLocationType
+        peer: ChoiceLocationType
         optional: true
         cardinality: one
       - name: status

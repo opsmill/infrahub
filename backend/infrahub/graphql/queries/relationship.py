@@ -1,44 +1,44 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import RelationshipNode
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class Relationships(ObjectType):
-    edges = List(RelationshipNode)
-    count = Int()
+    edges = List(of_type=NonNull(RelationshipNode), required=True)
+    count = Int(required=True)
 
     @staticmethod
     async def resolve(
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         ids: list[str],
         limit: int = 10,
         offset: int = 0,
-        excluded_namespaces: Optional[list[str]] = None,
-    ) -> Dict[str, Any]:
-        context: GraphqlContext = info.context
+        excluded_namespaces: list[str] | None = None,
+    ) -> dict[str, Any]:
+        graphql_context: GraphqlContext = info.context
 
-        fields = await extract_fields_first_node(info)
+        fields = extract_graphql_fields(info)
         excluded_namespaces = excluded_namespaces or []
 
-        response: Dict[str, Any] = {"edges": [], "count": None}
+        response: dict[str, Any] = {"edges": [], "count": None}
 
-        async with context.db.start_session() as db:
+        async with graphql_context.db.start_session(read_only=True) as db:
             query = await RelationshipGetByIdentifierQuery.init(
                 db=db,
-                branch=context.branch,
-                at=context.at,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
                 identifiers=ids,
                 excluded_namespaces=excluded_namespaces,
                 limit=limit,
@@ -74,9 +74,10 @@ class Relationships(ObjectType):
 
 Relationship = Field(
     Relationships,
-    resolver=Relationships.resolve,
-    limit=Int(required=False),
-    offset=Int(required=False),
     ids=List(NonNull(String), required=True),
     excluded_namespaces=List(String),
+    limit=Int(required=False),
+    offset=Int(required=False),
+    resolver=Relationships.resolve,
+    required=True,
 )

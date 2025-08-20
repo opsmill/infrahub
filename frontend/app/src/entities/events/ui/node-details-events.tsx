@@ -1,0 +1,76 @@
+import { QSP } from "@/config/qsp";
+import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
+import { constructPath } from "@/shared/api/rest/fetch";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Link } from "@/shared/components/ui/link";
+import React from "react";
+import { useGetEvents } from "../domain/get-events.query";
+import { EventCard } from "./event-card";
+
+const MAX_EVENTS = 5;
+
+export const NodeEvents = ({
+  parentId,
+  objectId,
+  objectKind,
+}: { parentId?: string; objectId?: string; objectKind?: string }) => {
+  const { isPending, data, error } = useGetEvents({
+    filters: {
+      parentIds: parentId ? [parentId] : undefined,
+      relatedNodeIds: objectId ? [objectId] : undefined,
+      limit: parentId ? 0 : MAX_EVENTS,
+    },
+  });
+
+  const {
+    isPending: isLoadingNodeLabel,
+    error: displayLabelError,
+    data: displayLabelData,
+  } = useNodeLabel({
+    objectid: objectId,
+    kind: objectKind as string,
+    enabled: !parentId && !!objectKind,
+  });
+
+  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+
+  if (isPending) {
+    return <LoadingIndicator className="p-4" message="" />;
+  }
+
+  if (error) {
+    return <ErrorScreen message={error?.message || displayLabelError?.message} />;
+  }
+
+  if (!flatData.length) {
+    return <NoDataFound message="No activity found for this object." />;
+  }
+
+  const filter = {
+    name: "relatedNodeIds__value",
+    value: [{ id: objectId, display_label: displayLabelData.display_label }],
+  };
+
+  return (
+    <div className="flex flex-col gap-2 p-2" data-testid="activities-container">
+      {flatData.map((activity) => (
+        <EventCard key={activity.id} {...activity} />
+      ))}
+
+      {!parentId && !isLoadingNodeLabel && (
+        <div className="flex items-center justify-center">
+          <Link
+            to={constructPath("/activities", [
+              { name: QSP.FILTER, value: JSON.stringify([filter]) },
+            ])}
+            className="p-1 text-sm text-gray-400 text-center"
+          >
+            View all activities
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -2,49 +2,59 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.12
+ARG POETRY_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED 1
 
 ENV PATH="${PATH}:/root/.local/bin" \
     PROMETHEUS_MULTIPROC_DIR="/prom_shared" \
-    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend" \
+    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend/app" \
     INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
 RUN mkdir /prom_shared /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
-    curl -sSL https://install.python-poetry.org | python3 - && \
+    apt-get install --no-install-recommends -y tini curl git pkg-config build-essential ca-certificates gnupg2 && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+    tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
+    curl -sSL https://install.python-poetry.org | POETRY_VERSION=$POETRY_VER python3 - && \
     apt-get autoremove -y && \
     apt-get clean all && \
-    rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 RUN poetry config virtualenvs.create false
+# Poetry 2.1 workaround
+ENV POETRY_VIRTUALENVS_CREATE=false
 
 # ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
 FROM docker.io/node:20-slim AS frontend
+ARG CI_ARG
+ENV CI=$CI_ARG
 
 RUN mkdir /source
 
-COPY frontend/package.json  frontend/package-lock.json /source/
+COPY frontend/app/package.json  frontend/app/package-lock.json /source/
 
 WORKDIR /source
 
 RUN npm install --omit=dev
-COPY frontend/ /source/
-RUN npm run build && npm cache clean --force \
+COPY frontend/app/ /source/
+RUN npm run build && npm cache clean --force
 
 # ****************************************************************
 # STAGE : Documentation
 # ****************************************************************
-FROM frontend
-
 ENV DOCS_IN_APP=1
 
 RUN mkdir /docs
@@ -52,7 +62,8 @@ RUN mkdir /docs
 COPY docs/package.json  docs/package-lock.json /docs/
 COPY backend/infrahub/config.py /backend/infrahub/
 COPY models/ /models/
-COPY python_sdk/examples/  /python_sdk/examples/
+COPY python_sdk/docs/docs/python-sdk/examples/  /python_sdk/examples/
+COPY development/ /development/
 WORKDIR /docs
 
 RUN npm install --omit=dev
@@ -73,14 +84,17 @@ RUN git config --global user.name "Infrahub" && \
     git config --global credential.usehttppath true && \
     git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
-RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/dist
+RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
 
 WORKDIR /source
+
+ENV PREFECT_WORKER_QUERY_SECONDS="2" \
+    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500
 
 # --------------------------------------------
 # Import Frontend Build
 # --------------------------------------------
-COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
+COPY --from=frontend /source/dist/ /opt/infrahub/frontend/app/dist
 
 # --------------------------------------------
 # Import Documentation Build
@@ -100,3 +114,5 @@ RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
 # --------------------------------------------
 COPY . ./
 RUN poetry install --no-interaction --no-ansi
+
+ENTRYPOINT ["tini", "-g", "--"]

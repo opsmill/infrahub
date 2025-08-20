@@ -1,0 +1,35 @@
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { LoadSchemaParams, loadSchema } from "@/entities/schema/domain/load-schema";
+import { QueryConfig } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+export interface LoadSchemaQueryOptionsParams extends LoadSchemaParams {
+  schemaHash: string | undefined;
+}
+
+export function loadSchemaQueryOptions({
+  branchName,
+  atDate,
+  schemaHash,
+}: LoadSchemaQueryOptionsParams) {
+  return queryOptions({
+    queryKey: [schemaHash, "schema"],
+    queryFn: async () => {
+      return loadSchema({ branchName, atDate });
+    },
+  });
+}
+
+export type UseLoadSchemaOptions = QueryConfig<typeof loadSchemaQueryOptions>;
+
+export function useLoadSchema(schemaHash: string | undefined, config: UseLoadSchemaOptions = {}) {
+  const { currentBranch } = useCurrentBranch();
+  const atDate = useAtomValue(datetimeAtom);
+
+  return useQuery({
+    ...loadSchemaQueryOptions({ branchName: currentBranch.name, atDate, schemaHash }),
+    ...config,
+  });
+}

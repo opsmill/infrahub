@@ -1,49 +1,26 @@
-from typing import Any, List, Optional
+from typing import Any
 
 
 class FakeLogger:
     def __init__(self) -> None:
-        self.info_logs: List[Optional[str]] = []
-        self.error_logs: List[Optional[str]] = []
+        self.info_logs: list[str | None] = []
+        self.error_logs: list[str | None] = []
 
-    def debug(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+    def debug(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send a debug event"""
 
-    def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+    def info(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         self.info_logs.append(event)
 
-    def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+    def warning(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send a warning event"""
 
-    def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+    def error(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send an error event."""
         self.error_logs.append(event)
 
-    def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+    def critical(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send a critical event."""
 
-    def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an exception event."""
-
-
-class FakeTaskReportLogger:
-    def __init__(self) -> None:
-        self.info_logs: List[Optional[str]] = []
-        self.error_logs: List[Optional[str]] = []
-
-    async def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an info event."""
-        self.info_logs.append(event)
-
-    async def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a warning event"""
-
-    async def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an error event."""
-        self.error_logs.append(event)
-
-    async def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a critical event."""
-
-    async def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+    def exception(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send an exception event."""

@@ -4,7 +4,6 @@ from infrahub.core.models import NodeKind
 from infrahub.core.utils import (
     count_relationships,
     delete_all_nodes,
-    element_id_to_id,
     get_paths_between_nodes,
     parse_node_kind,
 )
@@ -13,12 +12,6 @@ from infrahub.database import InfrahubDatabase
 
 async def test_delete_all_nodes(db: InfrahubDatabase):
     assert await delete_all_nodes(db) == []
-
-
-def test_element_id_to_id():
-    assert element_id_to_id("4:c0814fa2-df5b-4d66-ba5f-9a01817f16fb:167") == 167
-    assert element_id_to_id("198") == 198
-    assert element_id_to_id(167) == 167
 
 
 def test_parse_node_kind():

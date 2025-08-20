@@ -1,9 +1,9 @@
 --------------------------------------------------------------------
 ********************************************************************
 
-👋👋👋   Welcome to the Infrahub Demo Codespace environment  👋👋👋
+👋👋👋   Welcome to the Infrahub Demo Codespaces environment  👋👋👋
 
-The Infrahub API server, Git agents and dependent services have been
+The Infrahub API server, Task workers and dependent services have been
 started. Infrahub can be accessed by opening the ports tab, clicking
 on the globe icon in the Forwarded Address column of port 8000.
 

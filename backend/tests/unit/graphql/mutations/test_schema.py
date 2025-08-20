@@ -1,14 +1,16 @@
 import pytest
-from graphql import graphql
 
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations.schema import validate_kind, validate_kind_dropdown, validate_kind_enum
+from tests.helpers.graphql import graphql
 
 
-async def test_delete_last_dropdown_option(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_delete_last_dropdown_option(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     query = """
     mutation {
         SchemaDropdownRemove(data: {kind: "TestChoice", attribute: "temperature_scale", dropdown: "celsius"}) {
@@ -16,7 +18,9 @@ async def test_delete_last_dropdown_option(db: InfrahubDatabase, default_branch,
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -29,7 +33,9 @@ async def test_delete_last_dropdown_option(db: InfrahubDatabase, default_branch,
     assert "Unable to remove the last dropdown on TestChoice in attribute temperature_scale" in str(result.errors[0])
 
 
-async def test_delete_last_enum_option(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_delete_last_enum_option(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     query = """
     mutation {
         SchemaEnumRemove(data: {kind: "BaseChoice", attribute: "measuring_system", enum: "metric"}) {
@@ -37,7 +43,9 @@ async def test_delete_last_enum_option(db: InfrahubDatabase, default_branch, cho
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -50,7 +58,9 @@ async def test_delete_last_enum_option(db: InfrahubDatabase, default_branch, cho
     assert "Unable to remove the last enum on BaseChoice in attribute measuring_system" in str(result.errors[0])
 
 
-async def test_delete_enum_option_that_does_not_exist(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_delete_enum_option_that_does_not_exist(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     query = """
     mutation {
         SchemaEnumRemove(data: {kind: "BaseChoice", attribute: "color", enum: "yellow"}) {
@@ -58,7 +68,9 @@ async def test_delete_enum_option_that_does_not_exist(db: InfrahubDatabase, defa
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -71,7 +83,9 @@ async def test_delete_enum_option_that_does_not_exist(db: InfrahubDatabase, defa
     assert "The enum value yellow does not exists on BaseChoice in attribute color" in str(result.errors[0])
 
 
-async def test_delete_drop_option_that_does_not_exist(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_delete_drop_option_that_does_not_exist(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     query = """
     mutation {
         SchemaDropdownRemove(data: {kind: "BaseChoice", attribute: "section", dropdown: "ci"}) {
@@ -79,7 +93,9 @@ async def test_delete_drop_option_that_does_not_exist(db: InfrahubDatabase, defa
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -92,7 +108,9 @@ async def test_delete_drop_option_that_does_not_exist(db: InfrahubDatabase, defa
     assert "The dropdown value ci does not exists on BaseChoice in attribute section" in str(result.errors[0])
 
 
-async def test_add_enum_option_that_exist(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_add_enum_option_that_exist(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     query = """
     mutation {
         SchemaEnumAdd(data: {kind: "BaseChoice", attribute: "color", enum: "red"}) {
@@ -100,7 +118,9 @@ async def test_add_enum_option_that_exist(db: InfrahubDatabase, default_branch, 
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -113,7 +133,9 @@ async def test_add_enum_option_that_exist(db: InfrahubDatabase, default_branch, 
     assert "The enum value red already exists on BaseChoice in attribute color" in str(result.errors[0])
 
 
-async def test_delete_dropdown_option_in_use(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_delete_dropdown_option_in_use(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     obj1 = await Node.init(db=db, schema="TestChoice")
     await obj1.new(db=db, name="test-passive-01", status="passive", temperature_scale="celsius")
     await obj1.save(db=db)
@@ -125,7 +147,9 @@ async def test_delete_dropdown_option_in_use(db: InfrahubDatabase, default_branc
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -138,7 +162,9 @@ async def test_delete_dropdown_option_in_use(db: InfrahubDatabase, default_branc
     assert "There are still TestChoice objects using this dropdown" in str(result.errors[0])
 
 
-async def test_delete_enum_option_in_use(db: InfrahubDatabase, default_branch, choices_schema):
+async def test_delete_enum_option_in_use(
+    db: InfrahubDatabase, default_permission_backend, default_branch, choices_schema, session_admin
+):
     obj1 = await Node.init(db=db, schema="TestChoice")
     await obj1.new(db=db, name="test-passive-01", status="passive")
     await obj1.save(db=db)
@@ -150,7 +176,9 @@ async def test_delete_enum_option_in_use(db: InfrahubDatabase, default_branch, c
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,

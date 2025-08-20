@@ -1,111 +1,54 @@
-from infrahub import lock
+from prefect import flow
+
 from infrahub.exceptions import RepositoryError
-from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
-from infrahub.services import InfrahubServices
+from infrahub.message_bus.messages.git_repository_connectivity import (
+    GitRepositoryConnectivityResponse,
+    GitRepositoryConnectivityResponseData,
+)
+from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import get_client, get_message_bus
 
 log = get_logger()
 
 
-async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> None:
-    log.info("Cloning and importing repository", repository=message.repository_name, location=message.location)
-    async with service.task_report(
-        related_node=message.repository_id,
-        title="Adding Repository",
-        created_by=message.created_by,
-    ) as task_report:
-        async with lock.registry.get(name=message.repository_name, namespace="repository"):
-            repo = await InfrahubRepository.new(
-                id=message.repository_id,
-                name=message.repository_name,
-                location=message.location,
-                client=service.client,
-                task_report=task_report,
-            )
-            await repo.import_objects_from_files(branch_name=repo.default_branch)
-            await repo.sync()
+@flow(name="git-repository-check-connectivity", flow_run_name="Check connectivity for {message.repository_name}")
+async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
+    response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
 
+    try:
+        InfrahubRepository.check_connectivity(name=message.repository_name, url=message.repository_location)
+    except RepositoryError as exc:
+        response_data.success = False
+        response_data.message = exc.message
 
-async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
-    log.info(
-        "Cloning and importing read-only repository", repository=message.repository_name, location=message.location
-    )
-    async with service.task_report(
-        related_node=message.repository_id,
-        title="Adding Repository",
-        created_by=message.created_by,
-    ) as task_report:
-        async with lock.registry.get(name=message.repository_name, namespace="repository"):
-            repo = await InfrahubReadOnlyRepository.new(
-                id=message.repository_id,
-                name=message.repository_name,
-                location=message.location,
-                client=service.client,
-                ref=message.ref,
-                infrahub_branch_name=message.infrahub_branch_name,
-                task_report=task_report,
-            )
-            await repo.import_objects_from_files(branch_name=message.infrahub_branch_name)
-            await repo.sync_from_remote()
-
-
-async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: InfrahubServices) -> None:
-    if not message.ref and not message.commit:
-        log.warning(
-            "No commit or ref in GitRepositoryPullReadOnly message",
-            name=message.repository_name,
-            repository_id=message.repository_id,
+    if message.reply_requested:
+        response = GitRepositoryConnectivityResponse(
+            data=response_data,
         )
+        message_bus = await get_message_bus()
+        await message_bus.reply_if_initiator_meta(message=response, initiator=message)
+
+
+@flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
+async def fetch(message: messages.RefreshGitFetch) -> None:
+    if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
+        log.info("Ignoring git fetch request originating from self", worker=WORKER_IDENTITY)
         return
-    log.info(
-        "Pulling read-only repository",
-        repository=message.repository_name,
-        location=message.location,
-        ref=message.ref,
-        commit=message.commit,
-    )
-    async with service.task_report(
-        related_node=message.repository_id, title="Pulling read-only repository"
-    ) as task_report:
-        async with lock.registry.get(name=message.repository_name, namespace="repository"):
-            init_failed = False
-            try:
-                repo = await InfrahubReadOnlyRepository.init(
-                    id=message.repository_id,
-                    name=message.repository_name,
-                    location=message.location,
-                    client=service.client,
-                    ref=message.ref,
-                    infrahub_branch_name=message.infrahub_branch_name,
-                    task_report=task_report,
-                )
-            except RepositoryError:
-                init_failed = True
 
-            if init_failed:
-                repo = await InfrahubReadOnlyRepository.new(
-                    id=message.repository_id,
-                    name=message.repository_name,
-                    location=message.location,
-                    client=service.client,
-                    ref=message.ref,
-                    infrahub_branch_name=message.infrahub_branch_name,
-                    task_report=task_report,
-                )
-
-            await repo.import_objects_from_files(branch_name=message.infrahub_branch_name, commit=message.commit)
-            await repo.sync_from_remote(commit=message.commit)
-
-
-async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices) -> None:
-    log.info(
-        "Merging repository branch",
-        repository_name=message.repository_name,
+    repo = await get_initialized_repo(
+        client=get_client(),
         repository_id=message.repository_id,
-        source_branch=message.source_branch,
-        destination_branch=message.destination_branch,
+        name=message.repository_name,
+        repository_kind=message.repository_kind,
     )
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        await repo.merge(source_branch=message.source_branch, dest_branch=message.destination_branch)
+
+    await repo.fetch()
+    await repo.pull(
+        branch_name=message.infrahub_branch_name,
+        branch_id=message.infrahub_branch_id,
+        create_if_missing=True,
+        update_commit_value=False,
+    )

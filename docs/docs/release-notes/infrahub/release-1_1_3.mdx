@@ -1,0 +1,103 @@
+---
+title: Release 1.1.3
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.1.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>January 16th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Lyon, Patch #3</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.1.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.1.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.1.3
+
+This release is a bug-fix release to resolve issues found in Infrahub v1.1.2 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Add a new link in the object details button to redirect to the tasks list with a filter for the current object
+
+### Changed
+
+- Add ID and HFID copy buttons in a new action buttons for the object details ([#4648](https://github.com/opsmill/infrahub/issues/4648))
+  - Remove the ID attribute from the list
+  - Get the description from the object if that's possible, if not then from the schema
+- Disable action buttons depending on the on going tasks for the different workflows (merge, rebase, validate)
+- Display multiple related nodes in the tasks list and details views
+- Changed the default value for the s3.default_acl configuration setting to `private`
+
+### Fixed
+
+- Prevent access to REST API endpoints for anonymous user when anonymous access is not allowed ([#5312](https://github.com/opsmill/infrahub/issues/5312))
+- Fix pool exhaustion error for IP resource pools when some allocated nodes were deleted ([#5315](https://github.com/opsmill/infrahub/issues/5315))
+- Fix IP address being displayed in IP prefix pool after deleting the allocated prefix it was part of ([#5316](https://github.com/opsmill/infrahub/issues/5316))
+- Fixed text overflow when there is too many options when selecting a relationship with a hierarchical model ([#5431](https://github.com/opsmill/infrahub/issues/5431))
+- Allow to change any attributes and relationships when using a mutation on `CoreAccount` ([#5455](https://github.com/opsmill/infrahub/issues/5455))
+- Validate updates to an attribute's `kind` when loading a new schema ([#5460](https://github.com/opsmill/infrahub/issues/5460))
+
+## Migration guide
+
+The process to migrate your instance of Infrahub to the latest version may vary depending on your deployment of Infrahub.
+However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
+
+Please ensure you have a **backup of your Infrahub environment** prior to attempting any migration or upgrade activities.
+
+### Migration of an Infrahub instance
+
+**First**, update the Infrahub version running in your environment.
+
+Below are some example ways to get the latest version of Infrahub in your environment.
+
+- For deployments via Docker Compose, update your container version by updating the `VERSION` environment variable and relaunch:
+  - `export VERSION="1.1.3"; docker compose pull && docker compose up -d`
+- For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
+
+**Second**, once you have gotten the desired version of Infrahub in your environment, please run the following commands.
+
+> Note: If you are running Infrahub in Docker/K8s, these commands need to run from a container where Infrahub is installed.
+
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+
+**Finally**, restart all instances of Infrahub.
+
+### Migration of a dev or demo instance
+
+If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
+The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command.
+
+> **Warning: All data will be lost, please make sure to backup everything you need before running this command.**
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.

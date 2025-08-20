@@ -1,0 +1,133 @@
+---
+title: Groups Reference
+description: Groups schema reference
+---
+
+# Groups
+
+## CoreGroup
+
+### Summary
+<!-- vale off -->
+Below is the list of all available options to define a CoreGroup in the schema:
+
+| Name          | Type        | Description                                                                            | Mandatory |
+| ------------- | ----------- | -------------------------------------------------------------------------------------- | --------- |
+| [**name**](#name)                | Attribute   | A unique identifier for the group.                                                    | True      |
+| [**label**](#label)              | Attribute   | A human-readable label for the group.                                                 | False     |
+| [**description**](#description)  | Attribute   | A detailed description of the group's purpose.                                        | False     |
+| [**group_type**](#group_type)    | Attribute   | Defines whether the group is `"default"` (user-managed) or `"internal"` (system-managed). | False     |
+| [**members**](#members)          | Relationship | A collection of objects that belong to the group.                                     | False     |
+| [**subscribers**](#subscribers)  | Relationship | A collection of objects that are subscribed to the group.                              | False     |
+| [**parent**](#parent)            | Relationship | Reference to a parent group, enabling hierarchical structuring.                        | False     |
+| [**children**](#children)        | Relationship | References to child groups, further supporting hierarchical organization.             | False     |
+
+### Reference Guide
+
+#### name
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | name       |
+| **Kind**          | `Text`     |
+| **Description**   | A unique identifier for the group. |
+| **Optional**      | False      |
+| **Constraints**   | Regex: `^[A-Z][a-zA-Z0-9]+$`<br /> Length: min 2, max 32 |
+
+#### label
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | label      |
+| **Kind**          | `Text`     |
+| **Description**   | A human-readable label for the group. |
+| **Optional**      | True       |
+| **Constraints**   | Length: min -, max 64 |
+
+#### description
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | description|
+| **Kind**          | `Text`     |
+| **Description**   | A detailed description of the group's purpose. |
+| **Optional**      | True       |
+| **Constraints**   | Length: min -, max 128 |
+
+#### group_type
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | group_type |
+| **Kind**          | `Enum`     |
+| **Description**   | Defines whether the group is `"default"` (user-managed) or `"internal"` (system-managed). |
+| **Optional**      | True       |
+| **Default Value** | default    |
+| **Accepted Values** | `default`, `internal` |
+
+#### members
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | members    |
+| **Kind**          | `Relationship` |
+| **Description**   | A collection of objects that belong to the group. |
+| **Optional**      | True       |
+
+#### subscribers
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | subscribers|
+| **Kind**          | `Relationship` |
+| **Description**   | A collection of objects that are subscribed to the group. |
+| **Optional**      | True       |
+
+#### parent
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | parent     |
+| **Kind**          | `Relationship` |
+| **Description**   | Reference to a parent group, enabling hierarchical structuring. |
+| **Optional**      | True       |
+
+#### children
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | children   |
+| **Kind**          | `Relationship` |
+| **Description**   | References to child groups, further supporting hierarchical organization. |
+| **Optional**      | True       |
+
+## CoreGraphQLQueryGroup
+
+### Summary
+
+The **CoreGraphQLQueryGroup** extends the **CoreGroup** model, adding specific attributes and relationships related to GraphQL queries.
+
+| Name          | Type        | Description                                                                            | Mandatory |
+| ------------- | ----------- | -------------------------------------------------------------------------------------- | --------- |
+| [**parameters**](#parameters)    | Attribute   | JSON data containing parameters for the associated GraphQL query.                      | False     |
+| [**query**](#query)              | Relationship | Links the group to a specific GraphQL query.                                           | True      |
+
+### Reference Guide
+
+#### parameters
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | parameters |
+| **Kind**          | `JSON`     |
+| **Description**   | JSON data containing parameters for the associated GraphQL query. |
+| **Optional**      | True       |
+
+#### query
+
+| Key               | Value      |
+| ----------------- | ---------- |
+| **Name**          | query      |
+| **Kind**          | `Relationship` |
+| **Description**   | Links the group to a specific GraphQL query. |
+| **Optional**      | False      |

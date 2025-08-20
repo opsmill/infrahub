@@ -4,73 +4,144 @@ title: Installing Infrahub
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import VideoPlayer from '../../src/components/VideoPlayer';
 import ReferenceLink from "../../src/components/Card";
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
 
-# Installing Infrahub
+This guide provides step-by-step instructions for installing Infrahub Community and Enterprise editions. The installation methods covered here are for non-resilient deployment architectures suitable for development, testing, and single-node production environments.
 
-Infrahub is deployed as a container-based architecture, comprised of multiple components. The main components are:
+For resilient, high-availability deployments, refer to the [high availability architecture](../topics/architecture#infrahub-high-availability-deployment) documentation.
 
-- A **Frontend** written in React.
-- An **API server** written in Python with FastAPI.
-- A **Git agent** to manage the interaction with external Git repositories.
-- A **Graph database** based on `Neo4j`.
-- A **Message bus** based on `RabbitMQ`.
-- A **Cache** based on `redis`.
+## Prerequisites
 
-Refer to [Architecture](/topics/architecture) for a more in-depth view of the components' interaction.
+- Ensure your system meets the [hardware requirements](../topics/hardware-requirements) before installing Infrahub
+- Each installation method has additional prerequisites listed in their respective sections
 
-## Hardware requirements
+:::info
 
-Please ensure the systems on which you want to install Infrahub meet the [hardware requirements](/topics/hardware-requirements).
+Allocating more CPU cores to the Neo4j database will only improve performance on Infrahub Enterprise as it leverages parallel query execution.
 
-## Quick start via curl
+:::
 
-To quickly test Infrahub locally:
+<div style={{ textAlign: 'center' }}>
+  <VideoPlayer url='https://www.youtube.com/watch?v=onVhaTVFkrM' light />
+</div>
+
+## Community
+
+Infrahub Community is deployed as a container-based architecture and can be installed using several methods.
+
+<Tabs>
+<TabItem value="Docker compose via curl" default>
+
+### Using curl and Docker Compose
+
+To quickly spin up the latest Infrahub locally, retrieve the Docker Compose file from [infrahub.opsmill.io](https://infrahub.opsmill.io).
+
+You can also specify a specific version or the `develop` branch in the URL:
+
+- [https://infrahub.opsmill.io/develop](https://infrahub.opsmill.io/develop)
+- [https://infrahub.opsmill.io/1.3.3](https://infrahub.opsmill.io/1.3.3)
+
+#### Prerequisites
+
+- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+#### Start an Infrahub environment
+
+<Tabs groupId="os">
+<TabItem value="macOS" default>
 
 ```bash
-curl https://infrahub.opsmill.io | docker compose -f - up -d
+curl https://infrahub.opsmill.io | docker compose -p infrahub -f - up -d
 ```
 
-Alternative examples:
+</TabItem>
+<TabItem value="Linux">
 
 ```bash
-curl https://infrahub.opsmill.io/develop | docker compose -f - up -d
-curl https://infrahub.opsmill.io/0.13.0 | docker compose -f - up -d
+curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - up -d
 ```
 
-## From Git repository
+</TabItem>
+</Tabs>
+
+After running the command, you should see Docker downloading the necessary images and starting the containers.
+
+:::success
+
+Verify that Infrahub is running by accessing the web interface or checking container status:
+
+```bash
+docker ps | grep infrahub
+```
+
+:::
+
+#### Stop and remove an Infrahub environment
+
+<Tabs groupId="os">
+<TabItem value="macOS" default>
+
+```bash
+curl https://infrahub.opsmill.io | docker compose -p infrahub -f - down -v
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - down -v
+```
+
+</TabItem>
+</Tabs>
+
+</TabItem>
+<TabItem value="Local development (git clone)">
+
+### Cloning the repository
+
+The recommended method for running Infrahub for development uses the Docker Compose files included with the project combined with helper commands defined in `invoke`.
+
+:::info
+
+This method is suitable for local development and demo environments. It is not recommended for production deployments.
+
+:::
+
+#### Prerequisites
+
+- [Poetry](https://python-poetry.org/)
+- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+
+#### Step 1: clone the repository
 
 Create the base directory for the Infrahub installation. For this guide, we'll use `/opt/infrahub`.
 
 ```bash
-sudo mkdir -p /opt/infrahub/
-cd /opt/infrahub/
+cd /opt/
 ```
 
 :::warning
 
-Depending on your system configuration, you might have to give other users write permissions to the `/opt/infrahub` directory.
-
-:::
-
 Usage of the `/opt/infrahub` directory is merely a suggestion. You can use any directory on your system, especially for development or demo purposes.
 
 ```bash
-mkdir -p ~/source/infrahub/
-cd ~/source/infrahub/
+mkdir -p ~/source/
+cd ~/source/
 ```
-
-Next, clone the `stable` branch of the Infrahub GitHub repository into the current directory. (This branch always holds the current stable release)
-
-```bash
-git clone -b stable --depth 1 git@github.com:opsmill/infrahub.git .
-```
-
-:::note
-
-The command above utilizes a "shallow clone" to retrieve only the most recent commit. If you need to download the entire history, omit the --depth 1 argument.
 
 :::
+
+Clone Infrahub repository into the current directory:
+
+```bash
+git clone --recursive https://github.com/opsmill/infrahub.git
+```
+
+:::success
 
 The `git clone` command should generate output similar to the following:
 
@@ -84,115 +155,73 @@ Receiving objects: 100% (1312/1312), 33.37 MiB | 14.46 MiB/s, done.
 Resolving deltas: 100% (187/187), done.
 ```
 
-### Docker Compose
+:::
 
-The recommended way to run Infrahub is to use the Docker Compose files included with the project combined with the helper commands defined in `invoke`.
+#### Step 2: install dependencies
 
-The pre-requisites for this type of deployment are to have:
-
-- [Invoke](https://www.pyinvoke.org) (version 2 minimum)
-- [Toml](https://toml.io/en/)
-- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
-
-<Tabs>
-<TabItem value="MacOS" default>
-#### Invoke
-
-On MacOS, Python is installed by default so you should be able to install `invoke` directly.
-Invoke works best when you install it in the main Python environment, but you can also install it in a virtual environment if you prefer. To install `invoke` and `toml`, run the following command:
+Navigate to the cloned Infrahub directory:
 
 ```bash
-pip install invoke toml
+cd infrahub
 ```
 
-#### Docker
-
-To install Docker, follow the [official instructions on the Docker website](https://docs.docker.com/desktop/install/mac-install/) for your platform.
-</TabItem>
-<TabItem value="Windows">
-On Windows, install a Linux VM via WSL2 and follow the installation guide for Ubuntu.
-
-:::warning
-
-The native support on Windows is currently under investigation and is being tracked in [issue 794](https://github.com/opsmill/infrahub/issues/794).
-Please add a comment to the issue if this is something that would be useful to you.
-
-:::
-</TabItem>
-<TabItem value="Ubuntu">
-:::warning
-
-On Ubuntu, depending on which distribution you're running, there is a good chance your version of Docker might be outdated. Please ensure your installation meets the version requirements mentioned below.
-
-:::
-
-#### Invoke
-
-Invoke is a Python package commonly installed by running `pip install invoke toml`.
-If Python is not already installed on your system, install it first with `sudo apt install python3-pip`.
-
-#### Docker
-
-Check if Docker is installed and which version is installed with `docker --version`
-The version should be at least `24.x`. If the version is `20.x`, it's recommended to upgrade.
-
-[This tutorial (for Ubuntu 22.04) explains how to install the latest version of docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04).
-</TabItem>
-<TabItem value="Other">
-The deployment should work on any systems that can run a modern version of Docker and Python.
-
-Please reach out if you need some help and feel free to send a PR with the installation instructions for your platform.
-</TabItem>
-</Tabs>
-
-Once docker desktop and invoke are installed you can build, start, and initialize the Infrahub demo environment with the following command:
+Install the poetry dependencies by running:
 
 ```bash
-invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
+poetry install
 ```
 
-<ReferenceLink title="Check the documentation of the demo environment for more information" url="/topics/local-demo-environment" />
+:::success
 
-<!-- vale off -->
-### GitHub Codespaces
-<!-- vale on -->
-The Infrahub GitHub repository is designed to launch an instance via [GitHub Codespaces](https://docs.github.com/en/codespaces/overview). We have two devcontainer configurations:
-
-- **infrahub:** a deployment running without any [Schema](/tutorials/getting-started/schema) or data pre-installed
-- **infrahub-demo:** a deployment running the [demo environment](/topics/local-demo-environment)
-
-|  No Data | Demo Data |
-|---|---|
-| [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
-
-:::note
-
-The default devcontainer `.devcontainer/devcontainer.json` launches Infrahub with no schema or data. If you want to launch a deployment with the demo schema and data, you will need to choose the alternate `Dev container configuration` in the GitHub Codespaces creation options.
+You should see Poetry installing the required dependencies. When complete, you'll be returned to the command prompt without errors.
 
 :::
 
-<ReferenceLink title="Infrahub devcontainer file" url="https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json" openInNewTab />
+#### Step 3: start Infrahub
 
-## K8s with Helm charts
+Start and initialize Infrahub:
 
-A first version of our K8S helm-chart is available in our repository.
+```bash
+poetry run invoke demo.start
+```
 
-<ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub/tree/stable/helm" openInNewTab />
+<ReferenceLink title="Explore additional Invoke commands for development" url="../topics/local-demo-environment" />
+
+</TabItem>
+<TabItem value="Kubernetes with Helm">
+
+### Using Helm and Kubernetes
+
+It's possible to deploy Infrahub on Kubernetes using Helm charts. This method is suitable for production deployments and provides a more resilient architecture.
+
+<ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub/infrahub" openInNewTab />
+
+#### Prerequisites
+
+- A Kubernetes cluster
+- [Helm](https://helm.sh/docs/intro/install/) installed on your system
+
+#### Production deployment requirements
 
 The following are required for production deployments using Helm:
 
-- data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
-- multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-- a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
-- S3 storage should be configured for the Infrahub API Server
+- Data persistence for the database must be enabled
+- Multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can use the `affinity` variable to define the affinity policy for the pods
+- S3 storage should be configured for the Infrahub API Server, it is required if you have multiple replicas
 
-You can use the following values example:
+:::warning
+
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis) for production.
+They are present to ease deployment on non-production environments.
+
+:::
+
+#### Step 1: Fill in the values file
+
+Create a `values.yml` file with the following configuration:
 
 ```yaml
-global:
-  infrahubTag: stable
-  imagePullPolicy: Always
-
 infrahubServer:
   replicas: 3
   affinity:
@@ -213,7 +242,6 @@ infrahubServer:
     env:
       INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
       INFRAHUB_CACHE_PORT: 6379
-      INFRAHUB_CONFIG: /config/infrahub.toml
       INFRAHUB_DB_TYPE: neo4j
       INFRAHUB_LOG_LEVEL: INFO
       INFRAHUB_PRODUCTION: "true"
@@ -225,7 +253,7 @@ infrahubServer:
       AWS_S3_BUCKET_NAME: infrahub-data
       AWS_S3_ENDPOINT_URL: https://s3
 
-infrahubGit:
+infrahubTaskWorker:
   replicas: 3
   affinity:
     podAntiAffinity:
@@ -235,29 +263,261 @@ infrahubGit:
             - key: service
               operator: In
               values:
-              - infrahub-git
+              - infrahub-task-worker
           topologyKey: topology.kubernetes.io/zone
-  persistence:
-    enabled: true
-    storageClassName: standard-rwx # using GCP Filestore
 
-database:
-  persistence:
+neo4j:
+  services:
+    admin:
+      enabled: true
+  volumes:
     data:
-      enabled: true
-    logs:
-      enabled: true
-
-nfs-server-provisioner:
-  enabled: false
+      mode: dynamic
+      dynamic:
+        storageClassName: premium-rwo
+        requests:
+          storage: 100Gi
 ```
+
+:::warning
+
+Be sure to replace the placeholder values with your actual values.
+
+:::
+
+#### Step 2: install the chart
+
+Install using a local chart:
 
 ```bash
 helm install infrahub -f values.yml path/to/infrahub/chart
 ```
 
-You can also install the chart using the OpsMill registry.
+Or install using the OpsMill registry:
 
 ```bash
 helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub
 ```
+
+:::success
+
+Verify the installation by checking that all pods are running:
+
+```bash
+kubectl get pods -l app=infrahub
+```
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Enterprise<EnterpriseBadge />
+
+Infrahub Enterprise is based on the Community version, with several enhancements for:
+
+- Enterprise features
+- High availability
+- Better performance
+- Security hardening (Docker image, etc.)
+
+Infrahub Enterprise can be deployed using the same methods as Infrahub Community.
+
+<Tabs>
+<TabItem value="Docker compose via curl" default>
+
+### Using curl and Docker Compose
+
+To quickly spin up the latest Infrahub Enterprise locally, retrieve the Docker Compose file from [infrahub.opsmill.io/enterprise](https://infrahub.opsmill.io/enterprise).
+
+You can also specify a specific version in the URL:
+
+- [https://infrahub.opsmill.io/enterprise/1.3.5](https://infrahub.opsmill.io/enterprise/1.3.5)
+
+You can also specify a sizing preset in the URL. This will automatically configure replica count for each component according to your sizing plan:
+
+- [https://infrahub.opsmill.io/enterprise?size=small](https://infrahub.opsmill.io/enterprise?size=small) (requires 8 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise/1.3.5?size=medium](https://infrahub.opsmill.io/enterprise/1.3.5?size=medium) (requires 24 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise?size=large](https://infrahub.opsmill.io/enterprise/1.3.5?size=large) (requires 64 GB of RAM)
+
+#### Prerequisites
+
+- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+#### Start an Infrahub Enterprise environment
+
+<Tabs groupId="os">
+<TabItem value="macOS" default>
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | docker compose -p infrahub -f - up -d
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f - up -d
+```
+
+</TabItem>
+</Tabs>
+
+#### Stop and remove an Infrahub Enterprise environment
+
+<Tabs groupId="os">
+<TabItem value="macOS" default>
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | docker compose -p infrahub -f - down -v
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f - down -v
+```
+
+</TabItem>
+</Tabs>
+
+</TabItem>
+<TabItem value="Kubernetes with Helm">
+
+### Using Helm and Kubernetes
+
+The Enterprise Helm chart is based on the original Infrahub chart and uses it as a Helm dependency.
+Most configuration related to Infrahub goes inside the `infrahub` top-level key.
+
+<ReferenceLink title="Infrahub Enterprise Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-enterprise" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub-enterprise/infrahub-enterprise" openInNewTab />
+
+#### Production deployment requirements
+
+The following are required for production deployments using Helm:
+
+- Data persistence for the database must be enabled
+- Multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can use the `affinity` variable to define the affinity policy for the pods
+- S3 storage should be configured for the Infrahub API Server, it is required if you have multiple replicas
+
+:::warning
+
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis) for production.
+They are present to ease deployment on non-production environments.
+
+:::
+
+#### Prerequisites
+
+- A Kubernetes cluster
+- [Helm](https://helm.sh/docs/intro/install/) installed on your system
+
+#### Step 1: Fill in the values file
+
+Create a `values.yml` file with the following configuration:
+
+```yaml
+infrahub:
+  infrahubServer:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-server
+            topologyKey: topology.kubernetes.io/zone
+    persistence:
+      enabled: false
+    ingress:
+      enabled: true
+    infrahubServer:
+      env:
+        INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_DB_TYPE: neo4j
+        INFRAHUB_LOG_LEVEL: INFO
+        INFRAHUB_PRODUCTION: "true"
+        INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+        INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
+        INFRAHUB_STORAGE_DRIVER: s3
+        AWS_ACCESS_KEY_ID: xxxx
+        AWS_SECRET_ACCESS_KEY: xxxx
+        AWS_S3_BUCKET_NAME: infrahub-data
+        AWS_S3_ENDPOINT_URL: https://s3
+
+  infrahubTaskWorker:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-task-worker
+            topologyKey: topology.kubernetes.io/zone
+
+  neo4j:
+    services:
+      admin:
+        enabled: true
+    volumes:
+      data:
+        mode: dynamic
+        dynamic:
+          storageClassName: premium-rwo
+          requests:
+            storage: 100Gi
+```
+
+:::warning
+Be sure to replace the placeholder values with your actual values.
+:::
+
+You can also use the configuration preset values.yaml file. This will automatically configure replica count for each component according to your sizing plan.
+They are available here:
+
+<ReferenceLink title="Small size config preset (requires 8 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset (requires 24 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Large size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
+
+#### Step 2: install the chart
+
+Install using a local chart:
+
+```bash
+helm install infrahub -f values.yml path/to/infrahub-enterprise/chart
+```
+
+Or install using the OpsMill registry:
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise
+```
+
+:::success
+
+Verify the installation by checking that all pods are running:
+
+```bash
+kubectl get pods -l app=infrahub
+```
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Related resources
+
+- [Database backup and restore](./database-backup) - Learn how to backup and restore your Infrahub database
+- [High availability architecture](../topics/architecture#infrahub-high-availability-deployment) - Understand resilient deployment architectures
+- [Local demo environment](../topics/local-demo-environment) - Explore the demo environment configuration
+- [Hardware requirements](../topics/hardware-requirements) - Review system requirements

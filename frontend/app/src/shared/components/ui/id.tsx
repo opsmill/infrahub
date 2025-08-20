@@ -1,0 +1,50 @@
+import { NODE_OBJECT } from "@/config/constants";
+import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabel";
+import useQuery from "@/shared/api/graphql/useQuery";
+import { Clipboard } from "@/shared/components/buttons/clipboard";
+import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { gql } from "@apollo/client";
+
+type tId = {
+  id: string;
+  kind?: string;
+  preventCopy?: boolean;
+};
+
+export const Id = (props: tId) => {
+  const { id, kind = NODE_OBJECT, preventCopy } = props;
+
+  const queryString = getObjectDisplayLabel({ kind });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data } = useQuery(query, { variables: { ids: [id] } });
+
+  const object = data?.[kind]?.edges?.[0]?.node ?? {};
+
+  if (loading) {
+    return <LoadingIndicator />;
+  }
+
+  if (error || !object?.display_label) {
+    return <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>Name not found</BadgeCircle>;
+  }
+
+  return (
+    <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>
+      {object?.display_label}
+
+      {!preventCopy && (
+        <Clipboard
+          value={id}
+          alert="ID copied!"
+          tooltip="Copy ID"
+          className="ml-2 p-1 rounded-full"
+        />
+      )}
+    </BadgeCircle>
+  );
+};

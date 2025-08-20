@@ -4,16 +4,17 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Generator, Iterator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
+from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
+from opentelemetry import trace
 
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
-from infrahub.database.constants import DatabaseType, Neo4jRuntime
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -24,7 +25,10 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
+RETURN_TYPE = TypeVar("RETURN_TYPE")
+
+
+def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[QueryResult]:
     """Sort a list of QueryResult based on the to and from fields on given relationship.
 
     To sort the results, we are generating an ID per item
@@ -64,9 +68,9 @@ class QueryRelDirection(Enum):
 @dataclass
 class QueryElement:
     type: QueryElementType
-    name: Optional[str] = None
-    labels: Optional[List[str]] = None
-    params: Optional[dict] = None
+    name: str | None = None
+    labels: list[str] | None = None
+    params: dict | None = None
 
     def __str__(self) -> str:
         main_str = "%s%s%s" % (self.name or "", self.labels_as_str, self.params_as_str)
@@ -108,7 +112,7 @@ class QueryRel(QueryElement):
     type: QueryElementType = QueryElementType.RELATIONSHIP
     direction: QueryRelDirection = QueryRelDirection.BIDIR
     length_min: int = 1
-    length_max: Optional[int] = None
+    length_max: int | None = None
 
     def __str__(self) -> str:
         length_str = ""
@@ -156,9 +160,9 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]], labels: List[str]):
+    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]):
         self.data = data
-        self.labels = cleanup_return_labels(labels)
+        self.labels = labels
         self.branch_score: int = 0
         self.time_score: int = 0
         self.permission_score = PermissionLevel.DEFAULT
@@ -208,23 +212,50 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]:
+    def _get(self, label: str) -> Neo4jNode | Neo4jRelationship | list[Neo4jNode]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
         return_id = self.labels.index(label)
         return self.data[return_id]
 
-    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
+    def get(self, label: str) -> Neo4jNode | Neo4jRelationship:
         return self._get(label=label)
 
-    def get_as_str(self, label: str) -> Optional[str]:
+    def get_as_str(self, label: str) -> str | None:
         item = self._get(label=label)
         if item:
             return str(item)
         return None
 
-    def get_node_collection(self, label: str) -> List[Neo4jNode]:
+    def get_as_optional_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> RETURN_TYPE | None:
+        """Return a label as a given type.
+
+        For example if an integer is needed the caller would use:
+        .get_as_optional_type(label="name_of_label", return_type=int)
+        """
+        item = self._get(label=label)
+        if item is not None:
+            return return_type(item)
+        return None
+
+    def get_as_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> RETURN_TYPE:
+        """Return a label as a given type.
+
+        For example if an integer is needed the caller would use:
+        .get_as_type(label="name_of_label", return_type=int)
+        """
+        item = self._get(label=label)
+
+        return return_type(item)
+
+    def get_node_collection(self, label: str) -> list[Neo4jNode]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
         entry = self._get(label=label)
         if isinstance(entry, list):
             return entry
@@ -255,15 +286,26 @@ class QueryResult:
             if isinstance(item, Neo4jNode):
                 yield item
 
+    def get_path(self, label: str) -> Neo4jPath:
+        path = self.get(label=label)
+        if isinstance(path, Neo4jPath):
+            return path
+        raise ValueError(f"{label} is not a Path")
+
+    def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
+        for path in self.get(label=label):
+            if isinstance(path, Neo4jPath):
+                yield path
+
     def __iter__(self) -> Iterator:
         yield from self.data
 
 
 @dataclass
 class QueryStats:
-    stats: List[QueryStat] = field(default_factory=list)
+    stats: list[QueryStat] = field(default_factory=list)
 
-    def add(self, data: Optional[Dict[str, Any]]) -> None:
+    def add(self, data: dict[str, Any] | None) -> None:
         if data:
             self.stats.append(QueryStat.from_metadata(data))
 
@@ -280,34 +322,35 @@ class QueryStats:
 @dataclass
 class QueryStat:
     contains_updates: bool = False
-    labels_added: Optional[int] = None
-    labels_removed: Optional[int] = None
-    nodes_created: Optional[int] = None
-    nodes_deleted: Optional[int] = None
-    properties_set: Optional[int] = None
-    relationships_created: Optional[int] = None
-    relationships_deleted: Optional[int] = None
+    labels_added: int | None = None
+    labels_removed: int | None = None
+    nodes_created: int | None = None
+    nodes_deleted: int | None = None
+    properties_set: int | None = None
+    relationships_created: int | None = None
+    relationships_deleted: int | None = None
 
     @classmethod
-    def from_metadata(cls, data: Dict[str, Any]) -> Self:
+    def from_metadata(cls, data: dict[str, Any]) -> Self:
         data = {key.replace("-", "_"): value for key, value in data.items()}
         return cls(**data)
 
 
 class Query(ABC):
     name: str = "base-query"
-    type: QueryType = QueryType.READ
+    type: QueryType
 
     raise_error_if_empty: bool = False
     insert_return: bool = True
+    insert_limit: bool = True
 
     def __init__(
         self,
-        branch: Optional[Branch] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        order_by: Optional[List[str]] = None,
+        branch: Branch | None = None,
+        at: Timestamp | str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        order_by: list[str] | None = None,
         branch_agnostic: bool = False,
     ):
         if branch:
@@ -327,16 +370,16 @@ class Query(ABC):
 
         # Initialize internal variables
         self.params: dict = {}
-        self.query_lines: List[str] = []
-        self.return_labels: List[str] = []
-        self.results: List[QueryResult] = []
+        self.query_lines: list[str] = []
+        self.return_labels: list[str] = []
+        self.results: list[QueryResult] = []
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
 
         self.stats: QueryStats = QueryStats()
 
-    def update_return_labels(self, value: Union[str, List[str]]) -> None:
+    def update_return_labels(self, value: str | list[str]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
             self.return_labels.append(value)
             return
@@ -348,10 +391,10 @@ class Query(ABC):
     async def init(
         cls,
         db: InfrahubDatabase,
-        branch: Optional[Branch] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        branch: Branch | None = None,
+        at: Timestamp | str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
         **kwargs: Any,
     ) -> Self:
         query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
@@ -364,7 +407,12 @@ class Query(ABC):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         raise NotImplementedError
 
-    def add_to_query(self, query: Union[str, List[str]]) -> None:
+    def get_context(self) -> dict[str, str]:
+        """Provide additional context for this query, beyond the name.
+        Right now it's mainly used to add more labels to the metrics."""
+        return {}
+
+    def add_to_query(self, query: str | list[str]) -> None:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
@@ -376,8 +424,8 @@ class Query(ABC):
         else:
             self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
-    def add_subquery(self, subquery: str, with_clause: Optional[str] = None) -> None:
-        self.add_to_query("CALL {")
+    def add_subquery(self, subquery: str, node_alias: str, with_clause: str | None = None) -> None:
+        self.add_to_query(f"CALL ({node_alias}) {{")
         self.add_to_query(subquery)
         self.add_to_query("}")
         if with_clause:
@@ -387,8 +435,8 @@ class Query(ABC):
         self,
         var: bool = False,
         inline: bool = False,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> str:
         # Make a local copy of the _query_lines
         limit = limit or self.limit
@@ -401,10 +449,10 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset:
+        if offset and self.insert_limit:
             tmp_query_lines.append(f"SKIP {offset}")
 
-        if limit:
+        if limit and self.insert_limit:
             tmp_query_lines.append(f"LIMIT {limit}")
 
         query_str = "\n".join(tmp_query_lines)
@@ -426,17 +474,25 @@ class Query(ABC):
 
         return self.insert_variables_in_query(query=query_str, variables=self.params)
 
-    @staticmethod
-    def insert_variables_in_query(query: str, variables: dict) -> str:
+    @classmethod
+    def insert_variables_in_query(cls, query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
-            if isinstance(v, (int, list)):
+            if isinstance(v, int | list):
                 return str(v)
             return f'"{v}"'
 
-        for key, value in variables.items():
+        # Sort the list of variables first to ensure the longest will be processed first
+        vars_list = list(variables.items())
+        vars_list.sort(key=lambda x: len(x[0]), reverse=True)
+        for key, value in vars_list:
             if isinstance(value, dict):
+                # First try to insert individual element of the dict as var
+                sub_vars = {f"{key}.{sub_key}": sub_value for sub_key, sub_value in value.items()}
+                query = cls.insert_variables_in_query(query=query, variables=sub_vars)
+
+                # Then replace the entire object if nothing else was found
                 value_items = [f"{key1}: {prep_value(value1)}" for key1, value1 in value.items()]
                 value_str = "{ " + ", ".join(value_items) + " }"
                 query = query.replace(f"${key}", value_str)
@@ -461,16 +517,15 @@ class Query(ABC):
         params = []
 
         for key, value in self.params.items():
-            if isinstance(value, (int, list)):
+            if isinstance(value, int | list):
                 params.append(f"{key}: {str(value)}")
             else:
                 params.append(f'{key}: "{value}"')
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(
-        self, db: InfrahubDatabase, profile: bool = False, runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT
-    ) -> Self:
+    @trace.get_tracer(__name__).start_as_current_span("Query.execute")
+    async def execute(self, db: InfrahubDatabase) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -479,21 +534,17 @@ class Query(ABC):
 
         query_str = self.get_query()
 
-        if profile:
-            query_str = "PROFILE\n" + query_str
-
-        if runtime != Neo4jRuntime.DEFAULT and db.db_type == DatabaseType.NEO4J:
-            query_str = f"CYPHER runtime={runtime.value}\n" + query_str
-
         if self.type == QueryType.READ:
             if self.limit or self.offset:
-                results = await db.execute_query(query=query_str, params=self.params, name=self.name)
+                results = await db.execute_query(
+                    query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                )
             else:
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name
+                query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -501,9 +552,10 @@ class Query(ABC):
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(query_str, self.params)
+            raise QueryError(query=query_str, params=self.params)
 
-        self.results = [QueryResult(data=result, labels=self.return_labels) for result in results]
+        clean_labels = cleanup_return_labels(self.return_labels)
+        self.results = [QueryResult(data=result, labels=clean_labels) for result in results]
         self.has_been_executed = True
 
         return self
@@ -518,6 +570,8 @@ class Query(ABC):
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
                 name=self.name,
+                context=self.get_context(),
+                type=self.type,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -539,14 +593,16 @@ class Query(ABC):
         if self.type != QueryType.READ:
             raise ValueError(f"unknown value for {self.type}")
 
-        results = await db.execute_query(query=self.get_count_query(), params=self.params, name=f"{self.name}_count")
+        results = await db.execute_query(
+            query=self.get_count_query(), params=self.params, name=f"{self.name}_count", type=QueryType.READ
+        )
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(self.get_count_query(), self.params)
+            raise QueryError(query=self.get_count_query(), params=self.params)
 
         return results[0][0]
 
-    def get_result(self) -> Optional[QueryResult]:
+    def get_result(self) -> QueryResult | None:
         """Return a single Result."""
 
         if not self.has_been_executed:
@@ -598,9 +654,9 @@ class Query(ABC):
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(values, key=lambda i: (i["branch_score"], i["time_score"], i["deleted"]), reverse=True)[
-                0
-            ]
+            attr_info = sorted(
+                values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]), reverse=True
+            )[0]
             if attr_info["deleted"]:
                 continue
 
@@ -614,8 +670,6 @@ class Query(ABC):
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        # pylint: disable=import-outside-toplevel
-
         from rich.console import Console
         from rich.table import Table
 
@@ -633,7 +687,6 @@ class Query(ABC):
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 
         print("-------------------------------------------------------")

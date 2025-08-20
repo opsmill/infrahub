@@ -1,17 +1,13 @@
-import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
 
 from invoke import Context, task
 
-from .shared import (
-    BUILD_NAME,
-    build_test_compose_files_cmd,
-    build_test_envs,
-    get_env_vars,
-)
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -19,7 +15,7 @@ DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 
 
 @task
-def build(context: Context):
+def build(context: Context) -> None:
     """Build documentation website."""
     exec_cmd = "npm run build"
 
@@ -31,55 +27,56 @@ def build(context: Context):
 
 
 @task
-def generate(context: Context):
+def generate(context: Context) -> None:
     """Generate all documentation output from code."""
     _generate(context=context)
 
 
 @task
-def generate_schema(context: Context):
+def generate_schema(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for the schema."""
     _generate_infrahub_schema_documentation()
+    _generate_infrahub_schema_attribute_kind_parameters_snippet()
 
 
 @task
-def generate_infrahub_cli(context: Context):
+def generate_infrahub_cli(context: Context) -> None:
     """Generate documentation for the infrahub cli."""
     _generate_infrahub_cli_documentation(context=context)
 
 
-@task
-def generate_infrahubctl(context: Context):
-    """Generate documentation for the infrahubctl cli."""
-    _generate_infrahubctl_documentation(context=context)
+# @task
+# def generate_infrahubctl(context: Context) -> None:
+#    """Generate documentation for the infrahubctl cli."""
+#    _generate_infrahubctl_documentation(context=context)
 
 
 @task
-def generate_infrahubsync_sync(context: Context):
-    """Generate documentation for the infrahub-sync cli."""
-    _generate_infrahubsync_documentation(context=context)
-
-
-@task
-def generate_repository(context: Context):
+def generate_repository(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for the repository configuration file."""
-    _generate_infrahub_repository_configuration_documentation(context=context)
+    _generate_infrahub_repository_configuration_documentation()
+
+
+# @task
+# def generate_python_sdk(context: Context) -> None:
+#    """Generate documentation for the Python SDK."""
+#    _generate_infrahub_sdk_configuration_documentation(context=context)
 
 
 @task
-def generate_python_sdk(context: Context):
-    """Generate documentation for the Python SDK."""
-    _generate_infrahub_sdk_configuration_documentation(context=context)
+def generate_bus_events(context: Context) -> None:  # noqa: ARG001
+    """Generate documentation for Infrahub Bus events."""
+    _generate_infrahub_bus_events_documentation()
 
 
 @task
-def generate_bus_events(context: Context):
-    """Generate documentation for the Bus events."""
-    _generate_infrahub_events_documentation(context=context)
+def generate_infrahub_events(context: Context) -> None:  # noqa: ARG001
+    """Generate documentation for Infrahub events."""
+    _generate_infrahub_events_documentation()
 
 
 @task
-def install(context: Context):
+def install(context: Context) -> None:
     """Install documentation dependencies."""
     exec_cmd = "npm install"
 
@@ -91,17 +88,8 @@ def install(context: Context):
 
 
 @task
-def validate(context: Context, docker: bool = False):
+def validate(context: Context) -> None:
     """Validate that the generated documentation is committed to Git."""
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run "
-        exec_cmd += f"{build_test_envs()} infrahub-test inv docs.validate"
-        with context.cd(ESCAPED_REPO_PATH):
-            context.run(exec_cmd)
-        return
-
     _generate(context=context)
     exec_cmd = "git diff --exit-code docs"
     with context.cd(ESCAPED_REPO_PATH):
@@ -109,7 +97,7 @@ def validate(context: Context, docker: bool = False):
 
 
 @task
-def serve(context: Context):
+def serve(context: Context) -> None:
     """Run documentation server in development mode."""
 
     exec_cmd = "npm run serve"
@@ -119,7 +107,7 @@ def serve(context: Context):
 
 
 @task
-def vale(context: Context):
+def vale(context: Context) -> None:
     """Run vale to validate the documentation."""
     has_vale = check_if_command_available(context=context, command_name="vale")
 
@@ -127,14 +115,14 @@ def vale(context: Context):
         print("Warning, Vale is not installed")
         return
 
-    exec_cmd = "vale ."
+    exec_cmd = "vale $(find ./docs -type f \\( -name '*.mdx' -o -name '*.md' \\) -not -path './docs/node_modules/*')"
     print(" - [docs] Lint docs with vale")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
 @task
-def markdownlint(context: Context):
+def markdownlint(context: Context) -> None:
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
@@ -147,7 +135,7 @@ def markdownlint(context: Context):
 
 
 @task
-def format_markdownlint(context: Context):
+def format_markdownlint(context: Context) -> None:
     """Run markdownlint-cli2 to format all .md/mdx files."""
 
     print(" - [docs] Format code with markdownlint-cli2")
@@ -157,19 +145,19 @@ def format_markdownlint(context: Context):
 
 
 @task
-def format(context: Context):
+def format(context: Context) -> None:
     """This will run all formatter."""
     format_markdownlint(context)
 
 
 @task
-def lint(context: Context):
+def lint(context: Context) -> None:
     """This will run all linter."""
-    vale(context)
     markdownlint(context)
+    vale(context)
 
 
-def _generate_infrahub_cli_documentation(context: Context):
+def _generate_infrahub_cli_documentation(context: Context) -> None:
     """Generate the documentation for infrahub cli using typer-cli."""
 
     CLI_COMMANDS = (
@@ -185,43 +173,51 @@ def _generate_infrahub_cli_documentation(context: Context):
             context.run(exec_cmd)
 
 
-def _generate(context: Context):
+def _generate(context: Context) -> None:
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
-    # _generate_infrahubsync_documentation(context=context)
-    _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
-    _generate_infrahub_sdk_configuration_documentation()
+    _generate_infrahub_bus_events_documentation()
     _generate_infrahub_events_documentation()
 
 
-def _generate_infrahubctl_documentation(context: Context):
-    """Generate the documentation for infrahubctl using typer-cli."""
-    from infrahub_sdk.ctl.cli import app
+def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
+    """Generate documentation for any attributes that have parameters defined to be defined by users."""
+    import jinja2
 
-    print(" - Generate infrahubctl CLI documentation")
-    for cmd in app.registered_commands:
-        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli_commands utils docs --name "infrahubctl {cmd.name}"'
-        exec_cmd += f" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
-        with context.cd(ESCAPED_REPO_PATH):
-            context.run(exec_cmd)
+    from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
 
-    for cmd in app.registered_groups:
-        exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
-        exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
-        with context.cd(ESCAPED_REPO_PATH):
-            context.run(exec_cmd)
+    kind_ap_parameters: dict[str, dict] = {}
+    for kind, schema_cls in attribute_schema_class_by_kind.items():
+        # If the schema has a parameters class, add it to the list
+        init_schema = schema_cls(name="ignore", kind=kind)
+        if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
+            params = {
+                param: info
+                for param, info in init_schema.parameters.model_fields.items()
+                if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
+            }
+            kind_ap_parameters[kind] = params
+    # for _, obj in inspect.getmembers(ap):
+    #     if inspect.isclass(obj) and issubclass(obj, ap.AttributeParameters) and obj is not ap.AttributeParameters:
+    #         kind_ap_parameters.append(obj)
 
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "schema" / "attribute_kind_params.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "snippets" / "attribute-kind-params.mdx"
+    output_label = "docs/docs/snippets/attribute-kind-params.mdx"
+    if not template_file.exists():
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
 
-def _generate_infrahubsync_documentation(context: Context):
-    """Generate the documentation for infrahub-sync using typer-cli."""
+    template_text = template_file.read_text(encoding="utf-8")
 
-    print(" - Generate infrahub-sync CLI documentation")
-    exec_cmd = 'poetry run typer infrahub_sync.cli utils docs --name "infrahub-sync"'
-    exec_cmd += " --output docs/docs/sync/reference/cli.mdx"
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run(exec_cmd)
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(kinds=kind_ap_parameters)
+
+    output_file.write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
 
 
 def _generate_infrahub_schema_documentation() -> None:
@@ -239,20 +235,20 @@ def _generate_infrahub_schema_documentation() -> None:
     }
     print(" - Generate Infrahub schema documentation")
     for schema_name, schema in schemas_to_generate.items():
-        template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
-        output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
+        template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "schema" / f"{schema_name}.j2"
+        output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "reference" / "schema" / f"{schema_name}.mdx"
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
-        if not os.path.exists(template_file):
+        if not template_file.exists():
             print(f"Unable to find the template file at {template_file}")
             sys.exit(-1)
 
-        template_text = Path(template_file).read_text(encoding="utf-8")
+        template_text = template_file.read_text(encoding="utf-8")
 
         environment = jinja2.Environment()
         template = environment.from_string(template_text)
         rendered_file = template.render(schema=schema)
 
-        Path(output_file).write_text(rendered_file, encoding="utf-8")
+        output_file.write_text(rendered_file, encoding="utf-8")
         print(f"Docs saved to: {output_label}")
 
 
@@ -327,49 +323,69 @@ def _generate_infrahub_config_documentation() -> None:
     Path(output_file).write_text(rendered_file, encoding="utf-8")
     print(f"Docs saved to: {output_label}")
 
+    
+def _get_env_vars() -> dict[str, str]:
+    from infrahub_sdk.config import ConfigBase
+    from pydantic_settings import EnvSettingsSource
+
+    env_vars: dict[str, list[str]] = defaultdict(list[str])
+    settings = ConfigBase()
+    env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
+
+    for field_name, field in settings.model_fields.items():
+        for field_key, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+            env_vars[field_key].append(field_env_name.upper())
+
+    return env_vars
+
 
 def _generate_infrahub_sdk_configuration_documentation() -> None:
     """Generate documentation for the Infrahub SDK configuration"""
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
-    schema = ConfigBase.schema()
-
-    definitions = schema["definitions"]
+    schema = ConfigBase.model_json_schema()
+    env_vars = _get_env_vars()
+    definitions = schema["$defs"]
 
     properties = []
     for name, prop in schema["properties"].items():
-        choices: List[Dict[str, Any]] = []
+        choices: list[dict[str, Any]] = []
         kind = ""
+        composed_type = ""
         if "allOf" in prop:
             choices = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("enum", [])
             kind = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("type", "")
+        if "anyOf" in prop:
+            composed_type = ", ".join(i["type"] for i in prop.get("anyOf", []) if "type" in i and i["type"] != "null")
         properties.append(
             {
                 "name": name,
                 "description": prop.get("description", ""),
-                "type": prop.get("type", kind),
+                "type": prop.get("type", kind) or composed_type or "object",
                 "choices": choices,
                 "default": prop.get("default", ""),
-                "env_vars": list(prop.get("env_names", set())),
+                "env_vars": env_vars[name],
             }
         )
 
-    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
+    print(" - Generate Infrahub SDK configuration documentation")
+
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "sdk_config.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "python-sdk" / "reference" / "config.mdx"
     output_label = "docs/docs/python-sdk/reference/config.mdx"
 
-    if not os.path.exists(template_file):
+    if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
-    template_text = Path(template_file).read_text(encoding="utf-8")
+    template_text = template_file.read_text(encoding="utf-8")
 
     environment = jinja2.Environment(trim_blocks=True)
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties)
 
-    Path(output_file).write_text(rendered_file, encoding="utf-8")
+    output_file.write_text(rendered_file, encoding="utf-8")
     print(f"Docs saved to: {output_label}")
 
 
@@ -378,9 +394,9 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     from copy import deepcopy
 
     import jinja2
-    from infrahub_sdk.schema import InfrahubRepositoryConfig
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
-    schema = InfrahubRepositoryConfig.schema()
+    schema = InfrahubRepositoryConfig.model_json_schema()
 
     properties = [
         {
@@ -395,46 +411,46 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
         }
         for name, property in schema["properties"].items()
     ]
+    definitions = deepcopy(schema["$defs"])
 
-    definitions = deepcopy(schema["definitions"])
-
-    for name, definition in schema["definitions"].items():
-        for property in definition["properties"].keys():
-            definitions[name]["properties"][property]["required"] = (
-                True if property in definition["required"] else False
-            )
+    for name, definition in schema["$defs"].items():
+        for property, value in definition["properties"].items():
+            definitions[name]["properties"][property]["required"] = property in definition["required"]
+            if "anyOf" in value:
+                definitions[name]["properties"][property]["type"] = ", ".join(
+                    [i["type"] for i in value["anyOf"] if i["type"] != "null"]
+                )
 
     print(" - Generate Infrahub repository configuration documentation")
 
-    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx"
-    if not os.path.exists(template_file):
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "dotinfrahub.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "reference" / "dotinfrahub.mdx"
+    output_label = "docs/docs/reference/dotinfrahub.mdx"
+    if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
-    template_text = Path(template_file).read_text(encoding="utf-8")
+    template_text = template_file.read_text(encoding="utf-8")
 
     environment = jinja2.Environment()
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties, definitions=definitions)
 
-    Path(output_file).write_text(rendered_file, encoding="utf-8")
+    output_file.write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
 
 
-def _generate_infrahub_events_documentation() -> None:
+def _generate_infrahub_bus_events_documentation() -> None:
     """
     Generate documentation for all classes in the event system into a single file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
-    from collections import defaultdict
-    from typing import Dict, List, Optional, Type, Union
-
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
     def group_classes_by_category(
-        classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]],
-        priority_map: Optional[Dict[str, int]] = None,
-    ) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
+        classes: dict[str, type[InfrahubMessage | InfrahubResponse]],
+        priority_map: dict[str, int] | None = None,
+    ) -> dict[str, dict[str, list[dict[str, any]]]]:
         """
         Group classes into a nested dictionary by primary and secondary categories, including priority.
         """
@@ -445,19 +461,47 @@ def _generate_infrahub_events_documentation() -> None:
             priority = priority_map.get(event_name, 3) if priority_map else -1
             description = cls.__doc__.strip() if cls.__doc__ else None
 
+            # Retrieve the model schema and expand fields if necessary
+            schema = cls.model_json_schema().get("properties", {})
+            fields = []
+            for prop, details in schema.items():
+                # For a nested "data" field, expand its inner properties if available.
+                if prop == "data" and hasattr(cls, "__annotations__") and "data" in cls.__annotations__:
+                    data_type = cls.__annotations__["data"]
+                    if hasattr(data_type, "model_json_schema"):
+                        data_schema = data_type.model_json_schema().get("properties", {})
+                        for dprop, ddetails in data_schema.items():
+                            fields.append(
+                                {
+                                    "name": f"data.{dprop}",
+                                    "type": ddetails.get("type", "N/A"),
+                                    "description": ddetails.get("description", "N/A"),
+                                    "default": ddetails.get("default", "None"),
+                                }
+                            )
+                    else:
+                        fields.append(
+                            {
+                                "name": prop,
+                                "type": details.get("type", "N/A"),
+                                "description": details.get("description", "N/A"),
+                                "default": details.get("default", "None"),
+                            }
+                        )
+                else:
+                    fields.append(
+                        {
+                            "name": prop,
+                            "type": details.get("type", "N/A"),
+                            "description": details.get("description", "N/A"),
+                            "default": details.get("default", "None"),
+                        }
+                    )
             event_info = {
                 "event_name": event_name,
                 "description": description,
                 "priority": priority,
-                "fields": [
-                    {
-                        "name": prop,
-                        "type": details.get("type", "N/A"),
-                        "description": details.get("description", "N/A"),
-                        "default": details.get("default", "None"),
-                    }
-                    for prop, details in cls.model_json_schema().get("properties", {}).items()
-                ],
+                "fields": fields,
             }
             grouped[primary][secondary].append(event_info)
         return grouped
@@ -467,13 +511,17 @@ def _generate_infrahub_events_documentation() -> None:
 
     print(" - Generate Infrahub Bus Events documentation")
 
-    if not os.path.exists(template_file):
+    if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
     import jinja2
 
-    from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
+    from infrahub.message_bus.messages import (
+        MESSAGE_MAP,
+        PRIORITY_MAP,
+        RESPONSE_MAP,
+    )
 
     template_text = template_file.read_text(encoding="utf-8")
     environment = jinja2.Environment()
@@ -503,3 +551,107 @@ class ConfigurationSection:
     name: str
     description: str
     parameters: List[ConfigurationSectionParameter] = field(default_factory=list)
+
+      
+def _generate_infrahub_events_documentation() -> None:
+    """
+    Generate documentation for all Infrahub events into a single MDX file
+    using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
+
+    Note: Ensure all event classes (like GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
+    so that they appear in the introspection.
+    """
+    import re
+    from importlib import import_module
+    from pkgutil import walk_packages
+
+    import jinja2
+
+    import infrahub.events
+    from infrahub.events.models import EventMeta
+    from infrahub.events.utils import get_all_events
+
+    def load_all_event_modules(package: Any) -> None:  # noqa: ANN401
+        """Recursively load all modules in the given package."""
+        for _, modname, _ in walk_packages(package.__path__, package.__name__ + "."):
+            import_module(modname)
+
+    def format_event_name(raw_name: str) -> str:
+        """
+        Insert spaces before capitals and remove a trailing "Event", if present.
+        For example: "NodeCreatedEvent" becomes "Node Created Event".
+        """
+        formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)
+        return formatted.strip()
+
+    def group_events_by_category(event_classes: list[type]) -> dict[str, list[dict[str, Any]]]:
+        grouped = defaultdict(list)
+        for cls in event_classes:
+            # Extract the primary category from the class name (like "Node", "Group", "Commit")
+            category = re.match(r"([A-Z][a-z]+)", cls.__name__)
+            if not category:
+                continue
+            primary = category.group(1)
+            description = cls.__doc__.strip() if cls.__doc__ else ""
+            # Use helper functions to produce a friendly event name and an event type
+            event_name_formatted = format_event_name(cls.__name__)
+            event_type = cls.event_name
+
+            schema = cls.model_json_schema().get("properties", {})
+            fields = []
+            for prop, details in schema.items():
+                # Expand the "meta" field using the EventMeta model.
+                if prop == "meta":
+                    meta_schema = EventMeta.model_json_schema().get("properties", {})
+                    for mprop, mdetails in meta_schema.items():
+                        fields.append(
+                            {
+                                "name": f"meta.{mprop}",
+                                "description": mdetails.get("description", "N/A"),
+                            }
+                        )
+                    continue
+                fields.append(
+                    {
+                        "name": prop,
+                        "description": details.get("description", "N/A"),
+                    }
+                )
+
+            event_info = {
+                "event_name": event_name_formatted,
+                "infrahub_node_kind_event": cls.infrahub_node_kind_event,
+                "event_type": event_type,
+                "description": description,
+                "fields": fields,
+            }
+            grouped[primary].append(event_info)
+
+        for primary, events in grouped.items():
+            grouped[primary] = sorted(events, key=lambda x: x["event_name"])
+
+        return grouped
+
+    template_file = DOCUMENTATION_DIRECTORY / "_templates" / "infrahub-events.j2"
+    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events.mdx"
+
+    print(" - Generating Infrahub Events documentation")
+
+    if not template_file.exists():
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = template_file.read_text(encoding="utf-8")
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+
+    # IMPORTANT: Ensure all event classes are imported so that they are found by introspection.
+    load_all_event_modules(package=infrahub.events)
+    all_event_classes = get_all_events()
+    event_groups = group_events_by_category(event_classes=all_event_classes)
+
+    rendered_doc = template.render(event_groups=event_groups)
+
+    output_file.parent.mkdir(exist_ok=True, parents=True)
+    output_file.write_text(rendered_doc, encoding="utf-8")
+    print(f"Docs saved to: {output_file}")

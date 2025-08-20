@@ -1,0 +1,200 @@
+const deviceAttributes = [
+  {
+    id: "b78eb77a-7733-419e-9c88-5e49327a0b45",
+    name: "name",
+    kind: "Text",
+    label: "Name",
+    description: null,
+    default_value: null,
+    enum: null,
+    regex: null,
+    max_length: null,
+    min_length: null,
+    inherited: false,
+    unique: true,
+    branch: true,
+    optional: false,
+    order_weight: 1000,
+  },
+  {
+    id: "21d22008-ea69-49db-a983-8e869d6cdda6",
+    name: "description",
+    kind: "Text",
+    label: "Description",
+    description: null,
+    default_value: null,
+    enum: null,
+    regex: null,
+    max_length: null,
+    min_length: null,
+    inherited: false,
+    unique: false,
+    branch: true,
+    optional: true,
+    order_weight: 2000,
+  },
+  {
+    id: "cddf970e-446d-4fd1-bf73-b4f7577b4cc9",
+    name: "type",
+    kind: "Text",
+    label: "Type",
+    description: null,
+    default_value: null,
+    enum: null,
+    regex: null,
+    max_length: null,
+    min_length: null,
+    inherited: false,
+    unique: false,
+    branch: true,
+    optional: false,
+    order_weight: 3000,
+  },
+  {
+    id: "cddf970e-446d-4fd1-bf73-b4f7577b4cc9",
+    name: "test",
+    kind: "JSON",
+    label: "JSON",
+    description: null,
+    default_value: null,
+    enum: null,
+    regex: null,
+    max_length: null,
+    min_length: null,
+    inherited: false,
+    unique: false,
+    branch: true,
+    optional: true,
+    order_weight: 3000,
+  },
+];
+
+const deviceRelationship = [
+  {
+    id: "4aa9d82e-c522-49e1-9d39-5ec613af830e",
+    name: "site",
+    peer: "Location",
+    kind: "Attribute",
+    label: "Site",
+    description: null,
+    identifier: "device__location",
+    inherited: false,
+    cardinality: "one",
+    branch: true,
+    optional: false,
+    order_weight: 500, // Should be first
+  },
+  {
+    id: "7507180c-7424-4066-a9e6-3ec828cecbc4",
+    name: "status",
+    peer: "Status",
+    kind: "Attribute",
+    label: "Status",
+    description: null,
+    identifier: "device__status",
+    inherited: false,
+    cardinality: "one",
+    branch: true,
+    optional: false,
+    order_weight: 4000,
+  },
+  {
+    id: "4d4dc101-bc52-4128-bda1-1c6f9b00d967",
+    name: "role",
+    peer: "Role",
+    kind: "Attribute",
+    label: "Role",
+    description: null,
+    identifier: "device__role",
+    inherited: false,
+    cardinality: "one",
+    branch: true,
+    optional: false,
+    order_weight: 5000,
+  },
+  {
+    id: "04716852-9cb9-4e9d-869e-6bec9f3b5f12",
+    name: "interfaces",
+    peer: "Interface",
+    kind: "Component",
+    label: "Interfaces",
+    description: null,
+    identifier: "device__interface",
+    inherited: false,
+    cardinality: "many",
+    branch: true,
+    optional: true,
+    order_weight: 6000,
+  },
+  {
+    id: "84f08ff3-2792-4566-831f-985a3a74df7d",
+    name: "asn",
+    peer: "AutonomousSystem",
+    kind: "Attribute",
+    label: "Asn",
+    description: null,
+    identifier: "autonomoussystem__device",
+    inherited: false,
+    cardinality: "one",
+    branch: true,
+    optional: true,
+    order_weight: 7000,
+  },
+  {
+    id: "00570181-ea0f-4cf8-b023-3d7acc7f9501",
+    name: "tags",
+    peer: "Tag",
+    kind: "Attribute",
+    label: "Tags",
+    description: null,
+    identifier: "device__tag",
+    inherited: false,
+    cardinality: "many",
+    branch: true,
+    optional: true,
+    order_weight: 8000,
+  },
+];
+
+export const C_deviceSchema: any = {
+  id: "a3b8515c-274e-4d79-83b3-8bb7eaf25e26",
+  name: "device",
+  kind: "Device",
+  description: null,
+  default_filter: "name__value",
+  display_labels: ["name__value"],
+  attributes: deviceAttributes,
+  relationships: deviceRelationship,
+  label: "Device",
+  inherit_from: [],
+  groups: [],
+  branch: true,
+};
+
+export const C_deviceAttributeListColumns = deviceAttributes
+  .filter((attribute: any) => attribute.kind !== "JSON")
+  .map((attribute: any) => ({
+    isAttribute: true,
+    ...attribute,
+  }));
+
+export const C_deviceProfileColumns = deviceAttributes
+  .filter((attribute: any) => attribute.optional)
+  .map((attribute: any) => ({
+    isAttribute: true,
+    ...attribute,
+  }));
+
+export const C_deviceRelationshipColumns = deviceRelationship
+  .filter((relationship: any) => relationship.kind !== "Component")
+  .map((relationship: any) => ({
+    isRelationship: true,
+    paginated: relationship.cardinality === "many",
+    ...relationship,
+  }));
+
+export const C_deviceObjectColumns = [
+  C_deviceRelationshipColumns[0], // Should be first due to order_weight
+  ...C_deviceAttributeListColumns,
+  ...C_deviceRelationshipColumns.slice(1), // Rest of the relationships
+];

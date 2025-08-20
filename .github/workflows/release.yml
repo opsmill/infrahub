@@ -1,15 +1,85 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:line-length
 name: New Release
 
 on:
-  push:
-    tags:
-      - 'infrahub-v*'
-      - '!infrahub-v*rc*'
+  release:
+    types:
+      - published
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
+  check_release:
+    runs-on: ubuntu-22.04
+    needs: prepare-environment
+    outputs:
+      is_prerelease: ${{ steps.release.outputs.is_prerelease }}
+      is_devrelease: ${{ steps.release.outputs.is_devrelease }}
+      version: ${{ steps.release.outputs.version }}
+      major_minor_version: ${{ steps.release.outputs.major_minor_version }}
+      latest_tag: ${{ steps.release.outputs.latest_tag }}
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          submodules: true
+
+      - name: "Set up Python"
+        uses: "actions/setup-python@v5"
+        with:
+          python-version: "3.12"
+
+      - name: "Install Poetry"
+        uses: "snok/install-poetry@v1"
+        with:
+          version: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: "Setup Python environment"
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
+
+      - name: "Check prerelease type"
+        id: release
+        run: |
+          echo is_prerelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_prerelease))") >> "$GITHUB_OUTPUT"
+          echo is_devrelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_devrelease))") >> "$GITHUB_OUTPUT"
+          echo "version=$(poetry version -s)" >> "$GITHUB_OUTPUT"
+          echo major_minor_version=$(poetry run python -c "from packaging.version import Version; print(f\"{Version('$(poetry version -s)').major}.{Version('$(poetry version -s)').minor}\")") >> "$GITHUB_OUTPUT"
+          echo latest_tag=$(curl -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              https://api.github.com/repos/${{ github.repository }}/releases/latest \
+              | jq -r '.tag_name') >> "$GITHUB_OUTPUT"
+
+      - name: Check tag version
+        if: github.event.release.tag_name != format('infrahub-v{0}', steps.release.outputs.version)
+        run: |
+          echo "Tag version does not match python project version"
+          exit 1
+
+      - name: Check prerelease and project version
+        if: github.event.release.prerelease == true && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
+        run: |
+          echo "Cannot pre-release a non pre-release or non dev-release version (${{ steps.release.outputs.version }})"
+          exit 1
+
+      - name: Check release and project version
+        if: github.event.release.prerelease == false && (steps.release.outputs.is_prerelease == 1 || steps.release.outputs.is_devrelease == 1)
+        run: |
+          echo "Cannot release a pre-release or dev-release version (${{ steps.release.outputs.version }})"
+          exit 1
+
+
   meta_data:
+    needs: check_release
     runs-on: ubuntu-22.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
@@ -22,21 +92,13 @@ jobs:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
-            type=match,pattern=infrahub-v(\d+\.\d+\.\d+),group=1
-            type=match,pattern=infrahub-v(\d+\.\d+),group=1
-            type=raw,value=stable
+            type=raw,value=${{ needs.check_release.outputs.version }}
+            type=raw,value=${{ github.event.release.prerelease == false && needs.check_release.outputs.major_minor_version || '' }}
+            type=raw,value=${{ github.event.release.prerelease == true && 'preview' || 'stable' }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
-
-  # Commented until we agree to link Infrahub version and chart version
-  # extract-version:
-  #   runs-on: ubuntu-22.04
-  #   outputs:
-  #     version: ${{ steps.extract_version.outputs.version }}
-  #   steps:
-  #     - name: Extract version from tag
-  #       id: extract_version
-  #       run: echo "version=${GITHUB_REF_NAME/infrahub-v/}" >> $GITHUB_OUTPUT
+          flavor: |
+            latest=${{ needs.check_release.outputs.latest_tag == github.event.release.tag_name }}
 
   publish-docker-image:
     uses: ./.github/workflows/ci-docker-image.yml
@@ -50,9 +112,26 @@ jobs:
       labels: ${{ needs.meta_data.outputs.labels }}
 
   publish-helm-chart:
-    uses: ./.github/workflows/publish-helm-chart.yml
+    needs: check_release
+    if: github.event.release.prerelease == false
+    uses: opsmill/infrahub-helm/.github/workflows/publish-helm-chart.yml@stable
     secrets: inherit
-    # needs: extract-version
     with:
       publish: true
-      # version: ${{ needs.extract-version.outputs.version }}
+      chart: infrahub
+
+  publish-pypi:
+    needs: check_release
+    uses: ./.github/workflows/publish-pypi.yml
+    secrets: inherit
+    with:
+      publish: true
+
+  repository-dispatch:
+    needs:
+      - check_release
+      - publish-docker-image
+    uses: ./.github/workflows/repository-dispatch.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.check_release.outputs.version }}

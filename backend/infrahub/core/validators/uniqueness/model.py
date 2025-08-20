@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Set, Tuple, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -8,8 +8,8 @@ from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipS
 
 class QueryRelationshipAttributePath(BaseModel):
     identifier: str
-    attribute_name: Optional[str] = Field(default=None)
-    value: Optional[Any] = Field(default=None)
+    attribute_name: str | None = Field(default=None)
+    value: Any | None = Field(default=None)
 
     def __hash__(self) -> int:
         to_hash = self.identifier
@@ -22,8 +22,9 @@ class QueryRelationshipAttributePath(BaseModel):
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
-    property_name: Optional[str] = Field(default=None)
-    value: Optional[Any] = Field(default=None)
+    attribute_kind: str
+    property_name: str | None = Field(default=None)
+    value: Any | None = Field(default=None)
 
     def __hash__(self) -> int:
         to_hash = self.attribute_name
@@ -36,13 +37,44 @@ class QueryAttributePath(BaseModel):
 
 class NodeUniquenessQueryRequest(BaseModel):
     kind: str
-    unique_attribute_paths: Set[QueryAttributePath] = Field(default_factory=set)
-    relationship_attribute_paths: Set[QueryRelationshipAttributePath] = Field(default_factory=set)
+    unique_attribute_paths: set[QueryAttributePath] = Field(default_factory=set)
+    relationship_attribute_paths: set[QueryRelationshipAttributePath] = Field(default_factory=set)
 
     def __bool__(self) -> bool:
         if self.unique_attribute_paths or self.relationship_attribute_paths:
             return True
         return False
+
+    def __str__(self) -> str:
+        return (
+            "ATTRS: "
+            + "; ".join(
+                q.attribute_name + " " + str(q.property_name) + " " + (str(q.value) if q.value is not None else "")
+                for q in self.unique_attribute_paths
+            )
+            + " RELS: "
+            + "; ".join(
+                q.identifier + " " + str(q.attribute_name) + " " + (str(q.value) if q.value is not None else "")
+                for q in self.relationship_attribute_paths
+            )
+        )
+
+
+class QueryRelationshipPathValued(BaseModel):
+    relationship_schema: RelationshipSchema
+    peer_id: str | None
+    attribute_name: str | None
+    attribute_value: str | bool | int | float | None
+
+
+class QueryAttributePathValued(BaseModel):
+    attribute_name: str
+    value: str | bool | int | float
+
+
+class NodeUniquenessQueryRequestValued(BaseModel):
+    kind: str
+    unique_valued_paths: list[QueryAttributePathValued | QueryRelationshipPathValued]
 
 
 class NonUniqueRelatedAttribute(BaseModel):
@@ -100,12 +132,12 @@ class NonUniqueAttribute(BaseModel):
 class NonUniqueNode(BaseModel):
     node_schema: MainSchemaTypes
     node_id: str
-    non_unique_attributes: List[NonUniqueAttribute] = Field(default_factory=list)
-    non_unique_related_attributes: List[NonUniqueRelatedAttribute] = Field(default_factory=list)
+    non_unique_attributes: list[NonUniqueAttribute] = Field(default_factory=list)
+    non_unique_related_attributes: list[NonUniqueRelatedAttribute] = Field(default_factory=list)
 
     def get_relationship_violation(
-        self, relationship_name: str, attribute_name: Optional[str]
-    ) -> Optional[NonUniqueRelatedAttribute]:
+        self, relationship_name: str, attribute_name: str | None
+    ) -> NonUniqueRelatedAttribute | None:
         attribute_names = {attribute_name}
         if attribute_name is None:
             attribute_names.add("id")
@@ -114,16 +146,16 @@ class NonUniqueNode(BaseModel):
                 return nura
         return None
 
-    def get_attribute_violation(self, attribute_name: str) -> Optional[NonUniqueAttribute]:
+    def get_attribute_violation(self, attribute_name: str) -> NonUniqueAttribute | None:
         for nua in self.non_unique_attributes:
             if nua.attribute_name == attribute_name:
                 return nua
         return None
 
     def get_constraint_violation(
-        self, constraint_specifications: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]]
-    ) -> Optional[List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]]:
-        violations: List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = []
+        self, constraint_specifications: list[tuple[AttributeSchema | RelationshipSchema, str | None]]
+    ) -> list[NonUniqueAttribute | NonUniqueRelatedAttribute] | None:
+        violations: list[NonUniqueAttribute | NonUniqueRelatedAttribute] = []
         for sub_schema, property_name in constraint_specifications:
             if isinstance(sub_schema, AttributeSchema):
                 attribute_violation = self.get_attribute_violation(sub_schema.name)

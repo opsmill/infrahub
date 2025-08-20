@@ -1,25 +1,28 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Optional, TypeAlias, Union
+from typing import Any, TypeAlias
 
+from infrahub_sdk.utils import deep_merge_dict
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.models import HashableModel
+from infrahub.exceptions import SchemaNotFoundError
 
 from .attribute_schema import AttributeSchema
 from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath, SchemaAttributePathValue
 from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
-from .filter import FilterSchema
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
+from .template_schema import TemplateSchema
 
-MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
+NonGenericSchemaTypes: TypeAlias = NodeSchema | ProfileSchema | TemplateSchema
+MainSchemaTypes: TypeAlias = NonGenericSchemaTypes | GenericSchema
 
 
 # -----------------------------------------------------
@@ -29,8 +32,8 @@ MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
 #  And we'll look into adding support for Generic as well
 class BaseNodeExtensionSchema(HashableModel):
     kind: str
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
+    attributes: list[AttributeSchema] = Field(default_factory=list)
+    relationships: list[RelationshipSchema] = Field(default_factory=list)
 
 
 class NodeExtensionSchema(BaseNodeExtensionSchema):
@@ -38,14 +41,15 @@ class NodeExtensionSchema(BaseNodeExtensionSchema):
 
 
 class SchemaExtension(HashableModel):
-    nodes: List[NodeExtensionSchema] = Field(default_factory=list)
+    nodes: list[NodeExtensionSchema] = Field(default_factory=list)
 
 
 class SchemaRoot(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    version: Optional[str] = Field(default=None)
-    generics: List[GenericSchema] = Field(default_factory=list)
-    nodes: List[NodeSchema] = Field(default_factory=list)
+
+    version: str | None = Field(default=None)
+    generics: list[GenericSchema] = Field(default_factory=list)
+    nodes: list[NodeSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
 
     @classmethod
@@ -58,9 +62,18 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    def validate_namespaces(self) -> List[str]:
+    def get(self, name: str) -> NodeSchema | GenericSchema:
+        """Check if a schema exist locally as a node or as a generic."""
+
+        for item in self.nodes + self.generics:
+            if item.kind == name:
+                return item
+
+        raise SchemaNotFoundError(branch_name="undefined", identifier=name)
+
+    def validate_namespaces(self) -> list[str]:
         models = self.nodes + self.generics
-        errors: List[str] = []
+        errors: list[str] = []
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
@@ -77,23 +90,31 @@ class SchemaRoot(BaseModel):
                 if not item.id:
                     item.id = str(uuid.uuid4())
 
+    def merge(self, schema: SchemaRoot) -> SchemaRoot:
+        """Return a new `SchemaRoot` after merging `self` with `schema`."""
+        return SchemaRoot.model_validate(deep_merge_dict(dicta=self.model_dump(), dictb=schema.model_dump()))
+
+    def duplicate(self) -> SchemaRoot:
+        """Return a duplicate of the current schema."""
+        return SchemaRoot.model_validate(self.model_dump())
+
 
 internal_schema = internal.to_dict()
 
 __all__ = [
-    "core_models",
-    "internal_schema",
     "AttributePathParsingError",
     "AttributeSchema",
     "BaseNodeSchema",
     "DropdownChoice",
-    "FilterSchema",
-    "NodeSchema",
     "GenericSchema",
+    "MainSchemaTypes",
+    "NodeSchema",
     "ProfileSchema",
     "RelationshipSchema",
     "SchemaAttributePath",
     "SchemaAttributePathValue",
     "SchemaRoot",
-    "MainSchemaTypes",
+    "TemplateSchema",
+    "core_models",
+    "internal_schema",
 ]

@@ -1,62 +1,60 @@
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
-from graphene import Field, Int, String
-from graphene.types.generic import GenericScalar
+from graphene import Schema
 from graphql import GraphQLResolveInfo, graphql
 
-from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.timestamp import Timestamp
+from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
+from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 log = get_logger(name="infrahub.graphql")
 
 
 async def resolver_graphql_query(
-    parent: dict,  # pylint: disable=unused-argument
+    parent: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     name: str,
-    params: Optional[Dict[str, Any]] = None,
-    interval: Optional[int] = 10,
-) -> Iterable[Dict]:
-    context: GraphqlContext = info.context
+    graphql_schema: Schema,
+    params: dict[str, Any] | None = None,
+    interval: int = 10,
+) -> AsyncGenerator[dict[str, Any], None]:
+    graphql_context: GraphqlContext = info.context
     at = Timestamp()
 
-    async with context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         # Find the GraphQLQuery and the GraphQL Schema
         graphql_query = await NodeManager.get_one_by_default_filter(
-            db=db, id=name, kind=InfrahubKind.GRAPHQLQUERY, branch=context.branch, at=at
+            db=db, id=name, kind=CoreGraphQLQuery, branch=graphql_context.branch, at=at
         )
         if not graphql_query:
             raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
 
-        schema_branch = registry.schema.get_schema_branch(name=context.branch.name)
-        graphql_schema = schema_branch.get_graphql_schema()
-
     while True:
-        async with context.db.start_session() as db:
+        async with graphql_context.db.start_session(read_only=True) as db:
             result = await graphql(
                 schema=graphql_schema,
                 source=graphql_query.query.value,
-                context_value=context.__class__(
-                    db=db, branch=context.branch, at=Timestamp(), related_node_ids=set(), types=context.types
+                context_value=graphql_context.__class__(
+                    db=db,
+                    branch=graphql_context.branch,
+                    at=Timestamp(),
+                    related_node_ids=set(),
+                    types=graphql_context.types,
+                    single_relationship_resolver=SingleRelationshipResolver(),
+                    many_relationship_resolver=ManyRelationshipResolver(),
                 ),
                 root_value=None,
                 variable_values=params or {},
             )
-            yield result.data
+            if result.data:
+                yield result.data
 
-        await asyncio.sleep(delay=interval)
-
-
-GraphQLQuerySubscription = Field(
-    GenericScalar(),
-    name=String(),
-    params=GenericScalar(required=False),
-    interval=Int(required=False),
-)
+        await asyncio.sleep(delay=float(interval))

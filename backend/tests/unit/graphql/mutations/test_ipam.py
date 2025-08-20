@@ -1,14 +1,14 @@
 import ipaddress
 
-from graphql import graphql
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 CREATE_IPPREFIX = """
 mutation CreatePrefix($prefix: String!) {
@@ -43,6 +43,30 @@ mutation UpdatePrefix($id: String!, $prefix: String!, $description: String!) {
         ok
         object {
             id
+        }
+    }
+}
+"""
+
+
+UPSERT_IPPREFIX_NO_ID = """
+mutation UpsertPrefix($prefix: String!, $description: String!) {
+    IpamIPPrefixUpsert(
+        data: {
+            prefix: {
+                value: $prefix
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+            description {
+                value
+            }
         }
     }
 }
@@ -168,6 +192,29 @@ mutation UpdateAddress($id: String!, $address: String!, $description: String!) {
 }
 """
 
+UPSERT_IPADDRESS_NO_ID = """
+mutation UpsertAddress($address: String!, $description: String!) {
+    IpamIPAddressUpsert(
+        data: {
+            address: {
+                value: $address
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+            description {
+                value
+            }
+        }
+    }
+}
+"""
+
 UPSERT_IPADDRESS = """
 mutation UpsertAddress($id: String!, $address: String!, $description: String!) {
     IpamIPAddressUpsert(
@@ -225,7 +272,7 @@ mutation NamespaceDelete($namespace_id: String!) {
 
 
 async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=DELETE_IPNAMESPACE,
@@ -242,7 +289,7 @@ async def test_delete_regular_ipnamespace(db: InfrahubDatabase, default_branch: 
     await ns1.new(db=db, name="ns1")
     await ns1.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=DELETE_IPNAMESPACE,
@@ -262,7 +309,7 @@ async def test_ipprefix_create(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure prefix can be created and parent/children relationships are set."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     supernet = ipaddress.ip_network("2001:db8::/32")
     result = await graphql(
@@ -320,12 +367,12 @@ async def test_ipprefix_create(
 
 async def test_ipprefix_create_with_ipnamespace(
     db: InfrahubDatabase,
-    default_branch: Branch,
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
+    branch: Branch,
 ):
-    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=default_branch)
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=branch)
     await ns.new(db=db, name="ns1")
     await ns.save(db=db)
 
@@ -349,7 +396,7 @@ async def test_ipprefix_create_with_ipnamespace(
     }
     """
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     supernet = ipaddress.ip_network("2001:db8::/32")
     result = await graphql(
@@ -363,7 +410,9 @@ async def test_ipprefix_create_with_ipnamespace(
     assert result.data["IpamIPPrefixCreate"]["ok"]
     assert result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-    ip_prefix = await registry.manager.get_one(id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db)
+    ip_prefix = await registry.manager.get_one(
+        id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db, branch=branch
+    )
     ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
     assert ip_namespace.id == ns.id
 
@@ -376,7 +425,7 @@ async def test_ipprefix_create_reverse(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure parent/children relationship are set when creating a parent after a child."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -421,7 +470,7 @@ async def test_ipprefix_update(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure a prefix can be updated."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -448,17 +497,17 @@ async def test_ipprefix_update(
 
 async def test_ipprefix_update_within_namespace(
     db: InfrahubDatabase,
-    default_branch: Branch,
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
+    branch: Branch,
 ):
     """Make sure a prefix can be updated within a namespace."""
-    test_ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    test_ns = await Node.init(db=db, branch=branch, schema=InfrahubKind.NAMESPACE)
     await test_ns.new(db=db, name="test")
     await test_ns.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -541,14 +590,14 @@ async def test_ipprefix_upsert(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure a prefix can be upserted."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
         schema=gql_params.schema,
-        source=UPSERT_IPPREFIX,
+        source=UPSERT_IPPREFIX_NO_ID,
         context_value=gql_params.context,
-        variable_values={"id": "", "prefix": str(subnet), "description": ""},
+        variable_values={"prefix": str(subnet), "description": ""},
     )
 
     assert not result.errors
@@ -576,7 +625,7 @@ async def test_ipprefix_delete(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure deleting a prefix relocates its children."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     networks = [
         ipaddress.ip_network("2001:db8::/32"),
@@ -651,7 +700,7 @@ async def test_ipaddress_create(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure IP address is properly created and nested under a subnet."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     # Single IP address, no IP prefix
     address = ipaddress.ip_interface("192.0.2.1/24")
@@ -726,7 +775,7 @@ async def test_ipaddress_update(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure an IP address can be updated."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
@@ -763,7 +812,7 @@ async def test_ipaddress_update_within_namespace(
     await test_ns.new(db=db, name="test")
     await test_ns.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
@@ -846,14 +895,14 @@ async def test_ipaddress_upsert(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure an IP address can be upsert."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
         schema=gql_params.schema,
-        source=UPSERT_IPADDRESS,
+        source=UPSERT_IPADDRESS_NO_ID,
         context_value=gql_params.context,
-        variable_values={"id": "", "address": str(address), "description": ""},
+        variable_values={"address": str(address), "description": ""},
     )
 
     assert not result.errors
@@ -881,7 +930,7 @@ async def test_ipaddress_change_ipprefix(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure relationship between an address and its prefix is properly managed."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("2001:db8::1/64")
     result = await graphql(
@@ -1045,7 +1094,7 @@ async def test_prefix_ancestors_descendants(
     await net16.new(db=db, prefix="10.0.0.0/16", parent=net14, ip_namespace=ns1)
     await net16.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     check_before = await graphql(
         schema=gql_params.schema,
         source=GET_PREFIX_HIERARCHY,
@@ -1125,3 +1174,46 @@ async def test_prefix_ancestors_descendants(
     assert children == [{"node": {"id": net16.id}}]
     descendants = prefix_details["descendants"]["edges"]
     assert descendants == [{"node": {"id": net16.id}}]
+
+
+async def test_delete_top_level_prefix(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+    net8 = await Node.init(db=db, schema=prefix_schema)
+    await net8.new(db=db, prefix="10.0.0.0/8", ip_namespace=ns1)
+    await net8.save(db=db)
+    net10 = await Node.init(db=db, schema=prefix_schema)
+    await net10.new(db=db, prefix="10.0.0.0/10", parent=net8, ip_namespace=ns1)
+    await net10.save(db=db)
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    delete_top = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": str(net10.id)},
+    )
+    assert not delete_top.errors
+    assert delete_top.data["IpamIPPrefixDelete"]["ok"] is True
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    delete_last_prefix = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": str(net8.id)},
+    )
+    assert not delete_last_prefix.errors
+    assert delete_last_prefix.data["IpamIPPrefixDelete"]["ok"] is True
+
+    ip_prefixes = await NodeManager.query(db=db, branch=default_branch, schema="IpamIPPrefix")
+    assert len(ip_prefixes) == 0

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Type, Union
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
@@ -16,9 +16,9 @@ if TYPE_CHECKING:
 
     from structlog.stdlib import BoundLogger
 
-    from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
     from infrahub.services.protocols import InfrahubLogger
 
 
@@ -27,9 +27,9 @@ class UserTask:
         self,
         title: str,
         db: InfrahubDatabase,
-        account: Optional[Node] = None,
-        account_id: Optional[str] = None,
-        logger: Optional[Union[BoundLogger, InfrahubLogger]] = None,
+        account: CoreGenericAccount | None = None,
+        account_id: str | None = None,
+        logger: BoundLogger | InfrahubLogger | None = None,
     ) -> None:
         if not account and not account_id:
             raise ValueError("Either account or account_id must be provided to initialize UserTask")
@@ -41,8 +41,8 @@ class UserTask:
             self.account_id = account.id
 
         self.title = title
-        self._task: Optional[Task]
-        self.log: Union[BoundLogger, InfrahubLogger] = logger or get_logger()
+        self._task: Task | None
+        self.log: BoundLogger | InfrahubLogger = logger or get_logger()
         self.db = db
 
     @property
@@ -52,7 +52,7 @@ class UserTask:
         raise ValueError("Task hasn't been initialized")
 
     @property
-    def account(self) -> Node:
+    def account(self) -> CoreGenericAccount:
         if self._account:
             return self._account
         raise ValueError("Account hasn't been initialized")
@@ -67,7 +67,7 @@ class UserTask:
         if self._account:
             return False
 
-        account = await registry.manager.get_one(id=self.account_id, db=self.db)
+        account: CoreGenericAccount | None = await registry.manager.get_one(id=self.account_id, db=self.db)
         if not account:
             raise ValueError(f"Unable to find the account associated with {self.account_id}")
         self._account = account
@@ -80,14 +80,16 @@ class UserTask:
 
     @classmethod
     def from_graphql_context(
-        cls, title: str, context: GraphqlContext, logger: Optional[Union[BoundLogger, InfrahubLogger]] = None
+        cls, title: str, graphql_context: GraphqlContext, logger: BoundLogger | InfrahubLogger | None = None
     ) -> Self:
-        if not context.db or not context.account_session:
+        if not graphql_context.db or not graphql_context.account_session:
             raise ValueError("db and account_session must be provided to initialize a GraphQLTaskReport")
 
-        if not logger and context.service and context.service.log:
-            logger = context.service.log
-        return cls(title=title, account_id=context.account_session.account_id, db=context.db, logger=logger)
+        if not logger and graphql_context.service and graphql_context.service.log:
+            logger = graphql_context.service.log
+        return cls(
+            title=title, account_id=graphql_context.account_session.account_id, db=graphql_context.db, logger=logger
+        )
 
     async def __aenter__(self) -> Self:
         await self.create_task()
@@ -95,9 +97,9 @@ class UserTask:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         if exc_type:
             await self.error(message=str(exc_value))
@@ -107,22 +109,22 @@ class UserTask:
         await self.task.save(db=self.db)
 
     async def add_log(
-        self, message: str, severity: Severity = Severity.INFO, db: Optional[InfrahubDatabase] = None
+        self, message: str, severity: Severity = Severity.INFO, db: InfrahubDatabase | None = None
     ) -> None:
         tlog = TaskLog(message=message, severity=severity, task_id=self.task_id)
         await tlog.save(db=db or self.db)
 
-    async def info(self, message: str, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
+    async def info(self, message: str, db: InfrahubDatabase | None = None, **kwargs: Any) -> None:
         if self.log:
             self.log.info(message, **kwargs)
         await self.add_log(message=message, severity=Severity.INFO, db=db)
 
-    async def warning(self, message: str, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
+    async def warning(self, message: str, db: InfrahubDatabase | None = None, **kwargs: Any) -> None:
         if self.log:
             self.log.warning(message, **kwargs)
         await self.add_log(message=message, severity=Severity.WARNING, db=db)
 
-    async def error(self, message: str, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
+    async def error(self, message: str, db: InfrahubDatabase | None = None, **kwargs: Any) -> None:
         if self.log:
             self.log.error(message, **kwargs)
         await self.add_log(message=message, severity=Severity.ERROR, db=db)
