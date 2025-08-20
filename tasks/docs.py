@@ -328,8 +328,8 @@ def _get_env_vars() -> dict[str, str]:
     settings = ConfigBase()
     env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
 
-    for field_name, field in settings.model_fields.items():
-        for field_key, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+    for field_name, model_field in settings.model_fields.items():
+        for field_key, field_env_name, _ in env_settings._extract_field_info(model_field, field_name):
             env_vars[field_key].append(field_env_name.upper())
 
     return env_vars
