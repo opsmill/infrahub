@@ -2,26 +2,36 @@
 title: Creating and assigning profiles
 ---
 
-# Creating and assigning profiles
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-In this tutorial we will be creating a Profile for a network device interface, and then create multiple interfaces using that profile.
+This guide shows you how to create and apply profiles to ensure consistent configuration across multiple nodes in Infrahub. Profiles help you maintain standardized configurations and reduce repetitive work when managing similar objects.
 
-The profile will be used to create interfaces that will connect end-users. We want all the end-user interfaces in our network to have exactly the same configuration.
+## What you'll achieve
 
-The following configuration attributes need to be defined in the profile:
+By following this guide, you'll:
 
-- Profile: end-user-interface
-- Status: active
-- Enabled: true
-- Auto negotiation: enabled
-- MTU: 1500 bytes
-- Mode: Access
-- Untagged VLAN: 10
-- Role: end-user
+- Create a profile that defines standard configuration for network interfaces
+- Apply the profile to multiple interfaces to ensure consistency
+- Learn how to override profile values for specific interfaces
+- Understand how profile inheritance works in Infrahub
 
-We will be assuming the following schema has been loaded into Infrahub, this is a requirement to be able to complete the rest of this guide.
+## Prerequisites
 
-```yaml
+- Infrahub instance running and accessible
+- Schema loaded with nodes that support profiles
+- Basic understanding of GraphQL mutations and queries
+
+## Load the schema
+
+:::warning Schema creation
+This step is only necessary if you don't already have a schema with profile-enabled nodes in your instance.
+:::
+
+1. Create a `schema.yml` file in the schemas directory of your repository:
+
+```yaml title="schema.yml" {9}
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
 nodes:
@@ -29,12 +39,13 @@ nodes:
     namespace: Infra
     description: "Network Interface"
     label: "Interface"
+    generate_profile: true # Enable profile generation (default)
     include_in_menu: true
+    icon: "mdi:ethernet"
     display_labels:
       - name__value
     order_by:
       - name__value
-    uniqueness_constraints:
     attributes:
       - name: name
         kind: Text
@@ -56,10 +67,6 @@ nodes:
       - name: enabled
         kind: Boolean
         default_value: false
-      - name: untagged_vlan
-        label: Untagged VLAN
-        kind: Number
-        optional: true
       - name: mode
         kind: Dropdown
         default_value: access
@@ -106,39 +113,99 @@ nodes:
             color: "#98b2d1"
 ```
 
-From this schema Infrahub will generate a `ProfileInfraInterface` schema. Infrahub will also generate a GraphQL query `ProfileInfraInterface` and the GraphQL mutations `ProfileInfraInterfaceCreate`, `ProfileInfraInterfaceDelete`, `ProfileInfraInterfaceUpdate` and `ProfileInfraInterfaceUpsert`.
+2. Load the schema with this command:
 
-Profiles, at this stage, can be only be used from the GraphQL API or the Python SDK. In a future release we will add support for managing profiles using the web frontend.
+```shell
+infrahubctl schema load schema.yml
+```
 
-## Creating the profile
+:::success
 
-We can create the profile by executing the following GraphQL mutation:
+You should see: `schema 'schema.yml' loaded successfully`
+
+:::
+
+## Step 1: Creating a profile
+
+### Create an interface profile
+
+Let's create a profile that defines the standard configuration for end-user interfaces. This profile will set common attributes that should be applied consistently across multiple interfaces.
+
+The profile will define these standard settings:
+
+- **Speed**: 1000 Mbps
+- **Status**: active (interface is operational)
+- **Enabled**: true (interface is administratively up)
+- **Auto negotiation**: enabled
+- **MTU**: 1500 bytes
+- **Mode**: access (not trunk)
+- **Role**: end_user
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Open the **Infrahub UI** in your browser
+2. Navigate to **Object Management** → **Profiles**
+3. Click on **Add Profile**
+4. Select **InfraInterface** as the profile type
+5. Fill in the profile details as follows:
+    - **Profile Name**: end-user-interface
+    - **Speed**: 1000
+    - **Auto Negotiation**: true
+    - **MTU**: 1500
+    - **Enabled**: true
+    - **Mode**: access
+    - **Status**: active
+    - **Role**: end_user
+6. Click **Save** to create the profile
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+:::note
+Access the GraphQL sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**.
+:::
 
 ```graphql
 mutation {
   ProfileInfraInterfaceCreate(
     data: {
-      profile_name: {value: "end-user-interface"},
-      status: {value: "active"},
-      enabled: {value: true},
-      auto_negotiation: {value: true},
-      mtu: {value:1500},
-      mode: {value: "access"},
-      untagged_vlan: {value: 10},
-      role: {value: "end_user"},
+      profile_name: {value: "end-user-interface"}
+      status: {value: "active"}
+      enabled: {value: true}
+      speed: {value: 1000}
+      auto_negotiation: {value: true}
+      mtu: {value: 1500}
+      mode: {value: "access"}
+      role: {value: "end_user"}
     }
   ) {
     ok
     object {
       id
+      profile_name {
+        value
+      }
     }
   }
 }
 ```
 
-## Retrieving profiles from Infrahub
+</TabItem>
+</Tabs>
 
-We can query Infrahub to retrieve the interface profile using the following GraphQL query
+### Verify the profile was created
+
+Query Infrahub to confirm the profile exists:
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Object Management** → **Profiles**
+2. Locate the **end-user-interface** profile in the list and click on it
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 query {
@@ -149,20 +216,62 @@ query {
         profile_name {
           value
         }
+        status {
+          value
+        }
+        enabled {
+          value
+        }
+        mtu {
+          value
+        }
       }
     }
   }
 }
 ```
 
-## Creating a node using a profile
+</TabItem>
+</Tabs>
 
-We can now create multiple interfaces that will inherited the attributes we defined in our `end-user-interface` profile.
+:::success
+You should see the profile with all attributes set to your specified values.
+:::
+
+## Step 2: Using the profile
+
+### Create interfaces using the profile
+
+Now that we have a profile, let's create multiple interfaces that inherit configuration from it. When using profiles, you only need to specify the unique attributes (like name) and reference the profile for all standardized values.
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+2. Click on **Add Interface**
+3. Fill in the interface details as follows:
+    - **Profile**: end-user-interface
+    - **Interface Name**: GigabitEthernet0/0/0
+
+:::note
+You should see interface field values automatically populated when selecting the profile.
+:::
+
+4. Click **Save** to create the interface
+5. Repeat the process for additional interfaces:
+    - **Profile**: end-user-interface
+    - **Interface Name**: GigabitEthernet0/0/1 and GigabitEthernet0/0/2
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 mutation {
   int0: InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/0"}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/0"},
+      profiles: [{hfid: ["end-user-interface"]}]
+    }
   ) {
     ok
     object {
@@ -170,7 +279,10 @@ mutation {
     }
   }
   int1: InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/1"}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/1"},
+      profiles: [{hfid: ["end-user-interface"]}]
+    }
   ) {
     ok
     object {
@@ -178,7 +290,10 @@ mutation {
     }
   }
   int2: InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/2"}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/2"},
+      profiles: [{hfid: ["end-user-interface"]}]
+    }
   ) {
     ok
     object {
@@ -188,7 +303,61 @@ mutation {
 }
 ```
 
-We will now query for one of the interfaces we created and check the values of the name and status attribute and the metadata.
+:::success
+
+The query should return the IDs of the created interfaces:
+
+```json
+{
+  "data": {
+    "int0": {
+      "ok": true,
+      "object": {
+        "id": "185cd024-5c9a-2afb-3583-c513b8097987"
+      }
+    },
+    "int1": {
+      "ok": true,
+      "object": {
+        "id": "185cd024-70f4-7fdf-3585-c51087cce195"
+      }
+    },
+    "int2": {
+      "ok": true,
+      "object": {
+        "id": "185cd024-777e-bcb1-358e-c5170daba901"
+      }
+    }
+  }
+}
+```
+
+:::
+
+</TabItem>
+</Tabs>
+
+### Verify profile inheritance
+
+Now let's verify that the interfaces have properly inherited values from the profile. Infrahub's metadata shows which values came from profiles, giving you complete transparency about data origin.
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+2. Click on **GigabitEthernet0/0/0** to view the details
+3. Click the "info" icon next to **MTU** to see the metadata
+
+:::success
+
+You should see that the MTU value is inherited from the profile.
+
+![Check profile inheritance in metadata](../media/guides/profiles/metadata.png)
+
+:::
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 query {
@@ -199,12 +368,11 @@ query {
           value
           is_from_profile
         }
-        status {
+        mtu {
           value
-          is_default
           is_from_profile
           source {
-            id
+            hfid
             display_label
           }
         }
@@ -214,18 +382,74 @@ query {
 }
 ```
 
-On the name attribute we can see that the `is_from_profile` property is `False`, indicating the name attribute was not inherited from a profile. The status attribute has the `is_from_profile` property set to `True` and the `source__id` property is set to the id of the profile from which the value was inherited.
+:::success
 
-The status attribute value is inherited from the profile, because we didn't specify a value for that attribute when we created the interface, hence the `is_default` property of the status attribute is `True`.
+You should see that the MTU value is inherited from the profile.
 
-## Overriding profile attribute values
+```json
+{
+  "data": {
+    "InfraInterface": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "GigabitEthernet0/0/0",
+              "is_from_profile": false
+            },
+            "mtu": {
+              "value": 1500,
+              "is_from_profile": true,
+              "source": {
+                "hfid": [
+                  "end-user-interface"
+                ],
+                "display_label": "end-user-interface"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
 
-We will now create another interface `GigabitEthernet0/0/3` using the profile. But we want to override the value of the MTU attribute, which is defined in the profile. To do this we have to explicitly provide a value for the attribute.
+:::
 
-```graphql
+</TabItem>
+</Tabs>
+
+## Step 3: Override profile values
+
+While profiles ensure consistency, you sometimes need exceptions for specific devices or interfaces. Infrahub lets you override profile values when needed.
+
+### Create an interface with custom MTU
+
+Create an interface with a custom MTU value that overrides the profile default:
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+2. Click on **Add Interface**
+3. Fill in the interface details as follows:
+    - **Profile**: end-user-interface
+    - **Interface Name**: GigabitEthernet0/0/3
+    - **MTU**: 9000 (this overrides the MTU value)
+4. Click **Save** to create the interface
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql {6}
 mutation {
   InfraInterfaceCreate(
-    data: {name: {value: "GigabitEthernet0/0/3"}, mtu: {value: 9000}, profiles: [{id: "end-user-interface"}]}
+    data: {
+      name: {value: "GigabitEthernet0/0/3"},
+      mtu: {value: 9000},  # Override profile MTU
+      profiles: [{hfid: ["end-user-interface"]}]
+    }
   ) {
     ok
     object {
@@ -235,9 +459,30 @@ mutation {
 }
 ```
 
-Using this query we can verify that the value for the MTU attribute and that it was not inherited from a profile.
+</TabItem>
+</Tabs>
 
-```query
+### Verify the override
+
+Confirm that the MTU was overridden while other values still come from the profile:
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+2. Click on **GigabitEthernet0/0/3** to view the details
+3. Click the "info" icon next to **MTU** to see the metadata
+
+:::success
+
+You should see that the MTU value is **not** inherited from the profile (source is empty).
+
+:::
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
 query {
   InfraInterface(name__value: "GigabitEthernet0/0/3") {
     edges {
@@ -251,3 +496,307 @@ query {
   }
 }
 ```
+
+:::success
+
+You should see that the MTU value is **not** inherited from the profile.
+
+```json {9}
+{
+  "data": {
+    "InfraInterface": {
+      "edges": [
+        {
+          "node": {
+            "mtu": {
+              "value": 9000,
+              "is_from_profile": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Step 4: Updating profile
+
+One of the key benefits of profiles is that when you update a profile, all nodes using it automatically inherit the changes. This provides a powerful way to update configurations across your infrastructure.
+
+### Updating the profile
+
+We will change the `end-user-interface` profile to set a new default **MTU** of `9000` instead of `1500`.
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Open the **Infrahub UI** in your browser
+2. Navigate to **Object Management** → **Profiles**
+3. Locate the **end-user-interface** profile in the list and click on it
+4. Click **Edit Profile Interface**
+5. Change the **MTU** value to `9000`
+6. Click **Save** to apply the changes
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  ProfileInfraInterfaceUpdate(
+    data: {
+      hfid: ["end-user-interface"]
+      mtu: {value: 9000} # Change the profile's MTU
+    }
+  ) {
+    ok
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Verify the update in interfaces
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+query {
+  InfraInterface {
+    edges {
+      node {
+        display_label
+        mtu {
+          value
+          is_from_profile
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::success
+
+You should see that the MTU value is now `9000` for all the interfaces.
+
+:::
+
+## Conclusion
+
+You've successfully set up profiles for your interfaces in Infrahub. Here's what you've accomplished:
+
+- Created a standardized profile for end-user interfaces
+- Applied the profile to multiple interfaces to ensure consistent configuration
+- Verified how values are inherited from profiles using metadata
+- Overridden specific profile values for individual interfaces when needed
+- Updated a profile and observed changes propagate automatically
+- Worked with multiple profiles and understood inheritance priority
+
+## Advanced usage
+
+### Using multiple profiles
+
+Infrahub lets you assign multiple profiles to a single node, giving you powerful composition capabilities. When multiple profiles define the same attribute, the `profile_priority` value controls which takes precedence (lower number = higher priority).
+
+Learn more about profile priorities in the [Understanding profiles in Infrahub](../topics/profiles) topic.
+
+#### Step 1: Creating another profile
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Object Management** → **Profiles**
+2. Click on **Add Profile**
+3. Select **InfraInterface** as the profile type
+4. Fill in the profile details as follows:
+    - **Profile Name**: high-speed-interface
+    - **MTU**: 9000
+    - **Speed**: 10000
+5. Click **Save** to create the profile
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  ProfileInfraInterfaceCreate(
+    data: {
+      profile_name: {value: "high-speed-interface"}
+      profile_priority: {value: 500} # Lower number = higher priority
+      speed: {value: 10000}
+      mtu: {value: 9000}
+    }
+  ) {
+    ok
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### Step 2: Assigning multiple profiles to an interface
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+2. Click on **Add Interface**
+3. Fill in the interface details as follows:
+    - **Profile**: `end-user-interface` and `high-speed-interface`
+    - **Interface Name**: GigabitEthernet0/0/4
+
+![Apply multiple profiles form](../media/guides/profiles/form-profiles.png)
+
+:::note
+You should see interface field values automatically populated when selecting the profiles.
+:::
+
+4. Click **Save** to create the interface
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql {5}
+mutation {
+  InfraInterfaceCreate(
+    data: {
+      name: {value: "GigabitEthernet0/0/4"},
+      profiles: [{hfid: ["end-user-interface"]}, {hfid: ["high-speed-interface"]}]
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### Step 3: Validating profile inheritance with multiple profiles
+
+Let's check which profile values are being applied when multiple profiles define the same attribute:
+
+<Tabs groupId="method">
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Interface**
+2. Click on **GigabitEthernet0/0/4** to view the details
+3. Click the "info" icon next to **Speed** to see the metadata
+4. Click the "info" icon next to **Status** to see the metadata
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+query {
+  InfraInterface(name__value: "GigabitEthernet0/0/4") {
+    edges {
+      node {
+        name {
+          value
+        }
+        status {
+          value
+          is_from_profile
+          source {
+            hfid
+            display_label
+          }
+        }
+        speed {
+          value
+          is_from_profile
+          source {
+            hfid
+            display_label
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+:::success
+
+```json
+{
+  "data": {
+    "InfraInterface": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "GigabitEthernet0/0/4"
+            },
+            "status": {
+              "value": "active",
+              "is_from_profile": true,
+              "source": {
+                "hfid": [
+                  "end-user-interface"
+                ],
+                "display_label": "end-user-interface"
+              }
+            },
+            "speed": {
+              "value": 10000,
+              "is_from_profile": true,
+              "source": {
+                "hfid": [
+                  "high-speed-interface"
+                ],
+                "display_label": "high-speed-interface"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+:::
+
+</TabItem>
+</Tabs>
+
+:::success
+
+You should see that:
+
+- The **Speed** value (10000) is inherited from the `high-speed-interface` profile
+- The **Status** value (active) is inherited from the `end-user-interface` profile
+
+:::
+
+## Related resources
+
+- [Understanding profiles in Infrahub](../topics/profiles) - Detailed explanation of profile concepts, inheritance rules, and design decisions
+- [Metadata](../topics/metadata) - Learn how Infrahub tracks data lineage and attribute sources
+- [Creating a schema](../guides/create-schema) - Learn to create schemas that generate profile support
+- [Node schema reference](../reference/schema/node) - Complete reference for node configuration including the `generate_profile` option
+- [Schema validation](../reference/schema-validation) - Validate your schemas before loading
+- [GraphQL API](../topics/graphql) - Overview of Infrahub's GraphQL API
+- [Python SDK documentation](https://docs.infrahub.app/python-sdk) - Full SDK reference for programmatic profile operations

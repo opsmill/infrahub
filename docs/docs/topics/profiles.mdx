@@ -2,59 +2,285 @@
 title: Profiles
 ---
 
-# Profiles
+This topic explains the concept of profiles in Infrahub, their purpose in the system architecture, and how they enable configuration consistency across your infrastructure. You'll gain a deeper understanding of profile inheritance, priority mechanisms, and the design decisions behind this feature.
 
-A profile in Infrahub allow you to define a common set of attributes that should be applied to nodes.
+## What are profiles?
 
-A node that has a profile assigned, will get the values of its attributes inherited from the assigned profile, if no value is defined for the attribute at the node, or if the default value is used.
+Profiles in Infrahub are configuration templates that define common attribute values for nodes. They represent a fundamental approach to managing configuration at scale by separating the definition of common settings from individual node instances.
 
-The attribute values of a node that were inherited from a profile can be overridden, by defining them at the node.
+Think of profiles as reusable configuration blueprints. Just as a class in object-oriented programming defines properties that instances inherit, profiles define attribute values that nodes inherit. This design pattern promotes consistency while maintaining flexibility for exceptions.
 
-## Use cases
+## Why profiles matter
 
-Here's a couple of scenarios and use cases where profiles can be used:
+### The configuration consistency challenge
 
-### Interface profiles
+In infrastructure management, you often have hundreds or thousands of similar components that need identical configuration. Consider these scenarios:
 
-A common scenario is that you want to create multiple interface configurations that you want to use for multiple interfaces. An example of this could be a user facing switch port. All of these ports would need to be in access mode and have a particular VLAN assigned to them.
+- **Network interfaces**: All user-facing switch ports need the same VLAN, mode, and security settings
+- **BGP sessions**: Internal BGP peers share common timers, authentication, and policy settings
+- **Server configurations**: Groups of servers require identical monitoring, logging, and security settings
 
-In that case we could create an interface profile with the name "user-interface" that defines the mode of the interface and the untagged VLAN to be used. This profile can then be applied to all the interfaces in Infrahub that will be used to connect users too. This assures that all these interfaces will have the same value for the mode and untagged VLAN.
+Without profiles, you would need to:
 
-### BGP session profiles
+- Manually set the same values on each node
+- Risk configuration drift when standards change
+- Lack visibility into which nodes follow which standards
+- Struggle to update configurations consistently
 
-Internal BGP sessions within a network typically contain multiple common configuration options. Profiles can be used to gather these common attributes. The profile can be applied to all the internal BGP sessions to assure they use the same configuration settings.
+### How profiles solve these challenges
 
-## Current limitations
+Profiles address these issues through:
 
-- Profiles can only be statically assigned to nodes. In a future release you will be able to dynamically assign profiles to nodes.
-- Profiles can only define attributes, it is currently not yet possible to define relationships
-- Profiles can only define attributes that are not part of a unique constraint in the Node schema
-- Required attributes of a Node must have a default value defined in the schema, if you want to define these attributes using profiles
+1. **Centralized definition**: Define configuration once, apply everywhere
+2. **Automatic inheritance**: Nodes automatically receive profile values
+3. **Dynamic updates**: Changes to profiles propagate to all associated nodes
+4. **Override capability**: Individual nodes can still have exceptions
+5. **Data lineage**: Track where each configuration value originated
 
-## Dynamic generation
+## Profile architecture and design
 
-For every node that is defined in the schema, a profile schema will be dynamically generated every time a schema is loaded into Infrahub. Profile schemas cannot be created manually.
+### Dynamic schema generation
 
-This means that an instance of a profile is always specific for a kind of Node and cannot be used for another kind of Node.
+Infrahub automatically generates profile schemas based on your node schemas. This design decision ensures:
 
-The kind of the generated profile of a node will be `Profile<NameSpace><Name>`. For example, the profile kind for a node kind `InfraInterface` will be `ProfileInfraInterface`.
+- **Type safety**: Profiles always match their corresponding node type
+- **Schema evolution**: Profile schemas update automatically when node schemas change
+- **No manual maintenance**: You never need to define profile schemas separately
 
-Infrahub will also generate the GraphQL query and mutations to be able to perform CRUD operations on the profile. For the same example of `InfraInterface` the following GraphQL query and mutations would be generated:
+For every node type with `generate_profile: true` (the default), Infrahub creates:
 
-| Type     | Name                        |
-|----------|-----------------------------|
-| query    | ProfileInfraInterface       |
-| mutation | ProfileInfraInterfaceCreate |
-| mutation | ProfileInfraInterfaceUpdate |
-| mutation | ProfileInfraInterfaceUpsert |
-| mutation | ProfileInfraInterfaceDelete |
+- A profile schema named `Profile<Namespace><NodeName>`
+- GraphQL queries and mutations for profile operations
+- Validation logic ensuring profile-node compatibility
 
-## Profile priority
+### Profile components
 
-Profiles have a priority assigned to them through the `profile_priority`. The priority determines the order of inheritance for attributes and relationships when a node has multiple profiles assigned to it.
+Each profile contains:
 
-In a scenario where we have 2 profiles assigned to a node, the value of the attribute of a node will be inherited from the profile with the lowest priority value, if that profile defines a value for the attribute. If the profile does not define a value for that attribute, the next profile with the lowest priority value will be checked.
+1. **Core attributes** (inherited from `CoreProfile`):
+   - `profile_name`: Unique identifier (3-32 characters)
+   - `profile_priority`: Numeric priority for inheritance order (default: 1000)
 
-## Data lineage
+2. **Node-specific attributes**: All attributes from the corresponding node schema, except:
+   - Attributes that are part of unique constraints
+   - Attributes without default values (if required)
 
-When a node inherits a value of an attribute from a profile, then the source property of that attribute will be set to the UUID of the profile that it is inherited from. This allows us to identify where the value of an attribute of a node originated.
+### Inheritance mechanism
+
+Profile inheritance follows a sophisticated model:
+
+```text
+Node Creation/Update
+       ↓
+Check if profiles assigned
+       ↓
+For each attribute:
+  - Is value explicitly set on node? → Use node value
+  - Is default value being used? → Check profiles
+       ↓
+Check profiles by priority (lowest number first)
+       ↓
+Use first profile-defined value found
+       ↓
+If no profile defines it → Use schema default
+```
+
+This mechanism ensures predictable behavior while maintaining flexibility.
+
+## Profile priority system
+
+### Understanding priority values
+
+Profile priority uses numeric values where **lower numbers have higher priority**. This might seem counterintuitive but aligns with common networking conventions (like route metrics).
+
+Example scenario:
+
+```text
+Profile A: priority = 1000 (default)
+Profile B: priority = 500  (higher priority)
+Profile C: priority = 1500 (lower priority)
+
+Inheritance order: B → A → C
+```
+
+### Priority in practice
+
+Consider a node with three profiles defining MTU:
+
+- Base profile (priority 1000): MTU = 1500
+- Department profile (priority 500): MTU = 9000
+- Legacy profile (priority 1500): MTU = 1400
+
+The node inherits MTU = 9000 from the department profile (highest priority).
+
+### Design rationale
+
+The priority system enables:
+
+- **Hierarchical configuration**: Organization-wide → Department → Team → Special cases
+- **Controlled overrides**: Higher-priority profiles override lower-priority ones
+- **Flexible composition**: Combine multiple profiles without conflicts
+
+## Data lineage and metadata
+
+### Tracking value origins
+
+Every attribute in Infrahub maintains metadata about its source:
+
+```python
+attribute = {
+    "value": "active",
+    "is_from_profile": True,
+    "is_default": False,
+    "source": {
+        "id": "17d5a1b2-...",
+        "display_label": "ProfileInfraInterface:end-user-interface"
+    }
+}
+```
+
+This metadata enables:
+
+- **Audit trails**: Know exactly where each value came from
+- **Impact analysis**: Understand which nodes would be affected by profile changes
+- **Troubleshooting**: Quickly identify why a node has specific values
+
+### Metadata properties explained
+
+- `is_from_profile`: Boolean indicating inheritance from a profile
+- `is_default`: Boolean indicating use of schema default value
+- `source`: Reference to the specific profile providing the value
+- `is_protected`: (Future) Will indicate if value is locked from changes
+
+## Profile constraints and limitations
+
+### Current constraints
+
+1. **Attribute restrictions**:
+   - Cannot define unique constraint attributes (like primary keys)
+   - Required attributes need schema defaults for profile use
+   - Relationship definitions not yet supported
+
+2. **Assignment limitations**:
+   - Static assignment only (no dynamic rules yet)
+   - No conditional logic (if X then apply profile Y)
+   - No profile composition (profile extending another profile)
+
+3. **Scope boundaries**:
+   - Profiles are node-type specific
+   - Cannot share profiles across different node types
+   - No global or cross-schema profiles
+
+### Design rationale for constraints
+
+These constraints exist to:
+
+- Maintain data integrity (unique constraints)
+- Ensure predictable behavior (static assignment)
+- Simplify mental model (type-specific profiles)
+- Enable future enhancements without breaking changes
+
+## Mental models for profiles
+
+### Object-oriented inheritance
+
+Profiles work like class inheritance in programming:
+
+```python
+class InterfaceProfile:
+    mtu = 1500
+    enabled = True
+    mode = "access"
+
+class UserInterface(InterfaceProfile):
+    name = "GigabitEthernet0/0/1"
+    # Inherits mtu, enabled, mode from profile
+```
+
+### CSS-like cascading
+
+Similar to CSS, profiles cascade with priority:
+
+```css
+/* Lower priority */
+.interface { mtu: 1500; }
+
+/* Higher priority */
+.user-interface { mtu: 1500; }
+
+/* Highest priority - direct assignment */
+#interface-001 { mtu: 9000; }
+```
+
+### Policy-based configuration
+
+Profiles implement policy-based management where:
+
+- Policies (profiles) define desired state
+- Nodes subscribe to policies
+- Changes to policies automatically propagate
+- Exceptions are explicitly documented
+
+## Future directions
+
+### Planned enhancements
+
+1. **Dynamic assignment**: Rules-based profile application
+
+   ```yaml
+   if: node.location == "datacenter-1"
+   then: apply_profile("dc1-standards")
+   ```
+
+2. **Profile composition**: Profiles extending other profiles
+
+   ```yaml
+   profile: edge-interface
+   extends: base-interface
+   overrides:
+     mtu: 9000
+   ```
+
+3. **Relationship profiles**: Define standard relationships
+
+   ```yaml
+   profile: standard-server
+   relationships:
+     connected_to: {id: "spine-switch-01"}
+   ```
+
+### Architecture evolution
+
+The profile system is designed to evolve toward:
+
+- More sophisticated inheritance models
+- Integration with external configuration systems
+- Event-driven profile updates
+- Multi-tenancy with profile isolation
+
+## Conclusion
+
+Profiles in Infrahub represent a thoughtful approach to configuration management that balances consistency with flexibility. By understanding the inheritance model, priority system, and design constraints, you can effectively use profiles to manage infrastructure at scale while maintaining clear configuration lineage and enabling controlled exceptions.
+
+The system's design anticipates future needs while providing immediate value through reduced configuration drift, improved consistency, and clear audit trails. As Infrahub evolves, profiles will become even more powerful while maintaining backward compatibility with current usage patterns.
+
+## Related resources
+
+### Guides
+
+- [How to use profiles for consistent configuration](../guides/profiles) - Step-by-step guide for creating and using profiles
+- [Creating a schema](../guides/create-schema) - Learn how to create schemas that support profiles
+- [Managing groups](../guides/groups) - Understand how groups complement profiles for organization
+
+### Topics
+
+- [Schema](../topics/schema) - Deep dive into schema design and how profiles are generated
+- [GraphQL](../topics/graphql) - Understanding Infrahub's GraphQL API for profile operations
+- [Metadata](../topics/metadata) - Learn about metadata tracking and data lineage
+- [Version control](../topics/version-control) - How profiles work with branches and version control
+
+### Reference
+
+- [Node schema reference](../reference/schema/node) - Complete node schema options including profile generation
+- [Generic schema reference](../reference/schema/generic) - How profiles work with generic schemas
+- [Schema validation](../reference/schema-validation) - Validate schemas that generate profiles
