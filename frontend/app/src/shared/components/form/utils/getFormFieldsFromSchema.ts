@@ -3,6 +3,10 @@ import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemD
 import { NodeObject } from "@/entities/nodes/types";
 import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "@/shared/components/form/constants";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps } from "@/shared/components/form/type";
 import { FormContextType } from "@/shared/components/form/utils/form-context";
@@ -44,12 +48,12 @@ export const getFormFieldsFromSchema = ({
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
     if ("peer" in field) {
-      if (isBulkUpdate) {
+      if (isBulkUpdate && field.cardinality === "many") {
         return [
           ...acc,
           getFormFieldFromRelationship({
             type: "relationship-add",
-            name: `add_${field.name}`,
+            name: `${RELATIONSHIP_BULK_ADD_PREFIX}${field.name}`,
             auth,
             relationshipSchema: field,
             relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
@@ -62,7 +66,7 @@ export const getFormFieldsFromSchema = ({
           }),
           getFormFieldFromRelationship({
             type: "relationship-remove",
-            name: `remove_${field.name}`,
+            name: `${RELATIONSHIP_BULK_REMOVE_PREFIX}${field.name}`,
             auth,
             relationshipSchema: field,
             relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
