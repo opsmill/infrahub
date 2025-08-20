@@ -39,10 +39,12 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
 
   const roles = getRelationshipDefaultValue({
     relationshipData: currentObject?.roles?.value,
+    relationshipName: "roles",
   });
 
   const members = getRelationshipDefaultValue({
     relationshipData: currentObject?.members?.value,
+    relationshipName: "members",
   });
 
   const defaultValues = {
@@ -145,7 +147,7 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
-          options={roles.value}
+          defaultValue={roles}
         />
 
         <RelationshipManyField
@@ -156,7 +158,7 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
             peer: ACCOUNT_OBJECT,
             cardinality: "many",
           }}
-          options={members.value}
+          defaultValue={members}
         />
 
         <div className="text-right">

@@ -9,7 +9,11 @@ import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import "graphiql/setup-workers/esm.sh";
+import GraphQLWorker from "@/vendor/monaco-graphql/graphql.worker?worker&module";
+// Bundle Monaco workers locally so build works offline and avoids dep pre-bundling issues
+// with ?worker imports inside node_modules.
+import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker&module";
+import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&module";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
 
@@ -38,6 +42,20 @@ const GraphqlSandboxPage = () => {
   const [query] = useQueryParam(QSP.QUERY, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
+
+  // Ensure Monaco workers are available when running offline
+  (globalThis as any).MonacoEnvironment = {
+    getWorker(_workerId: unknown, label: string) {
+      switch (label) {
+        case "json":
+          return new (JsonWorker as unknown as { new (): Worker })();
+        case "graphql":
+          return new (GraphQLWorker as unknown as { new (): Worker })();
+        default:
+          return new (EditorWorker as unknown as { new (): Worker })();
+      }
+    },
+  };
 
   return (
     <GraphiQL
