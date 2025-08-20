@@ -16,6 +16,12 @@ Resource managers support three primary types of pools:
 - **IP Prefix Pools** (`CoreIPPrefixPool`) - Allocate smaller subnets from larger IP prefixes
 - **Number Pools** (`CoreNumberPool`) - Allocate sequential numbers for attributes like VLAN IDs, ASNs, or circuit IDs
 
+:::warning
+When an attribute is assigned by a resource manager, the attribute cannot be used as part of the Human Friendly Identifier (HFID).
+
+This is due the dynamic nature of using resource managers and the idempotence of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
+:::
+
 ### Branch-agnostic allocation
 
 One of the most powerful features of Infrahub's resource managers is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
