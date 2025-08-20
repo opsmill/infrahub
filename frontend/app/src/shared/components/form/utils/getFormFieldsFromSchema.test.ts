@@ -734,4 +734,21 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[0]?.rules?.required).to.equal(false);
     expect(fields[1]?.rules?.required).to.equal(false);
   });
+
+  it("should display add and remvoe fields for relationship of cardinality many in bulk edit", () => {
+    const schema = {
+      relationships: [
+        generateRelationshipSchema({ name: "cardinality_many", cardinality: "many" }),
+        generateRelationshipSchema({ name: "cardinality_one", cardinality: "one" }),
+      ],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields[0]?.name).to.equal("__add_cardinality_many");
+    expect(fields[1]?.name).to.equal("__remove_cardinality_many");
+    expect(fields[2]?.name).to.equal("cardinality_one");
+  });
 });
