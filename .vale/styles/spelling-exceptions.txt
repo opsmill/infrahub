@@ -3,27 +3,35 @@ Alibaba
 allocation_weight
 anonymized
 Ansible
+anycast
+Anycast
 APIs
 append_git_suffix
 artifact_definitions
 artifact_name
+ASN
+ASNs
 async
 auditable
 Authentik
 boolean
 certifi
+check_color_tags_name
 check_definitions
 class_name
 CloudFormation
 codespace
 codespaces
+colored_tags
 combobox
 config
 Config
+configs
 Containerlab
 content_type
 convert_query_response
 coroutine
+Cron
 cypher
 Dagster
 datastore
@@ -39,6 +47,8 @@ dockerfile
 docusaurus
 e2e
 edit_default_branch
+Entra
+Entra ID
 enum
 enums
 env
@@ -91,6 +101,7 @@ Kriten
 kubectl
 LibreNMS
 livestream
+Loopback
 Loopbacks
 markdownlint
 max_count
@@ -113,8 +124,14 @@ Nornir
 npm
 NumberPool
 o'brian
+OAuth
+OAuth 2.0
+OAuth2
 Observium
+OIDC
+Okta
 openconfig
+OpenID Connect
 opentelemetry
 order_by
 order_weight
@@ -122,7 +139,8 @@ Otternet
 pg_dump
 plaintext
 Postgresql
-Postgress
+PostgreSQL
+Postgres
 Prefetch
 profile_name
 pseudocode
@@ -143,6 +161,7 @@ schema's
 scrollable
 scrollbar
 sdk
+SLA
 Slurp'it
 streamlit
 Streamlit
@@ -177,14 +196,7 @@ VLANs
 vscode
 VSCode
 walkthrough
-Otternet
-check_color_tags_name
-colored_tags
-Widget's
 widget's
-Entra
-Okta
-OAuth
 Widget's
 Yaml
 yamllint
