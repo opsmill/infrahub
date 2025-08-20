@@ -29,3 +29,5 @@ class CheckArtifactCreate(BaseModel):
     variables: dict = Field(..., description="Input variables when generating the artifact")
     validator_id: str = Field(..., description="The ID of the validator")
     context: InfrahubContext = Field(..., description="The context of the task")
+
+# Custom test for ACME1
