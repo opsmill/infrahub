@@ -4,10 +4,12 @@ allocation_weight
 anonymized
 Ansible
 anycast
+Anycast
 APIs
 append_git_suffix
 artifact_definitions
 artifact_name
+ASN
 ASNs
 async
 auditable
@@ -29,6 +31,7 @@ Containerlab
 content_type
 convert_query_response
 coroutine
+Cron
 cypher
 Dagster
 datastore
@@ -123,8 +126,12 @@ NumberPool
 o'brian
 OAuth
 Observium
+OAuth2
+Observium
+OIDC
 Okta
 openconfig
+OpenID Connect
 opentelemetry
 order_by
 order_weight
@@ -132,7 +139,8 @@ Otternet
 pg_dump
 plaintext
 Postgresql
-Postgress
+PostgreSQL
+Postgres
 Prefetch
 profile_name
 pseudocode
@@ -153,6 +161,7 @@ schema's
 scrollable
 scrollbar
 sdk
+SLA
 Slurp'it
 streamlit
 Streamlit
@@ -193,3 +202,20 @@ worktrees
 Yaml
 yamllint
 YouTube
+ASNs
+IPs
+Loopback
+anycast
+Kriten
+plaintext
+streamlit
+IPs
+Tooltips
+reusability
+idempotently
+UIs
+Mbps
+Gbps
+auditable
+configs
+end_user
