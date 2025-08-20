@@ -311,12 +311,19 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
 
         # verify sfp created with profile
         sfp_uuid = branch_data["sfp"].id
-        sfp_attr_values = self._get_diff_node_attribute_values(diff_nodes_by_uuid[sfp_uuid])
+        sfp_diff_node = diff_nodes_by_uuid[sfp_uuid]
+        sfp_attr_values = self._get_diff_node_attribute_values(sfp_diff_node)
         assert sfp_attr_values == {
             "phys_type": "SFP (1GE)",
             "serial_number": "54321",
             # no part number here because it only exists in the profile at the database level
             "part_number": "NULL",
+        }
+        # verify parent relationship
+        assert sfp_diff_node["parent"] == {
+            "uuid": branch_data["interface"].id,
+            "kind": TestKind.PHYSICAL_INTERFACE,
+            "relationship_name": "sfp",
         }
 
         # verify hierarchy data
