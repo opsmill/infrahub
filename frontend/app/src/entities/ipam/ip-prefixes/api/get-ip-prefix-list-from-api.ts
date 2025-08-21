@@ -41,6 +41,15 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
   attributes,
   relationships,
 }: BuildGetIpPrefixListQueryParams) {
+  const cleanedFilters = filters?.filter((filter) => {
+    // If "include_available" is set to false, then remove it
+    if (filter.name === AVAILABLE_IP_FILTER_NAME && filter.value === false) {
+      return true;
+    }
+
+    return filter.name !== AVAILABLE_IP_FILTER_NAME;
+  });
+
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
@@ -48,7 +57,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
         __args: {
           limit,
           offset,
-          ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(cleanedFilters ? addFiltersToRequest(cleanedFilters) : {}),
         },
         edges: {
           node: {

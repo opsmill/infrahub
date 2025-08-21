@@ -1,4 +1,8 @@
-import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import {
+  AVAILABLE_IP_FILTER_NAME,
+  IP_ADDRESS_AVAILABLE_KIND,
+  IP_ADDRESS_GENERIC,
+} from "@/entities/ipam/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
@@ -76,6 +80,15 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
   attributes,
   relationships,
 }: GetIpAddressListGraphQLQueryParams) {
+  const cleanedFilters = filters?.filter((filter) => {
+    // If "include_available" is set to false, then remove it
+    if (filter.name === AVAILABLE_IP_FILTER_NAME && filter.value === false) {
+      return true;
+    }
+
+    return filter.name !== AVAILABLE_IP_FILTER_NAME;
+  });
+
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
@@ -83,7 +96,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
         __args: {
           limit,
           offset,
-          ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(cleanedFilters ? addFiltersToRequest(cleanedFilters) : {}),
         },
         edges: {
           node: {
