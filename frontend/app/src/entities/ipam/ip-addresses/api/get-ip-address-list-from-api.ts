@@ -83,7 +83,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
   const cleanedFilters = filters?.filter((filter) => {
     // If "include_available" is set to false, then remove it
     if (filter.name === AVAILABLE_IP_FILTER_NAME && filter.value === false) {
-      return true;
+      return false;
     }
 
     return filter.name !== AVAILABLE_IP_FILTER_NAME;
