@@ -1,5 +1,10 @@
+import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relationship-mutations";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { BranchContextParams } from "@/shared/api/types";
+import {
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "@/shared/components/form/constants";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
@@ -15,24 +20,84 @@ export function updateObjectFromApi({
   profileIds = [],
   branchName,
 }: UpdateObjectFromApiParams) {
-  const mutation = jsonToGraphQLQuery({
-    mutation: {
-      [`${objectKind}Update`]: {
-        __args: {
-          data: {
-            ...data,
-            ...(profileIds?.length
-              ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
-              : {}),
-          },
-        },
-        object: {
-          id: true,
-          display_label: true,
-          hfid: true,
-          __typename: true,
+  const objectData = Object.entries(data).reduce((acc, [key, value]) => {
+    if (
+      key.startsWith(RELATIONSHIP_BULK_ADD_PREFIX) ||
+      key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX)
+    ) {
+      return acc;
+    }
+
+    return {
+      ...acc,
+      [key]: value,
+    };
+  }, {});
+
+  const relationshipAddData = Object.entries(data).reduce((acc, [key, value]) => {
+    if (key.startsWith(RELATIONSHIP_BULK_ADD_PREFIX)) {
+      return {
+        ...acc,
+        [key.replace(RELATIONSHIP_BULK_ADD_PREFIX, "")]: value,
+      };
+    }
+
+    return acc;
+  }, {});
+
+  const relationshipRemoveData = Object.entries(data).reduce((acc, [key, value]) => {
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX)) {
+      return {
+        ...acc,
+        [key.replace(RELATIONSHIP_BULK_REMOVE_PREFIX, "")]: value,
+      };
+    }
+
+    return acc;
+  }, {});
+
+  const objectMutation = {
+    [`${objectKind}Update`]: {
+      __args: {
+        data: {
+          ...objectData,
+          ...(profileIds?.length
+            ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
+            : {}),
         },
       },
+      object: {
+        id: true,
+        display_label: true,
+        hfid: true,
+        __typename: true,
+      },
+    },
+  };
+
+  const relationshipAddMutation =
+    objectData?.id && Object.entries(relationshipAddData)?.length
+      ? getRelationshipMutation({
+          id: objectData.id,
+          data: relationshipAddData,
+          mutation: "RelationshipAdd",
+        })
+      : {};
+
+  const relationshipRemoveMutation =
+    objectData?.id && Object.entries(relationshipRemoveData)?.length
+      ? getRelationshipMutation({
+          id: objectData.id,
+          data: relationshipRemoveData,
+          mutation: "RelationshipRemove",
+        })
+      : {};
+
+  const mutation = jsonToGraphQLQuery({
+    mutation: {
+      ...objectMutation,
+      ...relationshipAddMutation,
+      ...relationshipRemoveMutation,
     },
   });
 

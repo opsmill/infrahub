@@ -176,8 +176,10 @@ export type DynamicAttributeFieldProps =
   | DynamicSelectFieldProps
   | DynamicKindFieldProps;
 
+export type RelationshipFieldType = "relationship" | "relationship-add" | "relationship-remove";
+
 export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
-  type: "relationship";
+  type: RelationshipFieldType;
   defaultValue?: FormRelationshipValue;
   peer?: string;
   parent?: string;
