@@ -9,6 +9,7 @@ import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
+import { RELATIONSHIP_BULK_ADD_PREFIX, RELATIONSHIP_BULK_REMOVE_PREFIX } from "../constants";
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
@@ -733,5 +734,32 @@ describe("getFormFieldsFromSchema", () => {
     // THEN
     expect(fields[0]?.rules?.required).to.equal(false);
     expect(fields[1]?.rules?.required).to.equal(false);
+  });
+
+  it("should display add and remvoe fields for relationship of cardinality many in bulk edit", () => {
+    const schema = {
+      relationships: [
+        generateRelationshipSchema({
+          name: "cardinality_many",
+          cardinality: "many",
+          order_weight: 1,
+        }),
+        generateRelationshipSchema({
+          name: "cardinality_one",
+          cardinality: "one",
+          order_weight: 2,
+        }),
+      ],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields[0]?.name).to.equal(`${RELATIONSHIP_BULK_ADD_PREFIX}cardinality_many`);
+    expect(fields[0]?.type).to.equal("relationship-add");
+    expect(fields[1]?.name).to.equal(`${RELATIONSHIP_BULK_REMOVE_PREFIX}cardinality_many`);
+    expect(fields[1]?.type).to.equal("relationship-remove");
+    expect(fields[2]?.name).to.equal("cardinality_one");
   });
 });

@@ -3,6 +3,10 @@ import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemD
 import { NodeObject } from "@/entities/nodes/types";
 import { NumberPool } from "@/entities/resource-manager/domain/type";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "@/shared/components/form/constants";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps } from "@/shared/components/form/type";
 import { FormContextType } from "@/shared/components/form/utils/form-context";
@@ -42,32 +46,70 @@ export const getFormFieldsFromSchema = ({
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  return orderedFields.map((field) => {
+  return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
     if ("peer" in field) {
-      return getFormFieldFromRelationship({
+      if (isBulkUpdate && field.cardinality === "many") {
+        return [
+          ...acc,
+          getFormFieldFromRelationship({
+            type: "relationship-add",
+            name: `${RELATIONSHIP_BULK_ADD_PREFIX}${field.name}`,
+            auth,
+            relationshipSchema: field,
+            relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+            objectTemplate,
+            isFilterForm: !!isFilterForm,
+            isBulkUpdate: !!isBulkUpdate,
+            schema,
+            parentSchema,
+            parentData,
+          }),
+          getFormFieldFromRelationship({
+            type: "relationship-remove",
+            name: `${RELATIONSHIP_BULK_REMOVE_PREFIX}${field.name}`,
+            auth,
+            relationshipSchema: field,
+            relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+            objectTemplate,
+            isFilterForm: !!isFilterForm,
+            isBulkUpdate: !!isBulkUpdate,
+            schema,
+            parentSchema,
+            parentData,
+          }),
+        ];
+      }
+
+      return [
+        ...acc,
+        getFormFieldFromRelationship({
+          auth,
+          relationshipSchema: field,
+          relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+          objectTemplate,
+          isFilterForm: !!isFilterForm,
+          isBulkUpdate: !!isBulkUpdate,
+          schema,
+          parentSchema,
+          parentData,
+        }),
+      ];
+    }
+
+    return [
+      ...acc,
+      getFormFieldFromAttribute({
         auth,
-        relationshipSchema: field,
-        relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+        attributeSchema: field,
+        currentObject: initialObject as Record<string, AttributeType>,
         objectTemplate,
         isFilterForm: !!isFilterForm,
         isBulkUpdate: !!isBulkUpdate,
+        isUpdate: !!isUpdate,
         schema,
-        parentSchema,
-        parentData,
-      });
-    }
-
-    return getFormFieldFromAttribute({
-      auth,
-      attributeSchema: field,
-      currentObject: initialObject as Record<string, AttributeType>,
-      objectTemplate,
-      isFilterForm: !!isFilterForm,
-      isBulkUpdate: !!isBulkUpdate,
-      isUpdate: !!isUpdate,
-      schema,
-      pools,
-      profiles,
-    });
-  });
+        pools,
+        profiles,
+      }),
+    ];
+  }, []);
 };
