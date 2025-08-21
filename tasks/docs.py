@@ -186,6 +186,7 @@ def _generate(context: Context) -> None:
     _generate_infrahub_repository_configuration_documentation()
     _generate_infrahub_bus_events_documentation()
     _generate_infrahub_events_documentation()
+    _generate_infrahub_config_documentation()
 
 
 def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
