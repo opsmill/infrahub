@@ -8,6 +8,7 @@ import {
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
+  dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
 import { PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -41,14 +42,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
   attributes,
   relationships,
 }: BuildGetIpPrefixListQueryParams) {
-  const cleanedFilters = filters?.filter((filter) => {
-    // If "include_available" is set to false, then remove it
-    if (filter.name === AVAILABLE_IP_FILTER_NAME && filter.value === false) {
-      return false;
-    }
-
-    return filter.name !== AVAILABLE_IP_FILTER_NAME;
-  });
+  const cleanedFilters = dropIncludeAvailableWhenFalse(filters);
 
   return jsonToGraphQLQuery({
     query: {
@@ -57,7 +51,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
         __args: {
           limit,
           offset,
-          ...(cleanedFilters ? addFiltersToRequest(cleanedFilters) : {}),
+          ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
         },
         edges: {
           node: {
