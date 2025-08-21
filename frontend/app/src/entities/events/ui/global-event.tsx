@@ -27,7 +27,7 @@ const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
     return <BranchEventTitle {...(props as BranchEvent)} />;
   }
 
-  if (PROPOSED_CHANGE_EVENTS.includes(props.event)) {
+  if (__typename === "StandardEvent" && PROPOSED_CHANGE_EVENTS.includes(props.event)) {
     return <ProposedChangeEventTitle {...props} />;
   }
 

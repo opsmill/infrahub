@@ -26,7 +26,7 @@ export const PROPOSED_CHANGE_REJECTED = "infrahub.proposed_change.rejected";
 export const PROPOSED_CHANGE_REJECTION_REVOKED = "infrahub.proposed_change.rejection_revoked";
 export const PROPOSED_CHANGE_COMMENT = "infrahub.proposed_change.comment";
 export const PROPOSED_CHANGE_THREAD = "infrahub.proposed_change_thread.created";
-export const PROPOSED_CHANGE_AUTO_REVOKE = "infrahub.proposed_change.approvals_revoked";
+export const PROPOSED_CHANGE_APPROVALS_REVOKED = "infrahub.proposed_change.approvals_revoked";
 export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_MERGED,
   PROPOSED_CHANGE_REVIEW_REQUESTED,
@@ -36,7 +36,7 @@ export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_REJECTION_REVOKED,
   PROPOSED_CHANGE_COMMENT,
   PROPOSED_CHANGE_THREAD,
-  PROPOSED_CHANGE_AUTO_REVOKE,
+  PROPOSED_CHANGE_APPROVALS_REVOKED,
 ];
 
 export const pcStatesList: Record<string, StateItem> = {
