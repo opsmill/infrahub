@@ -21,6 +21,14 @@ export function updateObjectFromApi({
   branchName,
 }: UpdateObjectFromApiParams) {
   const objectData = Object.entries(data).reduce((acc, [key, value]) => {
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
+      // WHen using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
+      return {
+        ...acc,
+        [key.replace(RELATIONSHIP_BULK_REMOVE_PREFIX, "")]: null,
+      };
+    }
+
     if (
       key.startsWith(RELATIONSHIP_BULK_ADD_PREFIX) ||
       key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX)
@@ -46,14 +54,19 @@ export function updateObjectFromApi({
   }, {});
 
   const relationshipRemoveData = Object.entries(data).reduce((acc, [key, value]) => {
-    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX)) {
-      return {
-        ...acc,
-        [key.replace(RELATIONSHIP_BULK_REMOVE_PREFIX, "")]: value,
-      };
+    if (!key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX)) {
+      return acc;
     }
 
-    return acc;
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
+      // When using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
+      return acc;
+    }
+
+    return {
+      ...acc,
+      [key.replace(RELATIONSHIP_BULK_REMOVE_PREFIX, "")]: value,
+    };
   }, {});
 
   const objectMutation = {
