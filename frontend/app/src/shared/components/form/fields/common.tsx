@@ -154,7 +154,7 @@ export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
           return field.onChange(defaultValue);
         }}
       >
-        Clear
+        Set empty
       </Checkbox>
     </div>
   );
