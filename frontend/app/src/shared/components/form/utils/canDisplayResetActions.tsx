@@ -1,6 +1,6 @@
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export const canRenderReset = (
+export const canDisplayResetActions = (
   fieldSchema: AttributeSchema | RelationshipSchema,
   isBulkUpdate?: boolean
 ) => {
