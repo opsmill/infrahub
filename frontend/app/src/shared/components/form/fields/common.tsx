@@ -1,7 +1,9 @@
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
+  FormAttributeValue,
   FormFieldValue,
+  FormRelationshipValue,
   PoolSource,
   ProfileSource,
   TemplateSource,
@@ -13,7 +15,10 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { FileBoxIcon } from "lucide-react";
+import { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
+import { Checkbox } from "../../aria/checkbox";
+import { updateFormFieldValue } from "../utils/updateFormFieldValue";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
   <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>
@@ -129,5 +134,28 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
         </Badge>
       </button>
     </Tooltip>
+  );
+};
+
+interface ResetActionProps {
+  field: ControllerRenderProps;
+  defaultValue: FormAttributeValue | FormRelationshipValue;
+}
+
+export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
+  return (
+    <div className="text-xs text-gray-600 flex justify-end gap-2">
+      <Checkbox
+        isSelected={field.value?.source?.type === "user" && field.value?.value === null}
+        onChange={(value) => {
+          if (value) {
+            return field.onChange(updateFormFieldValue(null));
+          }
+          return field.onChange(defaultValue);
+        }}
+      >
+        Clear
+      </Checkbox>
+    </div>
   );
 };
