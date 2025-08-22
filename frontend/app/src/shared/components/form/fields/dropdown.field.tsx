@@ -7,11 +7,12 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface DropdownFieldProps
   extends Omit<DynamicDropdownFieldProps, "type">,
-    Omit<DropdownProps, "defaultValue" | "name" | "options"> {}
+    Omit<DropdownProps, "defaultValue" | "name" | "options" | "onChange"> {}
 
 const DropdownField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   description,
+  attribute,
   items,
   label,
   name,
@@ -42,6 +43,7 @@ const DropdownField = ({
               <Dropdown
                 {...field}
                 {...props}
+                field={attribute}
                 items={items}
                 value={fieldData?.value as string | null}
                 onChange={(newValue) => {

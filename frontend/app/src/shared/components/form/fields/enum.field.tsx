@@ -8,7 +8,7 @@ import { Enum, EnumProps } from "@/shared/components/inputs/enum";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
-    Omit<EnumProps, "defaultValue" | "value" | "name" | "items"> {}
+    Omit<EnumProps, "defaultValue" | "value" | "name" | "items" | "onChange"> {}
 
 const EnumField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
@@ -19,7 +19,7 @@ const EnumField = ({
   unique,
   items,
   schema,
-  field: attributeSchema,
+  attribute,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -46,7 +46,7 @@ const EnumField = ({
                 {...field}
                 {...props}
                 items={items as Array<string | number>}
-                fieldSchema={attributeSchema}
+                fieldSchema={attribute}
                 schema={schema}
                 value={fieldData?.value as string | number | null}
                 onChange={(newValue) => {
