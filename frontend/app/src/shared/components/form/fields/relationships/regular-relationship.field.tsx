@@ -9,7 +9,7 @@ import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";

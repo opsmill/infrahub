@@ -13,7 +13,7 @@ import {
   FormRelationshipValue,
   PoolSource,
 } from "@/shared/components/form/type";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";

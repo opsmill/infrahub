@@ -3,7 +3,7 @@ import { DynamicEnumFieldProps, FormAttributeValue } from "@/shared/components/f
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Enum, EnumProps } from "@/shared/components/inputs/enum";
 

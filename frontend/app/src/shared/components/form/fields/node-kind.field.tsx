@@ -1,6 +1,6 @@
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { Badge } from "../../ui/badge";

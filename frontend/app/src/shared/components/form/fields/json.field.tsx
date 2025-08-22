@@ -2,7 +2,7 @@ import { JsonEditor } from "@/shared/components/editor/json/json-editor";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
