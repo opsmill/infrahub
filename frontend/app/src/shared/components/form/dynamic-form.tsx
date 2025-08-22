@@ -130,8 +130,7 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       }
 
       if (props.relationship.cardinality === "many") {
-        const { type, ...otherProps } = props;
-        return <RelationshipManyField {...otherProps} />;
+        return <RelationshipManyField {...props} />;
       }
 
       if (props.relationship.common_parent) {

@@ -11,10 +11,11 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { classNames } from "@/shared/utils/common";
 
-export interface RelationshipManyInputProps extends Omit<DynamicRelationshipFieldProps, "type"> {}
+export interface RelationshipManyInputProps extends DynamicRelationshipFieldProps {}
 
 export default function RelationshipManyField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  type,
   isBulkUpdate,
   relationship,
   description,
@@ -65,7 +66,7 @@ export default function RelationshipManyField({
               />
             </FormInput>
 
-            {isBulkUpdate && relationship.optional && (
+            {isBulkUpdate && relationship.optional && type !== "relationship-add" && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 
