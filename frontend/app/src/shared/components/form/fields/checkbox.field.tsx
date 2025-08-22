@@ -2,8 +2,8 @@ import { LabelFormField, ResetAction } from "@/shared/components/form/fields/com
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { Checkbox } from "../../aria/checkbox";
 
 export interface CheckboxFieldProps extends FormFieldProps {}
 
@@ -40,9 +40,10 @@ const CheckboxField = ({
           <div className="flex gap-2 py-3">
             <FormInput>
               <Checkbox
-                isSelected={!!fieldData?.value}
-                onChange={(isSelected) => {
-                  field.onChange(updateFormFieldValue(isSelected, defaultValue));
+                {...field}
+                checked={!!fieldData?.value}
+                onChange={(event) => {
+                  field.onChange(updateFormFieldValue(event.target.checked, defaultValue));
                 }}
                 {...props}
               />
