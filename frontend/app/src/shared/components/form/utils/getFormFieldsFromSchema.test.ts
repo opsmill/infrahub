@@ -59,8 +59,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a text attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({ kind: "Text" });
+
     const schema = {
-      attributes: [generateAttributeSchema({ kind: "Text" })],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -70,6 +72,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "name",
@@ -85,10 +89,14 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a HashedPassword attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({
+      label: "Password",
+      name: "password",
+      kind: "HashedPassword",
+    });
+
     const schema = {
-      attributes: [
-        generateAttributeSchema({ label: "Password", name: "password", kind: "HashedPassword" }),
-      ],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -98,6 +106,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "password",
@@ -113,8 +123,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a URL attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({ label: "Url", name: "url", kind: "URL" });
+
     const schema = {
-      attributes: [generateAttributeSchema({ label: "Url", name: "url", kind: "URL" })],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -124,6 +136,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "url",
@@ -139,10 +153,14 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a JSON attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({
+      label: "Parameters",
+      name: "parameters",
+      kind: "JSON",
+    });
+
     const schema = {
-      attributes: [
-        generateAttributeSchema({ label: "Parameters", name: "parameters", kind: "JSON" }),
-      ],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -152,6 +170,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "parameters",
@@ -167,33 +187,33 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a Dropdown attribute correctly", () => {
     // GIVEN
-    const schema = {
-      attributes: [
-        generateAttributeSchema({
-          default_value: "address",
-          label: "Member Type",
-          name: "member_type",
-          kind: "Dropdown",
-          choices: [
-            {
-              id: null,
-              state: "present",
-              name: "prefix",
-              description: "Prefix serves as container for other prefixes",
-              color: "#ed6a5a",
-              label: "Prefix",
-            },
-            {
-              id: null,
-              state: "present",
-              name: "address",
-              description: "Prefix serves as subnet for IP addresses",
-              color: "#f4f1bb",
-              label: "Address",
-            },
-          ],
-        }),
+    const attribute = generateAttributeSchema({
+      default_value: "address",
+      label: "Member Type",
+      name: "member_type",
+      kind: "Dropdown",
+      choices: [
+        {
+          id: null,
+          state: "present",
+          name: "prefix",
+          description: "Prefix serves as container for other prefixes",
+          color: "#ed6a5a",
+          label: "Prefix",
+        },
+        {
+          id: null,
+          state: "present",
+          name: "address",
+          description: "Prefix serves as subnet for IP addresses",
+          color: "#f4f1bb",
+          label: "Address",
+        },
       ],
+    });
+
+    const schema = {
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -203,6 +223,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: "address" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "member_type",
@@ -234,15 +256,15 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a enum attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({
+      kind: "Number",
+      enum: [1, 2, 3],
+      unique: false,
+      optional: false,
+    });
+
     const schema = {
-      attributes: [
-        generateAttributeSchema({
-          kind: "Number",
-          enum: [1, 2, 3],
-          unique: false,
-          optional: false,
-        }),
-      ],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -252,6 +274,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "name",
@@ -270,8 +294,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a protected field if the owner is not the current user", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -312,6 +338,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: true,
       name: "name",
@@ -327,8 +355,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should enable a protected field if the owner is the current user", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: AttributeType } = {
@@ -369,6 +399,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "name",
@@ -384,8 +416,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a field if permission is DENY", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -414,6 +448,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: true,
       name: "name",
@@ -429,8 +465,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should enable a field if permission is ALLOW_ALL", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -459,6 +497,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "name",
@@ -474,8 +514,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should enable a field if permission is ALLOW_DEFAULT and current branch is default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -517,6 +559,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "name",
@@ -532,8 +576,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a field if permission is ALLOW_DEFAULT and current branch is not default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -575,6 +621,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: true,
       name: "name",
@@ -590,8 +638,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a field if permission is ALLOW_OTHER and current branch is default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -633,6 +683,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: true,
       name: "name",
@@ -648,8 +700,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a field if permission is ALLOW_OTHER and current branch is not default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [generateAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
     const initialObject: { name: Partial<AttributeType> } = {
@@ -691,6 +745,8 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
+      isBulkUpdate: false,
+      attribute,
       description: "description",
       disabled: false,
       name: "name",
@@ -706,11 +762,11 @@ describe("getFormFieldsFromSchema", () => {
 
   it("removes unique fields when isBulkUpdate is true", () => {
     // GIVEN
+    const uniqueAttribute = generateAttributeSchema({ name: "unique_field", unique: true });
+    const notUniqueAttribute = generateAttributeSchema({ name: "non_unique_field", unique: false });
+
     const schema = {
-      attributes: [
-        generateAttributeSchema({ name: "unique_field", unique: true }),
-        generateAttributeSchema({ name: "non_unique_field", unique: false }),
-      ],
+      attributes: [uniqueAttribute, notUniqueAttribute],
     } as ModelSchema;
 
     // WHEN
@@ -723,9 +779,12 @@ describe("getFormFieldsFromSchema", () => {
 
   it("removes required validation when isBulkUpdate is true", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({ name: "required_field", optional: false });
+    const relationship = generateRelationshipSchema({ name: "required_rel", optional: false });
+
     const schema = {
-      attributes: [generateAttributeSchema({ name: "required_field", optional: false })],
-      relationships: [generateRelationshipSchema({ name: "required_rel", optional: false })],
+      attributes: [attribute],
+      relationships: [relationship],
     } as ModelSchema;
 
     // WHEN
@@ -737,19 +796,19 @@ describe("getFormFieldsFromSchema", () => {
   });
 
   it("should display add and remvoe fields for relationship of cardinality many in bulk edit", () => {
+    const relationshipMany = generateRelationshipSchema({
+      name: "cardinality_many",
+      cardinality: "many",
+      order_weight: 1,
+    });
+    const relationshipOne = generateRelationshipSchema({
+      name: "cardinality_one",
+      cardinality: "one",
+      order_weight: 2,
+    });
+
     const schema = {
-      relationships: [
-        generateRelationshipSchema({
-          name: "cardinality_many",
-          cardinality: "many",
-          order_weight: 1,
-        }),
-        generateRelationshipSchema({
-          name: "cardinality_one",
-          cardinality: "one",
-          order_weight: 2,
-        }),
-      ],
+      relationships: [relationshipMany, relationshipOne],
     } as ModelSchema;
 
     // WHEN
