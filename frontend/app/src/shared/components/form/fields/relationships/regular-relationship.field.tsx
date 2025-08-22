@@ -14,7 +14,7 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
@@ -51,9 +51,11 @@ export const NodeRelationshipField = ({
 
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
 
-  if (!selectedParent && defaultParent) {
-    setSelectedParent(defaultParent);
-  }
+  useEffect(() => {
+    if (!selectedParent && defaultParent) {
+      setSelectedParent(defaultParent);
+    }
+  }, [defaultParent, selectedParent]);
 
   return (
     <div className="space-y-2">

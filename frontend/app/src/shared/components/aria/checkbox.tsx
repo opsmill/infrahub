@@ -11,7 +11,7 @@ export const Checkbox = ({ className, children, ...props }: AriaCheckboxProps) =
   <AriaCheckbox
     className={composeRenderProps(className, (className) =>
       classNames(
-        "group/checkbox flex items-center gap-1.5 cursor-pointer",
+        "group/checkbox flex items-center gap-1.5 cursor-pointer select-none",
         "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70",
         labelVariants,
         className

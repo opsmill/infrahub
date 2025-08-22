@@ -77,7 +77,7 @@ export default function RelationshipHierarchicalField({
                 ) : (
                   <RelationshipHierarchicalInput
                     {...field}
-                    peer={relationship.peer}
+                    peer={peer}
                     value={value as RelationshipNode | null}
                     onChange={onChange}
                   />

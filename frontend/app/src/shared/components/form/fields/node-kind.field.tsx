@@ -63,9 +63,7 @@ export function NodeKindField({
                         keywords={[node.label as string]}
                         onSelect={() => {
                           const newValue = node.kind === currentValue ? null : node.kind;
-                          field.onChange(
-                            updateFormFieldValue(newValue ?? null, DEFAULT_FORM_FIELD_VALUE)
-                          );
+                          field.onChange(updateFormFieldValue(newValue ?? null, defaultValue));
 
                           setOpen(false);
                         }}

@@ -41,7 +41,7 @@ const JsonField = ({
                 value={fieldData?.value as string | undefined}
                 onChange={(value) => {
                   if (!value || value === "") {
-                    field.onChange({ source: null, value: null });
+                    field.onChange(updateFormFieldValue(null, defaultValue));
                   }
 
                   try {

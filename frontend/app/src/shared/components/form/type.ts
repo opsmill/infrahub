@@ -183,8 +183,6 @@ export interface DynamicRelationshipFieldProps
   extends Omit<FormFieldProps, "defaultValue" | "attribute"> {
   type: RelationshipFieldType;
   defaultValue?: FormRelationshipValue;
-  // Indicates the form is used for bulk updates, enabling explicit null-setting UI
-  isBulkUpdate?: boolean;
   relationship: RelationshipSchema;
   peer?: string;
   parent?: string;

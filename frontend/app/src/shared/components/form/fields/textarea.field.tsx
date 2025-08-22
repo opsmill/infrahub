@@ -42,7 +42,6 @@ const TextareaField = ({
                 {...field}
                 {...props}
                 className={classNames("w-full")}
-                defaultValue={defaultValue?.value as string | undefined}
                 value={fieldData?.value as string | undefined}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
