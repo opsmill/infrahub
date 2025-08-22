@@ -13,6 +13,7 @@ import {
   FormRelationshipValue,
   PoolSource,
 } from "@/shared/components/form/type";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
@@ -94,7 +95,7 @@ export default function RelationshipHierarchicalField({
               )}
             </div>
 
-            {isBulkUpdate && relationship.optional && (
+            {canRenderReset(relationship, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 
