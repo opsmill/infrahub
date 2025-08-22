@@ -177,7 +177,8 @@ export type DynamicAttributeFieldProps =
   | DynamicSelectFieldProps
   | DynamicKindFieldProps;
 
-export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
+export interface DynamicRelationshipFieldProps
+  extends Omit<FormFieldProps, "defaultValue" | "attribute"> {
   type: "relationship";
   defaultValue?: FormRelationshipValue;
   // Indicates the form is used for bulk updates, enabling explicit null-setting UI
@@ -188,7 +189,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   options?: SelectOption[];
   schema: ModelSchema;
   peerField?: string;
-};
+}
 
 export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;
 
