@@ -79,7 +79,7 @@ export function NodeKindField({
               </ComboboxContent>
             </Combobox>
 
-            {canDisplayResetActions(attribute, isBulkUpdate) && (
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 

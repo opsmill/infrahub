@@ -62,7 +62,7 @@ const JsonField = ({
               />
             </FormInput>
 
-            {canDisplayResetActions(attribute, isBulkUpdate) && (
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 

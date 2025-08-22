@@ -60,7 +60,7 @@ const CheckboxField = ({
               <FormMessage className="mt-1" />
             </div>
 
-            {canDisplayResetActions(attribute, isBulkUpdate) && (
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
           </div>
