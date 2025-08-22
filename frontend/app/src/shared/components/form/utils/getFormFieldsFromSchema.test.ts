@@ -248,7 +248,6 @@ describe("getFormFieldsFromSchema", () => {
           color: "#f4f1bb",
         },
       ],
-      field: schema.attributes?.[0],
       schema,
       unique: false,
     });
@@ -286,7 +285,6 @@ describe("getFormFieldsFromSchema", () => {
         validate: expect.any(Function),
       },
       items: [1, 2, 3],
-      field: schema.attributes?.[0],
       schema,
       unique: false,
     });
