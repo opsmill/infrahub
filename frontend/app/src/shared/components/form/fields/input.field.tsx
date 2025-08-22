@@ -2,7 +2,7 @@ import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import {
   updateAttributeFieldValue,
   updateFormFieldValue,
@@ -83,7 +83,7 @@ const InputField = ({
               )}
             </Row>
 
-            {canRenderReset(attribute, isBulkUpdate) && (
+            {canDisplayResetActions(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 

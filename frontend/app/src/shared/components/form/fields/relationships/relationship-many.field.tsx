@@ -7,7 +7,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import { NodeCore } from "@/entities/nodes/types";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { canRenderReset } from "@/shared/components/form/utils/canDisplayResetActions";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { classNames } from "@/shared/utils/common";
@@ -67,7 +67,7 @@ export default function RelationshipManyField({
               />
             </FormInput>
 
-            {canRenderReset(relationship, isBulkUpdate) && type !== "relationship-add" && (
+            {canDisplayResetActions(relationship, isBulkUpdate) && type !== "relationship-add" && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 
