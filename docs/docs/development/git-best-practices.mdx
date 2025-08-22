@@ -55,10 +55,9 @@ When updating your local repository, ensure submodules stay synchronized:
 # Update the main repository and all submodules
 git pull --recurse-submodules
 
-# Alternative: pull main repo first, then update submodules
+# Alternative: pull main repo first, then sync submodules to recorded commits
 git pull
-git submodule update --recursive --remote
-```
+git submodule update --init --recursive
 
 **Important**: Always use `--recurse-submodules` when pulling to avoid submodule synchronization issues.
 
