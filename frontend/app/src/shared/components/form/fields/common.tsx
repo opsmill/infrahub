@@ -1,4 +1,5 @@
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Checkbox } from "@/shared/components/aria/checkbox";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   FormAttributeValue,
@@ -8,6 +9,7 @@ import {
   ProfileSource,
   TemplateSource,
 } from "@/shared/components/form/type";
+import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Badge } from "@/shared/components/ui/badge";
 import { FormLabel } from "@/shared/components/ui/form";
 import { LabelProps } from "@/shared/components/ui/label";
@@ -17,8 +19,6 @@ import { Icon } from "@iconify-icon/react";
 import { FileBoxIcon } from "lucide-react";
 import { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
-import { Checkbox } from "../../aria/checkbox";
-import { updateFormFieldValue } from "../utils/updateFormFieldValue";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
   <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>
@@ -145,8 +145,25 @@ interface ResetActionProps {
 export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
   return (
     <div className="text-xs text-gray-600 flex justify-end gap-2">
-      <Checkbox
-        isSelected={field.value?.source?.type === "user" && field.value?.value === null}
+      <label htmlFor={`reset_${field.name}`} className="flex items-center gap-2 cursor-pointer">
+        <Checkbox
+          id={`reset_${field.name}`}
+          value={field.value?.source?.type === "user" && field.value?.value === null}
+          onClick={(event) => {
+            const value = event.target.checked;
+
+            if (value) {
+              return field.onChange(updateFormFieldValue(null));
+            }
+            return field.onChange(defaultValue);
+          }}
+        />
+        Set empty
+      </label>
+
+      {/* //TODO: Switch to aria component after fixing issue with scroll after checking the input
+          //TODO: Example available with Role and Remove Tags fields on Device */}
+      {/* <Checkbox
         onChange={(value) => {
           if (value) {
             return field.onChange(updateFormFieldValue(null));
@@ -155,7 +172,7 @@ export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
         }}
       >
         Set empty
-      </Checkbox>
+      </Checkbox> */}
     </div>
   );
 };
