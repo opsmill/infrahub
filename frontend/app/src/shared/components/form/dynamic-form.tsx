@@ -25,6 +25,7 @@ import { forwardRef } from "react";
 import { NodeKindField } from "./fields/node-kind.field";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
+  isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
   onCancel?: () => void;
   submitLabel?: string;
@@ -32,7 +33,7 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
 }
 
 const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
-  ({ fields, onCancel, submitLabel, ...props }, ref) => {
+  ({ fields, onCancel, submitLabel, isBulkUpdate, ...props }, ref) => {
     const formDefaultValues = fields.reduce(
       (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
       {}
