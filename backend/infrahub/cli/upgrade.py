@@ -14,6 +14,7 @@ from infrahub import config
 from infrahub.core.initialization import create_anonymous_role, create_default_account_groups, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
@@ -53,6 +54,8 @@ async def upgrade_cmd(
     dbdriver = await context.init_db(retry=1)
 
     await initialize_registry(db=dbdriver)
+
+    build_component_registry()
 
     # NOTE add step to validate if the database and the task manager are reachable
 
