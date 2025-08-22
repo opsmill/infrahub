@@ -1,4 +1,4 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -15,6 +15,8 @@ export interface RelationshipManyInputProps extends Omit<DynamicRelationshipFiel
 
 export default function RelationshipManyField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  relationship,
   description,
   label,
   name,
@@ -50,7 +52,7 @@ export default function RelationshipManyField({
                   error &&
                     "has-[>:last-child:focus]:ring-red-500/25 has-[>:last-child:focus]:border-red-500"
                 )}
-                peer={props.relationship.peer}
+                peer={relationship.peer}
                 value={fieldData.value as NodeCore[] | null}
                 onChange={(newValue) => {
                   field.onChange(
@@ -62,6 +64,10 @@ export default function RelationshipManyField({
                 }}
               />
             </FormInput>
+
+            {isBulkUpdate && relationship.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

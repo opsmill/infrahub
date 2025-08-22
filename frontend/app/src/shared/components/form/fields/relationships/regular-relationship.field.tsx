@@ -2,7 +2,8 @@ import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   DynamicRelationshipFieldProps,
@@ -21,7 +22,9 @@ export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldP
 }
 
 export const NodeRelationshipField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  relationship,
   description,
   label,
   name,
@@ -30,7 +33,6 @@ export const NodeRelationshipField = ({
   type,
   options,
   parent,
-  relationship,
   schema,
   ...props
 }: RegularRelationshipFieldProps) => {
@@ -150,6 +152,11 @@ export const NodeRelationshipField = ({
                   />
                 )}
               </div>
+
+              {isBulkUpdate && relationship.optional && (
+                <ResetAction field={field} defaultValue={defaultValue} />
+              )}
+
               <FormMessage />
             </div>
           );
