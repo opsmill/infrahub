@@ -1,4 +1,5 @@
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { Badge } from "../../ui/badge";
@@ -10,12 +11,19 @@ import {
   ComboboxTrigger,
 } from "../../ui/combobox";
 import { FormField, FormInput, FormMessage } from "../../ui/form";
-import { DEFAULT_FORM_FIELD_VALUE } from "../constants";
 import { FormAttributeValue, FormFieldProps } from "../type";
 import { updateFormFieldValue } from "../utils/updateFormFieldValue";
-import { LabelFormField } from "./common";
+import { LabelFormField, ResetAction } from "./common";
 
-export function NodeKindField({ label, description, rules, ...props }: FormFieldProps) {
+export function NodeKindField({
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  attribute,
+  label,
+  description,
+  rules,
+  ...props
+}: FormFieldProps) {
   const nodes = useAtomValue(nodeSchemasAtom);
 
   return (
@@ -71,6 +79,10 @@ export function NodeKindField({ label, description, rules, ...props }: FormField
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

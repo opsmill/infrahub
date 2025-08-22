@@ -1,5 +1,5 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { DynamicDropdownFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Dropdown, DropdownProps } from "@/shared/components/inputs/dropdown";
@@ -11,8 +11,9 @@ export interface DropdownFieldProps
 
 const DropdownField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
-  description,
   attribute,
+  isBulkUpdate,
+  description,
   items,
   label,
   name,
@@ -52,6 +53,9 @@ const DropdownField = ({
               />
             </FormInput>
 
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
             <FormMessage />
           </div>
         );

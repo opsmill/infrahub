@@ -1,4 +1,4 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -8,6 +8,8 @@ export interface CheckboxFieldProps extends FormFieldProps {}
 
 const CheckboxField = ({
   defaultValue = { source: null, value: false },
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
@@ -57,6 +59,10 @@ const CheckboxField = ({
 
               <FormMessage className="mt-1" />
             </div>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
           </div>
         );
       }}

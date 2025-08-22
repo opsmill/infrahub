@@ -1,11 +1,14 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 
 const PasswordInputField = ({
-  defaultValue = { source: null, value: null },
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
@@ -41,6 +44,10 @@ const PasswordInputField = ({
                 {...props}
               />
             </FormInput>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

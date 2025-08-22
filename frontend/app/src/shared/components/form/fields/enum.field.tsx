@@ -1,4 +1,4 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { DynamicEnumFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
@@ -12,6 +12,8 @@ export interface EnumFieldProps
 
 const EnumField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  attribute,
   description,
   label,
   name,
@@ -19,7 +21,6 @@ const EnumField = ({
   unique,
   items,
   schema,
-  attribute,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -54,6 +55,10 @@ const EnumField = ({
                 }}
               />
             </FormInput>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

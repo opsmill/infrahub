@@ -1,5 +1,6 @@
 import { Label } from "@/shared/components/aria/label";
 import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import {
   DynamicSelectFieldProps,
   FormAttributeValue,
@@ -7,13 +8,16 @@ import {
 } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
+import { ResetAction } from "./common";
 
 export interface SelectFieldProps
   extends FormFieldProps,
     Omit<DynamicSelectFieldProps, "defaultValue" | "name" | "type"> {}
 
 export function SelectField({
-  defaultValue = { source: null, value: null },
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
@@ -53,6 +57,10 @@ export function SelectField({
                 </SelectList>
               </Select>
             </FormInput>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

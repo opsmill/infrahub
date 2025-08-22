@@ -1,5 +1,5 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { List } from "@/shared/components/list";
@@ -7,6 +7,8 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 const ListField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
@@ -56,6 +58,10 @@ const ListField = ({
                 }}
               />
             </FormInput>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

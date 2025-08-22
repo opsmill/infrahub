@@ -1,11 +1,14 @@
 import { JsonEditor } from "@/shared/components/editor/json/json-editor";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 const JsonField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
@@ -57,6 +60,10 @@ const JsonField = ({
                 }}
               />
             </FormInput>
+
+            {isBulkUpdate && attribute.optional && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>
