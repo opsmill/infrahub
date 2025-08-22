@@ -10,6 +10,7 @@ import EnumField from "@/shared/components/form/fields/enum.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import JsonField from "@/shared/components/form/fields/json.field";
 import ListField from "@/shared/components/form/fields/list.field";
+import { NodeKindField } from "@/shared/components/form/fields/node-kind.field";
 import NumberField from "@/shared/components/form/fields/number.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import RelationshipHierarchicalField from "@/shared/components/form/fields/relationships/relationship-hierarchical.field";
@@ -22,9 +23,9 @@ import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { forwardRef } from "react";
-import { NodeKindField } from "./fields/node-kind.field";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
+  isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
   onCancel?: () => void;
   submitLabel?: string;
@@ -32,7 +33,7 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
 }
 
 const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
-  ({ fields, onCancel, submitLabel, ...props }, ref) => {
+  ({ fields, onCancel, submitLabel, isBulkUpdate, ...props }, ref) => {
     const formDefaultValues = fields.reduce(
       (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
       {}
@@ -129,8 +130,7 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       }
 
       if (props.relationship.cardinality === "many") {
-        const { type, ...otherProps } = props;
-        return <RelationshipManyField {...otherProps} />;
+        return <RelationshipManyField {...props} />;
       }
 
       if (props.relationship.common_parent) {

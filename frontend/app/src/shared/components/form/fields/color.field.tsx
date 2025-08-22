@@ -1,5 +1,7 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
@@ -10,7 +12,9 @@ export interface InputFieldProps
     Omit<InputProps, "defaultValue" | "name"> {}
 
 const ColorField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
@@ -47,6 +51,10 @@ const ColorField = ({
                 {...props}
               />
             </FormInput>
+
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

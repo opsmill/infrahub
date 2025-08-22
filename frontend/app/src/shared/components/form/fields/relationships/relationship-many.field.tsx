@@ -1,4 +1,4 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -7,14 +7,18 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import { NodeCore } from "@/entities/nodes/types";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { classNames } from "@/shared/utils/common";
 
-export interface RelationshipManyInputProps extends Omit<DynamicRelationshipFieldProps, "type"> {}
+export interface RelationshipManyInputProps extends DynamicRelationshipFieldProps {}
 
 export default function RelationshipManyField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  type,
+  isBulkUpdate,
+  relationship,
   description,
   label,
   name,
@@ -50,7 +54,7 @@ export default function RelationshipManyField({
                   error &&
                     "has-[>:last-child:focus]:ring-red-500/25 has-[>:last-child:focus]:border-red-500"
                 )}
-                peer={props.relationship.peer}
+                peer={relationship.peer}
                 value={fieldData.value as NodeCore[] | null}
                 onChange={(newValue) => {
                   field.onChange(
@@ -62,6 +66,10 @@ export default function RelationshipManyField({
                 }}
               />
             </FormInput>
+
+            {canDisplayResetActions(relationship, isBulkUpdate) && type !== "relationship-add" && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>
