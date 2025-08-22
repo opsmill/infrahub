@@ -1,5 +1,4 @@
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Checkbox } from "@/shared/components/aria/checkbox";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   FormAttributeValue,
@@ -10,6 +9,7 @@ import {
   TemplateSource,
 } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { Badge } from "@/shared/components/ui/badge";
 import { FormLabel } from "@/shared/components/ui/form";
 import { LabelProps } from "@/shared/components/ui/label";
