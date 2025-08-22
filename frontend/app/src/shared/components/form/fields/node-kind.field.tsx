@@ -1,5 +1,6 @@
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { Badge } from "../../ui/badge";
@@ -78,7 +79,7 @@ export function NodeKindField({
               </ComboboxContent>
             </Combobox>
 
-            {isBulkUpdate && attribute.optional && (
+            {canRenderReset(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 

@@ -62,7 +62,7 @@ export function SelectField({
               </Select>
             </FormInput>
 
-            {isBulkUpdate && attribute.optional && (
+            {canRenderReset(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 

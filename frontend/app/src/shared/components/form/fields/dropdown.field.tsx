@@ -1,6 +1,7 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { DynamicDropdownFieldProps, FormAttributeValue } from "@/shared/components/form/type";
+import { canRenderReset } from "@/shared/components/form/utils/canDisplayRestActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Dropdown, DropdownProps } from "@/shared/components/inputs/dropdown";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
@@ -53,7 +54,7 @@ const DropdownField = ({
               />
             </FormInput>
 
-            {isBulkUpdate && attribute.optional && (
+            {canRenderReset(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
             <FormMessage />
