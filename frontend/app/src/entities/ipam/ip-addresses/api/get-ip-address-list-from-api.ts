@@ -5,6 +5,7 @@ import {
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
+  dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -76,6 +77,8 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
   attributes,
   relationships,
 }: GetIpAddressListGraphQLQueryParams) {
+  const cleanedFilters = dropIncludeAvailableWhenFalse(filters);
+
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
@@ -83,7 +86,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
         __args: {
           limit,
           offset,
-          ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
         },
         edges: {
           node: {

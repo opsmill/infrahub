@@ -177,9 +177,11 @@ export type DynamicAttributeFieldProps =
   | DynamicSelectFieldProps
   | DynamicKindFieldProps;
 
+export type RelationshipFieldType = "relationship" | "relationship-add" | "relationship-remove";
+
 export interface DynamicRelationshipFieldProps
   extends Omit<FormFieldProps, "defaultValue" | "attribute"> {
-  type: "relationship";
+  type: RelationshipFieldType;
   defaultValue?: FormRelationshipValue;
   // Indicates the form is used for bulk updates, enabling explicit null-setting UI
   isBulkUpdate?: boolean;

@@ -1,5 +1,8 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { PROPOSED_CHANGE_THREAD } from "@/entities/proposed-changes/constants";
+import {
+  PROPOSED_CHANGE_APPROVALS_REVOKED,
+  PROPOSED_CHANGE_THREAD,
+} from "@/entities/proposed-changes/constants";
 import { ReactNode } from "react";
 import { ProposedChangeThreadEvent } from "./proposed-change-thread-event";
 
@@ -35,6 +38,12 @@ interface ProposedChangeEventTitleProps {
 
 export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) => {
   const { event, account_id, branch } = props;
+
+  if (event === PROPOSED_CHANGE_APPROVALS_REVOKED) {
+    return (
+      <div className="text-gray-600">Changes occured in the source branch, approval revoked</div>
+    );
+  }
 
   if (event === PROPOSED_CHANGE_THREAD && props.related_nodes?.[0]?.id) {
     return (

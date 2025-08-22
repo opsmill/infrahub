@@ -42,7 +42,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
     return (
       <Form ref={ref} {...props} defaultValues={formDefaultValues}>
         {fields.map((field) => (
-          <DynamicInput key={field.name} {...field} />
+          <DynamicInput key={`${field.type}_${field.name}`} {...field} />
         ))}
 
         <div className="text-right">
@@ -120,6 +120,8 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       const { type, ...otherProps } = props;
       return <SelectField {...otherProps} />;
     }
+    case "relationship-add":
+    case "relationship-remove":
     case "relationship": {
       const { schema: peerSchema } = getSchema(props.relationship.peer);
 
