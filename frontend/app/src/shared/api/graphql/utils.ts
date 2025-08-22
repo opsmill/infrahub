@@ -146,3 +146,6 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
     {} as Record<string, string | number | boolean | string[]>
   );
 };
+
+export const dropIncludeAvailableWhenFalse = (filters?: Filter[]) =>
+  filters?.filter((f) => !(f.name === AVAILABLE_IP_FILTER_NAME && f.value === false));
