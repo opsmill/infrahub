@@ -63,6 +63,7 @@ export const getFormFieldFromAttribute = ({
       isFilterForm,
     }),
     description: attributeSchema.description ?? undefined,
+    isBulkUpdate,
     attribute: attributeSchema,
     disabled: isFieldDisabled({
       auth,
@@ -76,7 +77,6 @@ export const getFormFieldFromAttribute = ({
         ? "NodeKind"
         : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
     unique: attributeSchema.unique,
-    isBulkUpdate,
     rules: {
       required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {

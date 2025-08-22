@@ -180,10 +180,12 @@ export type DynamicAttributeFieldProps =
 export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
   type: "relationship";
   defaultValue?: FormRelationshipValue;
+  // Indicates the form is used for bulk updates, enabling explicit null-setting UI
+  isBulkUpdate?: boolean;
+  relationship: RelationshipSchema;
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  relationship: RelationshipSchema;
   schema: ModelSchema;
   peerField?: string;
 };

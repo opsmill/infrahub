@@ -53,6 +53,8 @@ export const getFormFieldFromRelationship = ({
       parentData,
     }),
     description: relationshipSchema.description ?? undefined,
+    isBulkUpdate,
+    relationship: relationshipSchema,
     disabled: isFieldDisabled({
       auth,
       owner: undefined,
@@ -61,7 +63,6 @@ export const getFormFieldFromRelationship = ({
       isReadOnly: relationshipSchema.read_only,
     }),
     parent: getRelationshipParent(relationshipData ?? relationshipTemplate),
-    relationship: relationshipSchema,
     rules: {
       required: !isFilterForm && !isBulkUpdate && !relationshipSchema.optional,
       validate: (formFieldValue: FormRelationshipValue) => {
