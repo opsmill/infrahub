@@ -63,6 +63,7 @@ export const getFormFieldFromAttribute = ({
       isFilterForm,
     }),
     description: attributeSchema.description ?? undefined,
+    attribute: attributeSchema,
     disabled: isFieldDisabled({
       auth,
       owner: attributeData?.owner,
@@ -75,6 +76,7 @@ export const getFormFieldFromAttribute = ({
         ? "NodeKind"
         : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
     unique: attributeSchema.unique,
+    isBulkUpdate,
     rules: {
       required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
@@ -121,7 +123,6 @@ export const getFormFieldFromAttribute = ({
     const dropdownField: DynamicDropdownFieldProps = {
       ...basicFomFieldProps,
       type: ATTRIBUTE_KIND.DROPDOWN,
-      field: attributeSchema,
       schema,
       items: (attributeSchema.choices ?? []).map(
         (choice: components["schemas"]["DropdownChoice"]) => ({
@@ -140,7 +141,6 @@ export const getFormFieldFromAttribute = ({
     const enumField: DynamicEnumFieldProps = {
       ...basicFomFieldProps,
       type: "enum",
-      field: attributeSchema,
       schema,
       items: attributeSchema.enum,
     };
