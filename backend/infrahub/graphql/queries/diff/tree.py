@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
 
 from infrahub.core import registry
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
@@ -36,6 +37,12 @@ if TYPE_CHECKING:
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
 GrapheneCardinalityEnum = GrapheneEnum.from_enum(RelationshipCardinality)
+
+
+@dataclass
+class ParentNodeInfo:
+    node: EnrichedDiffNode
+    relationship_name: str
 
 
 class ConflictDetails(ObjectType):
@@ -145,9 +152,16 @@ class DiffTreeSummary(DiffSummaryCounts):
 
 
 class DiffTreeResolver:
+    def __init__(self) -> None:
+        self.source_branch_name: str | None = None
+
+    def initialize(self, enriched_diff_root: EnrichedDiffRoot) -> None:
+        self.source_branch_name = enriched_diff_root.diff_branch_name
+
     async def to_diff_tree(
         self, enriched_diff_root: EnrichedDiffRoot, graphql_context: GraphqlContext | None = None
     ) -> DiffTree:
+        self.initialize(enriched_diff_root=enriched_diff_root)
         all_nodes = list(enriched_diff_root.nodes)
         tree_nodes = [self.to_diff_node(enriched_node=e_node, graphql_context=graphql_context) for e_node in all_nodes]
         name = None
@@ -166,6 +180,43 @@ class DiffTreeResolver:
             num_conflicts=enriched_diff_root.num_conflicts,
         )
 
+    def _get_parent_info(
+        self, diff_node: EnrichedDiffNode, graphql_context: GraphqlContext | None = None
+    ) -> ParentNodeInfo | None:
+        for r in diff_node.relationships:
+            for n in r.nodes:
+                relationship_name: str = "undefined"
+
+                if not graphql_context or not self.source_branch_name:
+                    return ParentNodeInfo(node=n, relationship_name=relationship_name)
+
+                node_schema = graphql_context.db.schema.get(
+                    name=diff_node.kind, branch=self.source_branch_name, duplicate=False
+                )
+                rel_schema = node_schema.get_relationship(name=r.name)
+
+                parent_schema = graphql_context.db.schema.get(
+                    name=n.kind, branch=self.source_branch_name, duplicate=False
+                )
+                rels_parent = parent_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
+
+                if rels_parent and len(rels_parent) == 1:
+                    relationship_name = rels_parent[0].name
+                elif rels_parent and len(rels_parent) > 1:
+                    for rel_parent in rels_parent:
+                        if (
+                            rel_schema.direction == RelationshipDirection.INBOUND
+                            and rel_parent.direction == RelationshipDirection.OUTBOUND
+                        ) or (
+                            rel_schema.direction == RelationshipDirection.OUTBOUND
+                            and rel_parent.direction == RelationshipDirection.INBOUND
+                        ):
+                            relationship_name = rel_parent.name
+                            break
+
+                return ParentNodeInfo(node=n, relationship_name=relationship_name)
+        return None
+
     def to_diff_node(self, enriched_node: EnrichedDiffNode, graphql_context: GraphqlContext | None = None) -> DiffNode:
         diff_attributes = [
             self.to_diff_attribute(enriched_attribute=e_attr, graphql_context=graphql_context)
@@ -181,7 +232,7 @@ class DiffTreeResolver:
             conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict, graphql_context=graphql_context)
 
         parent = None
-        if parent_info := enriched_node.get_parent_info(graphql_context=graphql_context):
+        if parent_info := self._get_parent_info(diff_node=enriched_node, graphql_context=graphql_context):
             parent = DiffNodeParent(
                 uuid=parent_info.node.uuid,
                 kind=parent_info.node.kind,
