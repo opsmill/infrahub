@@ -45,6 +45,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             "attributes": [
                 {"name": "generic_attr_text", "kind": "Text", "optional": True, "order_weight": 1111},
                 {"name": "generic_attr_num", "kind": "Number", "optional": True, "order_weight": 2222},
+                {"name": "generic_required_attr", "kind": "Text", "optional": False},
             ],
             "relationships": [
                 {
@@ -90,6 +91,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             "name": "SpecificThree",
             "namespace": "Testing",
             "inherit_from": ["TestingGeneric"],
+            "attributes": [{"name": "generic_required_attr", "kind": "Text", "optional": True}],
         }
 
     @pytest.fixture(scope="class")
@@ -135,23 +137,43 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         await thing_three.save(db=db)
 
         specific_one = await Node.init(schema=SPECIFIC_ONE_KIND, db=db)
-        await specific_one.new(db=db, generic_attr_text="Alpha", generic_attr_num=1, favorite_thing=thing_one)
+        await specific_one.new(
+            db=db,
+            generic_attr_text="Alpha",
+            generic_attr_num=1,
+            generic_required_attr="required",
+            favorite_thing=thing_one,
+        )
         await specific_one.save(db=db)
 
         deleted_specific_one = await Node.init(schema=SPECIFIC_ONE_KIND, db=db)
         await deleted_specific_one.new(
-            db=db, generic_attr_text="Deleted-Alpha", generic_attr_num=-1, favorite_thing=thing_one
+            db=db,
+            generic_attr_text="Deleted-Alpha",
+            generic_attr_num=-1,
+            generic_required_attr="required",
+            favorite_thing=thing_one,
         )
         await deleted_specific_one.save(db=db)
         await deleted_specific_one.delete(db=db)
 
         specific_two = await Node.init(schema=SPECIFIC_TWO_KIND, db=db)
-        await specific_two.new(db=db, generic_attr_text="Bravo", generic_attr_num=2, favorite_thing=thing_two)
+        await specific_two.new(
+            db=db,
+            generic_attr_text="Bravo",
+            generic_attr_num=2,
+            generic_required_attr="required",
+            favorite_thing=thing_two,
+        )
         await specific_two.save(db=db)
 
         deleted_specific_two = await Node.init(schema=SPECIFIC_TWO_KIND, db=db)
         await deleted_specific_two.new(
-            db=db, generic_attr_text="Deleted-Bravo", generic_attr_num=-2, favorite_thing=thing_two
+            db=db,
+            generic_attr_text="Deleted-Bravo",
+            generic_attr_num=-2,
+            generic_required_attr="required",
+            favorite_thing=thing_two,
         )
         await deleted_specific_two.save(db=db)
         await deleted_specific_two.delete(db=db)
@@ -205,6 +227,11 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 "optional": True,
                 "default_value": "this default",
                 "order_weight": 1011,
+            },
+            {
+                "name": "generic_required_attr",
+                "kind": "Text",
+                "optional": True,
             },
         ]
         schema_dict["relationships"] = [
@@ -308,9 +335,11 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         schema_dict = schema_generic_base.copy()
         for attr in schema_dict["attributes"]:
-            attr["order_weight"] += 1
+            if "order_weight" in attr:
+                attr["order_weight"] += 1
         for rel in schema_dict["relationships"]:
-            rel["order_weight"] += 1
+            if "order_weight" in rel:
+                rel["order_weight"] += 1
         return schema_dict
 
     @pytest.fixture(scope="class")
@@ -337,7 +366,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         schema_dict = schema_generic_with_weight_updates.copy()
         for attr in schema_dict["attributes"]:
-            if attr["name"] == "generic_attr_text":
+            if attr["name"] in ("generic_attr_text", "generic_required_attr"):
                 attr["state"] = HashableModelState.ABSENT.value
         for rel in schema_dict["relationships"]:
             if rel["name"] == "things":
@@ -363,7 +392,9 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self, db: InfrahubDatabase, schema_generic_with_weight_updates: dict[str, Any]
     ) -> dict[str, Any]:
         schema_dict = schema_generic_with_weight_updates.copy()
-        schema_dict["attributes"] = [a for a in schema_dict["attributes"] if a["name"] != "generic_attr_text"]
+        schema_dict["attributes"] = [
+            a for a in schema_dict["attributes"] if a["name"] not in ("generic_attr_text", "generic_required_attr")
+        ]
         schema_dict["relationships"] = [r for r in schema_dict["relationships"] if r["name"] != "things"]
         return schema_dict
 
@@ -403,9 +434,29 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> list[str]:
         return []
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, branch: Branch, initial_dataset):
+    async def test_step01_baseline_backend(
+        self, db: InfrahubDatabase, branch: Branch, client: InfrahubClient, initial_dataset
+    ):
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 3
+
+        # verify create and delete using the client
+        node = await client.create(
+            kind=SPECIFIC_THREE_KIND,
+            branch=branch.name,
+            data={
+                "generic_attr_text": "David",
+                "generic_attr_num": 4,
+                # no generic_required_attr set
+                "favorite_thing": initial_dataset["thing_three"].id,
+            },
+        )
+        await node.save()
+        retrieved_node = await client.get(kind=SPECIFIC_THREE_KIND, branch=branch.name, id=node.id)
+        assert retrieved_node.generic_attr_text.value == "David"
+        assert retrieved_node.generic_attr_num.value == 4
+        assert retrieved_node.generic_required_attr.value is None
+        await node.delete()
 
         errors = await self.validate_database(
             db=db,
@@ -442,6 +493,14 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                                             "order_weight": None,
                                             "default_value": None,
                                             "inherited": None,
+                                        },
+                                        "removed": {},
+                                    },
+                                    "generic_required_attr": {
+                                        "added": {},
+                                        "changed": {
+                                            "inherited": None,
+                                            "optional": None,
                                         },
                                         "removed": {},
                                     },
@@ -531,6 +590,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
         assert retrieved_specific_one.generic_attr_text.value == "Alpha"
         assert retrieved_specific_one.generic_attr_num.value == 1
+        assert retrieved_specific_one.generic_required_attr.value == "required"
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
         assert rels_one[0].peer_id == initial_dataset["thing_one"].id
@@ -539,6 +599,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
         assert retrieved_specific_two.generic_attr_text.value == "Bravo"
         assert retrieved_specific_two.generic_attr_num.value == 2
+        assert retrieved_specific_two.generic_required_attr.value == "required"
         rels_two = await retrieved_specific_two.favorite_thing.get_relationships(db=db)
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
@@ -549,23 +610,48 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         )
         assert retrieved_specific_three.generic_attr_text.value == "Charlie"
         assert retrieved_specific_three.generic_attr_num.value == 3
+        assert retrieved_specific_three.generic_required_attr.value is None
         rels_three = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
         assert len(rels_three) == 1
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
         assert isinstance(retrieved_specific_three.things, RelationshipManager)
 
+        # add and delete SPECIFIC_ONE_KIND instance with the client to validate schema update
+        node = await client.create(
+            kind=SPECIFIC_ONE_KIND,
+            branch=branch.name,
+            data={
+                "generic_attr_text": "Edward",
+                "generic_attr_num": 5,
+                # no generic_required_attr set
+                "favorite_thing": initial_dataset["thing_one"].id,
+            },
+        )
+        await node.save()
+        retrieved_node = await client.get(kind=SPECIFIC_ONE_KIND, branch=branch.name, id=node.id)
+        assert retrieved_node.generic_attr_text.value == "Edward"
+        assert retrieved_node.generic_attr_num.value == 5
+        assert retrieved_node.generic_required_attr.value is None
+        await node.delete()
+
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
-        assert set(generic_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
+        assert set(generic_schema.attribute_names) == {"generic_attr_text", "generic_attr_num", "generic_required_attr"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
         generic_attr_text_schema = generic_schema.get_attribute("generic_attr_text")
         assert generic_attr_text_schema.default_value is None
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
-        assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
-        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
+        assert set(specific_one_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "generic_required_attr",
+        }
+        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text", "generic_required_attr"}
         overridden_generic_attr_text_schema = specific_one_schema.get_attribute("generic_attr_text")
         assert overridden_generic_attr_text_schema.default_value == "this default"
         assert overridden_generic_attr_text_schema.order_weight == 1011
+        overridden_generic_required_attr_schema = specific_one_schema.get_attribute("generic_required_attr")
+        assert overridden_generic_required_attr_schema.optional is True
         assert set(specific_one_schema.relationship_names) >= {"things", "favorite_thing"}
         assert set(specific_one_schema.local_relationship_names) >= {"things"}
         overridden_things_rel_schema = specific_one_schema.get_relationship("things")
@@ -575,6 +661,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert set(specific_two_schema.attribute_names) == {
             "generic_attr_text",
             "generic_attr_num",
+            "generic_required_attr",
             "specific_attr_text",
         }
         assert set(specific_two_schema.local_attribute_names) == {"specific_attr_text"}
@@ -584,9 +671,14 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert set(specific_three_schema.attribute_names) == {
             "generic_attr_text",
             "generic_attr_num",
+            "generic_required_attr",
             "specific_attr_num",
         }
-        assert set(specific_three_schema.local_attribute_names) == {"generic_attr_text", "specific_attr_num"}
+        assert set(specific_three_schema.local_attribute_names) == {
+            "generic_attr_text",
+            "generic_required_attr",
+            "specific_attr_num",
+        }
         overridden_generic_attr_text_schema = specific_three_schema.get_attribute("generic_attr_text")
         assert overridden_generic_attr_text_schema.regex == "^[A-Z][a-z]+"
         assert overridden_generic_attr_text_schema.order_weight == 1033
@@ -682,6 +774,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
         assert retrieved_specific_one.generic_attr_text.value == "Alpha"
         assert retrieved_specific_one.generic_attr_num.value == 1
+        assert retrieved_specific_one.generic_required_attr.value == "required"
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
         assert rels_one[0].peer_id == initial_dataset["thing_one"].id
@@ -690,6 +783,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
         assert retrieved_specific_two.generic_attr_text.value == "Bravo"
         assert retrieved_specific_two.generic_attr_num.value == 2
+        assert retrieved_specific_two.generic_required_attr.value == "required"
         rels_two = await retrieved_specific_two.favorite_thing.get_relationships(db=db)
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
@@ -700,6 +794,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         )
         assert retrieved_specific_three.generic_attr_text.value == "Charlie"
         assert retrieved_specific_three.generic_attr_num.value == 3
+        assert retrieved_specific_three.generic_required_attr.value is None
         rels_three = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
         assert len(rels_three) == 1
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
@@ -707,16 +802,21 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
-        assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text"}
+        assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text", "generic_required_attr"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
-        assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
-        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
+        assert set(specific_one_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "generic_required_attr",
+        }
+        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text", "generic_required_attr"}
         assert {"favorite_thing", "things"} <= set(specific_one_schema.relationship_names)
         specific_two_schema = updated_schema_branch.get(SPECIFIC_TWO_KIND, duplicate=False)
         assert set(specific_two_schema.attribute_names) == {
             "generic_attr_text",
             "generic_attr_num",
+            "generic_required_attr",
             "specific_attr_text",
         }
         assert set(specific_two_schema.local_attribute_names) == {"specific_attr_text"}
@@ -726,9 +826,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert set(specific_three_schema.attribute_names) == {
             "generic_attr_text",
             "generic_attr_num",
+            "generic_required_attr",
             "specific_attr_num",
         }
-        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num", "generic_required_attr"}
         generic_attr_text_schema = specific_three_schema.get_attribute("generic_attr_text")
         assert generic_attr_text_schema.regex is None
         assert generic_attr_text_schema.order_weight == 1111
@@ -819,6 +920,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
         assert retrieved_specific_one.generic_attr_text.value == "Alpha"
         assert retrieved_specific_one.generic_attr_num.value == 1
+        assert retrieved_specific_one.generic_required_attr.value == "required"
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
         assert rels_one[0].peer_id == initial_dataset["thing_one"].id
@@ -827,6 +929,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
         assert retrieved_specific_two.generic_attr_text.value == "Bravo"
         assert retrieved_specific_two.generic_attr_num.value == 2
+        assert retrieved_specific_two.generic_required_attr.value == "required"
         rels_two = await retrieved_specific_two.favorite_thing.get_relationships(db=db)
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
@@ -837,6 +940,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         )
         assert retrieved_specific_three.generic_attr_text.value == "Charlie"
         assert retrieved_specific_three.generic_attr_num.value == 3
+        assert retrieved_specific_three.generic_required_attr.value is None
         rels_three = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
         assert len(rels_three) == 1
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
@@ -844,7 +948,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
-        assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text"}
+        assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text", "generic_required_attr"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
         weights_by_field_name = {
             field.name: field.order_weight for field in generic_schema.attributes + generic_schema.relationships
@@ -854,8 +958,12 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert weights_by_field_name["things"] == 3334
         assert weights_by_field_name["favorite_thing"] == 4445
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
-        assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
-        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
+        assert set(specific_one_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "generic_required_attr",
+        }
+        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text", "generic_required_attr"}
         assert {"favorite_thing", "things"} <= set(specific_one_schema.relationship_names)
         assert "things" in specific_one_schema.local_relationship_names
         assert "favorite_thing" not in specific_one_schema.local_relationship_names
@@ -871,6 +979,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert set(specific_two_schema.attribute_names) == {
             "generic_attr_text",
             "generic_attr_num",
+            "generic_required_attr",
             "specific_attr_text",
         }
         assert set(specific_two_schema.local_attribute_names) == {"specific_attr_text"}
@@ -888,9 +997,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert set(specific_three_schema.attribute_names) == {
             "generic_attr_text",
             "generic_attr_num",
+            "generic_required_attr",
             "specific_attr_num",
         }
-        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num", "generic_required_attr"}
         generic_attr_text_schema = specific_three_schema.get_attribute("generic_attr_text")
         assert generic_attr_text_schema.regex is None
         assert set(specific_three_schema.relationship_names) >= {"things", "favorite_thing"}
@@ -935,7 +1045,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                             "attributes": {
                                 "added": {},
                                 "changed": {},
-                                "removed": {"generic_attr_text": None},
+                                "removed": {
+                                    "generic_attr_text": None,
+                                    "generic_required_attr": None,
+                                },
                             },
                             "relationships": {
                                 "added": {},
@@ -952,6 +1065,11 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                                 "added": {},
                                 "changed": {
                                     "generic_attr_text": {
+                                        "added": {},
+                                        "changed": {"state": None},
+                                        "removed": {},
+                                    },
+                                    "generic_required_attr": {
                                         "added": {},
                                         "changed": {"state": None},
                                         "removed": {},
@@ -1023,6 +1141,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
         assert retrieved_specific_one.generic_attr_text.value == "Alpha"
         assert retrieved_specific_one.generic_attr_num.value == 1
+        assert retrieved_specific_one.generic_required_attr.value == "required"
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
         assert rels_one[0].peer_id == initial_dataset["thing_one"].id
@@ -1031,6 +1150,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
         assert not hasattr(retrieved_specific_two, "generic_attr_text")
         assert retrieved_specific_two.generic_attr_num.value == 2
+        assert not hasattr(retrieved_specific_two, "generic_required_attr")
         rels_two = await retrieved_specific_two.favorite_thing.get_relationships(db=db)
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
@@ -1041,19 +1161,54 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         )
         assert not hasattr(retrieved_specific_three, "generic_attr_text")
         assert retrieved_specific_three.generic_attr_num.value == 3
+        assert retrieved_specific_three.generic_required_attr.value is None
         rels_two = await retrieved_specific_three.favorite_thing.get_relationships(db=db)
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_three"].id
         assert not hasattr(retrieved_specific_three, "things")
 
+        # verify add and delete using client
+        await client.schema.get(kind=SPECIFIC_ONE_KIND, branch=branch.name, refresh=True)
+        await client.schema.get(kind=SPECIFIC_THREE_KIND, branch=branch.name, refresh=True)
+        node = await client.create(
+            kind=SPECIFIC_ONE_KIND,
+            branch=branch.name,
+            data={
+                "generic_attr_text": "Frank",
+            },
+        )
+        await node.save()
+        retrieved_node = await client.get(kind=SPECIFIC_ONE_KIND, branch=branch.name, id=node.id)
+        assert retrieved_node.generic_attr_text.value == "Frank"
+        assert retrieved_node.generic_required_attr.value is None
+        await node.delete()
+        node = await client.create(
+            kind=SPECIFIC_THREE_KIND,
+            branch=branch.name,
+            data={
+                "generic_attr_num": 6,
+                "specific_attr_num": 66,
+            },
+        )
+        await node.save()
+        retrieved_node = await client.get(kind=SPECIFIC_THREE_KIND, branch=branch.name, id=node.id)
+        assert retrieved_node.generic_attr_num.value == 6
+        assert retrieved_node.specific_attr_num.value == 66
+        assert retrieved_node.generic_required_attr.value is None
+        await node.delete()
+
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
-        assert generic_schema.attribute_names == ["generic_attr_num"]
+        assert set(generic_schema.attribute_names) == {"generic_attr_num"}
         assert "things" not in generic_schema.relationship_names
         assert "favorite_thing" in generic_schema.relationship_names
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
-        assert set(specific_one_schema.attribute_names) == {"generic_attr_text", "generic_attr_num"}
-        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text"}
+        assert set(specific_one_schema.attribute_names) == {
+            "generic_attr_text",
+            "generic_attr_num",
+            "generic_required_attr",
+        }
+        assert set(specific_one_schema.local_attribute_names) == {"generic_attr_text", "generic_required_attr"}
         overridden_generic_attr_text_schema = specific_one_schema.get_attribute("generic_attr_text")
         assert overridden_generic_attr_text_schema.default_value == "this default"
         assert overridden_generic_attr_text_schema.order_weight == 1011
@@ -1069,8 +1224,12 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert "things" not in specific_two_schema.relationship_names
         assert set(specific_two_schema.local_relationship_names) >= {"specific_things"}
         specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
-        assert set(specific_three_schema.attribute_names) == {"generic_attr_num", "specific_attr_num"}
-        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        assert set(specific_three_schema.attribute_names) == {
+            "generic_attr_num",
+            "specific_attr_num",
+            "generic_required_attr",
+        }
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num", "generic_required_attr"}
         assert set(specific_three_schema.relationship_names) >= {"favorite_thing"}
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
 
@@ -1137,6 +1296,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
         assert not hasattr(retrieved_specific_one, "generic_attr_text")
         assert retrieved_specific_one.generic_attr_num.value == 1
+        assert retrieved_specific_one.generic_required_attr.value == "required"
         rels_one = await retrieved_specific_one.favorite_thing.get_relationships(db=db)
         assert len(rels_one) == 1
         assert rels_one[0].peer_id == initial_dataset["thing_one"].id
@@ -1145,6 +1305,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
         assert not hasattr(retrieved_specific_two, "generic_attr_text")
         assert retrieved_specific_two.generic_attr_num.value == 2
+        assert not hasattr(retrieved_specific_two, "generic_required_attr")
         rels_two = await retrieved_specific_two.favorite_thing.get_relationships(db=db)
         assert len(rels_two) == 1
         assert rels_two[0].peer_id == initial_dataset["thing_two"].id
@@ -1155,6 +1316,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         )
         assert not hasattr(retrieved_specific_threee, "generic_attr_text")
         assert retrieved_specific_threee.generic_attr_num.value == 3
+        assert retrieved_specific_threee.generic_required_attr.value is None
         rels_three = await retrieved_specific_threee.favorite_thing.get_relationships(db=db)
         assert len(rels_three) == 1
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
@@ -1162,12 +1324,12 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
-        assert generic_schema.attribute_names == ["generic_attr_num"]
+        assert set(generic_schema.attribute_names) == {"generic_attr_num"}
         assert "things" not in generic_schema.relationship_names
         assert "favorite_thing" in generic_schema.relationship_names
         specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
-        assert set(specific_one_schema.attribute_names) == {"generic_attr_num"}
-        assert not specific_one_schema.local_attribute_names
+        assert set(specific_one_schema.attribute_names) == {"generic_attr_num", "generic_required_attr"}
+        assert set(specific_one_schema.local_attribute_names) == {"generic_required_attr"}
         assert "things" not in specific_one_schema.relationship_names
         assert "favorite_thing" in specific_one_schema.relationship_names
         specific_two_schema = updated_schema_branch.get(SPECIFIC_TWO_KIND, duplicate=False)
@@ -1177,8 +1339,12 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert "things" not in specific_two_schema.relationship_names
         assert set(specific_two_schema.local_relationship_names) >= {"specific_things"}
         specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
-        assert set(specific_three_schema.attribute_names) == {"generic_attr_num", "specific_attr_num"}
-        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num"}
+        assert set(specific_three_schema.attribute_names) == {
+            "generic_attr_num",
+            "specific_attr_num",
+            "generic_required_attr",
+        }
+        assert set(specific_three_schema.local_attribute_names) == {"specific_attr_num", "generic_required_attr"}
         assert set(specific_three_schema.relationship_names) >= {"favorite_thing"}
         assert "things" not in specific_three_schema.relationship_names
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
