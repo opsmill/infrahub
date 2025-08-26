@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.3.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.8) - 2025-08-26
+
+### Fixed
+
+- Fixed bugs that would prevent generating a diff for and merging a branch with new schema and data into a fresh instance of Infrahub. ([#6484](https://github.com/opsmill/infrahub/issues/6484))
+- Fixed overflow issues with large numbers of tabs on object details view ([#6734](https://github.com/opsmill/infrahub/issues/6734))
+- Allow updating mandatory attribute on a generic to being optional, even if the generic is overridden by inheriting schema(s). ([#6800](https://github.com/opsmill/infrahub/issues/6800))
+- Add graphiql workers at build time for offline use ([#7046](https://github.com/opsmill/infrahub/issues/7046))
+
 ## [Infrahub - v1.3.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.7) - 2025-08-14
 
 ### Fixed
