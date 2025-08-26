@@ -1,5 +1,5 @@
 ---
-title: Understanding Git repositories in Infrahub
+title: Git repository
 ---
 
 import Tabs from '@theme/Tabs';
@@ -7,16 +7,16 @@ import TabItem from '@theme/TabItem';
 
 # Understanding Git repositories in Infrahub
 
-Infrahub integrates with external Git repositories to enable version-controlled infrastructure management, allowing you to store and manage transformations, queries, generators, and other automation resources alongside your infrastructure data. This topic explains how Infrahub's Git integration works, the different repository types available, and the architectural decisions behind these features.
+Infrahub integrates with external Git repositories to enable comprehensive version-controlled infrastructure management. This integration allows you to store and manage transformations, queries, generators, and other automation resources alongside your infrastructure data. This topic explains how Infrahub's Git integration works, the available repository types, and the architectural decisions behind these features.
 
 ## Why Git integration matters
 
-Infrastructure management often requires a combination of structured data (network configurations, device inventories) and code (automation scripts, templates, validation logic). By integrating with Git repositories, Infrahub bridges these two worlds, enabling:
+Modern infrastructure management requires both structured data (network configurations, device inventories) and code (automation scripts, templates, validation logic). By integrating with Git repositories, Infrahub bridges these two worlds, enabling:
 
 - **Unified version control**: Both your infrastructure data and automation code follow the same branching and merging workflows
-- **Familiar developer workflows**: Teams can use their existing Git practices and tooling
-- **Separation of concerns**: Infrastructure data lives in Infrahub's graph database while code remains in Git
-- **Collaboration**: Multiple teams can work on different aspects of infrastructure without conflicts
+- **Familiar developer workflows**: Teams can leverage existing Git practices and tooling
+- **Separation of concerns**: Infrastructure data resides in Infrahub's graph database while code remains in Git
+- **Enhanced collaboration**: Multiple teams can work on different aspects of infrastructure without conflicts
 
 ## Repository types and their design rationale {#read-only-vs-core}
 
@@ -24,11 +24,11 @@ Infrahub supports two distinct repository connection types, each designed for sp
 
 ### Repository: full bidirectional integration
 
-The standard **Repository** type provides deep, bidirectional integration between Infrahub and Git. This design choice reflects the need for truly unified version control across infrastructure data and code.
+The standard **Repository** type provides comprehensive, bidirectional integration between Infrahub and Git. This design choice fulfills the need for truly unified version control across infrastructure data and code.
 
 **Design principles:**
 
-- **Branch parity**: Every branch in the external repository can have a corresponding branch in Infrahub
+- **Branch parity**: Every branch in the external repository will have a corresponding branch in Infrahub
 - **Automatic synchronization**: Changes from Git are pulled automatically via background tasks
 - **Bidirectional flow**: Changes can flow from Git to Infrahub and from Infrahub back to Git (via Proposed Changes)
 
@@ -36,22 +36,22 @@ The standard **Repository** type provides deep, bidirectional integration betwee
 
 When you create a Repository connection, Infrahub:
 
-1. Clones the repository to local storage (defined by `git.repositories_directory` setting)
+1. Clones the repository to local storage
 2. Creates Git worktrees for each branch to enable parallel operations
 3. Tracks all remote branches and creates corresponding Infrahub branches
 4. Runs background synchronization tasks every few seconds to detect changes
-5. Parses the `.infrahub.yml` file to determine what resources to import
+5. Parses the `.infrahub.yml` file to determine which resources to import
 
-The bidirectional nature means that when you merge a Proposed Change between two Infrahub branches that are both linked to Git branches, Infrahub creates a merge commit and pushes it back to the external repository.
+The bidirectional nature means that when you merge a Proposed Change between two Infrahub branches that are both linked to Git branches, Infrahub creates a merge commit and automatically pushes it back to the external repository.
 
 ### Read-only Repository: controlled unidirectional flow
 
-The **Read-only Repository** type provides a simpler, unidirectional integration designed for scenarios where you want to consume resources from Git without modifying the external repository.
+The **Read-only Repository** type offers a simpler, unidirectional integration designed for scenarios where you need to consume resources from Git without modifying the external repository.
 
 **Design principles:**
 
-- **Single reference tracking**: Links one specific Git ref (branch, tag, or commit) to one Infrahub branch
-- **Manual synchronization**: Updates only happen when explicitly triggered
+- **Single reference tracking**: Links one specific Git ref (branch, tag, or commit)
+- **Manual synchronization**: Updates only happen when the `ref` property is changed
 - **Protection of external resources**: Guarantees no modifications to the external repository
 
 **How it works internally:**
@@ -60,25 +60,25 @@ Read-only repositories:
 
 1. Track a single Git reference rather than all branches
 2. Pull changes only when the `ref` property is updated
-3. Import resources according to `.infrahub.yml` but never push changes back
-4. Maintain a simpler state model without branch synchronization logic
+3. Import resources according to the `.infrahub.yml` configuration
+4. Maintain a simpler state model without complex branch synchronization logic
 
 ## Architecture and data flow
 
-Understanding how Infrahub manages Git repositories helps explain the system's capabilities and constraints.
+Understanding how Infrahub manages Git repositories helps clarify the system's capabilities and constraints.
 
 ### Component responsibilities
 
 ![Repository Architecture](../media/repository_architecture.excalidraw.svg)
 
-The architecture separates concerns between components:
+The architecture carefully separates concerns between components:
 
 - **Infrahub API Server**: Never directly connects to Git repositories; handles GraphQL mutations and queries
 - **Task Workers**: Manage all Git operations including cloning, fetching, and pushing
 - **Message Broker**: Coordinates communication between API server and task workers
 - **File System Storage**: Maintains local clones and worktrees in `git.repositories_directory`
 
-This separation ensures that Git operations don't block API requests and allows for horizontal scaling of task workers.
+This separation ensures that Git operations don't block API requests and enables horizontal scaling of task workers for improved performance.
 
 ### Synchronization mechanisms
 
@@ -86,24 +86,24 @@ This separation ensures that Git operations don't block API requests and allows 
 
 - Background tasks poll for changes multiple times per minute
 - Each sync operation fetches from origin and compares local vs. remote state
-- New branches trigger Infrahub branch creation
+- New branches automatically trigger Infrahub branch creation
 - Updated branches trigger re-import of changed resources
 
 **For Read-only Repositories:**
 
 - No automatic synchronization occurs
 - Updates require manual modification of the `ref` property
-- Each update fetches the specified commit and imports resources
+- Each update fetches the specified commit and imports resources according to configuration
 
 ## The `.infrahub.yml` configuration file {#infrahub-yaml}
 
-The `.infrahub.yml` file acts as a manifest, declaring what resources Infrahub should import from the repository. This declarative approach allows:
+The `.infrahub.yml` file acts as a manifest, declaring which resources Infrahub should import from the repository. This declarative approach enables:
 
-- Selective importing of repository contents
+- Selective importing of repository contents based on specific needs
 - Clear boundaries between Infrahub-managed and external resources
 - Version-specific configurations (different branches can have different `.infrahub.yml` files)
 
-For detailed information about `.infrahub.yml` configuration, see [Infrahub configuration file](../topics/infrahub-yml).
+For detailed information about `.infrahub.yml` configuration and syntax, see [Infrahub configuration file](../topics/infrahub-yml).
 
 ## Status tracking and health monitoring {#repository-statuses}
 
@@ -163,14 +163,6 @@ The polling-based synchronization approach:
 - Avoids webhook complexity and firewall issues
 - May introduce slight delays compared to push-based systems
 
-### Local storage requirements
-
-Maintaining local clones and worktrees:
-
-- Enables offline operations and fast branch switching
-- Requires sufficient disk space for repository data
-- Allows for Git operations without repeated network access
-
 ## Integration with Infrahub workflows
 
 Repository integration enhances several Infrahub features:
@@ -182,15 +174,6 @@ When merging Proposed Changes where both source and destination branches are lin
 1. Infrahub creates a merge commit combining both branches
 2. The merge commit is pushed to the destination branch in Git
 3. This maintains consistency between Infrahub and Git history
-
-### Transformations and generators
-
-Code stored in repositories can:
-
-- Transform data during import/export operations
-- Generate configurations from templates
-- Validate data against business rules
-- React to infrastructure changes
 
 ### Version control benefits
 

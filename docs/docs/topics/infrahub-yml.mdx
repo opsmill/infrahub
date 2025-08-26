@@ -1,10 +1,10 @@
 ---
-title: Understanding the .infrahub.yml configuration file
+title: .infrahub.yml configuration file
 ---
 
 # Understanding the `.infrahub.yml` configuration file
 
-The `.infrahub.yml` file serves as the central manifest that defines how Infrahub integrates with external Git repositories. This topic explains the role of this configuration file, the design philosophy behind its structure, and how it enables the seamless integration of infrastructure code with infrastructure data.
+The `.infrahub.yml` file serves as the central manifest that defines how Infrahub integrates with external Git repositories. This topic explains the role of this configuration file and the design philosophy behind its structure.
 
 ## Why `.infrahub.yml` exists
 
@@ -13,7 +13,6 @@ Infrastructure automation requires both structured data (device inventories, net
 - **Declaring intent**: Explicitly stating what resources from a Git repository should be imported into Infrahub
 - **Enabling selective integration**: Allowing fine-grained control over which files and resources are processed
 - **Providing metadata**: Supplying the necessary context for Infrahub to properly interpret and use repository contents
-- **Supporting evolution**: Allowing different branches to have different integration requirements
 
 ## Design philosophy and structure
 
@@ -24,19 +23,19 @@ The `.infrahub.yml` file follows a declarative approach where you specify *what*
 Rather than scanning the entire repository and making assumptions about file purposes, the configuration file requires explicit declaration of all resources. This approach:
 
 - Prevents unexpected imports of unintended files
-- Makes the integration surface clear and auditable  
+- Makes the integration surface clear and auditable
 - Allows for different file organizations across repositories
-- Enables precise control over resource loading order
 
-### Resource categorization
+### Resource types
 
 The configuration organizes resources into distinct categories based on their purpose and processing requirements:
 
 - **Executable code**: Python transformations, generators, and checks
 - **Templates**: Jinja2 templates for configuration generation
-- **Data definitions**: Schemas and object files
+- **Schema definitions**: Data models for infrastructure representation
+- **Data definitions**: Object files for storing infrastructure data
 - **Query definitions**: GraphQL queries for data retrieval
-- **UI components**: Menu definitions for custom interfaces
+- **Menu definitions**: UI navigation structure definitions
 
 Each category has its own processing pipeline and validation requirements, reflecting the different ways Infrahub handles these resource types.
 
@@ -49,77 +48,9 @@ Beyond basic file paths, the configuration captures essential metadata about how
 - **Parameters**: Defining the inputs required for executable resources
 - **Naming**: Providing human-readable identifiers for UI and API access
 
-## Resource types and their integration patterns
-
-### Schemas: infrastructure data modeling
-
-Schemas define the structure of your infrastructure data model. When listed in `.infrahub.yml`, they:
-
-- Extend Infrahub's built-in data types with domain-specific models
-- Enable validation and relationships specific to your infrastructure
-- Support schema evolution through versioning and migration
-
-The schema loading order matters because schemas can depend on previously loaded types.
-
-### GraphQL queries: Data access patterns
-
-GraphQL queries encapsulate specific data access patterns that your automation code needs. By declaring them in `.infrahub.yml`:
-
-- Queries become reusable across multiple transformations and generators
-- Query performance can be optimized by Infrahub's query planner
-- Changes to queries are version-controlled alongside the code that uses them
-
-### Transformations: data processing pipelines
-
-Transformations convert data between different formats or structures. The configuration distinguishes between two transformation types:
-
-**Jinja2 transformations** provide template-based processing:
-
-- Link to specific GraphQL queries that provide template data
-- Generate text-based outputs like configuration files
-- Support complex template inheritance and inclusion patterns
-
-**Python transformations** enable programmatic data processing:
-
-- Implement complex business logic that templates cannot express
-- Process structured data with full programmatic control
-- Integrate with external systems and APIs
-
-### Generators: infrastructure provisioning
-
-Generators create new infrastructure objects based on templates or algorithms:
-
-- Target specific infrastructure groups for object creation
-- Use GraphQL queries to understand the current state
-- Apply business rules to determine what should be provisioned
-
-### Artifact definitions: output specification
-
-Artifact definitions specify how to package and deliver generated content:
-
-- Define the content type and format of outputs
-- Link transformations to specific target groups
-- Specify parameters for customizing artifact generation
-
-### Object files: Bulk data loading {#objects}
-
-Object files contain infrastructure data to be loaded into Infrahub:
-
-- Support JSON and YAML formats for structured data
-- Enable bulk loading of initial infrastructure inventories
-- Maintain referential integrity through controlled loading order
-
-### Menus: interface customization {#menus}
-
-Menu definitions customize the Infrahub user interface:
-
-- Add navigation elements specific to your infrastructure
-- Organize views and actions by operational workflows
-- Provide context-aware access to relevant functionality
-
 ## Loading behavior and dependency management
 
-The `.infrahub.yml` file controls not just *what* gets loaded, but *how* and *when*:
+The `.infrahub.yml` file controls not just *what* gets loaded, but *how* and *when* resources are processed:
 
 ### Processing order
 
@@ -140,7 +71,7 @@ When you specify a directory in any resource list:
 - Files are processed in alphabetical order
 - Subdirectories are processed recursively
 
-This behavior enables organizing complex repositories while maintaining predictable loading order.
+This behavior enables you to organize complex repositories while maintaining predictable loading order.
 
 ### Dependency resolution
 
@@ -149,6 +80,8 @@ The configuration enables Infrahub to resolve dependencies between resources:
 - Transformations reference their required GraphQL queries by name
 - Artifact definitions reference transformations and target groups
 - Generators specify their data dependencies through query requirements
+
+This dependency management ensures that all resources have what they need when they execute.
 
 ## Version control and branch behavior
 
@@ -162,6 +95,8 @@ Different Git branches can have different `.infrahub.yml` files:
 - Production branches can exclude debug or testing resources
 - Feature branches can temporarily modify resource definitions
 
+This flexibility allows teams to maintain different configurations for different environments or development stages.
+
 ### Evolution and migration
 
 As your infrastructure automation evolves, the configuration file supports:
@@ -170,61 +105,7 @@ As your infrastructure automation evolves, the configuration file supports:
 - Deprecating old resources by removing them from the configuration
 - Refactoring resource organization while maintaining functionality
 
-## Integration with the broader Infrahub workflow
-
-The `.infrahub.yml` file connects Git repository contents to Infrahub's core workflows:
-
-### Proposed changes
-
-When you modify resources in Git and create a Proposed Change:
-
-- Infrahub compares the new `.infrahub.yml` with the existing version
-- Added, modified, or removed resources are processed accordingly
-- Dependencies are validated before allowing the change to proceed
-
-### Automation pipelines
-
-The resources defined in `.infrahub.yml` integrate with Infrahub's automation:
-
-- Checks run automatically when data changes
-- Generators respond to infrastructure modifications
-- Artifacts are regenerated when their dependencies change
-
-### Error handling and validation
-
-The configuration enables robust error handling:
-
-- Missing files or invalid configurations are caught during import
-- Dependency issues are identified before deployment
-- Resource conflicts are detected and reported clearly
-
-## Best practices and design patterns
-
-Effective `.infrahub.yml` design follows several patterns:
-
-### Logical organization
-
-Group related resources together and use consistent naming:
-
-- Organize files in directories that reflect their purpose
-- Use descriptive names that indicate resource function
-- Maintain parallel structure across similar repositories
-
-### Dependency management
-
-Minimize and clearly express dependencies:
-
-- Keep transformations focused on specific data processing tasks
-- Design queries to serve multiple consumers when possible
-- Avoid circular dependencies between resources
-
-### Testing and validation
-
-Structure resources to support testing:
-
-- Use parameterized resources to enable unit testing
-- Separate business logic from data access patterns
-- Design generators and transformations for deterministic behavior
+This approach helps teams manage the lifecycle of infrastructure automation components with minimal disruption.
 
 ## Future evolution and extensibility
 
@@ -233,6 +114,12 @@ The `.infrahub.yml` format is designed to evolve with Infrahub's capabilities:
 - New resource types can be added without breaking existing configurations
 - Additional metadata fields can be introduced with backward compatibility
 - Processing behavior can be enhanced while maintaining existing semantics
+
+This future-proof design ensures that your automation investments remain valuable as Infrahub grows.
+
+## Conclusion
+
+The `.infrahub.yml` configuration file is a crucial bridge between Git repositories and Infrahub's infrastructure management capabilities. By understanding its design principles and structure, you can effectively organize your infrastructure automation resources and leverage Infrahub's full potential to manage your network infrastructure.
 
 ## Further reading
 
