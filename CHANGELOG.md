@@ -70,13 +70,15 @@ The frontend now supports creating new IP prefix and IP address objects using re
 #### Proposed change approval workflow (Enterprise)
 
 Add support to configure required approvals of proposed changes, allowing users to implement proper change control mechanisms.
+
 - a new global permission has been introduced to allow users to review a proposed change
 - configuration setting that allows you to define a required amount of approvals (enterprise only)
 - configuration setting to automatically revoke approvals when new changes are made to a branch (enterprise only)
 
 With this change multiple improvements have been made to the overall proposed change feature in Infrahub:
-- The proposed change list view has been updated, so that you can more easily identify the proposed changes that need your attention. 
-- Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change 
+
+- The proposed change list view has been updated, so that you can more easily identify the proposed changes that need your attention.
+- Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change
 - The overview tab of a proposed change now contains a more detailed timeline of all the actions/state changes that happened in a proposed change.
 
 Please refer to the documentation for a guide that explains how to setup a change approval workflow: https://develop.infrahub.pages.dev/guides/change-approval-workflow

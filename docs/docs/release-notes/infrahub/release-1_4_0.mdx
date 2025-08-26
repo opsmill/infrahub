@@ -77,13 +77,15 @@ The frontend now supports creating new IP prefix and IP address objects using re
 ### Proposed change approval workflow (Enterprise)
 
 Add support to configure required approvals of proposed changes, allowing users to implement proper change control mechanisms.
+
 - a new global permission has been introduced to allow users to review a proposed change
 - configuration setting that allows you to define a required amount of approvals (enterprise only)
 - configuration setting to automatically revoke approvals when new changes are made to a branch (enterprise only)
 
 With this change multiple improvements have been made to the overall proposed change feature in Infrahub:
-- The proposed change list view has been updated, so that you can more easily identify the proposed changes that need your attention. 
-- Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change 
+
+- The proposed change list view has been updated, so that you can more easily identify the proposed changes that need your attention.
+- Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change
 - The overview tab of a proposed change now contains a more detailed timeline of all the actions/state changes that happened in a proposed change.
 
 Please refer to the documentation for a guide that explains how to setup a change approval workflow: https://develop.infrahub.pages.dev/guides/change-approval-workflow
@@ -156,7 +158,7 @@ Several improvements were made to improve the performance of Infrahub.
 
 Below are some example ways to get the latest version of Infrahub in your environment.
 
-- For deployments via Docker Compose, download the updated docker compose file
+- For deployments via Docker Compose, download the updated Docker Compose file
   - `curl https://infrahub.opsmill.io -o docker-compose.yml`
 - Set the `VERSION` environment variable and start the environment
   - `export VERSION="1.4.0rc0"; docker compose pull && docker compose up -d`
@@ -196,6 +198,7 @@ git fetch origin
 git checkout infrahub-v1.4.0rc0
 invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
+
 The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
 
 ### New permission for proposed change approvals
@@ -203,6 +206,7 @@ The repository https://github.com/opsmill/infrahub-demo-edge has also been updat
 A new global permission was introduced to approve proposed changes. For existing installations that have been upgraded to this release candidate, you will have to update the roles to include this new permission. This is only needed for the roles that have been assigned to the account groups that need to be able to approve proposed changes.
 
 The following steps are needed to create the global permission:
+
 1. Login with account that has the permission `global:super_admin:allow_all`, for example the default admin account
 2. In the menu navigate to Admin > Users and Permissions and open the Global Permissions tab
 3. Click on Create Global Permission
