@@ -69,7 +69,7 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         <Button
           className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
           onClick={handleAction}
-          variant={"primary"}
+          variant={"outline"}
           isLoading={isPending}
           disabled={tooltipEnabled || isPending}
         >
@@ -79,7 +79,7 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
       <Button
         className="h-full rounded-l-none border-l-0"
-        variant={"primary"}
+        variant={"outline"}
         size={"sm"}
         onClick={() => {
           setOpen(true);
