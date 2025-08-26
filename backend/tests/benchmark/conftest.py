@@ -29,4 +29,6 @@ async def aio_benchmark(benchmark, event_loop):
         else:
             return benchmark(func, *args, **kwargs)
 
+        return None
+
     return _wrapper

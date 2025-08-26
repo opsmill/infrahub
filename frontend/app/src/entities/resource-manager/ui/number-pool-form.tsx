@@ -1,8 +1,7 @@
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
@@ -16,7 +15,7 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import NumberField from "@/shared/components/form/fields/number.field";
-import { NodeFormProps } from "@/shared/components/form/node-form";
+import { ObjectFormProps } from "@/shared/components/form/object-form";
 import { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
@@ -40,20 +39,16 @@ import { useEffect, useState } from "react";
 import { FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
-interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
-  currentObject?: Record<string, AttributeType | RelationshipType>;
-  onCancel?: () => void;
-  onUpdateComplete?: () => void;
+interface NumberPoolFormProps {
+  currentObject?: ObjectFormProps["currentObject"];
+  onCancel?: ObjectFormProps["onCancel"];
+  onSuccess?: ObjectFormProps["onSuccess"];
 }
 
-export const NumberPoolForm = ({
-  currentObject,
-  onSuccess,
-  onCancel,
-  onUpdateComplete,
-}: NumberPoolFormProps) => {
+export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoolFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const createObject = useCreateObjectMutation();
 
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
@@ -70,48 +65,57 @@ export const NumberPoolForm = ({
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+    const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
 
-      if (!Object.keys(newObject).length) {
-        return;
+    if (!Object.keys(newObject).length) {
+      return;
+    }
+
+    if (currentObject) {
+      try {
+        const result = await graphqlClient.mutate({
+          mutation: gql(
+            updateObjectWithId({
+              kind: NUMBER_POOL_OBJECT,
+              data: stringifyWithoutQuotes({
+                id: currentObject.id,
+                ...newObject,
+              }),
+            })
+          ),
+          context: {
+            branch: branch?.name,
+            date,
+          },
+        });
+
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool updated" />, {
+          toastId: "alert-success-number-pool-update",
+        });
+
+        if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Update`]);
+      } catch (error: unknown) {
+        console.error("An error occurred while creating the object: ", error);
       }
-
-      const mutationString = currentObject
-        ? updateObjectWithId({
-            kind: NUMBER_POOL_OBJECT,
-            data: stringifyWithoutQuotes({
-              id: currentObject.id,
-              ...newObject,
-            }),
-          })
-        : createObject({
-            kind: NUMBER_POOL_OBJECT,
-            data: stringifyWithoutQuotes({
-              ...newObject,
-            }),
-          });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+    } else {
+      await createObject.mutateAsync(
+        {
+          objectKind: NUMBER_POOL_OBJECT,
+          data: newObject,
         },
-      });
+        {
+          onSuccess: async (newNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool created" />, {
+              toastId: "alert-success-number-pool-create",
+            });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Number pool created"} />, {
-        toastId: "alert-success-number-pool-created",
-      });
-
-      if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Create`]);
-      if (onUpdateComplete) await onUpdateComplete();
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+            if (onSuccess) await onSuccess(newNode);
+          },
+          onError: async (error: unknown) => {
+            console.error("An error occurred while creating the object: ", error);
+          },
+        }
+      );
     }
   }
 

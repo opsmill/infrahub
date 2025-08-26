@@ -155,7 +155,152 @@ infrahubctl schema load schema.yml
 
 :::success
 
-You should see: `schema 'schema.yml' loaded successfully`
+A `CoreIPAddressPool` allows you to dynamically allocate IP addresses from one or multiple source IP prefixes.
+
+### Creating an IP Prefix object
+
+First, create an IP Prefix object that the resource manager will use as a resource.
+You can create a prefix (for example, `10.100.0.0/24`) either via the web interface or through the GraphQL interface.
+
+<Tabs>
+  <TabItem value="web" label="Via the Web Interface" default>
+  ![Creating prefix 10.100.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_0.png)
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      IpamIPPrefixCreate(data: {
+        prefix: {value: "10.100.0.0/24"},
+        member_type: {value: "address"},
+      })
+      {
+        ok
+        object {
+          id
+        }
+      }
+    }
+  ```
+
+  Take note of the id of the prefix, we will need id in the next step.
+
+  </TabItem>
+</Tabs>
+
+### Creating an IP address resource manager
+
+Next, create a resource manager of kind `CoreIPAddressPool` with the following properties:
+
+- **Name**: My IP address pool
+- **Default Address Type**: `IpamIPAddress` (as defined in your schema)
+- **Default Prefix Length**: 24
+- **Resources**: `10.100.0.0/24`
+- **IP Namespace**: `default`
+
+The `CoreIPAddressPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
+
+<Tabs>
+  <TabItem value="web" label="Via the Web Interface" default>
+  ![Creating IP address pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_ip.png)
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      CoreIPAddressPoolCreate(data: {
+        name: {value: "My IP address pool"},
+        default_address_type: {value: "IpamIPAddress"},
+        default_prefix_length: {value: 24},
+        resources: [{id: "<id of prefix>"}],
+        ip_namespace: {id: "default"}
+      })
+      {
+        ok
+        object {
+          id
+          hfid
+        }
+      }
+    }
+  ```
+
+  Take note of the id and hfid of the `CoreIPAddressPool`, we will use it in the next steps.
+  </TabItem>
+</Tabs>
+
+### Allocating an IP address out of the pool
+
+We can now start allocating IP addresses out of the `CoreIPAddressPool` we created.
+
+We can use the resource manager to allocate resources out of a pool in 2 different ways:
+
+1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
+2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
+
+Please refer to the [Resource Manager Topic](../topics/resource-manager) for further details.
+
+#### Direct allocation of an IP address
+
+Execute the following mutation to allocate an IP address out of the pool. Replace the id with the id of the `CoreIPAddressPool` we created previously.
+
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      InfrahubIPAddressPoolGetResource(
+        data: {
+          id: "<id of resource pool>",
+          data: {
+            description: "my first allocated ip"
+          }
+        }
+      )
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
+    }
+  ```
+
+  </TabItem>
+</Tabs>
+
+In the mutation we passed additional data to the allocated resource, in this case we passed a description attribute. This description attribute will be set on the IP address that was allocated. You can do this for any other attribute and relationship for the destination address type.
+
+:::success Idempotent allocation of an IP address
+
+You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator).
+
+Execute this mutation twice, note the identifier. The resulting IP address should be the same, as well as the id. Replace the id with the id of the `CoreIPAddressPool` we created previously.
+
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      InfrahubIPAddressPoolGetResource(data: {
+        id: "<id of resource pool>",
+        identifier: "my-allocated-ip",
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
+    }
+  ```
+
+  </TabItem>
+</Tabs>
 
 :::
 
@@ -548,11 +693,86 @@ Allocate an IP prefix when creating a customer service:
 
   Include an `identifier` field to ensure the same prefix is returned on repeated calls:
 
+  :::
+
   ```graphql
-  mutation {
-    CustomerServiceUpsert(
-      data: {
-        name: {value: "svc-456"}
+    mutation {
+      CoreIPPrefixPoolCreate(data: {
+        name: {value: "Customer Service Pool"},
+        default_prefix_length: {value: 31},
+        default_prefix_type: {value: "IpamIPPrefix"},
+        resources: [{id: "<id of prefix>"}],
+        ip_namespace: {id: "default"}
+      })
+      {
+        ok
+        object {
+          id
+          hfid
+        }
+      }
+    }
+  ```
+
+  Take note of the id and hfid of the `CoreIPPrefixPool`, we will use it in the next steps.
+  </TabItem>
+</Tabs>
+
+### Allocating an IP prefix out of the pool
+
+We can now start allocating IP prefix out of the `CoreIPPrefixPool` we created.
+
+We can use the resource manager to allocate resources out of a pool in 2 different ways:
+
+1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
+2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
+
+Please refer to the [Resource Manager Topic](../topics/resource-manager) for further details.
+
+#### Direct allocation of an IP prefix
+
+Execute the following mutation to allocate an IP prefix out of the pool. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
+
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      InfrahubIPPrefixPoolGetResource(data: {
+        id: "<id of resource pool>",
+        data: {
+          description: "prefix allocated to point to point connection"
+        }
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
+    }
+  ```
+
+  </TabItem>
+</Tabs>
+
+In the mutation we passed additional data to the allocated resource, in this case we passed a description attribute. This description attribute will be set on the IP prefix that was allocated. You can do this for any other attribute and relationship for the destination address type.
+
+#### Allocating an IP prefix to a relationship of a node
+
+Another way we can use resource managers is in situations where we create a node that has a relationship and we want to use a resource manager to allocate a new resource for that relationship. For example, we want to create a new customer service and assign a prefix of a pool.
+
+This feature is not yet available directly via the Web Interface.
+
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface" default>
+  In this mutation we use the `from_pool` resolver to indicate we want to allocate a `assigned_prefix` from a resource pool. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
+
+  ```graphql
+    mutation {
+      CustomerServiceCreate(data: {
+        name: {value: "svc-123"},
         assigned_prefix: {
           from_pool: {
             id: "<POOL-ID>"
@@ -585,7 +805,31 @@ Allocate an IP prefix when creating a customer service:
 
 :::success
 
-The service is created with IP prefix allocated from the pool!
+You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator).
+
+Execute this mutation twice, note the identifier. The resulting IP prefix should be the same, as well as the id. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
+
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      InfrahubIPPrefixPoolGetResource(data: {
+        id: "<id of resource pool>",
+        identifier: "my-allocated-prefix",
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
+    }
+  ```
+
+  </TabItem>
+</Tabs>
 
 :::
 
@@ -726,33 +970,19 @@ nodes:
 infrahubctl schema load schema.yml
 ```
 
-3. Create two IP prefixes with different weights
-
-<Tabs groupId="method">
-  <TabItem value="web" label="Web interface" default>
-
-Navigate to **IPAM** → **IP Prefixes**  and create a new prefix with:
-
-- **Prefix**: `10.100.5.0/24`
-- **Member Type**: `address`
-- **Weight**: `100`
-
-Then create another prefix with:
-
-- **Prefix**: `10.100.6.0/24`
-- **Member Type**: `address`
-- **Weight**: `200`
-
-</TabItem>
-<TabItem value="graphql" label="GraphQL">
-
-```graphql
-mutation {
-  IpamIPPrefixCreate(
-    data: {
-      prefix: {value: "10.100.5.0/24"}
-      member_type: {value: "address"}
-      allocation_weight: {value: 100}
+  ```graphql
+    mutation {
+      InfrahubIPAddressPoolGetResource(
+        data: {
+          id: "<id of resource pool>",
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
     }
   ) {
     ok
@@ -785,9 +1015,6 @@ mutation {
 Save the prefix IDs for the next step!
 
 :::
-
-  </TabItem>
-</Tabs>
 
 4. Create a `CoreIPAddressPool` resource manager:
 

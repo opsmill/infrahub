@@ -295,7 +295,8 @@ class InfrahubDatabase:
         traceback: TracebackType | None,
     ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            return await self._session.close()
+            await self._session.close()
+            return
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             if exc_type is not None:

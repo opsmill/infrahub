@@ -9,7 +9,6 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { tokenSchema } from "@/entities/user-profile/ui/token-schema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -39,7 +38,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
     if (!schemaData) return;
     try {
       const hash = schemaData.main;
-      const nodeSchemas = sortByName([...(schemaData.nodes ?? []), tokenSchema]);
+      const nodeSchemas = sortByName(schemaData.nodes ?? []);
       const genericSchemas = sortByName(schemaData.generics || []);
       const profileSchemas = sortByName(schemaData.profiles || []);
       const templateSchemas = sortByName(schemaData.templates || []);

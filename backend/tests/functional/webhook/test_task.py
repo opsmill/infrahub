@@ -18,7 +18,8 @@ from infrahub.webhook.tasks import (
     delete_webhook_automation,
     webhook_process,
 )
-from infrahub.workflows.catalogue import WEBHOOK_PROCESS, worker_pools
+from infrahub.workers.dependencies import build_http_service
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.adapters.http import MemoryHTTP
 from tests.constants import TestKind
@@ -29,6 +30,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
     from prefect.events.actions import RunDeployment
 
@@ -104,7 +106,7 @@ class TestWebhookTasks(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def webhook_deployment(self, db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
         await setup_worker_pools(client=prefect_client)
-        await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=worker_pools[0])
+        await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
     @pytest.fixture(scope="class")
     async def webhook1(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
@@ -171,9 +173,9 @@ class TestWebhookTasks(TestInfrahubApp):
         return webhook
 
     async def test_configure_one(
-        self, db: InfrahubDatabase, service, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
+        self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
     ) -> None:
-        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id}, service=service)
+        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
 
         name = f"webhook::{webhook1.id}"
         automations = await prefect_client.read_automations_by_name(name=name)
@@ -188,25 +190,24 @@ class TestWebhookTasks(TestInfrahubApp):
         assert action.parameters["webhook_kind"] == "CoreStandardWebhook"
 
         # Configure it a second time to ensure the function is idempotent
-        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id}, service=service)
+        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 1
 
         # Delete the webhook automation
-        await delete_webhook_automation(webhook_id=webhook1.id, webhook_name="Webhook1", service=service)
+        await delete_webhook_automation(webhook_id=webhook1.id, webhook_name="Webhook1")
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 0
 
     async def test_configure_all(
         self,
         db: InfrahubDatabase,
-        service,
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
         webhook_deployment,
     ) -> None:
-        await configure_webhook_all(service=service)
+        await configure_webhook_all()
 
         automations = await prefect_client.read_automations()
         automations_by_name = {automation.name: automation for automation in automations}
@@ -226,7 +227,6 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_convert_node_to_webhook_standard(
         self,
         db: InfrahubDatabase,
-        service,
         webhook1: Node,
         client: InfrahubClient,
     ) -> None:
@@ -245,7 +245,6 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_convert_node_to_webhook_transform(
         self,
         db: InfrahubDatabase,
-        service,
         webhook2: Node,
         client: InfrahubClient,
     ) -> None:
@@ -258,6 +257,7 @@ class TestWebhookTasks(TestInfrahubApp):
             "repository_kind": "CoreRepository",
             "repository_name": "car-dealership",
             "convert_query_response": False,
+            "shared_key": None,
             "transform_class": "WebhookTransformer",
             "transform_file": "transforms/webhook_transformer.py",
             "transform_name": "WebhookTransformer",
@@ -270,45 +270,44 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_process_standard_webhook_success(
         self,
         db: InfrahubDatabase,
-        service,
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
         webhook_deployment,
+        dependency_provider: Provider,
     ) -> None:
-        service.http = MemoryHTTP()
-        service.http.add_post_response(
+        http = MemoryHTTP()
+        http.add_post_response(
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=200),
         )
-
-        await webhook_process(
-            webhook_id=webhook1.id,
-            webhook_name="Webhook1",
-            webhook_kind="CoreStandardWebhook",
-            event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
-            event_type="infrahub.branch.created",
-            event_occured_at="2025-02-28T08:37:09.969Z",
-            event_payload=BRANCH_CREATED_PAYLOAD,
-            service=service,
-        )
+        with dependency_provider.scope(build_http_service, lambda: http):
+            await webhook_process(
+                webhook_id=webhook1.id,
+                webhook_name="Webhook1",
+                webhook_kind="CoreStandardWebhook",
+                event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
+                event_type="infrahub.branch.created",
+                event_occured_at="2025-02-28T08:37:09.969Z",
+                event_payload=BRANCH_CREATED_PAYLOAD,
+            )
 
     async def test_process_standard_webhook_failure(
         self,
         db: InfrahubDatabase,
-        service,
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
         webhook_deployment,
+        dependency_provider: Provider,
     ) -> None:
-        service.http = MemoryHTTP()
-        service.http.add_post_response(
+        http = MemoryHTTP()
+        http.add_post_response(
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=404),
         )
 
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(httpx.HTTPStatusError), dependency_provider.scope(build_http_service, lambda: http):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
@@ -318,13 +317,11 @@ class TestWebhookTasks(TestInfrahubApp):
                 event_type="infrahub.branch.created",
                 event_occured_at="2025-02-28T08:37:09.969Z",
                 event_payload=BRANCH_CREATED_PAYLOAD,
-                service=service,
             )
 
     async def test_webhook_check_payload_transform(
         self,
         db: InfrahubDatabase,
-        service,
         webhook2: Node,
         client: InfrahubClient,
     ) -> None:
@@ -338,7 +335,7 @@ class TestWebhookTasks(TestInfrahubApp):
             event_payload=BRANCH_CREATED_PAYLOAD,
         )
 
-        await webhook.prepare(data={}, context=context, service=service)
+        await webhook.prepare(data={}, context=context, client=client)
 
         assert webhook.get_payload() == {
             "ACCOUNT_ID": "182853f2-3a43-c7f9-3e84-c5152eff4b17",
@@ -352,7 +349,6 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_trigger_definition_node_kind_match(
         self,
         db: InfrahubDatabase,
-        service,
         webhook4: Node,
         client: InfrahubClient,
     ) -> None:

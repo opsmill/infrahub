@@ -53,7 +53,10 @@ const ObjectEditSlideOverTrigger = ({
       >
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditDrawerOpen(false)}
-          onUpdateComplete={onUpdateComplete}
+          onUpdateComplete={() => {
+            onUpdateComplete?.();
+            setIsEditDrawerOpen(false);
+          }}
           objectid={data.id}
           objectname={schema.kind!}
         />

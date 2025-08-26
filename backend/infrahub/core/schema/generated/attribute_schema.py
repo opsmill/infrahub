@@ -31,7 +31,7 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "migration_required"},
     )
     kind: str = Field(
-        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "validate_constraint"}
+        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "migration_required"}
     )
     enum: list | None = Field(
         default=None,

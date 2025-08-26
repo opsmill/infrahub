@@ -12,7 +12,7 @@ import { ReactElement, ReactNode, createContext, use, useState } from "react";
 import { Navigate, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
-type User = {
+export type User = {
   id: string;
 };
 

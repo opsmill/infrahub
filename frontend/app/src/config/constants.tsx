@@ -1,4 +1,5 @@
 import { RelationshipKind } from "@/entities/nodes/types";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
@@ -47,6 +48,8 @@ export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const ARTIFACT_OBJECT = "CoreArtifact";
 
+export const CHECK_OBJECT = "CoreCheck";
+
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
@@ -61,12 +64,12 @@ export const STANDARD_WEBHOOK_OBJECT = "CoreStandardWebhook";
 export const CUSTOM_WEBHOOK_OBJECT = "CoreCustomWebhook";
 
 export const MENU_EXCLUDELIST = [
+  PROPOSED_CHANGE_OBJECT,
   "CoreChangeComment",
   "CoreChangeThread",
   "CoreFileThread",
   "CoreArtifactThread",
   "CoreObjectThread",
-  "CoreProposedChange",
   "InternalRefreshToken",
   "CoreThreadComment",
   "CoreArtifactCheck",

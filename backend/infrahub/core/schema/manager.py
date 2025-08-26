@@ -93,6 +93,15 @@ class SchemaManager(NodeManager):
 
         raise ValueError("The selected node is not of type NodeSchema")
 
+    def get_generic_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> GenericSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, GenericSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type GenericSchema")
+
     def get_profile_schema(
         self, name: str, branch: Branch | str | None = None, duplicate: bool = True
     ) -> ProfileSchema:
@@ -122,7 +131,7 @@ class SchemaManager(NodeManager):
 
         return self._branches[branch_name].get_all(duplicate=duplicate)
 
-    async def get_full_safe(self, branch: Branch | str | None = None) -> dict[str, NodeSchema | GenericSchema]:
+    async def get_full_safe(self, branch: Branch | str | None = None) -> dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
 
         return self.get_full(branch=branch)

@@ -1,7 +1,6 @@
 from unittest.mock import call, patch
 
 import pytest
-from starlette.testclient import TestClient
 
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
@@ -12,7 +11,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import RequestArtifactDefinitionGenerate
-from infrahub.server import app
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -87,6 +85,7 @@ class TestArtifact11(TestInfrahubApp):
         car_person_data_generic,
         authentication_base: Node,
         client,
+        test_client,
     ):
         _, _, definition = await self.setup_artifact_definition(
             db=db,
@@ -95,16 +94,13 @@ class TestArtifact11(TestInfrahubApp):
             car_person_data_generic=car_person_data_generic,
         )
 
-        app_client = TestClient(app)
-
         # Must execute in a with block to execute the startup/shutdown events
         with (
-            app_client,
             patch(
                 "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
             ) as mock_submit_workflow,
         ):
-            response = app_client.post(
+            response = await test_client.post(
                 f"/api/artifact/generate/{definition.id}",
                 headers=admin_headers,
             )
@@ -142,11 +138,9 @@ class TestArtifact11(TestInfrahubApp):
         register_builtin_models_schema,
         car_person_data_generic,
         authentication_base,
+        test_client,
     ):
-        app_client = TestClient(app)
-
-        with app_client:
-            response = app_client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
+        response = await test_client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
         assert response.status_code == 404
 
         artifact = await self.setup_artifact(
@@ -156,8 +150,7 @@ class TestArtifact11(TestInfrahubApp):
             car_person_data_generic=car_person_data_generic,
         )
 
-        with app_client:
-            response = app_client.get(f"/api/artifact/{artifact.id}", headers=admin_headers)
+        response = await test_client.get(f"/api/artifact/{artifact.id}", headers=admin_headers)
 
         assert response.status_code == 200
         assert response.json() == {"test": True}
@@ -170,9 +163,8 @@ class TestArtifact11(TestInfrahubApp):
         register_builtin_models_schema,
         car_person_data_generic,
         allow_anonymous_access: bool,
+        test_client,
     ):
-        app_client = TestClient(app)
-
         artifact = await self.setup_artifact(
             db=db,
             register_core_models_schema=register_core_models_schema,
@@ -182,7 +174,6 @@ class TestArtifact11(TestInfrahubApp):
 
         config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 
-        with app_client:
-            response = app_client.get(f"/api/artifact/{artifact.id}")
+        response = await test_client.get(f"/api/artifact/{artifact.id}")
 
         assert response.status_code == 200 if allow_anonymous_access else 401

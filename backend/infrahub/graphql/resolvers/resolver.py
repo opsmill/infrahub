@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphql.type.definition import GraphQLNonNull
-from infrahub_sdk.utils import extract_fields
 from opentelemetry import trace
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 from ..models import OrderModel
 from ..parser import extract_selection
@@ -26,7 +26,7 @@ async def account_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = extract_graphql_fields(info=info)
     graphql_context: GraphqlContext = info.context
 
     async with graphql_context.db.start_session(read_only=True) as db:
@@ -90,7 +90,7 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     graphql_context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = extract_graphql_fields(info=info)
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
@@ -155,7 +155,7 @@ async def default_paginated_list_resolver(
         else info.return_type.graphene_type._meta.schema
     )
 
-    fields = await extract_selection(info.field_nodes[0], schema=schema)
+    fields = await extract_selection(info=info, schema=schema)
 
     graphql_context: GraphqlContext = info.context
     async with graphql_context.db.start_session(read_only=True) as db:
@@ -277,7 +277,7 @@ async def hierarchy_resolver(
     graphql_context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = extract_graphql_fields(info=info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
 

@@ -12,6 +12,7 @@ from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
+from infrahub.core.timestamp import current_timestamp
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -91,7 +92,7 @@ class NATSLock:
         await self.release()
 
     async def acquire(self) -> None:
-        token = uuid.uuid1().hex
+        token = current_timestamp()
         while True:
             if await self.do_acquire(token):
                 self.token = token
@@ -155,7 +156,7 @@ class InfrahubLock:
     async def acquire(self) -> None:
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
             if not self.use_local:
-                await self.remote.acquire()
+                await self.remote.acquire(token=current_timestamp())
             else:
                 await self.local.acquire()
         self.acquire_time = time.time_ns()

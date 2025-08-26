@@ -53,7 +53,7 @@ jobs:
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Check for file changes
@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Setup environment"
@@ -84,7 +84,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Setup Biome
@@ -102,7 +102,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Setup environment"
@@ -122,7 +122,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Linting: markdownlint"
@@ -139,7 +139,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Check workflow files
@@ -168,7 +168,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
 
@@ -229,7 +229,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -282,7 +282,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -328,7 +328,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -377,7 +377,7 @@ jobs:
       POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -444,7 +444,7 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v4"
+  #       uses: "actions/checkout@v5"
   #       with:
   #         submodules: true
   #     - name: Set up Python
@@ -477,7 +477,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Python
@@ -508,7 +508,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Install NodeJS
@@ -526,21 +526,6 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "npm run test:coverage"
-      - name: "Run integration tests"
-        working-directory: ./frontend/app
-        run: "npm run cypress:run"
-      - name: Upload cypress screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/docs/media/*
-      - name: Upload cypress videos
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: frontend/app/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -565,7 +550,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Install NodeJS
@@ -605,7 +590,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Install NodeJS
@@ -642,7 +627,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
 
@@ -668,7 +653,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -723,7 +708,7 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Install NodeJS
@@ -900,7 +885,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -992,7 +977,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Python

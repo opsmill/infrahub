@@ -110,6 +110,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
             await queryClient.invalidateQueries({
               predicate: (query) => query.queryKey.includes("objects"),
             });
+            setShowEditModal(false);
           }}
           objectid={objectDetailsData.id!}
           objectname={schema.kind!}

@@ -1,87 +1,84 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
+import { MERGE_STATE } from "@/entities/proposed-changes/constants";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
+import { ProposedChangeActionButtonProps } from "./types";
 
-interface PcMergeButtonProps extends ButtonProps {
-  proposedChangeId: string;
-  state: "closed" | "open" | "merged";
-  sourceBranch?: string;
-}
+export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const { merge } = usePcActionsContext();
 
-export const PcMergeButton = ({
-  sourceBranch,
-  proposedChangeId,
-  state,
-  disabled,
-  ...props
-}: PcMergeButtonProps) => {
-  const [isLoadingMerge, setIsLoadingMerge] = useState(false);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const handleMerge = async () => {
-    if (!sourceBranch) return;
-
-    try {
-      setIsLoadingMerge(true);
-
-      const stateData = {
-        state: {
-          value: "merged",
-        },
-      };
-
-      const stateMutationString = updateObjectWithId({
-        kind: PROPOSED_CHANGES_OBJECT,
-        data: stringifyWithoutQuotes({
-          id: proposedChangeId,
-          ...stateData,
-        }),
+  const { mutate, isPending } = useUpdateObjectMutation({
+    onSuccess: async () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
-
-      const stateMutation = gql`
-        ${stateMutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation: stateMutation,
-        context: { branch: branch?.name, date },
-      });
-
-      await graphqlClient.reFetchObservableQueries();
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
-    } catch (error) {
-      console.error(error);
-
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
+    },
+    onError: () => {
       toast(
         <Alert
           type={ALERT_TYPES.ERROR}
-          message={"An error occurred while merging the proposed changes"}
+          message={"An error occurred while merging proposed change"}
         />
       );
-    }
+    },
+  });
 
-    setIsLoadingMerge(false);
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    mutate({
+      data: {
+        id: proposedChangesDetails.id,
+        state: {
+          value: MERGE_STATE,
+        },
+      },
+      objectKind: PROPOSED_CHANGES_OBJECT,
+    });
   };
 
+  const tooltipContent = merge.unavailability_reason;
+  const tooltipEnabled = !merge.available;
+
   return (
-    <Button
-      variant="active"
-      onClick={handleMerge}
-      isLoading={isLoadingMerge}
-      disabled={disabled || state === "closed" || state === "merged"}
-      {...props}
-    >
-      Merge
-    </Button>
+    <>
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+        <Button
+          className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+          onClick={handleAction}
+          variant={"active"}
+          isLoading={isPending}
+          disabled={tooltipEnabled || isPending}
+        >
+          Merge
+        </Button>
+      </Tooltip>
+
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"active"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

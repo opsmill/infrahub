@@ -5,6 +5,7 @@ from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
 from infrahub.auth import AccountSession, AuthType
+from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -16,7 +17,9 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
@@ -29,12 +32,14 @@ mutation ProposedChange(
   $destination: String!,
   $name: String!,
   $source: String!
+  $state: String
   ) {
   CoreProposedChangeCreate(
     data: {
       name: {value: $name},
       source_branch: {value: $source},
       destination_branch: {value: $destination}
+      state: {value: $state}
     }
   ) {
     ok
@@ -76,6 +81,23 @@ mutation UpdateProposedChange(
   }
 }
 """
+UPDATE_PROPOSED_CHANGE_WITH_DRAFT = """
+mutation UpdateProposedChange(
+    $proposed_change: String!,
+    $state: String
+    $draft: Boolean
+  ) {
+  CoreProposedChangeUpdate(data:
+    {
+      id: $proposed_change,
+      state: {value: $state},
+      is_draft: {value: $draft}
+    }
+  ) {
+    ok
+  }
+}
+"""
 
 
 async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_branch, register_core_models_schema):
@@ -84,7 +106,16 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db,
+        include_subscription=False,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
     no_source = await graphql(
         schema=gql_params.schema,
         source=CREATE_PROPOSED_CHANGE,
@@ -127,6 +158,62 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     assert "Currently only the 'main' branch is supported as a destination for a proposed change" in str(
         invalid_destination.errors
     )
+
+
+async def test_create_invalid_state_combinations(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that we can't create a PC in an invalid state.
+
+    While this wouldn't actually do anything it looks weird from an auditing point of view to have a
+    proposed change that looks like it has been merged even though it never was.
+    """
+    branch_name = str(uuid4().hex)
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db,
+        include_subscription=False,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
+    closed = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "invalid-state",
+            "state": "closed",
+        },
+    )
+    assert closed.errors
+    assert "A proposed change has to be in the open state during creation" in str(closed.errors)
+
+    merged = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "invalid-state",
+            "state": "merged",
+        },
+    )
+
+    assert closed.errors
+    assert "A proposed change has to be in the open state during creation" in str(closed.errors)
+    assert merged.errors
+    assert "A proposed change has to be in the open state during creation" in str(merged.errors)
 
 
 class TestTriggerProposedChange(TestInfrahubApp):
@@ -259,6 +346,43 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     assert "A proposed change in the merged state is not allowed to be updated" in str(update_status.errors[0])
 
 
+async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_models_schema: None):
+    branch_name = "draft-proposed-change"
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db, name="draft-pc-1234", destination_branch="main", source_branch=branch_name, state="open", is_draft=True
+    )
+    await proposed_change.save(db=db)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        service=service,
+    )
+
+    assert update_status.errors
+    assert "A draft proposed change is not allowed to be merged" in str(update_status.errors[0])
+
+    proposed_change.is_draft.value = False
+    await proposed_change.save(db=db)
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE_WITH_DRAFT,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged", "draft": True},
+        service=service,
+    )
+
+    assert update_status.errors
+    assert "A draft proposed change is not allowed to be merged" in str(update_status.errors[0])
+
+
 class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
     async def test_merge_proposed_change_permission_failure(
         self,
@@ -268,58 +392,66 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         session_first_account: AccountSession,
         session_admin: AccountSession,
         client: InfrahubClient,
+        dependency_provider,
     ):
-        service = await InfrahubServices.new(
-            database=db,
-            message_bus=BusRecorder(),
-            workflow=WorkflowLocalExecution(),
-            cache=MemoryCache(),
-            client=client,
-        )
-        async with get_client(sync_client=False) as prefect_client:
-            await setup_worker_pools(client=prefect_client)
-            await setup_deployments(prefect_client)
+        with dependency_provider.scope(build_client, lambda: client):
+            cache = MemoryCache()
+            message_bus = BusRecorder()
+            service = await InfrahubServices.new(
+                database=db,
+                message_bus=message_bus,
+                workflow=WorkflowLocalExecution(),
+                cache=cache,
+                client=client,
+                component=InfrahubComponent(
+                    cache=cache, db=db, message_bus=message_bus, component_type=ComponentType.NONE
+                ),
+            )
 
-        branch_name = "merge-proposed-change-perm"
-        branch = await create_branch(branch_name=branch_name, db=db)
-        await service.cache.set(
-            key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=branch.active_schema_hash.main,
-            expires=KVTTL.TWO_HOURS,
-        )
-        await service.cache.set(
-            key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=Timestamp().to_string(),
-            expires=KVTTL.FIFTEEN,
-        )
-        await service.component.refresh_heartbeat()
+            async with get_client(sync_client=False) as prefect_client:
+                await setup_worker_pools(client=prefect_client)
+                await setup_deployments(prefect_client)
 
-        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-        await proposed_change.new(
-            db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
-        )
-        await proposed_change.save(db=db)
+            branch_name = "merge-proposed-change-perm"
+            branch = await create_branch(branch_name=branch_name, db=db)
+            await service.cache.set(
+                key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+                value=branch.active_schema_hash.main,
+                expires=KVTTL.TWO_HOURS,
+            )
+            await service.cache.set(
+                key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+                value=Timestamp().to_string(),
+                expires=KVTTL.FIFTEEN,
+            )
+            await service.component.refresh_heartbeat()
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_first_account,
-            service=service,
-        )
+            proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+            await proposed_change.new(
+                db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+            )
+            await proposed_change.save(db=db)
 
-        assert update_status.errors
-        assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
+            update_status = await graphql_mutation(
+                query=UPDATE_PROPOSED_CHANGE,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "state": "merged"},
+                account_session=session_first_account,
+                service=service,
+            )
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_admin,
-            service=service,
-        )
+            assert update_status.errors
+            assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
 
-        assert not update_status.errors
+            update_status = await graphql_mutation(
+                query=UPDATE_PROPOSED_CHANGE,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "state": "merged"},
+                account_session=session_admin,
+                service=service,
+            )
+
+            assert not update_status.errors
 
 
 async def test_create_thread(

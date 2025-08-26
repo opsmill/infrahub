@@ -45,6 +45,8 @@ class PermissionsHelper:
         if self._default_branch:
             return self._default_branch
 
+        raise NotImplementedError()
+
 
 @pytest.fixture(scope="module")
 def permissions_helper() -> PermissionsHelper:
