@@ -52,7 +52,6 @@ You can do this with: `docker image prune -a`
 
 </TabItem>
 <TabItem value="helm" label="Helm">
-<!-- vale off -->
 
 ```bash
 # Upgrade the Helm release
@@ -66,7 +65,6 @@ kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
 ```
 
-<!-- vale on -->
 </TabItem>
 
 <TabItem value="devdemo" label="Dev/Demo">
@@ -135,7 +133,6 @@ You can do this with: `docker image prune -a`
 
 </TabItem>
 <TabItem value="helm" label="Helm">
-<!-- vale off -->
 
 ```bash
 # Upgrade the Helm release
@@ -149,6 +146,19 @@ kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
 ```
 
-<!-- vale on -->
 </TabItem>
 </Tabs>
+
+## Known Issues
+
+### Migration failing because of transaction memory limit reached in Neo4j
+
+For large database/schema migrations, you may encounter a `Transaction memory limit reached` error in Neo4j.
+
+:::info
+
+To work around this, you can disable the transaction memory limit by setting the `dbms.memory.transaction.total.max` to `0` in your Neo4j configuration.
+
+:::
+
+We are working on a more robust solution to handle large migrations without hitting this limit in future releases.
