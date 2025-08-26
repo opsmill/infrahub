@@ -53,11 +53,6 @@ class NodeSchema(GeneratedNodeSchema):
                         f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must be the same kind "
                         f'["{interface_attr.kind}", "{attribute.kind}"]'
                     )
-                if attribute.optional != interface_attr.optional:
-                    raise ValueError(
-                        f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must have the same value for property "
-                        f'"optional" ["{interface_attr.optional}", "{attribute.optional}"]'
-                    )
 
         for relationship in self.relationships:
             if (
