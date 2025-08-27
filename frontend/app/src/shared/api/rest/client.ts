@@ -40,18 +40,18 @@ const authMiddleware: Middleware = {
       return response;
     }
 
+    const clonedRequest = requestClones.get(request);
+    requestClones.delete(request);
+
+    if (!clonedRequest) {
+      return response;
+    }
+
     try {
       const newToken = await getNewToken();
 
       if (!newToken?.access_token) {
         requestClones.delete(request);
-        return response;
-      }
-
-      const clonedRequest = requestClones.get(request);
-      requestClones.delete(request);
-
-      if (!clonedRequest) {
         return response;
       }
 
