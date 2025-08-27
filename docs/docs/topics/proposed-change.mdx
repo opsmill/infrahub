@@ -1,338 +1,189 @@
 ---
-title: Understanding Proposed Changes
+title: Proposed change
 ---
 import VideoPlayer from '../../src/components/VideoPlayer';
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
 
-A Proposed Change represents Infrahub's systematic approach to reviewing, validating, and merging changes between branches. It combines the familiar concepts of pull requests from software development with infrastructure-specific validation and safety mechanisms, creating a comprehensive change management system for infrastructure data.
+# Proposed change
+
+A proposed change in Infrahub is a structured workflow mechanism that enables teams to review, discuss, and merge changes in a controlled and collaborative manner. It serves as the primary method for implementing infrastructure changes safely while maintaining proper oversight and governance.
+
+For people with a software development background, proposed changes function similarly to pull requests in GitHub or merge requests in GitLab.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=OAXk3dKKgf0' light />
 </center>
 
-## Core concepts
+## Why use proposed changes?
 
-### Mental model: Infrastructure pull requests
+Proposed changes address several crucial needs in infrastructure management:
 
-For those familiar with software development, a Proposed Change serves a similar purpose to a pull request or merge request in Git platforms like GitHub or GitLab. However, while traditional pull requests focus on code changes, Proposed Changes operate on structured infrastructure data, configuration artifacts, and their relationships.
+- **Controlled collaboration**: Enable multiple team members to work on infrastructure changes without directly affecting production.
+- **Accountability**: Establish a clear record of who proposed, reviewed, and approved changes.
+- **Quality assurance**: Provide a systematic approach to reviewing changes before implementation.
+- **Compliance**: Support regulatory requirements through documented approval processes.
+- **Knowledge sharing**: Create opportunities for team members to learn from each other's changes.
+- **Continuous integration**: Ensure that changes meet quality standards through automated validation checks.
 
-Key parallels with pull requests:
+## Multi-dimensional diffing
 
-- **Branch comparison**: Visualize differences between source and destination branches
-- **Review process**: Collaborative evaluation of proposed modifications
-- **Automated validation**: CI/CD-style checks and tests
-- **Conflict detection**: Identify and resolve competing changes
-- **Controlled merging**: Gated integration into the main branch
+A proposed change in Infrahub offers a more sophisticated approach by integrating both data-level and code-level differences in a unified interface:
 
-### Beyond text diffs: Data-aware comparisons
+- **Data differences**: See precisely what objects were added, modified, or deleted, along with the specific attribute changes.
+- **Schema differences**: Identify changes to the underlying data models that define your infrastructure.
+- **File differences**: Track modifications to implementation files like transforms, generators, and templates.
+- **Artifact differences**: Compare the [artifacts](artifact) generated to understand output changes.
 
-Traditional version control systems compare files as text, line by line. Proposed Changes transcend this limitation by understanding the semantic meaning of infrastructure data:
+This multi-dimensional diffing provides a "single pane of glass" view, enabling reviewers to fully understand the scope and impact of changes before approval. This comprehensive visibility is especially valuable for complex infrastructure changes.
 
-#### Structured data diffs
+## Automated pipeline with continuous integration
 
-Instead of seeing:
+Infrahub integrates robust validation capabilities within the proposed change workflow to ensure changes meet quality and policy requirements before implementation. These automated checks provide confidence that modifications won't introduce issues when deployed.
 
-```diff
-- hostname: "router01.nyc"
-+ hostname: "router01.ny1"
-```
+:::important
+Any failing checks will block the merge process, ensuring only validated changes are applied.
+:::
 
-Proposed Changes present:
+### Built-in checks
 
-- **Object-level changes**: "Device router01 hostname changed"
-- **Relationship modifications**: "Interface eth0 moved from VLAN 100 to VLAN 200"
-- **Schema evolution**: "New required attribute 'location' added to Device model"
+Infrahub runs several types of automated validations during the review process:
 
-#### Artifact impact analysis
+- **Data integrity checks**: Validates that the database remains consistent between branches and that all referential integrity constraints are satisfied.
+- **Merge conflict detection**: Identifies and reports any conflicting changes between the source and target branches that would prevent a clean merge.
+- **Git repository integration**: Displays merge conflicts for connected Git repositories, ensuring alignment between infrastructure code and configuration.
+- **Schema validation**: Verifies potential changes made to the schema.
 
-Proposed Changes automatically trace how data modifications cascade through your infrastructure:
+### Custom checks
 
-- **Configuration generation**: Preview how device configurations will change
-- **Template rendering**: See the effect on Jinja2/Python templates
-- **Dependency tracking**: Understand which systems are affected
-- **Change scope**: Visualize the blast radius of modifications
+Organizations can extend the validation framework with custom checks to enforce specific business rules and operational constraints.
 
-## Architecture and components
+Learn more about [checks](check) and how to implement custom validation logic.
 
-### The validation pipeline
+### Artifact generation
 
-When you create a Proposed Change, Infrahub orchestrates a comprehensive validation pipeline that ensures changes are safe, compliant, and ready for production.
+Infrahub will automatically run transformations and generate artifacts as part of the proposed change workflow.
 
-#### Pipeline stages
+Learn more about [transformations](transformation) and [artifacts](artifact).
 
-1. **Initialization**
-   - Calculate diff between branches
-   - Identify affected objects and relationships
-   - Determine which checks to execute
+### Generator integration
 
-2. **Parallel validation**
-   - Data integrity checks
-   - Schema compatibility validation
-   - Custom business logic checks
-   - Repository synchronization
-   - Artifact generation and comparison
+Infrahub will automatically run generators as part of the proposed change workflow.
 
-3. **Result aggregation**
-   - Collect check outcomes
-   - Identify conflicts and issues
-   - Generate comprehensive report
+Learn more about [generators](generator).
 
-4. **Continuous monitoring**
-   - Re-run checks on branch updates
-   - Track conflict resolution progress
-   - Update status in real-time
+## Conflict management and resolution
 
-### Check types and their purposes
+### Understanding conflicts in infrastructure data
 
-Infrahub runs multiple categories of checks, each serving a specific validation purpose:
+In Infrahub, conflicts occur when the same infrastructure object is modified differently in both the source and target branches. Unlike traditional text-based version control systems, Infrahub's conflict detection operates at the data level, identifying specific attribute conflicts within objects.
 
-#### Data integrity checks
+Common conflict scenarios include:
 
-These ensure your infrastructure data remains consistent:
+- The same attribute of an object (for example, a router's hostname) is changed to different values in each branch.
+- An object is modified in one branch but deleted in another.
+- Relationship conflicts where the same object is linked to different entities in each branch.
 
-- **Uniqueness validation**: No duplicate IP addresses, hostnames, or identifiers
-- **Referential integrity**: All relationships point to valid objects
-- **Required fields**: Mandatory attributes have values
-- **Data type validation**: Values conform to expected formats
+### The conflict resolution process
 
-#### Schema integrity checks
+Infrahub prevents merging a proposed change when data conflicts exist between branches to protect the integrity of your infrastructure data. When conflicts are detected:
 
-Validate that changes maintain schema compatibility:
+1. The proposed change displays a conflict warning with details about affected objects
+2. Reviewers can examine each conflict to understand the specific differences
+3. For each conflict, users must explicitly choose which version to keep (source or target)
+4. Conflict resolutions are recorded as part of the change history for audit purposes
 
-- **Backward compatibility**: Existing data works with schema changes
-- **Migration feasibility**: Changes can be safely applied
-- **Constraint satisfaction**: New constraints don't break existing data
-- **Inheritance consistency**: Class hierarchies remain valid
+To resolve conflicts:
 
-#### Repository checks
+1. Review the data integrity check results in the proposed change interface
+2. For each conflict, choose which branch's version to keep
+3. Apply the resolution in the change checks section
+4. Re-run validation to confirm all conflicts have been addressed
 
-Ensure external Git repositories stay synchronized:
+This structured conflict management ensures that merges maintain data integrity and prevent unintended overwrites of important changes, while providing a clear audit trail of resolution decisions.
 
-- **Branch synchronization**: Database and Git branches align
-- **Merge compatibility**: No Git conflicts prevent merging
-- **File validation**: Generated files are syntactically correct
-- **Commit consistency**: Changes are properly tracked
+## Proposed change lifecycle and collaborative review/approval
 
-#### Custom checks
+Proposed changes follow a workflow with specific states that track progression from initial creation to final resolution. The review and approval process is central, providing a structured framework for evaluating proposed infrastructure changes before implementation.
 
-User-defined validations that enforce business rules:
+### State transitions
 
-- **Operational constraints**: "At least one router per site must be active"
-- **Compliance requirements**: "All devices must have security classifications"
-- **Naming conventions**: "Hostnames must follow the pattern: `{site}-{role}{number}`"
-- **Capacity limits**: "No rack can exceed 80% power utilization"
+1. **Draft**: When a proposed change is initially created, the author can set it as a draft. This indicates that work is still in progress and the change is not yet ready for review.
+   - Draft status allows authors to incrementally build their changes while receiving early feedback from selected team members.
+   - The system runs validation checks to identify potential issues.
 
-#### Artifact checks
+2. **Open**: Once the author marks the proposed change as ready for review, it transitions to the open state. In this state:
+   - Reviewers can examine the changes and provide comments and feedback.
+   - Stakeholders can discuss implications and suggest modifications.
+   - The system runs validation checks to identify potential issues.
+   - It's also possible to create a proposed change directly in the open state for simpler changes.
 
-Validate that generated configurations remain valid:
+3. **Approved**: When designated reviewers endorse the proposed change, it enters the approved state. Approval indicates that:
+   - The change has been thoroughly reviewed.
+   - All required modifications have been addressed.
+   - The proposed modifications meet quality and policy requirements.
 
-- **Syntax validation**: Configurations parse correctly
-- **Semantic checks**: Settings make logical sense
-- **Diff analysis**: Changes are expected and safe
-- **Rollback planning**: Changes can be reversed if needed
+4. **Merged**: After receiving approval (if required) and passing all automated checks, the change is merged into the target branch. At this point:
+   - The changes become part of the target branch.
+   - The source branch will be retained but could be manually deleted.
 
-### Conflict detection and resolution
+5. **Closed**: A proposed change can be closed without merging if it's determined to be unnecessary, superseded by another change, or otherwise no longer needed. This provides a clean resolution for abandoned changes.
 
-Conflicts arise when the same data changes in both the source and destination branches. Infrahub's conflict detection goes beyond text comparison to understand the semantic nature of changes.
+### Review mechanics
 
-#### Types of conflicts
+Multiple reviewers can be assigned to a given proposed change. During the review process, participants have multiple ways to engage with the proposed change:
 
-**Attribute conflicts**: The same field modified differently in each branch
+- **Inline comments**: Reviewers can comment directly on specific elements of the changes, creating focused discussions about particular modifications.
+- **General feedback**: Team members can provide overall commentary on the proposed change.
+- **Threaded discussions**: Comments support threaded replies, enabling detailed conversations about implementation choices.
 
-- Example: Device status changed to "maintenance" in one branch, "decommissioned" in another
+This collaborative environment promotes knowledge sharing and improves the overall quality of infrastructure changes through peer review.
 
-**Relationship conflicts**: Competing changes to object associations
+### Stamping a proposed change
 
-- Example: Interface moved to different VLANs in each branch
+At the end of the review process, reviewers can "stamp" the proposed change to indicate their approval or rejection.
 
-**Schema conflicts**: Incompatible model modifications
+- **Approve**: Indicates that the reviewer is satisfied with the changes and believes they are ready to be merged.
+- **Reject**: Indicates that the reviewer has identified issues or concerns with the proposed change that need to be addressed before it can be merged.
 
-- Example: Field made required in one branch, deleted in another
+### Advanced approval workflows <EnterpriseBadge />
 
-**Constraint violations**: Changes that would break system rules
+Enterprise customers benefit from enhanced approval capabilities designed for complex organizations with strict governance requirements:
 
-- Example: Both branches assign the same IP address to different devices
+- **Enforced approval gates**: Prevent merging without the required number of approvals.
+- **Approval thresholds**: Configure minimum number of approvals needed before a change can be merged.
+- **Auto-revocation**: Automatically revoke approvals when changes are made after initial approval.
 
-#### Resolution strategies
+## Comprehensive audit and traceability
 
-Infrahub provides multiple approaches to resolve conflicts:
+The proposed change system provides robust audit capabilities that are critical for regulated environments and operational excellence:
 
-1. **Automatic resolution**: Non-conflicting changes merge automatically
-2. **Branch selection**: Choose to keep changes from source or destination
-3. **Manual intervention**: Custom resolution for complex scenarios
-4. **Rebase and retry**: Update source branch and revalidate
+### Audit capabilities
 
-### The review workflow
+- **Approval records**: Captures who approved each change, when, and with what justification.
+- **Complete discussion history**: Preserves all comments, questions, and responses throughout the review process.
+- **Change documentation**: Maintains a record of what was modified and the rationale behind changes.
+- **System-generated events**: Automatically logs all significant actions like state changes and merge operations.
+- **Tamper-evident history**: Ensures the integrity of the audit trail through cryptographic verification.
 
-While automation handles validation, human review ensures changes align with operational goals and standards.
+### Business benefits of strong traceability
 
-#### Review components
+This comprehensive traceability delivers multiple benefits:
 
-**Change summary**: High-level overview of modifications
+- **Regulatory compliance**: Satisfies documentation requirements for regulated industries.
+- **Problem resolution**: Provides context when troubleshooting issues that might stem from recent changes.
+- **Knowledge preservation**: Captures institutional knowledge about why specific changes were made.
+- **Process improvement**: Enables analysis of the change management process to identify optimization opportunities.
 
-- Objects added, updated, or removed
-- Relationships changed
-- Schema modifications
-- Affected systems and services
+The audit capabilities are particularly valuable for infrastructure changes that might impact production environments or require compliance documentation, providing peace of mind that all modifications are properly documented and justified.
 
-**Detailed diffs**: Granular examination of changes
+## Related resources
 
-- Side-by-side comparisons
-- Historical context
-- Change attribution
+The proposed change functionality interconnects with several other key concepts in Infrahub:
 
-**Impact assessment**: Understanding consequences
-
-- Which devices need reconfiguration
-- What automation will trigger
-- Who needs to be notified
-- When changes should be deployed
-
-**Discussion threads**: Collaborative evaluation
-
-- Inline comments on specific changes
-- General discussions about approach
-- Change requests and suggestions
-- Approval tracking
-
-## Design philosophy
-
-### Safety through validation
-
-Infrastructure changes carry significant risk. A misconfiguration can cause outages, security vulnerabilities, or data loss. Proposed Changes embody a "trust but verify" philosophy:
-
-- **Comprehensive checks**: Multiple validation layers catch different error types
-- **Fail-safe defaults**: Changes blocked until all checks pass
-- **Explicit approval**: Human review required for merge
-- **Audit trail**: Complete record of who changed what and why
-
-### Automation with oversight
-
-While Proposed Changes automate much of the validation process, they maintain human control at critical decision points:
-
-- **Automated validation**: Machines check for technical correctness
-- **Human judgment**: People evaluate business impact and risk
-- **Assisted resolution**: Tools help resolve conflicts, humans make decisions
-- **Gated deployment**: Automation executes, humans authorize
-
-### Transparency and traceability
-
-Every aspect of a Proposed Change is visible and auditable:
-
-- **Change visibility**: See exactly what will change before merge
-- **Check results**: Understand why validations pass or fail
-- **Decision history**: Track who approved or rejected changes
-- **Rollback capability**: Revert changes if issues arise
-
-## Integration patterns
-
-### Webhook automation
-
-React to Proposed Change events programmatically:
-
-- **Creation notifications**: Alert teams when reviews are needed
-- **Check completions**: Trigger downstream processes
-- **Merge events**: Initiate deployment workflows
-- **Failure alerts**: Escalate validation issues
-
-### External tool integration
-
-Proposed Changes can be extended to work with your existing toolchain. Examples could include:
-
-- **ITSM systems**: Create change requests in ServiceNow
-- **Chat platforms**: Notify Slack/Teams channels
-- **Monitoring systems**: Create new inventory artifacts to update Grafana dashboards
-- **Documentation**: Create artifacts to update Confluence pages
-
-## Performance considerations
-
-### Scalability factors
-
-Proposed Change performance depends on several variables:
-
-**Branch divergence**: More changes mean longer validation
-
-- Optimization: Keep branches short-lived
-- Optimization: Merge frequently to minimize divergence
-
-**Check complexity**: Custom checks can be resource-intensive
-
-- Optimization: Write efficient check queries
-- Optimization: Cache intermediate results
-
-**Data volume**: Large datasets increase processing time
-
-- Optimization: Use targeted queries in checks
-- Optimization: Parallelize independent validations
-
-**Repository size**: Git operations scale with repository size
-
-- Optimization: Keep repositories focused
-- Optimization: Use shallow clones where possible
-
-### Optimization strategies
-
-To ensure Proposed Changes remain performant:
-
-1. **Incremental validation**: Re-run only affected checks on updates
-2. **Parallel execution**: Run independent checks simultaneously
-3. **Result caching**: Reuse validation results when possible
-4. **Smart scheduling**: Prioritize critical checks
-5. **Resource limits**: Prevent runaway validations
-
-## Advanced concepts
-
-### Check dependencies
-
-Checks can depend on each other, creating validation workflows:
-
-```python
-# Example: Check dependency chain
-class NetworkValidation:
-    dependencies = ["schema_check", "ip_allocation_check"]
-    
-    async def validate(self):
-        # Only runs after dependencies pass
-        return await check_network_connectivity()
-```
-
-### Custom validators
-
-Extend Proposed Changes with domain-specific validation:
-
-```python
-# Example: Custom business logic validator
-class SiteRedundancyValidator:
-    """Ensure each site has redundant uplinks"""
-    
-    async def validate(self, diff_data):
-        for site in diff_data.affected_sites:
-            uplinks = await get_site_uplinks(site)
-            if len(uplinks) < 2:
-                raise ValidationError(f"Site {'{site}'} needs redundant uplinks")
-```
-
-### Merge strategies
-
-Different approaches for integrating changes:
-
-- **Fast-forward**: Direct application when no conflicts exist
-- **Squash**: Compress all changes into a single commit
-- **Preserve history**: Maintain full change timeline
-- **Cherry-pick**: Selective change application
-
-## Related topics
-
-To fully understand Proposed Changes, explore these connected concepts:
-
-- [Version control](../topics/version-control) - The branch and merge foundation
-- [Data validation and checks](../guides/check) - Check implementation details
-- [Artifacts](../topics/artifact) - Configuration generation from data
-- [Schema management](../topics/schema) - How model changes are validated
-
-## Further reading
-
-For practical guidance on working with Proposed Changes:
-
-- [Writing custom checks](../guides/check) - Extend validation logic
-- [Repository management](../guides/repository) - Git integration details
-- [API Server reference](../reference/api-server) - Programmatic access
+- [Version control](version-control): Understand how branches and commits work in Infrahub, which form the foundation of proposed changes
+- [Schema](schema): Learn about the data models that define your infrastructure objects and are subject to review in proposed changes
+- [Artifacts](artifact): Explore how proposed changes affect the generated outputs from your infrastructure data
+- [Checks](check): Discover how validation checks ensure the quality and compliance of proposed changes
+- [Transformations](transformation): Understand how data transformations are managed and reviewed within proposed changes
+- [Generators](generator): Learn about the code generation process that can be triggered by changes in proposed changes
+- [Permissions and roles](permissions-roles): Understand the access controls that govern who can create, review, and merge proposed changes
