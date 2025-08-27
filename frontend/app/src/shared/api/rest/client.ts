@@ -22,8 +22,10 @@ const requestClones = new WeakMap<Request, Request>();
 
 const authMiddleware: Middleware = {
   async onRequest({ request }) {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const hadAuth = request.headers.has("Authorization");
+    if (hadAuth) return request;
 
+    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (!accessToken) return request;
 
     request.headers.set("Authorization", `Bearer ${accessToken}`);
@@ -51,14 +53,12 @@ const authMiddleware: Middleware = {
       const newToken = await getNewToken();
 
       if (!newToken?.access_token) {
-        requestClones.delete(request);
         return response;
       }
 
       clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
       return fetch(clonedRequest);
     } catch (error) {
-      requestClones.delete(request);
       console.error("Token refresh failed:", error);
       return response;
     }
