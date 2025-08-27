@@ -13,7 +13,7 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query_new_choice_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_new_choice_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     crit_low = await Node.init(db=db, schema=criticality_schema)
     await crit_low.new(db=db, name="low", level=4, status="active")
     await crit_low.save(db=db)
@@ -41,7 +41,7 @@ async def test_query_new_choice_value(db: InfrahubDatabase, default_branch: Bran
     assert len(all_data_paths) == 0
 
 
-async def test_query_remove_choice(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_remove_choice(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     crit_low = await Node.init(db=db, schema=criticality_schema)
     await crit_low.new(db=db, name="low", level=4, status="active")
     await crit_low.save(db=db)
@@ -78,7 +78,7 @@ async def test_query_remove_choice(db: InfrahubDatabase, default_branch: Branch,
     ]
 
 
-async def test_query_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticality_schema):
+async def test_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticality_schema):
     crit_low = await Node.init(db=db, schema=criticality_schema, branch=branch)
     await crit_low.new(db=db, name="low", level=4, status="active")
     await crit_low.save(db=db)
@@ -129,7 +129,7 @@ async def test_query_convert_to_choice(db: InfrahubDatabase, branch: Branch, cri
     )
 
 
-async def test_query_attribute_update_on_branch(
+async def test_attribute_update_on_branch(
     db: InfrahubDatabase, branch: Branch, criticality_schema, criticality_low, criticality_medium
 ):
     criticality_low.status.value = "passive"
@@ -188,7 +188,7 @@ async def test_query_attribute_update_on_branch(
     )
 
 
-async def test_query_node_delete_on_branch(
+async def test_node_delete_on_branch(
     db: InfrahubDatabase, branch: Branch, criticality_schema, criticality_low, criticality_medium
 ):
     criticality_low.status.value = "passive"
