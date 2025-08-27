@@ -17,6 +17,9 @@ export const queryClient = new QueryClient({
 
 export const apiClient = createClient<paths>({ baseUrl: INFRAHUB_API_SERVER_URL });
 
+// Store cloned requests for retry purposes
+const requestClones = new WeakMap<Request, Request>();
+
 const authMiddleware: Middleware = {
   async onRequest({ request }) {
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -24,23 +27,40 @@ const authMiddleware: Middleware = {
     if (!accessToken) return request;
 
     request.headers.set("Authorization", `Bearer ${accessToken}`);
+
+    // Store a clone for potential retry to avoid "body already used" error
+    // This is necessary because Request bodies can only be consumed once
+    requestClones.set(request, request.clone());
+
     return request;
   },
   async onResponse({ request, response }) {
-    if (response.status === 401) {
-      try {
-        const newToken = await getNewToken();
+    if (response.status !== 401) {
+      requestClones.delete(request);
+      return response;
+    }
 
-        if (!newToken?.access_token) {
-          return response;
-        }
+    try {
+      const newToken = await getNewToken();
 
-        request.headers.set("Authorization", `Bearer ${newToken.access_token}`);
-        return fetch(request);
-      } catch (error) {
-        console.error(error);
+      if (!newToken?.access_token) {
+        requestClones.delete(request);
         return response;
       }
+
+      const clonedRequest = requestClones.get(request);
+      requestClones.delete(request);
+
+      if (!clonedRequest) {
+        return response;
+      }
+
+      clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
+      return fetch(clonedRequest);
+    } catch (error) {
+      requestClones.delete(request);
+      console.error("Token refresh failed:", error);
+      return response;
     }
   },
 };
