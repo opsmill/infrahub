@@ -281,4 +281,4 @@ async def test_ipprefix_reconciler_prefix_value_update_on_branch(
     # check parent is correct
     updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
     assert len(updated_parent_rel) == 1
-    assert updated_parent_rel[0].peer_id == ip_dataset_01["net140"].id
+    assert updated_parent_rel[0].peer_id == ip_dataset_01["net142"].id
