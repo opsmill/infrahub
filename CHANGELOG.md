@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.1) - 2025-08-27
+
+### Fixed
+
+- Fix bug in schema validation that would incorrectly flag Dropdown attributes of node schema that override a generic attribute as having illegal values ([#7086](https://github.com/opsmill/infrahub/issues/7086))
+
 ## [Infrahub - v1.4.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.0) - 2025-08-26
 
 We're excited to announce the first release candidate of Infrahub 1.4.0!
