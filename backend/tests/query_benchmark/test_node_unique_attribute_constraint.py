@@ -81,20 +81,23 @@ async def benchmark_uniqueness_query(
     "query_request",
     [
         NodeUniquenessQueryRequest(
-            kind="TestCar", unique_attribute_paths={QueryAttributePath(attribute_name="name", property_name="value")}
-        ),
-        NodeUniquenessQueryRequest(
             kind="TestCar",
             unique_attribute_paths={
-                QueryAttributePath(attribute_name="name", property_name="value"),
-                QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value")
             },
         ),
         NodeUniquenessQueryRequest(
             kind="TestCar",
             unique_attribute_paths={
-                QueryAttributePath(attribute_name="name", property_name="value"),
-                QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
+        ),
+        NodeUniquenessQueryRequest(
+            kind="TestCar",
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
             },
             relationship_attribute_paths={
                 QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
@@ -130,8 +133,8 @@ async def test_single_constraint_multiple_runtimes(benchmark_config, car_person_
     query_request = NodeUniquenessQueryRequest(
         kind="TestCar",
         unique_attribute_paths={
-            QueryAttributePath(attribute_name="name", property_name="value"),
-            QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+            QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+            QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
         },
         relationship_attribute_paths={
             QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")

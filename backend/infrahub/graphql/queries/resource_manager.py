@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -16,6 +15,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolGetIdentifiers,
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
@@ -87,7 +87,7 @@ class PoolAllocated(ObjectType):
             id=pool_id, db=graphql_context.db, branch=graphql_context.branch
         )
 
-        fields = await extract_fields_first_node(info=info)
+        fields = extract_graphql_fields(info=info)
 
         allocated_kinds: list[str] = []
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
@@ -207,7 +207,7 @@ class PoolUtilization(ObjectType):
         utilization_getter = PrefixUtilizationGetter(
             db=db, ip_prefixes=list(resources_map.values()), at=graphql_context.at
         )
-        fields = await extract_fields_first_node(info=info)
+        fields = extract_graphql_fields(info=info)
         response: dict[str, Any] = {}
         total_utilization = None
         default_branch_utilization = None

@@ -487,7 +487,7 @@ attribute_schema = SchemaNode(
             kind="Text",
             description="Defines the type of the attribute.",
             enum=ATTRIBUTE_KIND_LABELS,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="enum",

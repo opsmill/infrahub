@@ -13,7 +13,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus.types import KVTTL
-from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.worker import WORKER_IDENTITY
 
 from .base import TestIpamReconcileBase
@@ -30,10 +29,6 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
     @pytest.fixture(scope="class", autouse=True)
     def enable_broker_settings(self):
         config.SETTINGS.broker.enable = True
-
-    @pytest.fixture(scope="class", autouse=True)
-    def bus_simulator_cache(self, bus_simulator):
-        bus_simulator.service._cache = RedisCache()
 
     @pytest.fixture(scope="class", autouse=True)
     def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...

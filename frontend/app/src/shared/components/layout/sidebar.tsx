@@ -3,11 +3,11 @@ import InfrahubLogo from "@/assets/infrahub-logo.svg";
 import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { AccountMenu } from "@/shared/components/account-menu";
+import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
 import { SearchAnywhere } from "@/shared/components/search/search-anywhere";
 import { Card } from "@/shared/components/ui/card";
-import { Divider } from "@/shared/components/ui/divider";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
@@ -23,13 +23,13 @@ export default function Sidebar() {
     <Card
       data-collapsed={booleanCollapsed}
       className={classNames(
-        "flex flex-col shrink-0 w-[256px] relative",
+        "flex flex-col gap-3 shrink-0 w-[256px] relative",
         "group/sidebar transition-all",
         booleanCollapsed && "w-auto px-2 items-center"
       )}
       data-testid="sidebar"
     >
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center">
         <Link to={constructPath("/")} className={classNames(focusVisibleStyle, "rounded-md")}>
           <img
             src={booleanCollapsed ? InfrahubLogo : InfrahubWithTextLogo}
@@ -61,7 +61,7 @@ export default function Sidebar() {
 
       <SearchAnywhere isCollapsed={booleanCollapsed} />
 
-      <Divider />
+      <Separator />
 
       <MenuNavigation isCollapsed={booleanCollapsed} />
 

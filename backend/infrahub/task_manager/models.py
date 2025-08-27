@@ -14,10 +14,12 @@ from prefect.events.filters import (
     EventRelatedFilter,
     EventResourceFilter,
 )
+from prefect.events.filters import EventOrder as PrefectEventOrder
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
 from infrahub.core.timestamp import Timestamp
+from infrahub.events.constants import EventSortOrder
 
 from .constants import LOG_LEVEL_MAPPING
 
@@ -176,6 +178,7 @@ class InfrahubEventFilter(EventFilter):
     @classmethod
     def from_filters(
         cls,
+        order: EventSortOrder,
         ids: list[str] | None = None,
         account__ids: list[str] | None = None,
         related_node__ids: list[str] | None = None,
@@ -200,6 +203,12 @@ class InfrahubEventFilter(EventFilter):
             filters = cls(occurred=EventOccurredFilter(**occurred_filter))
         else:
             filters = cls()
+
+        match order:
+            case EventSortOrder.ASC:
+                filters.order = PrefectEventOrder.ASC
+            case EventSortOrder.DESC:
+                filters.order = PrefectEventOrder.DESC
 
         filters.add_event_filter(level=level, has_children=has_children)
         filters.add_event_id_filter(ids=ids)

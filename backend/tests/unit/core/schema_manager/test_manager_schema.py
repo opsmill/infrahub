@@ -153,26 +153,6 @@ async def test_schema_process_inheritance_different_generic_attribute_types_on_n
     assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
 
 
-async def test_schema_process_inheritance_different_generic_attribute_optional_on_node(
-    schema_diff_attr_inheritance_types,
-):
-    """Test that we raise an exception if a node is inheriting an attribute changing its optional property value."""
-    schema = SchemaBranch(cache={}, name="test")
-    schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
-    schema_new["generics"].pop()
-    schema_new["nodes"][0]["inherit_from"].pop()
-    schema_new["nodes"][0]["attributes"].append({"name": "choice", "kind": "Text", "optional": False})
-    schema.load_schema(schema=SchemaRoot(**schema_new))
-
-    with pytest.raises(ValueError) as exc:
-        schema.process_inheritance()
-
-    assert (
-        exc.value.args[0]
-        == 'TestWidget.choice inherited from TestAdapter must have the same value for property "optional" ["True", "False"]'
-    )
-
-
 async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
@@ -516,6 +496,50 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
                 ],
             },
             "TestCriticality's relationship status inherited from InfraGenericInterface cannot be overriden",
+        ),
+        (
+            {
+                "nodes": [
+                    {
+                        "name": "Criticality",
+                        "namespace": "Test",
+                        "inherit_from": ["InfraGenericInterface"],
+                        "default_filter": "name__value",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "relationships": [
+                            {"name": "status", "peer": "TestState", "optional": True, "cardinality": "one"}
+                        ],
+                    },
+                    {
+                        "name": "Status",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                    {
+                        "name": "State",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                ],
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Infra",
+                        "attributes": [{"name": "name", "kind": "Text"}],
+                        "relationships": [
+                            {
+                                "name": "status",
+                                "peer": "TestStatus",
+                                "optional": True,
+                                "cardinality": "one",
+                            }
+                        ],
+                    },
+                ],
+            },
+            "TestCriticality's relationship status inherited from InfraGenericInterface must have the same peer (TestStatus != TestState)",
         ),
     ],
 )
@@ -2405,6 +2429,32 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
     )
     assert len(results) == 1
+
+
+async def test_get_incorrect_kinds(default_branch: Branch) -> None:
+    person_schema = NodeSchema(
+        name="Person",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    house_generic = GenericSchema(
+        name="House", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)]
+    )
+    manager = SchemaManager()
+
+    manager.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    manager.set(name="TestHouse", schema=house_generic, branch=default_branch.name)
+
+    with pytest.raises(ValueError, match="The selected node is not of type NodeSchema"):
+        manager.get_node_schema(name="TestHouse", branch=default_branch.name, duplicate=False)
+
+    with pytest.raises(ValueError, match="The selected node is not of type GenericSchema"):
+        manager.get_generic_schema(name="TestPerson", branch=default_branch.name, duplicate=False)
 
 
 async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):

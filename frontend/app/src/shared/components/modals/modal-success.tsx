@@ -1,4 +1,4 @@
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React, { Fragment, ReactNode, useRef } from "react";
@@ -8,8 +8,8 @@ interface iProps {
   isLoading?: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
-  description: string | React.ReactNode;
-  onConfirm: Function;
+  description?: string | React.ReactNode;
+  onConfirm: () => void;
   children: ReactNode;
   icon?: string;
 }
@@ -78,7 +78,7 @@ export default function ModalSuccess({
                 >
                   <Button
                     onClick={onConfirm}
-                    buttonType={BUTTON_TYPES.VALIDATE}
+                    variant="active"
                     className="ml-2"
                     isLoading={isLoading}
                   >

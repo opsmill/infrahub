@@ -6,20 +6,19 @@ from infrahub import lock
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind
 from infrahub.git.models import RequestArtifactGenerate
-from infrahub.services import InfrahubServices
+from infrahub.workers.dependencies import get_client
 
 
 @task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)  # type: ignore[arg-type]
-async def define_artifact(
-    model: CheckArtifactCreate | RequestArtifactGenerate, service: InfrahubServices
-) -> tuple[InfrahubNode, bool]:
+async def define_artifact(model: CheckArtifactCreate | RequestArtifactGenerate) -> tuple[InfrahubNode, bool]:
     """Return an artifact together with a flag to indicate if the artifact is created now or already existed."""
+    client = get_client()
     created = False
     if model.artifact_id:
-        artifact = await service.client.get(kind=InfrahubKind.ARTIFACT, id=model.artifact_id, branch=model.branch_name)
+        artifact = await client.get(kind=InfrahubKind.ARTIFACT, id=model.artifact_id, branch=model.branch_name)
     else:
         async with lock.registry.get(f"{model.target_id}-{model.artifact_definition}", namespace="artifact"):
-            artifacts = await service.client.filters(
+            artifacts = await client.filters(
                 kind=InfrahubKind.ARTIFACT,
                 branch=model.branch_name,
                 definition__ids=[model.artifact_definition],
@@ -28,7 +27,7 @@ async def define_artifact(
             if artifacts:
                 artifact = artifacts[0]
             else:
-                artifact = await service.client.create(
+                artifact = await client.create(
                     kind=InfrahubKind.ARTIFACT,
                     branch=model.branch_name,
                     data={

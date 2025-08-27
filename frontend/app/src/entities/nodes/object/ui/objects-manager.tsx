@@ -1,4 +1,5 @@
 import { ObjectTable } from "@/entities/nodes/object/ui/object-table/object-table";
+import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { ModelSchema } from "@/entities/schema/types";
@@ -22,9 +23,9 @@ export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
   }
 
   return (
-    <>
-      <ObjectsManagerToolbar schema={schema} permission={permission} />
-      <ObjectTable schema={schema} permission={permission} />
-    </>
+    <ObjectTableProvider schema={schema}>
+      <ObjectsManagerToolbar />
+      <ObjectTable />
+    </ObjectTableProvider>
   );
 }

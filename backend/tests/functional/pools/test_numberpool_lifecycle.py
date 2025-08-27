@@ -19,6 +19,7 @@ from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.tasks import validate_schema_number_pools
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.workers.dependencies import build_cache
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -74,14 +75,14 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         client: InfrahubClient,
         bus_simulator: BusSimulator,
         prefect_test_fixture,
+        dependency_provider,
         initial_schema: SchemaRoot,
     ) -> None:
-        bus_simulator.service._cache = RedisCache()
-
-        schema_load_response = await client.schema.load(
-            schemas=[initial_schema.model_dump()], wait_until_converged=True
-        )
-        assert not schema_load_response.errors
+        with dependency_provider.scope(build_cache, RedisCache):
+            schema_load_response = await client.schema.load(
+                schemas=[initial_schema.model_dump()], wait_until_converged=True
+            )
+            assert not schema_load_response.errors
 
     async def test_numberpool_assignment_direct_node(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch

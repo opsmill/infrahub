@@ -1,13 +1,12 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm from "@/shared/components/form/object-form";
+import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
 import React, { useState } from "react";
 
 export interface AddRelationshipActionProps {
   peer: string;
-  onSuccess?: (newObject: Node) => void;
+  onSuccess?: ObjectFormProps["onSuccess"];
 }
 
 export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
@@ -43,16 +42,10 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
       >
         <ObjectForm
           kind={peer}
-          onSuccess={({ object }) => {
+          onSuccess={async (newNode) => {
             setOpen(false);
             if (!onSuccess) return;
-
-            const newNode: Node = {
-              id: object.id,
-              display_label: object.display_label,
-              __typename: peer,
-            };
-            onSuccess(newNode);
+            await onSuccess(newNode);
           }}
           onCancel={() => setOpen(false)}
           data-testid="new-object-form"

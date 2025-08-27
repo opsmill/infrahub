@@ -1,3 +1,4 @@
+import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
@@ -37,11 +38,13 @@ export function ObjectRelationshipsManager({
   }
 
   return (
-    <RelationshipTable
-      parentKind={parentNodeSchema.kind as string}
-      parentId={parentNodeId}
-      relationshipName={relationshipName}
-      relationshipSchema={relationshipSchema}
-    />
+    <ObjectTableProvider schema={relationshipSchema}>
+      <RelationshipTable
+        parentKind={parentNodeSchema.kind as string}
+        parentId={parentNodeId}
+        relationshipName={relationshipName}
+        relationshipSchema={relationshipSchema}
+      />
+    </ObjectTableProvider>
   );
 }

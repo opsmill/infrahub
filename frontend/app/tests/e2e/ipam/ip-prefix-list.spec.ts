@@ -8,10 +8,11 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
       .getByTestId("identifier-cell")
       .getByRole("link", { name: "203.111.0.0/16" })
       .click();
+    await page.getByRole("link", { name: "Details" }).click();
     await expect(page.getByRole("heading", { name: "Details" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Activities" })).toBeVisible();
     await expect(page.getByText("Prefix203.111.0.0/16")).toBeVisible();
-    await expect(page.getByText("Utilization0%")).toBeVisible();
+    await expect(page.getByRole("row", { name: "Utilization 0%" })).toBeVisible();
     await expect(page.getByRole("progressbar")).toBeVisible();
     await expect(page.getByRole("row", { name: "IP Namespace default" })).toBeVisible();
   });
@@ -21,13 +22,14 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
 
     await test.step("select a prefix to view all sub prefixes", async () => {
       await page.getByRole("treeitem", { name: "2001:db8::/100" }).click();
-      await expect(page.getByText("Prefix2001:db8::/100")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "2001:db8::/100" })).toBeVisible();
+      await expect(page.getByTestId("ip-prefix-table")).toBeVisible();
     });
 
     await test.step("go to any sub prefix list of any children prefix", async () => {
-      await page.getByRole("link", { name: "Children" }).click();
       await page.getByRole("link", { name: "2001:db8::/110" }).click();
-      await expect(page.getByText("Prefix2001:db8::/110")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "2001:db8::/110" })).toBeVisible();
+      await expect(page.getByTestId("ip-address-table")).toBeVisible();
     });
 
     await test.step("use breadcrumb to go back to parent prefix", async () => {

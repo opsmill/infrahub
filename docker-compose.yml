@@ -89,6 +89,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_MISC_RESPONSE_DELAY: ${INFRAHUB_MISC_RESPONSE_DELAY:-0}
   INFRAHUB_MISC_START_BACKGROUND_RUNNER: ${INFRAHUB_MISC_START_BACKGROUND_RUNNER:-true}
   INFRAHUB_PERMISSION_BACKENDS: ${INFRAHUB_PERMISSION_BACKENDS:-["infrahub.permissions.LocalPermissionBackend"]}
+  INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS: ${INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS:-0}
+  INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS: ${INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS:-false}
   INFRAHUB_PRODUCTION:
   INFRAHUB_PUBLIC_URL:
   INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_SCHEMA_STRICT_MODE:-true}
@@ -197,7 +199,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.3.7}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.4.0}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -230,7 +232,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.3.7}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.4.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -276,7 +278,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.3.7}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.4.0}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

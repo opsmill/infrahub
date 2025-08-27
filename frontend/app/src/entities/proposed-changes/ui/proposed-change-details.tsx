@@ -1,11 +1,9 @@
-import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
+import { TASK_OBJECT } from "@/config/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
-import { PcCloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
-import { PcMergeButton } from "@/entities/proposed-changes/ui/action-button/pc-merge-button";
-import { Conversations } from "@/entities/proposed-changes/ui/conversations";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
+import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -18,13 +16,10 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
-import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
-import { getPermission } from "../../permission/utils";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
 import { TaskDisplay } from "../../tasks/ui/task-display";
 
@@ -33,10 +28,6 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const navigate = useNavigate();
-
-  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)), {
-    pollInterval: 2000,
-  });
 
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
@@ -47,13 +38,13 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     pollInterval: 2000,
   });
 
-  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
-
+  const rejectedBy = proposedChangesDetails?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
+  const approvedBy = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
-  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
+  const isDraft = proposedChangesDetails?.is_draft?.value;
 
   const proposedChangeProperties: Property[] = [
     {
@@ -62,7 +53,17 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     },
     {
       name: "State",
-      value: <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>,
+      value: (
+        <>
+          <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
+
+          {isDraft && (
+            <Badge variant={"gray"} className="ml-2">
+              draft
+            </Badge>
+          )}
+        </>
+      ),
     },
     {
       name: "Source branch",
@@ -85,30 +86,50 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Created by",
       value: (
-        <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
+        <Tooltip content={proposedChangesDetails?.created_by?.node?.display_label} enabled>
           <Avatar
             size={"sm"}
             name={proposedChangesDetails?.created_by?.node?.display_label}
-            className="mr-2 bg-custom-blue-green"
+            className="bg-custom-blue-green"
           />
         </Tooltip>
       ),
     },
     {
-      name: "Approvers",
-      value: approvers.map((approver: any, index: number) => (
-        <Tooltip key={index} content={approver.display_label}>
-          <Avatar size={"sm"} name={approver.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      name: "Approved by",
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {approvedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={user.display_label} enabled>
+              <Avatar size={"sm"} name={user.display_label} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
+    },
+    {
+      name: "Rejected by",
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {rejectedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={user.display_label} enabled>
+              <Avatar size={"sm"} name={user.display_label} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Reviewers",
-      value: reviewers.map((reviewer: any, index: number) => (
-        <Tooltip key={index} content={reviewer.display_label}>
-          <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {reviewers.map((reviewer: any, index: number) => (
+            <Tooltip key={index} content={reviewer.display_label} enabled>
+              <Avatar size={"sm"} name={reviewer.display_label} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Updated",
@@ -118,23 +139,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Actions",
       value: (
         <div className="flex flex-wrap gap-2">
-          <PcApproveButton
-            approvers={approvers}
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
-          <PcMergeButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed || (checkData && checkData[TASK_OBJECT].count)}
-          />
-          <PcCloseButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
+          <PcActionButton />
         </div>
       ),
     },
@@ -156,10 +161,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       )}
 
       <div className={classNames("grid grid-cols-3 gap-2", className)} {...props}>
-        <div className="col-start-1 col-end-3 space-y-4">
+        <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
-            <CardWithBorder contentClassName="p-4" data-testid="pc-description">
-              <div className="flex items-center gap-2 mb-2">
+            <CardWithBorder contentClassName="" data-testid="pc-description">
+              <CardWithBorder.Title className="flex gap-2 items-center">
                 <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
                 {proposedChangesDetails?.created_by?.node?.display_label}
@@ -168,13 +173,16 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
                   date={proposedChangesDetails.description.updated_at}
                   className="ml-auto text-xs font-normal text-gray-600"
                 />
-              </div>
+              </CardWithBorder.Title>
 
-              <MarkdownRender markdownText={proposedChangesDetails.description.value} />
+              <MarkdownRender
+                markdownText={proposedChangesDetails.description.value}
+                className="m-2"
+              />
             </CardWithBorder>
           )}
 
-          <Conversations />
+          <Overview />
         </div>
 
         <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">

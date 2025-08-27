@@ -1,8 +1,14 @@
+import {
+  AVAILABLE_IP_FILTER_NAME,
+  IP_PREFIX_AVAILABLE_KIND,
+  IP_PREFIX_GENERIC,
+} from "@/entities/ipam/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
+  dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
 import { PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -15,7 +21,54 @@ export interface BuildGetIpPrefixListQueryParams extends PaginationParams {
   relationships: Array<RelationshipSchema>;
 }
 
-export function buildGetIpPrefixListQuery({
+// Common fields reused across IP Prefix queries
+export const IP_PREFIX_KIND_DETAILS_FRAGMENT = {
+  ancestors: {
+    count: true,
+  },
+  children: {
+    count: true,
+  },
+  ip_addresses: {
+    count: true,
+  },
+};
+
+export function buildGetIpPrefixListWithoutAvailabilityQuery({
+  limit,
+  offset,
+  filters,
+  objectKind,
+  attributes,
+  relationships,
+}: BuildGetIpPrefixListQueryParams) {
+  const cleanedFilters = dropIncludeAvailableWhenFalse(filters);
+
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${objectKind}`,
+      [objectKind]: {
+        __args: {
+          limit,
+          offset,
+          ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
+        },
+        edges: {
+          node: {
+            id: true,
+            display_label: true,
+            hfid: true,
+            ...IP_PREFIX_KIND_DETAILS_FRAGMENT,
+            ...addAttributesToRequest(attributes),
+            ...addRelationshipsToRequest(relationships),
+          },
+        },
+      },
+    },
+  });
+}
+
+export function buildGetIpPrefixListWithAvailabilityQuery({
   limit,
   offset,
   filters,
@@ -26,10 +79,12 @@ export function buildGetIpPrefixListQuery({
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
-      [objectKind]: {
+      [IP_PREFIX_GENERIC]: {
         __args: {
           limit,
           offset,
+          [AVAILABLE_IP_FILTER_NAME]: true,
+          ...(objectKind !== IP_PREFIX_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {
@@ -37,24 +92,27 @@ export function buildGetIpPrefixListQuery({
             id: true,
             display_label: true,
             hfid: true,
-            ...addAttributesToRequest(attributes),
-            ...addRelationshipsToRequest(relationships),
-            ip_namespace: {
-              node: {
-                id: true,
-                display_label: true,
-                hfid: true,
+            __on: [
+              {
+                __typeName: objectKind,
+                ...IP_PREFIX_KIND_DETAILS_FRAGMENT,
+                ...addAttributesToRequest(attributes),
+                ...addRelationshipsToRequest(relationships),
               },
-            },
-            ancestors: {
-              count: true,
-            },
-            children: {
-              count: true,
-            },
-            ip_addresses: {
-              count: true,
-            },
+              {
+                __typeName: IP_PREFIX_AVAILABLE_KIND,
+                parent: {
+                  node: {
+                    id: true,
+                    display_label: true,
+                    hfid: true,
+                    ancestors: {
+                      count: true, // Ancestors are not available on this kind. Instead, we do parent ancestors + 1
+                    },
+                  },
+                },
+              },
+            ],
           },
         },
       },

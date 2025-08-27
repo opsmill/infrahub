@@ -2555,7 +2555,7 @@ async def run(
         config.load_config(profile, num_sites, num_device_per_site, bool_has_bgp_mesh, bool_has_branch)
     except ConfigError as ex:
         log.fatal(ex)
-        return False  # FIXME: What should I return here for the script to fail properly
+        return
 
     log.info(f"Loading data with {config}")
 
