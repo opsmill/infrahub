@@ -67,7 +67,7 @@ export const ArtifactGenerateButton = (props: tGenerateProps) => {
 
       setIsLoading(false);
       toast(
-        <Alert message="An error occured while generating the artifact" type={ALERT_TYPES.ERROR} />
+        <Alert message="An error occurred while generating the artifact" type={ALERT_TYPES.ERROR} />
       );
     }
   };

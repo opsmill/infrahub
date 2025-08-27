@@ -16,7 +16,7 @@ export function GroupItem({ group, children, className, ...props }: GroupItemPro
       className={classNames(
         focusVisibleStyle,
         "inline-flex items-center px-1 py-0.5 text-sm bg-stone-100 rounded-full overflow-hidden max-w-full",
-        "transition-all border border-transparent border-stone-100",
+        "transition-all border border-stone-100",
         className
       )}
       textValue={label}

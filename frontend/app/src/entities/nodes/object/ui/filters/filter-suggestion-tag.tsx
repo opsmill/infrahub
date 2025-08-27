@@ -21,7 +21,7 @@ export function FilterSuggestionTag({ label, className, ...props }: FilterSugges
       {...props}
     >
       <span className="ml-1.5">{label}</span>
-      <div className="w-px bg-gray-300 self-stretch h-6" />
+      <div className="border-r border-dashed border-gray-300 h-6" />
       <Icon icon="mdi:plus" className="text-base text-gray-400 group-hover:text-indigo-700" />
     </Tag>
   );

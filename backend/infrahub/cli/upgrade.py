@@ -11,22 +11,14 @@ from prefect.client.orchestration import get_client
 from rich import print as rprint
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.initialization import (
-    create_anonymous_role,
-    create_default_roles,
-    create_super_administrator_role,
-    create_super_administrators_group,
-    initialize_registry,
-)
+from infrahub.core.initialization import create_anonymous_role, create_default_account_groups, initialize_registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreAccount, CoreObjectPermission
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus.local import BusSimulator
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
@@ -61,10 +53,9 @@ async def upgrade_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    service = await InfrahubServices.new(
-        database=dbdriver, message_bus=BusSimulator(), workflow=WorkflowLocalExecution()
-    )
     await initialize_registry(db=dbdriver)
+
+    build_component_registry()
 
     # NOTE add step to validate if the database and the task manager are reachable
 
@@ -83,7 +74,7 @@ async def upgrade_cmd(
         return
 
     await initialize_internal_schema()
-    await update_core_schema(db=dbdriver, service=service, initialize=False)
+    await update_core_schema(db=dbdriver, initialize=False)
 
     # -------------------------------------------
     # Upgrade Internal Objects, generated and managed by Infrahub
@@ -98,7 +89,7 @@ async def upgrade_cmd(
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
-        await trigger_configure_all(service=service)
+        await trigger_configure_all()
 
     await dbdriver.close()
 
@@ -124,11 +115,7 @@ async def upgrade_menu(db: InfrahubDatabase) -> None:
 
 
 async def upgrade_permissions(db: InfrahubDatabase) -> None:
-    existing_permissions = await NodeManager.query(
-        schema=InfrahubKind.OBJECTPERMISSION,
-        db=db,
-        limit=1,
-    )
+    existing_permissions = await NodeManager.query(schema=CoreObjectPermission, db=db, limit=1)
     if existing_permissions:
         rprint("Permissions Up to date, nothing to update")
         return
@@ -138,14 +125,8 @@ async def upgrade_permissions(db: InfrahubDatabase) -> None:
 
 
 async def setup_permissions(db: InfrahubDatabase) -> None:
-    existing_accounts = await NodeManager.query(
-        schema=InfrahubKind.ACCOUNT,
-        db=db,
-        limit=1,
-    )
-    administrator_role = await create_super_administrator_role(db=db)
-    await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=existing_accounts)
-    await create_default_roles(db=db)
+    existing_accounts = await NodeManager.query(schema=CoreAccount, db=db, limit=1)
+    await create_default_account_groups(db=db, admin_accounts=existing_accounts)
 
     if config.SETTINGS.main.allow_anonymous_access:
         await create_anonymous_role(db=db)

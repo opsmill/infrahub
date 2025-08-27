@@ -9,7 +9,7 @@ const toolbarButtonVariants = cva(
     variants: {
       variant: {
         default: "border-neutral-200 hover:bg-neutral-50",
-        danger: "text-red-600 border-red-200",
+        danger: "text-red-600 border-red-200 hover:bg-neutral-50",
         ghost: "text-neutral-600 bg-transparent hover:bg-neutral-200/80",
       },
     },

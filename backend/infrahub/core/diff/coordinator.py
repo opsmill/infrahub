@@ -11,6 +11,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
+from ..query.diff import get_num_changes_in_time_range_by_branch
 from .model.field_specifiers_map import NodeFieldSpecifierMap
 from .model.path import (
     BranchTrackingId,
@@ -419,10 +420,11 @@ class DiffCoordinator:
                 log.info(
                     f"Checking number of changes on branches for {diff_request!r}, from_time={current_time}, to_time={end_time}"
                 )
-                num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
+                num_changes_by_branch = await get_num_changes_in_time_range_by_branch(
                     branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
                     from_time=current_time,
                     to_time=end_time,
+                    db=self.db,
                 )
                 log.info(f"Number of changes: {num_changes_by_branch}")
                 might_have_changes_in_time_range = any(num_changes_by_branch.values())

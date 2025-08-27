@@ -51,6 +51,8 @@ class WorkflowDefinition(BaseModel):
 
     @property
     def entrypoint(self) -> str:
+        if self.type == WorkflowType.USER:
+            return f"{self.module}:{self.function}"
         return f"backend/{self.module.replace('.', '/')}:{self.function}"
 
     @property

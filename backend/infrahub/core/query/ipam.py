@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
 from infrahub.core.query import QueryType
 from infrahub.core.registry import registry
@@ -21,8 +22,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-PREFIX_ATTRIBUTE_LABEL = "AttributeIPNetwork"
-ADDRESS_ATTRIBUTE_LABEL = "AttributeIPHost"
+PREFIX_ATTRIBUTE_LABEL = GraphAttributeIPNetworkNode.get_default_label()
+ADDRESS_ATTRIBUTE_LABEL = GraphAttributeIPHostNode.get_default_label()
 
 
 @dataclass
@@ -280,14 +281,13 @@ class IPPrefixUtilization(Query):
         MATCH path = (
             (pfx)-[r_1:IS_RELATED]-(rl:Relationship)-[r_2:IS_RELATED]-(child:Node)
             -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
-            -[r_attr_val:HAS_VALUE]->(av:AttributeValue)
+            -[r_attr_val:HAS_VALUE]->(av:{PREFIX_ATTRIBUTE_LABEL}|{ADDRESS_ATTRIBUTE_LABEL})
         )
         WHERE %(id_func)s(r_1) = %(id_func)s(r_rel1)
         AND %(id_func)s(r_2) = %(id_func)s(r_rel2)
         AND ({rel_filter("r_attr")})
         AND ({rel_filter("r_attr_val")})
         AND attr.name IN ["prefix", "address"]
-        AND any(l in labels(av) WHERE l in ["{PREFIX_ATTRIBUTE_LABEL}", "{ADDRESS_ATTRIBUTE_LABEL}"])
         WITH
             path,
             pfx,
@@ -478,6 +478,7 @@ class IPPrefixReconcileQuery(Query):
             -[pr2:IS_RELATED {status: "active"}]-(maybe_new_parent:%(ip_prefix_kind)s)
             -[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
             -[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
+            USING INDEX av:%(ip_prefix_attribute_kind)s(binary_address)
             WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
             AND av.version = $ip_version
             AND av.binary_address IN $possible_prefix_list
@@ -514,15 +515,16 @@ class IPPrefixReconcileQuery(Query):
             OPTIONAL MATCH child_path = (
                  (ip_namespace)-[r1:IS_RELATED]
                  -(ns_rel:Relationship)-[r2:IS_RELATED]
-                 -(maybe_new_child:Node)-[har:HAS_ATTRIBUTE]
+                 -(maybe_new_child:%(ip_prefix_kind)s|%(ip_address_kind)s)-[har:HAS_ATTRIBUTE]
                  ->(a:Attribute)-[hvr:HAS_VALUE]
-                 ->(av:AttributeValue)
+                 ->(av:%(ip_prefix_attribute_kind)s|%(ip_address_attribute_kind)s)
             )
+            USING INDEX av:%(ip_prefix_attribute_kind)s(binary_address)
+            USING INDEX av:%(ip_address_attribute_kind)s(binary_address)
             WHERE $is_prefix  // only prefix nodes can have children
             AND ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
             AND any(child_kind IN [$ip_prefix_kind, $ip_address_kind] WHERE child_kind IN labels(maybe_new_child))
             AND a.name in ["prefix", "address"]
-            AND any(attr_kind IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind] WHERE attr_kind IN labels(av))
             AND (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
             AND (
                 ($ip_prefix_kind IN labels(maybe_new_child) AND av.prefixlen > $prefixlen)
@@ -580,6 +582,10 @@ class IPPrefixReconcileQuery(Query):
             collect(new_child) as new_children
         """ % {
             "branch_filter": branch_filter,
+            "ip_prefix_kind": InfrahubKind.IPPREFIX,
+            "ip_address_kind": InfrahubKind.IPADDRESS,
+            "ip_prefix_attribute_kind": PREFIX_ATTRIBUTE_LABEL,
+            "ip_address_attribute_kind": ADDRESS_ATTRIBUTE_LABEL,
         }
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]

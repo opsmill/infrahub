@@ -91,7 +91,7 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
   });
 
   if (error) {
-    return <ErrorScreen message="An error occured while retrieving the task details." />;
+    return <ErrorScreen message="An error occurred while retrieving the task details." />;
   }
 
   if (loading) {

@@ -16,7 +16,11 @@ export interface TableAttributeCellProps {
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
   const attributeKind = attributeSchema.kind as AttributeKind;
-  if (!attributeData || (!attributeData.value && attributeData.value !== 0)) return "-";
+  if (
+    !attributeData ||
+    (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false)
+  )
+    return "-";
 
   switch (attributeKind) {
     case ATTRIBUTE_KIND.DROPDOWN: {

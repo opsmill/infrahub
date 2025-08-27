@@ -25,7 +25,18 @@ export const GET_PROPOSED_CHANGE_DETAILS = gql`
           state {
             value
           }
+          is_draft {
+            value
+          }
           approved_by {
+            edges {
+              node {
+                id
+                display_label
+              }
+            }
+          }
+          rejected_by {
             edges {
               node {
                 id

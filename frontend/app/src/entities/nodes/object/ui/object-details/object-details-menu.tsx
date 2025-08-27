@@ -181,6 +181,7 @@ export function ObjectDetailsMenu({
             await queryClient.invalidateQueries({
               predicate: (query) => query.queryKey.includes("objects"),
             });
+            setIsEditModalOpen(false);
           }}
           objectid={objectData.id!}
           objectname={objectSchema.kind!}

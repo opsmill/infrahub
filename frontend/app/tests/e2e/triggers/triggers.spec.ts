@@ -3,7 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe("Node Trigger - ", () => {
+test.describe("Node Trigger", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 

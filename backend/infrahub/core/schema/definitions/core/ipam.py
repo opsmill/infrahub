@@ -59,7 +59,7 @@ builtin_ip_prefix = GenericSchema(
     name="IPPrefix",
     label="IP Prefix",
     namespace="Builtin",
-    description="IPv6 or IPv4 prefix also referred as network",
+    description="IPv4 or IPv6 prefix also referred as network",
     include_in_menu=False,
     default_filter="prefix__value",
     order_by=["prefix__version", "prefix__binary_address", "prefix__prefixlen"],
@@ -142,7 +142,7 @@ builtin_ip_address = GenericSchema(
     name="IPAddress",
     label="IP Address",
     namespace="Builtin",
-    description="IPv6 or IPv4 address",
+    description="IPv4 or IPv6 address",
     include_in_menu=False,
     default_filter="address__value",
     order_by=["address__version", "address__binary_address"],
@@ -175,6 +175,32 @@ builtin_ip_address = GenericSchema(
         ),
     ],
 )
+
+internal_ipam_ip_range_available = NodeSchema(
+    name="IPRangeAvailable",
+    label="Available IP Range",
+    namespace="Internal",
+    description="Range of IPv4 or IPv6 addresses which has not been allocated yet",
+    include_in_menu=False,
+    display_labels=["address__value", "last_address__value"],
+    branch=BranchSupportType.AWARE,
+    inherit_from=[InfrahubKind.IPADDRESS],
+    generate_profile=False,
+    attributes=[Attr(name="last_address", kind="IPHost", branch=BranchSupportType.AWARE, order_weight=2000)],
+)
+
+internal_ipam_ip_prefix_available = NodeSchema(
+    name="IPPrefixAvailable",
+    label="Available IP Prefix",
+    namespace="Internal",
+    description="IPv4 or IPv6 prefix also referred as network which has not been allocated yet",
+    include_in_menu=False,
+    display_labels=["prefix__value"],
+    branch=BranchSupportType.AWARE,
+    inherit_from=[InfrahubKind.IPPREFIX],
+    generate_profile=False,
+)
+
 
 core_ipam_namespace = NodeSchema(
     name="Namespace",

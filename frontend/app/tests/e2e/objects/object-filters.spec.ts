@@ -94,23 +94,22 @@ test.describe("Object filters", () => {
     await page.goto("/objects/InfraInterface");
     await expect(page.getByTestId("object-items")).toContainText("Interface L2");
     await expect(page.getByTestId("object-items")).toContainText("Interface L3");
+    await expect(page.getByTestId("object-schema-schema-selector")).toContainText("All Interface");
 
     await test.step("filter using kind", async () => {
-      await page.getByRole("button", { name: "Kind", exact: true }).click();
-      await page.getByRole("combobox", { name: "kind" }).click();
+      await page.getByTestId("object-schema-schema-selector").click();
       await page.getByRole("option", { name: "Interface L3 Infra", exact: true }).click();
-      await page.getByRole("button", { name: "Filter" }).click();
 
-      await expect(page.getByLabel("Kind contains InfraInterfaceL3")).toBeVisible();
+      await expect(page.getByTestId("object-schema-schema-selector")).toContainText(
+        "Interface L3Infra"
+      );
       await expect(page.getByTestId("object-items")).toContainText("Interface L3");
       await expect(page.getByTestId("object-items")).not.toContainText("Interface L2");
-
-      await page.getByRole("button", { name: "Kind", exact: true }).click();
-      await expect(page.getByLabel("kind", { exact: true })).toContainText("Interface L3 Infra");
     });
 
     await test.step("clear kind filter", async () => {
-      await page.getByLabel("Kind contains InfraInterfaceL3").click();
+      await page.getByTestId("object-schema-schema-selector").click();
+      await page.getByRole("option", { name: "All Interface", exact: true }).click();
 
       await expect(page.getByTestId("object-items")).toContainText("Interface L2");
       await expect(page.getByTestId("object-items")).toContainText("Interface L3");

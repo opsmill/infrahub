@@ -1,8 +1,17 @@
 import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_ROLES = gql`
-  query GET_ROLE_MANAGEMENT_ROLES($search: String) {
-    CoreAccountRole(any__value: $search, partial_match: true) {
+  query GET_ROLE_MANAGEMENT_ROLES(
+    $search: String
+    $offset: Int
+    $limit: Int
+  ) {
+    CoreAccountRole(
+      any__value: $search
+      partial_match: true
+      offset: $offset
+      limit: $limit
+    ) {
       count
       edges {
         node {

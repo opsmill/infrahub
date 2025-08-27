@@ -7,7 +7,6 @@ import pytest
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -34,8 +33,6 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         prefect_test_fixture,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
-
-        bus_simulator.service._cache = RedisCache()
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, age=25, description="The famous Joe Doe")

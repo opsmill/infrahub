@@ -1,14 +1,14 @@
 ---
-title: Configuration file
+title: Infrahub Configuration
+description: Configuration options for Infrahub
 ---
 
-import CodeBlock from "@theme/CodeBlock";
+{/*THIS FILE IS GENERATED AUTOMATICALLY, DO NOT EDIT MANUALLY*/}
+{/*SEE - invoke docs.generate-config and infrahub_config.j2*/}
 
-# Configuration file
+# Infrahub configuration
 
 The Infrahub containers have a number of environmental variables available at runtime to affect their behavior.
-
-## Usage
 
 Here are a few common methods of setting environmental variables:
 
@@ -22,95 +22,188 @@ Here are a few common methods of setting environmental variables:
 
 :::
 
-## Infrahub environmental variables
-<!-- vale off -->
+## Main
 
-| Name | Description | Example | Alias |  |
-|---|---|---|---|---|
-| AWS_ACCESS_KEY_ID |  |  |  |  |
-| AWS_SECRET_ACCESS_KEY |  |  |  |  |
-| DB_TYPE |  |  |  |  |
-| INFRAHUB_ADDRESS | "HTTP endpoint of the API Server, used by the Task worker for internal communication" | http://server:8000 |  |  |
-| INFRAHUB_ALLOW_ANONYMOUS_ACCESS | Indicates if the system allows anonymous read access | TRUE |  |  |
-| INFRAHUB_ANONYMOUS_ACCESS_ROLE | Indicates if the system allows anonymous read access | Anonymous User | | |
-| INFRAHUB_ANALYTICS_ADDRESS |  |  |  |  |
-| INFRAHUB_ANALYTICS_API_KEY |  |  |  |  |
-| INFRAHUB_ANALYTICS_ENABLE |  |  |  |  |
-| INFRAHUB_API_CORS_ALLOW_CREDENTIALS | "If True, cookies will be allowed to be included in cross-site HTTP requests" |  |  |  |
-| INFRAHUB_API_CORS_ALLOW_HEADERS | The list of non-standard HTTP headers allowed in requests from the browser |  |  |  |
-| INFRAHUB_API_CORS_ALLOW_METHODS | A list of HTTP verbs that are allowed for the actual request |  |  |  |
-| INFRAHUB_API_CORS_ALLOW_ORIGINS | A list of origins that are authorized to make cross-site HTTP requests |  |  |  |
-| INFRAHUB_BROKER_ADDRESS |  | message-queue |  |  |
-| INFRAHUB_BROKER_DRIVER |  |  |  |  |
-| INFRAHUB_BROKER_ENABLE |  |  |  |  |
-| INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES | The maximum number of concurrent messages fetched by each worker |  |  |  |
-| INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES | The maximum number of retries that are attempted for failed messages |  |  |  |
-| INFRAHUB_BROKER_NAMESPACE |  |  |  |  |
-| INFRAHUB_BROKER_PASSWORD |  | infrahub |  |  |
-| INFRAHUB_BROKER_PORT | Specified if running on a non default port. |  |  |  |
-| INFRAHUB_BROKER_TLS_CA_FILE | File path to CA cert or bundle in PEM format |  |  |  |
-| INFRAHUB_BROKER_TLS_ENABLED | Indicates if TLS is enabled for the connection |  |  |  |
-| INFRAHUB_BROKER_TLS_INSECURE | Indicates if TLS certificates are verified |  |  |  |
-| INFRAHUB_BROKER_USERNAME |  |  |  |  |
-| INFRAHUB_BROKER_VIRTUALHOST | The virtual host to connect to |  |  |  |
-| INFRAHUB_CACHE_ADDRESS |  | cache |  |  |
-| INFRAHUB_CACHE_DATABASE | Id of the database to use |  |  |  |
-| INFRAHUB_CACHE_DRIVER |  |  |  |  |
-| INFRAHUB_CACHE_ENABLE |  |  |  |  |
-| INFRAHUB_CACHE_PASSWORD |  |  |  |  |
-| INFRAHUB_CACHE_PORT | Specified if running on a non default port (6379) | 6379 |  |  |
-| INFRAHUB_CACHE_TLS_CA_FILE | File path to CA cert or bundle in PEM format |  |  |  |
-| INFRAHUB_CACHE_TLS_ENABLED | Indicates if TLS is enabled for the connection |  |  |  |
-| INFRAHUB_CACHE_TLS_INSECURE | Indicates if TLS certificates are verified |  |  |  |
-| INFRAHUB_CACHE_USERNAME |  |  |  |  |
-| INFRAHUB_CONFIG | Location of the configuration file for Infrahub | infrahub.toml |  |  |
-| INFRAHUB_DB_ADDRESS |  | database |  |  |
-| INFRAHUB_DB_DATABASE | Name of the database |  |  |  |
-| INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY | Maximum number of level to search in a hierarchy. |  |  |  |
-| INFRAHUB_DB_PASSWORD |  |  |  |  |
-| INFRAHUB_DB_PORT |  |  |  |  |
-| INFRAHUB_DB_PROTOCOL |  |  |  |  |
-| INFRAHUB_DB_QUERY_SIZE_LIMIT | The max number of records to fetch in a single query before performing internal pagination. |  |  |  |
-| INFRAHUB_DB_RETRY_LIMIT | Maximum number of times a transient issue in a transaction should be retried. |  |  |  |
-| INFRAHUB_DB_TLS_CA_FILE | File path to CA cert or bundle in PEM format |  |  |  |
-| INFRAHUB_DB_TLS_ENABLED | Indicates if TLS is enabled for the connection |  |  |  |
-| INFRAHUB_DB_TLS_INSECURE | Indicates if TLS certificates are verified |  |  |  |
-| INFRAHUB_DB_TYPE |  | neo4j |  |  |
-| INFRAHUB_DB_USERNAME |  |  |  |  |
-| INFRAHUB_DOCS_INDEX_PATH | Full path of saved json containing pre-indexed documentation |  |  |  |
-| INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS |  |  |  |  |
-| INFRAHUB_INITIAL_ADMIN_PASSWORD | The initial password for the admin user |  |  |  |
-| INFRAHUB_INITIAL_ADMIN_TOKEN | The initial password for the admin user |  |  |  |
-| INFRAHUB_INITIAL_AGENT_PASSWORD | The initial password for the agent user |  |  |  |
-| INFRAHUB_INITIAL_AGENT_TOKEN | The initial password for the agent user |  |  |  |
-| INFRAHUB_INITIAL_DEFAULT_BRANCH | "Defines the name of the default branch within Infrahub, can only be set once during initialization of the system." |  |  |  |
-| INFRAHUB_INTERNAL_ADDRESS |  | http://infrahub-server:8000 |  |  |
-| INFRAHUB_LOG_LEVEL | "Set the level of the log to print in the console: info, debug, warning" | INFO |  |  |
-| INFRAHUB_LOGGING_REMOTE_API_SERVER_DSN |  |  |  |  |
-| INFRAHUB_LOGGING_REMOTE_ENABLE |  |  |  |  |
-| INFRAHUB_LOGGING_REMOTE_FRONTEND_DSN |  |  |  |  |
-| INFRAHUB_LOGGING_REMOTE_GIT_AGENT_DSN |  |  |  |  |
-| INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME | The maximum allowed time (in seconds) for a validator to run. |  |  |  |
-| INFRAHUB_MISC_PRINT_QUERY_DETAILS |  |  |  |  |
-| INFRAHUB_MISC_START_BACKGROUND_RUNNER |  |  |  |  |
-| INFRAHUB_PRODUCTION | "Enable or disable the production mode, in production mode the logs are generated in JSON format" | FALSE |  |  |
-| INFRAHUB_SCHEMA_STRICT_MODE | Enable or disable schema strict mode | TRUE | | |
-| INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME | Lifetime of access token in seconds |  |  |  |
-| INFRAHUB_SECURITY_SECRET_KEY | The secret key used to validate authentication tokens |  |  |  |
-| INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME | Lifetime of refresh token in seconds |  |  |  |
-| INFRAHUB_STORAGE_BUCKET_NAME |  | infrahub-data | AWS_S3_BUCKET_NAME |  |
-| INFRAHUB_STORAGE_CUSTOM_DOMAIN |  |  | AWS_S3_CUSTOM_DOMAIN |  |
-| INFRAHUB_STORAGE_DEFAULT_ACL |  |  | AWS_DEFAULT_ACL |  |
-| INFRAHUB_STORAGE_ENDPOINT_URL |  |  | AWS_S3_ENDPOINT_URL |  |
-| INFRAHUB_STORAGE_LOCAL_PATH |  | /opt/infrahub/storage |  |  |
-| INFRAHUB_STORAGE_QUERYTSTRING_AUTH |  |  | AWS_QUERYSTRING_AUTH |  |
-| INFRAHUB_STORAGE_USE_SSL |  |  | AWS_S3_USE_SSL |  |
-| INFRAHUB_STORAGE_DRIVER |  | local |  |  |
-| INFRAHUB_TRACE_ENABLE |  | FALSE |  |  |
-| INFRAHUB_TRACE_EXPORTER_ENDPOINT | OTLP endpoint for exporting traces |  |  |  |
-| INFRAHUB_TRACE_EXPORTER_PROTOCOL | Protocol to be used for exporting traces |  |  |  |
-| INFRAHUB_TRACE_EXPORTER_TYPE | Type of exporter to be used for tracing |  |  |  |
-| INFRAHUB_TRACE_INSECURE | "Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)" |  |  |  |
-| REPOSITORIES_DIRECTORY |  |  |  |  |
-| SYNC_INTERVAL | Time (in seconds) between git repositories synchronizations |  |  |  |
-<!-- vale on -->
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_DOCS_INDEX_PATH` | Full path of saved json containing pre-indexed documentation | string | /opt/infrahub/docs/build/search-index.json |
+| `INFRAHUB_INTERNAL_ADDRESS` | None | None | None |
+| `INFRAHUB_ALLOW_ANONYMOUS_ACCESS` | Indicates if the system allows anonymous read access | boolean | True |
+| `INFRAHUB_ANONYMOUS_ACCESS_ROLE` | Name of the role defining which permissions anonymous users have | string | Anonymous User |
+| `INFRAHUB_TELEMETRY_OPTOUT` | Disable anonymous usage reporting | boolean | False |
+| `INFRAHUB_TELEMETRY_ENDPOINT` | None | string | https://telemetry.opsmill.cloud/infrahub |
+| `INFRAHUB_PERMISSION_BACKENDS` | List of modules to handle permissions, they will be run in the given order | array[string] | ['infrahub.permissions.LocalPermissionBackend'] |
+| `INFRAHUB_PUBLIC_URL` | Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure. | None | None |
+| `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
+
+## Api
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_API_CORS_ALLOW_ORIGINS` | A list of origins that are authorized to make cross-site HTTP requests | array[string] | None |
+| `INFRAHUB_API_CORS_ALLOW_METHODS` | A list of HTTP verbs that are allowed for the actual request | array[string] | None |
+| `INFRAHUB_API_CORS_ALLOW_HEADERS` | The list of non-standard HTTP headers allowed in requests from the browser | array[string] | None |
+| `INFRAHUB_API_CORS_ALLOW_CREDENTIALS` | If True, cookies will be allowed to be included in cross-site HTTP requests | boolean | True |
+
+## Git
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_GIT_REPOSITORIES_DIRECTORY` | None | string | repositories |
+| `INFRAHUB_GIT_SYNC_INTERVAL` | Time (in seconds) between git repositories synchronizations | integer | 10 |
+| `INFRAHUB_GIT_APPEND_GIT_SUFFIX` | Automatically append '.git' to HTTP URLs if for these domains. | array[string] | None |
+
+## Dev
+
+The development settings are only relevant for local development
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_DEV_FRONTEND_REDIRECT_SSO` | Indicates of the frontend should be responsible for the SSO redirection | boolean | False |
+| `INFRAHUB_DEV_ALLOW_ENTERPRISE_CONFIGURATION` | Allow enterprise configuration in development mode, this will not enable the features just allow the configuration. | boolean | False |
+
+## Http
+
+The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_HTTP_TIMEOUT` | Default connection timeout in seconds | integer | 10 |
+| `INFRAHUB_HTTP_TLS_INSECURE` | Indicates if Infrahub will validate server certificates or if the validation is ignored. | boolean | False |
+| `INFRAHUB_HTTP_TLS_CA_BUNDLE` | Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path. | None | None |
+
+## Database
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | None | None | neo4j |
+| `INFRAHUB_DB_PROTOCOL` | None | string | bolt |
+| `INFRAHUB_DB_USERNAME` | None | string | neo4j |
+| `INFRAHUB_DB_PASSWORD` | None | string | admin |
+| `INFRAHUB_DB_ADDRESS` | None | string | localhost |
+| `INFRAHUB_DB_PORT` | None | integer | 7687 |
+| `INFRAHUB_DB_DATABASE` | Name of the database | None | None |
+| `INFRAHUB_DB_POLICY` | Routing policy for database connections | None | None |
+| `INFRAHUB_DB_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
+| `INFRAHUB_DB_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
+| `INFRAHUB_DB_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |
+| `INFRAHUB_DB_QUERY_SIZE_LIMIT` | The max number of records to fetch in a single query before performing internal pagination. | integer | 5000 |
+| `INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` | Maximum number of level to search in a hierarchy. | integer | 5 |
+| `INFRAHUB_DB_RETRY_LIMIT` | Maximum number of times a transient issue in a transaction should be retried. | integer | 3 |
+| `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | Maximum number of concurrent queries that can run (0 means unlimited). | integer | 0 |
+| `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
+
+## Broker
+
+Configuration settings for the message bus.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_BROKER_ENABLE` | None | boolean | True |
+| `INFRAHUB_BROKER_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
+| `INFRAHUB_BROKER_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
+| `INFRAHUB_BROKER_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |
+| `INFRAHUB_BROKER_USERNAME` | None | string | infrahub |
+| `INFRAHUB_BROKER_PASSWORD` | None | string | infrahub |
+| `INFRAHUB_BROKER_ADDRESS` | None | string | localhost |
+| `INFRAHUB_BROKER_PORT` | Specified if running on a non default port. | None | None |
+| `INFRAHUB_BROKER_RABBITMQ_HTTP_PORT` | None | None | None |
+| `INFRAHUB_BROKER_NAMESPACE` | None | string | infrahub |
+| `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
+| `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
+| `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
+| `INFRAHUB_BROKER_DRIVER` | None | None | rabbitmq |
+
+## Cache
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_CACHE_ENABLE` | None | boolean | True |
+| `INFRAHUB_CACHE_ADDRESS` | None | string | localhost |
+| `INFRAHUB_CACHE_PORT` | Specified if running on a non default port (6379) | None | None |
+| `INFRAHUB_CACHE_DATABASE` | Id of the database to use | integer | 0 |
+| `INFRAHUB_CACHE_DRIVER` | None | None | redis |
+| `INFRAHUB_CACHE_USERNAME` | None | string |  |
+| `INFRAHUB_CACHE_PASSWORD` | None | string |  |
+| `INFRAHUB_CACHE_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
+| `INFRAHUB_CACHE_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
+| `INFRAHUB_CACHE_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |
+
+## Workflow
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_WORKFLOW_ENABLE` | None | boolean | True |
+| `INFRAHUB_WORKFLOW_ADDRESS` | None | string | localhost |
+| `INFRAHUB_WORKFLOW_PORT` | Specified if running on a non default port. | None | None |
+| `INFRAHUB_WORKFLOW_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
+| `INFRAHUB_WORKFLOW_DRIVER` | None | None | worker |
+| `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE` | None | string | infrahubasync |
+| `INFRAHUB_WORKFLOW_EXTRA_LOGGERS` | A list of additional logger that will be captured during task execution. | array[string] | None |
+| `INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL` | Log level applied to all extra loggers. | None | INFO |
+| `INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL` | Specify how often the worker should poll the server for tasks (sec) | integer | 2 |
+
+## Miscellaneous
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_MISC_PRINT_QUERY_DETAILS` | None | boolean | False |
+| `INFRAHUB_MISC_START_BACKGROUND_RUNNER` | None | boolean | True |
+| `INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME` | The maximum allowed time (in seconds) for a validator to run. | integer | 1800 |
+| `INFRAHUB_MISC_RESPONSE_DELAY` | Arbitrary delay to add when processing API requests. | integer | 0 |
+
+## Analytics
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_ANALYTICS_ENABLE` | None | boolean | True |
+| `INFRAHUB_ANALYTICS_ADDRESS` | None | None | None |
+| `INFRAHUB_ANALYTICS_API_KEY` | None | None | None |
+
+## Initial
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_INITIAL_DEFAULT_BRANCH` | Defines the name of the default branch within Infrahub, can only be set once during initialization of the system. | string | main |
+| `INFRAHUB_INITIAL_ADMIN_TOKEN` | An optional initial token for the admin account. | None | None |
+| `INFRAHUB_INITIAL_ADMIN_PASSWORD` | The initial password for the admin user | string | infrahub |
+| `INFRAHUB_INITIAL_AGENT_TOKEN` | An optional initial token for a git-agent account. | None | None |
+| `INFRAHUB_INITIAL_AGENT_PASSWORD` | An optional initial password for a git-agent account. | None | None |
+
+## Policy
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS` | Number of approvals required for proposed changes. (Enterprise only: not available in the community version.) | integer | 0 |
+| `INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS` | Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.) | boolean | False |
+
+## Security
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME` | Lifetime of access token in seconds | integer | 3600 |
+| `INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME` | Lifetime of refresh token in seconds | integer | 2592000 |
+| `INFRAHUB_SECURITY_SECRET_KEY` | The secret key used to validate authentication tokens | string | None |
+| `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | The selected OAuth2 providers | array | None |
+| `INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS` | None | None | None |
+| `INFRAHUB_SECURITY_OIDC_PROVIDERS` | The selected OIDC providers | array | None |
+| `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | None | None |
+| `INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS` | Indicates if untrusted Jinja2 filters should be disallowed for computed attributes | boolean | True |
+| `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
+
+## Trace
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_TRACE_ENABLE` | None | boolean | False |
+| `INFRAHUB_TRACE_INSECURE` | Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS) | boolean | True |
+| `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | None | console |
+| `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | None | grpc |
+| `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | OTLP endpoint for exporting traces | None | None |
+
+## Experimental features
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS` | None | boolean | False |
+| `INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX` | None | boolean | False |

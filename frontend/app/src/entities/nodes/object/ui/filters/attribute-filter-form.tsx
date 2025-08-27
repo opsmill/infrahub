@@ -27,7 +27,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
     if (condition === FILTER_CONDITION.CONTAINS) {
       const { attribute } = formData;
 
-      if (!attribute && attribute !== 0) {
+      if (!attribute && attribute !== 0 && attribute !== false) {
         return setFilters(filters.filter((f) => !f.name.startsWith(attributeSchema.name)));
       }
 

@@ -1,4 +1,5 @@
 import importlib
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -16,15 +17,16 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.graph.index import attr_value_index, node_indexes, rel_indexes
+from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
+from infrahub.core.node.proposed_change import CoreProposedChange
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.protocols import CoreAccount
+from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
@@ -35,7 +37,7 @@ from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
-from infrahub.permissions import PermissionBackend
+from infrahub.permissions import PermissionBackend, get_or_create_global_permission
 from infrahub.storage import InfrahubObjectStorage
 
 if TYPE_CHECKING:
@@ -117,6 +119,7 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
     registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
+    registry.node[InfrahubKind.PROPOSEDCHANGE] = CoreProposedChange
 
     # ---------------------------------------------------
     # Instantiate permission backends
@@ -129,8 +132,6 @@ async def add_indexes(db: InfrahubDatabase) -> None:
         index_manager: IndexManagerBase = IndexManagerMemgraph(db=db)
     index_manager = IndexManagerNeo4j(db=db)
 
-    if config.SETTINGS.experimental_features.value_db_index:
-        node_indexes.append(attr_value_index)
     index_manager.init(nodes=node_indexes, rels=rel_indexes)
     log.debug("Loading database indexes ..")
     await index_manager.add()
@@ -321,7 +322,7 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
+async def create_super_administrator_role(db: InfrahubDatabase) -> CoreAccountRole:
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
         db=db,
@@ -333,15 +334,15 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
 
     role_name = "Super Administrator"
-    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-    await obj.new(db=db, name=role_name, permissions=[permission])
-    await obj.save(db=db)
+    role = await Node.init(db=db, schema=CoreAccountRole)
+    await role.new(db=db, name=role_name, permissions=[permission])
+    await role.save(db=db)
     log.info(f"Created account role: {role_name}")
 
-    return obj
+    return role
 
 
-async def create_default_roles(db: InfrahubDatabase) -> Node:
+async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     repo_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await repo_permission.new(
         db=db,
@@ -370,20 +371,13 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
     await proposed_change_permission.save(db=db)
 
     # Other permissions, created to keep references of them from the start
-    for permission_action, permission_description in (
-        (GlobalPermissions.EDIT_DEFAULT_BRANCH, "Allow a user to change data in the default branch"),
-        (GlobalPermissions.MANAGE_ACCOUNTS, "Allow a user to manage accounts, account roles and account groups"),
-        (GlobalPermissions.MANAGE_PERMISSIONS, "Allow a user to manage permissions"),
-        (GlobalPermissions.MERGE_BRANCH, "Allow a user to merge branches"),
+    for permission_action in (
+        GlobalPermissions.EDIT_DEFAULT_BRANCH,
+        GlobalPermissions.MANAGE_ACCOUNTS,
+        GlobalPermissions.MANAGE_PERMISSIONS,
+        GlobalPermissions.MERGE_BRANCH,
     ):
-        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await permission.new(
-            db=db,
-            action=permission_action.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
-            description=permission_description,
-        )
-        await permission.save(db=db)
+        await get_or_create_global_permission(db=db, permission=permission_action)
 
     view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await view_permission.new(
@@ -408,7 +402,7 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
     await modify_permission.save(db=db)
 
     role_name = "General Access"
-    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    role = await Node.init(db=db, schema=CoreAccountRole)
     await role.new(
         db=db,
         name=role_name,
@@ -423,16 +417,42 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
     await role.save(db=db)
     log.info(f"Created account role: {role_name}")
 
-    group_name = "Infrahub Users"
-    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-    await group.new(db=db, name=group_name, roles=[role])
-    await group.save(db=db)
-    log.info(f"Created account group: {group_name}")
+    return role
+
+
+async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAccountRole:
+    edit_default_branch_permission = await get_or_create_global_permission(
+        db=db, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH
+    )
+    reviewer_permission = await get_or_create_global_permission(
+        db=db, permission=GlobalPermissions.REVIEW_PROPOSED_CHANGE
+    )
+
+    proposed_change_update_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await proposed_change_update_permission.new(
+        db=db,
+        name="ProposedChange",
+        namespace="Core",
+        action=PermissionAction.UPDATE.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to update proposed changes",
+    )
+    await proposed_change_update_permission.save(db=db)
+
+    role_name = "Proposed Change Reviewer"
+    role = await Node.init(db=db, schema=CoreAccountRole)
+    await role.new(
+        db=db,
+        name=role_name,
+        permissions=[edit_default_branch_permission, reviewer_permission, proposed_change_update_permission],
+    )
+    await role.save(db=db)
+    log.info(f"Created account role: {role_name}")
 
     return role
 
 
-async def create_anonymous_role(db: InfrahubDatabase) -> Node:
+async def create_anonymous_role(db: InfrahubDatabase) -> CoreAccountRole:
     deny_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await deny_permission.new(
         db=db, name="*", namespace="*", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
@@ -445,7 +465,7 @@ async def create_anonymous_role(db: InfrahubDatabase) -> Node:
         hfid=["*", "*", PermissionAction.VIEW.value, str(PermissionDecision.ALLOW_ALL.value)],
     )
 
-    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    role = await Node.init(db=db, schema=CoreAccountRole)
     await role.new(
         db=db, name=config.SETTINGS.main.anonymous_access_role, permissions=[deny_permission, view_permission]
     )
@@ -455,21 +475,37 @@ async def create_anonymous_role(db: InfrahubDatabase) -> Node:
     return role
 
 
-async def create_super_administrators_group(
-    db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]
-) -> Node:
-    group_name = "Super Administrators"
-    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-    await group.new(db=db, name=group_name, roles=[role])
+async def create_accounts_group(
+    db: InfrahubDatabase, name: str, roles: Sequence[CoreAccountRole], accounts: Sequence[CoreAccount]
+) -> CoreAccountGroup:
+    group = await Node.init(db=db, schema=CoreAccountGroup)
+    await group.new(db=db, name=name, roles=list(roles))
     await group.save(db=db)
-    log.info(f"Created account group: {group_name}")
+    log.info(f"Created account group: {name}")
 
-    for admin_account in admin_accounts:
-        await group.members.add(db=db, data=admin_account)  # type: ignore[attr-defined]
-        await group.members.save(db=db)  # type: ignore[attr-defined]
-        log.info(f"Assigned account group: {group_name} to {admin_account.name.value}")
+    for account in accounts:
+        await group.members.add(db=db, data=account)  # type: ignore[arg-type]
+        await group.members.save(db=db)
+        log.info(f"Assigned account group: {name} to {account.name.value}")
 
     return group
+
+
+async def create_default_account_groups(
+    db: InfrahubDatabase,
+    admin_accounts: Sequence[CoreAccount] | None = None,
+    accounts: Sequence[CoreAccount] | None = None,
+) -> None:
+    administrator_role = await create_super_administrator_role(db=db)
+    await create_accounts_group(
+        db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts or []
+    )
+
+    default_role = await create_default_role(db=db)
+    proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
+    await create_accounts_group(
+        db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts or []
+    )
 
 
 async def first_time_initialization(db: InfrahubDatabase) -> None:
@@ -522,12 +558,10 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
         )
 
     # --------------------------------------------------
-    # Create Global Permissions and assign them
+    # Create default account roles, groups and permissions
     # --------------------------------------------------
-    administrator_role = await create_super_administrator_role(db=db)
-    await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
+    await create_default_account_groups(db=db, admin_accounts=admin_accounts)
 
-    await create_default_roles(db=db)
     if config.SETTINGS.main.allow_anonymous_access:
         await create_anonymous_role(db=db)
 

@@ -29,45 +29,44 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
-    <div className={classNames("flex gap-2 items-center", className)}>
-      <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
-        <AriaButton
-          data-testid="namespace-select"
-          className={classNames(
-            focusVisibleStyle,
-            "flex flex-col w-full px-2 py-1",
-            "border border-transparent",
-            "hover:bg-gray-100"
-          )}
-        >
-          <Row className="text-xs text-gray-600">IP Namespace</Row>
-          <Row className="text-sm">
-            <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
-            <ChevronsUpDownIcon className="ml-auto text-gray-600 size-3.5" />
-          </Row>
-        </AriaButton>
+    <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+      <AriaButton
+        data-testid="namespace-select"
+        className={classNames(
+          focusVisibleStyle,
+          "flex flex-col w-full px-1.5 py-0.5 h-10 rounded",
+          "border border-transparent",
+          "hover:bg-gray-100",
+          className
+        )}
+      >
+        <Row className="text-xs text-gray-600">IP Namespace</Row>
+        <Row className="text-sm gap-1.5">
+          <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
+          <ChevronsUpDownIcon className="ml-auto text-gray-600 size-3.5 shrink-0" />
+        </Row>
+      </AriaButton>
 
-        <Popover placement="bottom start" style={{ width: "var(--trigger-width)" }}>
-          <IpNamespaceComboboxList
-            onNamespaceSelection={(value) => {
-              setCurrentIpNamespace(value);
-              setIsOpen(false);
-            }}
-          />
+      <Popover placement="bottom start" style={{ width: "var(--trigger-width)" }}>
+        <IpNamespaceComboboxList
+          onNamespaceSelection={(value) => {
+            setCurrentIpNamespace(value);
+            setIsOpen(false);
+          }}
+        />
 
-          <Col className="border-t border-neutral-200">
-            <LinkButton
-              to={constructPath("/ipam/namespaces")}
-              variant="ghost"
-              size="sm"
-              className="text-xs justify-start m-2"
-            >
-              View all IP namespaces
-            </LinkButton>
-          </Col>
-        </Popover>
-      </PopoverTrigger>
-    </div>
+        <Col className="border-t border-neutral-200">
+          <LinkButton
+            to={constructPath("/ipam/namespaces")}
+            variant="ghost"
+            size="sm"
+            className="text-xs justify-start m-2"
+          >
+            View all IP namespaces
+          </LinkButton>
+        </Col>
+      </Popover>
+    </PopoverTrigger>
   );
 }
 

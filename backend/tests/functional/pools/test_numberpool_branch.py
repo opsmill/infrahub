@@ -6,7 +6,6 @@ import pytest
 from infrahub_sdk.graphql import Query
 
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -16,7 +15,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from tests.adapters.message_bus import BusSimulator
 
 
 REQUEST = NodeSchema(
@@ -65,13 +63,10 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         initialize_registry: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
-        bus_simulator: BusSimulator,
         prefect_test_fixture,
         initial_schema: SchemaRoot,
         default_branch: Branch,
     ) -> None:
-        bus_simulator.service._cache = RedisCache()
-
         schema_load_response = await client.schema.load(
             schemas=[initial_schema.model_dump()], wait_until_converged=True
         )

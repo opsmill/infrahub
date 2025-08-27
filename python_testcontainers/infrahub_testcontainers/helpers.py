@@ -29,11 +29,14 @@ class TestInfrahubDocker:
         return result.stdout
 
     @staticmethod
-    def execute_command(command: str, address: str, concurrent_execution: int = 10) -> subprocess.CompletedProcess[str]:
+    def execute_command(
+        command: str, address: str, concurrent_execution: int = 10, pagination_size: int = 50
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["INFRAHUB_ADDRESS"] = address
         env["INFRAHUB_API_TOKEN"] = PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"]
         env["INFRAHUB_MAX_CONCURRENT_EXECUTION"] = f"{concurrent_execution}"
+        env["INFRAHUB_PAGINATION_SIZE"] = f"{pagination_size}"
         result = subprocess.run(  # noqa: S602
             command, shell=True, capture_output=True, text=True, env=env, check=False
         )

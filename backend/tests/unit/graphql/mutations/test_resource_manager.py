@@ -280,7 +280,7 @@ async def test_prefix_pool_get_resource(
     query = (
         """
     mutation {
-        IPPrefixPoolGetResource(data: {
+        InfrahubIPPrefixPoolGetResource(data: {
             id: "%s"
         }) {
             ok
@@ -305,8 +305,8 @@ async def test_prefix_pool_get_resource(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
         "display_label": "10.10.0.0/24",
         "kind": "IpamIPPrefix",
     }
@@ -341,7 +341,7 @@ async def test_prefix_pool_get_resource_with_identifier(
     query = (
         """
     mutation {
-        IPPrefixPoolGetResource(data: {
+        InfrahubIPPrefixPoolGetResource(data: {
             id: "%s"
             identifier: "myidentifier"
         }) {
@@ -369,8 +369,8 @@ async def test_prefix_pool_get_resource_with_identifier(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
         "id": resource.id,
         "display_label": "10.10.0.0/24",
         "kind": "IpamIPPrefix",
@@ -405,7 +405,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     query = (
         """
     mutation {
-        IPPrefixPoolGetResource(data: {
+        InfrahubIPPrefixPoolGetResource(data: {
             id: "%s"
             prefix_length: 31
         }) {
@@ -431,8 +431,11 @@ async def test_prefix_pool_get_resource_with_prefix_length(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {"display_label": "10.10.0.0/31", "kind": "IpamIPPrefix"}
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
+        "display_label": "10.10.0.0/31",
+        "kind": "IpamIPPrefix",
+    }
 
 
 async def test_address_pool_get_resource(
@@ -461,7 +464,7 @@ async def test_address_pool_get_resource(
     query = (
         """
     mutation {
-        IPAddressPoolGetResource(data: {
+        InfrahubIPAddressPoolGetResource(data: {
             id: "%s"
         }) {
             ok
@@ -486,8 +489,11 @@ async def test_address_pool_get_resource(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressPoolGetResource"]["ok"]
-    assert result.data["IPAddressPoolGetResource"]["node"] == {"display_label": "10.10.3.2/27", "kind": "IpamIPAddress"}
+    assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
+        "display_label": "10.10.3.2/27",
+        "kind": "IpamIPAddress",
+    }
 
 
 async def test_address_pool_get_resource_with_identifier(
@@ -518,7 +524,7 @@ async def test_address_pool_get_resource_with_identifier(
     query = (
         """
     mutation {
-        IPAddressPoolGetResource(data: {
+        InfrahubIPAddressPoolGetResource(data: {
             id: "%s"
             identifier: "myidentifier"
         }) {
@@ -546,8 +552,8 @@ async def test_address_pool_get_resource_with_identifier(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressPoolGetResource"]["ok"]
-    assert result.data["IPAddressPoolGetResource"]["node"] == {
+    assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
         "id": resource.id,
         "display_label": "10.10.3.2/27",
         "kind": "IpamIPAddress",
@@ -581,7 +587,7 @@ async def test_address_pool_get_resource_with_prefix_length(
     query = (
         """
     mutation {
-        IPAddressPoolGetResource(data: {
+        InfrahubIPAddressPoolGetResource(data: {
             id: "%s"
             prefix_length: 32
         }) {
@@ -607,8 +613,11 @@ async def test_address_pool_get_resource_with_prefix_length(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressPoolGetResource"]["ok"]
-    assert result.data["IPAddressPoolGetResource"]["node"] == {"display_label": "10.10.3.2/32", "kind": "IpamIPAddress"}
+    assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
+        "display_label": "10.10.3.2/32",
+        "kind": "IpamIPAddress",
+    }
 
 
 CREATE_NUMBER_POOL = """

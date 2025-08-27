@@ -4,10 +4,11 @@ import ipaddress
 from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node, is_valid_uuid
+from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -107,7 +108,7 @@ async def search_resolver(
     response: dict[str, Any] = {}
     results: list[CoreNode] = []
 
-    fields = await extract_fields_first_node(info)
+    fields = extract_graphql_fields(info=info)
 
     if is_valid_uuid(q):
         matching: CoreNode | None = await NodeManager.get_one(
