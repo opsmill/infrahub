@@ -356,6 +356,7 @@ const sidebars: SidebarsConfig = {
         slug: 'development'
       },
       items: [
+        'development/git-best-practices',
         'development/editor',
         'development/changelog',
         'development/backend',

@@ -49,7 +49,6 @@ docusaurus
 e2e
 edit_default_branch
 Entra
-Entra ID
 enum
 enums
 env
@@ -72,6 +71,7 @@ healthcheck
 hfid
 hfids
 hostname
+hotfixes
 httpx
 human_friendly_id
 id_token
@@ -126,7 +126,7 @@ npm
 NumberPool
 o'brian
 OAuth
-OAuth 2.0
+Observium
 OAuth2
 Observium
 OIDC
@@ -200,6 +200,7 @@ VSCode
 walkthrough
 widget's
 Widget's
+worktrees
 Yaml
 yamllint
 YouTube
