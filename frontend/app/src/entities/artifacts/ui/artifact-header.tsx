@@ -30,7 +30,11 @@ const ArtifactHeader = ({
 
       <div className="flex items-center gap-1 ml-auto">
         {definitionId && (
-          <ArtifactGenerateButton label="Re-generate" artifactId={id} definitionId={definitionId} />
+          <ArtifactGenerateButton
+            label="Re-generate"
+            artifactId={id}
+            artifactDefinitionId={definitionId}
+          />
         )}
 
         <ArtifactDetailsMenu id={id} hfid={hfid} checksum={checksum} storageId={storageId} />
