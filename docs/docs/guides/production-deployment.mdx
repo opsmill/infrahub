@@ -1,406 +1,132 @@
 ---
-title: Production Deployment
+title: How to deploy Infrahub in production
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
 import EnterpriseBadge from "../../src/components/EnterpriseBadge";
 
-This guide walks you through deploying Infrahub in a production environment, covering essential steps and best practices for a robust, maintainable deployment.
+# How to deploy Infrahub in production
+
+This guide walks you through deploying Infrahub in a production environment with enhanced security, reliability, and maintainability. By following these steps, you'll set up a production-ready Infrahub instance that follows industry best practices.
 
 ## Prerequisites
 
-Before beginning your production deployment:
+Before beginning your production deployment, ensure you have:
 
-- Ensure your system meets the [hardware requirements](../topics/hardware-requirements)
-- Have administrative access to your deployment environment
-- Understand basic Git operations and infrastructure management concepts
-- Determine whether you need [Community or Enterprise](#choosing-between-community-and-enterprise) edition
+- Selected your deployment technology (Docker or Kubernetes)
+- Verified your system meets the [hardware requirements](../topics/hardware-requirements)
+- Administrative access to your deployment environment
+- Decided between Community or Enterprise edition based on your support and feature needs
+- Access to your organization's identity provider (for SSO configuration)
+- A backup strategy and storage location
 
-## Choosing between community and enterprise
+## Step 1: Create a hardened configuration file
 
-### Community edition
+Production environments require secure configuration settings that differ from development defaults. Create a configuration file that overwrites default values to enhance security.
 
-Infrahub Community is ideal for:
+```shell title=".env"
+# Environment settings
+INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
+INFRAHUB_PRODUCTION=true
+INFRAHUB_LOG_LEVEL=INFO
 
-- Development and testing environments
-- Teams that don't require enterprise support
+# Security keys & tokens (generate strong unique values)
+INFRAHUB_SECURITY_SECRET_KEY=<strong-random-string-at-least-32-chars>
+INFRAHUB_INITIAL_ADMIN_PASSWORD=<strong-admin-password>
+INFRAHUB_INITIAL_ADMIN_TOKEN=<generate-uuid>  # Generate with: uuidgen
+INFRAHUB_INITIAL_AGENT_TOKEN=<generate-uuid>  # Generate with: uuidgen
 
-**Key features:**
-
-- Full access to core Infrahub functionality
-- Docker and Kubernetes deployment options
-- Community support via GitHub and Discord
-
-### Enterprise edition<EnterpriseBadge />
-
-Infrahub Enterprise provides:
-
-- Advanced high-availability configurations
-- Enhanced performance with parallel query execution
-- Enterprise support with SLAs
-- Additional security and compliance features
-- Professional services for deployment assistance
-
-See [Infrahub Enterprise pricing](https://opsmill.com/pricing) for more details on Enterprise licensing.
-
-## Deployment options
-
-<Tabs>
-<TabItem value="community" label="Community" default>
-
-### Community deployment options
-
-Infrahub Community supports containerized deployments suitable for most production workloads:
-
-<Tabs>
-<TabItem value="docker" label="Docker" default>
-
-Docker deployment is suitable for single-node production environments.
-
-#### Requirements
-
-- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- Sufficient system resources as outlined in [hardware requirements](../topics/hardware-requirements)
-
-#### Deployment steps
-
-Follow the [installation guide](./installation#community) to set up your Docker-based deployment. For production:
-
-1. Configure persistent volumes for data storage
-2. Set appropriate resource limits in your Docker Compose configuration
-3. Configure environment-specific settings in your `.env` file
-
-</TabItem>
-<TabItem value="kubernetes" label="Kubernetes">
-
-Kubernetes deployment offers better scalability and resilience.
-
-#### Requirements
-
-- Kubernetes cluster (1.25+)
-- Helm (3.x)
-- kubectl configured with cluster access
-
-#### Deployment steps
-
-Follow the [Kubernetes with Helm](./installation#community) installation instructions to setup your Kubernetes-based deployment.
-
-</TabItem>
-</Tabs>
-
-</TabItem>
-<TabItem value="enterprise" label="Enterprise">
-
-### Enterprise deployment options<EnterpriseBadge />
-
-Enterprise deployments include additional options for high availability and performance:
-
-#### High availability architecture
-
-Enterprise supports multi-node deployments with:
-
-- Multiple API server instances behind a load balancer
-- Neo4j clustering for database redundancy
-- Redis clustering for cache redundancy
-- Dedicated message bus clustering
-
-See [high availability architecture](../topics/architecture#infrahub-high-availability-deployment) for detailed configuration.
-
-#### Performance optimization
-
-Enterprise editions benefit from:
-
-- **Parallel query execution**: Leverages multiple CPU cores for Neo4j operations
-- **Advanced caching strategies**: Improved cache invalidation and distribution
-- **Query optimization**: Enterprise-specific query planners
-
-#### Enterprise Kubernetes deployment
-
-Follow the [Kubernetes with Helm](./installation#enterprise) installation instructions to setup your Kubernetes-based deployment.
-
-</TabItem>
-</Tabs>
-
-## Git repository initialization
-
-A Git repository is essential for managing your infrastructure-as-code with Infrahub. This process is the same for both Community and Enterprise editions.
-
-### Step 1: install infrahubctl
-
-Follow the [infrahubctl](https://docs.infrahub.app/python-sdk/guides/installation#ctl) installation instructions.
-
-### Step 2: initialize repository
-
-Follow the [infrahubctl repository init documentation](https://atg-20250711-cs60.infrahub-sdk-python.pages.dev/infrahubctl/infrahubctl-repository#infrahubctl-repository-init):
-
-```bash
-infrahubctl repository init
+# Database & message broker security
+INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
+INFRAHUB_DB_PASSWORD=<strong-database-password>
 ```
 
-The initialization creates:
+:::warning
+Never use default passwords or tokens in production. Generate strong unique values for each environment. You can generate UUIDs using the `uuidgen` command or an online UUID generator.
+:::
 
-- `.infrahub.yml` configuration file
-- Directory structure for schema, transforms, checks, and artifacts
+<ReferenceLink title="Complete configuration reference" url="../reference/configuration" />
 
-## Configure Git synchronization
+## Step 2: Install Infrahub
 
-After initializing your repository, configure Infrahub to synchronize with it. Navigate to the Infrahub UI and add your repository following the [repository configuration guide](./repository).
+Install Infrahub using your chosen deployment technology, applying your hardened configuration.
 
-For detailed repository configuration options, see the [repository topic documentation](../topics/repository).
+:::info
+For high availability deployments on Kubernetes, use the HA manifest which includes proper replication and resource requests/limits.
+:::
 
-## Reverse proxy and certificate setup
+<ReferenceLink title="Detailed installation instructions" url="./installation" />
 
-For both Community and Enterprise deployments, consider using a reverse proxy with SSL/TLS certificates for production.
+:::success
+Navigate to `https://your-server-address` in your browser. You should see the Infrahub login page.
+:::
 
-### Certificate management
+## Step 3: Configure SSO (recommended)
 
-For production deployments, use trusted SSL certificates. Options include:
+Connect Infrahub to your organization's identity provider to enhance security and simplify user management.
 
-1. **Let's Encrypt** (recommended for public-facing deployments):
-2. **Internal CA**: For internal deployments, use your organization's certificate authority
+<ReferenceLink title="Detailed SSO configuration guide" url="./sso" />
 
-## Backup strategy
+## Step 4: Set up database backups
 
-Regular backups are critical for production deployments.
+Implement regular database backups to prevent data loss in case of hardware failure or other issues.
 
-### Community backup approach
+<ReferenceLink title="Complete backup and restore guide" url="./database-backups" />
 
-Follow the [database backup guide](./database-backup) for Community editions:
+:::success
+Test your backup and restore process periodically to ensure it works as expected.
+:::
 
-1. **Schedule regular backups** using cron or system timers
-2. **Backup retention policy**: Keep backups for at least 30 days
-3. **Offsite storage**: Store backups in external storage (S3, Azure Blob, etc.)
+## Step 5: Configure monitoring
 
-### Enterprise backup features<EnterpriseBadge />
+Set up monitoring to track the health and performance of your Infrahub deployment.
 
-Enterprise editions include additional backup capabilities:
+### Using the built-in monitoring stack
 
-- **Online backups**: Backup without stopping the database
-- **Incremental backups**: Only backup changes since last full backup
-- **Point-in-time recovery**: Restore to any specific moment
-- **Automated backup orchestration**: Built-in backup scheduling
+Infrahub provides a pre-configured monitoring stack with Prometheus and Grafana:
 
-## Initial admin configuration
+1. Download the monitoring configuration:
 
-After deploying Infrahub, immediately secure the default admin account:
-
-### Change default admin password
-
-The default admin credentials are:
-
-- **Username**: `admin`
-- **Password**: `infrahub` (default)
-
-To change the admin password:
-
-<Tabs>
-<TabItem value="env" label="Environment Variable" default>
-
-Set a custom admin password during deployment using the environment variable:
-
-```bash
-INFRAHUB_INITIAL_ADMIN_PASSWORD=your-secure-password
+```shell
+curl -O https://raw.githubusercontent.com/opsmill/infrahub/stable/development/docker-compose-observability.yml
 ```
 
-For Docker deployments, add this to your `.env` file or docker-compose.yml:
+2. Start the monitoring services:
 
-```yaml
-environment:
-  INFRAHUB_INITIAL_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-your-secure-password}
+```shell
+docker-compose -f docker-compose.yml -f docker-compose-observability.yml up -d
 ```
 
-For Kubernetes, use a Secret:
+3. Access Grafana at `http://your-server-address:3000` with the default credentials (admin/admin)
 
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: infrahub-admin
-type: Opaque
-stringData:
-  INFRAHUB_INITIAL_ADMIN_PASSWORD: your-secure-password
-```
+### Integrating with existing monitoring systems
 
-</TabItem>
-<TabItem value="ui" label="Web UI">
+If you have an existing monitoring system, configure it to track:
 
-After initial deployment, change the password through the UI:
-
-1. Log in with the default credentials
-2. Navigate to your profile settings
-3. Select "Change Password"
-4. Enter your new secure password
-5. Save the changes
-
-</TabItem>
-<TabItem value="graphql" label="GraphQL">
-
-Use the GraphQL API to update the admin password:
-
-```graphql
-mutation UpdateAdminPassword {
-  CoreAccountUpdate(
-    data: {
-      id: "admin-account-id"
-      password: {
-        value: "new-secure-password"
-      }
-    }
-  ) {
-    ok
-  }
-}
-```
-
-</TabItem>
-</Tabs>
-
-### Configure admin API token
-
-The default admin API token should be changed from its default value:
-
-#### Default configuration
-
-```bash
-# Default token (CHANGE THIS!)
-INFRAHUB_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec
-```
-
-#### Set custom token
-
-<Tabs>
-<TabItem value="deployment" label="During Deployment" default>
-
-Generate a secure token and set it during deployment:
-
-```bash
-# Generate a secure token
-export INFRAHUB_INITIAL_ADMIN_TOKEN=$(uuidgen)
-
-# Or use openssl
-export INFRAHUB_INITIAL_ADMIN_TOKEN=$(openssl rand -hex 32)
-```
-
-Add to your deployment configuration:
-
-**Docker Compose:**
-
-```yaml
-environment:
-  INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN}
-```
-
-**Kubernetes:**
-
-```yaml
-env:
-  - name: INFRAHUB_INITIAL_ADMIN_TOKEN
-    valueFrom:
-      secretKeyRef:
-        name: infrahub-secrets
-        key: admin-token
-```
-
-</TabItem>
-<TabItem value="post-deployment" label="After Deployment">
-
-Manage API tokens after deployment following the [API token management guide](./managing-api-tokens):
-
-1. Log in to the Infrahub UI as admin
-2. Navigate to **Profile** → **API Tokens**
-3. Create a new token with appropriate expiration
-4. Delete or rotate the default token
-5. Update any automation using the old token
-
-</TabItem>
-</Tabs>
-
-### Security best practices
-
-1. **Strong Passwords**: Use passwords with at least 16 characters, including mixed case, numbers, and symbols
-2. **Token Rotation**: Regularly rotate API tokens
-3. **Least Privilege**: Create separate accounts for different users/services instead of sharing admin credentials
-4. **Audit Logging**: Monitor authentication attempts and admin actions through [activity logs](../topics/activity-log)
-5. **Disable Anonymous Access**: For production, consider disabling anonymous access:
-
-   ```bash
-   INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
-   ```
-
-## Security considerations
-
-Implement these additional security best practices:
-
-1. **Network Security**:
-   - Restrict database access to application servers only
-   - Use firewall rules to limit access to necessary ports
-   - Enable SSL/TLS for all external communications
-
-2. **Authentication & Authorization**:
-   - Configure [SSO](./sso) for centralized authentication
-   - Implement proper [role-based access control](./accounts-permissions)
-   - Regularly audit user permissions
-
-3. **Secrets Management**:
-   - Store sensitive configuration in environment variables
-   - Use secrets management tools (Vault, Kubernetes Secrets)
-   - Rotate credentials regularly
-
-## Monitoring and maintenance
-
-### Health checks
-
-Configure monitoring for:
-
-- Service availability (API endpoints)
-- Database performance metrics
+- API endpoints health (`/health` and `/readiness`)
+- Database metrics
+- Message broker metrics
 - Resource utilization (CPU, memory, disk)
-- Application logs and errors
 
-### Monitoring
+:::info
+Set up alerts for critical metrics like API availability, database connection issues, and high resource utilization.
+:::
 
-For deployments, monitor Infrahub using your preferred infrastructure monitoring tools (such as Prometheus, Grafana, etc.) to track service health, resource usage, and application logs.
+## Operations and maintenance
 
-### Updates and upgrades
+### Upgrading Infrahub
 
-Follow the [upgrade guide](./upgrade) for updating Infrahub:
+To upgrade to a new version of Infrahub:
 
-1. Review release notes before upgrading
-2. Test upgrades in a staging environment first
-3. Schedule maintenance windows for production upgrades
-4. Always backup before upgrading
+1. Review the release notes for breaking changes
+2. Create a full backup of your database
+3. Update the container images
 
-**Enterprise customers**: Contact support for guided upgrade assistance.
+:::danger
+Always create a backup before upgrading to ensure you can restore if needed.
+:::
 
-## Troubleshooting
-
-Common issues and solutions:
-
-### Connection issues
-
-If services cannot connect:
-
-1. Verify network connectivity between components
-2. Check firewall rules and security groups
-3. Validate SSL certificate configuration
-
-### Performance issues
-
-For performance problems:
-
-1. Review [hardware requirements](../topics/hardware-requirements)
-2. Check database query performance
-3. Monitor resource utilization
-
-### Sync issues
-
-If Git synchronization fails:
-
-1. Verify repository accessibility
-2. Check authentication credentials
-3. Review sync logs for specific errors
+<ReferenceLink title="Detailed upgrade procedures" url="./upgrade" />
 
 ## Support options
 
