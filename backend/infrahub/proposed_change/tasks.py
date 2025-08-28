@@ -646,16 +646,19 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         context=context,
     )
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
-
+    # Needs to be fetched before fetching group members otherwise `object` relationship would override
+    # existing node in client store without the `name` attribute due to #521
     existing_artifacts = await client.filters(
         kind=InfrahubKind.ARTIFACT,
         definition__ids=[model.artifact_definition.definition_id],
         include=["object"],
         branch=model.source_branch,
     )
+
+    await artifact_definition.targets.fetch()
+    group = artifact_definition.targets.peer
+    await group.members.fetch()
+
     artifacts_by_member = {}
     for artifact in existing_artifacts:
         artifacts_by_member[artifact.object.peer.id] = artifact.id
@@ -907,6 +910,15 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
         context=context,
     )
 
+    # Needs to be fetched before fetching group members otherwise `object` relationship would override
+    # existing node in client store without the `name` attribute due to #521
+    existing_instances = await client.filters(
+        kind=InfrahubKind.GENERATORINSTANCE,
+        definition__ids=[model.generator_definition.definition_id],
+        include=["object"],
+        branch=model.source_branch,
+    )
+
     group = await client.get(
         kind=InfrahubKind.GENERICGROUP,
         prefetch_relationships=True,
@@ -916,12 +928,6 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     )
     await group.members.fetch()
 
-    existing_instances = await client.filters(
-        kind=InfrahubKind.GENERATORINSTANCE,
-        definition__ids=[model.generator_definition.definition_id],
-        include=["object"],
-        branch=model.source_branch,
-    )
     instance_by_member = {}
     for instance in existing_instances:
         instance_by_member[instance.object.peer.id] = instance.id

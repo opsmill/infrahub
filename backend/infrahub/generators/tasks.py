@@ -168,6 +168,15 @@ async def request_generator_definition_run(
 
     client = get_client()
 
+    # Needs to be fetched before fetching group members otherwise `object` relationship would override
+    # existing node in client store without the `name` attribute due to #521
+    existing_instances = await client.filters(
+        kind=InfrahubKind.GENERATORINSTANCE,
+        definition__ids=[model.generator_definition.definition_id],
+        include=["object"],
+        branch=model.branch,
+    )
+
     group = await client.get(
         kind=InfrahubKind.GENERICGROUP,
         prefetch_relationships=True,
@@ -177,12 +186,6 @@ async def request_generator_definition_run(
     )
     await group.members.fetch()
 
-    existing_instances = await client.filters(
-        kind=InfrahubKind.GENERATORINSTANCE,
-        definition__ids=[model.generator_definition.definition_id],
-        include=["object"],
-        branch=model.branch,
-    )
     instance_by_member = {}
     for instance in existing_instances:
         instance_by_member[instance.object.peer.id] = instance.id
