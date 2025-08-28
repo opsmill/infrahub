@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.2) - 2025-08-28
+
+### Fixed
+
+- Fix a bug where a proposed change could be merged without approval even if some approvals were required (Enterprise)
+- Removed incorrect log warning about 'Branch schema hash is not set, cannot update branch registry' due to including the '-global-' branch when processing branch updates.
+
 ## [Infrahub - v1.4.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.1) - 2025-08-27
 
 ### Fixed
