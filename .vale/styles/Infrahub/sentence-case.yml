@@ -107,3 +107,9 @@ exceptions:
   - Helm
   - Kubernetes
   - Allocate VLAN ID
+  - Determine your redirect URI
+  - Create an application in Entra ID
+  - Configure Infrahub
+  - OAuth 2.0 parameters
+  - Redirect URI formats
+  - OAuth 2.0 configuration example
