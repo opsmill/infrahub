@@ -49,7 +49,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
             hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
             checksum={objectDetailsData?.checksum?.value}
             storageId={objectDetailsData?.storage_id?.value}
-            definitionId={objectDetailsData?.definition?.node?.id}
+            artifactDefinitionId={objectDetailsData?.definition?.node?.id}
           />
 
           <Separator />

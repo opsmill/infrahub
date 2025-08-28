@@ -39,7 +39,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
     <>
       <div className="flex items-center gap-2">
         {schema.kind === ARTIFACT_DEFINITION_KIND && (
-          <ArtifactGenerateButton definitionId={objectDetailsData.id} />
+          <ArtifactGenerateButton artifactDefinitionId={objectDetailsData.id} />
         )}
 
         {isOfKind(GENERATOR_DEFINITION_KIND, schema) && (

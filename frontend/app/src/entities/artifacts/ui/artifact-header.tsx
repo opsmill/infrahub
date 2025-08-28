@@ -10,7 +10,7 @@ type ArtifactHeaderProps = {
   hfid?: string;
   checksum?: string;
   storageId?: string;
-  definitionId: string;
+  artifactDefinitionId: string;
 };
 
 const ArtifactHeader = ({
@@ -20,7 +20,7 @@ const ArtifactHeader = ({
   hfid,
   checksum,
   storageId,
-  definitionId,
+  artifactDefinitionId,
 }: ArtifactHeaderProps) => {
   return (
     <div className="flex items-center gap-2">
@@ -29,8 +29,12 @@ const ArtifactHeader = ({
       <ArtifactStatusBadge status={status} />
 
       <div className="flex items-center gap-1 ml-auto">
-        {definitionId && (
-          <ArtifactGenerateButton label="Re-generate" artifactId={id} definitionId={definitionId} />
+        {artifactDefinitionId && (
+          <ArtifactGenerateButton
+            label="Re-generate"
+            artifactId={id}
+            artifactDefinitionId={artifactDefinitionId}
+          />
         )}
 
         <ArtifactDetailsMenu id={id} hfid={hfid} checksum={checksum} storageId={storageId} />
