@@ -182,6 +182,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/version-control',
+                'topics/branching',
                 'topics/proposed-change',
               ],
             },
