@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
@@ -81,16 +82,21 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     from infrahub.graphql.manager import GraphQLSchemaManager
 
     async with lock.registry.local_schema_lock():
-        branches = await registry.branch_object.get_list(db=db)
-        for new_branch in branches:
-            if new_branch.name in registry.branch:
-                await update_branch_registry(db=db, branch=new_branch)
-            else:
-                await create_branch_registry(db=db, branch=new_branch)
+        active_branches = await registry.branch_object.get_list(db=db)
+        for active_branch in active_branches:
+            if active_branch.name == GLOBAL_BRANCH_NAME:
+                # Avoid processing updates for the global branch as it doesn't
+                # have an associated schema
+                continue
 
-        purged_branches = await registry.purge_inactive_branches(db=db, active_branches=branches)
+            if active_branch.name in registry.branch:
+                await update_branch_registry(db=db, branch=active_branch)
+            else:
+                await create_branch_registry(db=db, branch=active_branch)
+
+        purged_branches = await registry.purge_inactive_branches(db=db, active_branches=active_branches)
         purged_branches.update(
-            GraphQLSchemaManager.purge_inactive(active_branches=[branch.name for branch in branches])
+            GraphQLSchemaManager.purge_inactive(active_branches=[branch.name for branch in active_branches])
         )
         for branch_name in sorted(purged_branches):
             log.info(f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY)
