@@ -20,8 +20,6 @@ export function generateArtifactFromApi({
         branch: branchName,
       },
     },
-    body: {
-      nodes: nodeIds,
-    },
+    body: nodeIds ? { nodes: nodeIds } : undefined,
   });
 }

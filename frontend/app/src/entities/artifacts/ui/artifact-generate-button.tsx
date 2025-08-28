@@ -20,6 +20,7 @@ export const ArtifactGenerateButton = (props: ArtifactGenerateButtonProps) => {
   const { isAuthenticated } = useAuth();
 
   const handleGenerate = () => {
+    if (!isAuthenticated || isPending) return;
     mutate(
       {
         artifactDefinitionId,
@@ -27,20 +28,27 @@ export const ArtifactGenerateButton = (props: ArtifactGenerateButtonProps) => {
       },
       {
         onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: ["is-task-running"] });
+          await queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes("is-task-running"),
+          });
 
-          if (artifactId) {
-            toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
-          } else {
-            toast(<Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
-          }
+          toast(
+            <Alert
+              message={artifactId ? "Artifact re-generated" : "Artifacts generated"}
+              type={ALERT_TYPES.SUCCESS}
+            />
+          );
         },
         onError: (error) => {
           console.error("Error when generating artifacts: ", error);
 
           toast(
             <Alert
-              message="An error occured while generating the artifact"
+              message={
+                artifactId
+                  ? "An error occurred while re-generating the artifact"
+                  : "An error occurred while generating artifacts"
+              }
               type={ALERT_TYPES.ERROR}
             />
           );
