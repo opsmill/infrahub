@@ -11,7 +11,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [Infrahub - v0.13.0.dev0](https://github.com/opsmill/infrahub/tree/infrahub-v0.13.0.dev0) - 2025-08-28
+## [Infrahub - v1.4.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.2) - 2025-08-28
 
 ### Fixed
 
