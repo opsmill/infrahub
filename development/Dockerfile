@@ -38,7 +38,7 @@ ENV POETRY_VIRTUALENVS_CREATE=false
 # ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
-FROM docker.io/node:20-slim AS frontend
+FROM docker.io/node:22-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
