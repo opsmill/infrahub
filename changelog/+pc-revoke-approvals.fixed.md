@@ -1,0 +1,1 @@
+- Fix a bug where a proposed change could be merged without approval even if some approvals were required (Enterprise)
