@@ -48,28 +48,36 @@ test.describe("/ipam - Ipam Tree", () => {
     await expect(page.getByRole("heading", { name: "10.0.0.0/8" })).toBeVisible();
   });
 
-  test.describe("IPAM search", () => {
-    test("search an IP Prefix", async ({ page }) => {
-      await page.goto("/ipam");
+  test("search an IP Prefix", async ({ page }) => {
+    await page.goto("/ipam");
 
-      await test.step("search on IPAM tree", async () => {
-        await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
-        await page.getByPlaceholder("Filter...").fill("10.2");
-        await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
-        expect(await page.getByRole("treeitem").count()).toEqual(1);
-      });
-
-      await test.step("search results are visible after navigation", async () => {
-        await page.getByRole("treeitem", { name: "10.2.0.0/16" }).click();
-        await expect(page.getByText("Prefix10.2.0.0/16")).toBeVisible();
-        await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
-        expect(await page.getByRole("treeitem").count()).toEqual(1);
-      });
-
-      await test.step("reset IPAM search", async () => {
-        await page.getByPlaceholder("Filter...").fill("");
-        await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
-      });
+    await test.step("search on IPAM tree", async () => {
+      await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
+      await page.getByPlaceholder("Filter...").fill("10.2");
+      await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
+      expect(await page.getByRole("treeitem").count()).toEqual(1);
     });
+
+    await test.step("search results are visible after navigation", async () => {
+      await page.getByRole("treeitem", { name: "10.2.0.0/16" }).click();
+      await expect(page.getByText("Prefix10.2.0.0/16")).toBeVisible();
+      await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
+      expect(await page.getByRole("treeitem").count()).toEqual(1);
+    });
+
+    await test.step("reset IPAM search", async () => {
+      await page.getByPlaceholder("Filter...").fill("");
+      await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
+    });
+  });
+
+  test("collapse IPAM tree", async ({ page }) => {
+    await page.goto("/ipam");
+
+    await expect(page.getByTestId("ipam-tree")).toBeVisible();
+    await page.getByRole("button", { name: "toggle IPAM tree" }).click();
+    await expect(page.getByTestId("ipam-tree")).toBeHidden();
+    await page.getByRole("button", { name: "toggle IPAM tree" }).click();
+    await expect(page.getByTestId("ipam-tree")).toBeVisible();
   });
 });

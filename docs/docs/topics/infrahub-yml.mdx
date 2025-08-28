@@ -1,176 +1,132 @@
 ---
-title: .infrahub.yml file format
+title: .infrahub.yml configuration file
 ---
 
-# `.infrahub.yml` file {#infrahub-yaml}
+# Understanding the `.infrahub.yml` configuration file
 
-To make full use of a [remote repository](../topics/repository) within Infrahub, the remote repository must have a `.infrahub.yml` file defined at the root of the repository. This file enables Infrahub to identify the required imports and tie together the various components.
+The `.infrahub.yml` file serves as the central manifest that defines how Infrahub integrates with external Git repositories. This topic explains the role of this configuration file and the design philosophy behind its structure.
 
-An external repository can be used to link the following Infrahub objects to an Infrahub instance:
+## Why `.infrahub.yml` exists
 
-- [GraphQL Query](../topics/graphql)
-- [Schema](../topics/schema)
-- [Menu](../guides/menu)
-- [Object File](../guides/object-load)
-- [Jinja2 Transform](../topics/transformation#rendered-file-jinja2-plugin)
-- [Python Transformation](../topics/transformation#transformpython-python-plugin)
-- [Artifact Definition](../topics/artifact)
-- [Generator Definition](../topics/generator)
+Infrastructure automation requires both structured data (device inventories, network topologies) and executable code (templates, validation scripts, generators). The `.infrahub.yml` file solves the fundamental challenge of bridging these two worlds by:
 
-:::info
+- **Declaring intent**: Explicitly stating what resources from a Git repository should be imported into Infrahub
+- **Enabling selective integration**: Allowing fine-grained control over which files and resources are processed
+- **Providing metadata**: Supplying the necessary context for Infrahub to properly interpret and use repository contents
 
-- See [this guide](../guides/repository) for how to add or update an external repository in Infrahub
-- See [this topic](../topics/repository) for more information on remote repositories in Infrahub
-- See [this reference](../reference/dotinfrahub) for more information on the `.infrahub.yml` file format
+## Design philosophy and structure
 
-:::
+The `.infrahub.yml` file follows a declarative approach where you specify *what* should happen rather than *how* it should happen. This design choice reflects several key principles:
 
-:::note
+### Explicit over implicit
 
-To help with the development process of a repository configuration file, you can leverage [schema validation](../reference/schema-validation) within your editor.
+Rather than scanning the entire repository and making assumptions about file purposes, the configuration file requires explicit declaration of all resources. This approach:
 
-:::
+- Prevents unexpected imports of unintended files
+- Makes the integration surface clear and auditable
+- Allows for different file organizations across repositories
 
-## GraphQL query {#graphql-query}
+### Resource types
 
-GraphQL queries could be defined in file(s) with a `.gql` extension. Then queries must also be explicitly identified in the `.infrahub.yml` file under `queries`.
+The configuration organizes resources into distinct categories based on their purpose and processing requirements:
 
-<details>
-  <summary>Example</summary>
+- **Executable code**: Python transformations, generators, and checks
+- **Templates**: Jinja2 templates for configuration generation
+- **Schema definitions**: Data models for infrastructure representation
+- **Data definitions**: Object files for storing infrastructure data
+- **Query definitions**: GraphQL queries for data retrieval
+- **Menu definitions**: UI navigation structure definitions
 
-  ```yaml
-  queries:
-    - name: topology_info                      # Here goes the query's name
-      file_path: "topology/topology_info.gql"  # Here is the path to query's file
-  ```
+Each category has its own processing pipeline and validation requirements, reflecting the different ways Infrahub handles these resource types.
 
-</details>
+### Metadata richness
 
-## Schema {#schema}
+Beyond basic file paths, the configuration captures essential metadata about how resources should be used:
 
-Schemas to be loaded as part of an external repository can be defined in file(s) as described [here](../topics/schema). The schemas must also be explicitly identified in the `.infrahub.yml` file under `schemas`.
+- **Dependencies**: Linking transformations to their required GraphQL queries
+- **Targeting**: Specifying which infrastructure groups a resource applies to
+- **Parameters**: Defining the inputs required for executable resources
+- **Naming**: Providing human-readable identifiers for UI and API access
 
-<details>
-  <summary>Example</summary>
+## Loading behavior and dependency management
 
-  ```yaml
-  schemas:
-    - schemas/demo_edge_fabric.yml
-  ```
+The `.infrahub.yml` file controls not just *what* gets loaded, but *how* and *when* resources are processed:
 
-</details>
+### Processing order
 
-Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
+Infrahub processes configuration sections in a specific order to handle dependencies:
 
-## Objects
+1. **Schemas**: Loaded first to establish the data model
+2. **GraphQL queries**: Loaded before resources that depend on them
+3. **Objects**: Loaded to populate initial data
+4. **Python files**: Check definitions, Python transformations, and generators are loaded together
+5. **Jinja2 transformations**: Loaded after their required queries are available
+6. **Artifact definitions**: Loaded last to reference existing transformations
 
-Objects to be loaded as part of an external repository can be defined in file(s) as described [objects topic]($(base_url)python-sdk/topics/object_file). The objects must also be explicitly identified in the `.infrahub.yml` file under `objects`.
+### File vs. directory handling
 
-:::info
+When you specify a directory in any resource list:
 
-The order defined in the `.infrahub.yml` file is maintained. If a folder is defined in the list, the folders/files within the folder are loaded in alphabetical order. This means that if you have a dependency between objects, you must ensure that the dependent object is defined before the object that depends on it.
+- Infrahub processes all relevant files within that directory
+- Files are processed in alphabetical order
+- Subdirectories are processed recursively
 
-:::
-<details>
-  <summary>Example</summary>
+This behavior enables you to organize complex repositories while maintaining predictable loading order.
 
-  ```yaml
-  objects:
-    - objects/locations.yml
-    - objects/devices
-  ```
+### Dependency resolution
 
-</details>
+The configuration enables Infrahub to resolve dependencies between resources:
 
-## Menus
+- Transformations reference their required GraphQL queries by name
+- Artifact definitions reference transformations and target groups
+- Generators specify their data dependencies through query requirements
 
-Menus to be loaded as part of an external repository can be defined in file(s) as described [here](../guides/menu). The menus must also be explicitly identified in the `.infrahub.yml` file under `menus`.
+This dependency management ensures that all resources have what they need when they execute.
 
-<details>
-  <summary>Example</summary>
+## Version control and branch behavior
 
-  ```yaml
-  menus:
-    - menus/base.yml
-  ```
+The `.infrahub.yml` file itself is version-controlled, enabling sophisticated integration patterns:
 
-</details>
+### Branch-specific configuration
 
-## Jinja2 transformation {#transform-jinja-2}
+Different Git branches can have different `.infrahub.yml` files:
 
-Jinja2 Transformations can be defined as described [here](../topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
+- Development branches can include experimental resources
+- Production branches can exclude debug or testing resources
+- Feature branches can temporarily modify resource definitions
 
-- `name`: name of the transform
-- `query`: the name of an Infrahub `GraphQL query` to use with the transform
-- `template_path`: the path to the Jinja2 template within this repository
-- `description`: (**optional**) a description of the transform
+This flexibility allows teams to maintain different configurations for different environments or development stages.
 
-<details>
-  <summary>Example</summary>
+### Evolution and migration
 
-  ```yaml
-  jinja2_transforms:
-    - name: device_startup
-      description: "Template to generate startup configuration for network devices"
-      query: "device_startup_info"
-      template_path: "templates/device_startup_config.tpl.j2"
-  ```
+As your infrastructure automation evolves, the configuration file supports:
 
-</details>
+- Adding new resource types without affecting existing ones
+- Deprecating old resources by removing them from the configuration
+- Refactoring resource organization while maintaining functionality
 
-## Python transformation {#transform-python}
+This approach helps teams manage the lifecycle of infrastructure automation components with minimal disruption.
 
-Python Transformations can be defined as described [here](../topics/transformation#transformpython-python-plugin). To load Python Transformations from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. The definition in `.infrahub.yml` includes the following
+## Future evolution and extensibility
 
-- `name`: name of the transformation
-- `file_path`: path to the Python transformation within this repository
-- `class_name`: which specific class to use in the Python file designated by `file_path`
+The `.infrahub.yml` format is designed to evolve with Infrahub's capabilities:
 
-<details>
-  <summary>Example</summary>
+- New resource types can be added without breaking existing configurations
+- Additional metadata fields can be introduced with backward compatibility
+- Processing behavior can be enhanced while maintaining existing semantics
 
-  ```yaml
-  python_transforms:
-    - name: OCInterfaces
-    class_name: OCInterfaces
-    file_path: "transforms/openconfig.py"
-  ```
+This future-proof design ensures that your automation investments remain valuable as Infrahub grows.
 
-</details>
+## Conclusion
 
-## Artifact definition {#artifact-definition}
+The `.infrahub.yml` configuration file is a crucial bridge between Git repositories and Infrahub's infrastructure management capabilities. By understanding its design principles and structure, you can effectively organize your infrastructure automation resources and leverage Infrahub's full potential to manage your network infrastructure.
 
-Artifact Definitions can be created as described [here](../topics/artifact). To load Artifact Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Artifact Definition in `.infrahub.yml` must include the following:
+## Further reading
 
-- `name`: the name of the Artifact Definition
-- `artifact_name`: the name of the Artifact created by this Artifact Definition
-- `parameters`: mapping of the input parameters required to render this Artifact
-- `content_type`: the content-type of the created Artifact
-- `targets`: the Infrahub `Group` to target when generating the Artifact
-- `transformation`: the name of the Transformation to use when generating the Artifact
-
-<details>
-  <summary>Example</summary>
-
-  ```yaml
-  artifact_definitions:
-    - name: "Openconfig Interface for Arista devices"
-    artifact_name: "openconfig-interfaces"
-    parameters:
-    device: "name__value"
-    content_type: "application/json"
-    targets: "arista_devices"
-    transformation: "OCInterfaces
-  ```
-
-</details>
-
-## Generator definition {#generator-definition}
-
-Generator Definitions can be created as described [here](../topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
-
-- `name`: the name of the Generator Definition
-- `file_path`: path to the Generator Python file within this repository
-- `query`: the name of an Infrahub `GraphQL query` to use with the Generator
-- `class_name`: the class defining the generator in the Python file designated by file_path
-- `targets`: the Infrahub Group containing the targets for which we want to run the Generator
+- [Repository configuration file reference](../reference/dotinfrahub) - Complete syntax and options reference
+- [How to connect external Git repositories](../guides/repository) - Step-by-step setup guide
+- [Understanding Git repositories in Infrahub](../topics/repository) - Repository integration concepts
+- [Schema development](../topics/schema) - Designing infrastructure data models
+- [Transformations](../topics/transformation) - Data processing and template concepts
+- [Generators](../topics/generator) - Infrastructure provisioning automation
+- [Artifacts](../topics/artifact) - Output generation and delivery

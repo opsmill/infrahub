@@ -1,8 +1,0 @@
-{
-  "data": {
-    "InfrahubAccountTokenUpdate": {
-      "ok": true,
-      "__typename": "InfrahubAccountTokenUpdate"
-    }
-  }
-}

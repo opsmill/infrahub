@@ -1,5 +1,4 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
@@ -17,6 +16,9 @@ import {
   FormAttributeValue,
   FormFieldValue,
 } from "@/shared/components/form/type";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
+
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -44,11 +46,15 @@ export const NodeAttributeMatchForm = ({
 }: NodeAttributeMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
+  const { parentData, parentSchema } = useCurrentFormContext();
+  const createObject = useCreateObjectMutation();
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
     initialObject: currentObject,
     isUpdate,
+    parentData,
+    parentSchema,
   });
 
   const attributeField = schemaFields.find((field) => {
@@ -87,6 +93,9 @@ export const NodeAttributeMatchForm = ({
         relationshipData: currentObject?.trigger as RelationshipType | undefined,
         relationshipName: "trigger",
         objectTemplate,
+        schema: props.schema,
+        parentData,
+        parentSchema,
       }) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
@@ -95,56 +104,56 @@ export const NodeAttributeMatchForm = ({
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+    const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
 
-      if (!Object.keys(newObject).length) {
-        return;
-      }
+    if (!Object.keys(newObject).length) {
+      return;
+    }
 
-      const mutationString = currentObject?.id
-        ? updateObjectWithId({
-            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
-            data: stringifyWithoutQuotes({
-              id: currentObject.id,
-              ...newObject,
-            }),
-          })
-        : createObject({
-            kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
-            data: stringifyWithoutQuotes({
-              ...newObject,
-            }),
-          });
+    if (currentObject?.id) {
+      try {
+        const result = await graphqlClient.mutate({
+          mutation: gql(
+            updateObjectWithId({
+              kind: NODE_TRIGGER_ATTRIBUTE_MATCH,
+              data: stringifyWithoutQuotes({
+                id: currentObject.id,
+                ...newObject,
+              }),
+            })
+          ),
+          context: {
+            branch: currentBranch.name,
+            date,
+          },
+        });
 
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: currentBranch.name,
-          date,
-        },
-      });
-
-      if (currentObject?.id) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match updated!"} />, {
           toastId: "alert-success-node-attribute-match-updated",
         });
-      } else {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node attribute match created!"} />, {
-          toastId: "alert-success-node-attribute-match-created",
-        });
-      }
 
-      if (onSuccess)
-        await onSuccess(
-          result?.data?.[`${NODE_TRIGGER_ATTRIBUTE_MATCH}${currentObject ? "Update" : "Create"}`]
-        );
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+        if (onSuccess) await onSuccess(result?.data?.[`${NODE_TRIGGER_ATTRIBUTE_MATCH}Update`]);
+      } catch (error: unknown) {
+        console.error("An error occurred while creating the object: ", error);
+      }
+    } else {
+      await createObject.mutateAsync(
+        {
+          objectKind: NODE_TRIGGER_ATTRIBUTE_MATCH,
+          data: newObject,
+        },
+        {
+          onSuccess: (newNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Node attribute match created!" />, {
+              toastId: "alert-success-node-attribute-match-created",
+            });
+            if (onSuccess) onSuccess(newNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while creating the object:", error);
+          },
+        }
+      );
     }
   }
 

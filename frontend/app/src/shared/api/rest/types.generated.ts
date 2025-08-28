@@ -1279,6 +1279,9 @@ export interface components {
             analytics: components["schemas"]["AnalyticsSettings"];
             experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
             sso: components["schemas"]["SSOInfo"];
+            /** Installation Type */
+            installation_type: string;
+            policy: components["schemas"]["PolicySettings"];
         };
         /**
          * DiffAction
@@ -1309,6 +1312,7 @@ export interface components {
             graphql_enums: boolean;
             /**
              * Value Db Index
+             * @deprecated
              * @default false
              */
             value_db_index: boolean;
@@ -1842,6 +1846,21 @@ export interface components {
              * @description The password of the user.
              */
             password: string;
+        };
+        /** PolicySettings */
+        PolicySettings: {
+            /**
+             * Required Proposed Change Approvals
+             * @description Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)
+             * @default 0
+             */
+            required_proposed_change_approvals: number;
+            /**
+             * Revoke Proposed Change Approvals
+             * @description Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.)
+             * @default false
+             */
+            revoke_proposed_change_approvals: boolean;
         };
         /** QueryPayload */
         QueryPayload: {

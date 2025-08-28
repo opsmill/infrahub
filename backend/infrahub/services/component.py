@@ -15,7 +15,8 @@ from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubCache, InfrahubMessageBus
+    from infrahub.services import InfrahubCache
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 PRIMARY_API_SERVER = "workers:primary:api_server"
 WORKER_MATCH = re.compile(r":worker:([^:]+)")

@@ -59,9 +59,9 @@ export default function ObjectItemEditComponent(props: Props) {
     return <NoDataFound message="No details found." />;
   }
 
-  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
+  const objectDetailsData = data[schema.kind as string]?.edges[0]?.node;
 
-  const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
+  const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge: any) => edge?.node) ?? [];
 
   const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
@@ -94,8 +94,6 @@ export default function ObjectItemEditComponent(props: Props) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
           toastId: "alert-success-updated",
         });
-
-        closeDrawer();
 
         if (onUpdateComplete) onUpdateComplete();
       } catch (e) {

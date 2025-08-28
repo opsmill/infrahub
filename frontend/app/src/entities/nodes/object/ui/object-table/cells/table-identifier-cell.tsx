@@ -1,8 +1,8 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Checkbox } from "@/shared/components/aria/checkbox";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
-import { TableCell } from "@/shared/components/table/table-cell";
 
 export interface TableIdentifierCellProps {
   objectKind: string;
@@ -21,7 +21,7 @@ export function TableIdentifierCell({
 }: TableIdentifierCellProps) {
   const { isAuthenticated } = useAuth();
   return (
-    <TableCell className="sticky left-0 bg-white z-1" data-testid="identifier-cell">
+    <StickyLeftCell data-testid="identifier-cell">
       {isAuthenticated && (
         <Checkbox
           isSelected={isSelected}
@@ -38,8 +38,6 @@ export function TableIdentifierCell({
       >
         {label}
       </LinkButton>
-
-      <div className="absolute -right-4 top-0 bottom-0 w-4 bg-linear-to-r from-gray-500/10 pointer-events-none" />
-    </TableCell>
+    </StickyLeftCell>
   );
 }

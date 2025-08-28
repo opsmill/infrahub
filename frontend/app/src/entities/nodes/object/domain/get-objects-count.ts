@@ -13,11 +13,8 @@ export const getObjectsCount: GetObjectsCount = async ({
   atDate,
   filters = [],
 }) => {
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? objectKind;
-
   const { data, errors } = await getObjectsCountFromApi({
-    objectKind: schemaKindToQuery,
+    objectKind,
     branchName,
     atDate,
     filters,
@@ -27,5 +24,5 @@ export const getObjectsCount: GetObjectsCount = async ({
     throw new Error(errors[0].message);
   }
 
-  return data[schemaKindToQuery].count;
+  return data[objectKind].count;
 };

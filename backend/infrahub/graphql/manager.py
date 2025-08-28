@@ -40,6 +40,7 @@ from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
 from .mutations.webhook import InfrahubWebhookMutation
+from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -57,8 +58,8 @@ from .types import (
     InfrahubObject,
     PaginatedObjectPermission,
     RelatedIPAddressNodeInput,
+    RelatedIPPrefixNodeInput,
     RelatedNodeInput,
-    RelatedPrefixNodeInput,
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
@@ -343,14 +344,10 @@ class GraphQLSchemaManager:
 
     def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
         peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPPREFIX
-        ):
-            return RelatedPrefixNodeInput
+        if peer_schema.is_ip_prefix:
+            return RelatedIPPrefixNodeInput
 
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPADDRESS
-        ):
+        if peer_schema.is_ip_address:
             return RelatedIPAddressNodeInput
 
         return RelatedNodeInput
@@ -495,7 +492,9 @@ class GraphQLSchemaManager:
 
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
-                resolver=default_paginated_list_resolver,
+                resolver=default_paginated_list_resolver
+                if node_name not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]
+                else ipam_paginated_list_resolver,
                 required=True,
                 **node_filters,
             )
@@ -530,9 +529,9 @@ class GraphQLSchemaManager:
                 InfrahubKind.NODETRIGGERRELATIONSHIPMATCH: InfrahubTriggerRuleMatchMutation,
             }
 
-            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
+            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix:
                 base_class = InfrahubIPPrefixMutation
-            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address():
+            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address:
                 base_class = InfrahubIPAddressMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
@@ -911,6 +910,11 @@ class GraphQLSchemaManager:
         if top_level:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
             filters["partial_match"] = graphene.Boolean()
+
+            if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+                # This is only available for IPAM generics
+                filters["include_available"] = graphene.Boolean()
+                filters["kinds"] = graphene.List(graphene.NonNull(graphene.String))
 
         if not top_level:
             return filters

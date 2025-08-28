@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import InternalAccountToken
 from infrahub.exceptions import PermissionDeniedError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -44,7 +44,7 @@ async def resolve_account_tokens(
     if not graphql_context.account_session.authenticated_by_jwt:
         raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
-    fields = await extract_fields_first_node(info)
+    fields = extract_graphql_fields(info)
 
     filters = {"account__ids": [graphql_context.account_session.account_id]}
     response: dict[str, Any] = {}
@@ -121,7 +121,7 @@ async def resolve_account_permissions(
     if not graphql_context.account_session:
         raise ValueError("An account_session is mandatory to execute this query")
 
-    fields = await extract_fields_first_node(info)
+    fields = extract_graphql_fields(info)
 
     response: dict[str, dict[str, Any]] = {}
     if "global_permissions" in fields:

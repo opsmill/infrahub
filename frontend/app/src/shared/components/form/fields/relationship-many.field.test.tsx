@@ -7,7 +7,7 @@ import { describe, expect, test, vi } from "vitest";
 import { TestForm } from "../../../../../tests/components/form.story";
 import { render } from "../../../../../tests/components/render";
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
-import RelationshipManyField from "./relationship-many.field";
+import RelationshipManyField from "./relationships/relationship-many.field";
 
 vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
 

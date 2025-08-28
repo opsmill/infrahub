@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
-from infrahub_sdk.utils import extract_fields
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
@@ -14,6 +13,7 @@ from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 from ..models import OrderModel
 from ..types import InfrahubObjectType
@@ -101,7 +101,7 @@ class AccountMixin:
         async with db.start_transaction() as dbt:
             await obj.save(db=dbt)
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
 
     @classmethod

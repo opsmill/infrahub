@@ -16,6 +16,7 @@ export type GlobalEventsFilters = {
   until?: Date;
   offset?: number;
   limit?: number;
+  order?: string;
 };
 
 export const OBJECTS_PER_PAGE = 40;
@@ -35,6 +36,7 @@ export const EVENTS_QUERY = gql`
     $until: DateTime
     $offset: Int
     $limit: Int
+    $order: EventSortOrder
   ) {
     InfrahubEvent(
       ids: $ids
@@ -50,6 +52,7 @@ export const EVENTS_QUERY = gql`
       until: $until
       offset: $offset
       limit: $limit
+      order: $order
     ) {
       edges {
         node {
@@ -138,16 +141,20 @@ export const EVENTS_QUERY = gql`
   }
 `;
 
-export type GetEventsFromApiParams = PaginationParams & { filters: GlobalEventsFilters };
+export interface GetEventsFromApiParams extends PaginationParams {
+  filters: GlobalEventsFilters;
+}
 
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
+  offset,
   filters,
 }: GetEventsFromApiParams) {
   return graphqlClient.query<Get_Infrahub_EventsQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,
+      offset,
       ...filters,
     },
   });

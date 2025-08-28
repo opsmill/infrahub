@@ -4,7 +4,7 @@ import {
   ObjectTableSelectionToolbarProps,
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
-import { NodeObject } from "@/entities/nodes/types";
+import { NodeCore } from "@/entities/nodes/types";
 import {
   ColumnDef,
   ColumnOrderState,
@@ -23,7 +23,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
 }
 
-export function DataTable<T extends NodeObject>({
+export function DataTable<T extends NodeCore>({
   columnOrder,
   columns,
   data,

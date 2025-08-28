@@ -46,7 +46,7 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
         .click();
       await page.getByText("Members0").click();
       await page.getByTestId("open-relationship-form-button").click();
-      await page.getByLabel("Kind").click();
+      await page.getByRole("combobox", { name: "Kind" }).click();
       await page.getByRole("option", { name: "Tag Builtin" }).click();
       await expect(page.getByRole("option", { name: "Tag Builtin" })).toBeHidden();
       await page.getByLabel("Tag").click();
@@ -58,7 +58,7 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
       await page.getByTestId("close-alert").click();
 
       await page.getByTestId("open-relationship-form-button").click();
-      await page.getByLabel("Kind").click();
+      await page.getByRole("combobox", { name: "Kind" }).click();
       await page.getByRole("option", { name: "Tag Builtin" }).click();
       await page.getByLabel("Tag").click();
       await page.getByRole("option", { name: "red" }).click();

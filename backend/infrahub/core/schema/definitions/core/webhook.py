@@ -120,6 +120,9 @@ core_custom_webhook = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
+    attributes=[
+        Attr(name="shared_key", kind="Password", unique=False, optional=True, order_weight=4000),
+    ],
     relationships=[
         Rel(
             name="transformation",

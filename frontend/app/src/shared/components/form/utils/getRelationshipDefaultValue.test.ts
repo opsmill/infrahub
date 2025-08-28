@@ -9,7 +9,7 @@ import { NodeSchema } from "@/entities/schema/types";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { store } from "@/shared/stores";
 import { describe, expect, it, vi } from "vitest";
-import { generateNodeSchema } from "../../../../../tests/fake/schema";
+import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
 const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({
   node: {
@@ -314,6 +314,60 @@ describe("getRelationshipDefaultValue", () => {
 
       // THEN
       expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
+  });
+
+  describe("when parent schema is provided", () => {
+    it("returns relationship from parent schema", () => {
+      // GIVEN
+      const relationshipData = undefined;
+      const objectTemplate = null;
+      const parentSchema = generateNodeSchema({
+        kind: "TestParent",
+        relationships: [
+          {
+            ...generateRelationshipSchema(),
+            kind: "Component",
+            name: "relationship-to-component",
+            peer: "TestComponent",
+          },
+        ],
+      });
+      const componentSchema = generateNodeSchema({
+        kind: "TestComponent",
+        relationships: [
+          {
+            ...generateRelationshipSchema(),
+            kind: "Parent",
+            name: "relationship-to-parent",
+            peer: "TestParent",
+          },
+        ],
+      });
+      const parentData: NodeObject = {
+        id: "parent-id",
+        kind: "TestParent",
+        display_label: "Parent Object",
+        __typename: "TestParent",
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "relationship-to-parent",
+        schema: componentSchema,
+        parentSchema,
+        parentData,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "user",
+        },
+        value: parentData,
+      });
     });
   });
 });
