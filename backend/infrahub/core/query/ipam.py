@@ -673,8 +673,6 @@ class IPPrefixReconcileQuery(Query):
             "ip_prefix_kind": InfrahubKind.IPPREFIX,
             "ip_address_kind": InfrahubKind.IPADDRESS,
             "branch_filter": branch_filter,
-            "ip_prefix_kind": InfrahubKind.IPPREFIX,
-            "ip_address_kind": InfrahubKind.IPADDRESS,
             "ip_prefix_attribute_kind": PREFIX_ATTRIBUTE_LABEL,
             "ip_address_attribute_kind": ADDRESS_ATTRIBUTE_LABEL,
         }
