@@ -4,6 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import (
     create_branch,
     get_default_ipnamespace,
@@ -13,6 +14,15 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
+
+
+async def test_missing_value_raises_error(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    with pytest.raises(NodeNotFoundError) as exc_info:
+        await reconciler.reconcile(ip_value=ipaddress.ip_network("10.10.0.0/24"), namespace=default_ipnamespace)
+
+    assert exc_info.value.node_type == InfrahubKind.IPPREFIX
+    assert exc_info.value.identifier == "10.10.0.0/24"
 
 
 async def test_first_prefix(
@@ -322,7 +332,7 @@ async def test_ipprefix_reconciler_decrement_prefix_length_on_branch(
     # check parent is correct
     updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
     assert len(updated_parent_rel) == 1
-    assert updated_parent_rel[0].peer_id == ip_dataset_01["net140"].id
+    assert updated_parent_rel[0].peer_id == net_143_branch.id
 
 
 async def test_namespace_change_on_branch(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
@@ -361,3 +371,58 @@ async def test_namespace_change_on_branch(db: InfrahubDatabase, default_branch: 
     updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
     assert len(updated_parent_rel) == 1
     assert updated_parent_rel[0].peer_id == ip_dataset_01["net146"].id
+
+
+async def test_ipprefix_swap_values_on_branch(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_140 = ip_dataset_01["net140"]
+    net_143 = ip_dataset_01["net143"]
+
+    branch = await create_branch(db=db, branch_name="branch-prefix-update")
+    # update from 10.10.0.0/16 to 8.8.0.0/16 and delete parent and children relationships
+    net_140_branch = await NodeManager.get_one(db=db, branch=branch, id=net_140.id)
+    net_140_branch.prefix.value = "8.8.0.0/16"
+    await net_140_branch.parent.update(db=db, data=[None])
+    await net_140_branch.children.update(db=db, data=[None])
+    await net_140_branch.save(db=db)
+    # update from 10.10.1.0/27 to 10.10.0.0/16
+    net_143_branch = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    net_143_branch.prefix.value = "10.10.0.0/16"
+    await net_143_branch.save(db=db)
+
+    reconciler = IpamReconciler(db=db, branch=branch)
+
+    ip_network = ipaddress.ip_network(net_143_branch.prefix.value)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check new 10.10.0.0/16 prefix is updated
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    assert updated_prefix.prefix.value == "10.10.0.0/16"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 3
+    child_peer_ids = {rel.peer_id for rel in updated_prefix_child_rels}
+    assert child_peer_ids == {ip_dataset_01["net142"].id, ip_dataset_01["net144"].id, ip_dataset_01["net145"].id}
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 1
+    assert updated_address_rels[0].peer_id == ip_dataset_01["address10"].id
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 1
+    assert updated_parent_rel[0].peer_id == ip_dataset_01["net146"].id
+
+    # check new 8.8.0.0/16 is unchanged
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_140.id)
+    assert updated_prefix.prefix.value == "8.8.0.0/16"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 0
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 0
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 0
