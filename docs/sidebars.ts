@@ -17,6 +17,29 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Academy',
+      collapsed: false,
+      collapsible: false,
+      link: {
+        type: 'doc',
+        id: 'academy/academy'
+      },
+      items: [
+        {
+          type: 'category',
+          label: 'Getting Started',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'academy/getting-started/infrahub-introduction',
+            'academy/getting-started/deploy-first-configuration',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Guides',
       collapsed: false,
       collapsible: false,
