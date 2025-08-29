@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import ID, Field, List, NonNull, String
-from infrahub_sdk.utils import extract_fields_first_node
 
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ async def branch_resolver(
     info: GraphQLResolveInfo,
     **kwargs: Any,
 ) -> list[dict[str, Any]]:
-    fields = await extract_fields_first_node(info)
+    fields = extract_graphql_fields(info)
     return await BranchType.get_list(graphql_context=info.context, fields=fields, **kwargs)
 
 

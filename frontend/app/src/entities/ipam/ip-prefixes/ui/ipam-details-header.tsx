@@ -1,0 +1,145 @@
+import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import {
+  NodeAttribute,
+  NodeCore,
+  NodeObject,
+  NodeRelationshipMany,
+  NodeRelationshipOne,
+} from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Row, RowProps } from "@/shared/components/container";
+import { classNames, sortByOrderWeight } from "@/shared/utils/common";
+import React from "react";
+import { Link, LinkProps } from "react-router";
+
+interface IpPrefixDetailsHeaderProps extends RowProps {
+  ipPrefixSchema: ModelSchema;
+  ipPrefixNode: NodeObject;
+  permission: Permission;
+}
+
+export function IpamDetailsHeader({
+  ipPrefixNode,
+  ipPrefixSchema,
+  permission,
+  className,
+  ...props
+}: IpPrefixDetailsHeaderProps) {
+  const attributesVisible = getPrefixAttributesVisibleInListView(
+    ipPrefixSchema.attributes ?? []
+  ).filter((rel) => rel.name !== "address");
+  const relationshipsVisible = getRelationshipsVisibleInListView(
+    ipPrefixSchema.relationships ?? []
+  ).filter((rel) => rel.name !== "parent");
+
+  const orderedFields: Array<AttributeSchema | RelationshipSchema> = sortByOrderWeight([
+    ...attributesVisible,
+    ...relationshipsVisible,
+  ]);
+
+  return (
+    <Row className={classNames("relative", className)} {...props}>
+      <Row>
+        <h2 className="font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
+
+        <ObjectDetailsMenu
+          objectSchema={ipPrefixSchema}
+          objectData={ipPrefixNode}
+          permission={permission}
+        />
+      </Row>
+
+      <Row className="gap-2.5">
+        <Fade />
+        {orderedFields.map((field, index) => {
+          let displayValue: React.ReactNode = "-";
+
+          if ("peer" in field) {
+            if (field.cardinality === "many") {
+              const relData = ipPrefixNode[field.name] as NodeRelationshipMany | undefined;
+              if (relData && relData.edges?.length > 0) {
+                displayValue = relData.edges.map(({ node }, index) =>
+                  node ? (
+                    <>
+                      {index > 0 && ", "}
+                      <RelationshipDisplay key={node.id} node={node} />
+                    </>
+                  ) : null
+                );
+              }
+            } else {
+              const relData = ipPrefixNode[field.name] as NodeRelationshipOne | undefined;
+              displayValue = relData?.node ? <RelationshipDisplay node={relData.node} /> : "-";
+            }
+          } else {
+            const attributeData = ipPrefixNode[field.name] as NodeAttribute | undefined;
+            const attributeValue = attributeData?.value?.toString();
+            displayValue =
+              attributeValue && field.name === "utilization"
+                ? `${attributeValue}%`
+                : (attributeValue ?? "-");
+          }
+
+          return (
+            <React.Fragment key={field.name}>
+              {index > 0 && <Divider />}
+              <Group>
+                <Title>{field.label}</Title>
+                <Value>{displayValue}</Value>
+              </Group>
+            </React.Fragment>
+          );
+        })}
+      </Row>
+    </Row>
+  );
+}
+
+const Divider = () => <div className="w-px bg-gray-200 h-5" />;
+
+const Group = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
+  <div className={classNames("text-xs not-last:max-w-50", className)} {...props}>
+    {children}
+  </div>
+);
+
+const Title = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
+  <div className={classNames("text-custom-blue-800 truncate", className)} {...props}>
+    {children}
+  </div>
+);
+
+const Value = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
+  <div className={classNames("text-gray-600 font-medium truncate", className)} {...props}>
+    {children}
+  </div>
+);
+
+const Fade = ({ className, ...props }: React.HTMLProps<HTMLDivElement>) => (
+  <div
+    className={classNames(
+      "absolute right-0 top-0 bottom-0 w-40 bg-gradient-to-r from-transparent via-white/70 to-white pointer-events-none",
+      className
+    )}
+    {...props}
+  />
+);
+
+interface RelationshipDisplayProps extends Omit<LinkProps, "to"> {
+  node: NodeCore;
+}
+
+const RelationshipDisplay = ({ className, node, ...props }: RelationshipDisplayProps) => (
+  <Link
+    to={getObjectDetailsUrl(node.__typename, node.id)}
+    className={classNames("underline decoration-dotted inline-flex", className)}
+    {...props}
+  >
+    {node.display_label}
+  </Link>
+);

@@ -58,7 +58,7 @@ test.describe("Verifies the object creation", () => {
   test("verifies empty values after kind select", async ({ page }) => {
     await page.goto(`/objects/CoreGraphQLQuery?branch=${BRANCH_NAME}`);
     await page.getByTestId("create-object-button").click();
-    await page.getByLabel("Kind").click();
+    await page.getByRole("combobox", { name: "Kind" }).click();
     await page.getByRole("option", { name: "Repository Core", exact: true }).click();
     await page.getByLabel("Repository").click();
     await expect(page.getByText("Read-Only Repository", { exact: true })).not.toBeVisible();

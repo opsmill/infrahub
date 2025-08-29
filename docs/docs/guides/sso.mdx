@@ -79,6 +79,10 @@ For a production Infrahub instance at `infrahub.example.com`:
   </TabItem>
 </Tabs>
 
+:::note Reverse proxy setup
+Use the `INFRAHUB_PUBLIC_URL` environment variable to specify the externally accessible URL for your Infrahub instance. This configuration is critical when Infrahub is deployed behind a reverse proxy, load balancer, or in containerized environments where the internal and external URLs differ. When configuring SSO ensure this URL matches the redirect URI or callback URL configured in your SSO provider.
+:::
+
 For a local development instance:
 
 <Tabs groupId="selected-protocol">

@@ -33,7 +33,7 @@ from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NA
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices  # noqa: TC001
+from infrahub.workers.dependencies import get_client
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
@@ -153,9 +153,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     )
 
     cache_repo: Repo | None = Field(None, description="Internal cache of the GitPython Repo object")
-    service: InfrahubServices = Field(
-        ..., description="Service object with access to the message queue, the database etc.."
-    )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
@@ -169,10 +166,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @property
     def sdk(self) -> InfrahubClient:
-        if self.client:
-            return self.client
+        if not self.client:
+            self.client = get_client()
 
-        return self.service.client
+        return self.client
 
     @property
     def default_branch(self) -> str:

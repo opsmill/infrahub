@@ -267,6 +267,8 @@ RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3, e4
         if request.param == "edge_delete":
             return broken_edge_deleter_patch_runner
 
+        pytest.fail(reason="Valid patch runner missing")
+
     def get_patch_runner(self, db: InfrahubDatabase) -> PatchRunner:
         return PatchRunner(
             plan_writer=PatchPlanWriter(),

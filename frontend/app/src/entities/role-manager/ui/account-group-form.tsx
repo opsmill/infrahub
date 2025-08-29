@@ -1,19 +1,14 @@
-import {
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/config/constants";
+import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import InputField from "@/shared/components/form/fields/input.field";
-import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
+import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
@@ -30,28 +25,26 @@ import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
+interface AccountGroupFormProps {
   currentObject?: Record<string, AttributeType | RelationshipType>;
   onCancel?: () => void;
-  onUpdateComplete?: () => void;
+  onSuccess?: NodeFormProps["onSuccess"];
 }
 
-export const AccountGroupForm = ({
-  currentObject,
-  onSuccess,
-  onCancel,
-  onUpdateComplete,
-}: NumberPoolFormProps) => {
+export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: AccountGroupFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
+  const createObject = useCreateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
     relationshipData: currentObject?.roles?.value,
+    relationshipName: "roles",
   });
 
   const members = getRelationshipDefaultValue({
     relationshipData: currentObject?.members?.value,
+    relationshipName: "members",
   });
 
   const defaultValues = {
@@ -68,54 +61,56 @@ export const AccountGroupForm = ({
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+    const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
 
-      if (!Object.keys(newObject).length) {
-        return;
-      }
+    if (!Object.keys(newObject).length) {
+      return;
+    }
 
-      const mutationString = currentObject
-        ? updateObjectWithId({
-            kind: ACCOUNT_GROUP_OBJECT,
-            data: stringifyWithoutQuotes({
-              id: currentObject.id,
-              ...newObject,
-            }),
-          })
-        : createObject({
-            kind: ACCOUNT_GROUP_OBJECT,
-            data: stringifyWithoutQuotes({
-              ...newObject,
-            }),
-          });
+    if (currentObject) {
+      try {
+        const result = await graphqlClient.mutate({
+          mutation: gql(
+            updateObjectWithId({
+              kind: ACCOUNT_GROUP_OBJECT,
+              data: stringifyWithoutQuotes({
+                id: currentObject.id,
+                ...newObject,
+              }),
+            })
+          ),
+          context: {
+            branch: branch?.name,
+            date,
+          },
+        });
 
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
-        },
-      });
-
-      if (currentObject) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Group updated!"} />, {
           toastId: "alert-success-group-updated",
         });
-      } else {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Group created!"} />, {
-          toastId: "alert-success-group-created",
-        });
-      }
 
-      if (onSuccess) await onSuccess(result?.data?.[`${OBJECT_PERMISSION_OBJECT}Create`]);
-      if (onUpdateComplete) await onUpdateComplete();
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+        if (onSuccess) await onSuccess(result?.data?.[`${ACCOUNT_GROUP_OBJECT}Update`]);
+      } catch (error: unknown) {
+        console.error("An error occurred while creating the object: ", error);
+      }
+    } else {
+      await createObject.mutateAsync(
+        {
+          objectKind: ACCOUNT_GROUP_OBJECT,
+          data: newObject,
+        },
+        {
+          onSuccess: async (newNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Group created!" />, {
+              toastId: "alert-success-group-created",
+            });
+            if (onSuccess) await onSuccess(newNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while creating the object:", error);
+          },
+        }
+      );
     }
   }
 
@@ -152,7 +147,7 @@ export const AccountGroupForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
-          options={roles.value}
+          defaultValue={roles}
         />
 
         <RelationshipManyField
@@ -163,7 +158,7 @@ export const AccountGroupForm = ({
             peer: ACCOUNT_OBJECT,
             cardinality: "many",
           }}
-          options={members.value}
+          defaultValue={members}
         />
 
         <div className="text-right">

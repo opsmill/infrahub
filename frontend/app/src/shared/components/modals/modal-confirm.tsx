@@ -1,7 +1,7 @@
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React, { Fragment, ReactNode, useRef } from "react";
+import { Button } from "../buttons/button-primitive";
 
 interface iProps {
   open: boolean;
@@ -10,10 +10,10 @@ interface iProps {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
   description?: string | React.ReactNode;
-  onConfirm: Function;
-  onCancel: Function;
   children?: ReactNode;
   icon?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
 }
 
 export default function ModalConfirm({
@@ -82,14 +82,15 @@ export default function ModalConfirm({
                 >
                   <Button
                     onClick={onConfirm}
-                    buttonType={BUTTON_TYPES.VALIDATE}
+                    variant={"active"}
                     className="ml-2"
                     isLoading={isLoading}
+                    disabled={isLoading}
                   >
                     Confirm
                   </Button>
                   {!hideCancel && (
-                    <Button onClick={onCancel} ref={cancelButtonRef}>
+                    <Button onClick={onCancel} ref={cancelButtonRef} variant={"outline"}>
                       Cancel
                     </Button>
                   )}

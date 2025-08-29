@@ -10,7 +10,6 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -58,8 +57,6 @@ class TestBranchMergeRollback(TestInfrahubApp):
         prefect_test_fixture: None,
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
-
-        bus_simulator.service._cache = RedisCache()
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from asyncio import sleep
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import yaml
@@ -9,6 +12,9 @@ from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+
+if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 

@@ -102,10 +102,26 @@ exceptions:
   - TLS
   - Tony Stark
   - TransformPython
-  - TruffleHog
   - Trusted Root Certificate Store
   - UI
   - Vale
   - VS Code
   - VS Code extensions
   - WebUI
+  - Slurp'it
+  - IDE
+  - AI
+  - OpenID Connect
+  - OAuth 2.0
+  - OAuth 2.0 vs OpenID Connect
+  - OpenID Connect (OIDC)
+  - Emma
+  - Helm
+  - Kubernetes
+  - Allocate VLAN ID
+  - Determine your redirect URI
+  - Create an application in Entra ID
+  - Configure Infrahub
+  - OAuth 2.0 parameters
+  - Redirect URI formats
+  - OAuth 2.0 configuration example

@@ -87,7 +87,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
         patch("infrahub.core.branch.tasks.get_run_logger"),
     ):
         await post_process_branch_merge.fn(
-            source_branch=source_branch_name, target_branch=target_branch_name, context=context, service=init_service
+            source_branch=source_branch_name, target_branch=target_branch_name, context=context
         )
 
         expected_calls = [

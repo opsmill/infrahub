@@ -7,13 +7,14 @@ type DateDisplayProps = {
   date?: number | string | Date;
   hideDefault?: boolean;
   className?: string;
+  containerClassName?: string;
 };
 
 export const getDateDisplay = (date?: number | string | Date) =>
   format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
 
 export const DateDisplay = (props: DateDisplayProps) => {
-  const { date, hideDefault, className } = props;
+  const { date, hideDefault, className, containerClassName } = props;
 
   if (!date && hideDefault) {
     return null;
@@ -27,18 +28,20 @@ export const DateDisplay = (props: DateDisplayProps) => {
     const dateFormat = isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM";
 
     return (
-      <span className="flex items-center flex-wrap">
+      <span className={classNames("flex items-center flex-wrap", containerClassName)}>
         <Tooltip enabled content={getDateDisplay(dateData)}>
-          <span className="text-xs font-normal">{format(dateData, dateFormat)}</span>
+          <span className={classNames("text-xs font-normal", className)}>
+            {format(dateData, dateFormat)}
+          </span>
         </Tooltip>
       </span>
     );
   }
 
   return (
-    <span className={classNames("flex items-center flex-wrap", className)}>
+    <span className={classNames("flex items-center flex-wrap", containerClassName)}>
       <Tooltip enabled content={getDateDisplay(date)}>
-        <span className="text-xs font-normal">
+        <span className={classNames("text-xs font-normal", className)}>
           {formatDistanceToNow(dateData, { addSuffix: true })}
         </span>
       </Tooltip>

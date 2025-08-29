@@ -46,11 +46,14 @@ class InfrahubTriggerRuleMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
         _validate_node_kind(data=data, db=db)
-        trigger_rule_definition, result = await super().mutate_create(info=info, data=data, branch=branch, database=db)
+        trigger_rule_definition, result = await super().mutate_create(
+            info=info, data=data, branch=branch, database=db, override_data=override_data
+        )
 
         return trigger_rule_definition, result
 
@@ -93,11 +96,14 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
         async with graphql_context.db.start_transaction() as dbt:
-            trigger_match, result = await super().mutate_create(info=info, data=data, branch=branch, database=dbt)
+            trigger_match, result = await super().mutate_create(
+                info=info, data=data, branch=branch, database=dbt, override_data=override_data
+            )
             trigger_match_model = cast(CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch, trigger_match)
             node_trigger_rule = await trigger_match_model.trigger.get_peer(db=dbt, raise_on_error=True)
             node_trigger_rule_model = cast(CoreNodeTriggerRule, node_trigger_rule)

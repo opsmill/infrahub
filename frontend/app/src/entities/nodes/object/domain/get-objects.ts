@@ -43,13 +43,11 @@ export const getObjects: GetObjects = async ({
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
 
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${schemaKind}`,
-      [schemaKindToQuery]: {
+      [schemaKind]: {
         __args: {
           limit,
           offset,
@@ -77,5 +75,5 @@ export const getObjects: GetObjects = async ({
     },
   });
 
-  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
+  return data[schemaKind]?.edges?.map((edge: any) => edge.node) ?? [];
 };

@@ -5,9 +5,16 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
+from infrahub.core.graph.schema import (
+    GraphAttributeIPHostNode,
+    GraphAttributeIPNetworkNode,
+    GraphAttributeValueIndexedNode,
+    GraphAttributeValueNode,
+)
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs
+from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -56,12 +63,14 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
         prop_list = [f"{key}: ${key}" for key in content.keys()]
 
-        labels = ["AttributeValue"]
+        labels = [GraphAttributeValueNode.get_default_label()]
         node_type = self.attr.get_db_node_type()
-        if node_type == AttributeDBNodeType.IPHOST:
-            labels.append("AttributeIPHost")
-        elif node_type == AttributeDBNodeType.IPNETWORK:
-            labels.append("AttributeIPNetwork")
+        if AttributeDBNodeType.INDEXED in node_type:
+            labels.append(GraphAttributeValueIndexedNode.get_default_label())
+        if AttributeDBNodeType.IPHOST in node_type:
+            labels.append(GraphAttributeIPHostNode.get_default_label())
+        if AttributeDBNodeType.IPNETWORK in node_type:
+            labels.append(GraphAttributeIPNetworkNode.get_default_label())
 
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
@@ -198,6 +207,9 @@ async def default_attribute_query_filter(
     support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
     """Generate Query String Snippet to filter the right node."""
+    attribute_value_label = GraphAttributeValueNode.get_default_label()
+    if attribute_kind and not is_large_attribute_type(attribute_kind):
+        attribute_value_label = GraphAttributeValueIndexedNode.get_default_label()
 
     query_filter: list[QueryElement] = []
     query_params: dict[str, Any] = {}
@@ -226,33 +238,35 @@ async def default_attribute_query_filter(
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
-            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+            query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
         else:
             if partial_match:
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
                 query_where.append(
                     f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
                 )
             elif attribute_kind and attribute_kind == "List" and not isinstance(filter_value, list):
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
                 filter_value = build_regex_attrs(values=[filter_value])
                 query_where.append(f"toString(av.{filter_name}) =~ ${param_prefix}_{filter_name}")
             elif filter_name == "isnull":
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
             elif support_profiles:
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
                 query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")
             else:
                 query_filter.append(
                     QueryNode(
-                        name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"}
+                        name="av",
+                        labels=[attribute_value_label],
+                        params={filter_name: f"${param_prefix}_{filter_name}"},
                     )
                 )
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name == "values" and isinstance(filter_value, list):
         query_filter.extend(
-            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
+            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=[attribute_value_label]))
         )
         if attribute_kind and attribute_kind == "List":
             query_params[f"{param_prefix}_{filter_name}"] = build_regex_attrs(values=filter_value)
@@ -267,10 +281,14 @@ async def default_attribute_query_filter(
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
-            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+            query_filter.append(QueryNode(name="av", labels=[GraphAttributeValueNode.get_default_label()]))
         else:
             query_filter.append(
-                QueryNode(name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"})
+                QueryNode(
+                    name="av",
+                    labels=[GraphAttributeValueNode.get_default_label()],
+                    params={filter_name: f"${param_prefix}_{filter_name}"},
+                )
             )
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
 

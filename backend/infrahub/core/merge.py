@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 log = get_logger()
@@ -42,7 +42,7 @@ class BranchMerger:
         diff_repository: DiffRepository,
         diff_locker: DiffLocker,
         destination_branch: Branch | None = None,
-        service: InfrahubServices | None = None,
+        workflow: InfrahubWorkflow | None = None,
     ):
         self.source_branch = source_branch
         self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
@@ -58,7 +58,7 @@ class BranchMerger:
         self._destination_schema: SchemaBranch | None = None
         self._initial_source_schema: SchemaBranch | None = None
 
-        self._service = service
+        self._workflow = workflow
 
     @property
     def source_schema(self) -> SchemaBranch:
@@ -81,10 +81,10 @@ class BranchMerger:
         raise ValueError("_initial_source_schema hasn't been initialized")
 
     @property
-    def service(self) -> InfrahubServices:
-        if not self._service:
-            raise ValueError("BranchMerger hasn't been initialized with a service object")
-        return self._service
+    def workflow(self) -> InfrahubWorkflow:
+        if not self._workflow:
+            raise ValueError("BranchMerger hasn't been initialized with a workflow object")
+        return self._workflow
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
@@ -246,6 +246,4 @@ class BranchMerger:
                     destination_branch_id=str(self.destination_branch.get_uuid()),
                     default_branch=repo.default_branch.value,
                 )
-                await self.service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model}
-                )
+                await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})

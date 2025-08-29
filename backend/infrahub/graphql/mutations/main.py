@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
-from infrahub_sdk.utils import extract_fields
 from typing_extensions import Self
 
 from infrahub import config, lock
@@ -28,6 +27,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 
@@ -147,7 +147,9 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
-    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch) -> Node:
+    async def _call_mutate_create_object(
+        cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch, override_data: dict[str, Any] | None = None
+    ) -> Node:
         """
         Wrapper around mutate_create_object to potentially activate locking.
         """
@@ -157,9 +159,9 @@ class InfrahubMutationMixin:
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                return await cls.mutate_create_object(data=data, db=db, branch=branch)
+                return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
 
-        return await cls.mutate_create_object(data=data, db=db, branch=branch)
+        return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
 
     @classmethod
     async def mutate_create(
@@ -168,10 +170,11 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
-        obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch)
+        obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
         return obj, result
 
@@ -182,12 +185,15 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         db: InfrahubDatabase,
         branch: Branch,
+        override_data: dict[str, Any] | None = None,
     ) -> Node:
         schema = cls._meta.active_schema
         if isinstance(schema, GenericSchema):
             raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
+        create_data = dict(data)
+        create_data.update(override_data or {})
         return await create_node(
-            data=dict(data),
+            data=create_data,
             db=db,
             branch=branch,
             schema=schema,
@@ -195,7 +201,7 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         result: dict[str, Any] = {"ok": True}
         if "object" in fields:
             result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
@@ -314,7 +320,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         obj: Node,
     ) -> Self:
-        fields_object = await extract_fields(info.field_nodes[0].selection_set)
+        fields_object = extract_graphql_fields(info=info)
         fields_object = fields_object.get("object", {})
         result: dict[str, Any] = {"ok": True}
         if fields_object:

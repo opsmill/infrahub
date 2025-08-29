@@ -13,7 +13,7 @@ type TabProps = {
 };
 
 function Tab({ to, label, isLoading, error, count }: TabProps) {
-  const match = useMatch(to.split("?")[0]);
+  const match = useMatch(to.split("?")[0] as string);
 
   return (
     <Link

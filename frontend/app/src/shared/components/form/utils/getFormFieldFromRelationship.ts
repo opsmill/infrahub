@@ -6,42 +6,81 @@ import { validateRelationshipMany } from "@/entities/schema/utils/validation/val
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
+  RelationshipFieldType,
 } from "@/shared/components/form/type";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
+interface GetFieldLabelParams {
+  type?: RelationshipFieldType;
+  relationshipSchema: RelationshipSchema;
+}
+
+const getFieldLabel = ({ type, relationshipSchema }: GetFieldLabelParams) => {
+  const label = relationshipSchema.label ?? relationshipSchema.name;
+
+  if (type === "relationship-add") {
+    return `Add ${label}`;
+  }
+
+  if (type === "relationship-remove") {
+    return `Remove ${label}`;
+  }
+
+  return label;
+};
+
+interface GetFormFieldFromRelationshipParams {
+  type?: RelationshipFieldType;
+  name?: string;
+  auth?: AuthContextType;
+  isFilterForm: boolean;
+  isBulkUpdate?: boolean;
+  relationshipSchema: RelationshipSchema;
+  relationshipData?: RelationshipType;
+  objectTemplate?: NodeObject | null;
+  schema: ModelSchema;
+  parentSchema: ModelSchema | null;
+  parentData?: NodeObject | null;
+}
+
 export const getFormFieldFromRelationship = ({
+  type,
+  name,
   relationshipSchema,
   relationshipData,
   objectTemplate,
   isFilterForm = false,
+  isBulkUpdate,
   schema,
+  parentSchema,
+  parentData,
   auth,
-}: {
-  auth: AuthContextType | undefined;
-  isFilterForm: boolean;
-  relationshipSchema: RelationshipSchema;
-  relationshipData: RelationshipType | undefined;
-  objectTemplate: NodeObject | null | undefined;
-  schema: ModelSchema;
-}): DynamicRelationshipFieldProps => {
-  const label = relationshipSchema.label ?? relationshipSchema.name;
+}: GetFormFieldFromRelationshipParams): DynamicRelationshipFieldProps => {
+  const label = getFieldLabel({ type, relationshipSchema });
+
   const relationshipTemplate = objectTemplate?.[relationshipSchema.name] as
     | NodeRelationship
     | undefined;
+
   return {
-    type: "relationship",
-    name: relationshipSchema.name,
+    type: type ?? "relationship",
+    name: name ?? relationshipSchema.name,
     label,
     defaultValue: getRelationshipDefaultValue({
       relationshipData,
       objectTemplate,
       isFilterForm,
       relationshipName: relationshipSchema.name,
+      schema,
+      parentSchema,
+      parentData,
     }),
     description: relationshipSchema.description ?? undefined,
+    isBulkUpdate,
+    relationship: relationshipSchema,
     disabled: isFieldDisabled({
       auth,
       owner: undefined,
@@ -50,11 +89,10 @@ export const getFormFieldFromRelationship = ({
       isReadOnly: relationshipSchema.read_only,
     }),
     parent: getRelationshipParent(relationshipData ?? relationshipTemplate),
-    relationship: relationshipSchema,
     rules: {
-      required: !isFilterForm && !relationshipSchema.optional,
+      required: !isFilterForm && !isBulkUpdate && !relationshipSchema.optional,
       validate: (formFieldValue: FormRelationshipValue) => {
-        if (isFilterForm) return true;
+        if (isFilterForm || isBulkUpdate) return true;
 
         if (relationshipSchema.cardinality === "many") {
           const validation = validateRelationshipMany(
