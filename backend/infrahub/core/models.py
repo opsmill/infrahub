@@ -73,6 +73,15 @@ class SchemaBranchHash(BaseModel):
     nodes: dict[str, str] = Field(default_factory=dict)
     generics: dict[str, str] = Field(default_factory=dict)
 
+    @property
+    def is_valid(self) -> bool:
+        """
+        TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics.
+        """
+        if len(self.nodes) < 2 and len(self.generics) < 2:
+            return False
+        return True
+
     def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
             return None
