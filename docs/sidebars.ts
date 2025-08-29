@@ -129,12 +129,13 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
-          label: 'Architecture',
+          label: 'Overview',
           link: {
             type: 'generated-index',
           },
           items: [
             'topics/architecture',
+            'topics/community-vs-enterprise',
           ],
         },
         {
@@ -144,7 +145,6 @@ const sidebars: SidebarsConfig = {
             type: 'generated-index',
           },
           items: [
-            'topics/community-vs-enterprise',
             {
               type: 'category',
               label: 'Git Integration',
