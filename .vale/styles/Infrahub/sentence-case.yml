@@ -12,6 +12,7 @@ scope:
 match: $sentence
 exceptions:
   - AI
+  - Allocate VLAN ID
   - Alpha
   - Ansible
   - API
@@ -58,6 +59,7 @@ exceptions:
   - Jinja
   - Jinja2
   - JWT
+  - Kubernetes
   - LibreNMS
   - Namespace
   - NATS
@@ -69,10 +71,14 @@ exceptions:
   - NetPicker
   - Node
   - NumberPool
+  - OAuth 2.0
+  - OAuth 2.0 vs OpenID Connect
   - OAuth2
   - Observium
   - OIDC
   - Open ID Connect
+  - OpenID Connect
+  - OpenID Connect (OIDC)
   - OpsMill
   - Peering Manager
   - Pydantic
@@ -89,7 +95,6 @@ exceptions:
   - TLS
   - Tony Stark
   - TransformPython
-  - TruffleHog
   - Trusted Root Certificate Store
   - UI
   - Vale

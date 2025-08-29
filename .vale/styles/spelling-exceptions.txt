@@ -1,4 +1,3 @@
-agent
 Alibaba
 allocation_weight
 anonymized
@@ -33,6 +32,7 @@ Containerlab
 content_type
 convert_query_response
 coroutine
+cron
 created_by
 Cron
 cypher
@@ -129,7 +129,6 @@ namespaces
 Nautobot
 Neo4j
 Netbox
-Netpicker
 NetPicker
 Netutils
 Newsfragment
@@ -180,6 +179,7 @@ schema's
 scrollable
 scrollbar
 sdk
+SLAs
 SLA
 Slurp'it
 streamlit
@@ -198,7 +198,6 @@ Tooltips
 Tooltips
 towncrier
 Towncrier
-TruffleHog
 UIs
 UIs
 uncheck

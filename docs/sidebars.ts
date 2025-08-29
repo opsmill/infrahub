@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'guides/installation',
+            'guides/production-deployment',
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
