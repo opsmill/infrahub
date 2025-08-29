@@ -19,7 +19,6 @@ import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
@@ -40,6 +39,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
 
   const groups = getRelationshipDefaultValue({
     relationshipData: currentObject?.groups?.value,
+    relationshipName: "groups",
   });
 
   const permissions = getRelationshipDefaultValue({
@@ -48,9 +48,9 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
   });
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    groups: groups ?? DEFAULT_FORM_FIELD_VALUE,
-    permissions: permissions ?? DEFAULT_FORM_FIELD_VALUE,
+    name: getCurrentFieldValue("name", currentObject),
+    groups: groups,
+    permissions: permissions,
   };
 
   const form = useForm<FieldValues>({
@@ -133,7 +133,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
             peer: ACCOUNT_GROUP_OBJECT,
             cardinality: "many",
           }}
-          options={groups.value}
+          defaultValue={groups}
         />
 
         <FormField
@@ -149,7 +149,12 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
                     {...field}
                     value={fieldData.value}
                     onChange={(newValue) => {
-                      field.onChange(updateRelationshipFieldValue(newValue, permissions));
+                      field.onChange(
+                        updateRelationshipFieldValue(
+                          newValue.length > 0 ? newValue : null,
+                          permissions
+                        )
+                      );
                     }}
                   />
                 </FormInput>

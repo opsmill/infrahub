@@ -150,6 +150,28 @@ class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
 
 
+class ProposedChangeApprovalsRevokedEvent(ProposedChangeEvent):
+    reviewer_accounts: dict[str, str] = Field(
+        default_factory=dict, description="ID to name map of accounts whose approval was revoked"
+    )
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
+
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        for account_id, account_name in self.reviewer_accounts.items():
+            related.append(
+                {
+                    "prefect.resource.id": account_id,
+                    "prefect.resource.role": "infrahub.related.node",
+                    "infrahub.node.kind": InfrahubKind.GENERICACCOUNT,
+                    "infrahub.node.id": account_id,
+                    "infrahub.reviewer.account.name": account_name,
+                }
+            )
+        return related
+
+
 class ProposedChangeThreadEvent(ProposedChangeEvent):
     thread_id: str = Field(..., description="The ID of the thread that was created or updated")
     thread_kind: str = Field(..., description="The name of the thread that was created or updated")

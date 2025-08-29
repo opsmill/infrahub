@@ -19,7 +19,6 @@ import { toast } from "react-toastify";
 
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NameSelect } from "@/shared/components/form/name-select";
@@ -45,14 +44,15 @@ export const ObjectPermissionForm = ({
 
   const roles = getRelationshipDefaultValue({
     relationshipData: currentObject?.roles?.value,
+    relationshipName: "roles",
   });
 
   const defaultValues = {
-    namespace: getCurrentFieldValue("namespace", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    action: getCurrentFieldValue("action", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    decision: getCurrentFieldValue("decision", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    roles: roles ?? DEFAULT_FORM_FIELD_VALUE,
+    namespace: getCurrentFieldValue("namespace", currentObject),
+    name: getCurrentFieldValue("name", currentObject),
+    action: getCurrentFieldValue("action", currentObject),
+    decision: getCurrentFieldValue("decision", currentObject),
+    roles: roles,
   };
 
   const form = useForm<FieldValues>({
@@ -166,7 +166,7 @@ export const ObjectPermissionForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
-          options={roles.value}
+          defaultValue={roles}
         />
 
         <div className="text-right">

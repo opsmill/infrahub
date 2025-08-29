@@ -86,8 +86,14 @@ const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?:
   });
 };
 
-export const ArtifactContentDiff = (props: any) => {
-  const { itemPrevious, itemNew } = props;
+interface ArtifactContentDiffProps {
+  id: string; // required artifact node ID
+  itemPrevious?: { storage_id?: string } | null;
+  itemNew?: { storage_id?: string } | null;
+}
+
+export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
+  const { itemPrevious, itemNew, id } = props;
 
   const { proposedChangeId } = useParams();
   const auth = useAuth();
@@ -98,6 +104,10 @@ export const ArtifactContentDiff = (props: any) => {
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
+
+  if (!id) {
+    return <ErrorScreen message="Missing artifact ID for thread context." />;
+  }
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
@@ -156,7 +166,7 @@ export const ArtifactContentDiff = (props: any) => {
   };
 
   const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId) {
+    if (!comment || !approverId || !id) {
       return;
     }
 
@@ -186,6 +196,9 @@ export const ArtifactContentDiff = (props: any) => {
       },
       storage_id: {
         value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
+      },
+      artifact_id: {
+        value: id,
       },
     };
 

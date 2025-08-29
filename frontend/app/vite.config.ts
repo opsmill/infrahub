@@ -15,6 +15,9 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0",
   },
+  worker: {
+    format: "es",
+  },
   plugins: [tailwindcss(), react(), svgr(), tsconfigPaths()],
   test: {
     browser: {

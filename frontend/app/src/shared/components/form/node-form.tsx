@@ -104,6 +104,7 @@ export const NodeForm = ({
 
   return (
     <DynamicForm
+      isBulkUpdate={isBulkUpdate}
       fields={fields}
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields, profiles }) : onSubmitCreate(formData)

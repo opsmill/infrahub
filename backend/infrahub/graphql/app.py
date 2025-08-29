@@ -231,6 +231,7 @@ class InfrahubGraphQLApp:
                 operation_name=operation_name,
                 branch=branch,
             )
+        impacted_models = analyzed_query.query_report.impacted_models
 
         await self._evaluate_permissions(
             db=db,
@@ -282,7 +283,7 @@ class InfrahubGraphQLApp:
         GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
-        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(impacted_models))
 
         _, errors = analyzed_query.is_valid
         if errors:

@@ -9,12 +9,11 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
-from infrahub.permissions import LocalPermissionBackend, PermissionManager
+from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -27,13 +26,13 @@ class TestSuperAdminPermission:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         first_account: CoreAccount,
         second_account: CoreAccount,
         permissions_helper: PermissionsHelper,
     ):
-        registry.permission_backends = [LocalPermissionBackend()]
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)

@@ -26,21 +26,10 @@ from .mutations.proposed_change import (
     ProposedChangeRequestRunCheck,
     ProposedChangeReview,
 )
-from .mutations.relationship import (
-    RelationshipAdd,
-    RelationshipRemove,
-)
-from .mutations.repository import (
-    ProcessRepository,
-    ValidateRepositoryConnectivity,
-)
+from .mutations.relationship import RelationshipAdd, RelationshipRemove
+from .mutations.repository import ProcessRepository, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
-from .mutations.schema import (
-    SchemaDropdownAdd,
-    SchemaDropdownRemove,
-    SchemaEnumAdd,
-    SchemaEnumRemove,
-)
+from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .queries import (
     AccountPermissions,
     AccountToken,

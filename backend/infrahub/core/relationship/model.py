@@ -166,11 +166,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return registry.get_global_branch()
         return self.branch
 
-    async def _process_data(self, data: dict | RelationshipPeerData | str) -> None:
+    def _process_data(self, data: dict | RelationshipPeerData | str) -> None:
         self.data = data
 
         if isinstance(data, RelationshipPeerData):
-            await self.set_peer(value=str(data.peer_id))
+            self.set_peer(value=str(data.peer_id))
 
             if not self.id and data.rel_node_id:
                 self.id = data.rel_node_id
@@ -187,7 +187,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         elif isinstance(data, dict):
             for key, value in data.items():
                 if key in ["peer", "id"]:
-                    await self.set_peer(value=data.get(key, None))
+                    self.set_peer(value=data.get(key, None))
                 elif key == "hfid" and self.peer_id is None:
                     self.peer_hfid = value
                 elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
@@ -198,7 +198,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     self.from_pool = value
 
         else:
-            await self.set_peer(value=data)
+            self.set_peer(value=data)
 
     async def new(
         self,
@@ -206,11 +206,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         data: dict | RelationshipPeerData | Any = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> Relationship:
-        await self._process_data(data=data)
+        self._process_data(data=data)
 
         return self
 
-    async def load(
+    def load(
         self,
         db: InfrahubDatabase,  # noqa: ARG002
         id: UUID | None = None,
@@ -223,7 +223,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.id = id or self.id
         self.db_id = db_id or self.db_id
 
-        await self._process_data(data=data)
+        self._process_data(data=data)
 
         if updated_at and hash(self) != hash_before:
             self.updated_at = Timestamp(updated_at)
@@ -252,7 +252,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._node_id = self._node.id
         return node
 
-    async def set_peer(self, value: str | Node) -> None:
+    def set_peer(self, value: str | Node) -> None:
         if isinstance(value, str):
             self.peer_id = value
         else:
@@ -433,7 +433,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
             )
             if peer:
-                await self.set_peer(value=peer)
+                self.set_peer(value=peer)
 
         if not self.peer_id and self.peer_hfid:
             peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch)
@@ -450,7 +450,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 fields={"display_label": None},
                 raise_on_error=True,
             )
-            await self.set_peer(value=peer)
+            self.set_peer(value=peer)
 
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
             pool_id = str(self.from_pool.get("id"))
@@ -473,7 +473,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
             assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, at=at, **data_from_pool)  # type: ignore[attr-defined]
-            await self.set_peer(value=assigned_peer)
+            self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None) -> Self:
@@ -962,7 +962,7 @@ class RelationshipManager:
 
         for peer_id in details.peer_ids_present_database_only:
             self._relationships.append(
-                await Relationship(
+                Relationship(
                     schema=self.schema,
                     branch=self.branch,
                     at=at or self.at,
@@ -1050,7 +1050,7 @@ class RelationshipManager:
             if isinstance(item, dict) and item.get("id", None) in previous_relationships:
                 rel = previous_relationships[item["id"]]
                 hash_before = hash(rel)
-                await rel.load(data=item, db=db)
+                rel.load(data=item, db=db)
                 if hash(rel) != hash_before:
                     changed = True
                 self._relationships.append(rel)

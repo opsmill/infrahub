@@ -2,31 +2,188 @@
 title: Proposed change
 ---
 import VideoPlayer from '../../src/components/VideoPlayer';
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
 
 # Proposed change
 
-A proposed change provides a way to review and discuss how two branches differ from each other and to merge a source branch into the target branch. For people with a development background, this will sound very familiar. It’s like a pull or merge request. The proposed change lets you compare two branches, run tests, and finally merge one branch into another.
+A proposed change in Infrahub is a structured workflow mechanism that enables teams to review, discuss, and merge changes in a controlled and collaborative manner. It serves as the primary method for implementing infrastructure changes safely while maintaining proper oversight and governance.
+
+For people with a software development background, proposed changes function similarly to pull requests in GitHub or merge requests in GitLab.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=OAXk3dKKgf0' light />
 </center>
 
-## Discussions and issues as part of the review
+## Why use proposed changes?
 
-A reviewer of the proposed change can open discussions, write comments, and request changes. Once you resolve any requested change, the reviewer would approve the proposed change before they merge it.
+Proposed changes address several crucial needs in infrastructure management:
 
-## An alternative approach to diff
+- **Controlled collaboration**: Enable multiple team members to work on infrastructure changes without directly affecting production.
+- **Accountability**: Establish a clear record of who proposed, reviewed, and approved changes.
+- **Quality assurance**: Provide a systematic approach to reviewing changes before implementation.
+- **Compliance**: Support regulatory requirements through documented approval processes.
+- **Knowledge sharing**: Create opportunities for team members to learn from each other's changes.
+- **Continuous integration**: Ensure that changes meet quality standards through automated validation checks.
 
-In a pull request on GitHub, the diff between two branches is seen from a plain text point of view. A proposed change in Infrahub allows you to see changes in data, as well as the type of diff you’d see in Git. By combining the two, someone reviewing a proposed change in Infrahub can view the diff between [artifacts](artifact) on each branch.
+## Multi-dimensional diffing
 
-With this feature, you can create a new branch, change a node attribute in the database, and see how your modifications impact the rendered artifacts. It includes a diff view to see exactly how a configuration might change if the proposed change were to be accepted and merged.
+A proposed change in Infrahub offers a more sophisticated approach by integrating both data-level and code-level differences in a unified interface:
 
-## Continuous integration - CI
+- **Data differences**: See precisely what objects were added, modified, or deleted, along with the specific attribute changes.
+- **Schema differences**: Identify changes to the underlying data models that define your infrastructure.
+- **File differences**: Track modifications to implementation files like transforms, generators, and templates.
+- **Artifact differences**: Compare the [artifacts](artifact) generated to understand output changes.
 
-Just like you’d expect for a GitHub pull request, you can run checks on a proposed change during the review process and before merging. Infrahub will run data integrity checks between the proposed change branches. Besides this, Infrahub reports any merge conflicts for connected Git repositories.
+This multi-dimensional diffing provides a "single pane of glass" view, enabling reviewers to fully understand the scope and impact of changes before approval. This comprehensive visibility is especially valuable for complex infrastructure changes.
 
-Infrahub handles custom checks with code through Git repositories. These Checks let you verify the integrity of the database using your custom business logic. A check of this type could be anything you can imagine. An example could be to ensure that at least one router on each site is in an operational status as opposed to being in maintenance mode.
+## Automated pipeline with continuous integration
 
-## Conflict resolution
+Infrahub integrates robust validation capabilities within the proposed change workflow to ensure changes meet quality and policy requirements before implementation. These automated checks provide confidence that modifications won't introduce issues when deployed.
 
-Infrahub will prevent merging a proposed change if there is a data conflict between the branches. An example of such a conflict could be if someone were to update the same attribute of an object in both branches. In order to merge a proposed change that has conflicts, they need to be resolved. To resolve conflicts, you need to review data integrity checks and choose which branch to keep in the change checks section.
+:::important
+Any failing checks will block the merge process, ensuring only validated changes are applied.
+:::
+
+### Built-in checks
+
+Infrahub runs several types of automated validations during the review process:
+
+- **Data integrity checks**: Validates that the database remains consistent between branches and that all referential integrity constraints are satisfied.
+- **Merge conflict detection**: Identifies and reports any conflicting changes between the source and target branches that would prevent a clean merge.
+- **Git repository integration**: Displays merge conflicts for connected Git repositories, ensuring alignment between infrastructure code and configuration.
+- **Schema validation**: Verifies potential changes made to the schema.
+
+### Custom checks
+
+Organizations can extend the validation framework with custom checks to enforce specific business rules and operational constraints.
+
+Learn more about [checks](check) and how to implement custom validation logic.
+
+### Artifact generation
+
+Infrahub will automatically run transformations and generate artifacts as part of the proposed change workflow.
+
+Learn more about [transformations](transformation) and [artifacts](artifact).
+
+### Generator integration
+
+Infrahub will automatically run generators as part of the proposed change workflow.
+
+Learn more about [generators](generator).
+
+## Conflict management and resolution
+
+### Understanding conflicts in infrastructure data
+
+In Infrahub, conflicts occur when the same infrastructure object is modified differently in both the source and target branches. Unlike traditional text-based version control systems, Infrahub's conflict detection operates at the data level, identifying specific attribute conflicts within objects.
+
+Common conflict scenarios include:
+
+- The same attribute of an object (for example, a router's hostname) is changed to different values in each branch.
+- An object is modified in one branch but deleted in another.
+- Relationship conflicts where the same object is linked to different entities in each branch.
+
+### The conflict resolution process
+
+Infrahub prevents merging a proposed change when data conflicts exist between branches to protect the integrity of your infrastructure data. When conflicts are detected:
+
+1. The proposed change displays a conflict warning with details about affected objects
+2. Reviewers can examine each conflict to understand the specific differences
+3. For each conflict, users must explicitly choose which version to keep (source or target)
+4. Conflict resolutions are recorded as part of the change history for audit purposes
+
+To resolve conflicts:
+
+1. Review the data integrity check results in the proposed change interface
+2. For each conflict, choose which branch's version to keep
+3. Apply the resolution in the change checks section
+4. Re-run validation to confirm all conflicts have been addressed
+
+This structured conflict management ensures that merges maintain data integrity and prevent unintended overwrites of important changes, while providing a clear audit trail of resolution decisions.
+
+## Proposed change lifecycle and collaborative review/approval
+
+Proposed changes follow a workflow with specific states that track progression from initial creation to final resolution. The review and approval process is central, providing a structured framework for evaluating proposed infrastructure changes before implementation.
+
+### State transitions
+
+1. **Draft**: When a proposed change is initially created, the author can set it as a draft. This indicates that work is still in progress and the change is not yet ready for review.
+   - Draft status allows authors to incrementally build their changes while receiving early feedback from selected team members.
+   - The system runs validation checks to identify potential issues.
+
+2. **Open**: Once the author marks the proposed change as ready for review, it transitions to the open state. In this state:
+   - Reviewers can examine the changes and provide comments and feedback.
+   - Stakeholders can discuss implications and suggest modifications.
+   - The system runs validation checks to identify potential issues.
+   - It's also possible to create a proposed change directly in the open state for simpler changes.
+
+3. **Approved**: When designated reviewers endorse the proposed change, it enters the approved state. Approval indicates that:
+   - The change has been thoroughly reviewed.
+   - All required modifications have been addressed.
+   - The proposed modifications meet quality and policy requirements.
+
+4. **Merged**: After receiving approval (if required) and passing all automated checks, the change is merged into the target branch. At this point:
+   - The changes become part of the target branch.
+   - The source branch will be retained but could be manually deleted.
+
+5. **Closed**: A proposed change can be closed without merging if it's determined to be unnecessary, superseded by another change, or otherwise no longer needed. This provides a clean resolution for abandoned changes.
+
+### Review mechanics
+
+Multiple reviewers can be assigned to a given proposed change. During the review process, participants have multiple ways to engage with the proposed change:
+
+- **Inline comments**: Reviewers can comment directly on specific elements of the changes, creating focused discussions about particular modifications.
+- **General feedback**: Team members can provide overall commentary on the proposed change.
+- **Threaded discussions**: Comments support threaded replies, enabling detailed conversations about implementation choices.
+
+This collaborative environment promotes knowledge sharing and improves the overall quality of infrastructure changes through peer review.
+
+### Stamping a proposed change
+
+At the end of the review process, reviewers can "stamp" the proposed change to indicate their approval or rejection.
+
+- **Approve**: Indicates that the reviewer is satisfied with the changes and believes they are ready to be merged.
+- **Reject**: Indicates that the reviewer has identified issues or concerns with the proposed change that need to be addressed before it can be merged.
+
+### Advanced approval workflows <EnterpriseBadge />
+
+Enterprise customers benefit from enhanced approval capabilities designed for complex organizations with strict governance requirements:
+
+- **Enforced approval gates**: Prevent merging without the required number of approvals.
+- **Approval thresholds**: Configure minimum number of approvals needed before a change can be merged.
+- **Auto-revocation**: Automatically revoke approvals when changes are made after initial approval.
+
+## Comprehensive audit and traceability
+
+The proposed change system provides robust audit capabilities that are critical for regulated environments and operational excellence:
+
+### Audit capabilities
+
+- **Approval records**: Captures who approved each change, when, and with what justification.
+- **Complete discussion history**: Preserves all comments, questions, and responses throughout the review process.
+- **Change documentation**: Maintains a record of what was modified and the rationale behind changes.
+- **System-generated events**: Automatically logs all significant actions like state changes and merge operations.
+- **Tamper-evident history**: Ensures the integrity of the audit trail through cryptographic verification.
+
+### Business benefits of strong traceability
+
+This comprehensive traceability delivers multiple benefits:
+
+- **Regulatory compliance**: Satisfies documentation requirements for regulated industries.
+- **Problem resolution**: Provides context when troubleshooting issues that might stem from recent changes.
+- **Knowledge preservation**: Captures institutional knowledge about why specific changes were made.
+- **Process improvement**: Enables analysis of the change management process to identify optimization opportunities.
+
+The audit capabilities are particularly valuable for infrastructure changes that might impact production environments or require compliance documentation, providing peace of mind that all modifications are properly documented and justified.
+
+## Related resources
+
+The proposed change functionality interconnects with several other key concepts in Infrahub:
+
+- [Version control](version-control): Understand how branches and commits work in Infrahub, which form the foundation of proposed changes
+- [Schema](schema): Learn about the data models that define your infrastructure objects and are subject to review in proposed changes
+- [Artifacts](artifact): Explore how proposed changes affect the generated outputs from your infrastructure data
+- [Checks](check): Discover how validation checks ensure the quality and compliance of proposed changes
+- [Transformations](transformation): Understand how data transformations are managed and reviewed within proposed changes
+- [Generators](generator): Learn about the code generation process that can be triggered by changes in proposed changes
+- [Permissions and roles](permissions-roles): Understand the access controls that govern who can create, review, and merge proposed changes

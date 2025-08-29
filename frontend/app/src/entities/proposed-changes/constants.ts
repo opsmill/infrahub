@@ -10,21 +10,23 @@ export const MERGE_STATE = "merged";
 export const MERGING_STATE = "merging";
 export const CLOSE_STATE = "closed";
 export const DRAFT_STATE = "draft";
+export const CANCEL_STATE = "canceled";
 export const PROPOSED_CHANGE_OBJECT = "CoreProposedChange";
 
 export const PROPOSED_CHANGE_STATES = {
   opened: [OPEN_STATE, MERGING_STATE],
-  closed: [CLOSE_STATE, MERGE_STATE, "canceled"],
+  closed: [CLOSE_STATE, MERGE_STATE, CANCEL_STATE],
 };
 
 export const PROPOSED_CHANGE_MERGED = "infrahub.proposed_change.merged";
 export const PROPOSED_CHANGE_REVIEW_REQUESTED = "infrahub.proposed_change.review_requested";
 export const PROPOSED_CHANGE_APPROVED = "infrahub.proposed_change.approved";
-export const PROPOSED_CHANGE_REJECTED = "infrahub.proposed_change.rejected";
 export const PROPOSED_CHANGE_APPROVAL_REVOKED = "infrahub.proposed_change.approval_revoked";
+export const PROPOSED_CHANGE_REJECTED = "infrahub.proposed_change.rejected";
 export const PROPOSED_CHANGE_REJECTION_REVOKED = "infrahub.proposed_change.rejection_revoked";
 export const PROPOSED_CHANGE_COMMENT = "infrahub.proposed_change.comment";
 export const PROPOSED_CHANGE_THREAD = "infrahub.proposed_change_thread.created";
+export const PROPOSED_CHANGE_APPROVALS_REVOKED = "infrahub.proposed_change.approvals_revoked";
 export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_MERGED,
   PROPOSED_CHANGE_REVIEW_REQUESTED,
@@ -34,6 +36,7 @@ export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_REJECTION_REVOKED,
   PROPOSED_CHANGE_COMMENT,
   PROPOSED_CHANGE_THREAD,
+  PROPOSED_CHANGE_APPROVALS_REVOKED,
 ];
 
 export const pcStatesList: Record<string, StateItem> = {

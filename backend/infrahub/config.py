@@ -328,6 +328,8 @@ class DevelopmentSettings(BaseSettings):
 
 
 class BrokerSettings(BaseSettings):
+    """Configuration settings for the message bus."""
+
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -441,9 +443,7 @@ class GitSettings(BaseSettings):
 
 
 class HTTPSettings(BaseSettings):
-    """The HTTP settings control how Infrahub interacts with external HTTP servers
-
-    This can be things like webhooks and OAuth2 providers"""
+    """The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_HTTP_")
     timeout: int = Field(default=10, description="Default connection timeout in seconds")
@@ -667,7 +667,7 @@ class SecuritySettings(BaseSettings):
     oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
     oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
     restrict_untrusted_jinja2_filters: bool = Field(
-        default=True, description="Indicates if untrusted Jinja2 filters should be disallowd for computed attributes"
+        default=True, description="Indicates if untrusted Jinja2 filters should be disallowed for computed attributes"
     )
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)

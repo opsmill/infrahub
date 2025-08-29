@@ -2,26 +2,247 @@
 title: Resource manager
 ---
 
-# Resource manager
+Resource managers in Infrahub automate the allocation of network resources from predefined pools, eliminating manual assignment and preventing conflicts across your infrastructure. This system ensures consistent resource allocation while maintaining complete visibility and control over your available resources.
 
-In Infrahub a resource manager is responsible for allocating resources out of a resource pool.
+## Core concepts
 
-Examples:
+### What is a resource manager?
 
-- allocating the next available IP Prefix out of a IP Prefix pool
-- allocating the next available IP addresses out of a IP Address pool
-- allocating the next available VLAN ID out of a pool of valid VLAN ID's
-- allocating the next available ASN (Autonomous System Number) out of a number pool
+A resource manager is a system component that automatically allocates resources from pools when creating or updating infrastructure objects. Instead of manually tracking available IP addresses, VLAN IDs, or other resources in spreadsheets, you define pools and let Infrahub handle the allocation.
 
-A resource manager in Infrahub allocates resources in a branch agnostic way. When you allocate a resource out of a pool in a branch, then that allocation happens in all the branches.
+Resource managers support three primary types of pools:
 
-Depending on how you use the resource manager, it can allocate resources in an idempotent way. This is helpful when you want to use generators that have to behave in an idempotent way.
+- **IP Address Pools** (`CoreIPAddressPool`) - Allocate individual IP addresses from IP prefixes
+- **IP Prefix Pools** (`CoreIPPrefixPool`) - Allocate smaller subnets from larger IP prefixes
+- **Number Pools** (`CoreNumberPool`) - Allocate sequential numbers for attributes like VLAN IDs, ASNs, or circuit IDs
 
-Resources that inherit from `CoreWeightedPoolResource` have an `allocation_weight` attribute, which lets you influence allocation order. Resources with higher weights are preferred first when allocating a Prefix or IP Address from a pool.
+:::warning
+When an attribute is assigned by a resource manager, the attribute cannot be used as part of the Human Friendly Identifier (HFID).
 
-Resources can be allocated in 2 different ways:
+This is due the dynamic nature of using resource managers and the idempotence of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
+:::
 
-- Direct allocation: A direct allocation is typically used when you don't need the resource to be related to another node in Infrahub, or if you want establish such a relation at a later time. For example, you want to allocated an IP address out of a pool that is not going to be linked to another node in Infrahub.
-- Relationship resource allocation: A resource can be allocated to a relationship of a node, when you create a new node. For example, when you want to create a device and assign an IP address out of a pool to an interface at device creation time.
+### Branch-agnostic allocation
 
-See the [guide](../guides/resource-manager) for instructions on creating and using resource manager in Infrahub.
+One of the most powerful features of Infrahub's resource managers is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
+
+Consider this scenario:
+
+1. You create a new branch "datacenter-expansion"
+2. You allocate IP address 10.0.0.50 to a new device in this branch
+3. Another team member working in a different branch "network-refresh" tries to allocate the same IP
+4. Infrahub prevents the duplicate allocation, even though the branches haven't been merged
+
+This behavior guarantees that resources remain unique and conflict-free when branches are eventually merged back to main.
+
+### Idempotent allocation
+
+Resource managers support idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
+
+```graphql
+mutation {
+  IPAddressPoolGetResource(data: {
+    id: "<pool-id>",
+    identifier: "web-server-primary-ip",
+  })
+}
+```
+
+This feature is essential for:
+
+- Automated workflows that may run multiple times
+- [Generators](./generator.mdx) that need consistent results
+
+## Pool types and use cases
+
+### IP address pools
+
+IP address pools allocate individual addresses from one or more IP prefixes. Common use cases include:
+
+- **Device management IPs**: Loopback addresses for routers and switches
+- **Server primary IPs**: Management interfaces for compute infrastructure
+- **Service endpoints**: Load balancer VIPs, anycast addresses
+- **Point-to-point links**: Interface addresses for interconnections
+
+Key features:
+
+- Automatic allocation of the next available address
+- Support for both IPv4 and IPv6
+- Ability to combine multiple prefixes in a single pool
+- Optional allocation weighting for preferred ranges
+
+### IP prefix pools
+
+IP prefix pools allocate subnets from larger prefixes. Typical applications:
+
+- **Customer allocations**: Assign /29 or /28 blocks to customers
+- **Site networks**: Allocate /24 networks to new locations
+- **Service subnets**: Reserve ranges for specific applications
+- **Point-to-point links**: Allocate /30 or /31 prefixes for interconnects
+
+Key features:
+
+- Configurable prefix length for allocations
+- Efficient subnet management and tracking
+- Hierarchical allocation support
+- Visual representation of utilization
+
+### Number pools
+
+Number pools manage sequential numeric identifiers. Common scenarios:
+
+- **VLAN IDs**: Ranges 100-1000 for data VLANs, 2000-3000 for voice
+- **ASN allocation**: Private ASN ranges for BGP deployments
+- **Circuit IDs**: Sequential numbering for service provisioning
+- **Interface indices**: Consistent numbering across devices
+
+Key features:
+
+- Define start and end ranges
+- Automatic sequential allocation
+- Skip already-used values
+- Support for any numeric attribute
+
+## Allocation methods
+
+### Direct allocation
+
+Direct allocation creates a standalone resource from a pool. Use this when:
+
+- Pre-provisioning resources for future use
+- Creating resources that will be assigned later
+- Building resource inventories
+- Testing pool configurations
+
+Example: Allocating an IP address for future assignment:
+
+```graphql
+mutation {
+  IPAddressPoolGetResource(data: {
+    id: "<pool-id>",
+    data: {
+      description: "Reserved for new web server"
+    }
+  })
+}
+```
+
+### Relationship resource allocation
+
+Relationship allocation assigns resources during object creation. This method:
+
+- Ensures atomic operations (object and resource created together)
+- Maintains referential integrity
+- Simplifies workflows
+- Reduces manual steps
+
+Example: Creating a device with automatic IP allocation:
+
+```graphql
+mutation {
+  InfraDeviceCreate(data: {
+    name: {value: "spine-01"},
+    primary_ip: {
+      from_pool: {
+        id: "<pool-id>"
+      }
+    }
+  })
+}
+```
+
+## Advanced features
+
+### Weighted allocation
+
+For IP pools containing multiple resources, you can control allocation priority using weights. Resources inherit from `CoreWeightedPoolResource` gain an `allocation_weight` attribute:
+
+```yaml
+nodes:
+  - name: IPPrefix
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPPrefix"
+      - "CoreWeightedPoolResource"
+```
+
+Higher weight values are allocated first. This enables scenarios like:
+
+- Preferring certain IP ranges for specific device types
+- Gradually migrating between address spaces
+- Implementing allocation policies
+
+### Pool composition
+
+Pools can contain multiple resources, providing flexibility in resource management:
+
+- Combine non-contiguous IP ranges in a single pool
+- Aggregate prefixes from different sites or providers
+- Create logical groupings independent of network topology
+
+### Allocation tracking
+
+Infrahub provides comprehensive visibility into resource utilization:
+
+- View all allocated resources from a pool
+- Track allocation history and timestamps
+- Identify which branch allocated each resource
+- Monitor pool utilization percentages
+- Export allocation reports
+
+## Integration patterns
+
+### With generators
+
+Resource managers integrate seamlessly with [generators](./generator.mdx) to create fully automated provisioning workflows:
+
+- Template configurations with dynamically allocated IPs
+- Generate DNS records based on allocations
+- Create monitoring configurations automatically
+
+### In CI/CD pipelines
+
+Incorporate resource allocation into your automation:
+
+- Allocate resources during infrastructure deployment
+- Validate resource availability before provisioning
+- Clean up resources when decommissioning
+- Implement approval workflows for resource requests
+
+### API integration
+
+Resource managers expose full functionality through GraphQL APIs:
+
+- Build custom allocation interfaces
+- Integrate with external IPAM systems
+- Create resource request portals
+- Implement custom allocation logic
+
+## Best practices
+
+### Pool design
+
+- **Size pools appropriately**: Balance between too many small pools and unwieldy large ones
+- **Use descriptive names**: "Campus-WiFi-Management" rather than "Pool1"
+- **Document pool purposes**: Include descriptions explaining intended use
+- **Plan for growth**: Size pools with future expansion in mind
+
+### Allocation strategies
+
+- **Use identifiers for automation**: Ensure idempotent behavior in scripts
+- **Allocate early in workflows**: Reserve resources before lengthy provisioning
+- **Clean up unused allocations**: Implement processes to reclaim resources
+- **Monitor utilization**: Set alerts for pools approaching capacity
+
+### Organizational considerations
+
+- **Define ownership**: Assign pools to teams or services
+- **Implement naming conventions**: Standardize how pools are named and organized
+- **Create allocation policies**: Document when to use which pools
+- **Regular audits**: Review allocations for accuracy and cleanup opportunities
+
+## Related resources
+
+- [Resource Manager Guide](../guides/resource-manager.mdx) - Step-by-step instructions for creating and using pools
+- [Generator Documentation](./generator.mdx) - Automate configurations with allocated resources
+- [GraphQL Documentation](./graphql.mdx) - Learn about Infrahub's GraphQL interface

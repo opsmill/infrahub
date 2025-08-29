@@ -19,7 +19,6 @@ import { toast } from "react-toastify";
 
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -44,12 +43,13 @@ export const GlobalPermissionForm = ({
 
   const roles = getRelationshipDefaultValue({
     relationshipData: currentObject?.roles?.value,
+    relationshipName: "roles",
   });
 
   const defaultValues = {
-    action: getCurrentFieldValue("action", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    decision: getCurrentFieldValue("decision", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    roles: roles ?? DEFAULT_FORM_FIELD_VALUE,
+    action: getCurrentFieldValue("action", currentObject),
+    decision: getCurrentFieldValue("decision", currentObject),
+    roles: roles,
   };
 
   const form = useForm<FieldValues>({
@@ -145,12 +145,12 @@ export const GlobalPermissionForm = ({
         <RelationshipManyField
           name="roles"
           label="Roles"
+          defaultValue={roles}
           relationship={{
             name: "roles",
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
-          options={roles.value}
         />
 
         <div className="text-right">

@@ -86,38 +86,50 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Created by",
       value: (
-        <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
+        <Tooltip content={proposedChangesDetails?.created_by?.node?.display_label} enabled>
           <Avatar
             size={"sm"}
             name={proposedChangesDetails?.created_by?.node?.display_label}
-            className="mr-2 bg-custom-blue-green"
+            className="bg-custom-blue-green"
           />
         </Tooltip>
       ),
     },
     {
       name: "Approved by",
-      value: approvedBy.map((user: any, index: number) => (
-        <Tooltip key={index} content={user.display_label}>
-          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {approvedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={user.display_label} enabled>
+              <Avatar size={"sm"} name={user.display_label} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Rejected by",
-      value: rejectedBy.map((user: any, index: number) => (
-        <Tooltip key={index} content={user.display_label}>
-          <Avatar size={"sm"} name={user.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {rejectedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={user.display_label} enabled>
+              <Avatar size={"sm"} name={user.display_label} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Reviewers",
-      value: reviewers.map((reviewer: any, index: number) => (
-        <Tooltip key={index} content={reviewer.display_label}>
-          <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {reviewers.map((reviewer: any, index: number) => (
+            <Tooltip key={index} content={reviewer.display_label} enabled>
+              <Avatar size={"sm"} name={reviewer.display_label} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Updated",
@@ -149,10 +161,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       )}
 
       <div className={classNames("grid grid-cols-3 gap-2", className)} {...props}>
-        <div className="col-start-1 col-end-3 space-y-4">
+        <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
-            <CardWithBorder contentClassName="p-4" data-testid="pc-description">
-              <div className="flex items-center gap-2 mb-2">
+            <CardWithBorder contentClassName="" data-testid="pc-description">
+              <CardWithBorder.Title className="flex gap-2 items-center">
                 <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
                 {proposedChangesDetails?.created_by?.node?.display_label}
@@ -161,9 +173,12 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
                   date={proposedChangesDetails.description.updated_at}
                   className="ml-auto text-xs font-normal text-gray-600"
                 />
-              </div>
+              </CardWithBorder.Title>
 
-              <MarkdownRender markdownText={proposedChangesDetails.description.value} />
+              <MarkdownRender
+                markdownText={proposedChangesDetails.description.value}
+                className="m-2"
+              />
             </CardWithBorder>
           )}
 

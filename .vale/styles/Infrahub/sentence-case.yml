@@ -21,11 +21,13 @@ exceptions:
   - BGP
   - CA certificates
   - CI
+  - CI/CD
   - Codespaces
   - Computed Attribute
   - Computed Attributes
   - CoreArtifactTarget
   - CoreGroup
+  - CSS-like cascading
   - CoreRepository
   - Docker Compose
   - E2E
@@ -104,3 +106,4 @@ exceptions:
   - Emma
   - Helm
   - Kubernetes
+  - Allocate VLAN ID

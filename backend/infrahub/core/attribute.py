@@ -680,6 +680,12 @@ class String(BaseAttribute):
     type = str
     value: str
 
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        if value is not None and not is_large_attribute_type(schema.kind):
+            validate_string_length(value=str(value))
+        super().validate_content(value=value, name=name, schema=schema)
+
 
 class StringOptional(String):
     value: str | None

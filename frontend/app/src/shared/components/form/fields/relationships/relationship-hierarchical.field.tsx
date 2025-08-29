@@ -6,13 +6,14 @@ import {
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
   PoolSource,
 } from "@/shared/components/form/type";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
@@ -22,12 +23,13 @@ export interface RelationshipHierarchicalFieldProps
 
 export default function RelationshipHierarchicalField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  relationship,
   description,
   label,
   name,
   rules,
   unique,
-  ...props
 }: RelationshipHierarchicalFieldProps) {
   return (
     <FormField
@@ -45,7 +47,7 @@ export default function RelationshipHierarchicalField({
               }
             : fieldData.value;
 
-        const { peer } = props.relationship;
+        const { peer } = relationship;
         const { schema: peerSchema } = useSchema(peer);
         const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
@@ -66,7 +68,7 @@ export default function RelationshipHierarchicalField({
 
             <div className="flex gap-2">
               <FormInput>
-                {props.relationship.cardinality === "many" ? (
+                {relationship.cardinality === "many" ? (
                   <RelationshipHierarchicalManyInput
                     {...field}
                     peer={peer}
@@ -76,14 +78,14 @@ export default function RelationshipHierarchicalField({
                 ) : (
                   <RelationshipHierarchicalInput
                     {...field}
-                    peer={props.relationship.peer}
+                    peer={peer}
                     value={value as RelationshipNode | null}
                     onChange={onChange}
                   />
                 )}
               </FormInput>
 
-              {props.relationship.cardinality === "one" && poolKind && peerSchema && (
+              {relationship.cardinality === "one" && poolKind && peerSchema && (
                 <PoolSelect
                   poolKind={poolKind}
                   poolDefaultAllocatedObjectKind={peerSchema.kind as string}
@@ -92,6 +94,10 @@ export default function RelationshipHierarchicalField({
                 />
               )}
             </div>
+
+            {canDisplayResetActions(relationship, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

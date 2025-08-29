@@ -47,6 +47,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/create-schema',
             'guides/import-schema',
+            'guides/customize-field-ordering',
             'guides/menu',
             'guides/computed-attributes',
           ],
@@ -110,6 +111,7 @@ const sidebars: SidebarsConfig = {
             'guides/sso',
             'guides/managing-api-tokens',
             'guides/accounts-permissions',
+            'guides/change-approval-workflow',
           ],
         },
       ],
@@ -202,6 +204,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/schema',
+                'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
               ],
@@ -384,6 +387,10 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_4_0',
+            'release-notes/infrahub/release-1_3_7',
+            'release-notes/infrahub/release-1_3_6',
+            'release-notes/infrahub/release-1_3_5',
             'release-notes/infrahub/release-1_3_3',
             'release-notes/infrahub/release-1_3_2',
             'release-notes/infrahub/release-1_3_1',

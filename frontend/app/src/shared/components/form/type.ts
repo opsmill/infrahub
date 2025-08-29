@@ -121,6 +121,7 @@ export type FormRelationshipValue =
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
 export type FormFieldProps = {
+  attribute: AttributeSchema;
   defaultValue?: FormAttributeValue;
   description?: string;
   disabled?: boolean;
@@ -130,6 +131,8 @@ export type FormFieldProps = {
   unique?: boolean;
   rules?: ComponentProps<typeof FormField>["rules"];
   onChange?: (value: FormFieldValue) => void;
+  // Indicates the form is used for bulk updates, enabling explicit null-setting UI
+  isBulkUpdate?: boolean;
   pool?: {
     kind: string;
     defaultAllocatedObjectKind: string;
@@ -148,14 +151,12 @@ export type DynamicNumberFieldProps = FormFieldProps & {
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<DropdownOption>;
-  field?: AttributeSchema;
   schema?: ModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
   items: Array<unknown>;
-  field?: AttributeSchema;
   schema?: ModelSchema;
 };
 
@@ -176,16 +177,19 @@ export type DynamicAttributeFieldProps =
   | DynamicSelectFieldProps
   | DynamicKindFieldProps;
 
-export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
-  type: "relationship";
+export type RelationshipFieldType = "relationship" | "relationship-add" | "relationship-remove";
+
+export interface DynamicRelationshipFieldProps
+  extends Omit<FormFieldProps, "defaultValue" | "attribute"> {
+  type: RelationshipFieldType;
   defaultValue?: FormRelationshipValue;
+  relationship: RelationshipSchema;
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  relationship: RelationshipSchema;
   schema: ModelSchema;
   peerField?: string;
-};
+}
 
 export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;
 
