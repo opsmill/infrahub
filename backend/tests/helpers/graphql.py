@@ -91,13 +91,20 @@ async def graphql_mutation(
 async def graphql_query(
     query: str,
     db: InfrahubDatabase,
-    branch: Branch,
+    branch: Branch | None = None,
     service: InfrahubServices | None = None,
     variables: dict[str, Any] | None = None,
+    account_session: AccountSession | None = None,
 ) -> ExecutionResult:
+    branch = branch or await Branch.get_by_name(name="main", db=db)
     variables = variables or {}
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, include_mutation=False, branch=branch, service=service
+        db=db,
+        include_subscription=False,
+        include_mutation=False,
+        branch=branch,
+        service=service,
+        account_session=account_session,
     )
     return await graphql(
         schema=gql_params.schema,

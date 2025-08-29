@@ -34,6 +34,7 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -92,28 +93,28 @@ export default function ObjectItemDetails({
     <>
       {!hideHeaders && (
         <header className="flex items-center border-b border-gray-200 px-2">
-          <div className="grow flex gap-8 px-4">
-            <ObjectDetailsTab
-              isActive={!qspTab}
-              to={getObjectDetailsUrl(objectKind as string, objectid)}
-            >
-              {schema.label}
-            </ObjectDetailsTab>
-
-            {relationshipsTabs.map((tab) => {
-              return (
-                <RelationshipTab
-                  key={tab.name}
-                  objectKind={objectKind as string}
-                  objectId={objectDetailsData.id}
-                  relationshipSchema={tab as RelationshipSchema}
-                />
-              );
-            })}
-
-            {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id} />}
-            {isRepository && <RepositoryObjectsTab objectId={objectDetailsData.id} />}
-          </div>
+          <ScrollArea scrollX scrollBarClassName="hidden" className="grow">
+            <div className="grow flex gap-8 px-4" data-testid="object-details-tabs">
+              <ObjectDetailsTab
+                isActive={!qspTab}
+                to={getObjectDetailsUrl(objectKind as string, objectid)}
+              >
+                {schema.label}
+              </ObjectDetailsTab>
+              {relationshipsTabs.map((tab) => {
+                return (
+                  <RelationshipTab
+                    key={tab.name}
+                    objectKind={objectKind as string}
+                    objectId={objectDetailsData.id}
+                    relationshipSchema={tab as RelationshipSchema}
+                  />
+                );
+              })}
+              {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id} />}
+              {isRepository && <RepositoryObjectsTab objectId={objectDetailsData.id} />}
+            </div>
+          </ScrollArea>
           <ActionButtons
             schema={schema}
             objectDetailsData={objectDetailsData}

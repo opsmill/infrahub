@@ -6,11 +6,11 @@ import { Pagination } from "@/shared/components/ui/pagination";
 
 import { QSP } from "@/config/qsp";
 import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
+import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { Filters } from "@/shared/components/filters/filters";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Id } from "@/shared/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
@@ -63,7 +63,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       return;
     }
 
-    const newFilters = [
+    const newFilters: Array<Filter> = [
       ...filters,
       {
         name: SEARCH_ANY_FILTER,
@@ -123,12 +123,10 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       return constructPath(`/tasks/${id}`);
     }
 
-    const url = constructPath(pathname, [
+    return constructPath(pathname, [
       { name: proposedChangeId ? QSP.PROPOSED_CHANGES_TAB : QSP.TAB, value: TASK_TAB },
       { name: QSP.TASK_ID, value: id },
     ]);
-
-    return url;
   };
 
   const rows = edges?.map((edge: any) => {
@@ -186,7 +184,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
             data-testid="object-list-search-bar"
           />
 
-          <Filters kind={TASK_OBJECT} />
+          <TaskFilters />
         </div>
 
         {loading && !rows && <LoadingIndicator className="p-4" />}

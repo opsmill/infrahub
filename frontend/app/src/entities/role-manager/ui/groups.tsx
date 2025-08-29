@@ -17,6 +17,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import usePagination from "@/shared/hooks/usePagination";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -26,6 +27,8 @@ import { GroupMembers } from "./group-member";
 function Groups() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
+
   const {
     loading,
     networkStatus,
@@ -34,7 +37,7 @@ function Groups() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_GROUPS, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
@@ -62,7 +65,11 @@ function Groups() {
       label: "Description",
     },
     {
-      name: "account_type",
+      name: "label",
+      label: "Label",
+    },
+    {
+      name: "group_type",
       label: "Type",
     },
     {
@@ -83,6 +90,7 @@ function Groups() {
         id: edge?.node?.id,
         name: { value: edge?.node?.name?.value },
         description: { value: edge?.node?.description?.value },
+        label: { value: edge?.node?.label?.value },
         group_type: { value: edge?.node?.group_type?.value },
         members: {
           value: { edges: edge?.node?.members?.edges },
@@ -112,7 +120,7 @@ function Groups() {
       return <UnauthorizedScreen message={message} />;
     }
 
-    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+    return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
   if (networkStatus === NetworkStatus.loading) {
@@ -178,8 +186,8 @@ function Groups() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.name?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -195,6 +203,7 @@ function Groups() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}

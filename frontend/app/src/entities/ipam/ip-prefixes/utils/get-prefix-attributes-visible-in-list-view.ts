@@ -1,6 +1,7 @@
 import { AttributeSchema } from "@/entities/schema/types";
 
 const PREFIX_ATTRIBUTES_EXCLUDED_IN_LIST = [
+  "prefix",
   "network_address",
   "hostmask",
   "is_top_level",

@@ -557,6 +557,118 @@ async def test_nested_query_single_relationship(
     assert result.data["InfraDevice"]["edges"][1]["node"]["location"] == expected_location_data
 
 
+async def test_nested_generic_query_many_relationship(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> None:
+    """Validates that nested GraphQL fragments work for cardinality=many relationships."""
+    raw_schema = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Location",
+                "hierarchical": True,
+                "attributes": [{"name": "name", "optional": False, "kind": "Text"}],
+                "relationships": [{"name": "devices", "peer": "InfraDevice", "cardinality": "many", "optional": True}],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Infra",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False}],
+                "relationships": [
+                    {"name": "location", "peer": "LocationGeneric", "optional": False, "cardinality": "one"}
+                ],
+            },
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["LocationGeneric"],
+                "attributes": [{"name": "description", "optional": False, "kind": "Text"}],
+            },
+        ],
+    }
+    schema = SchemaRoot(**raw_schema)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    site_schema = schema_branch.get_node(name="LocationSite")
+    device_schema = schema_branch.get_node(name="InfraDevice")
+
+    site1 = await Node.init(db=db, schema=site_schema, branch=default_branch)
+    await site1.new(db=db, name="site1", description="test")
+    await site1.save(db=db)
+
+    device1 = await Node.init(db=db, schema=device_schema, branch=default_branch)
+    await device1.new(db=db, name="device1", location=site1)
+    await device1.save(db=db)
+
+    device2 = await Node.init(db=db, schema=device_schema, branch=default_branch)
+    await device2.new(db=db, name="device2", location=site1)
+    await device2.save(db=db)
+
+    query = """
+    fragment DeviceData on InfraDevice {
+        name {
+            value
+        }
+    }
+
+    fragment LocationData on LocationSite {
+        name {
+            value
+        }
+        devices {
+            edges {
+            node {
+                ...DeviceData
+            }
+            }
+        }
+    }
+
+    query {
+        LocationSite {
+            edges {
+            node {
+                ...LocationData
+            }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    assert result.data == {
+        "LocationSite": {
+            "edges": [
+                {
+                    "node": {
+                        "name": {"value": "site1"},
+                        "devices": {
+                            "edges": [
+                                {"node": {"name": {"value": "device1"}}},
+                                {"node": {"name": {"value": "device2"}}},
+                            ]
+                        },
+                    }
+                }
+            ]
+        }
+    }
+
+
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
@@ -1360,7 +1472,6 @@ async def test_query_filter_relationship_id(
         ("mylist__value: 2", ["obj2", "obj3", "obj5"]),
         ('mylist__value: "one", level__value: 2', ["obj2"]),
         ('mylist__values: ["one"]', ["obj1", "obj2", "obj3"]),
-        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
         ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
         ('mylist__values: ["one", 5]', ["obj1", "obj2", "obj3", "obj4"]),
         ("mylist__value: true", ["obj3"]),

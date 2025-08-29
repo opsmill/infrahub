@@ -67,6 +67,7 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
@@ -74,7 +75,9 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
 
         _validate_input(graphql_context=graphql_context, branch=branch, input_data=input_data)
 
-        obj, result = await super().mutate_create(info=info, data=data, branch=branch, database=database)
+        obj, result = await super().mutate_create(
+            info=info, data=data, branch=branch, database=database, override_data=override_data
+        )
 
         return obj, result
 

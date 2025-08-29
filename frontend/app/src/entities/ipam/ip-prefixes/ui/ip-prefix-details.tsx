@@ -40,7 +40,10 @@ export function IpPrefixDetails({ prefixSchema, prefixId }: IpPrefixDetailsProps
     ...(prefixSchema.attributes ?? []).map((schemaAttribute) => {
       const attributeData = data[schemaAttribute.name] as NodeAttribute | undefined;
 
-      if (!attributeData || (!attributeData.value && attributeData.value !== 0)) {
+      if (
+        !attributeData ||
+        (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false)
+      ) {
         return {
           name: schemaAttribute.label || schemaAttribute.name,
           value: "-",

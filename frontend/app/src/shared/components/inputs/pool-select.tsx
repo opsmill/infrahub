@@ -1,7 +1,5 @@
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
-import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
@@ -12,37 +10,38 @@ import React from "react";
 
 export interface PoolSelectProps {
   poolKind: string;
+  poolDefaultAllocatedObjectKind: string;
   selectedPoolId: string | null;
   onChange: (value: PoolValue | null) => void;
-  peerSchema: ModelSchema;
 }
 
-export function PoolSelect({ peerSchema, poolKind, onChange, selectedPoolId }: PoolSelectProps) {
+export function PoolSelect({
+  poolDefaultAllocatedObjectKind,
+  poolKind,
+  onChange,
+  selectedPoolId,
+}: PoolSelectProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const filterQuery = React.useMemo<
     { default_address_type__value: string } | { default_prefix_type__value: string } | undefined
   >(() => {
-    if (isGenericSchema(peerSchema)) {
-      return undefined;
-    }
-
     switch (poolKind) {
       case IP_ADDRESS_POOL: {
         return {
-          default_address_type__value: peerSchema.kind as string,
+          default_address_type__value: poolDefaultAllocatedObjectKind,
         };
       }
       case IP_PREFIX_POOL: {
         return {
-          default_prefix_type__value: peerSchema.kind as string,
+          default_prefix_type__value: poolDefaultAllocatedObjectKind,
         };
       }
       default: {
         return undefined;
       }
     }
-  }, [peerSchema, poolKind]);
+  }, [poolKind, poolDefaultAllocatedObjectKind]);
 
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>

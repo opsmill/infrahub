@@ -1,5 +1,7 @@
 import random
 
+from fast_depends import Depends, inject
+
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
@@ -529,9 +531,9 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
 )
 
 
-worker_pools = [INFRAHUB_WORKER_POOL]
+WORKER_POOLS = [INFRAHUB_WORKER_POOL]
 
-workflows = [
+WORKFLOWS = [
     ACTION_ADD_NODE_TO_GROUP,
     ACTION_RUN_GENERATOR,
     ACTION_RUN_GENERATOR_GROUP_EVENT,
@@ -603,3 +605,15 @@ workflows = [
     WEBHOOK_DELETE_AUTOMATION,
     WEBHOOK_PROCESS,
 ]
+
+
+# Use this dependency injection mechanism to easily add new workflows within infrahub-enterprise
+def build_workflows_definitions() -> list[WorkflowDefinition]:
+    return WORKFLOWS
+
+
+@inject
+def get_workflows(
+    workflows: list[WorkflowDefinition] = Depends(build_workflows_definitions),  # noqa: B008
+) -> list[WorkflowDefinition]:
+    return workflows

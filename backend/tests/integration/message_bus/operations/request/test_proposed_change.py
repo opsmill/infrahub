@@ -10,6 +10,7 @@ from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -74,6 +75,11 @@ mutation ProposedChange(
   ) {
     object {
       id
+      created_by {
+        node {
+          id
+        }
+      }
     }
   }
 }
@@ -82,10 +88,17 @@ mutation ProposedChange(
 
 class TestProposedChange(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def context(self) -> InfrahubContext:
+    async def user_account(self, db: InfrahubDatabase) -> Node:
+        account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+        await account.new(db=db, name="user", password="password")
+        await account.save(db=db)
+        return account
+
+    @pytest.fixture(scope="class")
+    async def context(self, user_account: Node) -> InfrahubContext:
         """Placeholder context for now, would be good to implement some auth and permissions here"""
         return InfrahubContext(
-            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            account=AccountSession(authenticated=False, account_id=user_account.get_id(), auth_type=AuthType.NONE),
             branch=BranchContext(name="main", id="placeholder"),
         )
 
@@ -98,6 +111,7 @@ class TestProposedChange(TestInfrahubApp):
         init_db_base,
         client: InfrahubClient,
         redis,
+        user_account: Node,
         context: InfrahubContext,
     ) -> str:
         source_dir = tmp_path_module_scope / "sources"
@@ -120,9 +134,7 @@ class TestProposedChange(TestInfrahubApp):
             message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
         )
 
-        repo = await InfrahubRepository.new(
-            id=obj.id, name=file_repo.name, location=file_repo.path, client=client, service=service
-        )
+        repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
         await repo.sync()
 
         result = await graphql_mutation(
@@ -134,7 +146,14 @@ class TestProposedChange(TestInfrahubApp):
         )
         assert not result.errors
         assert result.data
-        return result.data["CoreProposedChangeCreate"]["object"]["id"]
+        assert result.data["CoreProposedChangeCreate"]["object"]["created_by"]["node"]["id"] == user_account.get_id()
+        proposed_change_id = result.data["CoreProposedChangeCreate"]["object"]["id"]
+
+        pc = await NodeManager.get_one(db=db, id=proposed_change_id)
+        created_by = await pc.created_by.get_peer(db=db)
+        assert created_by.get_id() == user_account.get_id()
+
+        return proposed_change_id
 
     async def test_run_pipeline_validate_requested_jobs(
         self,
@@ -150,20 +169,10 @@ class TestProposedChange(TestInfrahubApp):
             destination_branch="main",
             proposed_change=prepare_proposed_change,
         )
-        bus_pre_data_changes = BusRecorder()
-        fake_log = FakeLogger()
-        service = await InfrahubServices.new(
-            client=client,
-            cache=await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver),
-            log=fake_log,
-            message_bus=bus_pre_data_changes,
-            database=db,
-            workflow=WorkflowLocalExecution(),
-        )
         with patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow:
-            await run_proposed_change_pipeline(model=model, service=service, context=context)
+            await run_proposed_change_pipeline(model=model, context=context)
 
             expected_calls_before_data_changes = [
                 call(
@@ -185,7 +194,7 @@ class TestProposedChange(TestInfrahubApp):
             await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
             await obj.save(db=db)
 
-            await run_proposed_change_pipeline(model=model, service=service, context=context)
+            await run_proposed_change_pipeline(model=model, context=context)
 
             expected_calls_after_data_changes = [
                 call(
@@ -241,7 +250,7 @@ class TestProposedChange(TestInfrahubApp):
         with patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow:
-            await run_generators(model=model, context=context, service=service)
+            await run_generators(model=model, context=context)
 
             expected_calls = [
                 call(

@@ -1,0 +1,1 @@
+INSTALLATION_TYPE = "community"

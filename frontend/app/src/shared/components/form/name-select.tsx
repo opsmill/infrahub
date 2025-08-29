@@ -31,17 +31,9 @@ export const NameSelect = () => {
   const selectedNamespace =
     selectedNamespaceField?.value === "*"
       ? { value: "*", name: "*" }
-      : namespaces
-          .filter((namespace) => {
-            if (!selectedNameField?.value) {
-              return true;
-            }
-
-            return namespace.used_by?.includes(selectedNameField?.value);
-          })
-          .find((namespace) => {
-            return namespace.name === selectedNamespaceField?.value;
-          });
+      : namespaces.find((namespace) => {
+          return namespace.name === selectedNamespaceField?.value;
+        });
 
   const nameOptions = [
     {
@@ -70,6 +62,7 @@ export const NameSelect = () => {
 
     // Get current node from form field value
     const currentNode = nodes.find((node) => node.name === selectedNameField?.value);
+
     if (!currentNode) return;
 
     form.setValue("namespace", { value: currentNode.namespace, label: currentNode.namespace });

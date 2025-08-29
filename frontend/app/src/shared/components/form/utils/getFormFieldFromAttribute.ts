@@ -2,6 +2,7 @@ import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
 import { NumberPool } from "@/entities/resource-manager/domain/type";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import {
   AttributeKind,
@@ -33,6 +34,8 @@ export const getFormFieldFromAttribute = ({
   objectTemplate,
   schema,
   isFilterForm,
+  isUpdate,
+  isBulkUpdate,
   pools,
   profiles,
 }: {
@@ -42,12 +45,14 @@ export const getFormFieldFromAttribute = ({
   objectTemplate: NodeObject | null | undefined;
   schema: ModelSchema;
   isFilterForm: boolean;
+  isUpdate: boolean;
+  isBulkUpdate: boolean;
   pools?: Array<NumberPool>;
   profiles?: Array<ProfileData>;
 }): DynamicAttributeFieldProps => {
   const attributeData = currentObject?.[attributeSchema.name];
 
-  const basicFomFieldProps: DynamicInputFieldProps = {
+  const basicFormFieldProps: DynamicInputFieldProps = {
     name: attributeSchema.name,
     label: attributeSchema.label ?? undefined,
     defaultValue: getFieldDefaultValue({
@@ -58,6 +63,8 @@ export const getFormFieldFromAttribute = ({
       isFilterForm,
     }),
     description: attributeSchema.description ?? undefined,
+    isBulkUpdate,
+    attribute: attributeSchema,
     disabled: isFieldDisabled({
       auth,
       owner: attributeData?.owner,
@@ -69,10 +76,11 @@ export const getFormFieldFromAttribute = ({
       schema.namespace === "Core" && attributeSchema.name === "node_kind"
         ? "NodeKind"
         : (attributeSchema.kind as Exclude<AttributeKind, "Dropdown">),
+    unique: attributeSchema.unique,
     rules: {
-      required: !isFilterForm && !attributeSchema.optional,
+      required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
-        if (isFilterForm) return true;
+        if (isFilterForm || isBulkUpdate) return true;
         if (formFieldValue.source?.type === "pool") return true;
 
         const attributeKind = attributeSchema.kind as AttributeKind;
@@ -113,10 +121,8 @@ export const getFormFieldFromAttribute = ({
 
   if (attributeSchema.kind === ATTRIBUTE_KIND.DROPDOWN) {
     const dropdownField: DynamicDropdownFieldProps = {
-      ...basicFomFieldProps,
-      unique: attributeSchema.unique,
+      ...basicFormFieldProps,
       type: ATTRIBUTE_KIND.DROPDOWN,
-      field: attributeSchema,
       schema,
       items: (attributeSchema.choices ?? []).map(
         (choice: components["schemas"]["DropdownChoice"]) => ({
@@ -133,10 +139,8 @@ export const getFormFieldFromAttribute = ({
 
   if (Array.isArray(attributeSchema.enum)) {
     const enumField: DynamicEnumFieldProps = {
-      ...basicFomFieldProps,
-      unique: attributeSchema.unique,
+      ...basicFormFieldProps,
       type: "enum",
-      field: attributeSchema,
       schema,
       items: attributeSchema.enum,
     };
@@ -148,8 +152,7 @@ export const getFormFieldFromAttribute = ({
     const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attributeSchema.name);
 
     const dropdownField: DynamicNumberFieldProps = {
-      ...basicFomFieldProps,
-      unique: attributeSchema.unique,
+      ...basicFormFieldProps,
       type: "Number",
       pools: numberPools,
     };
@@ -157,8 +160,22 @@ export const getFormFieldFromAttribute = ({
     return dropdownField;
   }
 
-  return {
-    ...basicFomFieldProps,
-    unique: attributeSchema.unique,
-  };
+  if (isUpdate) {
+    return basicFormFieldProps;
+  }
+
+  if (attributeSchema.name === "prefix" || attributeSchema.name === "address") {
+    const poolKind = getPoolKindFromSchema(schema);
+    if (poolKind) {
+      return {
+        ...basicFormFieldProps,
+        pool: {
+          kind: poolKind,
+          defaultAllocatedObjectKind: schema.kind as string,
+        },
+      };
+    }
+  }
+
+  return basicFormFieldProps;
 };

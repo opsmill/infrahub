@@ -68,6 +68,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
@@ -75,7 +76,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
             await cls.extract_query_info(info=info, data=data, branch=graphql_context.branch, db=graphql_context.db)
         )
 
-        obj, result = await super().mutate_create(info=info, data=data, branch=branch)
+        obj, result = await super().mutate_create(info=info, data=data, branch=branch, override_data=override_data)
 
         return obj, result
 

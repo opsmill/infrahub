@@ -57,7 +57,7 @@ export function PermissionCombobox({
           <div className="grow flex flex-wrap gap-2">
             {value?.map((node) => (
               <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
-                {node.identifier.value}
+                {node.identifier?.value}
 
                 <Button
                   size="icon"

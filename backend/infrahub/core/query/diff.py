@@ -100,6 +100,17 @@ class DiffCountChanges(Query):
         return branch_count_map
 
 
+async def get_num_changes_in_time_range_by_branch(
+    branch_names: list[str],
+    from_time: Timestamp,
+    to_time: Timestamp,
+    db: InfrahubDatabase,
+) -> dict[str, int]:
+    query = await DiffCountChanges.init(db=db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
+    await query.execute(db=db)
+    return query.get_num_changes_by_branch()
+
+
 class DiffCalculationQuery(DiffQuery):
     type = QueryType.READ
     insert_limit = False

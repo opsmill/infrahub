@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'guides/installation',
+            'guides/production-deployment',
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
@@ -111,6 +112,7 @@ const sidebars: SidebarsConfig = {
             'guides/sso',
             'guides/managing-api-tokens',
             'guides/accounts-permissions',
+            'guides/change-approval-workflow',
           ],
         },
       ],
@@ -182,6 +184,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/version-control',
+                'topics/branching',
                 'topics/proposed-change',
               ],
             },
@@ -356,6 +359,7 @@ const sidebars: SidebarsConfig = {
         slug: 'development'
       },
       items: [
+        'development/git-best-practices',
         'development/editor',
         'development/changelog',
         'development/backend',
@@ -387,6 +391,9 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_4_2',
+            'release-notes/infrahub/release-1_4_1',
+            'release-notes/infrahub/release-1_4_0',
             'release-notes/infrahub/release-1_3_7',
             'release-notes/infrahub/release-1_3_6',
             'release-notes/infrahub/release-1_3_5',

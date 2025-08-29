@@ -31,6 +31,7 @@ class KVTTL(int, Enum):
     ONE = 1
     TEN = 10
     FIFTEEN = 15
+    ONE_MINUTE = 60
     TWO_HOURS = 7200
 
     @classmethod
