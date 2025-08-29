@@ -7,7 +7,6 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-o
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -18,7 +17,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
