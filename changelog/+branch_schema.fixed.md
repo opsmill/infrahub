@@ -1,0 +1,1 @@
+Force branches data to be reloaded when the hash doesn't look healthy
