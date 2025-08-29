@@ -629,6 +629,150 @@ These examples are for reference purposes and may require customization for your
 
 </details>
 
+### Load balancer configuration
+
+For high availability deployments, a load balancer is useful to distribute traffic across multiple Infrahub API server instances. The load balancer must be configured to properly handle both HTTP/HTTPS and WebSocket connections.
+
+<details>
+  <summary>HAProxy configuration example</summary>
+
+```haproxy
+global
+    maxconn 4096
+    log stdout local0
+
+defaults
+    mode http
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+    option httplog
+
+# Frontend for Infrahub API
+frontend infrahub_frontend
+    bind *:80
+    bind *:443 ssl crt /etc/ssl/certs/infrahub.pem
+
+    # Redirect HTTP to HTTPS
+    redirect scheme https if !{ ssl_fc }
+
+    # ACL for WebSocket connections
+    acl is_websocket hdr(Upgrade) -i WebSocket
+    acl is_websocket_path path_beg /ws /graphql-ws
+
+    # Use WebSocket backend for WS connections
+    use_backend infrahub_websocket if is_websocket || is_websocket_path
+
+    # Default to HTTP backend
+    default_backend infrahub_http
+
+# Backend for regular HTTP/HTTPS traffic
+backend infrahub_http
+    balance roundrobin
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    # Sticky sessions for GraphQL subscriptions
+    cookie SERVERID insert indirect nocache
+
+    server infrahub-api-1 10.0.1.10:8000 check cookie api1
+    server infrahub-api-2 10.0.1.11:8000 check cookie api2
+    server infrahub-api-3 10.0.1.12:8000 check cookie api3
+
+# Backend for WebSocket connections
+backend infrahub_websocket
+    balance source
+    option http-server-close
+    option forceclose
+
+    # WebSocket specific health check
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    server infrahub-api-1 10.0.1.10:8000 check
+    server infrahub-api-2 10.0.1.11:8000 check
+    server infrahub-api-3 10.0.1.12:8000 check
+```
+
+</details>
+
+<details>
+  <summary>NGINX configuration example</summary>
+
+```nginx
+upstream infrahub_backend {
+    # IP hash for session affinity
+    ip_hash;
+
+    server 10.0.1.10:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.1.11:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.1.12:8000 max_fails=3 fail_timeout=30s;
+}
+
+server {
+    listen 80;
+    server_name infrahub.example.com;
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name infrahub.example.com;
+
+    ssl_certificate /etc/ssl/certs/infrahub.pem;
+    ssl_certificate_key /etc/ssl/private/infrahub.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Client body size for large GraphQL queries
+    client_max_body_size 10M;
+
+    # Timeouts for long-running operations
+    proxy_connect_timeout 600;
+    proxy_send_timeout 600;
+    proxy_read_timeout 600;
+    send_timeout 600;
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        proxy_pass http://infrahub_backend/api/health;
+    }
+
+    # WebSocket support for GraphQL subscriptions
+    location ~ ^/(ws|graphql-ws) {
+        proxy_pass http://infrahub_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable buffering for WebSocket
+        proxy_buffering off;
+    }
+
+    # Regular API traffic
+    location / {
+        proxy_pass http://infrahub_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Enable keepalive
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+```
+
+</details>
+
 ## Related resources
 
 - [Database backup and restore](./database-backup) - Learn how to backup and restore your Infrahub database
