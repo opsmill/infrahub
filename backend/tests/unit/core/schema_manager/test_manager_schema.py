@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
+    RelationshipCardinality,
     RelationshipDeleteBehavior,
     RelationshipKind,
     SchemaPathType,
@@ -2885,6 +2886,70 @@ async def test_load_schemas(
         random_org_schema.get_relationship("models")
     except ValueError:
         pytest.fail(reason="Relationship 'models' must be present in 'RandomOrganization'")
+
+
+async def test_load_schema_absent_node(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Testing",
+                "name": "Thing",
+                "label": "Thing",
+                "state": HashableModelState.ABSENT,
+                "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+            },
+        ]
+    }
+
+    schema = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    with pytest.raises(SchemaNotFoundError, match=r"Unable to find the schema"):
+        registry.schema.get(name="TestingThing")
+
+
+async def test_load_schema_absent_relationship_peer(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Testing",
+                "name": "Thing",
+                "label": "Thing",
+                "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                "relationships": [
+                    {
+                        "name": "other_thing",
+                        "peer": "TestingOtherThing",
+                        "kind": RelationshipKind.ATTRIBUTE,
+                        "state": HashableModelState.ABSENT,
+                        "cardinality": RelationshipCardinality.ONE,
+                        "optional": True,
+                    }
+                ],
+            },
+            {
+                "namespace": "Testing",
+                "name": "OtherThing",
+                "label": "OtherThing",
+                "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+            },
+        ]
+    }
+
+    schema = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    assert "TestingThing" in schema.nodes
+    assert "TestingOtherThing" in schema.nodes
+
+    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
+        schema.get(name="TestingThing", duplicate=False).get_relationship(name="other_thing")
 
 
 def test_schema_branch_load_schema_append_to_list(schema_all_in_one):
