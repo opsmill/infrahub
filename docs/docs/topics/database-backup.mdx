@@ -94,7 +94,7 @@ The first option is probably easier. The second option can be achieved by ensuri
 
 You must specify the directory containing the backup files you wish to restore on the Infrahub database in the `backup_directory` argument to the `db_backup neo4j restore` command. This directory should contain `.backup` files produced by the `db_backup neo4j backup` command. The files must be of the format `<database_name>-2024-02-07T22-12-16.backup`. Given the default database configuration, a backup will produce two `.backup` files: one for the `neo4j` database and one for the `system` database.
 
-The `backup` utility produces a `.backup` file for the `system` database, but the `restore` utility will not attempt to restore a `system` database backup. This should not cause any problems for you unless your Infrahub database has suffered a catastrophic failure. Neo4j provides documentation on this process [here](https://neo4j.com/docs/operations-manual/current/clustering/disaster-recovery/#_restore_the_system_database), but it is beyond the scope of what this utility is intended to do.
+The `backup` utility produces a `.backup` file for the `system` database, but the `restore` utility will not attempt to restore a `system` database backup. This should not cause any problems for you unless your Infrahub database has suffered a catastrophic failure. Neo4j provides documentation on this process [here](https://neo4j.com/docs/operations-manual/5/clustering/disaster-recovery/#make-the-system-database-write-available), but it is beyond the scope of what this utility is intended to do.
 
 ### Downtime
 
