@@ -35,7 +35,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       state: TASK_ONGOING_STATES,
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
-    pollInterval: 2000,
+    pollInterval: 10_000,
   });
 
   const rejectedBy = proposedChangesDetails?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];

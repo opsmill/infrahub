@@ -88,7 +88,7 @@ With this change multiple improvements have been made to the overall proposed ch
 - Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change
 - The overview tab of a proposed change now contains a more detailed timeline of all the actions/state changes that happened in a proposed change.
 
-Please refer to the documentation for a guide that explains how to setup a change approval workflow: https://develop.infrahub.pages.dev/guides/change-approval-workflow
+Please refer to the documentation for a guide that explains how to setup a change approval workflow: https://docs.infrahub.app/guides/change-approval-workflow
 
 ![Proposed change approval workflow](../../media/release_notes/infrahub_1_4/proposed_change.png)
 
@@ -161,7 +161,7 @@ Below are some example ways to get the latest version of Infrahub in your enviro
 - For deployments via Docker Compose, download the updated Docker Compose file
   - `curl https://infrahub.opsmill.io -o docker-compose.yml`
 - Set the `VERSION` environment variable and start the environment
-  - `export VERSION="1.4.0rc0"; docker compose pull && docker compose up -d`
+  - `export VERSION="1.4.0"; docker compose pull && docker compose up -d`
 - For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
 
 **Second**, once you have gotten the desired version of Infrahub in your environment, please run the following command.

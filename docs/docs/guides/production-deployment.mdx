@@ -1,0 +1,157 @@
+---
+title: How to deploy Infrahub in production
+---
+
+import ReferenceLink from "../../src/components/Card";
+import EnterpriseBadge from "../../src/components/EnterpriseBadge";
+
+# How to deploy Infrahub in production
+
+This guide walks you through deploying Infrahub in a production environment with enhanced security, reliability, and maintainability. By following these steps, you'll set up a production-ready Infrahub instance that follows industry best practices.
+
+:::warning
+This page is currently under development. Please use it as a reference checklist when preparing your Infrahub environment for production deployment.
+:::
+
+## Prerequisites
+
+Before beginning your production deployment, ensure you have:
+
+- Selected your deployment technology (Docker or Kubernetes)
+- Verified your system meets the [hardware requirements](../topics/hardware-requirements)
+- Administrative access to your deployment environment
+- Decided between Community or Enterprise edition based on your support and feature needs
+- Access to your organization's identity provider (for SSO configuration)
+- A backup strategy and storage location
+
+## Step 1: Create a hardened configuration file
+
+Production environments require secure configuration settings that differ from development defaults. Create a configuration file that overwrites default values to enhance security.
+
+```shell title=".env"
+# Environment settings
+INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
+INFRAHUB_PRODUCTION=true
+INFRAHUB_LOG_LEVEL=INFO
+
+# Security keys & tokens (generate strong unique values)
+INFRAHUB_SECURITY_SECRET_KEY=<strong-random-string-at-least-32-chars>
+INFRAHUB_INITIAL_ADMIN_PASSWORD=<strong-admin-password>
+INFRAHUB_INITIAL_ADMIN_TOKEN=<generate-uuid>  # Generate with: uuidgen
+INFRAHUB_INITIAL_AGENT_TOKEN=<generate-uuid>  # Generate with: uuidgen
+
+# Database & message broker security
+INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
+INFRAHUB_DB_PASSWORD=<strong-database-password>
+```
+
+:::warning
+Never use default passwords or tokens in production. Generate strong unique values for each environment. You can generate UUIDs using the `uuidgen` command or an online UUID generator.
+:::
+
+<ReferenceLink title="Complete configuration reference" url="../reference/configuration" />
+
+## Step 2: Install Infrahub
+
+Install Infrahub using your chosen deployment technology, applying your hardened configuration.
+
+:::info
+For high availability deployments on Kubernetes, use the HA manifest which includes proper replication and resource requests/limits.
+:::
+
+<ReferenceLink title="Detailed installation instructions" url="./installation" />
+
+:::success
+Navigate to `https://your-server-address` in your browser. You should see the Infrahub login page.
+:::
+
+## Step 3: Configure SSO (recommended)
+
+Connect Infrahub to your organization's identity provider to enhance security and simplify user management.
+
+<ReferenceLink title="Detailed SSO configuration guide" url="./sso" />
+
+## Step 4: Set up database backups
+
+Implement regular database backups to prevent data loss in case of hardware failure or other issues.
+
+<ReferenceLink title="Complete backup and restore guide" url="./database-backup" />
+
+:::success
+Test your backup and restore process periodically to ensure it works as expected.
+:::
+
+## Step 5: Configure monitoring
+
+Set up monitoring to track the health and performance of your Infrahub deployment.
+
+### Using the built-in monitoring stack
+
+Infrahub provides a pre-configured monitoring stack with Prometheus and Grafana:
+
+1. Download the monitoring configuration:
+
+```shell
+curl -O https://raw.githubusercontent.com/opsmill/infrahub/stable/development/docker-compose-observability.yml
+```
+
+2. Start the monitoring services:
+
+```shell
+docker-compose -f docker-compose.yml -f docker-compose-observability.yml up -d
+```
+
+3. Access Grafana at `http://your-server-address:3000` with the default credentials (admin/admin)
+
+### Integrating with existing monitoring systems
+
+If you have an existing monitoring system, configure it to track:
+
+- API endpoints health (`/health` and `/readiness`)
+- Database metrics
+- Message broker metrics
+- Resource utilization (CPU, memory, disk)
+
+:::info
+Set up alerts for critical metrics like API availability, database connection issues, and high resource utilization.
+:::
+
+## Operations and maintenance
+
+### Upgrading Infrahub
+
+To upgrade to a new version of Infrahub:
+
+1. Review the release notes for breaking changes
+2. Create a full backup of your database
+3. Update the container images
+
+:::danger
+Always create a backup before upgrading to ensure you can restore if needed.
+:::
+
+<ReferenceLink title="Detailed upgrade procedures" url="./upgrade" />
+
+## Support options
+
+### Community support
+
+- GitHub Issues: [github.com/opsmill/infrahub](https://github.com/opsmill/infrahub)
+- Discord Community: [discord.gg/infrahub](https://discord.gg/infrahub)
+- Documentation: [docs.infrahub.app](https://docs.infrahub.app)
+
+### Enterprise support<EnterpriseBadge />
+
+- 24/7 support with SLA guarantees
+- Dedicated support engineer
+- Professional services for deployment
+- Training and certification programs
+
+Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support.
+
+## Related resources
+
+- [Architecture Overview](../topics/architecture)
+- [Configuration Reference](../reference/configuration)
+- [API Server Reference](../reference/api-server)
+- [High Availability Deployment](../topics/architecture#infrahub-high-availability-deployment)

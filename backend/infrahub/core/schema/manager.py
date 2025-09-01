@@ -615,7 +615,9 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
-        schema_diff = current_schema.get_hash_full().compare(branch.active_schema_hash)
+        schema_diff = None
+        if branch.active_schema_hash.is_valid and current_schema.get_hash_full().is_valid:
+            schema_diff = current_schema.get_hash_full().compare(branch.active_schema_hash)
         branch_schema = await self.load_schema_from_db(
             db=db, branch=branch, schema=current_schema, schema_diff=schema_diff
         )

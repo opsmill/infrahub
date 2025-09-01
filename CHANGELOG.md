@@ -11,6 +11,26 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.3) - 2025-08-29
+
+### Fixed
+
+- Force branches data to be reloaded when the hash doesn't look healthy
+- In the UI, clicking the artifact generation button now refreshes the token and retries if the access token has expired.
+
+## [Infrahub - v1.4.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.2) - 2025-08-28
+
+### Fixed
+
+- Fix a bug where a proposed change could be merged without approval even if some approvals were required (Enterprise)
+- Removed incorrect log warning about 'Branch schema hash is not set, cannot update branch registry' due to including the '-global-' branch when processing branch updates.
+
+## [Infrahub - v1.4.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.1) - 2025-08-27
+
+### Fixed
+
+- Fix bug in schema validation that would incorrectly flag Dropdown attributes of node schema that override a generic attribute as having illegal values ([#7086](https://github.com/opsmill/infrahub/issues/7086))
+
 ## [Infrahub - v1.4.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.0) - 2025-08-26
 
 We're excited to announce the first release candidate of Infrahub 1.4.0!
