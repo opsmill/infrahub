@@ -7,7 +7,6 @@ on:
     branches:
       - stable
     paths:
-      - '.vale/**'
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
 
@@ -30,12 +29,10 @@ jobs:
       - name: Sync folders
         run: |
           # Remove existing files in target repo
-          rm -rf target-repo/.vale/*
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
 
           # Copy files from source repo to target repo
-          cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
 
