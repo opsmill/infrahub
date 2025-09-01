@@ -11,8 +11,6 @@ documentation = "https://docs.infrahub.app/"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
@@ -23,7 +21,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10, < 3.13"
+python = "^3.12, < 3.13"
 neo4j = "~5.28"
 neo4j-rust-ext = "~5.28"
 pydantic = "~2.10"
@@ -68,10 +66,7 @@ fast-depends = "^2.4.12"
 # Dependencies specific to the SDK
 rich = "^13"
 pyarrow = "^14"
-numpy = [
-    { version = "^1.24.2", python = ">=3.9,<3.12" },
-    { version = "^1.26.2", python = ">=3.12" },
-]
+numpy = "^1.26.2"
 dulwich = "^0.22.7"
 whenever = "0.7.3"
 netutils = "1.12.0"
