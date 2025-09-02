@@ -65,7 +65,7 @@ fast-depends = "^2.4.12"
 
 # Dependencies specific to the SDK
 rich = "^13"
-pyarrow = "^14"
+pyarrow = ">=14"
 numpy = "^1.26.2"
 dulwich = "^0.22.7"
 whenever = "0.7.3"
