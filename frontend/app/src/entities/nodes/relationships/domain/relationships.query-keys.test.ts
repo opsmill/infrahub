@@ -1,6 +1,6 @@
+import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect, it } from "vitest";
 import { relationshipsQueryKeys } from "./relationships.query-keys";
-import { Filter } from "@/shared/hooks/useFilters";
 
 describe("relationshipsQueryKeys", () => {
   it("returns query key for lists", () => {
@@ -10,7 +10,7 @@ describe("relationshipsQueryKeys", () => {
       atDate: new Date("2024-01-01"),
       objectKind: "RandomKind",
       objectId: "123",
-      relationshipName: "relName"
+      relationshipName: "relName",
     };
 
     // WHEN
@@ -23,7 +23,7 @@ describe("relationshipsQueryKeys", () => {
       params.atDate,
       "RandomKind",
       "123",
-      "relName"
+      "relName",
     ]);
   });
 
@@ -36,7 +36,7 @@ describe("relationshipsQueryKeys", () => {
       objectKind: "RandomKind",
       objectId: "123",
       relationshipName: "relName",
-      filters
+      filters,
     };
 
     // WHEN
@@ -50,7 +50,7 @@ describe("relationshipsQueryKeys", () => {
       "RandomKind",
       "123",
       "relName",
-      filters
+      filters,
     ]);
   });
 
@@ -61,7 +61,7 @@ describe("relationshipsQueryKeys", () => {
       atDate: new Date("2024-01-01"),
       objectKind: "RandomKind",
       objectId: "123",
-      relationshipName: "relName"
+      relationshipName: "relName",
     };
 
     // WHEN
@@ -75,7 +75,7 @@ describe("relationshipsQueryKeys", () => {
       "RandomKind",
       "123",
       "relName",
-      "count"
+      "count",
     ]);
   });
 
@@ -87,7 +87,7 @@ describe("relationshipsQueryKeys", () => {
       objectKind: "RandomKind",
       objectId: "123",
       relationshipName: "relName",
-      relationshipId: "456"
+      relationshipId: "456",
     };
 
     // WHEN
@@ -102,7 +102,7 @@ describe("relationshipsQueryKeys", () => {
       "123",
       "relName",
       "456",
-      "properties"
+      "properties",
     ]);
   });
 });

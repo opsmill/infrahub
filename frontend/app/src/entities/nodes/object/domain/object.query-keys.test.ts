@@ -1,6 +1,6 @@
+import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect, it } from "vitest";
 import { objectQueryKeys } from "./object.query-keys";
-import { Filter } from "@/shared/hooks/useFilters";
 
 describe("objectQueryKeys", () => {
   it("returns base query key for all", () => {
