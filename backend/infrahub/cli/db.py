@@ -5,7 +5,7 @@ import logging
 import os
 from collections import defaultdict
 from csv import DictReader, DictWriter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
@@ -59,7 +59,7 @@ from .patch import patch_app
 
 def get_timestamp_string() -> str:
     """Generate a timestamp string in the format YYYYMMDD-HHMMSS."""
-    return datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return datetime.now(tz=UTC).strftime("%Y%m%d-%H%M%S")
 
 
 if TYPE_CHECKING:
