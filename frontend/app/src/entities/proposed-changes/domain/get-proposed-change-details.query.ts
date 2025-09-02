@@ -1,62 +1,23 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { PROPOSED_CHANGE_THREAD } from "@/entities/proposed-changes/constants";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
-import { ProposedChangeDetailsFromApiParams } from "../api/get-proposed-change-details-from-api";
-import { getProposedChangeDetails } from "./get-proposed-change-details";
+import {
+  GetProposedChangeDetailsParams,
+  getProposedChangeDetails,
+} from "./get-proposed-change-details";
 
-type GetProposedChangeDetailsQueryOptionsParams = Omit<
-  ProposedChangeDetailsFromApiParams,
-  keyof PaginationParams
->;
+type GetProposedChangeDetailsQueryOptionsParams = GetProposedChangeDetailsParams;
 
 export function getProposedChangeDetailsQueryOptions({
-  id,
-  nodeId,
-  state,
-  branchName,
-  atDate,
+  proposedChangeId,
 }: GetProposedChangeDetailsQueryOptionsParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_THREAD, id, nodeId, state],
+    queryKey: ["objects", PROPOSED_CHANGE_OBJECT, proposedChangeId],
     queryFn: () => {
-      return getProposedChangeDetails({
-        branchName,
-        atDate,
-        id,
-        nodeId,
-        state,
-      });
+      return getProposedChangeDetails({ proposedChangeId });
     },
   });
 }
 
-export function useGetProposedChangeDetails(
-  params: Omit<GetProposedChangeDetailsQueryOptionsParams, keyof ContextParams>
-) {
-  const { currentBranch } = useCurrentBranch();
-  const timeMachineDate = useAtomValue(datetimeAtom);
-
-  return useQuery({
-    ...getProposedChangeDetailsQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    }),
-    queryFn: async (context) => {
-      const originalFn = getProposedChangeDetailsQueryOptions({
-        ...params,
-        branchName: currentBranch.name,
-        atDate: timeMachineDate,
-      }).queryFn;
-
-      if (!originalFn) {
-        throw new Error("Query function is undefined");
-      }
-
-      return originalFn(context);
-    },
-  });
+export function useGetProposedChangeDetails(params: GetProposedChangeDetailsQueryOptionsParams) {
+  return useQuery(getProposedChangeDetailsQueryOptions(params));
 }

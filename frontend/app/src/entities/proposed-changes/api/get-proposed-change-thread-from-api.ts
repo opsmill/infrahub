@@ -1,5 +1,4 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
 const GET_THREAD = gql`
@@ -72,23 +71,17 @@ query GetCoreThread($ids: [ID]) {
   }
 }`;
 
-export interface ProposedChangeThreadFromApiParams extends ContextParams {
+export interface ProposedChangeThreadFromApiParams {
   threadId: string;
 }
 
 export const getProposedChangeThreadFromApi = async ({
   threadId,
-  branchName,
-  atDate,
 }: ProposedChangeThreadFromApiParams) => {
   return graphqlClient.query({
     query: GET_THREAD,
     variables: {
       ids: [threadId],
-    },
-    context: {
-      branch: branchName,
-      date: atDate,
     },
   });
 };

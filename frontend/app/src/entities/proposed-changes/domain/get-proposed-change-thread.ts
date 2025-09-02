@@ -4,7 +4,13 @@ import {
   getProposedChangeThreadFromApi,
 } from "../api/get-proposed-change-thread-from-api";
 
-export async function getProposedChangeThread(params: ProposedChangeThreadFromApiParams) {
+export type GetProposedChangeThreadParams = ProposedChangeThreadFromApiParams;
+
+export type GetProposedChangeThread = (params: GetProposedChangeThreadParams) => Promise<any>;
+
+export const getProposedChangeThread: GetProposedChangeThread = async (
+  params: ProposedChangeThreadFromApiParams
+) => {
   const { data, errors } = await getProposedChangeThreadFromApi(params);
 
   if (errors?.[0]?.message) {
@@ -18,4 +24,4 @@ export async function getProposedChangeThread(params: ProposedChangeThreadFromAp
   }
 
   return edges[0].node;
-}
+};

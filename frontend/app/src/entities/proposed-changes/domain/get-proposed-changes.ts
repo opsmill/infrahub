@@ -18,11 +18,15 @@ export type ProposedChangeItem = {
   validations: { count: number };
 };
 
-type GetProposedChangesCountsResult = Array<ProposedChangeItem>;
+export type GetProposedChangesParams = ProposedChangesFromApiParams;
 
-export async function getProposedChanges(
-  params: ProposedChangesFromApiParams
-): Promise<GetProposedChangesCountsResult> {
+export type GetProposedChangesResult = Array<ProposedChangeItem>;
+
+export type GetProposedChanges = (
+  params: GetProposedChangesParams
+) => Promise<GetProposedChangesResult>;
+
+export const getProposedChanges: GetProposedChanges = async (params) => {
   const { data, errors } = await getProposedChangesFromApi(params);
 
   if (errors?.[0]?.message) {
@@ -32,4 +36,4 @@ export async function getProposedChanges(
   const schemaKindToQuery = params.schema.kind as string;
 
   return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
-}
+};

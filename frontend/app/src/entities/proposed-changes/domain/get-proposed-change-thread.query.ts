@@ -1,11 +1,8 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { ProposedChangeThreadFromApiParams } from "@/entities/proposed-changes/api/get-proposed-change-thread-from-api";
 import { PROPOSED_CHANGE_THREAD } from "@/entities/proposed-changes/constants";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
+import { getProposedChangeThread } from "@/entities/proposed-changes/domain/get-proposed-change-thread";
+import { PaginationParams } from "@/shared/api/types";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
-import { ProposedChangeThreadFromApiParams } from "../api/get-proposed-change-thread-from-api";
-import { getProposedChangeThread } from "./get-proposed-change-thread";
 
 type GetProposedChangeThreadQueryOptionsParams = Omit<
   ProposedChangeThreadFromApiParams,
@@ -14,32 +11,15 @@ type GetProposedChangeThreadQueryOptionsParams = Omit<
 
 export function getProposedChangeThreadQueryOptions({
   threadId,
-  branchName,
-  atDate,
 }: GetProposedChangeThreadQueryOptionsParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_THREAD, threadId],
+    queryKey: ["objects", PROPOSED_CHANGE_THREAD, threadId],
     queryFn: () => {
-      return getProposedChangeThread({
-        branchName,
-        atDate,
-        threadId,
-      });
+      return getProposedChangeThread({ threadId });
     },
   });
 }
 
-export function useGetProposedChangeThread(
-  params: Omit<GetProposedChangeThreadQueryOptionsParams, keyof ContextParams>
-) {
-  const { currentBranch } = useCurrentBranch();
-  const timeMachineDate = useAtomValue(datetimeAtom);
-
-  return useQuery(
-    getProposedChangeThreadQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    })
-  );
+export function useGetProposedChangeThread(params: GetProposedChangeThreadQueryOptionsParams) {
+  return useQuery(getProposedChangeThreadQueryOptions(params));
 }

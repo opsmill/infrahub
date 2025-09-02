@@ -103,15 +103,12 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
 };
 
 export function Component() {
-  const { proposedChangeId } = useParams();
+  const { proposedChangeId } = useParams() as { proposedChangeId: string };
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const { isLoading, error, data } = useGetProposedChangeDetails({
-    id: proposedChangeId,
-    nodeId: proposedChangeId, // Used for tasks, which is a different type
-  });
+  const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
 
-  if (isLoading) {
+  if (isPending) {
     return <LoadingIndicator className="h-full" />;
   }
 
@@ -160,7 +157,7 @@ export function Component() {
               predicate: (query) => query.queryKey.includes(proposedChangeId),
             });
           }}
-          isReloadLoading={isLoading}
+          isReloadLoading={isPending}
           end={
             <ObjectHelpButton
               documentationUrl={schema?.documentation}
@@ -215,7 +212,7 @@ export function Component() {
             predicate: (query) => query.queryKey.includes(proposedChangeId),
           });
         }}
-        isReloadLoading={isLoading}
+        isReloadLoading={isPending}
         end={
           <ObjectHelpButton
             documentationUrl={schema?.documentation}
