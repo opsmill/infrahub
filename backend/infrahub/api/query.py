@@ -40,7 +40,7 @@ router = APIRouter(prefix="/query")
 
 
 class QueryPayload(BaseModel):
-    variables: dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, Any] = Field(default_factory=dict)
 
 
 async def execute_query(
