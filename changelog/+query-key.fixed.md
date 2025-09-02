@@ -1,0 +1,2 @@
+- Relationship properties show a clearer loading indicator.
+- Standardized internally cache-key using factories to make request manipulation easier and more consistent.
