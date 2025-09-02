@@ -107,6 +107,7 @@ MUTATION_ACCOUNT_ROLE = """
 mutation {
   CoreAccountRoleCreate(data: {
     name: {value: "test"}
+    permissions: []
   }) {
     ok
   }
@@ -176,6 +177,24 @@ query {
   }
 }
 """
+
+QUERY_CORE_NODE = """
+query {
+  CoreNode {
+    edges {
+      node {
+        id
+        ... on CoreRepository {
+          name {
+            value
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 
 MUTATION_REPOSITORY = """
 mutation {
@@ -262,7 +281,9 @@ class TestObjectPermissions:
 
         permissions_helper._first = first_account
 
-    async def test_first_account_tags(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
+    async def test_first_account_tags(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ) -> None:
         checker = ObjectPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -313,7 +334,9 @@ class TestObjectPermissions:
                 query_parameters=gql_params,
             )
 
-    async def test_first_account_graphql(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
+    async def test_first_account_graphql(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ) -> None:
         """The user should have permissions to list GraphQLQueries."""
         checker = ObjectPermissionChecker()
         session = AccountSession(
@@ -419,7 +442,11 @@ class TestAccountManagerPermissions:
 
     @pytest.mark.parametrize("operation", [MUTATION_ACCOUNT, MUTATION_ACCOUNT_GROUP, MUTATION_ACCOUNT_ROLE])
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
     ):
         checker = AccountManagerPermissionChecker()
         session = AccountSession(
@@ -457,7 +484,12 @@ class TestAccountManagerPermissions:
         ],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
     ):
         checker = AccountManagerPermissionChecker()
         session = AccountSession(
@@ -546,10 +578,21 @@ class TestPermissionManagerPermissions:
             assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
-        "operation", [MUTATION_GLOBAL_PERMISSION, MUTATION_OBJECT_PERMISSION, QUERY_ACCOUNT_PERMISSIONS]
+        "operation",
+        [
+            MUTATION_GLOBAL_PERMISSION,
+            MUTATION_OBJECT_PERMISSION,
+            MUTATION_ACCOUNT_ROLE,
+            QUERY_ACCOUNT_PERMISSIONS,
+            QUERY_CORE_NODE,
+        ],
     )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
     ):
         checker = PermissionManagerPermissionChecker()
         session = AccountSession(
@@ -577,16 +620,85 @@ class TestPermissionManagerPermissions:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
+        "kind,relationship",
+        [
+            (InfrahubKind.ACCOUNTROLE, "permissions"),
+            (InfrahubKind.BASEPERMISSION, "roles"),
+            (InfrahubKind.GLOBALPERMISSION, "roles"),
+            (InfrahubKind.OBJECTPERMISSION, "roles"),
+        ],
+    )
+    async def test_corenode_query_account_with_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        kind: str,
+        relationship: str,
+    ):
+        query = """
+        query {
+          CoreNode {
+            edges {
+              node {
+                id
+                ... on %s {
+                  %s {
+                    edges {
+                      node {
+                        identifier
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """ % (kind, relationship)
+        checker = PermissionManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=query,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        resolution = await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            query_parameters=gql_params,
+            branch=permissions_helper.default_branch,
+        )
+        assert resolution == CheckerResolution.NEXT_CHECKER
+
+    @pytest.mark.parametrize(
         "operation,must_raise",
         [
             (MUTATION_GLOBAL_PERMISSION, True),
             (MUTATION_OBJECT_PERMISSION, True),
+            (MUTATION_ACCOUNT_ROLE, True),
             (QUERY_TAGS, False),
             (QUERY_ACCOUNT_PERMISSIONS, False),
+            (QUERY_CORE_NODE, False),
         ],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
     ):
         checker = PermissionManagerPermissionChecker()
         session = AccountSession(
@@ -622,6 +734,68 @@ class TestPermissionManagerPermissions:
                     query_parameters=gql_params,
                     branch=permissions_helper.default_branch,
                 )
+
+    @pytest.mark.parametrize(
+        "kind,relationship",
+        [
+            (InfrahubKind.ACCOUNTROLE, "permissions"),
+            (InfrahubKind.BASEPERMISSION, "roles"),
+            (InfrahubKind.GLOBALPERMISSION, "roles"),
+            (InfrahubKind.OBJECTPERMISSION, "roles"),
+        ],
+    )
+    async def test_corenode_query_account_without_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        kind: str,
+        relationship: str,
+    ):
+        query = """
+        query {
+          CoreNode {
+            edges {
+              node {
+                id
+                ... on %s {
+                  %s {
+                    edges {
+                      node {
+                        identifier
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """ % (kind, relationship)
+        checker = PermissionManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=query,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage permissions"):
+            await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                query_parameters=gql_params,
+                branch=permissions_helper.default_branch,
+            )
 
 
 class TestRepositoryManagerPermissions:
@@ -676,7 +850,11 @@ class TestRepositoryManagerPermissions:
         "operation", [MUTATION_REPOSITORY, MUTATION_READONLY_REPOSITORY, MUTATION_GENERIC_REPOSITORY]
     )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
     ):
         checker = RepositoryManagerPermissionChecker()
         session = AccountSession(
@@ -713,7 +891,12 @@ class TestRepositoryManagerPermissions:
         ],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
     ):
         checker = RepositoryManagerPermissionChecker()
         session = AccountSession(
