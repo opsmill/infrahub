@@ -6,7 +6,7 @@ import React from "react";
 
 type ConfigContext = ConfigAPI;
 
-export const ConfigContext = React.createContext<ConfigContext>(null as unknown as ConfigContext);
+export const ConfigContext = React.createContext<ConfigContext>({} as unknown as ConfigContext);
 
 export function useConfig() {
   const context = React.use(ConfigContext);
