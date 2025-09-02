@@ -17,7 +17,9 @@ An alternative to avoid cloning the Infrahub repository is to directly run it th
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock registry.opsmill.io/opsmill/infrahub python -m utilities.db_backup
 ```
 
-## Backup a remote Infrahub database
+## Backup tool usage
+
+### Backup a remote Infrahub database
 
 ```python
 python -m utilities.db_backup neo4j backup --database-url=172.28.64.1 /infrahub_backups
@@ -30,7 +32,7 @@ Since the tool starts a helper container, the database may not be directly acces
 python -m utilities.db_backup neo4j backup --host-network --database-url=172.28.64.1 /infrahub_backups
 ```
 
-## Backup a local Infrahub database with a non-default backup port
+### Backup a local Infrahub database with a non-default backup port
 
 ```python
 python -m utilities.db_backup neo4j backup --database-backup-port=12345 /infrahub_backups
@@ -38,13 +40,44 @@ python -m utilities.db_backup neo4j backup --database-backup-port=12345 /infrahu
 
 In this example, I am running the backup command on the same machine that is running the Infrahub Docker containers. In this case, port `12345` must also have been set using the `NEO4J_server_backup_listen__address` environment variable in the Infrahub database container.
 
-## Restore a backup on a non-default cypher port
+### Restore a backup on a non-default cypher port
 
 ```python
 python -m utilities.db_backup neo4j restore /infrahub_backups --database-cypher-port=9876
 ```
 
 In this example, I am restoring `.backup` files that exist in the `/infrahub_backups` directory and my Infrahub database container uses a non-standard port for cypher access: `9876` instead of `7687`.
+
+## Full backup and restore procedure
+
+Backing Infrahub up consists of:
+
+1. Backup the Neo4j database, as described in this guide.
+2. Backup the artifact store
+
+  Either the S3 bucket or the local filesystem, accordingly.
+
+3. Backup the Prefect database (task logs, etc)
+
+  You can use standard PostgreSQL tools like `pg_dump`
+  For example, when running using Docker compose:
+
+`docker exec infrahub-task-manager-db-1 pg_dump -Fc -d prefect -U postgres > prefect.dump`
+
+Restoring Infrahub consists of:
+
+1. Starting Infrahub
+2. Restoring the Neo4j database
+3. Restoring the artifact store
+4. Restoring the Prefect database
+
+  For example, when running using Docker Compose:
+
+  `docker exec infrahub-task-manager-db-1 pg_restore -d prefect -U postgres --clean --create prefect.dump`
+
+  Then restart the task manager (Prefect server)
+
+5. Restarting Infrahub (API servers, then task workers)
 
 # Cluster Database backup and restore examples  
 
