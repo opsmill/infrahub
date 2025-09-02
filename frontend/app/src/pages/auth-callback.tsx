@@ -1,6 +1,6 @@
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useConfig } from "@/entities/config/get-config.query";
+import { useConfig } from "@/entities/config/ui/config-provider";
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 function AuthCallback() {
   const { protocol, provider } = useParams();
-  const { data: config } = useConfig();
+  const config = useConfig();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, setToken } = useAuth();
   const [redirectTo, setRedirectTo] = useState("/");
