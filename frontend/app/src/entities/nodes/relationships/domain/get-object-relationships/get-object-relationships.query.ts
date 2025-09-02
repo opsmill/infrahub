@@ -8,7 +8,7 @@ import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/re
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 
 export type GetObjectRelationshipsQueryOptionsParams = Omit<
   GetObjectRelationshipsParams,

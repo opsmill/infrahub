@@ -29,7 +29,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
       name: "Source",
       value: source ? (
         <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
-          source.display_label
+          {source.display_label}
         </Link>
       ) : (
         "-"
