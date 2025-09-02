@@ -4,9 +4,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import React from "react";
 
-type ConfigContext = ConfigAPI;
-
-export const ConfigContext = React.createContext<ConfigContext>({} as unknown as ConfigContext);
+export const ConfigContext = React.createContext<ConfigAPI>({} as ConfigAPI);
 
 export function useConfig() {
   const context = React.use(ConfigContext);
