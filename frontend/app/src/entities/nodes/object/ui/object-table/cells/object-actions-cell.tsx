@@ -1,4 +1,5 @@
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -106,9 +107,7 @@ export function ObjectActionsCell({
           <ObjectItemEditComponent
             closeDrawer={() => setShowEditForm(false)}
             onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({
-                predicate: (query) => query.queryKey.includes("objects"),
-              });
+              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
               setShowEditForm(false);
             }}
             objectid={objectId}

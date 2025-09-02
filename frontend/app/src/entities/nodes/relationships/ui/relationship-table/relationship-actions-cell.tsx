@@ -1,4 +1,5 @@
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
@@ -135,9 +136,8 @@ export function RelationshipActionsCell({
           <ObjectItemEditComponent
             closeDrawer={() => setShowEditForm(false)}
             onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({
-                predicate: (query) => query.queryKey.includes("objects"),
-              });
+              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+              setShowEditForm(false);
             }}
             objectid={relationshipId}
             objectname={relationshipKind}

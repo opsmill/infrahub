@@ -95,7 +95,7 @@ export default function ObjectItemEditComponent(props: Props) {
           toastId: "alert-success-updated",
         });
 
-        if (onUpdateComplete) onUpdateComplete();
+        if (onUpdateComplete) await onUpdateComplete();
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }

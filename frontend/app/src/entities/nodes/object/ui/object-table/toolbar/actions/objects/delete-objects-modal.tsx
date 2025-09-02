@@ -1,4 +1,5 @@
 import { useDeleteObjects } from "@/entities/nodes/object/domain/delete-objects.mutation";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { NodeCore } from "@/entities/nodes/types";
 import { queryClient } from "@/shared/api/rest/client";
 import ModalDelete from "@/shared/components/modals/modal-delete";
@@ -30,9 +31,7 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Objects deleted!"} />);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
   });
 

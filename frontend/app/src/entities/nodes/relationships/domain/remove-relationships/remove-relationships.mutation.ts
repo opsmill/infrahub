@@ -1,4 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
   RemoveRelationshipsParams,
   removeRelationships,
@@ -22,10 +23,8 @@ export function useRemoveRelationships() {
         branchName: currentBranch.name,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
   });
 }

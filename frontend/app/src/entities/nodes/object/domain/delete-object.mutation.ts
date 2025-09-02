@@ -1,5 +1,6 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { queryClient } from "@/shared/api/rest/client";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useMutation } from "@tanstack/react-query";
@@ -34,9 +35,7 @@ export function useDeleteObjectMutation() {
       return { objectKind, objectId };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
       ////// IPAM Specific, to be improved
       if (location.pathname.startsWith("/ipam")) {

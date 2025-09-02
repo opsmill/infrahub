@@ -1,52 +1,31 @@
-import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
+  GetObjectRelationshipsParams,
   OBJECT_RELATIONSHIPS_PER_PAGE,
   getObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
-import { ModelSchema } from "@/entities/schema/types";
-import { Filter } from "@/shared/hooks/useFilters";
-import { store } from "@/shared/stores";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai/index";
 
-export type UseObjectRelationshipsParams = {
-  parentKind: string;
-  parentId: string;
-  relationshipName: string;
-  relationshipSchema: ModelSchema;
-  filters?: Array<Filter>;
-};
+export type GetObjectRelationshipsQueryOptionsParams = Omit<
+  GetObjectRelationshipsParams,
+  keyof PaginationParams
+>;
 
-export function getObjectRelationshipsQueryOptions({
-  parentKind,
-  parentId,
-  relationshipName,
-  relationshipSchema,
-  filters,
-}: UseObjectRelationshipsParams) {
-  const currentBranchName = getCurrentBranchName();
-  const timeMachineDate = store.get(datetimeAtom);
-
+export function getObjectRelationshipsQueryOptions(params: GetObjectRelationshipsParams) {
   return infiniteQueryOptions({
-    queryKey: [
-      currentBranchName,
-      timeMachineDate,
-      "objects",
-      parentKind,
-      parentId,
-      relationshipSchema.kind,
-      filters,
-    ],
+    queryKey: relationshipsQueryKeys.list({
+      ...params,
+      objectKind: params.parentKind,
+      objectId: params.parentId,
+    }),
     queryFn: ({ pageParam }) => {
       return getObjectRelationships({
-        parentKind,
-        parentId,
-        relationshipName,
-        relationshipSchema,
+        ...params,
         offset: pageParam,
-        branchName: currentBranchName,
-        atDate: timeMachineDate,
-        filters,
       });
     },
     initialPageParam: 0,
@@ -59,6 +38,20 @@ export function getObjectRelationshipsQueryOptions({
   });
 }
 
+export type UseObjectRelationshipsParams = Omit<
+  GetObjectRelationshipsQueryOptionsParams,
+  keyof ContextParams
+>;
+
 export function useObjectRelationships(params: UseObjectRelationshipsParams) {
-  return useInfiniteQuery(getObjectRelationshipsQueryOptions(params));
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
+  return useInfiniteQuery(
+    getObjectRelationshipsQueryOptions({
+      ...params,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    })
+  );
 }

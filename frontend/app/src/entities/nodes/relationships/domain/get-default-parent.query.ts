@@ -6,6 +6,7 @@ import {
 } from "@/entities/nodes/relationships/domain/get-default-parent";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
@@ -13,9 +14,7 @@ import { useAtomValue } from "jotai";
 export function getDefaultParentQueryOptions(params: DefaultParentParams) {
   return queryOptions({
     queryKey: [
-      params.branchName,
-      params.atDate,
-      "objects",
+      ...objectQueryKeys.allWithContext(params),
       params.defaultValue?.value?.id,
       params.parentRelationship?.peer,
     ],
