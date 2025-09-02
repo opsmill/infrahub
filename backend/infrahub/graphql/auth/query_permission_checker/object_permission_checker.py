@@ -149,23 +149,16 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
             if not query.infrahub_model:
                 continue
 
+            # Prevent mutations on permissions and account roles
             if (
-                isinstance(query.infrahub_model, NodeSchema)
-                and InfrahubKind.BASEPERMISSION in query.infrahub_model.inherit_from
-                and query.operation == GraphQLOperation.MUTATION
+                query.operation == GraphQLOperation.MUTATION
+                and isinstance(query.infrahub_model, NodeSchema)
+                and (
+                    InfrahubKind.BASEPERMISSION in query.infrahub_model.inherit_from
+                    or query.infrahub_model.kind == InfrahubKind.ACCOUNTROLE
+                )
             ):
                 query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
-
-            if query.infrahub_model.kind == InfrahubKind.ACCOUNTROLE and query.operation == GraphQLOperation.MUTATION:
-                # Prevent data change to "permissions" within
-                for argument in query.arguments:
-                    if argument.name != "data":
-                        continue
-
-                    if "permissions" in argument.value:
-                        query_parameters.context.active_permissions.raise_for_permission(
-                            permission=self.permission_required
-                        )
 
         return CheckerResolution.NEXT_CHECKER
 
