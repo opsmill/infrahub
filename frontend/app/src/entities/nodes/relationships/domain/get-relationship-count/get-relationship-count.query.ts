@@ -3,6 +3,7 @@ import {
   GetRelationshipCountParams,
   getRelationshipCount,
 } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
 import { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
@@ -10,15 +11,7 @@ import { useAtomValue } from "jotai";
 
 export function getRelationshipCountQueryOptions(params: GetRelationshipCountParams) {
   return queryOptions({
-    queryKey: [
-      params.branchName,
-      params.atDate,
-      "objects",
-      params.objectKind,
-      params.objectId,
-      params.relationshipName,
-      "count",
-    ],
+    queryKey: relationshipsQueryKeys.count(params),
     queryFn: () => getRelationshipCount(params),
   });
 }

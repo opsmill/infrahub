@@ -1,9 +1,9 @@
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 import {
   GetProposedChangeAvailableActionsParams,
   getProposedChangeAvailableActions,
-} from "./get-proposed-change-available-actions";
+} from "@/entities/proposed-changes/domain/get-proposed-change-available-actions";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export type GetProposedChangeAvailableActionsQueryOptionsParams =
   GetProposedChangeAvailableActionsParams;
@@ -12,7 +12,7 @@ export function getProposedChangeAvailableActionsQueryOptions({
   proposedChangeId,
 }: GetProposedChangeAvailableActionsQueryOptionsParams) {
   return queryOptions({
-    queryKey: ["objects", PROPOSED_CHANGE_OBJECT, proposedChangeId, "actions"],
+    queryKey: proposedChangesQueryKeys.actions(proposedChangeId),
     queryFn: () => {
       return getProposedChangeAvailableActions({ proposedChangeId });
     },

@@ -1,4 +1,5 @@
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
@@ -31,7 +32,7 @@ export function ObjectsManagerToolbar() {
         schema={selectedSchema}
         onSuccess={() => {
           queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey.includes("objects"),
+            queryKey: objectQueryKeys.all,
           });
 
           if (location.pathname.startsWith("/ipam")) {

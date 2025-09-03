@@ -1,4 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
   GetTaskCountParams,
   getTaskCount,
@@ -8,7 +9,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export function getTaskCountQueryOptions(params: GetTaskCountParams) {
   return queryOptions({
-    queryKey: [params.branchName, "objects", params.nodeId, "tasks", "count"],
+    queryKey: [...objectQueryKeys.all, params.branchName, params.nodeId, "tasks", "count"],
     queryFn: () => getTaskCount(params),
   });
 }

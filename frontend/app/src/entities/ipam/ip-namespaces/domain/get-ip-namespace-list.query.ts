@@ -5,6 +5,7 @@ import {
   getIpNamespaceList,
 } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ export function getIpNamespaceListInfiniteQueryOptions(
   params: GetIpNamespaceListInfiniteQueryOptionsParams
 ) {
   return infiniteQueryOptions({
-    queryKey: [params.branchName, params.atDate, IP_NAMESPACE_GENERIC, "objects", params.filters],
+    queryKey: objectQueryKeys.list({ ...params, objectKind: IP_NAMESPACE_GENERIC }),
     queryFn: async ({ pageParam }) => {
       return getIpNamespaceList({
         ...params,

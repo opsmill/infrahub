@@ -16,6 +16,7 @@ import {
   getObjectAttributes,
   getObjectRelationships,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
@@ -248,9 +249,7 @@ export default function ObjectItemDetails({
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes("objects"),
-            });
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
           }}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||

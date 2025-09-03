@@ -4,6 +4,7 @@ import {
   getIpAddressList,
 } from "@/entities/ipam/ip-addresses/domain/get-ip-address-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
@@ -11,21 +12,13 @@ import { useAtomValue } from "jotai";
 
 type GetIpAddressListInfiniteQueryParams = Omit<GetIpAddressListParams, keyof PaginationParams>;
 
-export function getIpAddressListInfiniteQueryOptions({
-  schema,
-  filters,
-  branchName,
-  atDate,
-}: GetIpAddressListInfiniteQueryParams) {
+export function getIpAddressListInfiniteQueryOptions(params: GetIpAddressListInfiniteQueryParams) {
   return infiniteQueryOptions({
-    queryKey: [branchName, atDate, "objects", schema.kind, filters],
+    queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
     queryFn: ({ pageParam }) => {
       return getIpAddressList({
-        schema,
-        filters,
+        ...params,
         offset: pageParam,
-        branchName,
-        atDate,
       });
     },
     initialPageParam: 0,
