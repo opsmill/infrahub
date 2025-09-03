@@ -23,8 +23,8 @@ export function useRemoveRelationships() {
         branchName: currentBranch.name,
       });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
   });
 }
