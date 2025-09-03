@@ -7,10 +7,22 @@ import TabItem from '@theme/TabItem';
 import VideoPlayer from '../../src/components/VideoPlayer';
 import ReferenceLink from "../../src/components/Card";
 import EnterpriseBadge from "../../src/components/EnterpriseBadge";
+import CodeBlock from '@theme/CodeBlock';
+import import_deployTf from '!!raw-loader!../../../development/deploy.tf';
+import import_infrahubValuesYaml from '!!raw-loader!../../../development/k8s/infrahub-values.yaml';
+import import_minioValuesYaml from '!!raw-loader!../../../development/k8s/minio-values.yaml';
+import import_neo4jValuesYaml from '!!raw-loader!../../../development/k8s/neo4j-values.yaml';
+import import_prefectValuesYaml from '!!raw-loader!../../../development/k8s/prefect-values.yaml';
+import import_rabbitmqValuesYaml from '!!raw-loader!../../../development/k8s/rabbitmq-values.yaml';
+import import_redisSentinelDeployYaml from '!!raw-loader!../../../development/k8s/redis-sentinel-proxy-deploy.yaml';
+import import_redisSentinelSvcYaml from '!!raw-loader!../../../development/k8s/redis-sentinel-proxy-svc.yaml';
+import import_redisValuesYaml from '!!raw-loader!../../../development/k8s/redis-values.yaml';
+import import_serviceValuesYaml from '!!raw-loader!../../../development/k8s/service-values.yaml';
+import import_taskmanagerdbYaml from '!!raw-loader!../../../development/k8s/taskmanagerdb.yaml';
 
 This guide provides step-by-step instructions for installing Infrahub Community and Enterprise editions. The installation methods covered here are for non-resilient deployment architectures suitable for development, testing, and single-node production environments.
 
-For resilient, high-availability deployments, refer to the [high availability architecture](../topics/architecture#infrahub-high-availability-deployment) documentation.
+For resilient, high-availability deployments, refer to the [high availability architecture](../topics/architecture#high-availability-deployment) documentation.
 
 ## Prerequisites
 
@@ -515,9 +527,255 @@ kubectl get pods -l app=infrahub
 </TabItem>
 </Tabs>
 
+## High availability deployment examples
+
+The following examples demonstrate how to deploy Infrahub in a highly available configuration using Kubernetes. These deployments provide resilience, scalability, and are suitable for production environments.
+
+:::warning
+
+These examples are for reference purposes and may require customization for your specific environment. Ensure you understand the requirements and dependencies before deploying to production.
+
+:::
+
+### Using Terraform
+
+<details>
+  <summary>Example HA deployment using Terraform on a 3-node Kubernetes cluster</summary>
+  <CodeBlock language="hcl" title="deploy.tf">{import_deployTf}</CodeBlock>
+</details>
+
+### Using Helm
+
+<details>
+  <summary>Example HA deployment using Helm and kubectl</summary>
+
+  <CodeBlock language="yaml" title="redis-values.yaml">{import_redisValuesYaml}</CodeBlock>
+
+  ```bash
+  helm repo add bitnami https://charts.bitnami.com/bitnami
+  helm repo update
+  helm install cache bitnami/redis --version 19.5.2 --namespace infrahub --create-namespace --values redis-values.yaml
+  ```
+
+  <CodeBlock language="yaml" title="redis-sentinel-proxy-deploy.yaml">{import_redisSentinelDeployYaml}</CodeBlock>
+
+  <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
+
+  ```bash
+  kubectl apply -f redis-sentinel-proxy-deploy.yaml --namespace infrahub
+  kubectl apply -f redis-sentinel-proxy-svc.yaml --namespace infrahub
+  ```
+
+  <CodeBlock language="yaml" title="rabbitmq-values.yaml">{import_rabbitmqValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install messagequeue oci://registry-1.docker.io/bitnamicharts/rabbitmq --version 14.4.1 --namespace infrahub --create-namespace --values rabbitmq-values.yaml
+  ```
+
+  <CodeBlock language="yaml" title="neo4j-values.yaml">{import_neo4jValuesYaml}</CodeBlock>
+
+  ```bash
+  helm repo add neo4j https://helm.neo4j.com/neo4j/
+  helm repo update
+  helm install database-0 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-1 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-2 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  ```
+
+  Once all instances are running, install the headless service:
+
+  <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install database-service neo4j/neo4j-headless-service --version 5.20.0 --namespace infrahub --values service-values.yaml
+  ```
+
+  <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install objectstore oci://registry-1.docker.io/bitnamicharts/minio --version 15.0.5 --namespace infrahub --create-namespace --values minio-values.yaml
+  ```
+
+  ```bash
+  helm repo add cnpg https://cloudnative-pg.github.io/charts
+  helm repo update
+  helm install cnpg cnpg/cloudnative-pg --version 0.23.2 --namespace infrahub --create-namespace
+  kubectl create secret generic prefect-user --namespace infrahub --from-literal=username=prefect --from-literal=password=prefect
+  ```
+
+  <CodeBlock language="yaml" title="taskmanagerdb.yaml">{import_taskmanagerdbYaml}</CodeBlock>
+
+  ```bash
+  kubectl apply -f taskmanagerdb.yaml --namespace infrahub
+  ```
+
+  <CodeBlock language="yaml" title="prefect-values.yaml">{import_prefectValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.2.21193831 --namespace infrahub --create-namespace --values prefect-values.yaml
+  ```
+
+  Deploy the Prefect Helm chart with a single replica initially to prevent concurrent database initialization issues. Wait for the first pod to become ready and complete database initialization. Once initialized, scale up to your desired number of replicas for high availability.
+
+  ```bash
+  kubectl scale deployment/prefect-server --replicas=3 --namespace infrahub
+  ```
+
+  <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
+
+  ```bash
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.3.5 --namespace infrahub --create-namespace --values infrahub-values.yaml
+  ```
+
+</details>
+
+### Load balancer configuration
+
+For high availability deployments, a load balancer is useful to distribute traffic across multiple Infrahub API server instances. The load balancer must be configured to properly handle both HTTP/HTTPS and WebSocket connections.
+
+<details>
+  <summary>HAProxy configuration example</summary>
+
+```haproxy
+global
+    maxconn 4096
+    log stdout local0
+
+defaults
+    mode http
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+    option httplog
+
+# Frontend for Infrahub API
+frontend infrahub_frontend
+    bind *:80
+    bind *:443 ssl crt /etc/ssl/certs/infrahub.pem
+
+    # Redirect HTTP to HTTPS
+    redirect scheme https if !{ ssl_fc }
+
+    # ACL for WebSocket connections
+    acl is_websocket hdr(Upgrade) -i WebSocket
+    acl is_websocket_path path_beg /ws /graphql-ws
+
+    # Use WebSocket backend for WS connections
+    use_backend infrahub_websocket if is_websocket || is_websocket_path
+
+    # Default to HTTP backend
+    default_backend infrahub_http
+
+# Backend for regular HTTP/HTTPS traffic
+backend infrahub_http
+    balance roundrobin
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    # Sticky sessions for GraphQL subscriptions
+    cookie SERVERID insert indirect nocache
+
+    server infrahub-api-1 10.0.1.10:8000 check cookie api1
+    server infrahub-api-2 10.0.1.11:8000 check cookie api2
+    server infrahub-api-3 10.0.1.12:8000 check cookie api3
+
+# Backend for WebSocket connections
+backend infrahub_websocket
+    balance source
+    option http-server-close
+    option forceclose
+
+    # WebSocket specific health check
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    server infrahub-api-1 10.0.1.10:8000 check
+    server infrahub-api-2 10.0.1.11:8000 check
+    server infrahub-api-3 10.0.1.12:8000 check
+```
+
+</details>
+
+<details>
+  <summary>NGINX configuration example</summary>
+
+```nginx
+upstream infrahub_backend {
+    # IP hash for session affinity
+    ip_hash;
+
+    server 10.0.1.10:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.1.11:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.1.12:8000 max_fails=3 fail_timeout=30s;
+}
+
+server {
+    listen 80;
+    server_name infrahub.example.com;
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name infrahub.example.com;
+
+    ssl_certificate /etc/ssl/certs/infrahub.pem;
+    ssl_certificate_key /etc/ssl/private/infrahub.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Client body size for large GraphQL queries
+    client_max_body_size 10M;
+
+    # Timeouts for long-running operations
+    proxy_connect_timeout 600;
+    proxy_send_timeout 600;
+    proxy_read_timeout 600;
+    send_timeout 600;
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        proxy_pass http://infrahub_backend/api/health;
+    }
+
+    # WebSocket support for GraphQL subscriptions
+    location ~ ^/(ws|graphql-ws) {
+        proxy_pass http://infrahub_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable buffering for WebSocket
+        proxy_buffering off;
+    }
+
+    # Regular API traffic
+    location / {
+        proxy_pass http://infrahub_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Enable keepalive
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+```
+
+</details>
+
 ## Related resources
 
 - [Database backup and restore](./database-backup) - Learn how to backup and restore your Infrahub database
-- [High availability architecture](../topics/architecture#infrahub-high-availability-deployment) - Understand resilient deployment architectures
+- [High availability architecture](../topics/architecture#scalability-and-high-availability) - Understand resilient deployment architectures
 - [Local demo environment](../topics/local-demo-environment) - Explore the demo environment configuration
 - [Hardware requirements](../topics/hardware-requirements) - Review system requirements
