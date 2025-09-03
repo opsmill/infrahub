@@ -1,6 +1,5 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -16,33 +15,30 @@ import { Card } from "@/shared/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
+  ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import {
-  Form,
-  FormField,
-  FormInput,
-  FormLabel,
-  FormMessage,
-  FormSubmit,
-} from "@/shared/components/ui/form";
+import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { DRAFT_STATE, OPEN_STATE } from "../constants";
+import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
-  const { user } = useAuth();
   const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const navigate = useNavigate();
+  const [state, setState] = useState(OPEN_STATE);
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
@@ -60,10 +56,8 @@ export const ProposedChangeCreateForm = () => {
             destination_branch,
             name,
             description,
+            isDraft: state === DRAFT_STATE,
             reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
-            created_by: {
-              id: user?.id,
-            },
           },
         });
 
@@ -101,6 +95,8 @@ export const ProposedChangeCreateForm = () => {
 
                   <ComboboxContent>
                     <ComboboxList>
+                      <ComboboxEmpty>No branch found</ComboboxEmpty>
+
                       {branchesToSelectOptions(sourceBranches).map(({ name }) => (
                         <ComboboxItem
                           key={name}
@@ -190,12 +186,12 @@ export const ProposedChangeCreateForm = () => {
         )}
       />
 
-      <div className="text-right">
-        <LinkButton variant="outline" to={constructPath("/proposed-changes")} className="mr-2">
+      <div className="flex items-center justify-end w-full gap-2">
+        <LinkButton variant="outline" to={constructPath("/proposed-changes")}>
           Cancel
         </LinkButton>
 
-        <FormSubmit>Create proposed change</FormSubmit>
+        <PcStateButton state={state} setState={setState} />
       </div>
 
       {error && (

@@ -1,5 +1,5 @@
 import { useDeleteObjects } from "@/entities/nodes/object/domain/delete-objects.mutation";
-import { NodeObject } from "@/entities/nodes/types";
+import { NodeCore } from "@/entities/nodes/types";
 import { queryClient } from "@/shared/api/rest/client";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -7,7 +7,7 @@ import { pluralize } from "@/shared/utils/string";
 import { toast } from "react-toastify";
 
 export interface DeleteObjectModalProps {
-  selectedRows: Array<NodeObject>;
+  selectedRows: Array<NodeCore>;
   open: boolean;
   setOpen: (b: boolean) => void;
 }

@@ -379,3 +379,7 @@ def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind
     If no kind is provided, return the default one."""
     return ATTRIBUTE_TYPES.get(kind, Default)
+
+
+def is_large_attribute_type(kind: str) -> bool:
+    return ATTRIBUTE_TYPES[kind] in LARGE_ATTRIBUTE_TYPES

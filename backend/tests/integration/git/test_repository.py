@@ -109,9 +109,9 @@ class TestCreateRepository(TestInfrahubApp):
         assert repository.commit.value
 
         infrahub_repo = await get_initialized_repo(
+            client=client,
             repository_id=repository.id,
             name=repository.name.value,
-            service=service,
             repository_kind=InfrahubKind.REPOSITORY,
         )
 

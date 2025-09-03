@@ -1,7 +1,7 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NODE_TRIGGER_RELATIONSHIP_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
@@ -19,6 +19,7 @@ import {
   FormAttributeValue,
   FormFieldValue,
 } from "@/shared/components/form/type";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -47,11 +48,15 @@ export const NodeRelationshipMatchForm = ({
 }: NodeRelationshipMatchFormProps) => {
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
+  const { parentData, parentSchema } = useCurrentFormContext();
+  const createObject = useCreateObjectMutation();
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
     initialObject: currentObject,
     isUpdate,
+    parentData,
+    parentSchema,
   });
 
   const fields = schemaFields.filter((field) => {
@@ -90,6 +95,9 @@ export const NodeRelationshipMatchForm = ({
         relationshipData: currentObject?.trigger as RelationshipType | undefined,
         relationshipName: "trigger",
         objectTemplate,
+        schema: props.schema,
+        parentData,
+        parentSchema,
       }) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
@@ -98,62 +106,67 @@ export const NodeRelationshipMatchForm = ({
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+    const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
 
-      if (!Object.keys(newObject).length) {
-        return;
-      }
+    if (!Object.keys(newObject).length) {
+      return;
+    }
 
-      const mutationString = currentObject?.id
-        ? updateObjectWithId({
-            kind: NODE_TRIGGER_RELATIONSHIP_MATCH,
-            data: stringifyWithoutQuotes({
-              id: currentObject.id,
-              ...newObject,
-              peer: newObject?.peer?.id && {
-                value: newObject?.peer?.id,
-              },
-            }),
-          })
-        : createObject({
-            kind: NODE_TRIGGER_RELATIONSHIP_MATCH,
-            data: stringifyWithoutQuotes({
-              ...newObject,
-              peer: newObject?.peer?.id && {
-                value: newObject?.peer?.id,
-              },
-            }),
-          });
+    if (currentObject?.id) {
+      try {
+        const result = await graphqlClient.mutate({
+          mutation: gql(
+            updateObjectWithId({
+              kind: NODE_TRIGGER_RELATIONSHIP_MATCH,
+              data: stringifyWithoutQuotes({
+                id: currentObject.id,
+                ...newObject,
+                peer: newObject?.peer?.id && {
+                  value: newObject?.peer?.id,
+                },
+              }),
+            })
+          ),
+          context: {
+            branch: currentBranch.name,
+            date,
+          },
+        });
 
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: currentBranch.name,
-          date,
-        },
-      });
-
-      if (currentObject?.id) {
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match updated!"} />, {
           toastId: "alert-success-node-relationship-match-updated",
         });
-      } else {
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match created!"} />, {
-          toastId: "alert-success-node-relationship-match-created",
-        });
-      }
 
-      if (onSuccess)
-        await onSuccess(
-          result?.data?.[`${NODE_TRIGGER_RELATIONSHIP_MATCH}${currentObject ? "Update" : "Create"}`]
-        );
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+        if (onSuccess) {
+          await onSuccess(result?.data?.[`${NODE_TRIGGER_RELATIONSHIP_MATCH}Update`]);
+        }
+      } catch (error: unknown) {
+        console.error("An error occurred while creating the object: ", error);
+      }
+    } else {
+      await createObject.mutateAsync(
+        {
+          objectKind: NODE_TRIGGER_RELATIONSHIP_MATCH,
+          data: {
+            ...newObject,
+            peer: newObject?.peer?.id && {
+              value: newObject?.peer?.id,
+            },
+          },
+        },
+        {
+          onSuccess: async (newNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Node relationship match created!" />, {
+              toastId: "alert-success-node-relationship-match-created",
+            });
+
+            if (onSuccess) await onSuccess(newNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while creating the object: ", error);
+          },
+        }
+      );
     }
   }
 

@@ -15,8 +15,13 @@ export interface ObjectDetailsTabProps extends LinkProps {
 export function ObjectDetailsTab({ isActive, className, ...props }: ObjectDetailsTabProps) {
   return (
     <Link
+      ref={(node) => {
+        if (isActive) {
+          node?.scrollIntoView({ behavior: "smooth" });
+        }
+      }}
       className={classNames(
-        "flex items-center gap-2 whitespace-nowrap border-b-2 border-gray-200 py-4 px-1 text-sm font-medium cursor-pointer",
+        "flex items-center gap-2 whitespace-nowrap border-b-2 border-gray-200 py-4 px-1 text-sm font-medium cursor-pointer scroll-m-10",
         isActive
           ? "border-custom-blue-500 text-custom-blue-600"
           : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",

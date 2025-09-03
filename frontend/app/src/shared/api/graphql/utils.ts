@@ -1,3 +1,4 @@
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -113,8 +114,8 @@ export const addRelationshipsToRequest = (
 export const addFiltersToRequest = (filters: Array<Filter>) => {
   return filters.reduce(
     (acc, filter) => {
-      // Skip kind__value filter as it's handled separately
-      if (filter.name === "kind__value") {
+      if (filter.name === AVAILABLE_IP_FILTER_NAME) {
+        acc[AVAILABLE_IP_FILTER_NAME] = filter.value;
         return acc;
       }
 
@@ -145,3 +146,6 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
     {} as Record<string, string | number | boolean | string[]>
   );
 };
+
+export const dropIncludeAvailableWhenFalse = (filters?: Filter[]) =>
+  filters?.filter((f) => !(f.name === AVAILABLE_IP_FILTER_NAME && f.value === false));

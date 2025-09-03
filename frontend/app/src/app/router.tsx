@@ -459,11 +459,15 @@ export const router = createBrowserRouter([
                     children: [
                       {
                         index: true,
-                        lazy: () => import("@/pages/ipam/ipam-details-page"),
+                        lazy: () => import("@/pages/ipam/ipam-details-index-page"),
                       },
                       {
                         path: ":relationshipName",
                         lazy: () => import("@/pages/ipam/ipam-details-relationship-page"),
+                      },
+                      {
+                        path: "details",
+                        lazy: () => import("@/pages/ipam/ipam-details-page"),
                       },
                     ],
                   },

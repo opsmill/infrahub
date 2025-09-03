@@ -1,8 +1,7 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { getProposedChangesChecks } from "@/entities/proposed-changes/api/getProposedChangesChecks";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { Pill } from "@/shared/components/display/pill";
-import { gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useParams } from "react-router";
 
 export const ProposedChangesChecksTab = () => {

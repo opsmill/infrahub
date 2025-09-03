@@ -70,7 +70,9 @@ class TestSuperAdminPermission:
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
             assert is_supported == user.authenticated
 
-    async def test_account_with_permission(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper):
+    async def test_account_with_permission(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ):
         checker = SuperAdminPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -92,7 +94,9 @@ class TestSuperAdminPermission:
         )
         assert resolution == CheckerResolution.TERMINATE
 
-    async def test_account_without_permission(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper):
+    async def test_account_without_permission(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ):
         checker = SuperAdminPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT

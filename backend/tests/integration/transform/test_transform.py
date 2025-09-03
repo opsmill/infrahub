@@ -8,7 +8,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -81,11 +80,7 @@ class TestTransforms(TestInfrahubApp):
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id,
-            name=git_repo_car_dealership.name,
-            location=git_repo_car_dealership.path,
-            client=client,
-            service=await InfrahubServices.new(database=db),
+            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
         )
 
         return repo

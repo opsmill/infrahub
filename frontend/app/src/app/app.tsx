@@ -9,7 +9,7 @@ import { RouterProvider } from "react-router";
 import { TanStackQueryDevtools } from "@/app/devtools";
 import { router } from "@/app/router";
 import { AuthProvider } from "@/entities/authentication/ui/useAuth";
-import { ConfigProvider } from "@/entities/config/config-provider";
+import { ConfigProvider } from "@/entities/config/ui/config-provider";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { ErrorBoundaryApp } from "@/shared/components/errors/error-boundary-app";

@@ -1,16 +1,19 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { DynamicDropdownFieldProps, FormAttributeValue } from "@/shared/components/form/type";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Dropdown, DropdownProps } from "@/shared/components/inputs/dropdown";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface DropdownFieldProps
   extends Omit<DynamicDropdownFieldProps, "type">,
-    Omit<DropdownProps, "defaultValue" | "name" | "options"> {}
+    Omit<DropdownProps, "defaultValue" | "name" | "options" | "onChange"> {}
 
 const DropdownField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   items,
   label,
@@ -42,6 +45,7 @@ const DropdownField = ({
               <Dropdown
                 {...field}
                 {...props}
+                field={attribute}
                 items={items}
                 value={fieldData?.value as string | null}
                 onChange={(newValue) => {
@@ -50,6 +54,9 @@ const DropdownField = ({
               />
             </FormInput>
 
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
             <FormMessage />
           </div>
         );

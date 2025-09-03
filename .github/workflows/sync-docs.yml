@@ -7,7 +7,6 @@ on:
     branches:
       - stable
     paths:
-      - '.vale/**'
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
 
@@ -16,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: source-repo
 
       - name: Checkout target repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: opsmill/infrahub-docs
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
@@ -30,12 +29,10 @@ jobs:
       - name: Sync folders
         run: |
           # Remove existing files in target repo
-          rm -rf target-repo/.vale/*
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
 
           # Copy files from source repo to target repo
-          cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
 

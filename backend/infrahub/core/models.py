@@ -73,6 +73,15 @@ class SchemaBranchHash(BaseModel):
     nodes: dict[str, str] = Field(default_factory=dict)
     generics: dict[str, str] = Field(default_factory=dict)
 
+    @property
+    def is_valid(self) -> bool:
+        """
+        TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics.
+        """
+        if len(self.nodes) < 2 and len(self.generics) < 2:
+            return False
+        return True
+
     def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
             return None
@@ -569,7 +578,11 @@ class HashableModel(BaseModel):
 
         for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
+                try:
+                    setattr(self, field_name, getattr(other, field_name))
+                except ValueError:
+                    # handles the case where self and other are different types and other has fields that self does not
+                    pass
                 continue
 
             attr_other = getattr(other, field_name)

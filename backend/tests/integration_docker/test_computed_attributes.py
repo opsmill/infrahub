@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from asyncio import sleep
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import yaml
@@ -9,6 +12,9 @@ from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+
+if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -77,7 +83,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         )
         await color1_initial.save()
 
-        for _ in range(10):
+        for _ in range(20):
             # Give the computed attribute triggers a little while to run
             tshirt1_updated = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_updated.description.value != first_desc:
@@ -94,7 +100,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             "A Ember Glow Explorer t-shirt. A deep, fiery red-orange reminiscent of smoldering embers at dusk."
         )
 
-        for _ in range(10):
+        for _ in range(20):
             # Give the computed attribute triggers a little while to run
             tshirt1_second_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_second_update_result.description.value == expected_description:
@@ -106,7 +112,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await tshirt1_second_update_result.save()
 
         expected_name_code = "WEARABLE-GARDENER"
-        for _ in range(10):
+        for _ in range(20):
             # Give the computed attribute triggers a little while to run
             tshirt1_last_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_last_update_result.name_code.value == expected_name_code:
@@ -195,7 +201,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await sweden_name_update.save()
 
         swe_name_router_1 = "swe-sth-router-1"
-        for _ in range(10):
+        for _ in range(20):
             # Give the computed attribute triggers a little while to run
             sth_router_1_swe = await client.get(kind="InfraDevice", id=sth_router_1.id, include=["name"])
             if sth_router_1_swe.name.value == swe_name_router_1:

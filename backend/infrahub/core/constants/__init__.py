@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import enum
+from enum import Flag, auto
 
 from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
@@ -61,6 +61,16 @@ class EventType(InfrahubStringEnum):
     GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
     GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
 
+    PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
+    PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
+    PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
+    PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
+    PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
+    PROPOSED_CHANGE_APPROVALS_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
+    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
+    PROPOSED_CHANGE_THREAD_CREATED = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
+    PROPOSED_CHANGE_THREAD_UPDATED = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
+
     REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
 
     ARTIFACT_CREATED = f"{EVENT_NAMESPACE}.artifact.created"
@@ -71,7 +81,7 @@ class EventType(InfrahubStringEnum):
     VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
 
 
-class PermissionLevel(enum.Flag):
+class PermissionLevel(Flag):
     READ = 1
     WRITE = 2
     ADMIN = 3
@@ -83,6 +93,7 @@ class GlobalPermissions(InfrahubStringEnum):
     SUPER_ADMIN = "super_admin"
     MERGE_BRANCH = "merge_branch"
     MERGE_PROPOSED_CHANGE = "merge_proposed_change"
+    REVIEW_PROPOSED_CHANGE = "review_proposed_change"
     MANAGE_SCHEMA = "manage_schema"
     MANAGE_ACCOUNTS = "manage_accounts"
     MANAGE_PERMISSIONS = "manage_permissions"
@@ -335,10 +346,14 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
-class AttributeDBNodeType(InfrahubStringEnum):
-    DEFAULT = "default"
-    IPHOST = "iphost"
-    IPNETWORK = "ipnetwork"
+class AttributeDBNodeType(Flag):
+    DEFAULT = auto()
+    INDEX_ONLY = auto()
+    IPHOST_ONLY = auto()
+    IPNETWORK_ONLY = auto()
+    INDEXED = DEFAULT | INDEX_ONLY
+    IPHOST = DEFAULT | INDEX_ONLY | IPHOST_ONLY
+    IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
 RESTRICTED_NAMESPACES: list[str] = [

@@ -14,7 +14,7 @@ invoke demo.destroy demo.start demo.load-infra-schema demo.load-infra-data
 
 :::
 
-Infrahub is built with React. Make sure you're running Node.js 20+ and NPM 9+, to verify do:
+Infrahub is built with React. Make sure you're running Node.js 22+ and npm 10+, to verify, run:
 
 ```shell
 node --version
@@ -34,23 +34,17 @@ npm install
 npm start
 ```
 
-To can access your local server at [http://localhost:8080/](http://localhost:8080/). If you are not familiar with Infrahub, learn by following our [tutorial](../../tutorials/getting-started).
+You can access your local server at [http://localhost:8080/](http://localhost:8080/). If you are not familiar with Infrahub, follow our [tutorial](../../tutorials/getting-started).
 
 ## 3. Run all tests
 
-### Unit tests
+### Unit & integration tests
 
 ```shell
 npm run test
 
 # same with coverage
 npm run test:coverage
-```
-
-### Integration tests
-
-```shell
-npm run cypress:run:component
 ```
 
 ### E2E tests

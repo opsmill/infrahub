@@ -319,6 +319,7 @@ class CoreCheckDefinition(CoreTaskTarget):
 
 
 class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
+    shared_key: StringOptional
     transformation: RelationshipManager
 
 
@@ -480,7 +481,10 @@ class CoreProposedChange(CoreTaskTarget):
     source_branch: String
     destination_branch: String
     state: Enum
+    is_draft: Boolean
+    total_comments: IntegerOptional
     approved_by: RelationshipManager
+    rejected_by: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager
     comments: RelationshipManager
@@ -552,6 +556,14 @@ class InternalAccountToken(CoreNode):
     token: String
     expiration: DateTimeOptional
     account: RelationshipManager
+
+
+class InternalIPPrefixAvailable(BuiltinIPPrefix):
+    pass
+
+
+class InternalIPRangeAvailable(BuiltinIPAddress):
+    last_address: IPHost
 
 
 class InternalRefreshToken(CoreNode):
