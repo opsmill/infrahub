@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.3) - 2025-08-29
+
+### Fixed
+
+- Force branches data to be reloaded when the hash doesn't look healthy
+- In the UI, clicking the artifact generation button now refreshes the token and retries if the access token has expired.
+
 ## [Infrahub - v1.4.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.2) - 2025-08-28
 
 ### Fixed

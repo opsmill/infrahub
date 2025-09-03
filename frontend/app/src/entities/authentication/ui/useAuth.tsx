@@ -1,7 +1,7 @@
 import { CONFIG } from "@/config/config";
 import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { useConfig } from "@/entities/config/get-config.query";
+import { useConfig } from "@/entities/config/ui/config-provider";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
@@ -172,7 +172,7 @@ export function useAuth() {
 }
 
 export function RequireAuth({ children }: { children: ReactElement }) {
-  const { data: config } = useConfig();
+  const config = useConfig();
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 

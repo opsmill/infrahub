@@ -80,6 +80,7 @@ class TestMergeBranchPermission:
         operation_name: str,
         checker_resolution: CheckerResolution | None,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
     ):
         checker = MergeBranchPermissionChecker()

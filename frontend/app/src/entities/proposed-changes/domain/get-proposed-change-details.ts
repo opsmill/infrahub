@@ -1,25 +1,35 @@
-import { TASK_OBJECT } from "@/config/constants";
 import {
   ProposedChangeDetailsFromApiParams,
+  ProposedChangeDetailsFromApiResponse,
   getProposedChangeDetailsFromApi,
-} from "../api/get-proposed-change-details-from-api";
-import { PROPOSED_CHANGE_OBJECT } from "../constants";
+} from "@/entities/proposed-changes/api/get-proposed-change-details-from-api";
 
-export async function getProposedChangeDetails(params: ProposedChangeDetailsFromApiParams) {
+export type GetProposedChangeDetailsParams = ProposedChangeDetailsFromApiParams;
+
+export type GetProposedChangeDetailsResponse = {
+  tasksCount: number;
+  proposedChangeData: ProposedChangeDetailsFromApiResponse["CoreProposedChange"]["edges"][0]["node"];
+};
+
+export type GetProposedChangeDetails = (
+  params: GetProposedChangeDetailsParams
+) => Promise<GetProposedChangeDetailsResponse>;
+
+export const getProposedChangeDetails: GetProposedChangeDetails = async (params) => {
   const { data, errors } = await getProposedChangeDetailsFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const edges = data?.[PROPOSED_CHANGE_OBJECT]?.edges;
+  const proposedChangeData = data.CoreProposedChange.edges?.[0]?.node;
 
-  if (!edges?.length) {
+  if (!proposedChangeData) {
     throw new Error("No proposed change found");
   }
 
   return {
-    proposedChangeData: edges[0].node,
-    tasksCount: data?.[TASK_OBJECT]?.count,
+    proposedChangeData,
+    tasksCount: data.InfrahubTask.count,
   };
-}
+};

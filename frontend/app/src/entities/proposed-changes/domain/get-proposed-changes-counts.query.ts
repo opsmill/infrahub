@@ -1,45 +1,23 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ProposedChangesCountsFromApiParams } from "@/entities/proposed-changes/api/get-proposed-changes-counts-from-api";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { getProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
+import {
+  GetProposedChangesCountsParams,
+  getProposedChangesCounts,
+} from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
-type GetProposedChangesCountsQueryOptionsParams = Omit<
-  ProposedChangesCountsFromApiParams,
-  keyof PaginationParams
->;
+type GetProposedChangesCountsQueryOptionsParams = GetProposedChangesCountsParams;
 
 export function getProposedChangesCountsQueryOptions({
-  branchName,
-  atDate,
   filters,
 }: GetProposedChangesCountsQueryOptionsParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_OBJECT, filters, "count"],
+    queryKey: ["objects", PROPOSED_CHANGE_OBJECT, "count", filters],
     queryFn: () => {
-      return getProposedChangesCounts({
-        branchName,
-        atDate,
-        filters,
-      });
+      return getProposedChangesCounts({ filters });
     },
   });
 }
 
-export function useGetProposedChangesCounts(
-  params: Omit<GetProposedChangesCountsQueryOptionsParams, keyof ContextParams>
-) {
-  const { currentBranch } = useCurrentBranch();
-  const timeMachineDate = useAtomValue(datetimeAtom);
-
-  return useQuery(
-    getProposedChangesCountsQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    })
-  );
+export function useGetProposedChangesCounts(params: GetProposedChangesCountsQueryOptionsParams) {
+  return useQuery(getProposedChangesCountsQueryOptions(params));
 }

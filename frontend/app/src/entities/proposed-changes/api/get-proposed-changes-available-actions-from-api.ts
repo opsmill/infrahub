@@ -1,8 +1,7 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
-export interface GetProposedChangeActionFromApiParams extends Omit<ContextParams, "branchName"> {
+export interface GetProposedChangeActionFromApiParams {
   proposedChangeId: string;
 }
 
@@ -23,15 +22,11 @@ query actions($proposedChangeId: String!) {
 
 export const getProposedChangeAvailableActionFromApi = async ({
   proposedChangeId,
-  atDate,
 }: GetProposedChangeActionFromApiParams) => {
   return graphqlClient.query({
     query,
     variables: {
       proposedChangeId,
-    },
-    context: {
-      date: atDate,
     },
   });
 };

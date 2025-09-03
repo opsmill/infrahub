@@ -1,5 +1,4 @@
 import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
-import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
 import { QSP } from "@/config/qsp";
@@ -14,6 +13,7 @@ import {
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
+import { useQuery } from "@apollo/client";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 

@@ -8,10 +8,9 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-o
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
-import { gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { use } from "react";
