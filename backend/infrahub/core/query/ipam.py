@@ -397,9 +397,9 @@ class IPPrefixReconcileQuery(Query):
         else:
             get_node_by_prefix_query = """
             // ------------------
-            // Get IP nodes with the correct value on this branch
+            // Get IP node with the correct value on this branch
             // ------------------
-            MATCH (:Root)<-[r1:IS_PART_OF]-(ip_node:%(ip_kind)s)
+            OPTIONAL MATCH (:Root)<-[r1:IS_PART_OF]-(ip_node:%(ip_kind)s)
                 -[r2:HAS_ATTRIBUTE]->(a:Attribute)-[r3:HAS_VALUE]->(aipn:%(ip_attribute_kind)s)
             WHERE aipn.binary_address = $prefix_binary_full
             AND aipn.prefixlen = $prefixlen
@@ -409,19 +409,23 @@ class IPPrefixReconcileQuery(Query):
                 r2.branch_level DESC, r2.from DESC, r2.status ASC,
                 r1.branch_level DESC, r1.from DESC, r1.status ASC
             LIMIT 1
-            WITH ip_namespace, ip_node
-            WHERE r1.status = "active" AND r2.status = "active" AND r3.status = "active"
+            WITH ip_namespace, CASE
+                WHEN ip_node IS NOT NULL AND r1.status = "active" AND r2.status = "active" AND r3.status = "active" THEN ip_node
+                ELSE NULL
+            END AS ip_node
             // ------------------
             // Filter to only those that are in the correct namespace
             // ------------------
-            MATCH (ip_namespace)-[r1:IS_RELATED]-(nsr:Relationship)-[r2:IS_RELATED]-(ip_node)
+            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]-(nsr:Relationship)-[r2:IS_RELATED]-(ip_node)
             WHERE nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
             AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
             ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC,
                 r2.branch_level DESC, r2.from DESC, r2.status ASC
             LIMIT 1
-            WITH ip_namespace, ip_node
-            WHERE r1.status = "active" AND r2.status = "active"
+            WITH ip_namespace, CASE
+                WHEN ip_node IS NOT NULL AND r1.status = "active" AND r2.status = "active" THEN ip_node
+                ELSE NULL
+            END as ip_node
             """ % {
                 "branch_filter": branch_filter,
                 "ip_kind": InfrahubKind.IPADDRESS
