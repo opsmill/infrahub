@@ -31,6 +31,39 @@ When you run the command, the CLI will prompt you to specify what you would like
 
 The template being used is the [Infrahub Template Repository](https://github.com/opsmill/infrahub-template).
 
+<details>
+  <summary>Recommended file structure for manually creating an Infrahub repository</summary>
+
+If you prefer to create your Infrahub repository manually, use the following folder structure as a reference:
+
+```bash
+├── generators
+├── lib
+│   ├── __init__.py
+│   └── example.py
+├── menus
+├── objects
+│   └── example.yml
+├── pyproject.toml
+├── queries
+├── README.md
+├── schemas
+│   └── example.yml
+├── scripts
+│   └── example_script.py
+├── tasks.py
+├── tests
+│   ├── __init__.py
+│   └── integration
+│       ├── conftest.py
+│       └── test_infrahub.py
+├── transforms
+│   └── templates
+└── uv.lock
+```
+
+</details>
+
 ### Development
 
 #### Execute your code locally
