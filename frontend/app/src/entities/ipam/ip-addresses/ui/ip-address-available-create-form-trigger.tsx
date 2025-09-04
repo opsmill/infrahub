@@ -2,6 +2,7 @@ import {
   IPAddressAvailableIdentifierProps,
   IpAddressAvailableIdentifier,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -38,11 +39,9 @@ export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIde
         setOpen={setIsCreateFormOpen}
       >
         <ObjectForm
-          onSuccess={() => {
+          onSuccess={async () => {
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsCreateFormOpen(false);
-            queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes("objects"),
-            });
           }}
           currentObject={{ address: { value: props.ipAddressAvailableNode.address.value } }}
           onCancel={() => setIsCreateFormOpen(false)}

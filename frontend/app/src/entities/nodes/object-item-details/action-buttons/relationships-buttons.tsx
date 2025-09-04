@@ -1,11 +1,11 @@
 import { QSP } from "@/config/qsp";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -78,12 +78,7 @@ export function RelationshipsButtons({
   }
 
   const handleRefetch = async () => {
-    await graphqlClient.refetchQueries({
-      include: [objectKind!, `GetObjectRelationships_${objectKind}`],
-    });
-    queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey.includes("objects"),
-    });
+    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
   };
 
   const handleSubmit = async (data: any) => {

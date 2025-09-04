@@ -11,6 +11,20 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.4) - 2025-09-03
+
+### Fixed
+
+- Fix HTTP 403 when trying to fetch object metadata in changelog without being allowed to manage permissions ([#ifc1760](https://github.com/opsmill/infrahub/issues/ifc1760))
+- Fix HTTP 403 when trying to fetch nodes though a `CoreNode` query, this could prevent users to select nodes in various places with the user interface ([#6733](https://github.com/opsmill/infrahub/issues/6733))
+- Re-run Migration026 in case it failed during an upgrade from 1.2.4 or earlier to 1.4.x or later. Root cause of the migration failure has already been addressed. ([#7112](https://github.com/opsmill/infrahub/issues/7112))
+- Fixed rebase bug by ensuring rebase operations with data only changes correctly set the .branched_from property of the branch within the registry. ([#7113](https://github.com/opsmill/infrahub/issues/7113))
+- UI requests for proposed change objects are now branch-agnostic, preventing errors when a branch is deleted
+
+### Housekeeping
+
+- Internal UI: Decouple config fetching from usage
+
 ## [Infrahub - v1.4.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.3) - 2025-08-29
 
 ### Fixed

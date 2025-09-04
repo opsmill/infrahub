@@ -7,13 +7,13 @@ import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export type GetObjectParams = ContextParams & {
+export interface GetObjectParams extends ContextParams {
   objectSchema: ModelSchema;
   objectId: string;
   getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
   getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
   relationshipFragment?: Record<string, string>;
-};
+}
 
 export type GetObject = (params: GetObjectParams) => Promise<NodeObject>;
 

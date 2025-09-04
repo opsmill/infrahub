@@ -1,19 +1,15 @@
 import { ProposedChangeThreadFromApiParams } from "@/entities/proposed-changes/api/get-proposed-change-thread-from-api";
-import { PROPOSED_CHANGE_THREAD } from "@/entities/proposed-changes/constants";
 import { getProposedChangeThread } from "@/entities/proposed-changes/domain/get-proposed-change-thread";
-import { PaginationParams } from "@/shared/api/types";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-type GetProposedChangeThreadQueryOptionsParams = Omit<
-  ProposedChangeThreadFromApiParams,
-  keyof PaginationParams
->;
+type GetProposedChangeThreadQueryOptionsParams = ProposedChangeThreadFromApiParams;
 
 export function getProposedChangeThreadQueryOptions({
   threadId,
 }: GetProposedChangeThreadQueryOptionsParams) {
   return queryOptions({
-    queryKey: ["objects", PROPOSED_CHANGE_THREAD, threadId],
+    queryKey: proposedChangesQueryKeys.thread(threadId),
     queryFn: () => {
       return getProposedChangeThread({ threadId });
     },

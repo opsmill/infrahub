@@ -1,9 +1,8 @@
-import { ContextParams } from "@/shared/api/types";
-import { useMutation } from "@tanstack/react-query";
 import {
   UpdateProposedChangeReviewParams,
   updateProposedChangeReview,
-} from "./update-proposed-change-review";
+} from "@/entities/proposed-changes/domain/update-proposed-change-review";
+import { useMutation } from "@tanstack/react-query";
 
 interface UpdateReviewProps {
   onSuccess?: () => void;
@@ -17,7 +16,7 @@ export function useUpdateProposedChangeReview({
   onSettled,
 }: UpdateReviewProps) {
   return useMutation({
-    mutationFn: async (params: Omit<UpdateProposedChangeReviewParams, keyof ContextParams>) => {
+    mutationFn: async (params: UpdateProposedChangeReviewParams) => {
       return updateProposedChangeReview(params);
     },
     onSuccess,

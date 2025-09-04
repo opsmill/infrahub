@@ -1,4 +1,6 @@
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import { UPDATE_OBJECT_MUTATION_KEY } from "@/entities/nodes/object/domain/update-object.mutation";
 import {
   GroupCard,
   GroupPanelBody,
@@ -22,7 +24,7 @@ export function ProcessingBulkEditObjects({
 }: ProcessingBulkEditObjectsProps) {
   const updateObjectMutationPending = useMutationState({
     filters: {
-      mutationKey: ["objects", "update"],
+      mutationKey: UPDATE_OBJECT_MUTATION_KEY,
       status: "pending",
     },
     select: (mutation) => mutation.state.status,
@@ -32,9 +34,7 @@ export function ProcessingBulkEditObjects({
 
   React.useEffect(() => {
     if (successCount > 0 && updateObjectMutationPending.length === 0) {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     }
   }, [successCount, updateObjectMutationPending.length]);
 
