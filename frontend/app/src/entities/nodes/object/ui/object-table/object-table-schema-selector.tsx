@@ -48,7 +48,7 @@ export function ObjectTableSchemaSelector() {
       </ComboboxTrigger>
 
       <ComboboxContent portal fitTriggerWidth={false}>
-        <ComboboxList>
+        <ComboboxList shouldFilter>
           <ComboboxItem
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
@@ -66,6 +66,7 @@ export function ObjectTableSchemaSelector() {
           {items.map((schema) => {
             return (
               <ComboboxItem
+                keywords={[schema.label!, schema.kind!]}
                 key={schema.hash}
                 value={schema.hash}
                 selectedValue={selectedSchema.hash}
