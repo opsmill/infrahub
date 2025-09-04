@@ -42,7 +42,7 @@ export function InlineDisplay({ items, render, maxDisplay = 3 }: InlineDisplayPr
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex gap-2 items-center relative">
+      <div className="relative flex items-center gap-2">
         {trimedItems.map((item) => handleRender(item, render))}
       </div>
 

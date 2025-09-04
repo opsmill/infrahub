@@ -34,7 +34,7 @@ export function BranchDetailsPage() {
 
   if (branches.length === 0) {
     return (
-      <Content.Card className="flex justify-center items-center p-5 min-h-[400px]">
+      <Content.Card className="flex min-h-[400px] items-center justify-center p-5">
         <Spinner />
       </Content.Card>
     );
@@ -48,7 +48,7 @@ export function BranchDetailsPage() {
 
   return (
     <Content.Card>
-      <header className="p-5 font-bold flex gap-2 items-center">
+      <header className="flex items-center gap-2 p-5 font-bold">
         <h1 className="text-xl">{branch.name}</h1>
         {branch.is_default && <Badge variant="blue-outline">default</Badge>}
       </header>

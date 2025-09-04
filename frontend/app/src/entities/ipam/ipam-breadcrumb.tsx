@@ -22,7 +22,7 @@ function BreadcrumbError({ error }: { error: Error }) {
   console.error("IPAM Breadcrumb Error:", error);
 
   return (
-    <div className="text-red-500 text-sm flex items-center">
+    <div className="flex items-center text-red-500 text-sm">
       <IpamBreadcrumbSeparator />
       <span>Error loading breadcrumb</span>
     </div>
@@ -47,8 +47,8 @@ function IpamBreadcrumbLink({ className, ...props }: LinkProps) {
     <Link
       className={classNames(
         focusVisibleStyle,
-        "border border-transparent p-1 rounded-md",
-        "hover:text-neutral-600 last:font-medium last:text-neutral-600",
+        "rounded-md border border-transparent p-1",
+        "last:font-medium last:text-neutral-600 hover:text-neutral-600",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ export interface IpamBreadcrumbProps extends React.HTMLAttributes<HTMLDivElement
 export function IpamBreadcrumb({ className, ...props }: IpamBreadcrumbProps) {
   return (
     <nav
-      className={classNames("text-neutral-400 text-sm flex items-center", className)}
+      className={classNames("flex items-center text-neutral-400 text-sm", className)}
       aria-label="IPAM navigation breadcrumb"
       {...props}
     >

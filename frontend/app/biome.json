@@ -103,6 +103,9 @@
         "noSwitchDeclarations": "off",
         "useUniqueElementIds": "off"
       },
+      "nursery": {
+        "useSortedClasses": "error"
+      },
       "performance": {
         "noAccumulatingSpread": "off",
         "useTopLevelRegex": "off",

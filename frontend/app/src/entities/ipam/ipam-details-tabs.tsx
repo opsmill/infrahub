@@ -18,7 +18,7 @@ export function IpamDetailsTabs({ objectSchema, objectData }: IpamDetailsTabsPro
   const relationshipVisible = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
 
   return (
-    <Row className="border-b border-gray-200">
+    <Row className="border-gray-200 border-b">
       <LinkTab href={constructPathForIpam("details")}>
         <IdCardIcon className="size-4" />
         Details

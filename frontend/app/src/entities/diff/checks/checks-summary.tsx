@@ -83,9 +83,9 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   };
 
   return (
-    <div className="flex justify-center m-4" data-testid="checks-summary">
-      <div className="flex flex-col-reverse items-center relative">
-        <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
+    <div className="m-4 flex justify-center" data-testid="checks-summary">
+      <div className="relative flex flex-col-reverse items-center">
+        <div className="lg:-left-28 lg:-translate-y-1/2 flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:transform">
           <Button
             onClick={() => handleRetry("all")}
             disabled={!isAuthenticated}
@@ -102,10 +102,10 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
           {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
             <div key={kind} className="flex items-center justify-center gap-2 p-2">
-              <div className={"flex flex-col items-center group relative"}>
+              <div className={"group relative flex flex-col items-center"}>
                 <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
                   {canRetry(data) && (
-                    <div className="absolute invisible group-hover:visible cursor-pointer">
+                    <div className="invisible absolute cursor-pointer group-hover:visible">
                       <Retry
                         isLoading={isLoading || !!data.inProgress}
                         isDisabled={!canRetry(data)}

@@ -43,7 +43,7 @@ export function ScrollBar({ className, orientation = "vertical", ...props }: Scr
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       orientation={orientation}
       className={classNames(
-        "flex touch-none select-none transition-colors bg-gray-50",
+        "flex touch-none select-none bg-gray-50 transition-colors",
         orientation === "vertical" && "h-full w-2 border-l border-l-transparent p-px",
         orientation === "horizontal" && "h-2 flex-col border-t border-t-transparent p-px",
         className

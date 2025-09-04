@@ -50,16 +50,16 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             <div className="group flex items-center gap-2 py-2 pr-2 text-xs">
               <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
               <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
-              <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
+              <span className="px-2 py-1 font-medium text-gray-800">{node.label}</span>
 
               {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
             </div>
           }
-          className="bg-gray-100 border border-gray-200 rounded-md"
+          className="rounded-md border border-gray-200 bg-gray-100"
         >
-          <div className="bg-white divide-y border-t border-gray-200 divide-gray-200">
+          <div className="divide-y divide-gray-200 border-gray-200 border-t bg-white">
             <div className="grid grid-cols-3 pl-8">
-              <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
+              <Badge variant="green" className="col-start-2 col-end-3 bg-transparent">
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}
               </Badge>
 

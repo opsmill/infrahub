@@ -48,7 +48,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   )(schemas);
 
   return (
-    <section className={classNames("space-y-2 p-4 bg-white", className)}>
+    <section className={classNames("space-y-2 bg-white p-4", className)}>
       <SearchInput
         className="mb-4"
         placeholder="Search schema"
@@ -70,20 +70,17 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                   <div
                     {...(isSelectedLast && { ref })}
                     key={schema.kind}
-                    className={`
-                      h-24 overflow-hidden pl-9 pr-2 cursor-pointer flex items-center relative hover:bg-gray-100 mix-blend-multiply
-                      hover:rounded-sm
-                        ${isSelected ? "shadow-lg ring-1 ring-custom-blue-600 rounded-sm" : ""}
+                    className={`relative flex h-24 cursor-pointer items-center overflow-hidden pr-2 pl-9 mix-blend-multiply hover:rounded-sm hover:bg-gray-100 ${isSelected ? "rounded-sm shadow-lg ring-1 ring-custom-blue-600" : ""}
                     `}
                     onClick={() => setKind([schema.kind!])}
                   >
                     {schema.icon && (
                       <div className="absolute left-2">
-                        <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />
+                        <Icon icon={schema.icon} className="text-custom-blue-700 text-xl" />
                       </div>
                     )}
                     <div className="grow">
-                      <h2 className="flex justify-between items-start">
+                      <h2 className="flex items-start justify-between">
                         <div className="flex items-center gap-1">
                           <Badge variant="blue" className="self-baseline">
                             {schema.namespace}
@@ -95,7 +92,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                         </Badge>
                       </h2>
 
-                      <p className="pl-1 text-xs text-gray-600 mt-1">{schema.description}</p>
+                      <p className="mt-1 pl-1 text-gray-600 text-xs">{schema.description}</p>
                     </div>
                   </div>
                 );

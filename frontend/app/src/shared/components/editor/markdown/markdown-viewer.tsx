@@ -15,7 +15,7 @@ export function MarkdownViewer({ children }: { children: string }) {
         <Button
           variant={"ghost"}
           className={classNames(
-            "border-b border-custom-blue-700 rounded-none",
+            "rounded-none border-custom-blue-700 border-b",
             displayRaw ? "border-0" : ""
           )}
           onClick={() => setDisplayRaw(false)}
@@ -26,7 +26,7 @@ export function MarkdownViewer({ children }: { children: string }) {
         <Button
           variant={"ghost"}
           className={classNames(
-            "border-b border-custom-blue-700 rounded-none",
+            "rounded-none border-custom-blue-700 border-b",
             displayRaw ? "" : "border-0"
           )}
           onClick={() => setDisplayRaw(true)}

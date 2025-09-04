@@ -49,7 +49,7 @@ function Task({ task }) {
     <div>
       <div
         className={classNames(
-          "flex flex-col gap-4 rounded-md p-4 m-auto",
+          "m-auto flex flex-col gap-4 rounded-md p-4",
           "bg-gray-100",
           background[task.state]
         )}
@@ -65,7 +65,7 @@ function Task({ task }) {
 
         {!!task?.logs?.edges?.length && (
           <Accordion title={<div className="font-normal text-xs">Logs</div>}>
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="mt-2 flex flex-col gap-2">
               {task?.logs?.edges?.map((edge, index) => (
                 <Log key={index} {...edge.node} />
               ))}
@@ -112,13 +112,13 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
 function Log({ message, severity, timestamp }: tLog) {
   return (
-    <div className="flex flex-col bg-white rounded-md p-2 gap-2">
+    <div className="flex flex-col gap-2 rounded-md bg-white p-2">
       <div className="flex items-center justify-between">
         {getSeverityBadge[severity]}
         <DateDisplay date={timestamp} />
       </div>
 
-      <pre className="text-xs whitespace-pre-wrap">{message}</pre>
+      <pre className="whitespace-pre-wrap text-xs">{message}</pre>
     </div>
   );
 }

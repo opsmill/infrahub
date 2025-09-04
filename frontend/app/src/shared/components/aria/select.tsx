@@ -27,7 +27,7 @@ export const SelectTrigger = ({ className, children, ...props }: AriaButtonProps
     )}
     {...props}
   >
-    <AriaSelectValue className="truncate data-placeholder:text-gray-400 grow" />
+    <AriaSelectValue className="grow truncate data-placeholder:text-gray-400" />
     <ChevronDownIcon className="ml-auto size-4" />
   </AriaButton>
 );

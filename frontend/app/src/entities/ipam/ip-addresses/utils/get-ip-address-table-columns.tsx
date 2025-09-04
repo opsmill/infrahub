@@ -52,7 +52,7 @@ export const getIpAddressTableColumns = (
                 />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
+              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
                 {displayLabel}
               </TableCell>
             </>

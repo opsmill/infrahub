@@ -18,22 +18,22 @@ export const Login = () => {
   if (config && config.sso.enabled && config.sso.providers && config.sso.providers.length > 0) {
     return displaySSO ? (
       <>
-        <LoginWithSSOButtons providers={config.sso.providers} className="animate-in fade-in" />
+        <LoginWithSSOButtons providers={config.sso.providers} className="fade-in animate-in" />
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-sm text-cyan-900 hover:underline hover:bg-transparent"
+          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
         >
           Log in with your credentials
         </Button>
       </>
     ) : (
       <>
-        <LoginForm className="animate-in fade-in" />
+        <LoginForm className="fade-in animate-in" />
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-sm text-cyan-900 hover:underline hover:bg-transparent"
+          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
         >
           Log in with SSO
         </Button>
@@ -66,7 +66,7 @@ export const LoginForm = ({ className }: { className?: string }) => {
         rules={{ validate: { required: isRequired } }}
       />
 
-      <FormSubmit className="w-full h-10">Log in</FormSubmit>
+      <FormSubmit className="h-10 w-full">Log in</FormSubmit>
     </Form>
   );
 };

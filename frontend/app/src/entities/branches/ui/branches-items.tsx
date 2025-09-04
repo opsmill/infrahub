@@ -38,14 +38,14 @@ const BranchesItems = () => {
       />
 
       <ul
-        className="grid gap-6 grid-cols-1 p-6"
+        className="grid grid-cols-1 gap-6 p-6"
         data-cy="branches-items"
         data-testid="branches-items"
       >
         {branches.map((branch) => (
           <li
             key={branch.name}
-            className="col-span-1 rounded-lg border border-gray-200 cursor-pointer bg-gray-50 hover:bg-gray-100"
+            className="col-span-1 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100"
             onClick={() => navigate(constructPath(`/branches/${branch.name}`))}
           >
             <div className="flex w-full items-center justify-between space-x-6 p-6">
@@ -55,29 +55,29 @@ const BranchesItems = () => {
                     <div className="flex items-center">
                       {branch.is_default && (
                         <Tooltip enabled content={"Default branch"}>
-                          <Icon icon={"mdi:shield-star"} className="text-gray-400 mr-1" />
+                          <Icon icon={"mdi:shield-star"} className="mr-1 text-gray-400" />
                         </Tooltip>
                       )}
 
                       {branch.sync_with_git && (
                         <Tooltip enabled content={"Sync with Git"}>
-                          <Icon icon={"mdi:git"} className="text-red-400 mr-1" />
+                          <Icon icon={"mdi:git"} className="mr-1 text-red-400" />
                         </Tooltip>
                       )}
 
                       {branch.has_schema_changes && (
                         <Tooltip enabled content={"Has schema changes"}>
-                          <Icon icon={"mdi:file-alert"} className="text-gray-400 mr-1" />
+                          <Icon icon={"mdi:file-alert"} className="mr-1 text-gray-400" />
                         </Tooltip>
                       )}
                     </div>
 
-                    <div className="text-base font-semibold leading-6 text-gray-900">
+                    <div className="font-semibold text-base text-gray-900 leading-6">
                       {branch.name}
                     </div>
                   </div>
 
-                  <p className="mt-2 text-sm text-gray-500">{branch.description || "-"}</p>
+                  <p className="mt-2 text-gray-500 text-sm">{branch.description || "-"}</p>
                 </div>
 
                 <div className="flex flex-col items-end">

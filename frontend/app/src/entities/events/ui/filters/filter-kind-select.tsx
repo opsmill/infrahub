@@ -25,13 +25,13 @@ export function FilterKindSelect({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
-            "cursor-pointer min-w-[132px] max-w-[300px]"
+            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+            "min-w-[132px] max-w-[300px] cursor-pointer"
           )}
         >
-          <div className="grow flex flex-wrap gap-2">{value && schemaKindLabel[value]}</div>
+          <div className="flex grow flex-wrap gap-2">{value && schemaKindLabel[value]}</div>
 
-          <button type="button" className="text-gray-600 outline-hidden w-3.5 h-3.5">
+          <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
             <Icon icon="mdi:unfold-more-horizontal" />
           </button>
         </div>

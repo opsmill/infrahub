@@ -37,7 +37,7 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex items-center h-8 border border-neutral-200 rounded-lg overflow-hidden",
+        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200",
         date && "bg-neutral-800"
       )}
     >
@@ -75,7 +75,7 @@ export const TimeFrameSelector = () => {
         leaveTo="w-0 opacity-0"
         className="inline-flex items-center text-white text-xxs"
       >
-        <Icon icon="mdi:history" className="text-xl m-1.5" />
+        <Icon icon="mdi:history" className="m-1.5 text-xl" />
 
         <div className="flex flex-col items-center truncate">
           <span className="font-medium">Current view time</span>

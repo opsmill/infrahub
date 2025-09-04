@@ -44,7 +44,7 @@ export function ObjectTableSchemaSelector() {
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger
-        className="w-auto min-h-8 py-0 whitespace-nowrap"
+        className="min-h-8 w-auto whitespace-nowrap py-0"
         data-testid="object-schema-schema-selector"
       >
         <RenderItem schema={selectedSchema ?? baseSchema} />

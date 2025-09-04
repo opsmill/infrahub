@@ -37,7 +37,7 @@ export const ArtifactRepoDiff = (props: any) => {
   const { loading, error, data } = useQuery(query, { skip: !schemaData });
 
   if (loading) {
-    return <LoadingIndicator className="h-10 m-4" />;
+    return <LoadingIndicator className="m-4 h-10" />;
   }
 
   if (error) {
@@ -59,7 +59,7 @@ export const ArtifactRepoDiff = (props: any) => {
   );
 
   return (
-    <div className={"rounded-lg shadow-sm p-2 m-4 bg-white"} id={diff.id}>
+    <div className={"m-4 rounded-lg bg-white p-2 shadow-sm"} id={diff.id}>
       <Accordion title={title}>
         <ArtifactContentDiff
           id={diff.id}

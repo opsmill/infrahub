@@ -74,7 +74,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
             />
           </Transition.Child>
 
-          <div className="before:fixed inset-0 overflow-hidden">
+          <div className="inset-0 overflow-hidden before:fixed">
             <div className="absolute inset-0 overflow-hidden">
               <div className="pointer-events-none fixed inset-y-0 right-0 flex">
                 <button type="button" tabIndex={-1} ref={initialFocusRef} />
@@ -88,10 +88,10 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
                   leaveTo="translate-x-full"
                 >
                   <Dialog.Panel
-                    className={`bg-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
+                    className={`pointer-events-auto flex flex-col bg-white shadow-xl ${panelWidth} ${offestWidth[offset]}`}
                     data-testid="side-panel-container"
                   >
-                    <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b border-gray-200">
+                    <div className="border-gray-200 border-b bg-gray-50 px-4 py-4 sm:px-4">
                       <div className="w-full">
                         <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
                       </div>
@@ -149,7 +149,7 @@ export const SlideOverTitle = ({
       </div>
 
       <div className="flex justify-between">
-        <div className="text-sm flex items-center gap-2 whitespace-nowrap w-full">
+        <div className="flex w-full items-center gap-2 whitespace-nowrap text-sm">
           {schema.label}
 
           {currentObjectLabel && (
@@ -163,7 +163,7 @@ export const SlideOverTitle = ({
       </div>
 
       <div>
-        {title && <h3 className="text-lg font-semibold">{title}</h3>}
+        {title && <h3 className="font-semibold text-lg">{title}</h3>}
         {subtitle && <p className="text-sm">{subtitle}</p>}
       </div>
     </div>

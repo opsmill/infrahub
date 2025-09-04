@@ -25,18 +25,18 @@ export default function Sidebar() {
     <Card
       data-collapsed={booleanCollapsed}
       className={classNames(
-        "flex flex-col gap-3 shrink-0 w-[256px] relative",
+        "relative flex w-[256px] shrink-0 flex-col gap-3",
         "group/sidebar transition-all",
-        booleanCollapsed && "w-auto px-2 items-center"
+        booleanCollapsed && "w-auto items-center px-2"
       )}
       data-testid="sidebar"
     >
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <Link to={constructPath("/")} className={classNames(focusVisibleStyle, "rounded-md")}>
           <img
             src={booleanCollapsed ? InfrahubLogo : InfrahubWithTextLogo}
             alt="Infrahub logo"
-            className={"h-8 px-1 m-0.5"}
+            className={"m-0.5 h-8 px-1"}
           />
         </Link>
 
@@ -44,7 +44,7 @@ export default function Sidebar() {
           <Button
             variant="outline"
             size="icon"
-            className="absolute -right-3.5 top-11 transition-all hidden group-hover/sidebar:inline-flex"
+            className="-right-3.5 absolute top-11 hidden transition-all group-hover/sidebar:inline-flex"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftOpenIcon className="size-4 text-neutral-600" />

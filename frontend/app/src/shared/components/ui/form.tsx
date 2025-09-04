@@ -110,7 +110,7 @@ export const FormInput = React.forwardRef<
       id={id}
       className={classNames(
         error &&
-          "border-red-500 focus:border-red-500 focus:ring-red-500/25 focus-within:border-red-500 focus-within:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
+          "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/25 focus:border-red-500 focus:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
         className
       )}
       aria-invalid={!!error}
@@ -135,7 +135,7 @@ export const FormMessage = ({
 
   return (
     <p
-      className={classNames("text-sm text-gray-600", error && "text-red-600", className)}
+      className={classNames("text-gray-600 text-sm", error && "text-red-600", className)}
       data-cy={error && "field-error-message"}
       {...props}
     >

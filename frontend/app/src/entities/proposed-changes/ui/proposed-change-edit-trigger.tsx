@@ -50,7 +50,7 @@ export const ProposedChangeEditTrigger = ({
         title={
           <div className="space-y-2">
             <div className="flex justify-between overflow-hidden">
-              <div className="grow text-sm flex items-center gap-2 whitespace-nowrap truncate">
+              <div className="flex grow items-center gap-2 truncate whitespace-nowrap text-sm">
                 <span>Proposed changes</span>
                 <Icon icon="mdi:chevron-right" />
                 <span className="truncate">{proposedChangesDetails?.display_label}</span>
@@ -64,7 +64,7 @@ export const ProposedChangeEditTrigger = ({
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold">Edit Proposed change</h3>
+              <h3 className="font-semibold text-lg">Edit Proposed change</h3>
             </div>
           </div>
         }

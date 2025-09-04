@@ -40,7 +40,7 @@ export function GeneratorRunButton({
                 <>
                   Generator started successfully.
                   <br />
-                  <Link to={url} className="underline flex items-center gap-1">
+                  <Link to={url} className="flex items-center gap-1 underline">
                     View task details
                   </Link>
                 </>
@@ -60,7 +60,7 @@ export function GeneratorRunButton({
       onClick={handleRunGenerator}
       {...props}
     >
-      {!isPending && <PlayIcon className="size-4 mr-2" />}
+      {!isPending && <PlayIcon className="mr-2 size-4" />}
       {children ?? "Run"}
     </Button>
   );

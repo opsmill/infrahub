@@ -123,7 +123,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
   }
 
   return (
-    <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
+    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
@@ -206,7 +206,7 @@ const NodeAttributesSelects = () => {
                 <FormInput>
                   <ComboboxTrigger>
                     {selectedNode && (
-                      <div className="w-full flex justify-between">
+                      <div className="flex w-full justify-between">
                         {selectedNode.label} <Badge>{selectedNode.namespace}</Badge>
                       </div>
                     )}
@@ -230,7 +230,7 @@ const NodeAttributesSelects = () => {
                           setOpen(false);
                         }}
                       >
-                        <div className="w-full flex justify-between">
+                        <div className="flex w-full justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
                       </ComboboxItem>

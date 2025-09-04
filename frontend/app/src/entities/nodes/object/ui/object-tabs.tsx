@@ -24,7 +24,7 @@ export function ObjectDetailsTab({ isActive, className, ...props }: ObjectDetail
         }
       }}
       className={classNames(
-        "flex items-center gap-2 whitespace-nowrap border-b-2 border-gray-200 py-4 px-1 text-sm font-medium cursor-pointer scroll-m-10",
+        "flex cursor-pointer scroll-m-10 items-center gap-2 whitespace-nowrap border-gray-200 border-b-2 px-1 py-4 font-medium text-sm",
         isActive
           ? "border-custom-blue-500 text-custom-blue-600"
           : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
@@ -64,7 +64,7 @@ export function RelationshipTab({
       {relationshipSchema.label}
       {isPending && <Spinner />}
       {!isPending && (
-        <Badge className="font-medium rounded-full text-gray-80">{relationshipCount}</Badge>
+        <Badge className="rounded-full font-medium text-gray-80">{relationshipCount}</Badge>
       )}
     </ObjectDetailsTab>
   );

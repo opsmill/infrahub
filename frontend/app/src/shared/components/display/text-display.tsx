@@ -53,7 +53,7 @@ const ButtonStyled = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButtonElem
   ({ className, ...props }, ref) => (
     <button
       ref={ref}
-      className={classNames("text-custom-blue-700 font-semibold", className)}
+      className={classNames("font-semibold text-custom-blue-700", className)}
       {...props}
     />
   )

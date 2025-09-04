@@ -32,7 +32,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
   return (
     <div
       className={classNames(
-        "flex items-center gap-2 relative",
+        "relative flex items-center gap-2",
         disabled && "pointer-events-none opacity-50"
       )}
     >
@@ -50,7 +50,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
         <PopoverTrigger
           className={classNames(
             focusVisibleStyle,
-            "size-5 bg-linear-to-br from-custom-white via-custom-blue-50 to-custom-gray rounded-full shrink-0"
+            "size-5 shrink-0 rounded-full bg-linear-to-br from-custom-white via-custom-blue-50 to-custom-gray"
           )}
         />
 

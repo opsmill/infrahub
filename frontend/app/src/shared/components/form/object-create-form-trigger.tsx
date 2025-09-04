@@ -43,7 +43,7 @@ export const ObjectCreateFormTrigger = ({
           onClick={() => setShowCreateDrawer(true)}
           {...props}
         >
-          <Icon icon="mdi:plus" className="text-sm mr-1.5" />
+          <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
           Add {schema?.label}
         </Button>
       </Tooltip>

@@ -25,9 +25,9 @@ export function ObjectTableToolbar({
     <div
       role="dialog"
       className={classNames(
-        "fixed bottom-10 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap",
-        "text backdrop-blur-lg px-1.5 shadow-lg rounded-xl border border-neutral-300 text-sm",
-        "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1/2",
+        "-translate-x-1/2 fixed bottom-10 left-1/2 z-10 whitespace-nowrap",
+        "text rounded-xl border border-neutral-300 px-1.5 text-sm shadow-lg backdrop-blur-lg",
+        "fade-in-0 zoom-in-95 slide-in-from-bottom-1/2 animate-in",
         "flex items-center gap-1.5 outline-none"
       )}
       data-testid="object-table-toolbar"

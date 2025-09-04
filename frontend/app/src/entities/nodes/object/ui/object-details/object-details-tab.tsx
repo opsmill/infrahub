@@ -35,7 +35,7 @@ export function ObjectDetailsTab({
     <LinkTab href={url}>
       <Icon icon={getSchemaIcon(schema)} />
       {relationship.label}
-      <Badge variant="blue" className="font-normal rounded-full">
+      <Badge variant="blue" className="rounded-full font-normal">
         {data}
       </Badge>
     </LinkTab>

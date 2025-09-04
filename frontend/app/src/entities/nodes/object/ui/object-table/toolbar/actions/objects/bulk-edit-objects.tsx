@@ -44,7 +44,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
         </GroupPanelBody>
       </GroupCard>
 
-      <GroupCard className="w-100 absolute left-[calc(100%+0.5rem)] bottom-0">
+      <GroupCard className="absolute bottom-0 left-[calc(100%+0.5rem)] w-100">
         <GroupPanelHeader>Set bulk changes</GroupPanelHeader>
         <GroupPanelBody>
           <NodeForm

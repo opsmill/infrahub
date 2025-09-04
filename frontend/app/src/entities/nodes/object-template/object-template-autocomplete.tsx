@@ -44,7 +44,7 @@ export function ObjectTemplateAutocomplete({
       {...props}
     >
       {isPending ? (
-        <Spinner className="flex justify-center m-2" />
+        <Spinner className="m-2 flex justify-center" />
       ) : (
         <>
           <ComboboxEmpty>No template found</ComboboxEmpty>

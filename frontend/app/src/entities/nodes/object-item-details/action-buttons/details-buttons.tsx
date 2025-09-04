@@ -75,7 +75,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
             schema={schema}
             permission={permission}
             objectId={objectDetailsData.id}
-            className="text-custom-blue-600 p-4"
+            className="p-4 text-custom-blue-600"
           />
         )}
 

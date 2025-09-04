@@ -8,7 +8,7 @@ export function ArtifactFileButton({ className, ...props }: AriaButtonProps) {
     <AriaButton
       className={classNames(
         focusVisibleStyle,
-        "border border-transparent p-1 hover:bg-neutral-600 rounded-lg text-sm",
+        "rounded-lg border border-transparent p-1 text-sm hover:bg-neutral-600",
         className
       )}
       {...props}

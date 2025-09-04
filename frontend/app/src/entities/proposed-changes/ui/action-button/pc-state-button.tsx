@@ -28,7 +28,7 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className={classNames("flex p-0 border-0")}>
+        <div className={classNames("flex border-0 p-0")}>
           {auth?.user?.id ? (
             <>
               <Button
@@ -45,7 +45,7 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
               </Button>
 
               <Button
-                className="rounded-l-none border-l-0 h-9"
+                className="h-9 rounded-l-none border-l-0"
                 variant={"primary"}
                 size={"sm"}
                 onClick={() => {

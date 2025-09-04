@@ -19,7 +19,7 @@ const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgress
   return (
     <ProgressPrimitive.Root
       className={classNames(
-        "h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/10 flex",
+        "flex h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/10",
         className
       )}
       {...props}

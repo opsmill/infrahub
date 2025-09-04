@@ -56,7 +56,7 @@ export const Diff = () => {
         <Tabs tabs={tabs} qsp={QSP.BRANCH_DIFF_TAB} />
       </div>
 
-      <div className="flex flex-col flex-1">{renderContent(qspTab)}</div>
+      <div className="flex flex-1 flex-col">{renderContent(qspTab)}</div>
     </div>
   );
 };

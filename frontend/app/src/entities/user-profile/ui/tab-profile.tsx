@@ -35,7 +35,7 @@ export default function TabProfile() {
 
   if (!objectDetailsData) {
     return (
-      <div className="flex column justify-center">
+      <div className="column flex justify-center">
         <NoDataFound message="No user found for that id." />
       </div>
     );

@@ -25,14 +25,14 @@ export function ProposedChangesManagerToolbar({
     <>
       <ObjectHeader schema={schema} />
 
-      <div className="flex items-center h-14 px-3 justify-between">
-        <div className="flex items-center shrink-0 justify-between">
+      <div className="flex h-14 items-center justify-between px-3">
+        <div className="flex shrink-0 items-center justify-between">
           <FilterSearchInput schema={schema} />
 
           <ActiveObjectFilterTags schema={schema} className="mx-2" />
         </div>
 
-        <div className="flex gap-3 items-center">
+        <div className="flex items-center gap-3">
           <ButtonWithTooltip
             disabled={!permission.create.isAllowed}
             tooltipEnabled={!permission.create.isAllowed}

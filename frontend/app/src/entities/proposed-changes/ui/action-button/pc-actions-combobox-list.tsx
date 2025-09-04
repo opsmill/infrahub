@@ -77,7 +77,7 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
                 className="whitespace-pre"
                 key={action.value}
               >
-                <span className="flex items-center gap-2 cursor-default select-none rounded-md px-2 py-1.5 ml-5 text-sm outline-hidden truncate opacity-50">
+                <span className="ml-5 flex cursor-default select-none items-center gap-2 truncate rounded-md px-2 py-1.5 text-sm opacity-50 outline-hidden">
                   {action.name}
                 </span>
               </Tooltip>

@@ -62,9 +62,9 @@ export function IpPrefixPoolForm({
             return {
               key: kind,
               label: (
-                <div className="flex items-center justify-between w-full">
+                <div className="flex w-full items-center justify-between">
                   <span>{schema.label}</span>
-                  <span className="text-xs text-gray-500">{schema.namespace}</span>
+                  <span className="text-gray-500 text-xs">{schema.namespace}</span>
                 </div>
               ),
             };
@@ -155,7 +155,7 @@ export function IpPrefixPoolForm({
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields }) : handleSubmit(formData)
       }
-      className="p-4 overflow-auto"
+      className="overflow-auto p-4"
     />
   );
 }

@@ -48,7 +48,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
+              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
                 {schema.label} available
               </TableCell>
             </>
@@ -64,7 +64,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
             label={
               <Row className="gap-2.5">
                 {[...Array(ipPrefixNode.ancestors.count)].map((_, i) => (
-                  <div className="bg-custom-blue-600/40 size-1 rounded-full" key={i} />
+                  <div className="size-1 rounded-full bg-custom-blue-600/40" key={i} />
                 ))}
                 {value}
               </Row>
@@ -89,7 +89,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 : row.original.ip_addresses.count;
 
             return (
-              <TableCell className="whitespace-nowrap gap-4">
+              <TableCell className="gap-4 whitespace-nowrap">
                 <TableAttributeCell attributeSchema={attribute} attributeData={attributeData} />
                 <div className="ml-auto text-xs">
                   <span className="text-gray-400">{pluralize(memberCount, "member")}</span>

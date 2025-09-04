@@ -38,8 +38,8 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <Content.Card className="flex flex-col overflow-hidden h-full gap-0">
-      <div className="flex items-center h-14 shrink-0 border-b px-2 border-gray-200">
+    <Content.Card className="flex h-full flex-col gap-0 overflow-hidden">
+      <div className="flex h-14 shrink-0 items-center border-gray-200 border-b px-2">
         <FilterSearchInput schema={namespaceSchema} />
 
         <ObjectCreateFormTrigger
@@ -61,7 +61,7 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
           })}
 
           {isLoading && (
-            <div className="flex justify-center grow">
+            <div className="flex grow justify-center">
               <Spinner />
             </div>
           )}

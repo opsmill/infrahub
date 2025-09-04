@@ -48,11 +48,11 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
   const groupSchema = nodes.find((node) => node.kind === group.__typename);
 
   return (
-    <div className="flex justify-between items-center gap-4 p-2 bg-gray-100 rounded-md border border-gray-300 relative">
-      <div className="overflow-hidden space-y-1">
+    <div className="relative flex items-center justify-between gap-4 rounded-md border border-gray-300 bg-gray-100 p-2">
+      <div className="space-y-1 overflow-hidden">
         <Link
           to={getObjectDetailsUrl(group.__typename, group.id)}
-          className="font-semibold hover:underline truncate block"
+          className="block truncate font-semibold hover:underline"
         >
           {group.display_label}
         </Link>
@@ -62,7 +62,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
             to={getObjectDetailsUrl(group.__typename, group.id, [
               { name: QSP.TAB, value: "members" },
             ])}
-            className="text-sm font-light hover:underline"
+            className="font-light text-sm hover:underline"
           >
             {pluralize(group.members.count, "member")}
           </Link>

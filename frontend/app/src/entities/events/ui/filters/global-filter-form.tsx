@@ -35,9 +35,9 @@ export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterF
   };
 
   return (
-    <div className="flex items-center gap-4 min-w-64">
+    <div className="flex min-w-64 items-center gap-4">
       <Form
-        className="space-y-0 flex items-center gap-2 grow"
+        className="flex grow items-center gap-2 space-y-0"
         onSubmit={(formData) => {
           handleSubmit(formData);
         }}

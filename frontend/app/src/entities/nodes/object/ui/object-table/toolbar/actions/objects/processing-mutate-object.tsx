@@ -47,9 +47,9 @@ export function ProcessingMutateObject({ node, payload, onSuccess }: ProcessingM
   if (error) {
     return (
       <NodeCard node={node}>
-        <Row className="text-red-600 text-xs cursor-pointer">
+        <Row className="cursor-pointer text-red-600 text-xs">
           <span>{error.message}</span>
-          <div className="bg-red-50 rounded-full p-1 border border-red-200 hover:border-current">
+          <div className="rounded-full border border-red-200 bg-red-50 p-1 hover:border-current">
             <RefreshCwIcon className="size-2.5" onClick={() => handleProcessing()} />
           </div>
         </Row>
@@ -61,7 +61,7 @@ export function ProcessingMutateObject({ node, payload, onSuccess }: ProcessingM
     <NodeCard node={node}>
       <Row className="text-green-800">
         success
-        <div className="bg-green-200 rounded-full p-0.5">
+        <div className="rounded-full bg-green-200 p-0.5">
           <CheckIcon className="size-3" />
         </div>
       </Row>
@@ -73,9 +73,9 @@ export function NodeCard({ node, children }: { node: NodeCore; children?: React.
   const { schema } = useSchema(node.__typename);
 
   return (
-    <Card className="text-sm w-100">
+    <Card className="w-100 text-sm">
       <Col className="gap-1">
-        <Row className="text-xs text-gray-600 justify-between">
+        <Row className="justify-between text-gray-600 text-xs">
           <Row className="gap-1">
             <Icon icon={getSchemaIcon(schema)} />
             <span>{schema?.label}</span>

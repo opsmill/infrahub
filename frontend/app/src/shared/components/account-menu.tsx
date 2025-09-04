@@ -96,17 +96,17 @@ const UnauthenticatedAccountMenu = () => {
     <DropdownMenu>
       <LinkButton
         variant="ghost"
-        className="p-2 h-auto w-full rounded-lg gap-2 hover:bg-indigo-50 overflow-hidden shrink-0"
+        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 hover:bg-indigo-50"
         to="/login"
         state={{ from: location }}
       >
-        <div className="bg-indigo-50 rounded-full size-9 flex items-center justify-center overflow-hidden border border-white shrink-0">
-          <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
+        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50">
+          <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600" />
         </div>
 
-        <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
-          <div className="font-semibold text-sm truncate">Log in</div>
-          <div className="text-xs text-neutral-500 truncate">anonymous</div>
+        <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
+          <div className="truncate font-semibold text-sm">Log in</div>
+          <div className="truncate text-neutral-500 text-xs">anonymous</div>
         </div>
 
         <DropdownMenuTrigger
@@ -119,7 +119,7 @@ const UnauthenticatedAccountMenu = () => {
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="shrink-0 ml-auto hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
+            className="ml-auto shrink-0 hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
           >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
@@ -177,18 +177,18 @@ const AuthenticatedAccountMenu = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full justify-start gap-2 hover:bg-indigo-50 rounded-lg p-2 overflow-hidden text-left shrink-0"
+          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50"
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="size-9 shrink-0" />
 
-          <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
-            <div className="font-semibold text-sm truncate">{profile?.label?.value}</div>
+          <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
+            <div className="truncate font-semibold text-sm">{profile?.label?.value}</div>
           </div>
 
           <Icon
             icon="mdi:dots-vertical"
-            className="text-lg m-2 ml-auto group-data-[collapsed=true]/sidebar:hidden transition-all"
+            className="m-2 ml-auto text-lg transition-all group-data-[collapsed=true]/sidebar:hidden"
           />
         </Button>
       </DropdownMenuTrigger>
@@ -216,8 +216,8 @@ const AuthenticatedAccountMenu = ({
 
 const AccountMenuSkeleton = () => {
   return (
-    <div className="flex items-center gap-2 p-2 shrink-0 border border-transparent">
-      <Skeleton className="rounded-full size-9" />
+    <div className="flex shrink-0 items-center gap-2 border border-transparent p-2">
+      <Skeleton className="size-9 rounded-full" />
 
       <div className="grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
         <Skeleton className="h-4 w-4/5" />

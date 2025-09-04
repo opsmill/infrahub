@@ -51,7 +51,7 @@ export function ObjectDetailsTabContent({
               { name: QSP.TAB, value: TASK_TAB },
               { name: QSP.TASK_ID, exclude: true },
             ])}
-            className="flex items-center p-2 "
+            className="flex items-center p-2"
           >
             <Icon icon={"mdi:chevron-left"} />
             All tasks

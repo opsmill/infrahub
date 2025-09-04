@@ -52,12 +52,12 @@ export function PermissionCombobox({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
             "cursor-pointer",
             className
           )}
         >
-          <div className="grow flex flex-wrap gap-2">
+          <div className="flex grow flex-wrap gap-2">
             {value?.map((node) => (
               <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
                 {node.identifier?.value}
@@ -69,7 +69,7 @@ export function PermissionCombobox({
                     e.stopPropagation();
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                  className="h-4 w-4 text-gray-500 hover:text-gray-800"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >
@@ -81,7 +81,7 @@ export function PermissionCombobox({
 
           <button
             type="button"
-            className="text-gray-600 outline-hidden w-3.5 h-3.5"
+            className="h-3.5 w-3.5 text-gray-600 outline-hidden"
             onClick={() => setOpen(!open)}
             {...props}
           >
@@ -123,7 +123,7 @@ export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipCom
         shouldFilter={false}
       >
         {isPending ? (
-          <Spinner className="flex justify-center m-2" />
+          <Spinner className="m-2 flex justify-center" />
         ) : (
           <>
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>

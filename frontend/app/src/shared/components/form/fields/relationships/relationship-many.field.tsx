@@ -52,7 +52,7 @@ export default function RelationshipManyField({
                 {...props}
                 className={classNames(
                   error &&
-                    "has-[>:last-child:focus]:ring-red-500/25 has-[>:last-child:focus]:border-red-500"
+                    "has-[>:last-child:focus]:border-red-500 has-[>:last-child:focus]:ring-red-500/25"
                 )}
                 peer={relationship.peer}
                 value={fieldData.value as NodeCore[] | null}

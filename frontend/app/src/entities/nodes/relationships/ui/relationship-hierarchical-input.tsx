@@ -106,12 +106,12 @@ export const RelationshipHierarchicalManyInput = forwardRef<
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25 has-[>:last-child:focus]:border-custom-blue-600",
+            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
             "cursor-pointer",
             className
           )}
         >
-          <div className="grow flex flex-wrap gap-2">
+          <div className="flex grow flex-wrap gap-2">
             {value?.map(({ id, display_label }) => (
               <Badge key={id} className="flex items-center gap-1 pr-0.5">
                 {display_label}
@@ -123,7 +123,7 @@ export const RelationshipHierarchicalManyInput = forwardRef<
                     e.stopPropagation();
                     onChange(value?.filter((item) => item.id !== id));
                   }}
-                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                  className="h-4 w-4 text-gray-500 hover:text-gray-800"
                   aria-label={`Remove ${display_label}`}
                   data-testid="remove-option"
                 >
@@ -136,7 +136,7 @@ export const RelationshipHierarchicalManyInput = forwardRef<
           <PopoverTrigger ref={ref} asChild {...props}>
             <button
               type="button"
-              className="text-gray-600 outline-hidden w-3.5 h-3.5"
+              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
               aria-label={`Open ${peer}`}
             >
               <Icon icon="mdi:unfold-more-horizontal" />

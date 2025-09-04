@@ -30,7 +30,7 @@ export default function TabUpdatePassword() {
   return (
     <main className="p-2">
       <Card className="m-auto w-full max-w-md">
-        <h3 className="leading-6 font-semibold mb-4">Update your password</h3>
+        <h3 className="mb-4 font-semibold leading-6">Update your password</h3>
 
         <Form
           onSubmit={async (formData) => {

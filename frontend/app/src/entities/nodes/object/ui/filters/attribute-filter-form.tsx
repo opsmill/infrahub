@@ -71,7 +71,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
 
   return (
     <div className="flex gap-2 p-2">
-      <div className="h-10 inline-flex items-center">Where</div>
+      <div className="inline-flex h-10 items-center">Where</div>
 
       <FilterConditionSelect
         filterType="attribute"
@@ -80,7 +80,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
       />
 
       <Form
-        className="space-y-0 flex gap-2"
+        className="flex gap-2 space-y-0"
         onSubmit={(formData) => {
           handleSubmit(formData);
           onSuccess?.();

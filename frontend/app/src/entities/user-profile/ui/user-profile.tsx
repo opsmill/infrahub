@@ -100,7 +100,7 @@ export function UserProfilePage() {
             <div className="ml-2">
               <h3>{profile?.display_label}</h3>
 
-              <p className="text-sm text-gray-500">{profile?.description?.value ?? "-"}</p>
+              <p className="text-gray-500 text-sm">{profile?.description?.value ?? "-"}</p>
             </div>
           </div>
         }

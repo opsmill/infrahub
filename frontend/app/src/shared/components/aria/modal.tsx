@@ -44,7 +44,7 @@ export function ModalTitle({ className, ...props }: AriaHeadingProps) {
   return (
     <AriaHeading
       slot="title"
-      className={classNames("text-lg font-semibold leading-none tracking-tight", className)}
+      className={classNames("font-semibold text-lg leading-none tracking-tight", className)}
       {...props}
     />
   );

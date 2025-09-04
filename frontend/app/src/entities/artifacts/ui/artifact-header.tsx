@@ -29,7 +29,7 @@ const ArtifactHeader = ({
 
       <ArtifactStatusBadge status={status} />
 
-      <div className="flex items-center gap-1 ml-auto">
+      <div className="ml-auto flex items-center gap-1">
         {artifactDefinitionId && (
           <ArtifactGenerateButton
             label="Re-generate"

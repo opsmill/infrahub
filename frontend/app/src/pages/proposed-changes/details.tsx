@@ -88,7 +88,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
                 { name: QSP.PROPOSED_CHANGES_TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
-              className="flex items-center p-2 "
+              className="flex items-center p-2"
             >
               <Icon icon={"mdi:chevron-left"} />
               All tasks
@@ -183,7 +183,7 @@ export function Component() {
       <Content.CardTitle
         title={proposedChangeData.display_label}
         description={
-          <div className="inline-flex gap-1 text-xs items-center">
+          <div className="inline-flex items-center gap-1 text-xs">
             <Link
               to={getObjectDetailsUrl(
                 proposedChangeData?.created_by?.node?.__typename,

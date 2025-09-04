@@ -58,7 +58,7 @@ const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
 const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} className={classNames(menuNavigationItemStyle, "h-10")}>
     <Icon icon={item.icon} className="size-4" />
-    <span className="text-sm truncate">{item.label}</span>
+    <span className="truncate text-sm">{item.label}</span>
     <Icon
       icon="mdi:arrow-top-right"
       className="m-1 ml-auto text-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
@@ -79,7 +79,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
     ) : (
       <>
         <Icon icon={item.icon} className="size-4" />
-        <span className="text-sm truncate">{item.label}</span>
+        <span className="truncate text-sm">{item.label}</span>
         <Icon
           icon="mdi:dots-vertical"
           className="m-1 ml-auto opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
@@ -91,7 +91,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
 
 export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalProps) {
   return (
-    <div className="flex flex-col mb-auto">
+    <div className="mb-auto flex flex-col">
       {items.map((item) => {
         if (!item.children?.length) {
           return isCollapsed ? (

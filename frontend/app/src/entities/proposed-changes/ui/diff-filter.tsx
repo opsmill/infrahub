@@ -66,13 +66,13 @@ export const ProposedChangeDiffFilter = ({ branch, filters }: ProposedChangeDiff
       <ErrorScreen
         message={error?.message ?? "No diff summary available."}
         hideIcon
-        className="p-0 items-start"
+        className="items-start p-0"
       />
     );
   }
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
+    <div className="flex shrink-0 items-center gap-2">
       <FilterButton
         status={DIFF_STATUS.ADDED}
         count={data?.DiffTreeSummary?.num_added}
@@ -127,7 +127,7 @@ const FilterButton = ({ status, count, currentFilter, onFilter, ...props }: Filt
     <Button
       {...props}
       variant="ghost"
-      className={classNames("relative rounded-full p-0 h-auto", isMuted && "opacity-60")}
+      className={classNames("relative h-auto rounded-full p-0", isMuted && "opacity-60")}
       onClick={() => onFilter(status)}
       disabled={isDisabled}
       data-testid={`diff-filters-button-${status.toLowerCase()}`}

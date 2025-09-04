@@ -26,7 +26,7 @@ export const BreadcrumbSeparator = ({
     className={classNames("inline-flex", className)}
     {...props}
   >
-    {children ?? <Icon icon="mdi:slash-forward" className="text-xl text-gray-400" />}
+    {children ?? <Icon icon="mdi:slash-forward" className="text-gray-400 text-xl" />}
   </li>
 );
 

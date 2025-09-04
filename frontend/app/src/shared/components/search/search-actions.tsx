@@ -112,7 +112,7 @@ const ActionOnSchema = ({ model }: { model: ModelSchema }) => {
       <span className="font-medium">Schema</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold">
-        <Badge variant="blue" className="text-xxs mr-1 py-0">
+        <Badge variant="blue" className="mr-1 py-0 text-xxs">
           {model.namespace}
         </Badge>
         {label || name || kind}

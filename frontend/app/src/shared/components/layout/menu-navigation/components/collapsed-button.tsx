@@ -18,7 +18,7 @@ export const CollapsedButton = forwardRef<HTMLButtonElement, CollapsedButton>(
         size="square"
         side="right"
         tooltipEnabled
-        className={classNames("w-10 h-10 p-2", className)}
+        className={classNames("h-10 w-10 p-2", className)}
         {...props}
       >
         <Icon icon={icon} className="text-base" />

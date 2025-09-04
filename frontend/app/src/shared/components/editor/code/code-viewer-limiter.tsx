@@ -24,7 +24,7 @@ export const CodeViewerLimiter = ({
         {children}
 
         {!showAllLines && (
-          <div className="h-40 w-full bg-linear-to-t from-white to-50% absolute bottom-0 z-20 pointer-events-none" />
+          <div className="pointer-events-none absolute bottom-0 z-20 h-40 w-full bg-linear-to-t from-white to-50%" />
         )}
       </div>
 
@@ -35,12 +35,12 @@ export const CodeViewerLimiter = ({
           className="ml-24"
           onClick={() => setShowAllLines(false)}
         >
-          <Icon icon="mdi:chevron-up" className="text-sm mr-1" />
+          <Icon icon="mdi:chevron-up" className="mr-1 text-sm" />
           Hide lines
         </Button>
       ) : (
         <Button variant="outline" size="xs" className="ml-24" onClick={() => setShowAllLines(true)}>
-          <Icon icon="mdi:chevron-down" className="text-sm mr-1" />
+          <Icon icon="mdi:chevron-down" className="mr-1 text-sm" />
           See all lines
         </Button>
       )}

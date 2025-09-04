@@ -25,7 +25,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           onClick={() => setShowPassword((v) => !v)}
           size="icon"
           variant="ghost"
-          className="h-10 absolute top-0 end-0 p-3.5 rounded-md hover:bg-transparent"
+          className="absolute end-0 top-0 h-10 rounded-md p-3.5 hover:bg-transparent"
         >
           <Icon icon={showPassword ? "mdi:eye-off" : "mdi:eye"} />
         </Button>

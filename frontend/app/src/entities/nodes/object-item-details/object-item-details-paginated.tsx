@@ -96,9 +96,9 @@ export default function ObjectItemDetails({
   return (
     <>
       {!hideHeaders && (
-        <header className="flex items-center border-b border-gray-200 px-2">
+        <header className="flex items-center border-gray-200 border-b px-2">
           <ScrollArea scrollX scrollBarClassName="hidden" className="grow">
-            <div className="grow flex gap-8 px-4" data-testid="object-details-tabs">
+            <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
               <ObjectDetailsTab
                 isActive={!qspTab}
                 to={getObjectDetailsUrl(objectKind as string, objectid)}
@@ -128,9 +128,9 @@ export default function ObjectItemDetails({
       )}
 
       {!qspTab && (
-        <div className="flex flex-col xl:items-start xl:grid xl:grid-cols-3 gap-2 p-2">
-          <Card className="md:col-span-2 p-0 grow overflow-x-hidden">
-            <CardWithBorder.Title className="border-b border-gray-200">
+        <div className="flex flex-col gap-2 p-2 xl:grid xl:grid-cols-3 xl:items-start">
+          <Card className="grow overflow-x-hidden p-0 md:col-span-2">
+            <CardWithBorder.Title className="border-gray-200 border-b">
               Details
             </CardWithBorder.Title>
 
@@ -160,7 +160,7 @@ export default function ObjectItemDetails({
                             isProtected={objectDetailsData[attribute.name]?.is_protected}
                             header={
                               !attribute.read_only && (
-                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+                                <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                                   <div className="font-semibold">{attribute.label}</div>
                                   <ButtonWithTooltip
                                     disabled={!permission.update.isAllowed}
@@ -188,7 +188,7 @@ export default function ObjectItemDetails({
                         )}
 
                         {objectDetailsData[attribute.name]?.is_protected && (
-                          <LockClosedIcon className="w-4 h-4" />
+                          <LockClosedIcon className="h-4 w-4" />
                         )}
                       </>
                     }
@@ -219,8 +219,8 @@ export default function ObjectItemDetails({
             </div>
           </Card>
 
-          <Card className="p-0 overflow-x-hidden" data-testid="activities-panel">
-            <CardWithBorder.Title className="border-b border-gray-200">
+          <Card className="overflow-x-hidden p-0" data-testid="activities-panel">
+            <CardWithBorder.Title className="border-gray-200 border-b">
               Activities
             </CardWithBorder.Title>
             <NodeEvents objectId={objectid} objectKind={objectKind} />
@@ -235,8 +235,8 @@ export default function ObjectItemDetails({
       <SlideOver
         title={
           <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
+            <div className="flex w-full items-center">
+              <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Icon icon={"mdi:layers-triple"} />

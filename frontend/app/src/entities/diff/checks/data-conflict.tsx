@@ -47,7 +47,7 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
 
   return (
     <div>
-      <div className="flex items-center mb-2">
+      <div className="mb-2 flex items-center">
         <Badge className="mr-2">{schemaLabels[kind]}</Badge>
 
         <Id id={id} kind={kind} />
@@ -55,12 +55,12 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
 
       <Link to={url}>
         <DiffRow
-          className="group pl-0 rounded-sm overflow-hidden hover:bg-yellow-100 transition-all"
+          className="group overflow-hidden rounded-sm pl-0 transition-all hover:bg-yellow-100"
           iconClassName="left-4"
           hasConflicts
           title={
-            <div className={classNames("flex items-center justify-between pl-4 pr-2")}>
-              <div className="flex items-center py-3 gap-2 font-semibold">
+            <div className={classNames("flex items-center justify-between pr-2 pl-4")}>
+              <div className="flex items-center gap-2 py-3 font-semibold">
                 {name}
                 <BadgeConflict>Conflict</BadgeConflict>
               </div>

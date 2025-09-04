@@ -36,16 +36,16 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         data-testid="namespace-select"
         className={classNames(
           focusVisibleStyle,
-          "flex flex-col w-full px-1.5 py-0.5 h-10 rounded",
+          "flex h-10 w-full flex-col rounded px-1.5 py-0.5",
           "border border-transparent",
           "hover:bg-gray-100",
           className
         )}
       >
-        <Row className="text-xs text-gray-600">IP Namespace</Row>
-        <Row className="text-sm gap-1.5">
+        <Row className="text-gray-600 text-xs">IP Namespace</Row>
+        <Row className="gap-1.5 text-sm">
           <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
-          <ChevronsUpDownIcon className="ml-auto text-gray-600 size-3.5 shrink-0" />
+          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-gray-600" />
         </Row>
       </AriaButton>
 
@@ -57,12 +57,12 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           }}
         />
 
-        <Col className="border-t border-neutral-200">
+        <Col className="border-neutral-200 border-t">
           <LinkButton
             to={constructPath("/ipam/namespaces")}
             variant="ghost"
             size="sm"
-            className="text-xs justify-start m-2"
+            className="m-2 justify-start text-xs"
           >
             View all IP namespaces
           </LinkButton>
@@ -97,7 +97,7 @@ function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespace
       {...props}
     >
       {isPending ? (
-        <Spinner className="flex justify-center m-2" />
+        <Spinner className="m-2 flex justify-center" />
       ) : (
         <>
           <ComboboxEmpty>No IP namespace found</ComboboxEmpty>
@@ -112,7 +112,7 @@ function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespace
               >
                 <div className="overflow-hidden">
                   <div className="truncate">{getNodeLabel(namespace)}</div>
-                  <p className="text-xs truncate text-gray-500">{namespace.description?.value}</p>
+                  <p className="truncate text-gray-500 text-xs">{namespace.description?.value}</p>
                 </div>
               </ComboboxItem>
             ));

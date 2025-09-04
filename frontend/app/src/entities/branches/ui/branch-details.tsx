@@ -131,7 +131,7 @@ export const BranchDetails = () => {
         <div>
           {branch?.name && (
             <>
-              <div className="flex flex-1 flex-col md:flex-row gap-4">
+              <div className="flex flex-1 flex-col gap-4 md:flex-row">
                 <BranchMergeButton branch={branch} />
 
                 <LinkButton
@@ -141,7 +141,7 @@ export const BranchDetails = () => {
                     }
                   }}
                   className={classNames(
-                    (!isAuthenticated || branch.is_default) && "opacity-50 cursor-not-allowed"
+                    (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
                   )}
                   to={constructPath("/proposed-changes/new", [
                     { name: QSP.SOURCE_BRANCH, value: branch?.name },

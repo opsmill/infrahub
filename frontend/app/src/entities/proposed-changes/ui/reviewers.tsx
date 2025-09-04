@@ -30,7 +30,7 @@ export const ProposedChangesReviewers = ({
               {approversId.includes(reviewer.id) && (
                 <Icon
                   icon={"mdi:check"}
-                  className="text-green-700 absolute -right-[4px] -bottom-[4px] bg-green-300 rounded-full border border-white"
+                  className="-right-[4px] -bottom-[4px] absolute rounded-full border border-white bg-green-300 text-green-700"
                   data-testid="approved-icon"
                 />
               )}

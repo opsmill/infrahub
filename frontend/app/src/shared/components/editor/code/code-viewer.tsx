@@ -5,7 +5,7 @@ import { classNames } from "@/shared/utils/common";
 
 export const CodeViewer = ({ className, children, ...props }: SyntaxHighlighterProps) => {
   return (
-    <div className={classNames("rounded-md overflow-hidden text-sm", className)}>
+    <div className={classNames("overflow-hidden rounded-md text-sm", className)}>
       <SyntaxHighlighter {...props} showLineNumbers style={darcula}>
         {children}
       </SyntaxHighlighter>

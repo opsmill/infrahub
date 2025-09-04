@@ -127,9 +127,9 @@ export const ProfilesSelector = ({
   };
 
   return (
-    <div className="p-4 bg-gray-100">
+    <div className="bg-gray-100 p-4">
       <Label htmlFor={id}>
-        Select profiles <span className="text-xs italic text-gray-500 ml-1">optional</span>
+        Select profiles <span className="ml-1 text-gray-500 text-xs italic">optional</span>
       </Label>
 
       <Combobox>
@@ -137,11 +137,11 @@ export const ProfilesSelector = ({
           <div
             className={classNames(
               inputStyle,
-              "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+              "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
               "cursor-pointer"
             )}
           >
-            <div className="grow flex flex-wrap gap-2">
+            <div className="flex grow flex-wrap gap-2">
               {selectedValues?.map((profile) => (
                 <Badge key={id} className="flex items-center gap-1 pr-0.5">
                   {profile.display_label}
@@ -153,7 +153,7 @@ export const ProfilesSelector = ({
                       e.stopPropagation();
                       handleRemove(profile);
                     }}
-                    className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                    className="h-4 w-4 text-gray-500 hover:text-gray-800"
                     aria-label="Remove"
                     data-testid="remove-option"
                   >
@@ -165,7 +165,7 @@ export const ProfilesSelector = ({
 
             {loading && <Spinner className="ml-auto" />}
 
-            <button id={id} type="button" className="text-gray-600 outline-hidden w-3.5 h-3.5">
+            <button id={id} type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />
             </button>
           </div>

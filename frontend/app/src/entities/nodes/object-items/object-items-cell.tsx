@@ -37,13 +37,13 @@ export const ObjectItemsCell = ({ row, attribute }: ObjectItemsCellProps) => {
 
 export const TextCell = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <span className={classNames("px-4 py-2 text-xs whitespace-nowrap", className)} {...props} />
+    <span className={classNames("whitespace-nowrap px-4 py-2 text-xs", className)} {...props} />
   );
 };
 
 export const LinkCell = ({ className, children, ...props }: LinkProps) => {
   return (
-    <Link className={classNames("h-full flex items-center", className)} {...props}>
+    <Link className={classNames("flex h-full items-center", className)} {...props}>
       <TextCell>{children}</TextCell>
     </Link>
   );
@@ -70,7 +70,7 @@ export const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) =
 
         return (
           <Link key={node.id} to={getObjectDetailsUrl(node.__typename, node.id)}>
-            <Badge className="hover:underline hover:bg-gray-200 font-medium">
+            <Badge className="font-medium hover:bg-gray-200 hover:underline">
               {node.display_label}
             </Badge>
           </Link>

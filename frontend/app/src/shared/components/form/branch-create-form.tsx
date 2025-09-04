@@ -52,7 +52,7 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
 
   return (
     <Form
-      className="p-2 space-y-4"
+      className="space-y-4 p-2"
       onSubmit={async (data) => {
         const branchData: BranchFormData = {
           name: data.name.value as string,

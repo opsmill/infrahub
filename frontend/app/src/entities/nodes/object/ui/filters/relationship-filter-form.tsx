@@ -84,7 +84,7 @@ export function RelationshipFilterForm({
 
   return (
     <div className="flex gap-2 p-2">
-      <div className="h-10 inline-flex items-center">Where</div>
+      <div className="inline-flex h-10 items-center">Where</div>
 
       <FilterConditionSelect
         filterType="relationship"
@@ -93,7 +93,7 @@ export function RelationshipFilterForm({
       />
 
       <Form
-        className="space-y-0 flex gap-2"
+        className="flex gap-2 space-y-0"
         onSubmit={(formData) => {
           handleSubmit(formData as FormData);
           onSuccess?.();
@@ -118,11 +118,11 @@ export function RelationshipFilterForm({
                     <div
                       className={classNames(
                         inputStyle,
-                        "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
-                        "cursor-pointer min-w-[132px] max-w-[300px]"
+                        "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+                        "min-w-[132px] max-w-[300px] cursor-pointer"
                       )}
                     >
-                      <div className="grow flex flex-wrap gap-2">
+                      <div className="flex grow flex-wrap gap-2">
                         {value?.map(({ id, display_label }) => (
                           <Badge key={id} className="flex items-center gap-1 pr-0.5">
                             {display_label}
@@ -134,7 +134,7 @@ export function RelationshipFilterForm({
                                 e.stopPropagation();
                                 field.onChange(value.filter((item) => item.id !== id));
                               }}
-                              className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                              className="h-4 w-4 text-gray-500 hover:text-gray-800"
                               aria-label="Remove"
                               data-testid="remove-option"
                             >
@@ -144,7 +144,7 @@ export function RelationshipFilterForm({
                         ))}
                       </div>
 
-                      <button type="button" className="text-gray-600 outline-hidden w-3.5 h-3.5">
+                      <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
                         <Icon icon="mdi:unfold-more-horizontal" />
                       </button>
                     </div>

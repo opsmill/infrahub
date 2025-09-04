@@ -61,7 +61,7 @@ export function ObjectDetailsMenu({
         <Pressable>
           <Button
             variant="ghost"
-            className="p-0 shrink-0 size-7"
+            className="size-7 shrink-0 p-0"
             data-testid="object-details-menu"
             {...props}
           >
@@ -162,7 +162,7 @@ export function ObjectDetailsMenu({
         <GroupsManager
           schema={objectSchema}
           objectId={objectData.id}
-          className="p-4 overflow-auto"
+          className="overflow-auto p-4"
         />
       </SlideOver>
 

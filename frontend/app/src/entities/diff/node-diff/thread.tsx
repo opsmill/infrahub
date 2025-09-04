@@ -63,7 +63,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
 
   return (
     <>
-      <div className="flex items-center cursor-pointer ">
+      <div className="flex cursor-pointer items-center">
         {thread?.comments?.count ? (
           <Tooltip enabled content={"Add comment"}>
             <Button
@@ -72,7 +72,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 event.stopPropagation();
                 setShowThread(true);
               }}
-              className="px-2 h-6 rounded-full"
+              className="h-6 rounded-full px-2"
               variant={"dark"}
               data-testid="data-diff-add-comment"
             >
@@ -89,7 +89,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
                   event.stopPropagation();
                   setShowThread(true);
                 }}
-                className="p-0 h-6 rounded-full"
+                className="h-6 rounded-full p-0"
                 variant={"outline"}
                 size={"icon"}
                 data-testid="data-diff-add-comment"
@@ -104,7 +104,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
       <SlideOver title={title} open={showThread} setOpen={setShowThread}>
         <DiffComments path={path} refetch={refetch} />
 
-        <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-x-6 border-gray-200 border-t py-3 pr-3">
           <Button onClick={() => setShowThread(false)}>Close</Button>
         </div>
       </SlideOver>

@@ -105,7 +105,7 @@ const HierarchicalExplorer = ({
 
     return (
       <>
-        <Badge className="ml-2 mt-1 self-start cursor-pointer" onClick={handleRemoveNode}>
+        <Badge className="mt-1 ml-2 cursor-pointer self-start" onClick={handleRemoveNode}>
           {selectNode.display_label} &times;
         </Badge>
 
@@ -151,7 +151,7 @@ const HierarchicalExplorer = ({
 
       <CommandList>
         {isPending ? (
-          <Spinner className="flex justify-center m-2" />
+          <Spinner className="m-2 flex justify-center" />
         ) : (
           <>
             <ComboboxEmpty>No results found</ComboboxEmpty>

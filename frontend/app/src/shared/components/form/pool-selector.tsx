@@ -45,7 +45,7 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
 
     return (
       <Popover>
-        <div className="flex gap-1 w-full">
+        <div className="flex w-full gap-1">
           <PopoverAnchor asChild>
             {value.source?.type !== "pool" || override || !displayFromPool ? (
               <Slot autoFocus={override} onBlur={() => setOverride(false)} ref={ref}>
@@ -55,7 +55,7 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
               <Button
                 variant="outline"
                 onClick={() => setOverride(true)}
-                className="flex gap-2 justify-start w-full border-gray-300 shadow-none h-10 px-2 font-normal"
+                className="flex h-10 w-full justify-start gap-2 border-gray-300 px-2 font-normal shadow-none"
               >
                 <Icon icon="mdi:view-grid-outline" />
                 <span>{value.source.label}</span>

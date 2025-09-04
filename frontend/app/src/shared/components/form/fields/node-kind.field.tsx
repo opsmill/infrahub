@@ -49,7 +49,7 @@ export function NodeKindField({
               <FormInput>
                 <ComboboxTrigger>
                   {currentNode && (
-                    <div className="w-full flex justify-between">
+                    <div className="flex w-full justify-between">
                       {currentNode?.label} <Badge>{currentNode?.namespace}</Badge>
                     </div>
                   )}
@@ -72,7 +72,7 @@ export function NodeKindField({
                           setOpen(false);
                         }}
                       >
-                        <div className="w-full flex justify-between">
+                        <div className="flex w-full justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
                       </ComboboxItem>

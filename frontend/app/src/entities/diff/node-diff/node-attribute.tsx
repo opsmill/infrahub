@@ -28,8 +28,8 @@ export const DiffNodeAttribute = ({
       status={status}
       hasConflicts={attribute.contains_conflict}
       title={
-        <div className="flex justify-between items-center pr-2">
-          <div className="flex items-center py-3 gap-2 font-semibold">
+        <div className="flex items-center justify-between pr-2">
+          <div className="flex items-center gap-2 py-3 font-semibold">
             {attribute.name}
             {attribute.conflict && <BadgeConflict>Conflict</BadgeConflict>}
           </div>
@@ -42,7 +42,7 @@ export const DiffNodeAttribute = ({
       left={previousValue}
       right={newValue}
     >
-      <div className="divide-y border-t border-gray-200 divide-gray-200">
+      <div className="divide-y divide-gray-200 border-gray-200 border-t">
         {attribute.conflict && <DataConflict conflict={attribute.conflict} />}
 
         {attribute.properties.map((property, index: number) => (

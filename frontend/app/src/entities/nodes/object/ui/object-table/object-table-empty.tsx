@@ -18,12 +18,12 @@ export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
       <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
       {filters.length === 0 ? (
         <>
-          <div className="text-lg font-medium">No {schemaLabel} found</div>
+          <div className="font-medium text-lg">No {schemaLabel} found</div>
           <div className="text-sm">Add some {schemaLabel} to get started</div>
         </>
       ) : (
         <>
-          <div className="text-lg font-medium">No {schemaLabel} found</div>
+          <div className="font-medium text-lg">No {schemaLabel} found</div>
           <div className="text-sm">No {schemaLabel} matches the current filters</div>
           <Button size="sm" variant="outline" className="mt-4" onClick={handleClearFilters}>
             <Icon icon="mdi:filter-variant-remove" className="mr-1.5" />

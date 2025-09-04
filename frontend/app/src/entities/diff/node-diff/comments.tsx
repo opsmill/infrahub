@@ -152,7 +152,7 @@ export const DiffComments = (props: tDiffComments) => {
   }
 
   return (
-    <div className="flex-1 p-4 overflow-auto">
+    <div className="flex-1 overflow-auto p-4">
       {thread?.id && <Thread thread={thread} refetch={handleRefetch} />}
 
       {!thread?.id && <AddComment onSubmit={handleSubmit} />}

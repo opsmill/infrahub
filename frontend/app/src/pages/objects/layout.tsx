@@ -53,7 +53,7 @@ const ObjectPageLayout = () => {
                   <HierarchicalTree
                     schema={treeSchema}
                     currentNodeId={objectid}
-                    className="p-2 min-w-full"
+                    className="min-w-full p-2"
                   />
                 </ScrollArea>
               </ResizablePanel>
@@ -61,7 +61,7 @@ const ObjectPageLayout = () => {
             </>
           )}
 
-          <ResizablePanel className="h-full flex flex-col">
+          <ResizablePanel className="flex h-full flex-col">
             <Outlet />
           </ResizablePanel>
         </ResizablePanelGroup>

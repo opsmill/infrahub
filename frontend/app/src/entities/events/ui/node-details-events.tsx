@@ -73,7 +73,7 @@ export const NodeEvents = ({
             to={constructPath("/activities", [
               { name: QSP.FILTER, value: JSON.stringify([filter]) },
             ])}
-            className="p-1 text-sm text-gray-400 text-center"
+            className="p-1 text-center text-gray-400 text-sm"
           >
             View all activities
           </Link>

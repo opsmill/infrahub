@@ -23,7 +23,7 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
   return (
     <div className="p-2 pt-0">
       <Button
-        className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+        className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
         onClick={() => setOpen(!open)}
       >
         + Add new {schema.label}

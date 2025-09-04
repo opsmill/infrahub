@@ -17,7 +17,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref)
       className={classNames(
         "focus:ring-0 focus:ring-offset-0",
         focusVisibleStyle,
-        "w-4 h-4 text-custom-blue-800 disabled:text-gray-300 bg-gray-100 border-gray-300 rounded-sm cursor-pointer disabled:cursor-not-allowed",
+        "h-4 w-4 cursor-pointer rounded-sm border-gray-300 bg-gray-100 text-custom-blue-800 disabled:cursor-not-allowed disabled:text-gray-300",
         className
       )}
       data-cy="checkbox"

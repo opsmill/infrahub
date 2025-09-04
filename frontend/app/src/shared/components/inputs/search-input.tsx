@@ -28,7 +28,7 @@ export function SearchFieldInput({ className, ...props }: AriaInputProps) {
     <AriaInput
       className={composeRenderProps(className, (className) =>
         classNames(
-          "border-none outline-hidden min-w-0 flex-1 px-2 py-1.5 placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
+          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
           className
         )
       )}
@@ -44,7 +44,7 @@ export function SearchFieldGroup({ className, ...props }: AriaGroupProps) {
         classNames(
           inputStyle,
           focusWithinStyle,
-          "overflow-hidden min-h-0 h-10",
+          "h-10 min-h-0 overflow-hidden",
           "data-disabled:opacity-50",
           className
         )

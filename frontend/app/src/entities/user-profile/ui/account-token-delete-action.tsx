@@ -31,7 +31,7 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
         aria-label={`Delete token ${token.name}`}
         {...props}
       >
-        <Icon icon="mdi:delete" className="text-red-500 text-lg" />
+        <Icon icon="mdi:delete" className="text-lg text-red-500" />
       </Button>
 
       {tokenToDelete && (

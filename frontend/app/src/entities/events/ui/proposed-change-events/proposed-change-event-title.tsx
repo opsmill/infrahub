@@ -50,7 +50,7 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
   if (event === PROPOSED_CHANGE_THREAD && props.related_nodes?.[0]?.id) {
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex text-sm gap-1">
+        <div className="flex gap-1 text-sm">
           <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />{" "}
           <span className="text-gray-600">created a thread</span>
         </div>
@@ -61,7 +61,7 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
   }
 
   return (
-    <div className="flex items-center flex-wrap gap-1 text-sm">
+    <div className="flex flex-wrap items-center gap-1 text-sm">
       <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
 
       {PROPOSED_CHANGE_EVENTS_MAPPING[event] && PROPOSED_CHANGE_EVENTS_MAPPING[event]()}

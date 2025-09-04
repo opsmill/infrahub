@@ -43,7 +43,7 @@ export function GlobalKindFilterForm({ name, onSuccess }: GlobalKindFilterFormPr
 
       {kind && (
         <Form
-          className="space-y-0 flex items-center gap-2"
+          className="flex items-center gap-2 space-y-0"
           onSubmit={(formData) => {
             handleSubmit(formData);
           }}

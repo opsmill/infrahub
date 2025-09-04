@@ -49,7 +49,7 @@ export const GroupsManagerTriggerButton = ({
           />
         }
       >
-        <GroupsManager schema={schema} objectId={objectId} className="p-4 overflow-auto" />
+        <GroupsManager schema={schema} objectId={objectId} className="overflow-auto p-4" />
       </SlideOver>
     </>
   );

@@ -19,7 +19,7 @@ export function ToolbarEditAction({ selectedRows }: ToolbarEditActionProps) {
         Edit
       </ToolbarButton>
 
-      <Popover placement="top start" className="bg-transparent shadow-none border-transparent">
+      <Popover placement="top start" className="border-transparent bg-transparent shadow-none">
         <BulkEditObjects selectedRows={selectedRows} />
       </Popover>
     </DialogTrigger>

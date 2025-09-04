@@ -1,3 +1,3 @@
 export function ToolbarDivider() {
-  return <div className="h-10 bg-neutral-300 w-px" />;
+  return <div className="h-10 w-px bg-neutral-300" />;
 }

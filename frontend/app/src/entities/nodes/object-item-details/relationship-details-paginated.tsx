@@ -194,7 +194,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         owner={relationshipsData.properties.owner}
                         isProtected={relationshipsData.properties.is_protected}
                         header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+                          <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                             <div className="font-semibold">{relationshipSchema.label}</div>
 
                             <ButtonWithTooltip
@@ -222,11 +222,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   )}
 
                   {relationshipsData.properties?.is_protected && (
-                    <LockClosedIcon className="w-4 h-4" />
+                    <LockClosedIcon className="h-4 w-4" />
                   )}
 
                   {relationshipsData.properties?.is_visible === false && (
-                    <EyeSlashIcon className="w-4 h-4" />
+                    <EyeSlashIcon className="h-4 w-4" />
                   )}
                 </>
               }
@@ -234,9 +234,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           )}
 
           {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
-            <div className="flex-1 shadow-xs ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-              <table className="table-auto border-spacing-0 w-full" cellPadding="0">
-                <thead className="bg-gray-50 text-left border-b border-gray-300">
+            <div className="flex-1 overflow-x-auto shadow-xs ring-1 ring-custom-black ring-opacity-5">
+              <table className="w-full table-auto border-spacing-0" cellPadding="0">
+                <thead className="border-gray-300 border-b bg-gray-50 text-left">
                   <tr>
                     {newColumns?.map((column) => (
                       <th key={column.name} scope="col" className="h-9 font-semibold">
@@ -252,7 +252,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
-                      className="border-b border-gray-200 hover:bg-gray-50"
+                      className="border-gray-200 border-b hover:bg-gray-50"
                       data-testid="relationship-row"
                     >
                       {newColumns?.map((column) => (
@@ -269,7 +269,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             owner={properties.owner}
                             isProtected={properties.is_protected}
                             header={
-                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+                              <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                                 <div className="font-semibold">{relationshipSchema.label}</div>
                               </div>
                             }
@@ -322,7 +322,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 <dl className="flex flex-col">
                   {relationshipsData?.length === 0 && "-"}
                   {relationshipsData?.map(({ node, properties }: any) => (
-                    <dd className="text-gray-900 underline flex items-center" key={node.id}>
+                    <dd className="flex items-center text-gray-900 underline" key={node.id}>
                       <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
                         {node.display_label}
                       </Link>
@@ -338,9 +338,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </div>
                       )}
 
-                      {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
+                      {properties.is_protected && <LockClosedIcon className="h-4 w-4" />}
 
-                      {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
+                      {properties.is_visible === false && <EyeSlashIcon className="h-4 w-4" />}
                     </dd>
                   ))}
                 </dl>

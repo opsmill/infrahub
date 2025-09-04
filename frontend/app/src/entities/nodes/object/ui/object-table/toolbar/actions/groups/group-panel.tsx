@@ -7,7 +7,7 @@ export function GroupCard({ className, ...props }: CardProps) {
   return (
     <Card
       className={classNames(
-        "p-0 flex flex-col shadow-sm max-h-[min(47rem,calc(100vh-6rem))] overflow-hidden",
+        "flex max-h-[min(47rem,calc(100vh-6rem))] flex-col overflow-hidden p-0 shadow-sm",
         className
       )}
       {...props}
@@ -22,7 +22,7 @@ export function GroupPanelHeader({
   return (
     <h3
       className={classNames(
-        "font-medium text-xs border-b border-gray-200 h-10 shrink-0 flex items-center p-2 text-neutral-600",
+        "flex h-10 shrink-0 items-center border-gray-200 border-b p-2 font-medium text-neutral-600 text-xs",
         className
       )}
       {...props}
@@ -37,7 +37,7 @@ export function GroupPanelBody({ className, ...props }: React.HTMLAttributes<HTM
 export function GroupPanelFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={classNames("shrink-0 p-1 text-center border-t border-gray-200", className)}
+      className={classNames("shrink-0 border-gray-200 border-t p-1 text-center", className)}
       {...props}
     />
   );

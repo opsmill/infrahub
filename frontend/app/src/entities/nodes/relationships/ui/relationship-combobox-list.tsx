@@ -42,7 +42,7 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
         {...props}
       >
         {isPending ? (
-          <Spinner className="flex justify-center m-2" />
+          <Spinner className="m-2 flex justify-center" />
         ) : (
           <>
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>

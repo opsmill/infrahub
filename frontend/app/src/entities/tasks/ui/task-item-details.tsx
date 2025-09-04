@@ -120,14 +120,14 @@ export const TaskItemDetails = forwardRef((_, ref) => {
   const count = logs.length;
 
   return (
-    <div className=" flex-1 flex flex-col">
+    <div className="flex flex-1 flex-col">
       <div className="bg-white">
         <List columns={columns} row={row} />
       </div>
 
-      <div className="rounded-md overflow-hidden bg-white m-4 p-2">
-        <div className="flex mb-2">
-          <h2 className="flex-1 font-semibold text-gray-900 m-2 ml-0">Task Logs ({count})</h2>
+      <div className="m-4 overflow-hidden rounded-md bg-white p-2">
+        <div className="mb-2 flex">
+          <h2 className="m-2 ml-0 flex-1 font-semibold text-gray-900">Task Logs ({count})</h2>
 
           <div className="flex flex-1 justify-end">
             <SearchInput

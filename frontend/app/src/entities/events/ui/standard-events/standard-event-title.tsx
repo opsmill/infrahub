@@ -35,7 +35,7 @@ export const StandardEventTitle = (props: StandardEvent) => {
   const { event, account_id, branch } = props;
 
   return (
-    <div className="flex items-center flex-wrap gap-1 text-sm">
+    <div className="flex flex-wrap items-center gap-1 text-sm">
       <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
 
       <div className="text-gray-600">

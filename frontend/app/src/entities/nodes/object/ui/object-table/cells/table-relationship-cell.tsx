@@ -50,7 +50,7 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
       variant="outline"
       size="sm"
       to={getObjectDetailsUrl(node.__typename, node.id)}
-      className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
+      className="truncate rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
     >
       <Icon icon={getSchemaIcon(schema)} className="mr-1 text-custom-blue-800" />
       {getNodeLabel(node)}

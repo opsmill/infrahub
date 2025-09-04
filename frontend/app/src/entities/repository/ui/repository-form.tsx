@@ -46,7 +46,7 @@ const RepositoryForm = ({
 
   return (
     <Form
-      className="p-2 bg-stone-100 h-full overflow-auto"
+      className="h-full overflow-auto bg-stone-100 p-2"
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 
@@ -114,7 +114,7 @@ const RepositoryForm = ({
 };
 
 const FormGroup = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("shadow-xs space-y-4", className)} {...props} />;
+  return <Card className={classNames("space-y-4 shadow-xs", className)} {...props} />;
 };
 
 export default RepositoryForm;

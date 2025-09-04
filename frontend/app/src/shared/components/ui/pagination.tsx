@@ -78,9 +78,9 @@ export const Pagination = (props: tPaginationType) => {
         className
       )}
     >
-      <div className="flex flex-wrap flex-1 gap-2 justify-between">
+      <div className="flex flex-1 flex-wrap justify-between gap-2">
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-700">{paginationText}</div>
+          <div className="text-gray-700 text-sm">{paginationText}</div>
 
           <div>
             <Combobox>

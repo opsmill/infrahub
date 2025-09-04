@@ -65,7 +65,7 @@ const ChoicesRow = ({
   if (choices.length === 0) return "No choices";
 
   return (
-    <div className="space-y-1 grow">
+    <div className="grow space-y-1">
       {choices.map((choice) => {
         const color = choice.color === "" ? "#f1f1f1" : choice.color;
         return (
@@ -76,7 +76,7 @@ const ChoicesRow = ({
                 {choice.label || choice.name} <span>{choice.color}</span>
               </div>
             }
-            className="px-1.5 py-0.5 rounded-md grow divide-y divide-gray-600"
+            className="grow divide-y divide-gray-600 rounded-md px-1.5 py-0.5"
             style={{ backgroundColor: color ?? undefined }}
           >
             <PropertyRow title="Name" value={choice.name} />

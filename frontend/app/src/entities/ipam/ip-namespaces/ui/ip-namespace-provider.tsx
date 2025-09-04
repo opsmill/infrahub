@@ -52,7 +52,7 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
             <span>{`IP Namespace ${namespaceQSP ?? "default"} not found.`}</span>
             <Link
               to={constructPath("/ipam")}
-              className="text-indigo-700 hover:underline inline-flex items-center gap-2"
+              className="inline-flex items-center gap-2 text-indigo-700 hover:underline"
             >
               Go to default IP namespace <CornerDownLeftIcon className="size-4" />
             </Link>

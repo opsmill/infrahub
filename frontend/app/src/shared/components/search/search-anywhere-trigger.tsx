@@ -31,7 +31,7 @@ export function SearchAnywhereTrigger({
     <Button
       variant="ghost"
       className={classNames(
-        "px-3 py-2 gap-3 bg-neutral-100 shadow-none text-neutral-800 justify-between",
+        "justify-between gap-3 bg-neutral-100 px-3 py-2 text-neutral-800 shadow-none",
         className
       )}
       data-testid="search-anywhere-trigger"
@@ -39,12 +39,12 @@ export function SearchAnywhereTrigger({
     >
       <div className="flex items-center gap-2 overflow-hidden">
         <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
-        <span className="text-neutral-700 text-sm group-data-[collapsed=true]/sidebar:hidden transition-all truncate">
+        <span className="truncate text-neutral-700 text-sm transition-all group-data-[collapsed=true]/sidebar:hidden">
           Search
         </span>
       </div>
 
-      <Kbd keys={command} className="group-data-[collapsed=true]/sidebar:hidden transition-all">
+      <Kbd keys={command} className="transition-all group-data-[collapsed=true]/sidebar:hidden">
         K
       </Kbd>
     </Button>

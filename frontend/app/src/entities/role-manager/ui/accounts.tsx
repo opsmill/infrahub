@@ -140,7 +140,7 @@ function Accounts() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}

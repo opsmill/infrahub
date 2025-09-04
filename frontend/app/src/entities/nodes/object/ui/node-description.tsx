@@ -27,7 +27,7 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
 
       <Link
         to={getObjectDetailsUrl(node.__typename, node.id)}
-        className="text-custom-blue-800 font-medium hover:underline"
+        className="font-medium text-custom-blue-800 hover:underline"
       >
         {getNodeLabel(node)}
       </Link>

@@ -8,8 +8,8 @@ export interface DiffNoFoundProps {
 
 export function DiffNoFound({ diffStatus }: DiffNoFoundProps) {
   return (
-    <div className="flex flex-col items-center mt-10 gap-5">
-      <div className="p-3 rounded-full bg-white inline-flex">
+    <div className="mt-10 flex flex-col items-center gap-5">
+      <div className="inline-flex rounded-full bg-white p-3">
         <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
       </div>
 

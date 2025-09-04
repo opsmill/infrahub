@@ -48,8 +48,8 @@ export const ValidatorDetails = ({ id }: tValidatorDetails) => {
   const validator = data?.CoreValidator?.edges[0]?.node;
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-2">
+    <div className="flex flex-1 flex-col">
+      <div className="grid grid-cols-1 gap-4 p-2 2xl:grid-cols-2">
         {validator?.checks?.edges?.map((check: any) => (
           <Check key={check?.node?.id} id={check?.node?.id} />
         ))}

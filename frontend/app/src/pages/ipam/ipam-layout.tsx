@@ -24,7 +24,7 @@ export const Component = () => {
 
   return (
     <IpNamespaceProvider>
-      <Card className="p-0 flex flex-col size-full overflow-hidden">
+      <Card className="flex size-full flex-col overflow-hidden p-0">
         <Row className="h-11 gap-0 *:shrink-0">
           <Button
             variant="ghost"
@@ -36,16 +36,16 @@ export const Component = () => {
             <SidebarIcon className="size-4" />
           </Button>
           <Separator orientation="vertical" />
-          <IpNamespaceSelector className="w-47 m-0.75" />
+          <IpNamespaceSelector className="m-0.75 w-47" />
           <Separator orientation="vertical" />
           <IpamBreadcrumb className="grow px-2" />
         </Row>
 
         <Separator />
 
-        <Row className="items-stretch overflow-hidden gap-0 grow">
+        <Row className="grow items-stretch gap-0 overflow-hidden">
           {!booleanCollapsed && (
-            <Col className="gap-0 w-60 shrink-0 border-r border-gray-200">
+            <Col className="w-60 shrink-0 gap-0 border-gray-200 border-r">
               <ErrorBoundary
                 fallbackRender={({ error }) => <ErrorScreen message={error.message} />}
               >
@@ -56,7 +56,7 @@ export const Component = () => {
             </Col>
           )}
 
-          <Col className="gap-0 grow overflow-hidden">
+          <Col className="grow gap-0 overflow-hidden">
             <Outlet />
           </Col>
         </Row>

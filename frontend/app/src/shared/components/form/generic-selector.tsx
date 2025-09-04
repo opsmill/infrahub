@@ -76,7 +76,7 @@ export const GenericSelector = ({
     .filter((item) => !!item);
 
   return (
-    <div className="p-4 bg-gray-200">
+    <div className="bg-gray-200 p-4">
       <Label htmlFor={id}>Select an object type</Label>
       <Combobox open={open} onOpenChange={setOpen}>
         <ComboboxTrigger id={id}>
@@ -116,7 +116,7 @@ export const GenericSelector = ({
 
 const SchemaItem = ({ label, badge }: { label: string; badge: string }) => {
   return (
-    <div className="flex justify-between w-full">
+    <div className="flex w-full justify-between">
       <span>{label}</span> <Badge>{badge}</Badge>
     </div>
   );

@@ -33,12 +33,12 @@ import { objectDecisionOptions } from "../constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/40">
+    <Pill className="flex h-6 w-6 items-center justify-center bg-green-500/40">
       <Icon icon={"mdi:lock-open-check-outline"} className="text-green-900" />
     </Pill>
   ),
   deny: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-red-500/40">
+    <Pill className="flex h-6 w-6 items-center justify-center bg-red-500/40">
       <Icon icon={"mdi:lock-remove-outline"} className="text-red-900" />
     </Pill>
   ),
@@ -184,7 +184,7 @@ function Permissions() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}

@@ -24,8 +24,8 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
   const { permission } = useObjectTableContext();
 
   return (
-    <div className="p-2 border border-b-0 border-gray-200 flex items-center">
-      <div className="flex-grow grid grid-cols-2 items-center">
+    <div className="flex items-center border border-gray-200 border-b-0 p-2">
+      <div className="grid flex-grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
@@ -80,7 +80,7 @@ const ProposedChangesInfo = ({
         <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className={classNames("hover:text-gray-500 transition-all text-lg font-semibold")}
+            className={classNames("font-semibold text-lg transition-all hover:text-gray-500")}
           >
             <Icon
               icon={"mdi:file-replace-outline"}

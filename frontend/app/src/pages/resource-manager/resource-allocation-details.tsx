@@ -54,8 +54,8 @@ const ResourceAllocationDetailsPage = () => {
     },
   ];
   return (
-    <Card className="flex flex-col ml-1 min-w-min max-w-fit sticky right-0 overflow-hidden max-h-full">
-      <div className="pb-2 flex bg-white items-center gap-1">
+    <Card className="sticky right-0 ml-1 flex max-h-full min-w-min max-w-fit flex-col overflow-hidden">
+      <div className="flex items-center gap-1 bg-white pb-2">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>{totalOfResourcesAllocated}</Badge>
 
@@ -78,8 +78,8 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="ml-1 w-full min-w-[450px] max-w-[606px] sticky right-0">
-      <div className="pb-2 flex bg-white items-center gap-1">
+    <Card className="sticky right-0 ml-1 w-full min-w-[450px] max-w-[606px]">
+      <div className="flex items-center gap-1 bg-white pb-2">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>...</Badge>
 

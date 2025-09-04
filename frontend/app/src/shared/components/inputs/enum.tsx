@@ -50,7 +50,7 @@ export const EnumDeleteButton = React.forwardRef<HTMLButtonElement, EnumDeleteBu
           tabIndex={-1}
           variant="ghost"
           size="sm"
-          className="ml-auto text-red-800 h-6"
+          className="ml-auto h-6 text-red-800"
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteModal(true);
@@ -96,7 +96,7 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
           onClick={() => setOpen(!open)}
         >
           + Add option

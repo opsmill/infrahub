@@ -40,7 +40,7 @@ export const ComputedAttributeDisplay = ({
         </Button>
 
         <Modal setOpen={setOpen} open={isOpen}>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="mb-2 flex items-center gap-2">
             <ModalTitle>Jinja2 Template</ModalTitle>
 
             <Tooltip enabled content="Download template">

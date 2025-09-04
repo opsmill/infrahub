@@ -35,25 +35,25 @@ export function ProposedChangeTableFilter({
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
       <PopoverTrigger
-        className={classNames(cellsStyle, cellHeaderStyle, "border-0 transition-all rounded-sm")}
+        className={classNames(cellsStyle, cellHeaderStyle, "rounded-sm border-0 transition-all")}
         {...props}
       >
         <TableColumnHeaderIcon fieldSchema={columnSchema} />
 
-        <span className="truncate mr-1">
+        <span className="mr-1 truncate">
           {customLabel ?? columnSchema.label ?? columnSchema.name}
         </span>
         <Icon
           icon="mdi:filter-variant"
           className={classNames(
-            "text-lg ml-auto",
+            "ml-auto text-lg",
             currentColumnFilters ? "text-indigo-700" : "invisible"
           )}
         />
       </PopoverTrigger>
 
-      <PopoverContent className="p-0 relative rounded-tl-none" align="start">
-        <div className="absolute font-semibold -top-[1.8rem] bg-white border border-gray-200 px-2 py-1 rounded-t-md border-b-0 -left-px">
+      <PopoverContent className="relative rounded-tl-none p-0" align="start">
+        <div className="-top-[1.8rem] -left-px absolute rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
         {"peer" in columnSchema ? (

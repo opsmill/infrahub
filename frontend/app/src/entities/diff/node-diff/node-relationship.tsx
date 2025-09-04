@@ -25,7 +25,7 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
       status={status}
       hasConflicts={relationship.contains_conflict}
       title={
-        <div className="flex justify-between items-center pr-2">
+        <div className="flex items-center justify-between pr-2">
           <div className="py-2 font-semibold">{relationship.label}</div>
 
           {!branchName && relationship.path_identifier && (
@@ -56,7 +56,7 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
         </div>
       }
     >
-      <div className="divide-y border-t border-gray-200 divide-gray-200">
+      <div className="divide-y divide-gray-200 border-gray-200 border-t">
         {relationship.elements.map((element, index: number) => (
           <DiffNodeRelationshipElement key={index} element={element} status={status} />
         ))}

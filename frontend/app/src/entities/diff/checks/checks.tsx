@@ -29,10 +29,10 @@ export const Checks = forwardRef((_, ref) => {
   }
 
   return (
-    <div className="text-sm bg-stone-100 grow">
+    <div className="grow bg-stone-100 text-sm">
       <ChecksSummary isLoading={loading} validators={validators} refetch={refetch} />
 
-      <div className="p-4 pt-0 space-y-2">
+      <div className="space-y-2 p-4 pt-0">
         {validators.map((item: any) => (
           <Validator key={item.id} validator={item} />
         ))}

@@ -301,7 +301,7 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="bg-white p-4 border border-custom-blue-500 rounded-md m-2">
+          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-white p-4">
             {comment.message}
           </div>
         )),
@@ -334,10 +334,10 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+            className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 transform"
             onClick={handleClick}
           >
-            <PencilIcon className="w-3 h-3" />
+            <PencilIcon className="h-3 w-3" />
           </Button>
         )}
       </>

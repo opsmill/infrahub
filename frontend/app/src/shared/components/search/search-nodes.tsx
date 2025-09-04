@@ -104,24 +104,24 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
     <SearchAnywhereItem to={url} value={url}>
       <Icon
         icon={schema.icon || "mdi:code-braces-box"}
-        className="text-lg px-2 py-0.5 text-custom-blue-700"
+        className="px-2 py-0.5 text-custom-blue-700 text-lg"
       />
 
-      <div className="grow text-sm overflow-auto">
+      <div className="grow overflow-auto text-sm">
         <div className="flex justify-between">
           <span className="mr-1 font-semibold text-custom-blue-800">
             {getNodeLabel(objectDetailsData)}
           </span>
 
           <div className="inline-flex items-center gap-1">
-            <Badge variant="blue" className="text-xxs py-0">
+            <Badge variant="blue" className="py-0 text-xxs">
               {schema.namespace}
             </Badge>
-            <span className="text-xxs font-medium mr-2">{schema.label}</span>
+            <span className="mr-2 font-medium text-xxs">{schema.label}</span>
           </div>
         </div>
 
-        <div className="mt-1 text-gray-600 flex gap-5">
+        <div className="mt-1 flex gap-5 text-gray-600">
           {useIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
@@ -172,7 +172,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
         case ATTRIBUTE_KIND.COLOR:
           return (
             <div
-              className="h-4 w-4 rounded-sm mt-0.5"
+              className="mt-0.5 h-4 w-4 rounded-sm"
               style={{ background: value.value as string }}
             />
           );
@@ -186,7 +186,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="px-1.5 rounded-sm text-gray-700 font-medium text-center border border-transparent truncate"
+              className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-gray-700"
               style={{ background: `${color}40` }}
             >
               {value.label}
@@ -201,19 +201,19 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   };
 
   return (
-    <div className="flex flex-col text-xxs whitespace-nowrap leading-3 overflow-hidden">
+    <div className="flex flex-col overflow-hidden whitespace-nowrap text-xxs leading-3">
       <span>{title}</span>
-      <span className="font-medium text-gray-800 truncate">{formatValue() || "-"}</span>
+      <span className="truncate font-medium text-gray-800">{formatValue() || "-"}</span>
     </div>
   );
 };
 
 export const SearchResultNodeSkeleton = () => {
   return (
-    <Command.Item disabled className="flex py-2 w-full">
-      <Skeleton className="h-6 w-6 rounded-sm mx-1 mr-2" />
+    <Command.Item disabled className="flex w-full py-2">
+      <Skeleton className="mx-1 mr-2 h-6 w-6 rounded-sm" />
 
-      <div className="space-y-2 grow">
+      <div className="grow space-y-2">
         <div className="flex space-x-2">
           <Skeleton className="h-3 w-40" />
           <Skeleton className="h-3 w-20" />

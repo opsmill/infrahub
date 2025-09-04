@@ -20,7 +20,7 @@ export function ObjectsManagerToolbar() {
   const { selectedSchema, baseSchema, permission } = useObjectTableContext();
 
   return (
-    <div className="flex items-center gap-2 h-14 px-3 shrink-0">
+    <div className="flex h-14 shrink-0 items-center gap-2 px-3">
       {isGenericSchema(baseSchema) && (baseSchema.used_by ?? []).length > 1 && (
         <ObjectTableSchemaSelector />
       )}

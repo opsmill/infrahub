@@ -34,7 +34,7 @@ export const AccordionStyled = ({
     title={
       <h4>
         <div className="flex items-center justify-between">
-          <div className="text-sm grow">
+          <div className="grow text-sm">
             {title} {kind && <Badge>{kind}</Badge>}
           </div>
 
@@ -46,13 +46,13 @@ export const AccordionStyled = ({
           </div>
         </div>
 
-        {description && <p className="text-xs text-gray-600 font-normal">{description}</p>}
+        {description && <p className="font-normal text-gray-600 text-xs">{description}</p>}
       </h4>
     }
-    className="bg-white shadow-sm p-3 rounded-sm"
+    className="rounded-sm bg-white p-3 shadow-sm"
     {...props}
   >
-    <article className="divide-y divide-gray-200 px-2 mt-3 bg-gray-100 rounded-sm">
+    <article className="mt-3 divide-y divide-gray-200 rounded-sm bg-gray-100 px-2">
       {children}
     </article>
   </Accordion>
@@ -102,16 +102,16 @@ export const PropertyRow = ({
   };
 
   return (
-    <dl className="flex justify-between items-start gap-4 text-sm p-2 py-3">
+    <dl className="flex items-start justify-between gap-4 p-2 py-3 text-sm">
       <dt>{title}</dt>
-      <dd className="grow shrink font-medium text-end flex justify-end">{formatValue()}</dd>
+      <dd className="flex shrink grow justify-end text-end font-medium">{formatValue()}</dd>
     </dl>
   );
 };
 
 export const PropertyTitle = ({ title }: { title: string }) => {
   return (
-    <dl className="flex justify-between items-start gap-4 text-sm font-semibold p-2 py-3">
+    <dl className="flex items-start justify-between gap-4 p-2 py-3 font-semibold text-sm">
       <dt>{title}</dt>
     </dl>
   );
@@ -121,7 +121,7 @@ export const TabStyled = ({ className, ...props }: TabProps) => (
   <Tab
     className={({ isSelected }) =>
       classNames(
-        "px-4 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100",
+        "px-4 py-2 text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden",
         isSelected ? "border-b-2 border-b-custom-blue-600 font-semibold" : "cursor-pointer",
         className
       )
@@ -134,7 +134,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
   return (
     <TabPanel
       className={classNames(
-        "space-y-2 p-2 bg-gray-100 grow min-h-0 overflow-auto outline-hidden",
+        "min-h-0 grow space-y-2 overflow-auto bg-gray-100 p-2 outline-hidden",
         focusVisibleStyle,
         className
       )}
@@ -143,7 +143,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
   );
 };
 
-export const NullDisplay = () => <div className="text-xs text-gray-500">null</div>;
+export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
   const [selectedKinds, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
@@ -151,11 +151,11 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
   if (kinds.length === 0) return <span>empty</span>;
 
   return (
-    <div className="space-y-1 flex flex-col items-end">
+    <div className="flex flex-col items-end space-y-1">
       {kinds.map((kind) => (
         <Badge
           key={kind}
-          className="bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100 cursor-pointer"
+          className="cursor-pointer border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
           onClick={() =>
             setKinds(selectedKinds && selectedKinds?.length > 0 ? [...selectedKinds, kind] : [kind])
           }
@@ -169,7 +169,7 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
 
 export const ListDisplay = ({ items }: { items?: string[] }) => {
   return (
-    <div className="space-y-1 flex flex-col items-end">
+    <div className="flex flex-col items-end space-y-1">
       {items?.map((item, index) => {
         return (
           <Badge variant={"gray-outline"} key={`${item}_${index}`}>

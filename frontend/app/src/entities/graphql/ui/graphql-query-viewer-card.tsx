@@ -9,8 +9,8 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (
-    <Card className="grow p-0 overflow-x-hidden">
-      <CardWithBorder.Title className="flex gap-2 items-center rounded-t">
+    <Card className="grow overflow-x-hidden p-0">
+      <CardWithBorder.Title className="flex items-center gap-2 rounded-t">
         <h3 className="mr-auto">Query</h3>
 
         <CopyToClipboard variant="outline" text={query} />

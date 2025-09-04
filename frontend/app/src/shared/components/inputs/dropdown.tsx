@@ -59,7 +59,7 @@ export const DropdownItem = React.forwardRef<
 
   return (
     <ComboboxItem ref={ref} className={classNames("rounded-none", className)} {...props}>
-      <div className="overflow-hidden w-full">
+      <div className="w-full overflow-hidden">
         <div className="flex items-center justify-between">
           <Badge className="font-medium" style={getDropdownStyle(item.color)}>
             {item.label}
@@ -71,7 +71,7 @@ export const DropdownItem = React.forwardRef<
             </Badge>
           )}
         </div>
-        <p className="text-xs truncate">{item.description}</p>
+        <p className="truncate text-xs">{item.description}</p>
       </div>
 
       {schema && fieldSchema && (
@@ -80,7 +80,7 @@ export const DropdownItem = React.forwardRef<
             tabIndex={-1}
             variant="ghost"
             size="sm"
-            className="ml-auto text-red-800 h-6"
+            className="ml-auto h-6 text-red-800"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteModal(true);
@@ -154,7 +154,7 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
           onClick={() => setOpen(!open)}
           data-testid="add-option-button"
         >

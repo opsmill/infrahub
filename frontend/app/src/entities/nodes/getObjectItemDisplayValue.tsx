@@ -237,7 +237,7 @@ export const ObjectAttributeValue = ({
       return <CodeViewer>{JSON.stringify(attributeValue.value ?? "", null, 2)}</CodeViewer>;
     default:
       return (
-        <div className="flex items-center min-w-7 min-h-7">{getTextValue(attributeValue)}</div>
+        <div className="flex min-h-7 min-w-7 items-center">{getTextValue(attributeValue)}</div>
       );
   }
 };

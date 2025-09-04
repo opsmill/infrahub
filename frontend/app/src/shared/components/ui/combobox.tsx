@@ -28,12 +28,12 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
           role="combobox"
           className={classNames(
             inputStyle,
-            "focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25 focus:border-custom-blue-600",
+            "focus:border-custom-blue-600 focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25",
             className
           )}
         >
           {children}
-          <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600 pl-2" />
+          <Icon icon="mdi:unfold-more-horizontal" className="ml-auto pl-2 text-gray-600" />
         </button>
       </PopoverTrigger>
     );
@@ -89,7 +89,7 @@ export const ComboboxItem = React.forwardRef<
     <CommandItem ref={ref} {...props}>
       <Icon
         icon="mdi:check"
-        className={classNames("text-green-900", selectedValue !== props.value && "opacity-0 w-3.5")}
+        className={classNames("text-green-900", selectedValue !== props.value && "w-3.5 opacity-0")}
       />
       {children}
     </CommandItem>

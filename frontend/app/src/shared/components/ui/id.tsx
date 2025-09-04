@@ -45,7 +45,7 @@ export const Id = (props: tId) => {
           value={id}
           alert="ID copied!"
           tooltip="Copy ID"
-          className="ml-2 p-1 rounded-full"
+          className="ml-2 rounded-full p-1"
         />
       )}
     </BadgeCircle>

@@ -150,7 +150,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   ];
 
   return (
-    <div className="bg-stone-50 p-2.5 flex flex-col grow gap-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
       {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
@@ -168,14 +168,14 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
             <CardWithBorder contentClassName="" data-testid="pc-description">
-              <CardWithBorder.Title className="flex gap-2 items-center">
+              <CardWithBorder.Title className="flex items-center gap-2">
                 <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
                 {proposedChangesDetails?.created_by?.node?.display_label}
 
                 <DateDisplay
                   date={proposedChangesDetails.description.updated_at}
-                  className="ml-auto text-xs font-normal text-gray-600"
+                  className="ml-auto font-normal text-gray-600 text-xs"
                 />
               </CardWithBorder.Title>
 
@@ -190,10 +190,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         </div>
 
         <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
-          <CardWithBorder.Title className="flex justify-between items-center">
+          <CardWithBorder.Title className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
             >
               Proposed change
             </div>

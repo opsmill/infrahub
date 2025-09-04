@@ -30,7 +30,7 @@ export const Tree = ({ itemContent, className, loading, ...props }: TreeProps) =
         </TreeItemWrapper>
       )}
       className={classNames(
-        "text-sm w-fit min-w-0",
+        "w-fit min-w-0 text-sm",
         "[&_li:focus-visible]:rounded-sm [&_li:focus-visible]:outline-hidden [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2",
         className
       )}
@@ -46,8 +46,8 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
       style={{ paddingLeft: (level - 1) * 20 }}
       className={classNames(
         "flex items-center",
-        "text-gray-600 rounded-sm whitespace-nowrap mix-blend-multiply",
-        "h-8 px-1.5 cursor-pointer",
+        "whitespace-nowrap rounded-sm text-gray-600 mix-blend-multiply",
+        "h-8 cursor-pointer px-1.5",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-500",
         isSelected ? "bg-gray-200" : "hover:bg-gray-100",
         isHalfSelected && "bg-gray-50"

@@ -56,7 +56,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   }
 
   if (error) {
-    return <ErrorScreen message={error?.message} className="max-w-lg m-auto" />;
+    return <ErrorScreen message={error?.message} className="m-auto max-w-lg" />;
   }
 
   const firstPageNodes = data.pages[0];
@@ -87,22 +87,22 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
       }) ?? [];
 
   return (
-    <div className="h-[calc(100vh-14rem)] overflow-hidden flex flex-col">
-      <header className="flex items-center px-4 py-2 border-b border-gray-200 gap-2">
+    <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
+      <header className="flex items-center gap-2 border-gray-200 border-b px-4 py-2">
         <ProposedChangeDiffFilter branch={branch} filters={filters} />
-        <span className="text-xs inline-flex gap-1 ml-auto">
+        <span className="ml-auto inline-flex gap-1 text-xs">
           Updated <DateDisplay date={firstPageNodes?.to_time} />
         </span>
         <DiffRefreshButton size="sm" variant="primary" branchName={branch} />
         <DiffRebaseButton branchName={branch} />
       </header>
 
-      <div className="grow grid grid-cols-4 overflow-hidden">
-        <nav className="p-4 col-span-1 overflow-auto border-r border-gray-200">
+      <div className="grid grow grid-cols-4 overflow-hidden">
+        <nav className="col-span-1 overflow-auto border-gray-200 border-r p-4">
           <DiffTree nodes={nodes} className="w-full" />
         </nav>
 
-        <main className="space-y-4 p-4 col-start-2 col-end-5 overflow-auto bg-stone-100">
+        <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-stone-100 p-4">
           {nodes.length ? (
             nodes.map((node) => (
               <DiffNode
