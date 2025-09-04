@@ -377,6 +377,8 @@ class IPPrefixReconcileQuery(Query):
         WHERE %(branch_filter)s
         ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
         LIMIT 1
+        WITH ip_namespace
+        WHERE r.status = "active"
         """ % {"branch_filter": branch_filter, "namespace_kind": self.params["namespace_kind"]}
         self.add_to_query(namespace_query)
 
@@ -386,8 +388,13 @@ class IPPrefixReconcileQuery(Query):
             // ------------------
             // Get IP Prefix node by UUID
             // ------------------
-            MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})
+            OPTIONAL MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+            WITH ip_namespace, ip_node
             """ % {
+                "branch_filter": branch_filter,
                 "ip_kind": InfrahubKind.IPADDRESS
                 if isinstance(self.ip_value, IPAddressType)
                 else InfrahubKind.IPPREFIX,
