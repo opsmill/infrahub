@@ -1,6 +1,7 @@
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -178,9 +179,7 @@ export function ObjectDetailsMenu({
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes("objects"),
-            });
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectid={objectData.id!}

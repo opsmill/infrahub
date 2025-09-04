@@ -10,14 +10,13 @@ export const OBJECT_RELATIONSHIPS_PER_PAGE = 40;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetObjectRelationshipsParams = ContextParams &
-  PaginationParams & {
-    parentKind: string;
-    parentId: string;
-    relationshipName: string;
-    relationshipSchema: ModelSchema;
-    filters?: Array<Filter>;
-  };
+export interface GetObjectRelationshipsParams extends ContextParams, PaginationParams {
+  parentKind: string;
+  parentId: string;
+  relationshipName: string;
+  relationshipSchema: ModelSchema;
+  filters?: Array<Filter>;
+}
 
 export type GetObjectRelationships = (
   params: GetObjectRelationshipsParams

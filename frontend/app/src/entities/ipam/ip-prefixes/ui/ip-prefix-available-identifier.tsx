@@ -1,5 +1,6 @@
 import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
@@ -75,9 +76,7 @@ export function IpPrefixAvailableIdentifier({
         <ObjectForm
           onSuccess={() => {
             setIsCreateFormOpen(false);
-            queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes("objects"),
-            });
+            queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
             if (location.pathname.startsWith("/ipam")) {
               reloadIpamTree(parentNode?.id);

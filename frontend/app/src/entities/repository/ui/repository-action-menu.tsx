@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
   REIMPORT_LAST_COMMIT,
@@ -154,9 +155,7 @@ const ReimportLastCommitAction = ({ repositoryId }: { repositoryId: string }) =>
             message='Reimport of last commit started. You can view its status on the "Tasks" tab.'
           />
         );
-        await queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey.includes("objects"),
-        });
+        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       }
     },
   });
