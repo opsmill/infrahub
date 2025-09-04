@@ -401,8 +401,10 @@ jobs:
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
+      - name: Install Invoke
+        run: pip install invoke toml
       - name: "Build container"
-        run: "inv dev.build"
+        run: "invoke dev.build"
       - name: "Setup Python environment"
         run: |
           poetry config virtualenvs.create true --local
