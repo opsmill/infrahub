@@ -52,7 +52,7 @@ export const GlobalPermissionForm = ({
   const defaultValues = {
     action: getCurrentFieldValue("action", currentObject),
     decision: getCurrentFieldValue("decision", currentObject),
-    roles: roles,
+    roles,
   };
 
   const form = useForm<FieldValues>({

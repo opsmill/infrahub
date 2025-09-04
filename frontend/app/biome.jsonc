@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "clientKind": "git",
     "enabled": true,
@@ -69,6 +69,7 @@
         "useButtonType": "off",
         "useKeyWithClickEvents": "off",
         "useSemanticElements": "off",
+        "noNoninteractiveElementInteractions": "off",
         "noStaticElementInteractions": "off"
       },
       "complexity": {
@@ -104,20 +105,30 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
-        "useSortedClasses": "error"
+        "useConsistentTypeDefinitions": "off",
+        "useExhaustiveSwitchCases": "off",
+        "useImageSize": "off",
+        "noUnnecessaryConditions": "off",
+        "useMaxParams": "off",
+        "noNonNullAssertedOptionalChain": "off",
+        "noShadow": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",
+        "noImgElement": "off",
         "useTopLevelRegex": "off",
         "noNamespaceImport": "off"
       },
       "style": {
         "noDefaultExport": "off",
+        "noEnum": "off",
+        "noExportedImports": "off",
         "noImplicitBoolean": "off",
         "noInferrableTypes": "off",
         "noNamespace": "off",
         "noNegationElse": "off",
         "noNonNullAssertion": "off",
+        "noNestedTernary": "off",
         "noUselessElse": "off",
         "useBlockStatements": "off",
         "useConsistentArrayType": "off",
@@ -131,6 +142,7 @@
         "useNamingConvention": "off",
         "useNumberNamespace": "off",
         "useSelfClosingElements": "off",
+        "noMagicNumbers": "off",
         "useTemplate": "off"
       },
       "suspicious": {
@@ -138,7 +150,9 @@
         "noAssignInExpressions": "off",
         "noConsole": {
           "level": "error",
-          "options": { "allow": ["assert", "error", "info", "warn"] }
+          "options": {
+            "allow": ["assert", "error", "info", "warn"]
+          }
         },
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
@@ -173,5 +187,6 @@
     "linter": {
       "enabled": true
     }
-  }
+  },
+  "extends": ["ultracite"]
 }

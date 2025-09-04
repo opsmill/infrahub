@@ -1,6 +1,6 @@
 import { ApolloProvider } from "@apollo/client";
 import { addCollection } from "@iconify-icon/react";
-import mdiIcons from "@iconify-json/mdi/icons.json";
+import mdiIcons from "@iconify-json/mdi/icons.json" with { type: "json" };
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "jotai";
 import { ErrorBoundary } from "react-error-boundary";

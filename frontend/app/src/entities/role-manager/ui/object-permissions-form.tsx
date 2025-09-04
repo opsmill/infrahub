@@ -55,7 +55,7 @@ export const ObjectPermissionForm = ({
     name: getCurrentFieldValue("name", currentObject),
     action: getCurrentFieldValue("action", currentObject),
     decision: getCurrentFieldValue("decision", currentObject),
-    roles: roles,
+    roles,
   };
 
   const form = useForm<FieldValues>({

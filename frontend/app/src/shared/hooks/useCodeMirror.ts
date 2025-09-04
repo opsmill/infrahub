@@ -76,7 +76,7 @@ export function useCodeMirror(
     if (value === currentValue) return;
 
     view.dispatch({
-      changes: { from: 0, to: currentValue.length, insert: newValue || "" },
+      changes: { from: 0, to: currentValue.length, insert: newValue },
     });
   }, [value, view]);
 

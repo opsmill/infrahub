@@ -35,7 +35,7 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-o
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
 const fakeIndex = () => {
-  return sha(Math.random() * 100000).slice(0, 9);
+  return sha(Math.random() * 100_000).slice(0, 9);
 };
 
 const appendGitDiffHeaderIfNeeded = (diffText: string) => {

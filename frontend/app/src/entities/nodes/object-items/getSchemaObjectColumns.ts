@@ -98,7 +98,7 @@ export const getSchemaObjectColumns = ({
   }
 
   const attributes = getObjectAttributes({ schema, forListView, forQuery });
-  const relationships = getObjectRelationships({ schema: schema, forListView });
+  const relationships = getObjectRelationships({ schema, forListView });
 
   const columns = sortByOrderWeight(R.concat(attributes, relationships));
 

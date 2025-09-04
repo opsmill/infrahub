@@ -19,7 +19,7 @@ import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/consta
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();
   const { data, loading } = useQuery(GET_RESOURCE_POOL_ALLOCATED, {
-    variables: { poolId: resourcePoolId, resourceId: resourceId },
+    variables: { poolId: resourcePoolId, resourceId },
   });
 
   if (loading) return <ResourceAllocationPageSkeleton />;

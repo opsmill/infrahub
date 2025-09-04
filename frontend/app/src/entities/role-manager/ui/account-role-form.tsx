@@ -51,8 +51,8 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
 
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
-    groups: groups,
-    permissions: permissions,
+    groups,
+    permissions,
   };
 
   const form = useForm<FieldValues>({

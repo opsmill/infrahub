@@ -4,7 +4,7 @@ import { Label as AriaLabel, LabelProps as AriaLabelProps } from "react-aria-com
 import { classNames } from "@/shared/utils/common";
 
 export const labelVariants = cva([
-  "text-sm font-medium leading-none text-gray-900 cursor-pointer",
+  "cursor-pointer font-medium text-gray-900 text-sm leading-none",
   "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70",
 ]);
 

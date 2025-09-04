@@ -70,7 +70,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       ...filters,
       {
         name: SEARCH_ANY_FILTER,
-        value: value,
+        value,
       },
     ];
 

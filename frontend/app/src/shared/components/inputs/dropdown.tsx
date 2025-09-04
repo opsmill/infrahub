@@ -282,7 +282,7 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
 );
 
 export function getDropdownStyle(color?: string | null) {
-  if (!color) return undefined;
+  if (!color) return;
 
   return {
     backgroundColor: color,

@@ -33,7 +33,7 @@ export function getObjectRelationshipsQueryOptions(params: GetObjectRelationship
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECT_RELATIONSHIPS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + OBJECT_RELATIONSHIPS_PER_PAGE;
     },

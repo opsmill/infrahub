@@ -31,7 +31,7 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
       workflow: [BRANCH_VALIDATE_WORKFLOW],
       state: TASK_ONGOING_STATES,
     },
-    pollInterval: 5_000,
+    pollInterval: 5000,
   });
 
   const taskData = data?.[TASK_OBJECT];

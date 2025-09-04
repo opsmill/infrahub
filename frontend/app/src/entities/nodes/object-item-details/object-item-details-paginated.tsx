@@ -79,8 +79,8 @@ export default function ObjectItemDetails({
     return <Navigate to="/" />;
   }
 
-  const attributes = getObjectAttributes({ schema: schema });
-  const relationships = getObjectRelationships({ schema: schema });
+  const attributes = getObjectAttributes({ schema });
+  const relationships = getObjectRelationships({ schema });
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(

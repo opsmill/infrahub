@@ -40,7 +40,7 @@ export function PoolSelect({
         };
       }
       default: {
-        return undefined;
+        return;
       }
     }
   }, [poolKind, poolDefaultAllocatedObjectKind]);

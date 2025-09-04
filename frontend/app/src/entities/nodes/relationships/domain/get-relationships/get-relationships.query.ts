@@ -28,7 +28,7 @@ export function getRelationshipsInfiniteQueryOptions({
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < RELATIONSHIPS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + RELATIONSHIPS_PER_PAGE;
     },

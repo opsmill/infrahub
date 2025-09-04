@@ -26,7 +26,7 @@ export function getObjectsInfiniteQueryOptions(params: GetObjectsQueryParams) {
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECTS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + OBJECTS_PER_PAGE;
     },

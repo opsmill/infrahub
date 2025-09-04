@@ -8,17 +8,17 @@ import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-sm text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed border border-transparent",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-sm border border-transparent font-medium text-sm disabled:cursor-not-allowed disabled:opacity-60",
   {
     variants: {
       variant: {
-        primary: "text-white bg-custom-blue-700 shadow-sm enabled:hover:bg-custom-blue-700/90",
+        primary: "bg-custom-blue-700 text-white shadow-sm enabled:hover:bg-custom-blue-700/90",
         "primary-outline":
-          "text-custom-blue-700 border-custom-blue-700 bg-white shadow-xs enabled:hover:bg-gray-100",
-        danger: "text-white bg-red-500 shadow-sm enabled:hover:bg-red-500/90",
-        warning: "text-white bg-yellow-500 shadow-sm enabled:hover:bg-yellow-500/90",
-        active: "text-white bg-green-600 shadow-sm enabled:hover:bg-green-600/90",
-        "active-outline": "bg-white border-green-600 shadow-xs enabled:hover:bg-gray-100",
+          "border-custom-blue-700 bg-white text-custom-blue-700 shadow-xs enabled:hover:bg-gray-100",
+        danger: "bg-red-500 text-white shadow-sm enabled:hover:bg-red-500/90",
+        warning: "bg-yellow-500 text-white shadow-sm enabled:hover:bg-yellow-500/90",
+        active: "bg-green-600 text-white shadow-sm enabled:hover:bg-green-600/90",
+        "active-outline": "border-green-600 bg-white shadow-xs enabled:hover:bg-gray-100",
         outline: "border-gray-200 bg-white shadow-xs enabled:hover:bg-gray-100",
         dark: "bg-gray-200 shadow-xs enabled:hover:bg-gray-300",
         ghost: "hover:bg-gray-100",

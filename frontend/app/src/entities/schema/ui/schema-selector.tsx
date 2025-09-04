@@ -63,8 +63,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
               {schemas.map((schema) => {
                 const isSelected =
                   selectedKind && schema.kind && selectedKind.includes(schema.kind);
-                const isSelectedLast =
-                  isSelected && selectedKind[selectedKind.length - 1]?.includes(schema.kind!);
+                const isSelectedLast = isSelected && selectedKind.at(-1)?.includes(schema.kind!);
 
                 return (
                   <div
