@@ -1,38 +1,26 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   OBJECTS_PER_PAGE,
   ProposedChangesFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
+import { getProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
+import { PaginationParams } from "@/shared/api/types";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
-import { getProposedChanges } from "./get-proposed-changes";
 
 type GetProposedChangesInfiniteQueryOptionsParams = Omit<
   ProposedChangesFromApiParams,
   keyof PaginationParams
 >;
 
-export function getProposedChangesInfiniteQueryOptions({
-  schema,
-  filters,
-  branchName,
-  atDate,
-  getAttributesVisible,
-  getRelationshipsVisible,
-}: GetProposedChangesInfiniteQueryOptionsParams) {
+export function getProposedChangesInfiniteQueryOptions(
+  params: GetProposedChangesInfiniteQueryOptionsParams
+) {
   return infiniteQueryOptions({
-    queryKey: [branchName, atDate, "objects", schema.kind, filters],
+    queryKey: proposedChangesQueryKeys.list(params),
     queryFn: ({ pageParam }) => {
       return getProposedChanges({
-        schema,
+        ...params,
         offset: pageParam,
-        branchName,
-        atDate,
-        filters,
-        getAttributesVisible,
-        getRelationshipsVisible,
       });
     },
     initialPageParam: 0,
@@ -45,17 +33,6 @@ export function getProposedChangesInfiniteQueryOptions({
   });
 }
 
-export function useGetProposedChanges(
-  params: Omit<GetProposedChangesInfiniteQueryOptionsParams, keyof ContextParams>
-) {
-  const { currentBranch } = useCurrentBranch();
-  const timeMachineDate = useAtomValue(datetimeAtom);
-
-  return useInfiniteQuery(
-    getProposedChangesInfiniteQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    })
-  );
+export function useGetProposedChanges(params: GetProposedChangesInfiniteQueryOptionsParams) {
+  return useInfiniteQuery(getProposedChangesInfiniteQueryOptions(params));
 }

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -20,8 +20,6 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConfictSelection
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
-
-UTC = timezone.utc  # Required for older versions of Python
 
 ADDED_ACTION = "ADDED"
 UPDATED_ACTION = "UPDATED"

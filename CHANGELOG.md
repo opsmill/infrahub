@@ -11,6 +11,40 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.4) - 2025-09-03
+
+### Fixed
+
+- Fix HTTP 403 when trying to fetch object metadata in changelog without being allowed to manage permissions ([#ifc1760](https://github.com/opsmill/infrahub/issues/ifc1760))
+- Fix HTTP 403 when trying to fetch nodes though a `CoreNode` query, this could prevent users to select nodes in various places with the user interface ([#6733](https://github.com/opsmill/infrahub/issues/6733))
+- Re-run Migration026 in case it failed during an upgrade from 1.2.4 or earlier to 1.4.x or later. Root cause of the migration failure has already been addressed. ([#7112](https://github.com/opsmill/infrahub/issues/7112))
+- Fixed rebase bug by ensuring rebase operations with data only changes correctly set the .branched_from property of the branch within the registry. ([#7113](https://github.com/opsmill/infrahub/issues/7113))
+- UI requests for proposed change objects are now branch-agnostic, preventing errors when a branch is deleted
+
+### Housekeeping
+
+- Internal UI: Decouple config fetching from usage
+
+## [Infrahub - v1.4.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.3) - 2025-08-29
+
+### Fixed
+
+- Force branches data to be reloaded when the hash doesn't look healthy
+- In the UI, clicking the artifact generation button now refreshes the token and retries if the access token has expired.
+
+## [Infrahub - v1.4.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.2) - 2025-08-28
+
+### Fixed
+
+- Fix a bug where a proposed change could be merged without approval even if some approvals were required (Enterprise)
+- Removed incorrect log warning about 'Branch schema hash is not set, cannot update branch registry' due to including the '-global-' branch when processing branch updates.
+
+## [Infrahub - v1.4.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.1) - 2025-08-27
+
+### Fixed
+
+- Fix bug in schema validation that would incorrectly flag Dropdown attributes of node schema that override a generic attribute as having illegal values ([#7086](https://github.com/opsmill/infrahub/issues/7086))
+
 ## [Infrahub - v1.4.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.0) - 2025-08-26
 
 We're excited to announce the first release candidate of Infrahub 1.4.0!

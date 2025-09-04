@@ -1,0 +1,28 @@
+import {
+  ObjectDetailKeysParams,
+  objectQueryKeys,
+} from "@/entities/nodes/object/domain/object.query-keys";
+import { Filter } from "@/shared/hooks/useFilters";
+
+export interface RelationshipKeysBaseParams extends ObjectDetailKeysParams {
+  relationshipName: string;
+}
+
+export interface RelationshipListKeysParams extends RelationshipKeysBaseParams {
+  filters?: Filter[];
+}
+
+export interface RelationshipDetailKeysParams extends RelationshipKeysBaseParams {
+  relationshipId: string;
+}
+
+export const relationshipsQueryKeys = {
+  lists: ({ relationshipName, ...params }: RelationshipKeysBaseParams) =>
+    [...objectQueryKeys.detail(params), relationshipName] as const,
+  list: ({ filters, ...params }: RelationshipListKeysParams) =>
+    [...relationshipsQueryKeys.lists(params), filters] as const,
+  count: (params: RelationshipKeysBaseParams) =>
+    [...relationshipsQueryKeys.lists(params), "count"] as const,
+  properties: ({ relationshipId, ...params }: RelationshipDetailKeysParams) =>
+    [...relationshipsQueryKeys.lists(params), relationshipId, "properties"] as const,
+};

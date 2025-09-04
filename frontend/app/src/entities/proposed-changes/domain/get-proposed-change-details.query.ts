@@ -1,71 +1,23 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { useConfig } from "@/entities/config/get-config.query";
-import { PROPOSED_CHANGE_THREAD } from "@/entities/proposed-changes/constants";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
+import {
+  GetProposedChangeDetailsParams,
+  getProposedChangeDetails,
+} from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
-import { ProposedChangeDetailsFromApiParams } from "../api/get-proposed-change-details-from-api";
-import { getProposedChangeDetails } from "./get-proposed-change-details";
-import { useUpdateProposedChangeStateCheck } from "./update-proposed-change-check-state.mutation";
 
-type GetProposedChangeDetailsQueryOptionsParams = Omit<
-  ProposedChangeDetailsFromApiParams,
-  keyof PaginationParams
->;
+type GetProposedChangeDetailsQueryOptionsParams = GetProposedChangeDetailsParams;
 
 export function getProposedChangeDetailsQueryOptions({
-  id,
-  nodeId,
-  state,
-  branchName,
-  atDate,
+  proposedChangeId,
 }: GetProposedChangeDetailsQueryOptionsParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_THREAD, id, nodeId, state],
+    queryKey: proposedChangesQueryKeys.detail(proposedChangeId),
     queryFn: () => {
-      return getProposedChangeDetails({
-        branchName,
-        atDate,
-        id,
-        nodeId,
-        state,
-      });
+      return getProposedChangeDetails({ proposedChangeId });
     },
   });
 }
 
-export function useGetProposedChangeDetails(
-  params: Omit<GetProposedChangeDetailsQueryOptionsParams, keyof ContextParams>
-) {
-  const { currentBranch } = useCurrentBranch();
-  const timeMachineDate = useAtomValue(datetimeAtom);
-  const { data: config } = useConfig();
-
-  const mutation = useUpdateProposedChangeStateCheck({});
-
-  return useQuery({
-    ...getProposedChangeDetailsQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    }),
-    queryFn: async (context) => {
-      if (config.policy?.revoke_proposed_change_approvals) {
-        await mutation.mutateAsync({ proposedChangeId: params.id });
-      }
-
-      const originalFn = getProposedChangeDetailsQueryOptions({
-        ...params,
-        branchName: currentBranch.name,
-        atDate: timeMachineDate,
-      }).queryFn;
-
-      if (!originalFn) {
-        throw new Error("Query function is undefined");
-      }
-
-      return originalFn(context);
-    },
-  });
+export function useGetProposedChangeDetails(params: GetProposedChangeDetailsQueryOptionsParams) {
+  return useQuery(getProposedChangeDetailsQueryOptions(params));
 }

@@ -1,0 +1,448 @@
+---
+title: How to work with Git when developing Infrahub
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# How to work with Git when developing Infrahub
+
+This guide explains Git workflows and best practices when contributing to Infrahub, covering submodule management, branching strategies, and pull request workflows.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- Git 2.20+ installed with submodule support
+- SSH keys configured for GitHub access
+- Basic understanding of Git branching and merging concepts
+- Development environment set up per the [backend guide](../development/backend)
+
+## Working with submodules
+
+Infrahub includes the Python SDK as a Git submodule. This section covers essential submodule operations.
+
+### Clone the repository with submodules
+
+When cloning Infrahub for the first time, always include the `--recursive` flag to initialize submodules:
+
+<Tabs>
+  <TabItem value="ssh" label="SSH (recommended)">
+
+```bash
+git clone --recursive git@github.com:opsmill/infrahub.git
+cd infrahub
+```
+
+  </TabItem>
+  <TabItem value="https" label="HTTPS">
+
+```bash
+git clone --recursive https://github.com/opsmill/infrahub.git
+cd infrahub
+```
+
+  </TabItem>
+</Tabs>
+
+This automatically initializes and updates the `python_sdk` submodule to the correct commit.
+
+### Pull latest changes on an existing branch
+
+When updating your local repository, ensure submodules stay synchronized:
+
+```bash
+# Update the main repository and all submodules
+git pull --recurse-submodules
+
+# Alternative: pull main repo first, then sync submodules to recorded commits
+git pull
+git submodule update --init --recursive
+
+**Important**: Always use `--recurse-submodules` when pulling to avoid submodule synchronization issues.
+
+### Update the submodule to a specific commit
+
+When you need to update the submodule to track a different version of the Python SDK:
+
+```bash
+# Navigate to the submodule directory
+cd python_sdk
+
+# Fetch the latest tags and commits
+git fetch --tags origin
+
+# Check out the desired version (tag or commit)
+git checkout v1.10.0
+
+# Return to the main repository root
+cd ..
+
+# Stage the submodule update
+git add python_sdk
+
+# Commit the submodule pointer update
+git commit -m "update python_sdk to v1.10.0"
+```
+
+### Manage merge conflicts in submodules
+
+Submodule conflicts appear as conflicting commit pointers. Here's how to resolve them:
+
+1. **Identify the conflict**:
+
+   ```bash
+   git status
+   # Shows: both modified: python_sdk
+   ```
+
+2. **Check the conflicting commits**:
+
+   ```bash
+   git diff python_sdk
+   ```
+
+3. **Choose the resolution strategy**:
+
+   **Option A: Use the version from your branch**
+
+   ```bash
+   cd python_sdk
+   git checkout <your-commit-hash>
+   cd ..
+   git add python_sdk
+   ```
+
+   **Option B: Use the version from the target branch**
+
+   ```bash
+   cd python_sdk
+   git checkout <their-commit-hash>
+   cd ..
+   git add python_sdk
+   ```
+
+   **Option C: Update to the latest version**
+
+   ```bash
+   cd python_sdk
+   git fetch origin
+   git checkout origin/main  # or desired branch
+   cd ..
+   git add python_sdk
+   ```
+
+4. **Complete the merge**:
+
+   ```bash
+   git commit -m "resolve submodule conflict in python_sdk"
+   ```
+
+## Infrahub branching and release model
+
+Infrahub follows a structured branching model designed for stable releases and continuous development.
+
+### Branch structure
+
+**Main branches**:
+
+- `stable`: Production-ready code, protected branch, only updated via PRs
+- `develop`: Integration branch for new features, default branch for development
+
+**Feature branches**:
+
+- `feature/description`: New features or enhancements
+- `fix/description`: Bug fixes
+- `docs/description`: Documentation updates
+
+### Infrahub release model
+
+Infrahub follows semantic versioning (MAJOR.MINOR.PATCH) with these release types:
+
+**Major releases** (for example, 1.0.0 → 2.0.0):
+
+- Breaking API changes
+- Significant architectural updates
+- Migration guides provided
+
+**Minor releases** (for example, 1.3.0 → 1.4.0):
+
+- New features and improvements
+- Backward-compatible changes
+- Regular monthly cadence
+
+**Patch releases** (for example, 1.3.6 → 1.3.7):
+
+- Bug fixes and security updates
+- No new features
+- Released as needed
+
+### Release workflow
+
+1. **Development happens on `develop`**
+2. **Release preparation**:
+   - Create release branch from `develop`
+   - Update version numbers and changelog
+   - Final testing and bug fixes
+3. **Release**:
+   - Merge release branch to `stable`
+   - Create Git tag with version number
+   - Merge `stable` back to `develop`
+
+## Best practices for pull requests
+
+Follow these practices to ensure smooth code review and integration.
+
+### Before creating a pull request
+
+1. **Start from the correct base branch**:
+
+   ```bash
+   # For new features
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/your-feature-name
+   
+   # For urgent fixes
+   git checkout stable
+   git pull origin stable
+   git checkout -b fix/urgent-bug-fix
+   ```
+
+2. **Keep commits focused and atomic**:
+   - One logical change per commit
+   - Write clear, descriptive commit messages
+   - Use conventional commit format: `type(scope): description`
+
+3. **Update submodules if needed**:
+
+   ```bash
+   # Ensure submodules are current
+   git submodule update --recursive --remote
+   
+   # If submodule updates are needed, commit them
+   git add python_sdk
+   git commit -m "chore(deps): update python_sdk submodule"
+   ```
+
+4. **Test your changes**:
+
+   ```bash
+   # Run the full test suite
+   poetry run invoke test
+   
+   # Run linting and formatting
+   poetry run invoke lint
+   poetry run invoke format
+   
+   # Test with submodules
+   poetry run invoke backend.test
+   ```
+
+### Creating the pull request
+
+1. **Push to your feature branch**:
+
+   ```bash
+   git push -u origin feature/your-feature-name
+   ```
+
+2. **Create PR with detailed description**:
+   - Clear title summarizing the change
+   - Detailed description explaining the what and why
+   - Reference related issues using `#issue-number`
+   - Include testing instructions
+   - Add screenshots for UI changes
+
+3. **Use proper PR labels**:
+   - `type/feature`: New functionality
+   - `type/bug`: Bug fixes
+   - `type/docs`: Documentation changes
+   - `breaking`: Breaking changes
+   - `needs-review`: Ready for review
+
+### Pull request review process
+
+1. **Automated checks must pass**:
+   - All CI/CD pipelines
+   - Code quality checks
+   - Test coverage requirements
+   - Submodule consistency checks
+
+2. **Code review**:
+   - At least one approving review required
+   - Address all feedback and comments
+   - Update PR description if scope changes
+
+3. **Final merge**:
+   - Rebase on target branch if requested
+   - Squash commits if needed
+   - Use merge commit for feature branches
+
+## Bringing latest changes from stable into develop
+
+Periodically sync `develop` with `stable` to incorporate fixes and releases.
+
+### Regular sync process
+
+1. **Switch to develop and update**:
+
+   ```bash
+   git checkout develop
+   git pull origin develop
+   ```
+
+2. **Merge stable into develop**:
+
+   ```bash
+   git merge origin/stable
+   ```
+
+3. **Handle any conflicts**:
+   - Resolve merge conflicts manually
+   - Pay special attention to submodule conflicts
+   - Test the merge thoroughly
+
+4. **Push the updated develop**:
+
+   ```bash
+   git push origin develop
+   ```
+
+### After a release
+
+When a new version is released to `stable`:
+
+1. **Update your local branches**:
+
+   ```bash
+   git fetch origin --tags
+   git checkout stable
+   git pull origin stable
+   git checkout develop
+   git pull origin develop
+   ```
+
+2. **Merge stable to develop**:
+
+   ```bash
+   git merge stable
+   ```
+
+3. **Update submodules if needed**:
+
+   ```bash
+   git submodule update --recursive --remote
+   ```
+
+4. **Rebase your feature branches**:
+
+   ```bash
+   git checkout feature/your-feature
+   git rebase develop
+   ```
+
+## Troubleshooting common issues
+
+### Submodule shows as modified after pull
+
+**Problem**: `git status` shows the submodule as modified even after pulling.
+
+**Solution**:
+
+```bash
+# Reset submodule to the commit specified in the main repo
+git submodule update --recursive
+
+# Alternative: force submodule to match main repo
+cd python_sdk
+git reset --hard HEAD
+cd ..
+```
+
+### Submodule update fails with authentication error
+
+**Problem**: Cannot fetch submodule due to SSH/authentication issues.
+
+**Solution**:
+
+```bash
+# Configure Git to use SSH for GitHub
+git config url."git@github.com:".insteadOf "https://github.com/"
+
+# Or update submodule URLs to SSH
+git submodule set-url python_sdk git@github.com:opsmill/infrahub-sdk-python.git
+```
+
+### Merge conflicts with submodule pointers
+
+**Problem**: Git shows conflicts in submodule files during merge.
+
+**Solution**:
+
+1. Don't edit the submodule files directly in the main repository
+2. Navigate to the submodule directory to resolve conflicts
+3. Check out the appropriate commit in the submodule
+4. Return to main repository and stage the submodule update
+
+### Branch diverged after submodule update
+
+**Problem**: Local branch has diverged after updating submodules.
+
+**Solution**:
+
+```bash
+# If you need to keep your changes
+git stash
+git pull --rebase origin develop
+git stash pop
+
+# If the submodule update should be ignored
+git checkout HEAD -- python_sdk
+git submodule update --recursive
+```
+
+## Advanced workflows
+
+### Working with multiple feature branches
+
+When working on multiple features simultaneously:
+
+```bash
+# Create and switch between feature branches
+git checkout -b feature/feature-a develop
+git checkout -b feature/feature-b develop
+
+# Keep branches updated with develop
+git checkout feature/feature-a
+git rebase develop
+
+# Handle submodule updates per branch
+git submodule update --recursive
+```
+
+### Custom submodule workflows
+
+For advanced submodule management:
+
+```bash
+# Track a specific submodule branch
+git submodule set-branch --branch main python_sdk
+git submodule update --recursive --remote
+
+# Temporarily work on submodule locally
+cd python_sdk
+git checkout -b temp-changes
+# Make changes...
+git add . && git commit -m "temporary changes"
+cd ..
+git add python_sdk
+git commit -m "temp: use local submodule changes"
+```
+
+## Further reading
+
+- [Understanding Git repositories in Infrahub](../topics/repository) - Repository integration concepts  
+- [Backend development guide](../development/backend) - Setting up the development environment
+- [How to connect external Git repositories](../guides/repository) - External repository setup
+- [Proposed changes](../topics/proposed-change) - Understanding Infrahub's change management

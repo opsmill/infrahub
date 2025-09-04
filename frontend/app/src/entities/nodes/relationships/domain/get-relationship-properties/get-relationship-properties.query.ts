@@ -3,6 +3,7 @@ import {
   GetRelationshipPropertiesParams,
   getRelationshipProperties,
 } from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
@@ -14,16 +15,11 @@ export type UseGetRelationshipPropertiesParams = Omit<
 
 export function getRelationshipPropertiesQueryOptions(params: GetRelationshipPropertiesParams) {
   return queryOptions({
-    queryKey: [
-      params.branchName,
-      params.atDate,
-      "objects",
-      params.parentKind,
-      params.parentId,
-      params.relationshipName,
-      params.relationshipId,
-      "properties",
-    ],
+    queryKey: relationshipsQueryKeys.properties({
+      ...params,
+      objectKind: params.parentKind,
+      objectId: params.parentId,
+    }),
     queryFn: () => getRelationshipProperties(params),
   });
 }

@@ -1,233 +1,338 @@
 ---
 title: Architecture
 ---
-import CodeBlock from '@theme/CodeBlock';
-import import_deployTf from '!!raw-loader!../../../development/deploy.tf';
-import import_infrahubValuesYaml from '!!raw-loader!../../../development/k8s/infrahub-values.yaml';
-import import_minioValuesYaml from '!!raw-loader!../../../development/k8s/minio-values.yaml';
-import import_neo4jValuesYaml from '!!raw-loader!../../../development/k8s/neo4j-values.yaml';
-import import_prefectValuesYaml from '!!raw-loader!../../../development/k8s/prefect-values.yaml';
-import import_rabbitmqValuesYaml from '!!raw-loader!../../../development/k8s/rabbitmq-values.yaml';
-import import_redisSentinelDeployYaml from '!!raw-loader!../../../development/k8s/redis-sentinel-proxy-deploy.yaml';
-import import_redisSentinelSvcYaml from '!!raw-loader!../../../development/k8s/redis-sentinel-proxy-svc.yaml';
-import import_redisValuesYaml from '!!raw-loader!../../../development/k8s/redis-values.yaml';
-import import_serviceValuesYaml from '!!raw-loader!../../../development/k8s/service-values.yaml';
-import import_taskmanagerdbYaml from '!!raw-loader!../../../development/k8s/taskmanagerdb.yaml';
+import ReferenceLink from "../../src/components/Card";
 
-# Infrahub architecture
+# Understanding Infrahub's Architecture
 
-Infrahub is deployed as a container-based architecture, composed of multiple components. A minimum deployment consists of the following architecture:
+Infrahub's architecture combines graph database technology with Git-like version control to create a powerful platform for infrastructure management. This topic explains the core components, design principles, and how they work together to deliver a unified infrastructure management solution.
+
+## Introduction
+
+Understanding Infrahub's architecture helps you make informed decisions about deployment, scaling, and integration strategies. This explanation provides insight into the technical foundation that powers Infrahub's unique capabilities.
+
+This topic answers key questions about Infrahub's architecture:
+
+- How does Infrahub combine graph database capabilities with Git-like version control?
+- What architectural patterns enable Infrahub's scalability and resilience?
+- How do the various components communicate and coordinate?
+- What design decisions were made and why?
+
+## System architecture overview
 
 ![Infrahub Architecture](../media/high_level_architecture.excalidraw.svg)
 
-## Infrahub components
+Infrahub follows a layered architecture pattern that separates concerns and provides clear boundaries between different system responsibilities. The architecture consists of three conceptual layers:
 
-The main components are:
+1. **Presentation Layer**: User interfaces and API endpoints that provide access to Infrahub functionality
+2. **Application Layer**: Business logic, workflow orchestration, and event processing that implement Infrahub's core capabilities
+3. **Data Layer**: Persistent storage, caching, and messaging that provide reliable data management and communication
 
-- A **Frontend** written in React and rendered in the user's browser.
-- An **API server** written in Python with FastAPI.
-- A **Task manager** based on `Prefect` to orchestrate workflow tasks.
-- A **Task worker** written in Python to execute specific tasks such as managing the interaction with external Git repositories.
-- A **Graph database** based on `neo4j`.
-- A **Relational database** based on `PostgreSQL`.
-- A **Message bus** based on `RabbitMQ`.
-- A **Cache** based on `redis`.
-- An **Object Store** based on local storage or `Amazon S3`.
+### Detailed component architecture
+
+The following diagram shows the detailed interactions between Infrahub components, including data flow, event handling, and artifact generation:
+
+```mermaid
+graph TB
+    %% External Systems
+    Client[Client Applications]
+    GitRepo[Git Repository<br/>GitHub/GitLab]
+    ExtAuth[External Auth<br/>OAuth2/OIDC]
+
+    %% Presentation Layer
+    subgraph "Presentation Layer"
+        UI[Frontend<br/>React SPA]
+        API[API Server<br/>FastAPI + GraphQL]
+    end
+
+    %% Application Layer
+    subgraph "Application Layer"
+        subgraph "Core Services"
+            Schema[Schema Manager]
+            Branch[Branch Manager]
+            Node[Node Manager]
+            Perm[Permission System]
+            Valid[Validation Engine]
+        end
+
+        subgraph "Workflow Engine"
+            Prefect[Prefect Server]
+            TaskManager[Task Manager]
+            Workers[Task Workers]
+        end
+
+        subgraph "Event System"
+            EventBus[Event Bus]
+            Triggers[Event Triggers]
+            Actions[Event Actions]
+        end
+
+        subgraph "Artifact System"
+            ArtifactDef[Artifact Definitions]
+            Templates[Jinja2 Templates]
+            Transforms[Transform Functions]
+            Generator[Artifact Generator]
+        end
+    end
+
+    %% Data Layer
+    subgraph "Data Layer"
+        subgraph "Primary Storage"
+            GraphDB[(Graph Database<br/>Neo4j/Memgraph)]
+            TaskDB[(Task Database<br/>PostgreSQL)]
+        end
+
+        subgraph "Caching & Messaging"
+            Redis[(Redis Cache<br/>+ Distributed Locks)]
+            MessageBus[Message Bus<br/>RabbitMQ]
+        end
+
+        subgraph "Object Storage"
+            Storage[Object Storage<br/>S3/Local FS]
+            Artifacts[Generated Artifacts]
+        end
+    end
+
+    %% Service Layer
+    subgraph "Service Adapters"
+        DBAdapter[Database Adapter]
+        CacheAdapter[Cache Adapter]
+        MsgAdapter[Message Adapter]
+        StorageAdapter[Storage Adapter]
+    end
+
+    %% Data Flow - Main Operations
+    Client --> UI
+    Client --> API
+    UI --> API
+    API --> ExtAuth
+
+    %% API to Core Services
+    API --> Schema
+    API --> Branch
+    API --> Node
+    API --> Perm
+    API --> Valid
+
+    %% Core Services to Data
+    Schema --> DBAdapter
+    Branch --> DBAdapter
+    Node --> DBAdapter
+    DBAdapter --> GraphDB
+
+    %% Caching
+    API --> CacheAdapter
+    Schema --> CacheAdapter
+    Branch --> CacheAdapter
+    CacheAdapter --> Redis
+
+    %% Event Flow
+    Node --> EventBus
+    Branch --> EventBus
+    Schema --> EventBus
+    EventBus --> MsgAdapter
+    MsgAdapter --> MessageBus
+    MessageBus --> Triggers
+    Triggers --> Actions
+    Actions --> Prefect
+
+    %% Workflow System
+    API --> Prefect
+    Prefect --> TaskManager
+    TaskManager --> TaskDB
+    TaskManager --> Workers
+    Workers --> MsgAdapter
+
+    %% Artifact Generation Flow
+    Workers --> ArtifactDef
+    ArtifactDef --> Templates
+    ArtifactDef --> Transforms
+    Templates --> Generator
+    Transforms --> Generator
+    Generator --> DBAdapter
+    Generator --> StorageAdapter
+    StorageAdapter --> Storage
+    Storage --> Artifacts
+
+    %% Git Integration
+    Workers --> GitRepo
+    Artifacts --> GitRepo
+    GitRepo --> Workers
+
+    %% Permission Flow
+    API --> Perm
+    Node --> Perm
+    Branch --> Perm
+
+    %% Validation Flow
+    Node --> Valid
+    Schema --> Valid
+    Valid --> Workers
+
+    %% Styling
+    classDef external fill:#e1f5fe
+    classDef presentation fill:#f3e5f5
+    classDef application fill:#e8f5e8
+    classDef data fill:#fff3e0
+    classDef service fill:#fce4ec
+
+    class Client,GitRepo,ExtAuth external
+    class UI,API presentation
+    class Schema,Branch,Node,Perm,Valid,Prefect,TaskManager,Workers,EventBus,Triggers,Actions,ArtifactDef,Templates,Transforms,Generator application
+    class GraphDB,TaskDB,Redis,MessageBus,Storage,Artifacts data
+    class DBAdapter,CacheAdapter,MsgAdapter,StorageAdapter service
+```
+
+This diagram illustrates:
+
+- **Data Flow**: How requests flow from clients through the API to core services and data storage
+- **Event-Driven Architecture**: How changes trigger events that flow through the message bus to workflows
+- **Artifact Generation**: The complete pipeline from data to generated artifacts and Git integration
+- **Service Abstraction**: How adapter patterns enable pluggable implementations
+- **Cross-Cutting Concerns**: Authentication, authorization, caching, and validation
+
+## Component deep dive
 
 ### API server
 
-Language: Python
+The API server is the central hub for all client interactions. Built with **FastAPI** and written in **Python**, it provides both REST and GraphQL endpoints with a sophisticated middleware stack for authentication, authorization, and request handling.
 
-The API server delivers the REST API and the GraphQL endpoints.
-Internally, the API server is built with FastAPI as the web framework and Graphene to generate the GraphQL endpoints.
+**Key Design Decisions:**
+
+- **FastAPI over Flask/Django**: Chosen for async support, automatic API documentation, and type validation
+- **GraphQL support**: Enables efficient, flexible queries that minimize over-fetching and under-fetching of data
+- **Stateless design**: Facilitates horizontal scaling and reliability
+
+:::info
+The API server can be horizontally scaled by running multiple instances behind a load balancer, with all instances sharing the same backend services. This stateless design allows for high availability and increased throughput.
+:::
+
+<ReferenceLink title="FastAPI Project" url="https://github.com/fastapi/fastapi" />
+
+### Graph database
+
+The graph database is the heart of Infrahub's design. We selected **Neo4j**, a production-grade, battle-tested graph database used in thousands of deployments worldwide.
+
+**Key Design Decisions:**
+
+- **Graph Database over Relational Database**: Chosen for its ability to handle complex relationships and dynamic schemas
+- **Native graph operations**: Enables efficient traversal and relationship analysis that would be inefficient in traditional databases
+- **Schema flexibility**: Supports Infrahub's evolving data model requirements
 
 :::note
-
-Multiple instance of the API Server can run at the same time to process more requests.
-
+Under the hood, we use Bolt protocol and Cypher query language for database communication. This abstraction allows Infrahub to potentially support other graph database providers in the future (for example Memgraph).
 :::
+
+<ReferenceLink title="Neo4j Project" url="https://github.com/neo4j/neo4j" />
 
 ### Task manager
 
-The Task manager is based on Prefect, and is responsible for orchestration of tasks to be delegated to one or more Task workers.
+The Task Manager orchestrates workflows and delegates tasks to one or more [Task workers](#task-workers). Infrahub uses **Prefect** for workflow orchestration, providing a robust task execution framework with advanced features like retries, scheduling, and observability.
 
-### Task worker
+**Key Design Decisions:**
 
-Language: Python
-
-The Task worker is responsible for managing all the content related to the Git repositories. It organizes the file systems in order to quickly access any relevant commit. The Task worker periodically pulls the Git server for updates and listens to the RPC channel on the event bus for tasks to execute.
-
-Currently there are three types of tasks:
-
-- *Internal* tasks
-- *User* tasks
-- *Git* tasks
-
-Some of the tasks that can be executed on the Task worker include:
-
-- Rendering a Jinja template.
-- Rendering a transform function.
-- Executing a check.
-- All Git operations (pull/merge/diff).
+- **Do not reinvent the wheel**: Leverage existing tools and frameworks for workflow orchestration instead of building a custom solution
+- **Modern Python-native design**: Utilize Python's type system and async capabilities for better developer experience
+- **Separation of orchestration from execution**: Allow independent scaling of workflow management and task processing
 
 :::note
-
-Multiple instance of the Task worker can run at the same time to process more requests.
-
+Prefect requires a SQL database (PostgreSQL) for storing workflow states and tracking execution. This is why you see a PostgreSQL database in the architecture diagram.
 :::
 
-### Frontend
+<ReferenceLink title="Prefect Project" url="https://github.com/PrefectHQ/prefect" />
 
-React-based single page application.
+### Task workers
 
-## External systems
+Task workers are the execution engines of Infrahub. Written in **Python**, they are responsible for executing tasks delegated by the [Task manager](#task-manager). These workers perform operations such as:
 
-### Graph database
+- Rendering Jinja templates for artifact generation
+- Executing transform functions to manipulate data
+- Performing validation checks against schemas and business rules
+- Handling Git operations (pull, merge, diff, commit)
+- Processing data transformations and migrations
 
-The Graph database is based on Bolt and Cypher. Currently, we have validated both Neo4j 5.x and Memgraph as possible options.
-Neo4j is a production grade, battle tested graph database that is used in thousands of deployments around the world.
-Memgraph is a lightweight, very fast, in-memory database that works great for testing and demos.
+Task workers operate asynchronously, consuming tasks from queues and reporting results back to the task manager.
+
+:::note
+Task workers can be scaled horizontally by adding more instances, allowing for increased throughput and parallelism in task execution. Different types of workers can also be deployed to handle specialized tasks.
+:::
 
 ### Message bus
 
-The message bus is based on RabbitMQ. It supports both a fanout channel to distribute messages to all members at the same time and a RPC framework to distribute work synchronously.
-Infrahub also supports NATS JetStream for the message bus.
+The message bus is the communication backbone between components in Infrahub. It enables asynchronous messaging and event-driven architecture patterns, decoupling services to allow them to evolve independently and scale individually. Infrahub primarily supports **RabbitMQ** as the message bus implementation.
+
+**Key Design Decisions:**
+
+- **Event-driven architecture**: Enables loose coupling and real-time reactivity to system events
+- **Message persistence**: Ensures reliable delivery even during component failures
+- **Multiple messaging patterns**: Supports publish-subscribe, work queues, and request-reply patterns
+
+:::note
+Infrahub also supports NATS JetStream as an alternative message bus implementation, offering different performance characteristics and deployment models.
+:::
+
+<ReferenceLink title="RabbitMQ Project" url="https://www.rabbitmq.com/" />
 
 ### Cache
 
-The cache is based on Redis. It's mainly used as a central point to support the distributed lock systems between all the different component of the system.
-Infrahub also supports NATS JetStream for the cache.
+The cache system is built on **Redis** and serves multiple critical functions:
 
-### Git server (GitHub/GitLab)
+- **Distributed locking**: Coordinates access to shared resources across distributed components
+- **Temporary data storage**: Holds frequently accessed data to reduce database load
 
-Any Git server. The most popular being: GitHub, GitLab, or Bitbucket.
+**Key Design Decisions:**
 
-<!-- vale off -->
-## TLS-secured connections
-<!-- vale on -->
+- **In-memory data store**: Provides ultra-fast access with optional persistence
+- **Versatile data structures**: Supports complex operations beyond simple key-value storage
+- **Pub/sub capabilities**: Enables lightweight messaging for specific use cases
 
-Infrahub supports TLS connections toward the dependencies above.
-The following configuration variables are available to configure TLS:
+:::note
+Infrahub also supports NATS JetStream as an alternative cache implementation.
+:::
 
-```shell
-INFRAHUB_BROKER_TLS_CA_FILE=/opt/ssl/ca.pem # File path to a CA certificate or bundle in PEM format
-INFRAHUB_BROKER_TLS_ENABLED=true # Boolean to enable TLS connections (allowed values: 1, True, true, 0, False, false)
-INFRAHUB_BROKER_TLS_INSECURE=true # Boolean to ignore certificate verification, useful for self-signed certificates (CA is not verified, expiry is not verified, hostname is not verified)
+<ReferenceLink title="Redis Project" url="https://github.com/redis/redis" />
 
-INFRAHUB_CACHE_TLS_CA_FILE
-INFRAHUB_CACHE_TLS_ENABLED
-INFRAHUB_CACHE_TLS_INSECURE
-INFRAHUB_DB_TLS_CA_FILE
-INFRAHUB_DB_TLS_ENABLED
-INFRAHUB_DB_TLS_INSECURE
-```
+### Frontend
 
-### Graph database
+The frontend is a single-page application built with **React**. It provides an intuitive user interface for interacting with Infrahub's features.
 
-You can configure TLS for Neo4j using the following Docker environment variables:
+**Key Design Decisions:**
 
-```shell
-NEO4J_dbms_ssl_policy_bolt_enabled=true
-NEO4J_dbms_ssl_policy_bolt_base__directory=/opt/ssl
-NEO4J_dbms_ssl_policy_bolt_private__key=cert.key
-NEO4J_dbms_ssl_policy_bolt_public__certificate=cert.pem
-NEO4J_dbms_connector_bolt_tls__level=REQUIRED
-```
+- **Component-based architecture**: Promotes reusability and consistency
+- **State management**: Uses modern React patterns for efficient state management
+- **Modular packaging**: Core UI components separated from application code
 
-## Infrahub High Availability deployment
+<ReferenceLink title="React Project" url="https://github.com/facebook/react" />
 
-Infrahub may be deployed with no single-point of failure, and horizontally scaled architectures can be deployed. An example of a HA deployment is below:
+## Scalability and High Availability
 
-![Infrahub Architecture](../media/high_level_architecture_ha.excalidraw.svg)
+Infrahub is designed to scale with your infrastructure needs and provide resilience against component failures.
 
-### Using Terraform
+### Horizontal scaling
 
-<details>
-  <summary>An example of an all-in-one HA deployment using Terraform on a 3-nodes Kubernetes cluster</summary>
-  <CodeBlock language="hcl" title="deploy.tf">{import_deployTf}</CodeBlock>
-</details>
+Infrahub's architecture allows key components to scale horizontally to handle increased load:
 
-### Using Helm
+- **API Servers**: Multiple stateless instances behind a load balancer
+- **Task Workers**: Parallel task execution across multiple worker instances
 
-<details>
-  <summary>The same example but without Terraform, just Helm and kubectl</summary>
+### High availability deployment
 
-  <CodeBlock language="yaml" title="redis-values.yaml">{import_redisValuesYaml}</CodeBlock>
+![Infrahub HA Architecture](../media/high_level_architecture_ha.excalidraw.svg)
 
-  ```bash
-  helm repo add bitnami https://charts.bitnami.com/bitnami
-  helm repo update
-  helm install cache bitnami/redis --version 19.5.2 --namespace infrahub --create-namespace --values redis-values.yaml
-  ```
+A highly available deployment eliminates single points of failure through redundancy:
 
-  <CodeBlock language="yaml" title="redis-sentinel-proxy-deploy.yaml">{import_redisSentinelDeployYaml}</CodeBlock>
+- **Neo4j Cluster**: 3+ nodes for graph database redundancy with automatic failover
+- **Redis Sentinel**: Automatic detection of master failures and promotion of replicas
+- **RabbitMQ Cluster**: Message bus redundancy with mirrored queues
+- **PostgreSQL Replication**: Task manager database with primary-replica setup
+- **Multiple API/Worker Instances**: Distributed across multiple availability zones
+- **Load Balancers**: Redundant load balancers for API layer access
 
-  <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
+This architecture ensures that Infrahub continues to operate even if individual components experience failures.
 
-  ```bash
-  kubectl apply -f redis-sentinel-proxy-deploy.yaml --namespace infrahub
-  kubectl apply -f redis-sentinel-proxy-svc.yaml --namespace infrahub
-  ```
+<ReferenceLink title="High Availability Examples" url="../guides/installation#high-availability-deployment-examples" />
 
-  <CodeBlock language="yaml" title="rabbitmq-values.yaml">{import_rabbitmqValuesYaml}</CodeBlock>
+## Further reading
 
-  ```bash
-  helm install messagequeue oci://registry-1.docker.io/bitnamicharts/rabbitmq --version 14.4.1 --namespace infrahub --create-namespace --values rabbitmq-values.yaml
-  ```
-
-  <CodeBlock language="yaml" title="neo4j-values.yaml">{import_neo4jValuesYaml}</CodeBlock>
-
-  ```bash
-  helm repo add neo4j https://helm.neo4j.com/neo4j/
-  helm repo update
-  helm install database-0 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-1 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-2 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
-  ```
-
-  Once all instances are running, install the headless service
-
-  <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
-
-  ```bash
-  helm install database-service neo4j/neo4j-headless-service --version 5.20.0 --namespace infrahub --values service-values.yaml
-  ```
-
-  <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
-
-  ```bash
-  helm install objectstore oci://registry-1.docker.io/bitnamicharts/minio --version 15.0.5 --namespace infrahub --create-namespace --values minio-values.yaml
-  ```
-
-  ```bash
-  helm repo add cnpg https://cloudnative-pg.github.io/charts
-  helm repo update
-  helm install cnpg cnpg/cloudnative-pg --version 0.23.2 --namespace infrahub --create-namespace
-  kubectl create secret generic prefect-user --namespace infrahub --from-literal=username=prefect --from-literal=password=prefect
-  ```
-
-  <CodeBlock language="yaml" title="taskmanagerdb.yaml">{import_taskmanagerdbYaml}</CodeBlock>
-
-  ```bash
-  kubectl apply -f taskmanagerdb.yaml --namespace infrahub
-  ```
-
-  <CodeBlock language="yaml" title="prefect-values.yaml">{import_prefectValuesYaml}</CodeBlock>
-
-  ```bash
-  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.2.21193831 --namespace infrahub --create-namespace --values prefect-values.yaml
-  ```
-
-  Deploy the Prefect Helm chart with a single replica initially to prevent concurrent database initialization issues. Wait for the first pod to become ready and complete database initialization. Once initialized, scale up to your desired number of replicas for high availability.
-
-  ```bash
-  kubectl scale deployment/prefect-server --replicas=3 --namespace infrahub
-  ```
-
-  <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
-
-  ```bash
-  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.3.5 --namespace infrahub --create-namespace --values infrahub-values.yaml
-  ```
-
-</details>
+- [Infrahub Installation Guide](../guides/installation.mdx) - Step-by-step installation instructions including high availability deployment examples
+- [Hardware Requirements](./hardware-requirements.mdx) - System requirements for optimal performance

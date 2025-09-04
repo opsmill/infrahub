@@ -1,16 +1,22 @@
-import { ActionAvailability } from "@/shared/api/graphql/generated/graphql";
 import {
   GetProposedChangeActionFromApiParams,
   getProposedChangeAvailableActionFromApi,
-} from "../api/get-proposed-changes-available-actions-from-api";
+} from "@/entities/proposed-changes/api/get-proposed-changes-available-actions-from-api";
+import { ActionAvailability } from "@/shared/api/graphql/generated/graphql";
 
-export async function getProposedChangeAvailableActions(
+export type GetProposedChangeAvailableActionsParams = GetProposedChangeActionFromApiParams;
+
+export type GetProposedChangeAvailableActions = (
+  params: GetProposedChangeAvailableActionsParams
+) => Promise<Record<string, ActionAvailability>>;
+
+export const getProposedChangeAvailableActions: GetProposedChangeAvailableActions = async (
   params: GetProposedChangeActionFromApiParams
-) {
+) => {
   const { data, errors } = await getProposedChangeAvailableActionFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
   return data.CoreProposedChangeAvailableActions.edges.reduce(
@@ -50,4 +56,4 @@ export async function getProposedChangeAvailableActions(
     },
     {}
   );
-}
+};

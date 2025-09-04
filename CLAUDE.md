@@ -34,6 +34,10 @@ poetry run invoke yamllint
 
 # Lint markdown files
 markdownlint --config .markdownlint.yaml --ignore "**/node_modules/**" "**/*.md" "**/*.mdx"
+
+# Lint documentation prose with Vale
+# Check documentation with Vale for style issues
+vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 ```
 
 ### Testing
@@ -57,6 +61,19 @@ poetry install
 
 # Update dependencies and submodules
 poetry run invoke pull
+```
+
+### Documentation
+
+```bash
+# Build documentation (run this after any changes to docs/ directory)
+cd docs && npm run build
+
+# Serve documentation locally for testing
+cd docs && npm run serve
+
+# Check documentation style and writing quality after making changes
+vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 ```
 
 ## LLM Instructions for Code Generation
@@ -92,6 +109,7 @@ poetry run invoke pull
 - Format all Python files: `poetry run invoke format`
 - Validate formatting: `poetry run invoke lint`
 - Lint markdown files: `markdownlint --config .markdownlint.yaml "**/*.md" "**/*.mdx"`
+- Lint documentation prose: `vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")`
 
 ### Tooling Standards (from .github/instructions/)
 

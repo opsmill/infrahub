@@ -36,6 +36,16 @@ export default function HomepageHeader() {
                     </Link>
                     <Link
                         className={clsx(styles.heroButton, "button button--secondary button--lg")}
+                        to="topics/community-vs-enterprise"
+                    >
+                        {translate({
+                            id: 'home.header.editions',
+                            message: 'Community vs Enterprise',
+                        })}
+                        <ArrowRightIcon />
+                    </Link>
+                    <Link
+                        className={clsx(styles.heroButton, "button button--secondary button--lg")}
                         to="https://sandbox.infrahub.app/"
                     >
                         {translate({

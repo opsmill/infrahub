@@ -4,9 +4,9 @@ import {
 } from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { formatFullDate } from "@/shared/utils/date";
 
 export interface RelationshipPropertiesProps extends UseGetRelationshipPropertiesParams {}
@@ -15,7 +15,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
   const { data, isPending, error } = useGetRelationshipProperties(props);
 
   if (isPending) {
-    return <Spinner />;
+    return <LoadingIndicator message="Loading relationship properties..." />;
   }
 
   if (error) {
@@ -29,7 +29,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
       name: "Source",
       value: source ? (
         <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
-          source.display_label
+          {source.display_label}
         </Link>
       ) : (
         "-"

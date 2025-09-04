@@ -1784,7 +1784,7 @@ async def all_attribute_default_types_schema(
 
 
 @pytest.fixture
-async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
+async def criticality_schema_root() -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1824,11 +1824,18 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
         ],
     }
     node = NodeSchema(**node_schema)
+    return SchemaRoot(nodes=[node], generics=[generic])
 
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-    registry.schema.set(name=generic.kind, schema=generic, branch=default_branch.name)
+
+@pytest.fixture
+async def criticality_schema(
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema, criticality_schema_root: SchemaRoot
+) -> NodeSchema:
+    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get(name=node.kind, branch=default_branch.name)
+    return registry.schema.get_node_schema(
+        name=criticality_schema_root.nodes[0].kind, branch=default_branch.name, duplicate=False
+    )
 
 
 @pytest.fixture

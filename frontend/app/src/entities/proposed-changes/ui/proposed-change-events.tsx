@@ -17,7 +17,7 @@ export const ProposedChangeEvents = () => {
       order: "ASC",
     },
     config: {
-      refetchInterval: 1000,
+      refetchInterval: 10_000,
     },
   });
 
