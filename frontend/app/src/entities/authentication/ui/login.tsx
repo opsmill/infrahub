@@ -1,13 +1,15 @@
-import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useConfig } from "@/entities/config/ui/config-provider";
+import { useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import InputField from "@/shared/components/form/fields/input.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
-import { useState } from "react";
+
+import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useConfig } from "@/entities/config/ui/config-provider";
 
 export const Login = () => {
   const config = useConfig();

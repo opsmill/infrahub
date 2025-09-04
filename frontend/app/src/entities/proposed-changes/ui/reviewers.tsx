@@ -1,6 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+
 import { Avatar } from "@/shared/components/display/avatar";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
 
 type ProposedChangesReviewersProps = {
   reviewers: any[];

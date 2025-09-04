@@ -1,4 +1,5 @@
 import { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
+
 import { SchemaConflict } from "./schema-conflict";
 
 export const SchemaIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "conflicts">) => {

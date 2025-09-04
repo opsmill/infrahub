@@ -1,4 +1,8 @@
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Icon } from "@iconify-icon/react";
+import { FileBoxIcon } from "lucide-react";
+import { ControllerRenderProps } from "react-hook-form";
+import { Link } from "react-router";
+
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   FormAttributeValue,
@@ -15,10 +19,8 @@ import { FormLabel } from "@/shared/components/ui/form";
 import { LabelProps } from "@/shared/components/ui/label";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { FileBoxIcon } from "lucide-react";
-import { ControllerRenderProps } from "react-hook-form";
-import { Link } from "react-router";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
   <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>

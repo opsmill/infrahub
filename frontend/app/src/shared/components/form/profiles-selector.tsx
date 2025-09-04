@@ -1,7 +1,8 @@
-import { getProfiles } from "@/entities/nodes/api/getProfiles";
-import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { NodeSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { useEffect, useId } from "react";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -20,10 +21,11 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useEffect, useId } from "react";
+
+import { getProfiles } from "@/entities/nodes/api/getProfiles";
+import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 
 type ProfilesSelectorProps = {
   schema: NodeSchema;

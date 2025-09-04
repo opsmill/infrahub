@@ -1,13 +1,16 @@
+import * as R from "ramda";
+
 import {
   attributesKindForDetailsViewExclude,
   relationshipsForDetailsView,
   relationshipsForListView,
 } from "@/config/constants";
+
+import { sortByOrderWeight } from "@/shared/utils/common";
+
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { sortByOrderWeight } from "@/shared/utils/common";
-import * as R from "ramda";
 
 type tgetObjectAttributes = {
   schema: ModelSchema | undefined;

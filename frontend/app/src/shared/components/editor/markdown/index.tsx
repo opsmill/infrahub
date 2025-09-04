@@ -1,7 +1,9 @@
+import { FC, forwardRef, useRef, useState } from "react";
+
 import { focusWithinStyle } from "@/shared/components/ui/style";
 import { useCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { classNames } from "@/shared/utils/common";
-import { FC, forwardRef, useRef, useState } from "react";
+
 import { MarkdownEditorHeader } from "./markdown-editor-header";
 import { MarkdownRender } from "./markdown-render";
 

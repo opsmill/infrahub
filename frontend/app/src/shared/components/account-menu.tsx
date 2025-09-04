@@ -1,3 +1,10 @@
+import { gql, useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect } from "react";
+import { Link, useLocation } from "react-router";
+import { toast } from "react-toastify";
+
 import {
   INFRAHUB_DISCORD_URL,
   INFRAHUB_DOC_LOCAL,
@@ -5,10 +12,7 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
-import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
@@ -22,12 +26,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { gql, useQuery } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
-import { Link, useLocation } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 
 export const AccountMenu = () => {
   const { isAuthenticated, signOut } = useAuth();

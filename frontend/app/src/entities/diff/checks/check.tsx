@@ -1,5 +1,6 @@
-import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
@@ -11,8 +12,10 @@ import { List } from "@/shared/components/table/list";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+
+import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+
 import { DataIntegrityConflicts } from "./data-integrity-conflicts";
 import { SchemaIntegrityConflicts } from "./schema-integrity-conflicts";
 

@@ -1,3 +1,14 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+import React, { useState } from "react";
+
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { Badge } from "@/shared/components/ui/badge";
+import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
+import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { debounce } from "@/shared/utils/common";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
@@ -8,15 +19,6 @@ import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,
 } from "@/entities/schema/utils/is-hierarchical-schema";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { Badge } from "@/shared/components/ui/badge";
-import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
-import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { debounce } from "@/shared/utils/common";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
-import React, { useState } from "react";
 
 export interface RelationshipHierarchicalComboboxListProps {
   peer: string;

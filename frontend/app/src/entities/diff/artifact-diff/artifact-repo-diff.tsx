@@ -1,14 +1,18 @@
-import { getArtifactDetails } from "@/entities/artifacts/api/getArtifacts";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { gql } from "@apollo/client";
+import { useAtom } from "jotai";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/display/badge";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { gql } from "@apollo/client";
-import { useAtom } from "jotai";
+
+import { getArtifactDetails } from "@/entities/artifacts/api/getArtifacts";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
+
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { ArtifactContentDiff } from "./artifact-content-diff";
 
 export const ArtifactRepoDiff = (props: any) => {

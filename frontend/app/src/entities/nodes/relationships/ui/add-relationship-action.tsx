@@ -1,8 +1,10 @@
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import React, { useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
-import React, { useState } from "react";
+
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface AddRelationshipActionProps {
   peer: string;

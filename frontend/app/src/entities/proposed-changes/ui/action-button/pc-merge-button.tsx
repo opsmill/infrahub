@@ -1,15 +1,19 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { toast } from "react-toastify";
+
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
-import { MERGE_STATE } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { toast } from "react-toastify";
+
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
+import { MERGE_STATE } from "@/entities/proposed-changes/constants";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {

@@ -1,22 +1,25 @@
+import { Icon } from "@iconify-icon/react";
+import { Command, useCommandState } from "cmdk";
+import { format } from "date-fns";
+import { ReactElement } from "react";
+
 import { SEARCH_QUERY_NAME } from "@/config/constants";
-import { POOLS_PEER } from "@/entities/ipam/constants";
-import { SEARCH } from "@/entities/nodes/api/search";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Skeleton } from "@/shared/components/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { Icon } from "@iconify-icon/react";
-import { Command, useCommandState } from "cmdk";
-import { format } from "date-fns";
-import { ReactElement } from "react";
+
+import { POOLS_PEER } from "@/entities/ipam/constants";
+import { SEARCH } from "@/entities/nodes/api/search";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);

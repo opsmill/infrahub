@@ -1,8 +1,11 @@
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
-import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+
+import { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
+import { Badge } from "@/shared/components/ui/badge";
+
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+
 import { DataConflict } from "./data-conflict";
 
 export const DataIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "conflicts">) => {

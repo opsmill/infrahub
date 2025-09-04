@@ -1,3 +1,13 @@
+import { useSetAtom } from "jotai";
+import * as R from "ramda";
+import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { sortByName, sortByOrderWeight } from "@/shared/utils/common";
+
 import { useGetSchemaHash } from "@/entities/schema/domain/get-schema-hash.query";
 import { useLoadSchema } from "@/entities/schema/domain/load-schema.query";
 import {
@@ -9,14 +19,6 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { sortByName, sortByOrderWeight } from "@/shared/utils/common";
-import { useSetAtom } from "jotai";
-import * as R from "ramda";
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
 
 export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: schemaHash, error: errorHash } = useGetSchemaHash();

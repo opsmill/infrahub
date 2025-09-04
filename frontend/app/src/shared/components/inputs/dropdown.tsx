@@ -1,6 +1,6 @@
-import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
-import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
+import { Icon } from "@iconify-icon/react";
+import React, { forwardRef, HTMLAttributes, useState } from "react";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -18,8 +18,10 @@ import {
 } from "@/shared/components/ui/combobox";
 import { CommandItem } from "@/shared/components/ui/command";
 import { classNames, getTextColor } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React, { forwardRef, HTMLAttributes, useState } from "react";
+
+import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 
 export type DropdownOption = {
   value: string;

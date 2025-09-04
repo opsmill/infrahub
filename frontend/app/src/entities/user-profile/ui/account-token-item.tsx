@@ -1,9 +1,11 @@
-import { AccountTokenDeleteAction } from "@/entities/user-profile/ui/account-token-delete-action";
+import { Icon } from "@iconify-icon/react";
+
 import { AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
 import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
-import { Icon } from "@iconify-icon/react";
+
+import { AccountTokenDeleteAction } from "@/entities/user-profile/ui/account-token-delete-action";
 
 export interface AccountTokenItemProps {
   token: AccountTokenNode;

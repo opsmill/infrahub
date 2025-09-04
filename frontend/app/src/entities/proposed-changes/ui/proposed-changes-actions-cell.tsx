@@ -1,5 +1,6 @@
-import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import { Permission } from "@/entities/permission/types";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import {
   DropdownMenu,
@@ -8,8 +9,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
+import { Permission } from "@/entities/permission/types";
+
 import { PROPOSED_CHANGE_OBJECT } from "../constants";
 
 export interface ActionsCellProps {

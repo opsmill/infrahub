@@ -1,3 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
+
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   NodeCore,
@@ -9,8 +13,6 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
 
 export interface TableRelationshipCellProps {
   relationshipSchema: RelationshipSchema;

@@ -1,6 +1,5 @@
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { JsonEditor } from "@/shared/components/editor/json/json-editor";
@@ -15,7 +14,10 @@ import { Input } from "@/shared/components/ui/input";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
+
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface DynamicFilterInputProps {
   fieldSchema: AttributeSchema | RelationshipSchema;

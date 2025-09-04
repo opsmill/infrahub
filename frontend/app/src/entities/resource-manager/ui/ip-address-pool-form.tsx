@@ -1,9 +1,7 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { gql } from "@apollo/client";
+import { useMemo } from "react";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { NodeFormProps } from "@/shared/components/form/node-form";
@@ -13,9 +11,14 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useMemo } from "react";
-import { toast } from "react-toastify";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { IP_ADDRESS_POOL } from "../constants";
 
 const ADDRESS_DEFAULT_TYPE_FIELD_NAME = "default_address_type";

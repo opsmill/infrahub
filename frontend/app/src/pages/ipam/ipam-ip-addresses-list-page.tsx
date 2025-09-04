@@ -1,9 +1,10 @@
+import ErrorScreen from "@/shared/components/errors/error-screen";
+
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import { IpAddressManager } from "@/entities/ipam/ip-addresses/ui/ip-address-manager";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { IpNamespaceTabs } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-tabs";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import ErrorScreen from "@/shared/components/errors/error-screen";
 
 export const Component = () => {
   const { currentIpNamespace } = useCurrentIpNamespace();

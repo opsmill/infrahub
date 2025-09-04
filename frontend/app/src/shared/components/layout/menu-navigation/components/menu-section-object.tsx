@@ -1,3 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+import { Link } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ObjectAvatar } from "@/shared/components/layout/menu-navigation/components/object-avatar";
 import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
@@ -13,9 +17,6 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
-import { Link } from "react-router";
 
 export interface MenuSectionObjectsProps {
   items: MenuItem[];

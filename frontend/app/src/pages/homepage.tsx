@@ -1,8 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router";
+
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import Content from "@/shared/components/layout/content";
 import { Card } from "@/shared/components/ui/card";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
 const Homepage = () => {
   return (

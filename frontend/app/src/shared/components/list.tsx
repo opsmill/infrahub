@@ -70,7 +70,11 @@ const ListItems = ({
   items,
   disabled,
   onDelete,
-}: { items: string[]; disabled?: boolean; onDelete: (item: string) => void }) => {
+}: {
+  items: string[];
+  disabled?: boolean;
+  onDelete: (item: string) => void;
+}) => {
   return (
     <div
       className={classNames(

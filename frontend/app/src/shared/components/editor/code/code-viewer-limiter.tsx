@@ -1,7 +1,8 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { HTMLAttributes, useState } from "react";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { classNames } from "@/shared/utils/common";
 
 export const CodeViewerLimiter = ({
   children,

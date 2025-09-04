@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import {
   AttributeValueFromProfile,
   DynamicFieldProps,
@@ -9,7 +11,7 @@ import {
   getCreateMutationFromFormData,
   getCreateMutationFromFormDataOnly,
 } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { describe, expect, it } from "vitest";
+
 import { buildFormField } from "../../../../../../tests/fake/form";
 import { generateRelationshipNode } from "../../../../../../tests/fake/node";
 

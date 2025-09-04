@@ -1,18 +1,21 @@
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
-import { getThreadLabel, getThreadTitle } from "@/entities/diff/utils";
-import { getProposedChangesObjectThreads } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
-import SlideOver from "@/shared/components/display/slide-over";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { gql, useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { use, useState } from "react";
 import { useParams } from "react-router";
 
-import { getPermission } from "@/entities/permission/utils";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
+import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+
+import { getThreadLabel, getThreadTitle } from "@/entities/diff/utils";
+import { getPermission } from "@/entities/permission/utils";
+import { getProposedChangesObjectThreads } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
 

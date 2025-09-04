@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Command } from "cmdk";
 import React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export function SearchAnywhereGroup({
   className,

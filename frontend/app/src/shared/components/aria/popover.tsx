@@ -1,4 +1,3 @@
-import { classNames } from "@/shared/utils/common";
 import {
   Dialog as AriaDialog,
   DialogProps as AriaDialogProps,
@@ -7,6 +6,8 @@ import {
   PopoverProps as AriaPopoverProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export const PopoverTrigger = AriaDialogTrigger;
 

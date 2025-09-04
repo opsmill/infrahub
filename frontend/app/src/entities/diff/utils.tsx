@@ -1,9 +1,12 @@
+import { Icon } from "@iconify-icon/react";
+
 import { NODE_PATH_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+
 import { NodeLabel } from "../nodes/object/ui/node-label";
 
 function extractNodeId(path: string) {

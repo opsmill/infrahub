@@ -1,7 +1,10 @@
-import { NodeCore, NodeObject, NodeRelationshipOne } from "@/entities/nodes/types";
+import { gql } from "@apollo/client";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
+
+import { NodeCore, NodeObject, NodeRelationshipOne } from "@/entities/nodes/types";
+
 import { buildGetAncestorsQuery } from "../api/get-ip-prefix-ancestors-from-api";
 
 export interface IPPrefixNode extends NodeCore {

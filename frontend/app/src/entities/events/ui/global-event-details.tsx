@@ -1,5 +1,7 @@
-import { EventType } from "@/entities/events/types";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
+
+import { EventType } from "@/entities/events/types";
+
 import { EventDetails } from "./event-details";
 import { NodeEvents } from "./node-details-events";
 

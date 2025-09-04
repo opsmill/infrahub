@@ -1,7 +1,6 @@
-import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
-import ObjectHeader from "@/entities/nodes/object-header";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { useAtomValue } from "jotai";
+import { Outlet, useParams } from "react-router";
+
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import {
@@ -10,8 +9,11 @@ import {
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router";
+
+import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
+import ObjectHeader from "@/entities/nodes/object-header";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();

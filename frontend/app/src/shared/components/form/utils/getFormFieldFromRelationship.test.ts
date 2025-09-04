@@ -1,5 +1,7 @@
-import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { describe, expect, it } from "vitest";
+
+import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
+
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import { DEFAULT_FORM_FIELD_VALUE } from "../constants";
 

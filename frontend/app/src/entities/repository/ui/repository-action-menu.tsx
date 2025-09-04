@@ -1,10 +1,9 @@
+import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { Pressable } from "react-aria-components";
+import { toast } from "react-toastify";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import {
-  CHECK_REPOSITORY_CONNECTIVITY,
-  REIMPORT_LAST_COMMIT,
-} from "@/entities/repository/api/actions";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import {
@@ -16,10 +15,12 @@ import {
 } from "@/shared/components/aria/menu";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Dialog } from "@headlessui/react";
-import { useState } from "react";
-import { Pressable } from "react-aria-components";
-import { toast } from "react-toastify";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import {
+  CHECK_REPOSITORY_CONNECTIVITY,
+  REIMPORT_LAST_COMMIT,
+} from "@/entities/repository/api/actions";
 
 const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
   const [isOpen, setIsOpen] = useState(false);

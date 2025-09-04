@@ -1,9 +1,11 @@
+import { PlayIcon } from "lucide-react";
+import { useState } from "react";
+import { Text } from "react-aria-components";
+import { Link } from "react-router";
+import { toast } from "react-toastify";
+
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -12,11 +14,12 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { PlayIcon } from "lucide-react";
-import { useState } from "react";
-import { Text } from "react-aria-components";
-import { Link } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
 export interface RunGeneratorActionProps {
   generatorId: string;

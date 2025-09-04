@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import * as React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {

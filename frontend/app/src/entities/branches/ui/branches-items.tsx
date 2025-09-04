@@ -1,4 +1,6 @@
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
+import { Icon } from "@iconify-icon/react";
+import { useNavigate } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -7,8 +9,8 @@ import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { sortByName } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useNavigate } from "react-router";
+
+import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 
 const BranchesItems = () => {
   const navigate = useNavigate();

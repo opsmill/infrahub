@@ -1,7 +1,8 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import * as React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export const Accordion = AccordionPrimitive.Root;
 

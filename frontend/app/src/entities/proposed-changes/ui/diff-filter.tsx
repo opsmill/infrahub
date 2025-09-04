@@ -1,7 +1,14 @@
-import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
-import ErrorScreen from "@/shared/components/errors/error-screen";
+import { useQuery } from "@apollo/client";
+import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
+
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { classNames } from "@/shared/utils/common";
+
 import { DIFF_STATUS } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import {
@@ -10,12 +17,7 @@ import {
   CloseBadgeRemoved,
   CloseBadgeUpdated,
 } from "@/entities/diff/ui/diff-badge";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
-import { useQuery } from "@apollo/client";
-import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
+import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
 
 export type DiffFilter = {
   namespace?: {

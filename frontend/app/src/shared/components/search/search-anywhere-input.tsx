@@ -1,8 +1,9 @@
-import { inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Command, Command as CommandPrimitive } from "cmdk";
 import * as React from "react";
+
+import { inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 
 export function SearchAnywhereInput({
   className,

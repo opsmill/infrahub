@@ -1,3 +1,7 @@
+import { XIcon } from "lucide-react";
+
+import { classNames } from "@/shared/utils/common";
+
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";
 import { ToolBarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
 import { ToolbarDeleteAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-delete-action";
@@ -5,8 +9,6 @@ import { ToolbarEditAction } from "@/entities/nodes/object/ui/object-table/toolb
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 import { NodeCore } from "@/entities/nodes/types";
-import { classNames } from "@/shared/utils/common";
-import { XIcon } from "lucide-react";
 
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeCore>;

@@ -1,7 +1,9 @@
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/entities/role-manager/api/getAccounts";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -19,9 +21,11 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
-import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+
+import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/entities/role-manager/api/getAccounts";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 
 function Accounts() {

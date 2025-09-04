@@ -1,6 +1,8 @@
-import { QSP } from "@/config/qsp";
 import { ReactNode } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
+
+import { QSP } from "@/config/qsp";
+
 import { Button } from "./button-primitive";
 
 type Tab = {

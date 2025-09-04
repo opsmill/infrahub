@@ -1,5 +1,6 @@
-import { classNames } from "@/shared/utils/common";
 import { LinkProps, NavLink, NavLinkProps, Link as RouterLink } from "react-router";
+
+import { classNames } from "@/shared/utils/common";
 
 export const Link = (props: LinkProps) => {
   const { children, className, ...propsToPass } = props;

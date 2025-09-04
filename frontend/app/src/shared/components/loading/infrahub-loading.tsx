@@ -1,5 +1,6 @@
-import infrahubLogo from "@/assets/infrahub-logo.svg";
 import React from "react";
+
+import infrahubLogo from "@/assets/infrahub-logo.svg";
 
 export const InfrahubLoading = ({ children }: { children?: React.ReactNode }) => {
   return (

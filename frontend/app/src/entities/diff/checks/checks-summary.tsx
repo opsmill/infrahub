@@ -1,13 +1,15 @@
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useParams } from "react-router";
+import { toast } from "react-toastify";
+
 import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { runCheck } from "@/entities/diff/api/runCheck";
-import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
@@ -15,11 +17,12 @@ import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { runCheck } from "@/entities/diff/api/runCheck";
+import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 type tChecksSummaryProps = {
   validators: any[];

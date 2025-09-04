@@ -1,13 +1,15 @@
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   GetRelationshipsParams,
-  RELATIONSHIPS_PER_PAGE,
   getRelationships,
+  RELATIONSHIPS_PER_PAGE,
 } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export type GetRelationshipsQueryParams = Omit<GetRelationshipsParams, keyof PaginationParams>;
 

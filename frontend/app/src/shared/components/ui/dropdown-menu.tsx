@@ -1,3 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react";
+
 import {
   Accordion,
   AccordionContent,
@@ -5,9 +9,6 @@ import {
   AccordionTrigger,
 } from "@/shared/components/ui/accordion";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react";
 
 export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => (
   <DropdownMenuPrimitive.Root modal={false} {...props} />

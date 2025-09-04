@@ -1,7 +1,7 @@
 import { NodeCore } from "@/entities/nodes/types";
 import {
-  ProposedChangesFromApiParams,
   getProposedChangesFromApi,
+  ProposedChangesFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
 
 export type ProposedChangeItem = {

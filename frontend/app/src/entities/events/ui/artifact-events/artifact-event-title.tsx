@@ -1,10 +1,13 @@
+import { ReactNode } from "react";
+
 import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+
 import { ArtifactEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
-import { ReactNode } from "react";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 const ArtifactTitleContent = (props: ArtifactEvent) => {
   return (

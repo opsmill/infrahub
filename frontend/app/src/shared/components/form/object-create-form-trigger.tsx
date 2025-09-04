@@ -1,10 +1,14 @@
-import { ARTIFACT_OBJECT } from "@/config/constants";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm from "@/shared/components/form/object-form";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+
+import { ARTIFACT_OBJECT } from "@/config/constants";
+
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ObjectForm from "@/shared/components/form/object-form";
+
+import { Permission } from "@/entities/permission/types";
+import { ModelSchema } from "@/entities/schema/types";
+
 import { Button, ButtonProps } from "../buttons/button-primitive";
 import { Tooltip } from "../ui/tooltip";
 

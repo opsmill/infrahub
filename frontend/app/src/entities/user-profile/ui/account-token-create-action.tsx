@@ -1,5 +1,6 @@
-import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
-import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
@@ -7,8 +8,9 @@ import SlideOver from "@/shared/components/display/slide-over";
 import { TokenInput } from "@/shared/components/display/token-input";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import ModalSuccess from "@/shared/components/modals/modal-success";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
+import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
 
 export function AccountTokenCreateAction() {
   const [newToken, setNewToken] = useState<string>("");

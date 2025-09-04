@@ -1,8 +1,10 @@
-import { GenericSchema } from "@/entities/schema/types";
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
+
+import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
+import { classNames } from "@/shared/utils/common";
+
+import { GenericSchema } from "@/entities/schema/types";
 
 export interface KindHeaderCellProps extends React.HTMLAttributes<HTMLDivElement> {
   schema: GenericSchema;

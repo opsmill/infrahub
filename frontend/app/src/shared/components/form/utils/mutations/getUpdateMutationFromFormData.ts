@@ -1,10 +1,11 @@
+import { isDeepEqual } from "remeda";
+
 import {
   AttributeValueFromPool,
   DynamicFieldProps,
   FormFieldValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
-import { isDeepEqual } from "remeda";
 
 type GetUpdateMutationFromFormDataParams = {
   fields: Array<DynamicFieldProps>;

@@ -1,8 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React, { forwardRef } from "react";
+
 import { ACCOUNT_PERMISSION_OBJECT } from "@/config/constants";
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import { NodeCore } from "@/entities/nodes/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
@@ -17,9 +18,11 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames, debounce } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { forwardRef } from "react";
+
+import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { NodeCore } from "@/entities/nodes/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type PermissionNode = NodeCore & { identifier: { value: string } };
 

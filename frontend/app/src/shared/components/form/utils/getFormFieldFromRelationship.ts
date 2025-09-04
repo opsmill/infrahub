@@ -1,8 +1,3 @@
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -12,6 +7,12 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
+
+import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
 
 interface GetFieldLabelParams {
   type?: RelationshipFieldType;

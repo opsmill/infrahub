@@ -1,10 +1,13 @@
+import { Icon } from "@iconify-icon/react";
+import { useParams } from "react-router";
+
+import { Badge } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
+
 import { DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/node-diff/utils";
 import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
-import { Badge } from "@/shared/components/ui/badge";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router";
+
 import { DiffThread } from "./thread";
 
 type DiffNodePropertyProps = {

@@ -1,6 +1,10 @@
+import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { Link } from "react-router";
+
 import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
 import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { AccountMenu } from "@/shared/components/account-menu";
 import { Separator } from "@/shared/components/aria/separator";
@@ -11,8 +15,6 @@ import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
-import { Link } from "react-router";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);

@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import React from "react";
 import * as ResizablePrimitive from "react-resizable-panels";
+
+import { classNames } from "@/shared/utils/common";
 
 export const ResizablePanelGroup = ({
   className,

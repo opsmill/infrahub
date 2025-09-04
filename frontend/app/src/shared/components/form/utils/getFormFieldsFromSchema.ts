@@ -1,8 +1,3 @@
-import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject } from "@/entities/nodes/types";
-import { NumberPool } from "@/entities/resource-manager/domain/type";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,
@@ -14,6 +9,12 @@ import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFor
 import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { sortByOrderWeight } from "@/shared/utils/common";
+
+import { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
+import { NumberPool } from "@/entities/resource-manager/domain/type";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;

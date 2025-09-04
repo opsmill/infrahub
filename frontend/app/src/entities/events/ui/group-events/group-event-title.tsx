@@ -1,8 +1,10 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { ReactElement } from "react";
+
 import { GroupEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
-import { ReactElement } from "react";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactElement> = {
   "infrahub.group.member_added": (props) => {

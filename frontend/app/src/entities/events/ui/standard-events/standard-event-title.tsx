@@ -1,9 +1,12 @@
+import { ReactElement } from "react";
+
 import { QSP } from "@/config/qsp";
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+
 import { StandardEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
-import { ReactElement } from "react";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export const STANDARD_EVENTS_MAPPING: Record<string, (props: StandardEvent) => ReactElement> = {
   "infrahub.schema.update": () => {

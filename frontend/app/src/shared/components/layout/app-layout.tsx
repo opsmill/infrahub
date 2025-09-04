@@ -1,5 +1,7 @@
-import Sidebar from "@/shared/components/layout/sidebar";
 import { Outlet } from "react-router";
+
+import Sidebar from "@/shared/components/layout/sidebar";
+
 import Header from "./header";
 
 function AppLayout() {

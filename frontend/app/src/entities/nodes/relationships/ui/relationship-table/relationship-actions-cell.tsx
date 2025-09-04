@@ -1,10 +1,6 @@
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
-import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
-import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
-import { Permission } from "@/entities/permission/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -18,8 +14,14 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
+import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
+import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
+import { Permission } from "@/entities/permission/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
   parentId: string;

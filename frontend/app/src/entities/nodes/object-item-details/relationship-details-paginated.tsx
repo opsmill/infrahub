@@ -1,13 +1,11 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
-import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
-import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { getPermission } from "@/entities/permission/utils";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { gql } from "@apollo/client";
+import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
+import { useAtom, useAtomValue } from "jotai";
+import { Fragment, useState } from "react";
+import { Link, useParams } from "react-router";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -22,13 +20,18 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link as StyledLink } from "@/shared/components/ui/link";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Icon } from "@iconify-icon/react";
-import { useAtom, useAtomValue } from "jotai";
-import { Fragment, useState } from "react";
-import { Link, useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
+import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getPermission } from "@/entities/permission/utils";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { ObjectAttributeRow } from "./object-attribute-row";
 

@@ -1,6 +1,7 @@
+import { forwardRef, InputHTMLAttributes } from "react";
+
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { InputHTMLAttributes, forwardRef } from "react";
 
 interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {}
 

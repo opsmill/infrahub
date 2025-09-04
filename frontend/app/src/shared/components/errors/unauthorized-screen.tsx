@@ -1,7 +1,8 @@
-import Accordion from "@/shared/components/display/accordion";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ReactElement } from "react";
+
+import Accordion from "@/shared/components/display/accordion";
+import { classNames } from "@/shared/utils/common";
 
 type tUnauthorized = {
   className?: string;

@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { cva } from "class-variance-authority";
 import { Label as AriaLabel, LabelProps as AriaLabelProps } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export const labelVariants = cva([
   "text-sm font-medium leading-none text-gray-900 cursor-pointer",

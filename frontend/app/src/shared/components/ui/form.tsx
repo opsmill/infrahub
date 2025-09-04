@@ -1,7 +1,3 @@
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import Label, { LabelProps } from "@/shared/components/ui/label";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { classNames } from "@/shared/utils/common";
 import { Slot } from "@radix-ui/react-slot";
 import React, {
   createContext,
@@ -20,7 +16,12 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
-import { SlideOverContext } from "../display/slide-over";
+
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { SlideOverContext } from "@/shared/components/display/slide-over";
+import Label, { LabelProps } from "@/shared/components/ui/label";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
 

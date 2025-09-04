@@ -1,10 +1,7 @@
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { Link } from "react-router";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -15,9 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
-import { Link } from "react-router";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
+import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
   permission: Permission;

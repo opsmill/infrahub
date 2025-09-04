@@ -1,13 +1,16 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { Link } from "react-router";
+
 import { QSP } from "@/config/qsp";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import { Link } from "react-router";
+
 import { DiffRow } from "../node-diff/utils";
 import { BadgeConflict } from "../ui/diff-badge";
 

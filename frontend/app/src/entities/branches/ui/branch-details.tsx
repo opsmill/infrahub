@@ -1,8 +1,12 @@
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { toast } from "react-toastify";
+
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
-import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
-import { branchesState } from "@/entities/branches/stores";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
@@ -18,12 +22,12 @@ import { List } from "@/shared/components/table/list";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
+import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
+import { branchesState } from "@/entities/branches/stores";
+
 import {
   BRANCH_MERGE_WORKFLOW,
   BRANCH_REBASE_WORKFLOW,

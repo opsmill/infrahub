@@ -1,3 +1,5 @@
+import { Icon } from "@iconify-icon/react";
+
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -5,7 +7,7 @@ import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {

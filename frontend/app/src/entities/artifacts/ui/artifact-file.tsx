@@ -1,7 +1,6 @@
-import { ArtifactContentType } from "@/entities/artifacts/types";
-import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
-import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
-import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
+import { HTMLAttributes, useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
+
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
@@ -11,8 +10,11 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
-import { HTMLAttributes, useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+
+import { ArtifactContentType } from "@/entities/artifacts/types";
+import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
+import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
+import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
 
 const CONTENT_TYPE_CONFIG: Record<
   ArtifactContentType,

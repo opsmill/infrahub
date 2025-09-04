@@ -1,32 +1,38 @@
+import { gql, useQuery } from "@apollo/client";
+import { PencilIcon } from "@heroicons/react/24/outline";
+import { formatISO } from "date-fns";
+import { useAtom } from "jotai";
+import { useCallback, useEffect, useState } from "react";
+import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+
 import { CONFIG } from "@/config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { gql, useQuery } from "@apollo/client";
-import { PencilIcon } from "@heroicons/react/24/outline";
-import { formatISO } from "date-fns";
-import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
-import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
+
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

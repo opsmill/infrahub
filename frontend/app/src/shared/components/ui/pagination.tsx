@@ -1,6 +1,8 @@
+import ReactPaginate from "react-paginate";
+
 import usePagination from "@/shared/hooks/usePagination";
 import { classNames } from "@/shared/utils/common";
-import ReactPaginate from "react-paginate";
+
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxTrigger } from "./combobox";
 import { Command, CommandList } from "./command";
 

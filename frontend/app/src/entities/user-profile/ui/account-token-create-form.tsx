@@ -1,10 +1,12 @@
-import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
-import { useCreateAccountTokenMutation } from "@/entities/user-profile/domain/create-account-token.mutation";
+import { toast } from "react-toastify";
+
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { toast } from "react-toastify";
+
+import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
+import { useCreateAccountTokenMutation } from "@/entities/user-profile/domain/create-account-token.mutation";
 
 export interface AccountTokenCreateFormProps {
   onSuccess: (data: { token: string }) => Promise<void>;

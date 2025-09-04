@@ -1,10 +1,12 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import { ContextParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { GetObjectParams, getObject } from "@/entities/nodes/object/domain/get-object";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ContextParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export function getObjectQueryOptions(params: GetObjectParams) {
   return queryOptions({

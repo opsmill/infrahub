@@ -1,5 +1,3 @@
-import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import {
   Button as AriaButton,
@@ -12,6 +10,9 @@ import {
   SearchFieldProps as AriaSearchFieldProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 
 export function SearchField({ className, ...props }: AriaSearchFieldProps) {
   return (

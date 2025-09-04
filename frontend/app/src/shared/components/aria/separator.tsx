@@ -1,8 +1,9 @@
-import { classNames } from "@/shared/utils/common";
 import {
   Separator as AriaSeparator,
   SeparatorProps as AriaSeparatorProps,
 } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface SeparatorProps extends AriaSeparatorProps {}
 

@@ -1,8 +1,10 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { Link } from "react-router";
+
 import { QSP } from "@/config/qsp";
-import { GroupDataFromAPI } from "@/entities/groups/api/types";
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
@@ -10,10 +12,11 @@ import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { pluralize } from "@/shared/utils/string";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
-import { Link } from "react-router";
+
+import { GroupDataFromAPI } from "@/entities/groups/api/types";
+import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ObjectGroupsListProps = {
   className?: string;

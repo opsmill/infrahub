@@ -1,4 +1,3 @@
-import { classNames } from "@/shared/utils/common";
 import { cva } from "class-variance-authority";
 import {
   Heading as AriaHeading,
@@ -7,6 +6,8 @@ import {
   ModalOverlayProps as AriaModalOverlayProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export const modalStyle = cva(
   [

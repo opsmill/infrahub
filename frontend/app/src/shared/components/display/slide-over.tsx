@@ -1,11 +1,14 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ModelSchema } from "@/entities/schema/types";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { Badge } from "@/shared/components/ui/badge";
-import usePrevious from "@/shared/hooks/usePrevious";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React, { Fragment, useRef, useState } from "react";
+
+import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
+import { Badge } from "@/shared/components/ui/badge";
+import usePrevious from "@/shared/hooks/usePrevious";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { ModelSchema } from "@/entities/schema/types";
+
 import ModalDelete from "../modals/modal-delete";
 
 interface Props {

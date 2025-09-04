@@ -1,3 +1,12 @@
+import { useAtomValue } from "jotai";
+import { ReactElement, useState } from "react";
+
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
+import { PopoverTrigger } from "@/shared/components/ui/popover";
+import { inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/domain/get-proposed-change-available-actions.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
@@ -10,13 +19,6 @@ import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-butto
 import { RejectButton } from "@/entities/proposed-changes/ui/action-button/pc-reject-button";
 import { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
-import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
-import { useAtomValue } from "jotai";
-import { ReactElement, useState } from "react";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 

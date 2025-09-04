@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
   "vcs": {
     "clientKind": "git",
     "enabled": true,
@@ -7,15 +7,16 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "./coverage",
-      "./dist",
-      "./package.json",
-      "./playwright-report",
-      "./test-results",
-      "./tests/e2e/.auth",
-      "./src/shared/api/rest/types.generated.ts",
-      "./src/shared/api/graphql/generated"
+    "includes": [
+      "**",
+      "!coverage",
+      "!dist",
+      "!package.json",
+      "!playwright-report",
+      "!test-results",
+      "!tests/e2e/.auth",
+      "!src/shared/api/rest/types.generated.ts",
+      "!src/shared/api/graphql/generated"
     ]
   },
   "formatter": {
@@ -29,51 +30,89 @@
     "attributePosition": "auto",
     "bracketSpacing": true
   },
-  "organizeImports": { "enabled": true },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "identifierOrder": "natural",
+            "groups": [
+              ":URL:",
+              ":BLANK_LINE:",
+              [":BUN:", ":NODE:"],
+              ":BLANK_LINE:",
+              [":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:"],
+              ":BLANK_LINE:",
+              [":ALIAS:", "!@/shared/**", "!@/entities/**"],
+              ":BLANK_LINE:",
+              "@/shared/**",
+              ":BLANK_LINE:",
+              "@/entities/**",
+              ":BLANK_LINE:",
+              ":PATH:"
+            ]
+          }
+        },
+        "useSortedAttributes": "off",
+        "useSortedKeys": "off",
+        "useSortedProperties": "off"
+      }
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
-      "all": true,
       "a11y": {
         "noSvgWithoutTitle": "off",
         "useAriaPropsForRole": "off",
         "useButtonType": "off",
         "useKeyWithClickEvents": "off",
-        "useSemanticElements": "off"
+        "useSemanticElements": "off",
+        "noStaticElementInteractions": "off"
       },
       "complexity": {
         "noBannedTypes": "off",
         "noExcessiveCognitiveComplexity": "off",
         "noForEach": "off",
+        "noImportantStyles": "off",
         "noUselessFragments": "off",
         "noUselessSwitchCase": "off",
         "noUselessThisAlias": "off",
         "useArrowFunction": "off",
         "useDateNow": "off",
         "useOptionalChain": "off",
-        "useSimplifiedLogicExpression": "off"
+        "useSimplifiedLogicExpression": "off",
+        "noArguments": "off"
       },
       "correctness": {
         "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
         "noUnusedFunctionParameters": "error",
         "noUnusedImports": "error",
-        "noUnusedVariables": "error",
+        "noUnusedVariables": {
+          "level": "error",
+          "options": {
+            "ignoreRestSiblings": true
+          }
+        },
+        "noNestedComponentDefinitions": "off",
         "useExhaustiveDependencies": "off",
         "useHookAtTopLevel": "off",
-        "useImportExtensions": "off"
+        "useImportExtensions": "off",
+        "noSwitchDeclarations": "off",
+        "useUniqueElementIds": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",
-        "useTopLevelRegex": "off"
+        "useTopLevelRegex": "off",
+        "noNamespaceImport": "off"
       },
       "style": {
-        "noArguments": "off",
         "noDefaultExport": "off",
         "noImplicitBoolean": "off",
         "noInferrableTypes": "off",
         "noNamespace": "off",
-        "noNamespaceImport": "off",
         "noNegationElse": "off",
         "noNonNullAssertion": "off",
         "noUselessElse": "off",
@@ -89,8 +128,6 @@
         "useNamingConvention": "off",
         "useNumberNamespace": "off",
         "useSelfClosingElements": "off",
-        "useShorthandArrayType": "off",
-        "useSingleCaseStatement": "off",
         "useTemplate": "off"
       },
       "suspicious": {
@@ -102,11 +139,13 @@
         },
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
+        "noUnknownAtRules": "off",
         "noEvolvingTypes": "off",
         "noExplicitAny": "off",
         "noGlobalIsNan": "off",
         "noImplicitAnyLet": "off",
         "noReactSpecificProps": "off",
+        "useIterableCallbackReturn": "off",
         "useAwait": "off"
       }
     }

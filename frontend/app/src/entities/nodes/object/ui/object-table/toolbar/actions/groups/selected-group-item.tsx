@@ -1,9 +1,9 @@
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { XIcon } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-item";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 
 export interface SelectedGroupItemProps {
   group: RelationshipNode;

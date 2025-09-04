@@ -1,14 +1,18 @@
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { getPermission } from "../../permission/utils";
 

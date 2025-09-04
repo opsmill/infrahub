@@ -1,5 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { useState } from "react";
+
+import { classNames } from "@/shared/utils/common";
+
 import { Button } from "../../buttons/button-primitive";
 import { CodeViewer } from "../code/code-viewer";
 import { MarkdownRender } from "./markdown-render";

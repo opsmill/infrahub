@@ -1,3 +1,11 @@
+import { ChevronRightIcon, HouseIcon } from "lucide-react";
+import React from "react";
+import { Link, LinkProps, useParams } from "react-router";
+
+import { Spinner } from "@/shared/components/ui/spinner";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
+
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { IPPrefixNode } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors";
 import { useGetIpPrefixAncestors } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors.query";
@@ -9,12 +17,6 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { focusVisibleStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
-import { ChevronRightIcon, HouseIcon } from "lucide-react";
-import React from "react";
-import { Link, LinkProps, useParams } from "react-router";
 
 function BreadcrumbError({ error }: { error: Error }) {
   console.error("IPAM Breadcrumb Error:", error);

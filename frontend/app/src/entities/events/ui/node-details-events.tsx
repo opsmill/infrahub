@@ -1,11 +1,15 @@
+import React from "react";
+
 import { QSP } from "@/config/qsp";
-import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
-import React from "react";
+
+import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
+
 import { useGetEvents } from "../domain/get-events.query";
 import { EventCard } from "./event-card";
 
@@ -15,7 +19,11 @@ export const NodeEvents = ({
   parentId,
   objectId,
   objectKind,
-}: { parentId?: string; objectId?: string; objectKind?: string }) => {
+}: {
+  parentId?: string;
+  objectId?: string;
+  objectKind?: string;
+}) => {
   const { isPending, data, error } = useGetEvents({
     filters: {
       parentIds: parentId ? [parentId] : undefined,

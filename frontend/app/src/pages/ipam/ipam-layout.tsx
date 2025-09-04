@@ -1,8 +1,9 @@
+import { SidebarIcon } from "lucide-react";
+import { ErrorBoundary } from "react-error-boundary";
+import { Outlet } from "react-router";
+
 import { IPAM_TREE_KEY } from "@/config/localStorage";
-import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
-import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
-import { IpamBreadcrumb } from "@/entities/ipam/ipam-breadcrumb";
-import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
+
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
@@ -10,9 +11,11 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Card } from "@/shared/components/ui/card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
-import { SidebarIcon } from "lucide-react";
-import { ErrorBoundary } from "react-error-boundary";
-import { Outlet } from "react-router";
+
+import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
+import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
+import { IpamBreadcrumb } from "@/entities/ipam/ipam-breadcrumb";
+import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
 
 export const Component = () => {
   const [collapsed, setCollapsed] = useLocalStorage(IPAM_TREE_KEY);

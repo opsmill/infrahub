@@ -1,8 +1,9 @@
+import { Checkbox } from "@/shared/components/aria/checkbox";
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Checkbox } from "@/shared/components/aria/checkbox";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
 
 export interface TableIdentifierCellProps {
   objectKind: string;

@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import * as TooltipPrimitives from "@radix-ui/react-tooltip";
 import { ComponentPropsWithoutRef, ReactNode } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface TooltipProps
   extends Omit<ComponentPropsWithoutRef<typeof TooltipPrimitives.Content>, "content"> {

@@ -1,4 +1,5 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { ReactNode } from "react";
+
 import {
   BranchCreatedEvent,
   BranchDeletedEvent,
@@ -6,7 +7,8 @@ import {
   BranchRebasedEvent,
 } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
-import { ReactNode } from "react";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
   "infrahub.branch.created": (props: BranchCreatedEvent) => (

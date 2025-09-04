@@ -1,3 +1,9 @@
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   GetIpAddressListParams,
@@ -5,10 +11,6 @@ import {
 } from "@/entities/ipam/ip-addresses/domain/get-ip-address-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 type GetIpAddressListInfiniteQueryParams = Omit<GetIpAddressListParams, keyof PaginationParams>;
 

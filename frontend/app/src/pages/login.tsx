@@ -1,7 +1,9 @@
+import { Navigate, useLocation } from "react-router";
+
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
+
 import { Login } from "@/entities/authentication/ui/login";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { Navigate, useLocation } from "react-router";
 
 function LoginPage() {
   const location = useLocation();

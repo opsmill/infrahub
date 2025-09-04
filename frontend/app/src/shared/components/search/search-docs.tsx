@@ -1,10 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
+import { useCommandState } from "cmdk";
+
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
+
 import { searchDocsQueryOptions } from "@/shared/components/search/queries/get-doc-results";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { useQuery } from "@tanstack/react-query";
-import { useCommandState } from "cmdk";
 
 export const SearchDocs = () => {
   const query = useCommandState((state) => state.search);

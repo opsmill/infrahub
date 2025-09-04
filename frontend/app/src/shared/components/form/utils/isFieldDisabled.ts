@@ -1,8 +1,9 @@
+import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
+import { store } from "@/shared/stores";
+
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { PermissionDecisionData } from "@/entities/permission/types";
-import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
-import { store } from "@/shared/stores";
 
 export type IsFieldDisabledParams = {
   owner?: LineageOwner | null;

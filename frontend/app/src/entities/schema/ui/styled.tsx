@@ -1,11 +1,13 @@
+import { ReactElement } from "react";
+import { Tab, TabPanel, TabPanelProps, TabProps } from "react-aria-components";
+import { ArrayParam, useQueryParam } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
+
 import Accordion, { AccordionProps } from "@/shared/components/display/accordion";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
-import { ReactElement } from "react";
-import { Tab, TabPanel, TabPanelProps, TabProps } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
 
 interface AccordionStyleProps extends AccordionProps {
   title: ReactElement | string;
@@ -107,11 +109,7 @@ export const PropertyRow = ({
   );
 };
 
-export const PropertyTitle = ({
-  title,
-}: {
-  title: string;
-}) => {
+export const PropertyTitle = ({ title }: { title: string }) => {
   return (
     <dl className="flex justify-between items-start gap-4 text-sm font-semibold p-2 py-3">
       <dt>{title}</dt>

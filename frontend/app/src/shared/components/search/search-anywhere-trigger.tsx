@@ -1,8 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { CollapsedButton } from "@/shared/components/layout/menu-navigation/components/collapsed-button";
 import Kbd from "@/shared/components/ui/kbd";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
 
 export interface SearchAnywhereTriggerButtonProps extends ButtonProps {
   isCollapsed?: boolean;

@@ -1,6 +1,8 @@
-import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
+
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+
+import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
 
 export function ArtifactFileCopy({ value }: { value: string }) {
   const { isCopied, copyToClipboard } = useCopyToClipboard();

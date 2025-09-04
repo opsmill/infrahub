@@ -1,14 +1,16 @@
+import { Icon } from "@iconify-icon/react";
+import { CheckIcon, RefreshCwIcon } from "lucide-react";
+import React from "react";
+
+import { Col, Row } from "@/shared/components/container";
+import { Card } from "@/shared/components/ui/card";
+
 import { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeCore } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { Col, Row } from "@/shared/components/container";
-import { Card } from "@/shared/components/ui/card";
-import { Icon } from "@iconify-icon/react";
-import { CheckIcon, RefreshCwIcon } from "lucide-react";
-import React from "react";
 
 export interface ProcessingMutateObjectProps {
   node: NodeCore;

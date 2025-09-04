@@ -1,10 +1,11 @@
+import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (

@@ -1,3 +1,8 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
+import { store } from "@/shared/stores";
+
 import {
   RelationshipManyType,
   RelationshipOneType,
@@ -6,9 +11,7 @@ import { NodeObject } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { NodeSchema } from "@/entities/schema/types";
-import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
-import { store } from "@/shared/stores";
-import { describe, expect, it, vi } from "vitest";
+
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
 const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({

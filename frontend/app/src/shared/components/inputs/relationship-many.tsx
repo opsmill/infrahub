@@ -1,16 +1,18 @@
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { NodeCore } from "@/entities/nodes/types";
+import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React from "react";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { NodeCore } from "@/entities/nodes/types";
 
 export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {

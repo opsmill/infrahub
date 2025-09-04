@@ -1,9 +1,8 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { FieldValues, useForm, useFormContext } from "react-hook-form";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -17,8 +16,6 @@ import {
   FormFieldValue,
 } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
-
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -29,10 +26,14 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { FieldValues, useForm, useFormContext } from "react-hook-form";
-import { toast } from "react-toastify";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 
 interface NodeAttributeMatchFormProps extends NodeFormProps {}
 

@@ -1,7 +1,8 @@
-import { classNames } from "@/shared/utils/common";
 import * as LabelPrimitive from "@radix-ui/react-label";
-import { type VariantProps, cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface LabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,

@@ -1,7 +1,8 @@
-import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
-import { Card } from "@/shared/components/ui/card";
 import { ChevronRightIcon } from "lucide-react";
 import React from "react";
+
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import { Card } from "@/shared/components/ui/card";
 
 export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
   if (attributes.length === 0) return null;

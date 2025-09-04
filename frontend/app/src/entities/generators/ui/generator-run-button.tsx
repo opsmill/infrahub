@@ -1,11 +1,14 @@
-import { QSP } from "@/config/qsp";
-import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PlayIcon } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
+
+import { QSP } from "@/config/qsp";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
+import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;

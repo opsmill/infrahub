@@ -1,17 +1,20 @@
+import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router";
+
 import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { Badge } from "@/shared/components/ui/badge";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { classNames } from "@/shared/utils/common";
+
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { DateDisplay } from "@/shared/components/display/date-display";
-import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
 type ProposedChangesItemProps = {
   node: ProposedChangeItem;

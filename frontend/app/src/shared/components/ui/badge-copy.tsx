@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import { CopyToClipboard } from "../buttons/copy-to-clipboard";
+
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 
 interface BadgeCopyProps {
   value: string;

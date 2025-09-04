@@ -1,9 +1,7 @@
-import { getGroupsQuery } from "@/entities/groups/api/getGroups";
-import { GroupDataFromAPI } from "@/entities/groups/api/types";
-import AddGroupTriggerButton from "@/entities/groups/ui/add-group-trigger-button";
-import ObjectGroupsList from "@/entities/groups/ui/object-groups-list";
-import { getPermission } from "@/entities/permission/utils";
-import { ModelSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -11,9 +9,13 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { getGroupsQuery } from "@/entities/groups/api/getGroups";
+import { GroupDataFromAPI } from "@/entities/groups/api/types";
+import AddGroupTriggerButton from "@/entities/groups/ui/add-group-trigger-button";
+import ObjectGroupsList from "@/entities/groups/ui/object-groups-list";
+import { getPermission } from "@/entities/permission/utils";
+import { ModelSchema } from "@/entities/schema/types";
 
 export type GroupsManagerProps = {
   className?: string;

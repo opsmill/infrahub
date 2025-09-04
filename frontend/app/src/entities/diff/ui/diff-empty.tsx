@@ -1,7 +1,9 @@
-import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
+import { Icon } from "@iconify-icon/react";
+
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
-import { Icon } from "@iconify-icon/react";
+
+import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 
 export interface DiffEmptyProps {
   branchName: string;

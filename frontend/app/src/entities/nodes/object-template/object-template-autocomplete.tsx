@@ -1,7 +1,5 @@
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeObject } from "@/entities/nodes/types";
-import { TemplateSchema } from "@/entities/schema/types";
+import React from "react";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import {
   ComboboxEmpty,
@@ -11,7 +9,11 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
-import React from "react";
+
+import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeObject } from "@/entities/nodes/types";
+import { TemplateSchema } from "@/entities/schema/types";
 
 export interface ObjectTemplateAutocompleteProps extends Omit<ComboboxListProps, "onSelect"> {
   templateSchema: TemplateSchema;

@@ -1,7 +1,8 @@
+import { differenceInDays, format, formatDistanceToNow } from "date-fns";
+
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { isInPreviousYear } from "@/shared/utils/date";
-import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 type DateDisplayProps = {
   date?: number | string | Date;

@@ -1,8 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { Button } from "react-aria-components";
+
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Button } from "react-aria-components";
 
 export const FilterResetButton = () => {
   const [, setFilters] = useFilters();

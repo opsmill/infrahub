@@ -1,11 +1,14 @@
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Icon } from "@iconify-icon/react";
+import { HTMLAttributes } from "react";
+import { Link } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { Icon } from "@iconify-icon/react";
-import { HTMLAttributes } from "react";
-import { Link } from "react-router";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+
 import ResourcePoolUtilization from "./ResourcePoolUtilization";
 
 export type ResourceProps = {

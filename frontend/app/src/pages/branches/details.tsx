@@ -1,20 +1,22 @@
-import { DIFF_TABS } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
-import { NodeDiff } from "@/entities/diff/node-diff";
-import { Tabs } from "@/shared/components/tabs";
-
-import { branchesState } from "@/entities/branches/stores";
-import { BranchDetails } from "@/entities/branches/ui/branch-details";
-import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
-import { constructPath } from "@/shared/api/rest/fetch";
-import Content from "@/shared/components/layout/content";
-import { Badge } from "@/shared/components/ui/badge";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { useTitle } from "@/shared/hooks/useTitle";
 import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
+
+import { DIFF_TABS } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import Content from "@/shared/components/layout/content";
+import { Tabs } from "@/shared/components/tabs";
+import { Badge } from "@/shared/components/ui/badge";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { useTitle } from "@/shared/hooks/useTitle";
+
+import { branchesState } from "@/entities/branches/stores";
+import { BranchDetails } from "@/entities/branches/ui/branch-details";
+import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
+import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
+import { NodeDiff } from "@/entities/diff/node-diff";
 
 export const BRANCH_TABS = {
   DETAILS: "details",

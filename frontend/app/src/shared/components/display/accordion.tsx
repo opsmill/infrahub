@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { CSSProperties, useState } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export type AccordionProps = {
   title?: any;

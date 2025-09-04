@@ -1,10 +1,10 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { HTMLAttributes } from "react";
+import { useNavigate, useParams } from "react-router";
+
 import { TASK_OBJECT } from "@/config/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
-import { Overview } from "@/entities/proposed-changes/ui/overview";
-import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
-import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
@@ -16,10 +16,14 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { HTMLAttributes } from "react";
-import { useNavigate, useParams } from "react-router";
+
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
+import { Overview } from "@/entities/proposed-changes/ui/overview";
+import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
+import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
 import { TaskDisplay } from "../../tasks/ui/task-display";
 

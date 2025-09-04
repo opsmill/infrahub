@@ -1,16 +1,19 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { toast } from "react-toastify";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
 import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/domain/update-review.mutation";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
-import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { toast } from "react-toastify";
+
 import { ProposedChangeActionButtonProps } from "./types";
 
 export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {

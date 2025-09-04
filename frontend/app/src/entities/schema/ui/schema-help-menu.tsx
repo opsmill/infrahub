@@ -1,7 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { Pressable } from "react-aria-components";
+
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
+
 import {
   Menu,
   MenuItem,
@@ -10,8 +12,9 @@ import {
   MenuTrigger,
 } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
-import { Pressable } from "react-aria-components";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { ModelSchema } from "@/entities/schema/types";
 
 type SchemaHelpMenuProps = {
   schema: ModelSchema;

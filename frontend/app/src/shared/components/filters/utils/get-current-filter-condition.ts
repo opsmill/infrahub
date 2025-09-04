@@ -1,8 +1,9 @@
+import { Filter } from "@/shared/hooks/useFilters";
+
 import {
   FILTER_CONDITION,
   FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { Filter } from "@/shared/hooks/useFilters";
 
 /**
  * Determines the current filter condition based on the filter name and value.

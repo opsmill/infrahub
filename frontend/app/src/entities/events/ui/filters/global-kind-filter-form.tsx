@@ -1,8 +1,11 @@
-import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
+import { useState } from "react";
+
 import { FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
-import { useState } from "react";
+
+import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
+
 import { FilterKindSelect } from "./filter-kind-select";
 
 export type GlobalKindFilterFormProps = {

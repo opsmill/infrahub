@@ -1,6 +1,7 @@
+import { Button as AriaButton, ButtonProps as AriaButtonProps } from "react-aria-components";
+
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
-import { Button as AriaButton, ButtonProps as AriaButtonProps } from "react-aria-components";
 
 export function ArtifactFileButton({ className, ...props }: AriaButtonProps) {
   return (

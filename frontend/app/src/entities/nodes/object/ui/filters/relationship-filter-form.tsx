@@ -1,11 +1,6 @@
-import {
-  FILTER_CONDITION,
-  FilterCondition,
-  FilterConditionSelect,
-} from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { Badge } from "@/shared/components/ui/badge";
@@ -15,8 +10,15 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import {
+  FILTER_CONDITION,
+  FilterCondition,
+  FilterConditionSelect,
+} from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { RelationshipSchema } from "@/entities/schema/types";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;

@@ -1,8 +1,10 @@
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { composeRenderProps, ListBoxItem, ListBoxItemProps } from "react-aria-components";
+
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
-import { ListBoxItem, ListBoxItemProps, composeRenderProps } from "react-aria-components";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 
 export interface GroupItemProps extends ListBoxItemProps {
   group: RelationshipNode;

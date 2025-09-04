@@ -1,30 +1,32 @@
-import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { NodeFormProps } from "@/shared/components/form/node-form";
-import { FormFieldValue } from "@/shared/components/form/type";
-import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
+import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
+import { NodeFormProps } from "@/shared/components/form/node-form";
+import { FormFieldValue } from "@/shared/components/form/type";
+import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
+import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
 
 interface AccountRoleFormProps {
   currentObject?: Record<string, AttributeType | RelationshipType>;

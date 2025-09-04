@@ -1,8 +1,9 @@
+import { HTMLAttributes, ReactNode } from "react";
+
 import { Retry } from "@/shared/components/buttons/retry";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
-import { HTMLAttributes, ReactNode } from "react";
 
 const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
   return <main className={classNames("h-full overflow-auto", className)} {...props} />;

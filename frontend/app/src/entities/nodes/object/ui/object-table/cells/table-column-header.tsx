@@ -1,14 +1,16 @@
-import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
-import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
-import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import { useState } from "react";
+
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import { useState } from "react";
+
+import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
+import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
+import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
   schema: ModelSchema;

@@ -1,11 +1,12 @@
-import { labelVariants } from "@/shared/components/aria/label";
-import { classNames } from "@/shared/utils/common";
 import { CheckIcon, MinusIcon } from "lucide-react";
 import {
   Checkbox as AriaCheckbox,
   type CheckboxProps as AriaCheckboxProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { labelVariants } from "@/shared/components/aria/label";
+import { classNames } from "@/shared/utils/common";
 
 export const Checkbox = ({ className, children, ...props }: AriaCheckboxProps) => (
   <AriaCheckbox

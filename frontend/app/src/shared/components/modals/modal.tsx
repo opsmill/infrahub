@@ -1,6 +1,7 @@
-import { Button } from "@/shared/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
 import React, { Fragment, ReactNode, useRef } from "react";
+
+import { Button } from "@/shared/components/buttons/button";
 
 export function ModalTitle({ children }: { children: ReactNode }) {
   return (

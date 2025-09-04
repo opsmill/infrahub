@@ -1,6 +1,7 @@
+import { store } from "@/shared/stores";
+
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema, NodeSchema } from "@/entities/schema/types";
-import { store } from "@/shared/stores";
 
 export const isHierarchicalSchema = (
   schema: ModelSchema

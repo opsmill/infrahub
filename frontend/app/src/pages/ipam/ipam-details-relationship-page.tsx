@@ -1,11 +1,13 @@
+import { useParams } from "react-router";
+
+import ErrorScreen from "@/shared/components/errors/error-screen";
+
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { IpAddressManager } from "@/entities/ipam/ip-addresses/ui/ip-address-manager";
 import { IpPrefixManager } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-manager";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { useParams } from "react-router";
 
 export const Component = () => {
   const { objectKind, objectId, relationshipName } = useParams() as {

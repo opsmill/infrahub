@@ -1,8 +1,9 @@
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
 import { ObjectActionsCell } from "@/entities/nodes/object/ui/object-table/cells/object-actions-cell";
 import { NodeObject } from "@/entities/nodes/types";
 import { Permission } from "@/entities/permission/types";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 const columnHelper = createColumnHelper<NodeObject>();
 

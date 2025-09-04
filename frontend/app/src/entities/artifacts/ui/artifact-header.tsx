@@ -1,6 +1,7 @@
 import { ArtifactStatus } from "@/entities/artifacts/types";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
+
 import { ArtifactGenerateButton } from "./artifact-generate-button";
 
 type ArtifactHeaderProps = {

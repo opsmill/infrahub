@@ -1,7 +1,8 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React, { Fragment, ReactNode, useRef } from "react";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
 
 interface iProps {
   open: boolean;

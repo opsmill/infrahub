@@ -1,9 +1,10 @@
+import { Colorful, ColorResult, HsvaColor } from "@uiw/react-color/src/index";
+import { forwardRef, useState } from "react";
+
 import { Input } from "@/shared/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, getTextColor } from "@/shared/utils/common";
-import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
-import { forwardRef, useState } from "react";
 
 export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
   const { id, disabled, value, onChange, className } = props;

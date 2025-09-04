@@ -1,8 +1,9 @@
-import { focusWithinStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
 import Prism from "prismjs";
 import { ElementRef, forwardRef } from "react";
 import Editor from "react-simple-code-editor";
+
+import { focusWithinStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 import "prismjs/components/prism-json";
 
 type JsonEditorProps = {

@@ -1,4 +1,8 @@
+import { Icon } from "@iconify-icon/react";
+import { Pressable } from "react-aria-components";
+
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Menu,
@@ -8,8 +12,6 @@ import {
   MenuTrigger,
 } from "@/shared/components/aria/menu";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
-import { Pressable } from "react-aria-components";
 
 interface ObjectHelpButtonProps extends ButtonProps {
   className?: string;

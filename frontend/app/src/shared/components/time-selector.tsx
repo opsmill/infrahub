@@ -1,6 +1,3 @@
-import { QSP } from "@/config/qsp";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { classNames } from "@/shared/utils/common";
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { format, isPast } from "date-fns";
@@ -8,6 +5,12 @@ import { useAtom } from "jotai/index";
 import { useEffect } from "react";
 import DateTimePicker from "react-datepicker";
 import { DateTimeParam, useQueryParam } from "use-query-params";
+
+import { QSP } from "@/config/qsp";
+
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { classNames } from "@/shared/utils/common";
+
 import { Button } from "./buttons/button-primitive";
 
 import "react-datepicker/dist/react-datepicker.css";

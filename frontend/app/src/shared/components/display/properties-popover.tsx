@@ -1,10 +1,13 @@
-import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
-import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import { Permission } from "@/entities/permission/types";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai/index";
 import { useState } from "react";
+
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+
+import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import { Permission } from "@/entities/permission/types";
+
 import MetaDetailsTooltip from "./meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "./slide-over";
 

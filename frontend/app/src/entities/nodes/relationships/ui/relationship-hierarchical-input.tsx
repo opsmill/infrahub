@@ -1,11 +1,6 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import {
-  RelationshipComboboxList,
-  RelationshipComboboxListProps,
-} from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
+import { Icon } from "@iconify-icon/react";
+import { forwardRef, useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -23,8 +18,15 @@ import {
 } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { forwardRef, useState } from "react";
+
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import {
+  RelationshipComboboxList,
+  RelationshipComboboxListProps,
+} from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 
 export interface RelationshipHierarchicalContentProps extends RelationshipComboboxListProps {}
 

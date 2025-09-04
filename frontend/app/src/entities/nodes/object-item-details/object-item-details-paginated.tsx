@@ -1,3 +1,9 @@
+import { LockClosedIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
+import { useAtom, useAtomValue } from "jotai";
+import { Navigate, useParams } from "react-router";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import {
   DEFAULT_BRANCH_NAME,
   GENERIC_REPOSITORY_KIND,
@@ -5,9 +11,21 @@ import {
   TASK_TARGET,
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { useTitle } from "@/shared/hooks/useTitle";
+
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
 import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
 import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
@@ -16,9 +34,6 @@ import {
   getObjectAttributes,
   getObjectRelationships,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
-import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
@@ -30,18 +45,6 @@ import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/sc
 import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
-import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
-import SlideOver from "@/shared/components/display/slide-over";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { useTitle } from "@/shared/hooks/useTitle";
-import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { Icon } from "@iconify-icon/react";
-import { useAtom, useAtomValue } from "jotai";
-import { Navigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 type ObjectDetailsProps = {
   schema: ModelSchema;

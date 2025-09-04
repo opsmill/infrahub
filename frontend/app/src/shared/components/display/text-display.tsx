@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { HTMLAttributes, forwardRef, useState } from "react";
+import { forwardRef, HTMLAttributes, useState } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 const MAX_TEXT_LENGTH = 200;
 

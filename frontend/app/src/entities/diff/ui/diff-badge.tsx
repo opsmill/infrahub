@@ -1,6 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+
 import { Badge, BadgeProps } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
 
 export interface DiffBadgeProps extends BadgeProps {
   hasConflicts?: boolean;

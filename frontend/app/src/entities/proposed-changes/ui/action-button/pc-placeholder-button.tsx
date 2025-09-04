@@ -1,5 +1,6 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
 
 export const PcPlaceholderButton = () => {
   return (

@@ -1,16 +1,12 @@
-import { QSP } from "@/config/qsp";
-import { branchesState } from "@/entities/branches/stores";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
-import { Branch } from "@/shared/api/graphql/generated/graphql";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Icon } from "@iconify-icon/react";
+import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { QSP } from "@/config/qsp";
+
+import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
@@ -21,7 +17,14 @@ import {
   CommandItem,
   CommandList,
 } from "@/shared/components/ui/command";
-import { useCommandState } from "cmdk";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+import { branchesState } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
+
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";
 

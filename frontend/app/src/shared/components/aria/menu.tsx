@@ -1,7 +1,3 @@
-import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle } from "@/shared/components/style-rac";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-import { classNames } from "@/shared/utils/common";
 import { CopyIcon } from "lucide-react";
 import {
   Header as AriaHeader,
@@ -16,6 +12,11 @@ import {
   PopoverProps as AriaPopoverProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { Popover } from "@/shared/components/aria/popover";
+import { disabledStyle } from "@/shared/components/style-rac";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { classNames } from "@/shared/utils/common";
 
 export const MenuTrigger = AriaMenuTrigger;
 

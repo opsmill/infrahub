@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { darcula } from "react-syntax-highlighter/dist/esm/styles/prism";
+
+import { classNames } from "@/shared/utils/common";
 
 export const CodeViewer = ({ className, children, ...props }: SyntaxHighlighterProps) => {
   return (

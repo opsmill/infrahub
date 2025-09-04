@@ -1,19 +1,23 @@
+import { formatISO } from "date-fns";
+import { HTMLAttributes, useRef } from "react";
+import { useParams } from "react-router";
+
 import {
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Card } from "@/shared/components/ui/card";
 import { FormRef } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
-import { formatISO } from "date-fns";
-import { HTMLAttributes, useRef } from "react";
-import { useParams } from "react-router";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+
 import { ProposedChangeEvents } from "./proposed-change-events";
 
 export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {

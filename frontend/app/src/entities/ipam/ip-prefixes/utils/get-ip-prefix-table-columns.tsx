@@ -1,3 +1,13 @@
+import { Icon } from "@iconify-icon/react";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+
+import { Row } from "@/shared/components/container";
+import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
+import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
+import { TableCell } from "@/shared/components/table/table-cell";
+import { classNames } from "@/shared/utils/common";
+import { pluralize } from "@/shared/utils/string";
+
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
@@ -11,14 +21,6 @@ import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { Row } from "@/shared/components/container";
-import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
-import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
-import { TableCell } from "@/shared/components/table/table-cell";
-import { classNames } from "@/shared/utils/common";
-import { pluralize } from "@/shared/utils/string";
-import { Icon } from "@iconify-icon/react";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();
 

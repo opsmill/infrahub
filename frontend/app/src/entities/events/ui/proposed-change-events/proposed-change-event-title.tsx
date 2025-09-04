@@ -1,9 +1,11 @@
+import { ReactNode } from "react";
+
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import {
   PROPOSED_CHANGE_APPROVALS_REVOKED,
   PROPOSED_CHANGE_THREAD,
 } from "@/entities/proposed-changes/constants";
-import { ReactNode } from "react";
+
 import { ProposedChangeThreadEvent } from "./proposed-change-thread-event";
 
 export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, () => ReactNode> = {

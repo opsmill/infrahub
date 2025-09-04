@@ -1,6 +1,5 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { useState } from "react";
+
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
@@ -17,7 +16,10 @@ import {
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { useState } from "react";
+
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface GenericOption extends Node {
   id: string;

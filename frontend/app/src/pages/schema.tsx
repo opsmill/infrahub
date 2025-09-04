@@ -1,3 +1,8 @@
+import { useAtomValue } from "jotai";
+
+import Content from "@/shared/components/layout/content";
+import { useTitle } from "@/shared/hooks/useTitle";
+
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -5,9 +10,6 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 import { SchemaSelector } from "@/entities/schema/ui/schema-selector";
 import { SchemaViewerStack } from "@/entities/schema/ui/schema-viewer";
-import Content from "@/shared/components/layout/content";
-import { useTitle } from "@/shared/hooks/useTitle";
-import { useAtomValue } from "jotai";
 
 function SchemaPage() {
   useTitle("Schema");

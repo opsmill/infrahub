@@ -1,4 +1,15 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { CSSProperties } from "react";
+import { TabList, Tabs } from "react-aria-components";
+import { ArrayParam, useQueryParam } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Badge } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
+
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -10,14 +21,7 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { Badge } from "@/shared/components/ui/badge";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { CSSProperties } from "react";
-import { TabList, Tabs } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
+
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
 import { SchemaHelpMenu } from "./schema-help-menu";

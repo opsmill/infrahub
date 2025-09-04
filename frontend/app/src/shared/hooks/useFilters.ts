@@ -1,7 +1,10 @@
-import { QSP } from "@/config/qsp";
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
-import { uniqueItemsArray } from "@/shared/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
+
+import { QSP } from "@/config/qsp";
+
+import { uniqueItemsArray } from "@/shared/utils/array";
+
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 
 export type Filter = {
   name: `${string}__${string}` | typeof AVAILABLE_IP_FILTER_NAME | "order";

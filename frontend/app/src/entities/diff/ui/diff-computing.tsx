@@ -1,7 +1,9 @@
-import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
+import { Icon } from "@iconify-icon/react";
+
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
+
+import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 
 export interface DiffComputingProps {
   sourceBranch: string;

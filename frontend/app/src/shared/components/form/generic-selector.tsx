@@ -1,9 +1,8 @@
+import { gql } from "@apollo/client";
+import { useId, useState } from "react";
+
 import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/config/constants";
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { PermissionData } from "@/entities/permission/types";
-import { getPermission } from "@/entities/permission/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
@@ -16,8 +15,12 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
-import { gql } from "@apollo/client";
-import { useId, useState } from "react";
+
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import { PermissionData } from "@/entities/permission/types";
+import { getPermission } from "@/entities/permission/utils";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type GenericSelectorProps = {
   currentKind: string;

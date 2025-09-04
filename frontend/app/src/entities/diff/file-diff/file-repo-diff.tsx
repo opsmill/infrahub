@@ -1,5 +1,6 @@
 import Accordion from "@/shared/components/display/accordion";
 import "react-diff-view/style/index.css";
+
 import { FileContentDiff } from "./file-content-diff";
 
 export const FileRepoDiff = (props: any) => {

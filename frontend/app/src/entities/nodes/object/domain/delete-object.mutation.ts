@@ -1,11 +1,14 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { queryClient } from "@/shared/api/rest/client";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useMutation } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useLocation, useParams } from "react-router";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+
 import { deleteObject } from "./delete-object";
 
 export interface DeleteObjectParams {

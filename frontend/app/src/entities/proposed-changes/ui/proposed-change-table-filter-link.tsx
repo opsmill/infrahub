@@ -1,6 +1,7 @@
+import { Button, ButtonProps } from "react-aria-components";
+
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
-import { Button, ButtonProps } from "react-aria-components";
 
 interface TableColumnHeaderLinkProps extends ButtonProps {
   isActive?: boolean;

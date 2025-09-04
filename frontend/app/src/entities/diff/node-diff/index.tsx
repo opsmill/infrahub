@@ -1,5 +1,14 @@
+import { useAtomValue } from "jotai";
+import { createContext, useEffect } from "react";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+
+import { DateDisplay } from "@/shared/components/display/date-display";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { buildFilters } from "@/entities/diff/node-diff/utils";
@@ -10,12 +19,7 @@ import { DiffRebaseButton } from "@/entities/diff/ui/diff-rebase-button";
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 import DiffTree from "@/entities/diff/ui/diff-tree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { DateDisplay } from "@/shared/components/display/date-display";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { useAtomValue } from "jotai";
-import { createContext, useEffect } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
+
 import { DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/ui/diff-filter";
 import { DiffNode } from "./node";
 

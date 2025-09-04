@@ -1,3 +1,11 @@
+import { Icon } from "@iconify-icon/react";
+import { format } from "date-fns";
+
+import { ArtifactEvent, GroupEvent, StandardEvent } from "@/shared/api/graphql/generated/graphql";
+import { Link } from "@/shared/components/ui/link";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { classNames } from "@/shared/utils/common";
+
 import { BranchEvent, EventType } from "@/entities/events/types";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
@@ -6,12 +14,6 @@ import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-titl
 import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
-import { ArtifactEvent, GroupEvent, StandardEvent } from "@/shared/api/graphql/generated/graphql";
-import { Link } from "@/shared/components/ui/link";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { format } from "date-fns";
 
 const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   if ("attributes" in props) {

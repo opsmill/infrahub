@@ -1,7 +1,5 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { useEffect, useState } from "react";
+
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import { PoolValue } from "@/shared/components/form/pool-selector";
@@ -15,7 +13,11 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { useEffect, useState } from "react";
+
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;

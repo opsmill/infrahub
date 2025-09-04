@@ -1,11 +1,14 @@
+import { useAtomValue } from "jotai";
+
 import { QSP } from "@/config/qsp";
+
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import { Link } from "@/shared/components/ui/link";
+
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
-import { Link } from "@/shared/components/ui/link";
-import { useAtomValue } from "jotai";
 
 const NodeEventTitleContent = ({ primary_node, event, branch }: NodeMutatedEvent) => {
   if (!primary_node?.id || !primary_node?.kind) {

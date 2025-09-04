@@ -1,12 +1,11 @@
-import { GroupsManager } from "@/entities/groups/ui/groups-manager";
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeObject } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import { useSetAtom } from "jotai";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
+import { useState } from "react";
+import { Pressable } from "react-aria-components";
+import { useLocation, useNavigate } from "react-router";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
@@ -21,13 +20,16 @@ import {
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
-import { Icon } from "@iconify-icon/react";
-import { useSetAtom } from "jotai";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
-import { Pressable } from "react-aria-components";
-import { useLocation, useNavigate } from "react-router";
+
+import { GroupsManager } from "@/entities/groups/ui/groups-manager";
+import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { NodeObject } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
+import { ModelSchema } from "@/entities/schema/types";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;

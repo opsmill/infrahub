@@ -1,9 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+import { StringParam, useQueryParams } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
-import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { ModelSchema } from "@/entities/schema/types";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+
 import { Row } from "@/shared/components/container";
 import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import { Badge } from "@/shared/components/ui/badge";
@@ -14,9 +14,12 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
-import { StringParam, useQueryParams } from "use-query-params";
+
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { ModelSchema } from "@/entities/schema/types";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);

@@ -1,10 +1,13 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { branchesState } from "@/entities/branches/stores";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -23,12 +26,13 @@ import {
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
+
+import { branchesState } from "@/entities/branches/stores";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { DRAFT_STATE, OPEN_STATE } from "../constants";
 import { PcStateButton } from "./action-button/pc-state-button";
 

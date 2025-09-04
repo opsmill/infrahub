@@ -1,12 +1,14 @@
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
+
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 
 export interface PoolSelectProps {
   poolKind: string;

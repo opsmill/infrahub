@@ -1,7 +1,8 @@
-import { focusVisibleStyle } from "@/shared/components/style-rac";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Tag, TagProps } from "react-aria-components";
+
+import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { classNames } from "@/shared/utils/common";
 
 interface FilterSuggestionTagProps extends TagProps {
   label: string;

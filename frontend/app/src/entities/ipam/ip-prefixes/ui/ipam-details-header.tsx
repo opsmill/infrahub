@@ -1,3 +1,9 @@
+import React from "react";
+import { Link, LinkProps } from "react-router";
+
+import { Row, RowProps } from "@/shared/components/container";
+import { classNames, sortByOrderWeight } from "@/shared/utils/common";
+
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -12,10 +18,6 @@ import {
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { Row, RowProps } from "@/shared/components/container";
-import { classNames, sortByOrderWeight } from "@/shared/utils/common";
-import React from "react";
-import { Link, LinkProps } from "react-router";
 
 interface IpPrefixDetailsHeaderProps extends RowProps {
   ipPrefixSchema: ModelSchema;

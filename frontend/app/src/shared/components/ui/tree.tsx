@@ -1,7 +1,9 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import TreeViewPrimitive, { INodeRendererProps, ITreeViewProps } from "react-accessible-treeview";
+
+import { classNames } from "@/shared/utils/common";
+
 import { TreeSkeleton } from "./tree-sheleton";
 
 export type TreeItemProps = Pick<INodeRendererProps, "element">;

@@ -1,7 +1,9 @@
-import { ModelSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import useFilters from "@/shared/hooks/useFilters";
-import { Icon } from "@iconify-icon/react";
+
+import { ModelSchema } from "@/entities/schema/types";
 
 export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
   const [filters, setFilters] = useFilters();

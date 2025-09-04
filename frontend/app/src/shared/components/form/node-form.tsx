@@ -1,9 +1,5 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { NodeCore, NodeObject } from "@/entities/nodes/types";
-import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
-import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import { toast } from "react-toastify";
+
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
@@ -13,7 +9,13 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { NodeCore, NodeObject } from "@/entities/nodes/types";
+import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
+import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;

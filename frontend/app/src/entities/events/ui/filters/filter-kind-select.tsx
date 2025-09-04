@@ -1,16 +1,21 @@
-import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+
+import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 export function FilterKindSelect({
   value,
   onChange,
-}: { value: string | null; onChange: (value: string) => void }) {
+}: {
+  value: string | null;
+  onChange: (value: string) => void;
+}) {
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   return (

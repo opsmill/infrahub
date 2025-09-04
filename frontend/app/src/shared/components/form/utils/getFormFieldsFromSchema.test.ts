@@ -1,10 +1,13 @@
+import { describe, expect, it } from "vitest";
+
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { store } from "@/shared/stores";
+
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ModelSchema } from "@/entities/schema/types";
-import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { store } from "@/shared/stores";
-import { describe, expect, it } from "vitest";
+
 import {
   generateAttributeSchema,
   generateRelationshipSchema,

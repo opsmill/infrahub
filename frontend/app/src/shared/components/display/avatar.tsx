@@ -1,7 +1,8 @@
+import { cva, type VariantProps } from "class-variance-authority";
+import { forwardRef, HTMLAttributes } from "react";
+
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
-import { type VariantProps, cva } from "class-variance-authority";
-import { HTMLAttributes, forwardRef } from "react";
 
 export const initials = (name: string) =>
   name
