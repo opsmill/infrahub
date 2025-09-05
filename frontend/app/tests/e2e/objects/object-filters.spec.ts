@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Object filters", () => {
@@ -96,8 +97,24 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("object-items")).toContainText("Interface L3");
     await expect(page.getByTestId("object-schema-schema-selector")).toContainText("All Interface");
 
-    await test.step("filter using kind", async () => {
+    await test.step("filter target kind", async () => {
       await page.getByTestId("object-schema-schema-selector").click();
+      await expect(
+        page.getByRole("option", { name: "Interface L2 Infra", exact: true })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: "Interface L3 Infra", exact: true })
+      ).toBeVisible();
+      await page.getByPlaceholder("Filter...").fill("l3");
+      await expect(
+        page.getByRole("option", { name: "Interface L2 Infra", exact: true })
+      ).toBeHidden();
+      await expect(
+        page.getByRole("option", { name: "Interface L3 Infra", exact: true })
+      ).toBeVisible();
+    });
+
+    await test.step("filter using kind", async () => {
       await page.getByRole("option", { name: "Interface L3 Infra", exact: true }).click();
 
       await expect(page.getByTestId("object-schema-schema-selector")).toContainText(

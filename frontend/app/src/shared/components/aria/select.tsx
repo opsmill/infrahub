@@ -1,3 +1,4 @@
+import { ChevronDownIcon } from "lucide-react";
 import {
   Button as AriaButton,
   ButtonProps as AriaButtonProps,
@@ -12,7 +13,7 @@ import { ListBoxItem } from "@/shared/components/aria/list-box";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { ChevronDownIcon } from "lucide-react";
+
 import { Popover, PopoverProps } from "./popover";
 
 export const Select = AriaSelect;
@@ -26,7 +27,7 @@ export const SelectTrigger = ({ className, children, ...props }: AriaButtonProps
     )}
     {...props}
   >
-    <AriaSelectValue className="truncate data-placeholder:text-gray-400 grow" />
+    <AriaSelectValue className="grow truncate data-placeholder:text-gray-400" />
     <ChevronDownIcon className="ml-auto size-4" />
   </AriaButton>
 );

@@ -17,7 +17,7 @@ export const getProposedChangesStateBadgeType = (
       return "gray-outline";
     }
     default: {
-      return undefined;
+      return;
     }
   }
 };

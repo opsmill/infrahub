@@ -1,17 +1,19 @@
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,7 +21,7 @@ export const OBJECTS_PER_PAGE = 40;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export interface ProposedChangesFromApiParams extends ContextParams, PaginationParams {
+export interface ProposedChangesFromApiParams extends PaginationParams {
   schema: ModelSchema;
   filters?: Array<Filter>;
   getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
@@ -30,8 +32,6 @@ export const getProposedChangesFromApi = async ({
   schema,
   limit = OBJECTS_PER_PAGE,
   offset,
-  branchName,
-  atDate,
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
@@ -73,9 +73,5 @@ export const getProposedChangesFromApi = async ({
   const query = gql(queryString);
   return graphqlClient.query({
     query,
-    context: {
-      branch: branchName,
-      date: atDate,
-    },
   });
 };

@@ -1,24 +1,30 @@
 import {
-  ProposedChangesCountsFromApiParams,
   getProposedChangesCountsFromApi,
+  ProposedChangesCountsFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-counts-from-api";
 
-type GetProposedChangesCountsResult = {
+export type GetProposedChangesCountsParams = ProposedChangesCountsFromApiParams;
+
+export type GetProposedChangesCountsResponse = {
   opened: number;
   closed: number;
 };
 
-export async function getProposedChangesCounts(
+export type GetProposedChangesCounts = (
+  params: GetProposedChangesCountsParams
+) => Promise<GetProposedChangesCountsResponse>;
+
+export const getProposedChangesCounts: GetProposedChangesCounts = async (
   params: ProposedChangesCountsFromApiParams
-): Promise<GetProposedChangesCountsResult> {
+) => {
   const { data, errors } = await getProposedChangesCountsFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
   return {
     opened: data.opened.count ?? 0,
     closed: data.closed.count ?? 0,
   };
-}
+};

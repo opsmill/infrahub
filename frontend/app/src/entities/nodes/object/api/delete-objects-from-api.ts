@@ -1,7 +1,8 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BranchContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { BranchContextParams } from "@/shared/api/types";
 
 export interface ObjectParam {
   id: string;

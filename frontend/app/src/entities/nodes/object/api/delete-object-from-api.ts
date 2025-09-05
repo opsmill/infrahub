@@ -1,7 +1,8 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams } from "@/shared/api/types";
 
 const getDeleteObjectQuery = (kind: string, objectid: string) => {
   const query = {

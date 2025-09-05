@@ -1,16 +1,19 @@
+import { ObservableQuery } from "@apollo/client";
+import { createContext, ReactElement, ReactNode, use, useState } from "react";
+import { Navigate, useLocation } from "react-router";
+import { toast } from "react-toastify";
+
 import { CONFIG } from "@/config/config";
 import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { useConfig } from "@/entities/config/get-config.query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { parseJwt } from "@/shared/utils/common";
-import { ObservableQuery } from "@apollo/client";
-import { ReactElement, ReactNode, createContext, use, useState } from "react";
-import { Navigate, useLocation } from "react-router";
-import { toast } from "react-toastify";
+
+import { useConfig } from "@/entities/config/ui/config-provider";
 
 export type User = {
   id: string;
@@ -172,7 +175,7 @@ export function useAuth() {
 }
 
 export function RequireAuth({ children }: { children: ReactElement }) {
-  const { data: config } = useConfig();
+  const config = useConfig();
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 

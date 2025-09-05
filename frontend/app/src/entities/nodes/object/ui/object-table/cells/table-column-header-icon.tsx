@@ -1,7 +1,8 @@
+import { Icon } from "@iconify-icon/react";
+
 import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { Icon } from "@iconify-icon/react";
 
 export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Text: "mdi:text",
@@ -41,7 +42,9 @@ export function TableColumnHeaderIcon({ fieldSchema }: TableColumnHeaderIconProp
 
 export function AttributeTableColumnHeaderIcon({
   attributeKind,
-}: { attributeKind: AttributeKind }) {
+}: {
+  attributeKind: AttributeKind;
+}) {
   const icon = ATTRIBUTE_ICONS[attributeKind];
   if (!icon) return null;
 
@@ -50,7 +53,9 @@ export function AttributeTableColumnHeaderIcon({
 
 export function RelationshipTableColumnHeaderIcon({
   relationshipSchema,
-}: { relationshipSchema: RelationshipSchema }) {
+}: {
+  relationshipSchema: RelationshipSchema;
+}) {
   const { schema } = useSchema(relationshipSchema.peer);
 
   return <Icon icon={getSchemaIcon(schema)} className="text-stone-400" />;

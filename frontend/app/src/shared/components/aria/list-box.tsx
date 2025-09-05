@@ -1,10 +1,11 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import {
   ListBoxItem as AriaListBoxItem,
   ListBoxItemProps as AriaListBoxItemProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export const ListBoxItem = <T extends object>({
   className,

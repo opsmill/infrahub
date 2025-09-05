@@ -3,6 +3,7 @@ allocation_weight
 anonymized
 Ansible
 anycast
+anycast
 Anycast
 APIs
 append_git_suffix
@@ -10,11 +11,15 @@ artifact_definitions
 artifact_name
 ASN
 ASNs
+ASNs
 async
 auditability
 auditable
 auditable
+auditable
 Authentik
+autoscaling
+bcrypt
 boolean
 certifi
 check_color_tags_name
@@ -28,6 +33,7 @@ combobox
 config
 Config
 configs
+configs
 Containerlab
 content_type
 convert_query_response
@@ -37,6 +43,7 @@ created_by
 Cron
 cypher
 Dagster
+dataloader
 datastore
 default_branch
 default_filter
@@ -50,12 +57,14 @@ dockerfile
 docusaurus
 e2e
 edit_default_branch
+end_user
 Entra
 enum
 enums
 env
 eslint
 excalidraw
+failover
 fanout
 file_path
 Gbps
@@ -71,6 +80,7 @@ graphene
 graphiql
 graphql
 greymatter
+HAProxy
 healthcheck
 hfid
 hfids
@@ -111,7 +121,9 @@ Kriten
 Kriten
 kubectl
 LibreNMS
+Liveness
 livestream
+Loopback
 Loopback
 Loopbacks
 markdownlint
@@ -120,6 +132,8 @@ Mbps
 Mbps
 memgraph
 menu_placement
+middleware
+Middleware
 min_max
 misconfiguration
 modeline
@@ -140,6 +154,7 @@ OAuth
 Observium
 OAuth2
 Observium
+Observium
 OIDC
 Okta
 openconfig
@@ -148,6 +163,13 @@ opentelemetry
 order_by
 order_weight
 Otternet
+passthrough
+pg_dump
+plaintext
+plaintext
+pluggable
+Pluggable
+Postgres
 Otternet
 performant
 pg_dump
@@ -155,7 +177,6 @@ plaintext
 plaintext
 Postgresql
 PostgreSQL
-Postgres
 Prefetch
 prefilled
 profile_name
@@ -165,6 +186,7 @@ PyPI
 query_peers
 rebase
 rebased
+rebasing
 Rebasing
 Redoc
 regenerate_host_artifact
@@ -196,8 +218,10 @@ toml
 toolchain
 Tooltips
 Tooltips
+Tooltips
 towncrier
 Towncrier
+UIs
 UIs
 UIs
 uncheck

@@ -14,7 +14,7 @@ const renderCustomizedTooltip = (props: any) => {
   }
 
   return (
-    <span className="text-xs bg-white p-2 rounded-md">
+    <span className="rounded-md bg-white p-2 text-xs">
       {data.name}: {data.value}
     </span>
   );
@@ -31,7 +31,7 @@ export const PieChart = (props: tPieChart) => {
 
   return (
     <div className={"relative cursor-pointer"} onClick={handleClick}>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+      <div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 flex transform items-center justify-center">
         {children}
       </div>
 

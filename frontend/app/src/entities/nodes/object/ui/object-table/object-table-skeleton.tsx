@@ -1,8 +1,9 @@
+import React from "react";
+
 import { Checkbox } from "@/shared/components/aria/checkbox";
 import { Skeleton } from "@/shared/components/skeleton";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
-import React from "react";
 
 export interface ObjectsTableSkeletonProps {
   headerCount: number;
@@ -16,7 +17,7 @@ export function ObjectTableSkeleton({ headerCount }: ObjectsTableSkeletonProps) 
           return (
             <TableCell
               key={`skeleton-${rowIndex}-${colIndex}`}
-              className={classNames(colIndex === 0 && "sticky left-0 bg-white z-1")}
+              className={classNames(colIndex === 0 && "sticky left-0 z-1 bg-white")}
             >
               {colIndex === 0 && <Checkbox isDisabled className={"mr-4"} />}
               <Skeleton className="h-4 w-full" />

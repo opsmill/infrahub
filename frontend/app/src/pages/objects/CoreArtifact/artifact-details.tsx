@@ -1,12 +1,15 @@
+import { useParams } from "react-router";
+
 import { ARTIFACT_OBJECT } from "@/config/constants";
-import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";
-import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { useTitle } from "@/shared/hooks/useTitle";
-import { useParams } from "react-router";
+
+import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";
+import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const ArtifactDetailsPage = () => {
   useTitle("Artifact");

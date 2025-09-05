@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Command } from "cmdk";
 import React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export function SearchAnywhereGroup({
   className,
@@ -9,8 +10,8 @@ export function SearchAnywhereGroup({
   return (
     <Command.Group
       className={classNames(
-        "bg-white rounded-lg border border-gray-200 p-2",
-        "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-neutral-600",
+        "rounded-lg border border-gray-200 bg-white p-2",
+        "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-neutral-600 [&_[cmdk-group-heading]]:text-xs",
         className
       )}
       {...props}

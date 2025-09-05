@@ -1,5 +1,6 @@
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 import { SelectProps } from "react-aria-components";
+
+import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

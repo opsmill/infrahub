@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export const Breadcrumb = React.forwardRef<HTMLOListElement, React.ComponentPropsWithoutRef<"ol">>(
   ({ className, ...props }, ref) => (
@@ -25,7 +26,7 @@ export const BreadcrumbSeparator = ({
     className={classNames("inline-flex", className)}
     {...props}
   >
-    {children ?? <Icon icon="mdi:slash-forward" className="text-xl text-gray-400" />}
+    {children ?? <Icon icon="mdi:slash-forward" className="text-gray-400 text-xl" />}
   </li>
 );
 

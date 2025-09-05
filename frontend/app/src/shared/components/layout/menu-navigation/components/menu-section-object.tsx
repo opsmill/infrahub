@@ -1,3 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+import { Link } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ObjectAvatar } from "@/shared/components/layout/menu-navigation/components/object-avatar";
 import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
@@ -13,9 +17,6 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
-import { Link } from "react-router";
 
 export interface MenuSectionObjectsProps {
   items: MenuItem[];
@@ -24,7 +25,7 @@ export interface MenuSectionObjectsProps {
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
-    return <Icon icon={item.icon} className="text-md m-1 size-4" />;
+    return <Icon icon={item.icon} className="m-1 size-4 text-md" />;
   }
   return <ObjectAvatar name={item.label} />;
 };
@@ -38,7 +39,7 @@ const RecursiveObjectMenuItem: React.FC<{
     return (
       <DropdownMenuItem className={menuNavigationItemStyle} asChild>
         <Link to={constructPath(item.path)}>
-          <Icon icon={item.icon} className="w-5 shrink-0 inline-flex justify-center items-center" />
+          <Icon icon={item.icon} className="inline-flex w-5 shrink-0 items-center justify-center" />
           {item.label}
         </Link>
       </DropdownMenuItem>
@@ -50,13 +51,13 @@ const RecursiveObjectMenuItem: React.FC<{
       <DropdownMenuAccordionTrigger
         className={classNames(
           menuNavigationItemStyle,
-          "font-bold py-1 data-[state=open]:bg-transparent data-[state=open]:text-inherit data-[state=open]:data-highlighted:bg-neutral-100"
+          "py-1 font-bold data-[state=open]:data-highlighted:bg-neutral-100 data-[state=open]:bg-transparent data-[state=open]:text-inherit"
         )}
         iconClassName="hover:bg-neutral-200"
       >
-        <Icon icon={item.icon} className="w-5 shrink-0 inline-flex justify-center items-center" />
+        <Icon icon={item.icon} className="inline-flex w-5 shrink-0 items-center justify-center" />
         {item.path ? (
-          <Link to={constructPath(item.path)} className="text-left cursor-pointer">
+          <Link to={constructPath(item.path)} className="cursor-pointer text-left">
             {item.label}
           </Link>
         ) : (
@@ -66,7 +67,7 @@ const RecursiveObjectMenuItem: React.FC<{
 
       <DropdownMenuAccordionContent
         style={{ marginLeft: (level + 1) * 18 }}
-        className="border-l border-neutral-200"
+        className="border-neutral-200 border-l"
       >
         {item.children.map((child) => (
           <RecursiveObjectMenuItem
@@ -108,7 +109,7 @@ const TopLevelMenuItem: React.FC<{
           </span>
         </Tooltip>
 
-        <span className={classNames("text-sm truncate", isCollapsed && "hidden")}>
+        <span className={classNames("truncate text-sm", isCollapsed && "hidden")}>
           {item.label}
         </span>
       </DropdownMenuTrigger>
@@ -117,7 +118,7 @@ const TopLevelMenuItem: React.FC<{
         side="left"
         align="start"
         sideOffset={isCollapsed ? 6 : 12}
-        className="min-w-60 max-h-[calc(100vh-7rem)] overflow-auto"
+        className="max-h-[calc(100vh-7rem)] min-w-60 overflow-auto"
       >
         {item.children.map((child) => (
           <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />

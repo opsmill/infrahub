@@ -1,26 +1,29 @@
-import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { RequireAuth } from "@/entities/authentication/ui/useAuth";
-import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
-import { constructPathForIpam } from "@/entities/ipam/utils";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
-import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
-import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 import queryString from "query-string";
 import { RouterProvider } from "react-aria-components";
 import {
+  createBrowserRouter,
   Navigate,
   type NavigateOptions,
   Outlet,
   UIMatch,
-  createBrowserRouter,
   useHref,
   useNavigate,
 } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 import { QueryParamProvider } from "use-query-params";
+
+import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
+import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
+
+import { RequireAuth } from "@/entities/authentication/ui/useAuth";
+import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
+import { constructPathForIpam } from "@/entities/ipam/utils";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
 declare module "react-aria-components" {
   interface RouterConfig {

@@ -1,6 +1,8 @@
+import { describe, expect, it, vi } from "vitest";
+
 import { NodeCore } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { describe, expect, it, vi } from "vitest";
+
 import { generateNodeSchema } from "../../../../../tests/fake/schema";
 import { getNodeLabel } from "./get-node-label";
 

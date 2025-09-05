@@ -1,7 +1,8 @@
-import { classNames } from "@/shared/utils/common";
 import * as LabelPrimitive from "@radix-ui/react-label";
-import { type VariantProps, cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface LabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,
@@ -12,8 +13,8 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        default: "text-sm font-medium text-gray-900",
-        small: "text-xs font-normal",
+        default: "font-medium text-gray-900 text-sm",
+        small: "font-normal text-xs",
       },
     },
     defaultVariants: {

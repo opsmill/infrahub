@@ -1,45 +1,24 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ProposedChangesCountsFromApiParams } from "@/entities/proposed-changes/api/get-proposed-changes-counts-from-api";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { getProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
-type GetProposedChangesCountsQueryOptionsParams = Omit<
-  ProposedChangesCountsFromApiParams,
-  keyof PaginationParams
->;
+import {
+  GetProposedChangesCountsParams,
+  getProposedChangesCounts,
+} from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
 
-export function getProposedChangesCountsQueryOptions({
-  branchName,
-  atDate,
-  filters,
-}: GetProposedChangesCountsQueryOptionsParams) {
+type GetProposedChangesCountsQueryOptionsParams = GetProposedChangesCountsParams;
+
+export function getProposedChangesCountsQueryOptions(
+  params: GetProposedChangesCountsQueryOptionsParams
+) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", PROPOSED_CHANGE_OBJECT, filters, "count"],
+    queryKey: proposedChangesQueryKeys.count(params),
     queryFn: () => {
-      return getProposedChangesCounts({
-        branchName,
-        atDate,
-        filters,
-      });
+      return getProposedChangesCounts(params);
     },
   });
 }
 
-export function useGetProposedChangesCounts(
-  params: Omit<GetProposedChangesCountsQueryOptionsParams, keyof ContextParams>
-) {
-  const { currentBranch } = useCurrentBranch();
-  const timeMachineDate = useAtomValue(datetimeAtom);
-
-  return useQuery(
-    getProposedChangesCountsQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    })
-  );
+export function useGetProposedChangesCounts(params: GetProposedChangesCountsQueryOptionsParams) {
+  return useQuery(getProposedChangesCountsQueryOptions(params));
 }

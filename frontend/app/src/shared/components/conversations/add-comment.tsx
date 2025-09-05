@@ -1,11 +1,13 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { forwardRef, ReactElement } from "react";
+import { useLocation } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormRef, FormSubmit } from "@/shared/components/ui/form";
-import { ReactElement, forwardRef } from "react";
-import { useLocation } from "react-router";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 type CommentFormData = {
   comment: string;

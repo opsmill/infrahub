@@ -1,20 +1,21 @@
+import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router";
+
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import Content from "@/shared/components/layout/content";
 import { Card } from "@/shared/components/ui/card";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
 const Homepage = () => {
   return (
     <Content className="p-8">
       <div className="flex flex-col">
-        <h1 className="text-3xl font-semibold">Welcome to Infrahub!</h1>
+        <h1 className="font-semibold text-3xl">Welcome to Infrahub!</h1>
         <h2 className="text-2xl">
           Browse our{" "}
           <Link
             to="https://docs.infrahub.app/"
             target="_blank"
-            className="text-custom-blue-700 font-semibold"
+            className="font-semibold text-custom-blue-700"
           >
             documentation
           </Link>{" "}
@@ -22,7 +23,7 @@ const Homepage = () => {
           <Link
             to="https://docs.infrahub.app/tutorials/getting-started/"
             target="_blank"
-            className="text-custom-blue-700 font-semibold"
+            className="font-semibold text-custom-blue-700"
           >
             tutorials
           </Link>{" "}
@@ -30,7 +31,7 @@ const Homepage = () => {
         </h2>
       </div>
 
-      <div className="py-4 flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 py-4">
         <HelperCard
           icon="mdi:learn-outline"
           title="Infrahub Labs"
@@ -69,14 +70,14 @@ const Homepage = () => {
       </div>
 
       <div className="flex flex-col pt-8">
-        <h1 className="text-xl font-semibold">Infrahub Integrations</h1>
+        <h1 className="font-semibold text-xl">Infrahub Integrations</h1>
         <h2 className="text-l">
           Integrate Infrahub with other tools and solutions. Below is a list of OpsMill-maintained
           packages.
         </h2>
       </div>
 
-      <div className="py-4 flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 py-4">
         <HelperCard
           icon="mdi:toy-brick-marker-outline"
           title="Nornir"
@@ -124,11 +125,11 @@ const HelperCard = ({
   docLabel,
 }: HelperCardProps) => {
   return (
-    <Card className="border border-gray-200 flex flex-col hover:shadow-md transition-shadow duration-300 w-80">
-      <h3 className="font-semibold flex items-center gap-1 mb-1">
+    <Card className="flex w-80 flex-col border border-gray-200 transition-shadow duration-300 hover:shadow-md">
+      <h3 className="mb-1 flex items-center gap-1 font-semibold">
         <Icon icon={icon} /> {title}
       </h3>
-      <p className="mb-6 text-gray-500 text-sm grow">{description}</p>
+      <p className="mb-6 grow text-gray-500 text-sm">{description}</p>
 
       <div className="flex justify-end gap-2">
         {docTo && (
@@ -137,7 +138,7 @@ const HelperCard = ({
             variant="outline"
             to={docTo}
             target="_blank"
-            className="text-xs font-semibold gap-1 border-custom-blue-700 text-custom-blue-700"
+            className="gap-1 border-custom-blue-700 font-semibold text-custom-blue-700 text-xs"
           >
             {docLabel} <Icon icon="mdi:open-in-new" />
           </LinkButton>
@@ -148,7 +149,7 @@ const HelperCard = ({
             size="sm"
             variant="outline"
             to={goto}
-            className="text-xs font-semibold shadow-none"
+            className="font-semibold text-xs shadow-none"
           >
             {gotoLabel}
           </LinkButton>

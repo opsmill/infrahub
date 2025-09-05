@@ -1,10 +1,12 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
-const GET_DETAILS = gql`
-  query GET_PROPOSED_CHANGE_DETAILS($id: ID, $nodeId: String, $state: String) {
-    CoreProposedChange(ids: [$id], state__value: $state) {
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+import { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
+
+const GET_PROPOSED_CHANGE_DETAILS = gql`
+  query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {
+    CoreProposedChange(ids: [$proposedChangeId]) {
       count
       edges {
         node {
@@ -66,35 +68,53 @@ const GET_DETAILS = gql`
         }
       }
     }
-    InfrahubTask(related_node__ids: [$nodeId]) {
+    InfrahubTask(related_node__ids: [$taskNodeId]) {
       count
     }
   }
 `;
 
-export interface ProposedChangeDetailsFromApiParams extends ContextParams {
-  id: string;
-  nodeId: string;
-  state: string;
+export interface ProposedChangeDetailsFromApiParams {
+  proposedChangeId: string;
+}
+
+export interface ProposedChangeDetailsFromApiResponse {
+  CoreProposedChange: {
+    count: number;
+    edges: Array<{
+      node: {
+        __typename: "CoreProposedChange";
+        id: string;
+        display_label: string;
+        _updated_at: any | null;
+        name: { value: string };
+        description: {
+          value: string | null;
+          updated_at: any | null;
+        };
+        source_branch: { value: string };
+        destination_branch: { value: string };
+        state: { value: string };
+        is_draft: { value: boolean };
+        approved_by: NodeRelationshipMany;
+        rejected_by: NodeRelationshipMany;
+        reviewers: NodeRelationshipMany;
+        created_by: NodeRelationshipOne;
+        comments: { count: number };
+      };
+    }>;
+  };
+  InfrahubTask: { count: number };
 }
 
 export const getProposedChangeDetailsFromApi = async ({
-  id,
-  nodeId,
-  state,
-  branchName,
-  atDate,
+  proposedChangeId,
 }: ProposedChangeDetailsFromApiParams) => {
-  return graphqlClient.query({
-    query: GET_DETAILS,
+  return graphqlClient.query<ProposedChangeDetailsFromApiResponse>({
+    query: GET_PROPOSED_CHANGE_DETAILS,
     variables: {
-      id,
-      nodeId,
-      state,
-    },
-    context: {
-      branch: branchName,
-      date: atDate,
+      proposedChangeId,
+      taskNodeId: proposedChangeId,
     },
   });
 };

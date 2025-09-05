@@ -1,8 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
@@ -12,7 +11,11 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+
+import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
+import { ModelSchema } from "@/entities/schema/types";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
@@ -28,7 +31,7 @@ const GraphqlQueryDetailsCard = ({
   permission,
 }: GraphqlQueryDetailsCardProps) => {
   return (
-    <Card className="p-0 overflow-x-hidden">
+    <Card className="overflow-x-hidden p-0">
       <GraphqlQueryDetailsTitle
         data={data}
         schema={schema}

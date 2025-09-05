@@ -1,9 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+import { StringParam, useQueryParams } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
-import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { ModelSchema } from "@/entities/schema/types";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+
 import { Row } from "@/shared/components/container";
 import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import { Badge } from "@/shared/components/ui/badge";
@@ -14,9 +14,12 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
-import { StringParam, useQueryParams } from "use-query-params";
+
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { ModelSchema } from "@/entities/schema/types";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -41,14 +44,14 @@ export function ObjectTableSchemaSelector() {
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger
-        className="w-auto min-h-8 py-0 whitespace-nowrap"
+        className="min-h-8 w-auto whitespace-nowrap py-0"
         data-testid="object-schema-schema-selector"
       >
         <RenderItem schema={selectedSchema ?? baseSchema} />
       </ComboboxTrigger>
 
       <ComboboxContent portal fitTriggerWidth={false}>
-        <ComboboxList>
+        <ComboboxList shouldFilter>
           <ComboboxItem
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
@@ -66,6 +69,7 @@ export function ObjectTableSchemaSelector() {
           {items.map((schema) => {
             return (
               <ComboboxItem
+                keywords={[schema.label!, schema.kind!]}
                 key={schema.hash}
                 value={schema.hash}
                 selectedValue={selectedSchema.hash}

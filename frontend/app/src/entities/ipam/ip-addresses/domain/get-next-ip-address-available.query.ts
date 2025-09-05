@@ -1,8 +1,11 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ContextParams, QueryConfig } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai/index";
+
+import { ContextParams, QueryConfig } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+
 import { getNextIpAddressAvailable } from "./get-next-ip-address-available";
 
 export interface GetNextIpAddressAvailableQueryOptionsParams extends ContextParams {

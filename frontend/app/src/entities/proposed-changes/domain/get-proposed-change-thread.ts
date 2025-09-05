@@ -1,14 +1,19 @@
 import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
-import {
-  ProposedChangeThreadFromApiParams,
-  getProposedChangeThreadFromApi,
-} from "../api/get-proposed-change-thread-from-api";
 
-export async function getProposedChangeThread(params: ProposedChangeThreadFromApiParams) {
+import {
+  getProposedChangeThreadFromApi,
+  ProposedChangeThreadFromApiParams,
+} from "@/entities/proposed-changes/api/get-proposed-change-thread-from-api";
+
+export type GetProposedChangeThreadParams = ProposedChangeThreadFromApiParams;
+
+export type GetProposedChangeThread = (params: GetProposedChangeThreadParams) => Promise<any>;
+
+export const getProposedChangeThread: GetProposedChangeThread = async (params) => {
   const { data, errors } = await getProposedChangeThreadFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
   const edges = data?.[PROPOSED_CHANGES_THREAD_OBJECT]?.edges;
@@ -18,4 +23,4 @@ export async function getProposedChangeThread(params: ProposedChangeThreadFromAp
   }
 
   return edges[0].node;
-}
+};

@@ -1,7 +1,3 @@
-import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle } from "@/shared/components/style-rac";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-import { classNames } from "@/shared/utils/common";
 import { CopyIcon } from "lucide-react";
 import {
   Header as AriaHeader,
@@ -17,6 +13,11 @@ import {
   composeRenderProps,
 } from "react-aria-components";
 
+import { Popover } from "@/shared/components/aria/popover";
+import { disabledStyle } from "@/shared/components/style-rac";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { classNames } from "@/shared/utils/common";
+
 export const MenuTrigger = AriaMenuTrigger;
 
 export interface MenuPopoverProps extends AriaPopoverProps {}
@@ -24,7 +25,7 @@ export const MenuPopover = ({ className, ...props }: MenuPopoverProps) => {
   return (
     <Popover
       className={composeRenderProps(className, (className) => {
-        return classNames("p-1 rounded-lg bg-stone-100 border-stone-200", className);
+        return classNames("rounded-lg border-stone-200 bg-stone-100 p-1", className);
       })}
       {...props}
     />
@@ -53,7 +54,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
       className={composeRenderProps(className, (className) =>
         classNames(
           disabledStyle,
-          "transition-colors min-w-40 flex items-center gap-2 cursor-pointer select-none outline-hidden bg-white border border-transparent text-sm text-stone-600 rounded-md py-1 px-2",
+          "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors",
           "data-focused:border-stone-300",
           className
         )
@@ -72,7 +73,7 @@ export const MenuSection = <T extends object>({ className, ...props }: MenuSecti
 
 export interface MenuHeaderProps extends AriaHeadingProps {}
 export const MenuHeader = ({ className, ...props }: MenuHeaderProps) => {
-  return <AriaHeader className={classNames("text-xs text-stone-500 px-1", className)} {...props} />;
+  return <AriaHeader className={classNames("px-1 text-stone-500 text-xs", className)} {...props} />;
 };
 
 export interface CopyToClipboardMenuItemProps extends Omit<MenuItemProps, "onAction" | "children"> {

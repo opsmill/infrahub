@@ -1,21 +1,24 @@
+import { atom } from "jotai";
+import * as R from "ramda";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { TreeProps } from "@/shared/components/ui/tree";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { currentIpNamespaceAtom } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import {
-  GET_PREFIXES_ONLY,
   GET_PREFIX_ANCESTORS,
+  GET_PREFIXES_ONLY,
   GET_TOP_LEVEL_PREFIXES,
 } from "@/entities/ipam/ipam-tree/api/prefixes";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { TreeProps } from "@/shared/components/ui/tree";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { atom } from "jotai";
-import * as R from "ramda";
+
 import {
   AncestorsData,
   EMPTY_TREE,
-  PrefixData,
   formatIPPrefixResponseForTreeView,
+  PrefixData,
   updateTreeData,
 } from "./utils";
 

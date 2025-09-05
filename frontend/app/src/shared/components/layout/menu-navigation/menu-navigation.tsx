@@ -13,7 +13,7 @@ export interface MenuNavigationProps {
 export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   const { data: menu, isPending, error } = useMenu();
 
-  if (isPending) return <Spinner className="grow mx-auto p-4" />;
+  if (isPending) return <Spinner className="mx-auto grow p-4" />;
   if (error) return <ErrorScreen message="Something went wrong when fetching the menu" />;
 
   if (!menu?.sections) return <div className="grow" />;

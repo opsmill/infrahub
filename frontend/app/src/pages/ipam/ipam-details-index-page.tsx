@@ -1,10 +1,12 @@
+import { Navigate, useParams } from "react-router";
+
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
+
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { NodeAttribute } from "@/entities/nodes/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
-import { Navigate, useParams } from "react-router";
 
 export const IpamDetailsIndexPage = () => {
   const { objectKind, objectId } = useParams();

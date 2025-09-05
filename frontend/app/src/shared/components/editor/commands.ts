@@ -1,5 +1,6 @@
-import { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { EditorSelection } from "@codemirror/state";
+
+import { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
 
 export type EditorCommand = {
   label: string;

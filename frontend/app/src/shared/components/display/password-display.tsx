@@ -1,7 +1,9 @@
-import { MAX_PASSWORD_DOTS_DISPLAY, MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+
+import { MAX_PASSWORD_DOTS_DISPLAY, MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
+
+import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 
 type tPasswordDisplayProps = {
   value: string;

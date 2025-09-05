@@ -1,7 +1,3 @@
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
-import { NodeAttribute } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
 import { queryClient } from "@/shared/api/rest/client";
 import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import Content from "@/shared/components/layout/content";
@@ -9,6 +5,12 @@ import { ObjectDetailsButton } from "@/shared/components/menu/object-details-but
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
+
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { NodeAttribute } from "@/entities/nodes/types";
+import { ModelSchema } from "@/entities/schema/types";
 
 type ObjectHeaderProps = {
   schema: ModelSchema;
@@ -35,10 +37,8 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
     filters: removeFiltersNotInSchema(filters, schema),
   });
 
-  const refetchObjects = () => {
-    queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey.includes("objects"),
-    });
+  const refetchObjects = async () => {
+    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
   };
 
   return (
@@ -90,10 +90,8 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
         (objectDetailsData?.description as NodeAttribute | undefined)?.value ?? schema.description
       }
       isReloadLoading={isRefetching}
-      reload={() => {
-        queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey.includes("objects"),
-        });
+      reload={async () => {
+        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       }}
       end={
         objectDetailsData?.hfid &&

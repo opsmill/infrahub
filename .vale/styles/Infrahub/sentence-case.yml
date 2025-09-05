@@ -30,6 +30,8 @@ exceptions:
   - CoreGroup
   - CSS-like cascading
   - CoreRepository
+  - Create an application in Entra ID
+  - Determine your redirect URI
   - Docker Compose
   - E2E
   - Emma
@@ -41,6 +43,7 @@ exceptions:
   - GitPod
   - GraphQL
   - GraphQLQuery
+  - HAProxy
   - Helm
   - High Availability
   - Human Friendly Identifier
@@ -65,6 +68,7 @@ exceptions:
   - NATS
   - Nautobot
   - Neo4j
+  - NGINX
   - Netbox
   - NetBox
   - Netpicker
@@ -72,6 +76,8 @@ exceptions:
   - Node
   - NumberPool
   - OAuth 2.0
+  - OAuth 2.0 configuration example
+  - OAuth 2.0 parameters
   - OAuth 2.0 vs OpenID Connect
   - OAuth2
   - Observium
@@ -84,6 +90,7 @@ exceptions:
   - Pydantic
   - Python
   - RabbitMQ
+  - Redirect URI formats
   - REST
   - RFile
   - Schema

@@ -1,3 +1,6 @@
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { Filter } from "@/shared/hooks/useFilters";
+
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import {
   getIpAddressListWithAvailabilityFromApi,
@@ -10,8 +13,6 @@ import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
 
 export interface GetIpAddressListParams extends ContextParams, PaginationParams {
   schema: ModelSchema;

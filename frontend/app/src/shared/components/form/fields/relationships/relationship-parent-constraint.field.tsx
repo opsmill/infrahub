@@ -1,11 +1,15 @@
+import { useParams } from "react-router";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
+
+import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
+
 import RelationshipField from "./relationship.field";
 
 export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}

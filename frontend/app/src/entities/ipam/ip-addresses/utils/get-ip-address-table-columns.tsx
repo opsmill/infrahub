@@ -1,3 +1,11 @@
+import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+
+import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
+import { TableCell } from "@/shared/components/table/table-cell";
+import { classNames } from "@/shared/utils/common";
+
 import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 import { IpAddressAvailableCreateFormTrigger } from "@/entities/ipam/ip-addresses/ui/ip-address-available-create-form-trigger";
@@ -11,12 +19,6 @@ import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/c
 import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
-import { TableCell } from "@/shared/components/table/table-cell";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 
@@ -50,7 +52,7 @@ export const getIpAddressTableColumns = (
                 />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
+              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
                 {displayLabel}
               </TableCell>
             </>

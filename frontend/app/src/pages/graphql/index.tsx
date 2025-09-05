@@ -1,19 +1,21 @@
-import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { QSP } from "@/config/qsp";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
 import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useAtomValue } from "jotai";
-import { StringParam, useQueryParam } from "use-query-params";
-
-import GraphQLWorker from "@/vendor/monaco-graphql/graphql.worker?worker&module";
 // Bundle Monaco workers locally so build works offline and avoids dep pre-bundling issues
 // with ?worker imports inside node_modules.
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker&module";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&module";
+import { StringParam, useQueryParam } from "use-query-params";
+
+import { CONFIG } from "@/config/config";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+import { QSP } from "@/config/qsp";
+import GraphQLWorker from "@/vendor/monaco-graphql/graphql.worker?worker&module";
+
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
 

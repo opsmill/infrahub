@@ -18,7 +18,7 @@ export function StickyLeftCell({
       {...props}
     >
       {children}
-      <div className="absolute -right-4 top-0 bottom-0 w-4 bg-gradient-to-r from-gray-500/10 pointer-events-none" />
+      <div className="-right-4 pointer-events-none absolute top-0 bottom-0 w-4 bg-gradient-to-r from-gray-500/10" />
     </TableCell>
   );
 }
@@ -27,13 +27,13 @@ export function StickyRightCell({ className, isMuted, children, ...props }: Stic
   return (
     <TableCell
       className={classNames(
-        "sticky right-0 border-l size-10 items-center justify-center -ml-px",
+        "-ml-px sticky right-0 size-10 items-center justify-center border-l",
         isMuted ? cellMutedStyle : "bg-white",
         className
       )}
       {...props}
     >
-      <div className="absolute -left-4 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-gray-300/30 pointer-events-none" />
+      <div className="-left-4 pointer-events-none absolute top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-gray-300/30" />
       {children}
     </TableCell>
   );

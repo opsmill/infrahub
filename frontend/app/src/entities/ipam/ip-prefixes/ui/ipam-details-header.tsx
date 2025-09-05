@@ -1,3 +1,9 @@
+import React from "react";
+import { Link, LinkProps } from "react-router";
+
+import { Row, RowProps } from "@/shared/components/container";
+import { classNames, sortByOrderWeight } from "@/shared/utils/common";
+
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -12,10 +18,6 @@ import {
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { Row, RowProps } from "@/shared/components/container";
-import { classNames, sortByOrderWeight } from "@/shared/utils/common";
-import React from "react";
-import { Link, LinkProps } from "react-router";
 
 interface IpPrefixDetailsHeaderProps extends RowProps {
   ipPrefixSchema: ModelSchema;
@@ -100,22 +102,22 @@ export function IpamDetailsHeader({
   );
 }
 
-const Divider = () => <div className="w-px bg-gray-200 h-5" />;
+const Divider = () => <div className="h-5 w-px bg-gray-200" />;
 
 const Group = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
-  <div className={classNames("text-xs not-last:max-w-50", className)} {...props}>
+  <div className={classNames("not-last:max-w-50 text-xs", className)} {...props}>
     {children}
   </div>
 );
 
 const Title = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
-  <div className={classNames("text-custom-blue-800 truncate", className)} {...props}>
+  <div className={classNames("truncate text-custom-blue-800", className)} {...props}>
     {children}
   </div>
 );
 
 const Value = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
-  <div className={classNames("text-gray-600 font-medium truncate", className)} {...props}>
+  <div className={classNames("truncate font-medium text-gray-600", className)} {...props}>
     {children}
   </div>
 );
@@ -123,7 +125,7 @@ const Value = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement
 const Fade = ({ className, ...props }: React.HTMLProps<HTMLDivElement>) => (
   <div
     className={classNames(
-      "absolute right-0 top-0 bottom-0 w-40 bg-gradient-to-r from-transparent via-white/70 to-white pointer-events-none",
+      "pointer-events-none absolute top-0 right-0 bottom-0 w-40 bg-gradient-to-r from-transparent via-white/70 to-white",
       className
     )}
     {...props}
@@ -137,7 +139,7 @@ interface RelationshipDisplayProps extends Omit<LinkProps, "to"> {
 const RelationshipDisplay = ({ className, node, ...props }: RelationshipDisplayProps) => (
   <Link
     to={getObjectDetailsUrl(node.__typename, node.id)}
-    className={classNames("underline decoration-dotted inline-flex", className)}
+    className={classNames("inline-flex underline decoration-dotted", className)}
     {...props}
   >
     {node.display_label}
