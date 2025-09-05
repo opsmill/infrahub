@@ -10,7 +10,7 @@ import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export function ObjectDetailsPage() {
+function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
   const { schema } = useSchema(objectKind);
 

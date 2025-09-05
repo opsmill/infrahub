@@ -11,10 +11,6 @@ export function ModalTitle({ children }: { children: ReactNode }) {
   );
 }
 
-export function ModalDescription({ children }: { children: ReactNode }) {
-  return <p className="text-gray-500 text-sm">{children}</p>;
-}
-
 interface iProps {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;

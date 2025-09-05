@@ -10,7 +10,7 @@ import { Link } from "@/shared/components/ui/link";
 
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { NodeObject } from "@/entities/nodes/types";
-import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
+import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-objects-manager";
 import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";

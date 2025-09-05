@@ -18,12 +18,12 @@ import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
 
-export const BRANCH_TABS = {
+const BRANCH_TABS = {
   DETAILS: "details",
   DIFF: "diff",
 };
 
-export function BranchDetailsPage() {
+function BranchDetailsPage() {
   const { "*": branchName } = useParams();
   const branches = useAtomValue(branchesState);
   useTitle(`${branchName} details`);
