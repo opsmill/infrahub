@@ -1,7 +1,6 @@
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
@@ -10,8 +9,11 @@ import {
 } from "@/shared/api/graphql/utils";
 import { PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -1,3 +1,5 @@
+import ErrorScreen from "@/shared/components/errors/error-screen";
+
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import {
   IpAddressTable,
@@ -6,7 +8,6 @@ import {
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
 import { ModelSchema } from "@/entities/schema/types";
-import ErrorScreen from "@/shared/components/errors/error-screen";
 
 export interface IpAddressManagerProps {
   schema: ModelSchema;

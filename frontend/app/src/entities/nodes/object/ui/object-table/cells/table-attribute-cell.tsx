@@ -1,3 +1,7 @@
+import { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { warnUnexpectedType } from "@/shared/utils/common";
+
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
@@ -5,9 +9,6 @@ import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
-import { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
-import { DateDisplay } from "@/shared/components/display/date-display";
-import { warnUnexpectedType } from "@/shared/utils/common";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;

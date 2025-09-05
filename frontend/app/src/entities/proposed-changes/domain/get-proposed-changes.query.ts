@@ -1,37 +1,34 @@
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+
+import { PaginationParams } from "@/shared/api/types";
+
 import {
   OBJECTS_PER_PAGE,
   ProposedChangesFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
-import { PaginationParams } from "@/shared/api/types";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { getProposedChanges } from "./get-proposed-changes";
+import { getProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
 
 type GetProposedChangesInfiniteQueryOptionsParams = Omit<
   ProposedChangesFromApiParams,
   keyof PaginationParams
 >;
 
-export function getProposedChangesInfiniteQueryOptions({
-  schema,
-  filters,
-  getAttributesVisible,
-  getRelationshipsVisible,
-}: GetProposedChangesInfiniteQueryOptionsParams) {
+export function getProposedChangesInfiniteQueryOptions(
+  params: GetProposedChangesInfiniteQueryOptionsParams
+) {
   return infiniteQueryOptions({
-    queryKey: ["objects", schema.kind, filters],
+    queryKey: proposedChangesQueryKeys.list(params),
     queryFn: ({ pageParam }) => {
       return getProposedChanges({
-        schema,
+        ...params,
         offset: pageParam,
-        filters,
-        getAttributesVisible,
-        getRelationshipsVisible,
       });
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECTS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + OBJECTS_PER_PAGE;
     },

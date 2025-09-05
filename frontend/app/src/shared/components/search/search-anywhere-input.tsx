@@ -1,8 +1,9 @@
-import { inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Command, Command as CommandPrimitive } from "cmdk";
 import * as React from "react";
+
+import { inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 
 export function SearchAnywhereInput({
   className,
@@ -11,7 +12,7 @@ export function SearchAnywhereInput({
   return (
     <div className="relative">
       <div className="absolute top-2.5 pl-2.5">
-        <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
+        <Icon icon="mdi:magnify" className="text-custom-blue-600 text-xl" />
       </div>
 
       <Command.Input

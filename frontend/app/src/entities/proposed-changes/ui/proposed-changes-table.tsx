@@ -1,4 +1,11 @@
+import React from "react";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
+
+import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+import useFilters from "@/shared/hooks/useFilters";
+
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { Permission } from "@/entities/permission/types";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
@@ -6,10 +13,7 @@ import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-cha
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { NodeSchema } from "@/entities/schema/types";
-import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
-import React from "react";
-import { StringParam, useQueryParam } from "use-query-params";
+
 import { computeProposedChangeFilters } from "../utils/compute-proposed-change-filters";
 
 type ProposedChangesTableProps = {

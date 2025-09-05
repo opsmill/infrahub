@@ -1,8 +1,10 @@
-import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
+
+import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
+
+import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 export interface KindComboboxListProps {
   onSelect: (value: string) => void;

@@ -1,3 +1,5 @@
+import React from "react";
+
 import {
   ProcessingGroupsPanel,
   ProcessingGroupsPanelProps,
@@ -8,7 +10,6 @@ import {
   RelationshipComboboxList,
   RelationshipComboboxListProps,
 } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import React from "react";
 
 export interface BulkMutateGroupsProps extends Omit<ProcessingGroupsPanelProps, "selectedGroups"> {
   groupsQueryFilter?: RelationshipComboboxListProps["filterQuery"];

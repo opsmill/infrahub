@@ -1,11 +1,13 @@
+import { Navigate } from "react-router";
+import { toast } from "react-toastify";
+
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Navigate } from "react-router";
-import { toast } from "react-toastify";
 
 export interface ObjectRelationshipsManagerProps {
   parentNodeSchema: ModelSchema;

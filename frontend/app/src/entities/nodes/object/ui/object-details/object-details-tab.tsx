@@ -1,11 +1,13 @@
+import { Icon } from "@iconify-icon/react";
+
+import { Badge } from "@/shared/components/ui/badge";
+import { LinkTab } from "@/shared/components/ui/link";
+
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { Badge } from "@/shared/components/ui/badge";
-import { LinkTab } from "@/shared/components/ui/link";
-import { Icon } from "@iconify-icon/react";
 
 export interface ObjectDetailsTabProps {
   parentKind: string;
@@ -33,7 +35,7 @@ export function ObjectDetailsTab({
     <LinkTab href={url}>
       <Icon icon={getSchemaIcon(schema)} />
       {relationship.label}
-      <Badge variant="blue" className="font-normal rounded-full">
+      <Badge variant="blue" className="rounded-full font-normal">
         {data}
       </Badge>
     </LinkTab>

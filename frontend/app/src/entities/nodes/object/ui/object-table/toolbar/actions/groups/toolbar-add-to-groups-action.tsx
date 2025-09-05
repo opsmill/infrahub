@@ -1,10 +1,12 @@
+import { DialogTrigger } from "react-aria-components";
+
+import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { addRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
 import { NodeCore } from "@/entities/nodes/types";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
-import { DialogTrigger } from "react-aria-components";
 
 export interface ToolbarAddToGroupActionProps {
   selectedRows: Array<NodeCore>;

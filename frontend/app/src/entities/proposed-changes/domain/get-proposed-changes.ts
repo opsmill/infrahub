@@ -1,8 +1,8 @@
 import { NodeCore } from "@/entities/nodes/types";
 import {
-  ProposedChangesFromApiParams,
   getProposedChangesFromApi,
-} from "../api/get-proposed-changes-from-api";
+  ProposedChangesFromApiParams,
+} from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
 
 export type ProposedChangeItem = {
   id: string;
@@ -29,8 +29,8 @@ export type GetProposedChanges = (
 export const getProposedChanges: GetProposedChanges = async (params) => {
   const { data, errors } = await getProposedChangesFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
   const schemaKindToQuery = params.schema.kind as string;

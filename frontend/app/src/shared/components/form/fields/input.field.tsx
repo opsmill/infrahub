@@ -1,3 +1,6 @@
+import React from "react";
+import { Button } from "react-aria-components";
+
 import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
@@ -11,8 +14,6 @@ import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input, InputProps } from "@/shared/components/ui/input";
 import { inputStyle } from "@/shared/components/ui/style";
-import React from "react";
-import { Button } from "react-aria-components";
 
 export interface InputFieldProps
   extends FormFieldProps,

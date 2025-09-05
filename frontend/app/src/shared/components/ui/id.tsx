@@ -1,10 +1,13 @@
+import { gql } from "@apollo/client";
+
 import { NODE_OBJECT } from "@/config/constants";
-import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabel";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Clipboard } from "@/shared/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { gql } from "@apollo/client";
+
+import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabel";
 
 type tId = {
   id: string;
@@ -42,7 +45,7 @@ export const Id = (props: tId) => {
           value={id}
           alert="ID copied!"
           tooltip="Copy ID"
-          className="ml-2 p-1 rounded-full"
+          className="ml-2 rounded-full p-1"
         />
       )}
     </BadgeCircle>

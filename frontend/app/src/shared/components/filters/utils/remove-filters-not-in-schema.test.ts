@@ -1,5 +1,7 @@
-import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect, it } from "vitest";
+
+import { Filter } from "@/shared/hooks/useFilters";
+
 import {
   generateAttributeSchema,
   generateGenericSchema,

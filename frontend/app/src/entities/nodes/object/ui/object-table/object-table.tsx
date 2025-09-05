@@ -1,10 +1,13 @@
+import React from "react";
+
+import { DataTable } from "@/shared/components/table/data-table";
+import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/get-object-actions-column";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
-import { DataTable } from "@/shared/components/table/data-table";
-import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import React from "react";
+
 import { getObjectTableColumns } from "./get-object-table-columns";
 
 export const ObjectTable = () => {

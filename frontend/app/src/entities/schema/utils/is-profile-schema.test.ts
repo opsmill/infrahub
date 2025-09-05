@@ -1,5 +1,7 @@
-import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 import { describe, expect, it } from "vitest";
+
+import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
+
 import { generateNodeSchema, generateProfileSchema } from "../../../../tests/fake/schema";
 
 describe("isProfileSchema", () => {

@@ -1,4 +1,14 @@
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
+
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import {
@@ -8,6 +18,7 @@ import {
 import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator-definition-run-button";
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
@@ -15,13 +26,6 @@ import RepositoryActionMenu from "@/entities/repository/ui/repository-action-men
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
-import { useNavigate } from "react-router";
 
 type DetailsButtonsProps = {
   schema: ModelSchema;
@@ -71,7 +75,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
             schema={schema}
             permission={permission}
             objectId={objectDetailsData.id}
-            className="text-custom-blue-600 p-4"
+            className="p-4 text-custom-blue-600"
           />
         )}
 
@@ -107,9 +111,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditModal(false)}
           onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes("objects"),
-            });
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setShowEditModal(false);
           }}
           objectid={objectDetailsData.id!}

@@ -1,19 +1,21 @@
-import { IPAM_QSP, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { atom, useAtom } from "jotai";
+import { CornerDownLeftIcon } from "lucide-react";
+import React from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { StringParam, useQueryParam } from "use-query-params";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Col } from "@/shared/components/container";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
+import { IP_ADDRESS_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
 import { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { NodeCore } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Col } from "@/shared/components/container";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { atom, useAtom } from "jotai";
-import { CornerDownLeftIcon } from "lucide-react";
-import React from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 export const currentIpNamespaceAtom = atom<NodeCore>(undefined as unknown as NodeCore);
 
@@ -50,7 +52,7 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
             <span>{`IP Namespace ${namespaceQSP ?? "default"} not found.`}</span>
             <Link
               to={constructPath("/ipam")}
-              className="text-indigo-700 hover:underline inline-flex items-center gap-2"
+              className="inline-flex items-center gap-2 text-indigo-700 hover:underline"
             >
               Go to default IP namespace <CornerDownLeftIcon className="size-4" />
             </Link>

@@ -3,6 +3,7 @@ import { RequireObjectPermissions } from "@/entities/permission/ui/require-objec
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { ProposedChangesTable } from "@/entities/proposed-changes/ui/proposed-changes-table";
 import { NodeSchema } from "@/entities/schema/types";
+
 import { ProposedChangesManagerToolbar } from "./proposed-changes-manager-toolbar";
 
 export interface ProposedChangesManagerProps {

@@ -1,7 +1,9 @@
-import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
+import { Icon } from "@iconify-icon/react";
+
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
-import { Icon } from "@iconify-icon/react";
+
+import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 
 export interface DiffEmptyProps {
   branchName: string;
@@ -10,8 +12,8 @@ export interface DiffEmptyProps {
 
 export function DiffEmpty({ branchName, lastRefreshedAt }: DiffEmptyProps) {
   return (
-    <div className="flex flex-col items-center my-10 gap-5">
-      <div className="p-3 rounded-full bg-white inline-flex">
+    <div className="my-10 flex flex-col items-center gap-5">
+      <div className="inline-flex rounded-full bg-white p-3">
         <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
       </div>
 

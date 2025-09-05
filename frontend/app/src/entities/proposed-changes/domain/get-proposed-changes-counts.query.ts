@@ -1,19 +1,20 @@
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
 import {
   GetProposedChangesCountsParams,
   getProposedChangesCounts,
 } from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
 
 type GetProposedChangesCountsQueryOptionsParams = GetProposedChangesCountsParams;
 
-export function getProposedChangesCountsQueryOptions({
-  filters,
-}: GetProposedChangesCountsQueryOptionsParams) {
+export function getProposedChangesCountsQueryOptions(
+  params: GetProposedChangesCountsQueryOptionsParams
+) {
   return queryOptions({
-    queryKey: ["objects", PROPOSED_CHANGE_OBJECT, "count", filters],
+    queryKey: proposedChangesQueryKeys.count(params),
     queryFn: () => {
-      return getProposedChangesCounts({ filters });
+      return getProposedChangesCounts(params);
     },
   });
 }

@@ -1,3 +1,12 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { toast } from "react-toastify";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { CANCEL_REJECT_DECISION, REJECT_DECISION } from "@/entities/proposed-changes/constants";
 import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/domain/update-review.mutation";
@@ -5,13 +14,6 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 import { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/utils/has-user-rejected-proposed-change";
-import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { toast } from "react-toastify";
 
 export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
@@ -64,7 +66,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     <>
       <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
         <Button
-          className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+          className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
           onClick={handleAction}
           variant={"primary"}
           isLoading={isPending}
