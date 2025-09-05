@@ -1,5 +1,7 @@
-import { removeRelationshipsFromApi } from "@/entities/nodes/relationships/api/remove-relationships-from-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { removeRelationshipsFromApi } from "@/entities/nodes/relationships/api/remove-relationships-from-api";
+
 import { removeRelationships } from "./remove-relationships";
 
 vi.mock("@/entities/nodes/relationships/api/remove-relationships-from-api");

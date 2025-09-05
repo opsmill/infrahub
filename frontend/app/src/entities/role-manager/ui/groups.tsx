@@ -1,7 +1,9 @@
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_GROUPS } from "@/entities/role-manager/api/getGroups";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -18,9 +20,11 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
-import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+
+import { GET_ROLE_MANAGEMENT_GROUPS } from "@/entities/role-manager/api/getGroups";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 import { GroupMembers } from "./group-member";
 
@@ -139,7 +143,7 @@ function Groups() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}

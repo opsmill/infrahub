@@ -1,9 +1,9 @@
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import { toast } from "react-toastify";
+
 import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { branchesState } from "@/entities/branches/stores";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
@@ -11,9 +11,12 @@ import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { toast } from "react-toastify";
+
+import { branchesState } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {
   initialData: Record<string, AttributeType>;

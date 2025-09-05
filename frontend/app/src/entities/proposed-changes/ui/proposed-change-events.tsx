@@ -1,11 +1,13 @@
-import { useGetEvents } from "@/entities/events/domain/get-events.query";
-import { EventCard } from "@/entities/events/ui/event-card";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
+import React from "react";
+import { useParams } from "react-router";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
-import React from "react";
-import { useParams } from "react-router";
+
+import { useGetEvents } from "@/entities/events/domain/get-events.query";
+import { EventCard } from "@/entities/events/ui/event-card";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 
 export const ProposedChangeEvents = () => {
   const { proposedChangeId } = useParams();

@@ -1,10 +1,13 @@
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React from "react";
+
+import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
+import { classNames } from "@/shared/utils/common";
+
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
-import { classNames } from "@/shared/utils/common";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React from "react";
+
 import { inputStyle } from "../ui/style";
 
 export interface PeerInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {

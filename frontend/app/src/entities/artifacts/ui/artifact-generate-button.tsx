@@ -1,11 +1,13 @@
-import { useGenerateArtifactMutation } from "@/entities/artifacts/domain/generate-artifact.mutation";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { RefreshCwIcon } from "lucide-react";
+import { toast } from "react-toastify";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { RefreshCwIcon } from "lucide-react";
-import { toast } from "react-toastify";
+
+import { useGenerateArtifactMutation } from "@/entities/artifacts/domain/generate-artifact.mutation";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 type ArtifactGenerateButtonProps = {
   label?: string;

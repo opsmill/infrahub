@@ -1,9 +1,12 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { DeleteObjectsParams } from "@/entities/nodes/object/api/delete-objects-from-api";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { DefaultContext } from "@apollo/client";
 import { useMutation } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
+
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { DeleteObjectsParams } from "@/entities/nodes/object/api/delete-objects-from-api";
+
 import { deleteObjects } from "./delete-objects";
 
 interface DeleteObjectsProps {

@@ -1,18 +1,21 @@
-import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { getNewToken } from "@/entities/authentication/ui/useAuth";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
   ApolloClient,
   DefaultOptions,
+  from,
   HttpLink,
   InMemoryCache,
   Observable,
-  from,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { toast } from "react-toastify";
+
+import { CONFIG } from "@/config/config";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
+import { getNewToken } from "@/entities/authentication/ui/useAuth";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {

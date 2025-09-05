@@ -1,14 +1,11 @@
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { FieldValues, useForm, useFormContext } from "react-hook-form";
+import { toast } from "react-toastify";
+
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import {
-  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-  NUMBER_POOL_NODE_FIELD,
-} from "@/entities/resource-manager/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -33,11 +30,17 @@ import {
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { FieldValues, useForm, useFormContext } from "react-hook-form";
-import { toast } from "react-toastify";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import {
+  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
+  NUMBER_POOL_NODE_FIELD,
+} from "@/entities/resource-manager/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface NumberPoolFormProps {
   currentObject?: ObjectFormProps["currentObject"];
@@ -120,7 +123,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
   }
 
   return (
-    <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
+    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
@@ -203,7 +206,7 @@ const NodeAttributesSelects = () => {
                 <FormInput>
                   <ComboboxTrigger>
                     {selectedNode && (
-                      <div className="w-full flex justify-between">
+                      <div className="flex w-full justify-between">
                         {selectedNode.label} <Badge>{selectedNode.namespace}</Badge>
                       </div>
                     )}
@@ -227,7 +230,7 @@ const NodeAttributesSelects = () => {
                           setOpen(false);
                         }}
                       >
-                        <div className="w-full flex justify-between">
+                        <div className="flex w-full justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
                       </ComboboxItem>

@@ -1,7 +1,6 @@
-import { ArtifactContentType } from "@/entities/artifacts/types";
-import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
-import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
-import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
+import { HTMLAttributes, useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
+
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
@@ -11,8 +10,11 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
-import { HTMLAttributes, useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+
+import { ArtifactContentType } from "@/entities/artifacts/types";
+import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
+import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
+import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
 
 const CONTENT_TYPE_CONFIG: Record<
   ArtifactContentType,
@@ -34,7 +36,7 @@ function FileLayout({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={classNames(
-        "bg-neutral-800 rounded-lg text-neutral-200 p-2 gap-2 flex flex-col grow overflow-auto",
+        "flex grow flex-col gap-2 overflow-auto rounded-lg bg-neutral-800 p-2 text-neutral-200",
         className
       )}
       {...props}
@@ -61,7 +63,7 @@ function FileHeader({
 
   return (
     <div className={classNames("flex items-center gap-1", className)} {...props}>
-      <span className="grow font-medium px-1">{config.label}</span>
+      <span className="grow px-1 font-medium">{config.label}</span>
       <a href={fileUrl} target="_blank" rel="noopener noreferrer">
         <ArtifactFileButton className="leading-4">Raw</ArtifactFileButton>
       </a>
@@ -90,14 +92,14 @@ function FileContent({
     }
     case "image/svg+xml": {
       return (
-        <Svg value={fileContent} className="border shadow-sm border-neutral-700 rounded-lg grow" />
+        <Svg value={fileContent} className="grow rounded-lg border border-neutral-700 shadow-sm" />
       );
     }
     default: {
       return (
         <ScrollArea
           scrollX
-          className="border shadow-sm border-neutral-700 rounded-lg grow"
+          className="grow rounded-lg border border-neutral-700 shadow-sm"
           scrollBarClassName="bg-transparent"
         >
           <CodeViewer language={config.language} customStyle={{ margin: 0 }}>

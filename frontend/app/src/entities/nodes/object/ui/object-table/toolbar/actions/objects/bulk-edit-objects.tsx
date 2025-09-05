@@ -1,3 +1,9 @@
+import React from "react";
+
+import { NodeForm } from "@/shared/components/form/node-form";
+import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { pluralize } from "@/shared/utils/string";
+
 import { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
@@ -8,10 +14,6 @@ import {
 import { ProcessingBulkEditObjects } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-bulk-edit-objects";
 import { NodeCard } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-mutate-object";
 import { NodeCore } from "@/entities/nodes/types";
-import { NodeForm } from "@/shared/components/form/node-form";
-import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
-import { pluralize } from "@/shared/utils/string";
-import React from "react";
 
 export interface BulkEditObjectsProps {
   selectedRows: Array<NodeCore>;
@@ -42,7 +44,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
         </GroupPanelBody>
       </GroupCard>
 
-      <GroupCard className="w-100 absolute left-[calc(100%+0.5rem)] bottom-0">
+      <GroupCard className="absolute bottom-0 left-[calc(100%+0.5rem)] w-100">
         <GroupPanelHeader>Set bulk changes</GroupPanelHeader>
         <GroupPanelBody>
           <NodeForm

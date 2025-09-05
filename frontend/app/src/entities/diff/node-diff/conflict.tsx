@@ -1,7 +1,9 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { resolveConflict } from "@/entities/diff/api/resolveConflict";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { useState } from "react";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -9,11 +11,11 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { resolveConflict } from "@/entities/diff/api/resolveConflict";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
 export const Conflict = ({ conflict }: any) => {
   const { currentBranch } = useCurrentBranch();

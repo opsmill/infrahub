@@ -1,5 +1,6 @@
-import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
-import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
@@ -7,8 +8,9 @@ import SlideOver from "@/shared/components/display/slide-over";
 import { TokenInput } from "@/shared/components/display/token-input";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import ModalSuccess from "@/shared/components/modals/modal-success";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
+import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
 
 export function AccountTokenCreateAction() {
   const [newToken, setNewToken] = useState<string>("");
@@ -17,7 +19,7 @@ export function AccountTokenCreateAction() {
   return (
     <>
       <Button className="ml-auto" onClick={() => setIsFormOpen(true)}>
-        <Icon icon="mdi:plus" className="text-sm mr-1.5" />
+        <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
         Add account token
       </Button>
 
@@ -31,7 +33,7 @@ export function AccountTokenCreateAction() {
                 className="ml-auto"
               />
             </Row>
-            <span className="text-sm text-gray-500">
+            <span className="text-gray-500 text-sm">
               These tokens provide full access to your account. Please keep them secure.
             </span>
           </Col>
@@ -57,7 +59,7 @@ export function AccountTokenCreateAction() {
           icon="mdi:key"
         >
           <Col className="items-center">
-            <Col className="text-sm gap-0 items-center">
+            <Col className="items-center gap-0 text-sm">
               <span>Please copy your token now.</span>
               <b className="font-semibold">For security reasons we cannot show it again.</b>
             </Col>

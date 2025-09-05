@@ -1,8 +1,10 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
-import { Card } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
+
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import { Card } from "@/shared/components/ui/card";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 const ActionMapping = {
   ADDED: <Icon icon={"mdi:add"} className="text-green-500" />,
@@ -15,7 +17,7 @@ export const EventRelationships = ({ relationships }: Pick<NodeMutatedEvent, "re
   if (relationships.length === 0) return null;
 
   return (
-    <Card className="flex flex-col gap-1.5 text-xs bg-zinc-50">
+    <Card className="flex flex-col gap-1.5 bg-zinc-50 text-xs">
       {relationships.map(({ action, name, peer }) => {
         return (
           <React.Fragment key={`${peer.id}`}>

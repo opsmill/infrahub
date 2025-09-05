@@ -1,7 +1,8 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
 import { ProposedChangeThreadFromApiParams } from "@/entities/proposed-changes/api/get-proposed-change-thread-from-api";
 import { getProposedChangeThread } from "@/entities/proposed-changes/domain/get-proposed-change-thread";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 
 type GetProposedChangeThreadQueryOptionsParams = ProposedChangeThreadFromApiParams;
 

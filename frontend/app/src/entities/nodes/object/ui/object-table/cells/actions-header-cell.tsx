@@ -7,7 +7,7 @@ export function ActionsHeaderCell() {
       className={classNames(
         cellsStyle,
         cellHeaderStyle,
-        "right-0 z-10 border-l size-10 -ml-px hover:bg-white"
+        "-ml-px right-0 z-10 size-10 border-l hover:bg-white"
       )}
     />
   );

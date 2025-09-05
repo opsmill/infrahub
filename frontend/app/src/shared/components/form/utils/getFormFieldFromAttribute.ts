@@ -1,3 +1,17 @@
+import { components } from "@/shared/api/rest/types.generated";
+import { ProfileData } from "@/shared/components/form/object-form";
+import {
+  DynamicAttributeFieldProps,
+  DynamicDropdownFieldProps,
+  DynamicEnumFieldProps,
+  DynamicInputFieldProps,
+  DynamicNumberFieldProps,
+  FormFieldValue,
+} from "@/shared/components/form/type";
+import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
+import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
+import { isRequired } from "@/shared/components/form/utils/validation";
+
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
@@ -13,19 +27,6 @@ import {
 } from "@/entities/schema/types";
 import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
 import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
-import { components } from "@/shared/api/rest/types.generated";
-import { ProfileData } from "@/shared/components/form/object-form";
-import {
-  DynamicAttributeFieldProps,
-  DynamicDropdownFieldProps,
-  DynamicEnumFieldProps,
-  DynamicInputFieldProps,
-  DynamicNumberFieldProps,
-  FormFieldValue,
-} from "@/shared/components/form/type";
-import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
-import { isRequired } from "@/shared/components/form/utils/validation";
 
 export const getFormFieldFromAttribute = ({
   auth,

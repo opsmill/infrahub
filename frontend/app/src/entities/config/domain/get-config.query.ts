@@ -1,5 +1,6 @@
-import { getConfig } from "@/entities/config/domain/get-config";
 import { queryOptions, useQuery } from "@tanstack/react-query";
+
+import { getConfig } from "@/entities/config/domain/get-config";
 
 export const getConfigQueryOptions = () => {
   return queryOptions({

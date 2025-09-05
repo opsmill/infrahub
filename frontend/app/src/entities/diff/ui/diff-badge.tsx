@@ -1,6 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+
 import { Badge, BadgeProps } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
 
 export interface DiffBadgeProps extends BadgeProps {
   hasConflicts?: boolean;
@@ -28,9 +29,9 @@ export const BadgeUnchanged = ({
   return (
     <Badge
       className={classNames(
-        "p-1 text-base rounded-full",
+        "rounded-full p-1 text-base",
         (children || children === 0) && "gap-1 px-1",
-        hasConflicts && "border-none p-0 pl-1 gap-1",
+        hasConflicts && "gap-1 border-none p-0 pl-1",
         className
       )}
       {...props}
@@ -102,7 +103,7 @@ const CloseBadge = ({ className }: CloseBadgeProps) => {
   return (
     <div
       className={classNames(
-        "flex justify-center items-center absolute border-2 border-white -top-2 -right-2 rounded-full",
+        "-top-2 -right-2 absolute flex items-center justify-center rounded-full border-2 border-white",
         className
       )}
     >

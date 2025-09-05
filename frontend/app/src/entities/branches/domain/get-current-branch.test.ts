@@ -1,7 +1,10 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { store } from "@/shared/stores";
+
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { store } from "@/shared/stores";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { generateBranch } from "../../../../tests/fake/branch";
 
 describe("getCurrentBranchName - test", () => {

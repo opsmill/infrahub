@@ -1,14 +1,17 @@
+import { useQuery } from "@apollo/client";
 import React from "react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 
 import { QSP } from "@/config/qsp";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useQuery } from "@apollo/client";
+
+import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
+
 import { DIFF_STATUS, DiffStatus } from "../../diff/node-diff/types";
 
 interface DiffTreeSummary {
@@ -74,7 +77,7 @@ export const ProposedChangeDiffSummary: React.FC<ProposedChangeDiffSummaryProps>
       <ErrorScreen
         message={error?.message ?? "No diff summary available."}
         hideIcon
-        className="p-0 items-start"
+        className="items-start p-0"
       />
     );
   }
@@ -111,7 +114,7 @@ const DiffSummarySkeleton: React.FC = () => {
   return (
     <div className="flex gap-2">
       {[...Array(4)].map((_, index) => (
-        <div key={index} className="h-6 w-9 bg-gray-200 animate-pulse rounded-full" />
+        <div key={index} className="h-6 w-9 animate-pulse rounded-full bg-gray-200" />
       ))}
     </div>
   );

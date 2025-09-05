@@ -1,7 +1,9 @@
 import { QSP } from "@/config/qsp";
-import { AVAILABLE_IP_FILTER_NAME, IPAM_QSP } from "@/entities/ipam/constants";
+
 import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
 import { Filter } from "@/shared/hooks/useFilters";
+
+import { AVAILABLE_IP_FILTER_NAME, IPAM_QSP } from "@/entities/ipam/constants";
 
 export function constructPathForIpam(path: string, overrideParams?: overrideQueryParams[]): string {
   return constructPath(path, overrideParams, [IPAM_QSP.NAMESPACE, QSP.KIND]);

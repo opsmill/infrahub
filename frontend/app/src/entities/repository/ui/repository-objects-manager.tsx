@@ -1,10 +1,11 @@
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import { Spinner } from "@/shared/components/ui/spinner";
+
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { REPOSITORY_GROUP } from "@/entities/repository/constant";
 import { useGetRepositoryGroup } from "@/entities/repository/domain/get-repository-group.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import NoDataFound from "@/shared/components/errors/no-data-found";
-import { Spinner } from "@/shared/components/ui/spinner";
 
 export interface RepositoryObjectsManagerProps {
   parentNodeId: string;

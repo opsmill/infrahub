@@ -1,9 +1,11 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
 import { Link } from "@/shared/components/ui/link";
 import { formatNumberDisplay } from "@/shared/utils/number";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+
 import { ComputedAttributeDisplay } from "./computed-attribute-display";
 import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styled";
 
@@ -63,7 +65,7 @@ const ChoicesRow = ({
   if (choices.length === 0) return "No choices";
 
   return (
-    <div className="space-y-1 grow">
+    <div className="grow space-y-1">
       {choices.map((choice) => {
         const color = choice.color === "" ? "#f1f1f1" : choice.color;
         return (
@@ -74,7 +76,7 @@ const ChoicesRow = ({
                 {choice.label || choice.name} <span>{choice.color}</span>
               </div>
             }
-            className="px-1.5 py-0.5 rounded-md grow divide-y divide-gray-600"
+            className="grow divide-y divide-gray-600 rounded-md px-1.5 py-0.5"
             style={{ backgroundColor: color ?? undefined }}
           >
             <PropertyRow title="Name" value={choice.name} />
@@ -90,7 +92,9 @@ const ChoicesRow = ({
 
 const AttributeParameters = ({
   attribute,
-}: { attribute: components["schemas"]["AttributeSchema-Output"] }) => {
+}: {
+  attribute: components["schemas"]["AttributeSchema-Output"];
+}) => {
   if (attribute.kind === "Text") {
     const parameters = attribute.parameters as components["schemas"]["TextAttributeParameters"];
     return (

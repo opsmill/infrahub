@@ -5,7 +5,11 @@
     },
     "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "types": ["vite/client", "vitest/globals", "@vitest/browser/providers/playwright"],
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@vitest/browser/providers/playwright"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,
@@ -22,7 +26,8 @@
     "jsx": "react-jsx",
     "sourceMap": true,
     "inlineSources": true,
-    "sourceRoot": "/"
+    "sourceRoot": "/",
+    "strictNullChecks": true
   },
   "include": [
     "src",

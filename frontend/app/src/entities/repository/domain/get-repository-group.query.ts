@@ -1,4 +1,9 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
 import { REPOSITORY_KIND } from "@/config/constants";
+
+import { ContextParams, QueryConfig } from "@/shared/api/types";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
@@ -6,8 +11,6 @@ import {
   GetRepositoryGroupParams,
   getRepositoryGroup,
 } from "@/entities/repository/domain/get-repository-group";
-import { ContextParams, QueryConfig } from "@/shared/api/types";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export function getRepositoryGroupQueryOption(params: GetRepositoryGroupParams) {
   return queryOptions({

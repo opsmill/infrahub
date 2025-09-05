@@ -1,7 +1,8 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { HTMLAttributes, useState } from "react";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { classNames } from "@/shared/utils/common";
 
 export const CodeViewerLimiter = ({
   children,
@@ -23,7 +24,7 @@ export const CodeViewerLimiter = ({
         {children}
 
         {!showAllLines && (
-          <div className="h-40 w-full bg-linear-to-t from-white to-50% absolute bottom-0 z-20 pointer-events-none" />
+          <div className="pointer-events-none absolute bottom-0 z-20 h-40 w-full bg-linear-to-t from-white to-50%" />
         )}
       </div>
 
@@ -34,12 +35,12 @@ export const CodeViewerLimiter = ({
           className="ml-24"
           onClick={() => setShowAllLines(false)}
         >
-          <Icon icon="mdi:chevron-up" className="text-sm mr-1" />
+          <Icon icon="mdi:chevron-up" className="mr-1 text-sm" />
           Hide lines
         </Button>
       ) : (
         <Button variant="outline" size="xs" className="ml-24" onClick={() => setShowAllLines(true)}>
-          <Icon icon="mdi:chevron-down" className="text-sm mr-1" />
+          <Icon icon="mdi:chevron-down" className="mr-1 text-sm" />
           See all lines
         </Button>
       )}

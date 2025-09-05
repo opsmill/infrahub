@@ -1,3 +1,9 @@
+import { ComponentProps } from "react";
+
+import { DropdownOption } from "@/shared/components/inputs/dropdown";
+import { SelectOption } from "@/shared/components/inputs/select-old";
+import { FormField } from "@/shared/components/ui/form";
+
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NumberPool } from "@/entities/resource-manager/domain/type";
 import {
@@ -6,10 +12,6 @@ import {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/types";
-import { DropdownOption } from "@/shared/components/inputs/dropdown";
-import { SelectOption } from "@/shared/components/inputs/select-old";
-import { FormField } from "@/shared/components/ui/form";
-import { ComponentProps } from "react";
 
 type SourceType = "schema" | "user";
 

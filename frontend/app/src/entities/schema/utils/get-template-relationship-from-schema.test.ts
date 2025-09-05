@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
 import { getTemplateRelationshipFromSchema } from "./get-template-relationship-from-schema";
 

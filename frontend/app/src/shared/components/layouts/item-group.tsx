@@ -1,5 +1,6 @@
-import { classNames } from "@/shared/utils/common";
 import React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 interface ItemGroupProps extends React.HTMLAttributes<HTMLUListElement> {}
 
