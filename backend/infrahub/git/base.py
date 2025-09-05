@@ -970,3 +970,39 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if branch_name == self.default_branch and branch_name != registry.default_branch:
             return registry.default_branch
         return branch_name
+
+    def get_changed_files(
+        self, first_commit: str, second_commit: str | None = None
+    ) -> dict[str, list[str | tuple[str, str]]]:
+        """Return the changes between two commits in this repo."""
+        files: dict[str, list[str | tuple[str, str]]] = {
+            "added": [],
+            "modified": [],
+            "deleted": [],
+            "renamed": [],
+            "copied": [],
+            "type_changed": [],
+            "unmerged": [],
+            "unknown": [],
+        }
+
+        repo = self.get_git_repo_main()
+        commit_a = repo.commit(first_commit)
+        commit_b = repo.commit(second_commit) if second_commit else repo.head.commit
+
+        for diff in commit_a.diff(commit_b):
+            match diff.change_type:
+                case "A":
+                    files["added"].append(diff.b_path)
+                case "C":
+                    files["copied"].append((diff.a_path, diff.b_path))
+                case "D":
+                    files["deleted"].append(diff.a_path)
+                case "R":
+                    files["renamed"].append((diff.a_path, diff.b_path))
+                case "M":
+                    files["modified"].append(diff.b_path)
+                case "T":
+                    files["type_changed"].append((diff.a_path, diff.b_path))
+
+        return files
