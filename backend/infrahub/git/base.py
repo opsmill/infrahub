@@ -67,6 +67,15 @@ class RepoFileInformation(BaseModel):
     """Extension of the file Example: py """
 
 
+class RepoChangedFiles(BaseModel):
+    added: list[str] = Field(default_factory=list)
+    copied: list[tuple[str, str]] = Field(default_factory=list)
+    deleted: list[str] = Field(default_factory=list)
+    renamed: list[tuple[str, str]] = Field(default_factory=list)
+    modified: list[str] = Field(default_factory=list)
+    type_changed: list[tuple[str, str]] = Field(default_factory=list)
+
+
 def extract_repo_file_information(
     full_filename: Path, repo_directory: Path, worktree_directory: Path | None = None
 ) -> RepoFileInformation:
@@ -971,19 +980,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return registry.default_branch
         return branch_name
 
-    def get_changed_files(
-        self, first_commit: str, second_commit: str | None = None
-    ) -> dict[str, list[str | tuple[str, str]]]:
+    def get_changed_files(self, first_commit: str, second_commit: str | None = None) -> RepoChangedFiles:
         """Return the changes between two commits in this repo."""
-        files: dict[str, list[str | tuple[str, str]]] = {
-            "added": [],
-            "copied": [],
-            "deleted": [],
-            "renamed": [],
-            "modified": [],
-            "type_changed": [],
-        }
-
+        changes = RepoChangedFiles()
         repo = self.get_git_repo_main()
         commit_a = repo.commit(first_commit)
         commit_b = repo.commit(second_commit) if second_commit else repo.head.commit
@@ -991,16 +990,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         for diff in commit_a.diff(commit_b):
             match diff.change_type:
                 case "A":
-                    files["added"].append(diff.b_path)
+                    changes.added.append(diff.b_path)
                 case "C":
-                    files["copied"].append((diff.a_path, diff.b_path))
+                    changes.copied.append((diff.a_path, diff.b_path))
                 case "D":
-                    files["deleted"].append(diff.a_path)
+                    changes.deleted.append(diff.a_path)
                 case "R":
-                    files["renamed"].append((diff.a_path, diff.b_path))
+                    changes.renamed.append((diff.a_path, diff.b_path))
                 case "M":
-                    files["modified"].append(diff.b_path)
+                    changes.modified.append(diff.b_path)
                 case "T":
-                    files["type_changed"].append((diff.a_path, diff.b_path))
+                    changes.type_changed.append((diff.a_path, diff.b_path))
 
-        return files
+        return changes

@@ -177,19 +177,15 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
         assert len(commits) == 3
 
         diff_1_to_3 = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha, second_commit=commits[1].hexsha)
-        assert diff_1_to_3
-        assert diff_1_to_3["modified"] == ["test.gql"]
+        assert diff_1_to_3.modified == ["test.gql"]
 
         diff_2_to_3 = infrahub_repo.get_changed_files(first_commit=commits[1].hexsha, second_commit=commits[2].hexsha)
-        assert diff_2_to_3
-        assert diff_2_to_3["added"] == ["README.md"]
+        assert diff_2_to_3.added == ["README.md"]
 
         diff_1_to_3 = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha, second_commit=commits[2].hexsha)
-        assert diff_1_to_3
-        assert diff_1_to_3["added"] == ["README.md"]
-        assert diff_1_to_3["modified"] == ["test.gql"]
+        assert diff_1_to_3.added == ["README.md"]
+        assert diff_1_to_3.modified == ["test.gql"]
 
         diff_1_to_head = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha)
-        assert diff_1_to_head
-        assert diff_1_to_head["added"] == ["README.md"]
-        assert diff_1_to_head["modified"] == ["test.gql"]
+        assert diff_1_to_head.added == ["README.md"]
+        assert diff_1_to_head.modified == ["test.gql"]
