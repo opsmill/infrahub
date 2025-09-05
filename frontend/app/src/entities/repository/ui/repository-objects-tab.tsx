@@ -9,7 +9,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 
 import { ObjectDetailsTab, TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
-import { REPOSITORY_GROUP, REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
+import { REPOSITORY_GROUP, REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 
 export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
   const { isPending, data: objectsCount } = useGetRelationshipCount({
