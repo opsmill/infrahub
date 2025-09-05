@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, NoReturn
 from uuid import UUID  # noqa: TC003
 
 import git
-from git import Blob, Repo
+from git import BadName, Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -984,8 +984,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return the changes between two commits in this repo."""
         changes = RepoChangedFiles()
         repo = self.get_git_repo_main()
-        commit_a = repo.commit(first_commit)
-        commit_b = repo.commit(second_commit) if second_commit else repo.head.commit
+
+        try:
+            commit_a = repo.commit(first_commit)
+            commit_b = repo.commit(second_commit) if second_commit else repo.head.commit
+        except BadName as exc:
+            raise CommitNotFoundError(identifier=str(self.id), commit=exc.args[0]) from exc
 
         for diff in commit_a.diff(commit_b):
             match diff.change_type:

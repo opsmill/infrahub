@@ -9,7 +9,7 @@ from git import GitCommandError
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import CommitNotFoundError, RepositoryError
 from infrahub.git.repository import get_initialized_repo
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo, MultipleStagesFileRepo
@@ -189,3 +189,6 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
         diff_1_to_head = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha)
         assert diff_1_to_head.added == ["README.md"]
         assert diff_1_to_head.modified == ["test.gql"]
+
+        with pytest.raises(CommitNotFoundError, match="Commit foo not found with GitRepository"):
+            infrahub_repo.get_changed_files(first_commit="foo")
