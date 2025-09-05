@@ -8,7 +8,7 @@ import { constructPathForIpam } from "@/entities/ipam/utils";
 import { NodeAttribute } from "@/entities/nodes/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
-export const IpamDetailsIndexPage = () => {
+const IpamDetailsIndexPage = () => {
   const { objectKind, objectId } = useParams();
   const { parentSchema, parentData } = useCurrentFormContext();
 

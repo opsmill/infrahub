@@ -5,7 +5,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export function ObjectItemsPage() {
+function ObjectItemsPage() {
   const { objectKind } = useParams();
 
   const { schema } = useSchema(objectKind);

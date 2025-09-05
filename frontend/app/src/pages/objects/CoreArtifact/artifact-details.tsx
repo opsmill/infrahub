@@ -11,7 +11,7 @@ import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export const ArtifactDetailsPage = () => {
+const ArtifactDetailsPage = () => {
   useTitle("Artifact");
   const { artifactId } = useParams();
   const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT);
