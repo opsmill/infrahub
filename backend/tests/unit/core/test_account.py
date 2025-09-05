@@ -51,10 +51,11 @@ async def test_validate_token(db: InfrahubDatabase, default_branch, register_cor
     token1.token.value = "123454321"
     await token1.save(db=db)
     assert await validate_token(token="123454321", db=db) == user2.id
+    assert await validate_token(token="123456789", db=db) is None
 
     # test delete works
     await token1.delete(db=db)
-    assert await validate_token(token="123456789", db=db) is None
+    assert await validate_token(token="123454321", db=db) is None
 
 
 async def test_account_status(db: InfrahubDatabase, default_branch, register_core_models_schema):
