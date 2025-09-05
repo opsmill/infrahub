@@ -410,6 +410,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 f"Unable to find the relationship to delete. id: {self.id}, source: {node.id}, destination: {peer.id}"
             )
 
+        # this Relationship has already been deleted
+        if result.get("is_active") is False:
+            return
+
         # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch
         # - Create a new rel of type DELETED in the right branch

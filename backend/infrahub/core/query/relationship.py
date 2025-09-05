@@ -871,6 +871,9 @@ class RelationshipGetQuery(RelationshipQuery):
         query = """
         MATCH (s)%s(rl:Relationship { name: $name })%s(d)
         WHERE %s
+        ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+        WITH *, r1.status = "active" AND r2.status = "active" AS is_active
+        LIMIT 1
         """ % (
             r1,
             r2,
@@ -880,7 +883,7 @@ class RelationshipGetQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
 
         self.add_to_query(query)
-        self.return_labels = ["s", "d", "rl", "r1", "r2"]
+        self.return_labels = ["s", "d", "rl", "r2", "is_active"]
 
 
 class RelationshipGetByIdentifierQuery(Query):
