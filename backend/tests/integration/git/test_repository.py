@@ -173,7 +173,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
         )
 
         # Have commits from oldest to youngest
-        commits = list(reversed(list(infrahub_repo.cache_repo.iter_commits())))
+        commits = list(reversed(list(infrahub_repo.get_git_repo_main().iter_commits())))
         assert len(commits) == 3
 
         diff_1_to_3 = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha, second_commit=commits[1].hexsha)
