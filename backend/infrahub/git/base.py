@@ -977,13 +977,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return the changes between two commits in this repo."""
         files: dict[str, list[str | tuple[str, str]]] = {
             "added": [],
-            "modified": [],
+            "copied": [],
             "deleted": [],
             "renamed": [],
-            "copied": [],
+            "modified": [],
             "type_changed": [],
-            "unmerged": [],
-            "unknown": [],
         }
 
         repo = self.get_git_repo_main()
