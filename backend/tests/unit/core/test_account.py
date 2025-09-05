@@ -4,6 +4,7 @@ from infrahub.auth import authenticate_with_password, authentication_token, vali
 from infrahub.core import registry
 from infrahub.core.account import validate_token
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
@@ -29,12 +30,31 @@ async def test_validate_token(db: InfrahubDatabase, default_branch, register_cor
     user1 = await Node.init(db=db, schema=account_schema)
     await user1.new(db=db, name="user1", password="User1Password123")
     await user1.save(db=db)
+    user2 = await Node.init(db=db, schema=account_schema)
+    await user2.new(db=db, name="user2", password="User2Password234")
+    await user2.save(db=db)
     token1 = await Node.init(db=db, schema=account_token_schema)
     await token1.new(db=db, token="123456789", account=user1)
     await token1.save(db=db)
 
     assert await validate_token(token="123456789", db=db) == user1.id
     assert await validate_token(token="987654321", db=db) is None
+
+    # test with updated account
+    token1 = await NodeManager.get_one(db=db, id=token1.id)
+    await token1.account.update(db=db, data=user2)
+    await token1.save(db=db)
+    assert await validate_token(token="123456789", db=db) == user2.id
+
+    # test updated token value
+    token1 = await NodeManager.get_one(db=db, id=token1.id)
+    token1.token.value = "123454321"
+    await token1.save(db=db)
+    assert await validate_token(token="123454321", db=db) == user2.id
+
+    # test delete works
+    await token1.delete(db=db)
+    assert await validate_token(token="123456789", db=db) is None
 
 
 async def test_account_status(db: InfrahubDatabase, default_branch, register_core_models_schema):

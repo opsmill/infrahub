@@ -513,51 +513,54 @@ async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Bra
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
     type: QueryType = QueryType.READ
+    insert_return = False
 
     def __init__(self, token: str, **kwargs: Any):
         self.token = token
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        token_filter_perms, token_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
-        self.params.update(token_params)
-
-        account_filter_perms, account_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r31", "r41", "r5", "r6"], at=self.at, include_outside_parentheses=True
+        self.params.update(branch_params)
+        self.params.update(
+            {"token_attr_name": "token", "token_relationship_name": "account__token", "token_value": self.token}
         )
-        self.params.update(account_params)
 
-        self.params["token_value"] = self.token
-
-        # ruff: noqa: E501
         query = """
-        MATCH (at:InternalAccountToken)-[r1:HAS_ATTRIBUTE]-(a:Attribute {name: "token"})-[r2:HAS_VALUE]-(av:AttributeValue { value: $token_value })
-        WHERE %s
-        WITH at
-        MATCH (at)-[r31]-(:Relationship)-[r41]-(acc:CoreGenericAccount)-[r5:HAS_ATTRIBUTE]-(an:Attribute {name: "name"})-[r6:HAS_VALUE]-(av:AttributeValue)
-        WHERE %s
-        """ % (
-            "\n AND ".join(token_filter_perms),
-            "\n AND ".join(account_filter_perms),
-        )
-
+// --------------
+// get the active token node for this token value, if it exists
+// --------------
+MATCH (token_node:%(token_node_kind)s)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: $token_attr_name})
+    -[r2:HAS_VALUE]->(av:AttributeValueIndexed { value: $token_value })
+WHERE all(r in [r1, r2] WHERE (%(branch_filter)s))
+ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+LIMIT 1
+WITH token_node
+WHERE r1.status = "active" AND r2.status = "active"
+// --------------
+// get the linked account node from the token node
+// --------------
+MATCH (token_node)-[r1:IS_RELATED]-(:Relationship {name: $token_relationship_name})-[r2:IS_RELATED]-(account_node:%(account_node_kind)s)
+WHERE all(r in [r1, r2] WHERE (%(branch_filter)s))
+ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+LIMIT 1
+WITH account_node
+WHERE r1.status = "active" AND r2.status = "active"
+RETURN account_node.uuid AS account_uuid
+        """ % {
+            "branch_filter": branch_filter,
+            "token_node_kind": InfrahubKind.ACCOUNTTOKEN,
+            "account_node_kind": InfrahubKind.GENERICACCOUNT,
+        }
         self.add_to_query(query)
-
-        self.return_labels = ["at", "av", "acc"]
-
-    def get_account_name(self) -> str | None:
-        """Return the account name that matched the query or None."""
-        if result := self.get_result():
-            return result.get("av").get("value")
-
-        return None
+        self.return_labels = ["account_uuid"]
 
     def get_account_id(self) -> str | None:
         """Return the account id that matched the query or a None."""
         if result := self.get_result():
-            return result.get("acc").get("uuid")
+            return result.get_as_str(label="account_uuid")
 
         return None
 
