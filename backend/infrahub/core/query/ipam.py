@@ -452,7 +452,7 @@ class IPPrefixReconcileQuery(Query):
             OPTIONAL MATCH parent_prefix_path = (ip_node)-[r1:IS_RELATED]->(:Relationship {name: "parent__child"})-[r2:IS_RELATED]->(current_parent:%(ip_prefix_kind)s)
             WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s))
             RETURN current_parent, (r1.status = "active" AND r2.status = "active") AS parent_is_active
-            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
+            ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
             LIMIT 1
         }
         WITH ip_namespace, ip_node, CASE WHEN parent_is_active THEN current_parent ELSE NULL END as current_parent
