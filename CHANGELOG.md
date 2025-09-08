@@ -13,9 +13,9 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ## [Infrahub - v1.3.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.9) - 2025-08-26
 
-### Fixed
+### Security
 
-- API token validation bug
+- Fixes bug in authentication logic that allowed expired and/or deleted API tokens to authenticate successfully.
 
 ## [Infrahub - v1.3.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.3.8) - 2025-08-26
 
