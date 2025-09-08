@@ -84,11 +84,9 @@ The most important file is the `.infrahub.yml` file, which defines how Infrahub 
 
 You will need to push this repository to a remote location that Infrahub can access. It doesn't have to be a public repository as Infrahub supports authentication with private repositories. Depending on the provider you use (for example: GitHub, GitLab, Bitbucket), the process may vary slightly, but the general steps are the same:
 
-1. Create a new repository on your preferred git hosting service.
-2. Clone the repository to your local machine.
-3. Create a `.infrahub.yml` file in the root of the repository.
-4. Push the repository to the remote location.
-5. Create a "Infrahub" access token with the required permissions to access the repository.
+1. Create a new repository using the `infrahubctl repository init <directory>` command or manually. More details in the [related topic](../topics/developer-guide#initializing-an-infrahub-repository).
+2. Push the repository to the remote location.
+3. Create a "Infrahub" access token with the required permissions to access the repository.
 
 Then you can connect the repository to Infrahub using the Infrahub CLI or the web interface!
 
