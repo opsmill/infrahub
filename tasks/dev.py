@@ -234,6 +234,9 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
     # Check that data is not present in branch
     try:
         client.get(kind="LocationContinent", hfid=node_name, branch=branch)
+        raise AssertionError(
+            f"Precondition failed: {node_name!r} unexpectedly exists on branch {branch!r} before rebase"
+        )
     except NodeNotFoundError:
         pass
 
@@ -247,7 +250,7 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
     schema_to_check = "LocationGeneric"
     full_schema = client.schema.all(branch=branch)
     if schema_to_check not in full_schema:
-        raise Exception(f"Could not find {schema_to_check} in schema")
+        raise AssertionError(f"Could not find {schema_to_check} in schema")
 
     # Check data
     client.get(kind="LocationContinent", hfid=node_name, branch=branch)
