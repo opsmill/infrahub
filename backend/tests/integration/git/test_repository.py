@@ -176,8 +176,8 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
         commits = list(reversed(list(infrahub_repo.get_git_repo_main().iter_commits())))
         assert len(commits) == 3
 
-        diff_1_to_3 = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha, second_commit=commits[1].hexsha)
-        assert diff_1_to_3.modified == ["test.gql"]
+        diff_1_to_2 = infrahub_repo.get_changed_files(first_commit=commits[0].hexsha, second_commit=commits[1].hexsha)
+        assert diff_1_to_2.modified == ["test.gql"]
 
         diff_2_to_3 = infrahub_repo.get_changed_files(first_commit=commits[1].hexsha, second_commit=commits[2].hexsha)
         assert diff_2_to_3.added == ["README.md"]
