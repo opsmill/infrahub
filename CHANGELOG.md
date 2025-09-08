@@ -13,9 +13,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ## [Infrahub - v1.4.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.5) - 2025-09-08
 
+### Security
+
+- Fixes bug in authentication logic that allowed expired and/or deleted API tokens to authenticate successfully.
+
 ### Fixed
 
-- API token validation bug
 - Fixed an issue where switching between relationships to the same schema didn’t refresh the table correctly. ([#6418](https://github.com/opsmill/infrahub/issues/6418))
 - Add initialization instructions for Infrahub repository to docs. ([#7137](https://github.com/opsmill/infrahub/issues/7137))
 - Relationship properties now show a clearer loading indicator.
