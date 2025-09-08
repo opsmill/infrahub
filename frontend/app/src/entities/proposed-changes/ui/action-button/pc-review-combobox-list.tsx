@@ -10,15 +10,15 @@ import { forwardRef } from "react";
 
 type ActionItem = { value: string; name: string; isDisabled?: boolean; message: string | null };
 
-export interface ActionComboboxListProps {
+export interface ReviewComboboxListProps {
   onSelect: (value: string) => void;
   value?: string | null;
 }
 
-export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListProps>(
+export const ReviewComboboxList = forwardRef<HTMLDivElement, ReviewComboboxListProps>(
   ({ value, onSelect }, ref) => {
     const auth = useAuth();
-    const { setDraft, unsetDraft, close, merge, approve, reject } = usePcActionsContext();
+    const { approve, reject } = usePcActionsContext();
     const proposedChangesDetails = useAtomValue(proposedChangedState);
 
     const actionsList: Record<string, ActionItem> = {
@@ -39,28 +39,6 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
             : "Reject",
         isDisabled: !reject.available,
         message: reject.unavailability_reason,
-      },
-      merge: {
-        value: "merge",
-        name: "Merge",
-        isDisabled: !merge.available,
-        message: merge.unavailability_reason,
-      },
-      close: {
-        value: "close",
-        name: "Close",
-        isDisabled: !close.available,
-        message: close.unavailability_reason,
-      },
-      draft: {
-        value: "draft",
-        name: proposedChangesDetails.is_draft?.value ? "Open" : "Move to draft",
-        isDisabled: proposedChangesDetails.is_draft?.value
-          ? !unsetDraft.available
-          : !setDraft.available,
-        message: proposedChangesDetails.is_draft?.value
-          ? unsetDraft.unavailability_reason
-          : setDraft.unavailability_reason,
       },
     };
 
