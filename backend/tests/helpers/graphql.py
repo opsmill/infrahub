@@ -15,6 +15,7 @@ from graphql import graphql as graphql_core
 
 from infrahub.core.branch import Branch
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -95,9 +96,13 @@ async def graphql_query(
     service: InfrahubServices | None = None,
     variables: dict[str, Any] | None = None,
     account_session: AccountSession | None = None,
+    refresh_schema: bool = False,
 ) -> ExecutionResult:
     branch = branch or await Branch.get_by_name(name="main", db=db)
     variables = variables or {}
+    if refresh_schema:
+        GraphQLSchemaManager.clear_cache()
+
     gql_params = await prepare_graphql_params(
         db=db,
         include_subscription=False,

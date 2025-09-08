@@ -101,7 +101,6 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
 
 @dataclass
 class BranchDetails:
-    branch_name: str
     schema_changed_at: Timestamp
     schema_hash: str
     gql_manager: GraphQLSchemaManager
@@ -109,62 +108,68 @@ class BranchDetails:
 
 class GraphQLSchemaManager:
     _extra_types: dict[str, GraphQLTypes] = {}
-    _branch_details_by_name: dict[str, BranchDetails] = {}
+    _branch_details_by_hash: dict[str, BranchDetails] = {}
+    _branch_name_by_hash: dict[str, set[str]] = {}
+    _branch_hash_activation_by_branch_name: dict[str, dict[str, str]] = {}
 
     @classmethod
     def clear_cache(cls) -> None:
-        cls._branch_details_by_name = {}
+        cls._branch_details_by_hash = {}
+        cls._branch_name_by_hash = {}
 
     @classmethod
     def purge_inactive(cls, active_branches: list[str]) -> set[str]:
         """Return inactive branches that were purged"""
         inactive_branches: set[str] = set()
-        for branch_name in list(cls._branch_details_by_name):
-            if branch_name not in active_branches:
-                inactive_branches.add(branch_name)
-                del cls._branch_details_by_name[branch_name]
+        for schema_hash in list(cls._branch_name_by_hash.keys()):
+            branches = list(cls._branch_name_by_hash[schema_hash])
+            for branch in branches:
+                if branch not in active_branches and branch in cls._branch_name_by_hash[schema_hash]:
+                    inactive_branches.add(branch)
+                    cls._branch_name_by_hash[schema_hash].discard(branch)
+
+        for schema_hash in list(cls._branch_name_by_hash.keys()):
+            if not cls._branch_name_by_hash[schema_hash]:
+                # If no remaining branch is using the schema remove it completely
+                del cls._branch_name_by_hash[schema_hash]
+                del cls._branch_details_by_hash[schema_hash]
+
         return inactive_branches
 
     @classmethod
-    def _cache_branch(
-        cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str | None = None
-    ) -> BranchDetails:
-        if not schema_hash:
-            if branch.schema_hash:
-                schema_hash = branch.schema_hash.main
-            else:
-                schema_hash = schema_branch.get_hash()
+    def _cache_branch(cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str) -> BranchDetails:
         branch_details = BranchDetails(
-            branch_name=branch.name,
             schema_changed_at=Timestamp(branch.schema_changed_at) if branch.schema_changed_at else Timestamp(),
             schema_hash=schema_hash,
             gql_manager=cls(schema=schema_branch),
         )
-        cls._branch_details_by_name[branch.name] = branch_details
+
+        cls._branch_details_by_hash[schema_hash] = branch_details
+
         return branch_details
 
     @classmethod
     def get_manager_for_branch(cls, branch: Branch, schema_branch: SchemaBranch) -> GraphQLSchemaManager:
-        if branch.name not in cls._branch_details_by_name:
-            branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
-            return branch_details.gql_manager
-        cached_branch_details = cls._branch_details_by_name[branch.name]
-        # try to use the schema_changed_at time b/c it is faster than checking the hash
-        if branch.schema_changed_at:
-            changed_at_time = Timestamp(branch.schema_changed_at)
-            if changed_at_time > cached_branch_details.schema_changed_at:
-                cached_branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
-            return cached_branch_details.gql_manager
         if branch.schema_hash:
-            current_hash = branch.active_schema_hash.main
+            schema_hash = branch.schema_hash.main
         else:
-            current_hash = schema_branch.get_hash()
-        if cached_branch_details.schema_hash != current_hash:
-            cached_branch_details = cls._cache_branch(
-                branch=branch, schema_branch=schema_branch, schema_hash=current_hash
-            )
+            schema_hash = schema_branch.get_hash()
 
-        return cached_branch_details.gql_manager
+        if schema_hash in cls._branch_details_by_hash:
+            branch_details = cls._branch_details_by_hash[schema_hash]
+        else:
+            branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch, schema_hash=schema_hash)
+
+        cls._add_branch_hash(branch_name=branch.name, schema_hash=schema_hash)
+
+        return branch_details.gql_manager
+
+    @classmethod
+    def _add_branch_hash(cls, branch_name: str, schema_hash: str) -> None:
+        if schema_hash not in cls._branch_name_by_hash:
+            cls._branch_name_by_hash[schema_hash] = set()
+
+        cls._branch_name_by_hash[schema_hash].add(branch_name)
 
     def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema
