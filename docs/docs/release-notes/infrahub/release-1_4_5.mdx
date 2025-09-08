@@ -1,0 +1,38 @@
+---
+title: Release 1.4.5
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.4.5</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>September 8th, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.4.5](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.4.5)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Fixes bug in authentication logic that allowed expired and/or deleted API tokens to authenticate successfully.
+
+### Fixed
+
+- Fixed an issue where switching between relationships to the same schema didn’t refresh the table correctly. ([#6418](https://github.com/opsmill/infrahub/issues/6418))
+- Add initialization instructions for Infrahub repository to docs. ([#7137](https://github.com/opsmill/infrahub/issues/7137))
+- Relationship properties now show a clearer loading indicator.
+- Standardize internal cache-key generation using factories to make request handling easier and more consistent.
+- Fixed a bug in the object table where the kind selector was not filtering its options correctly.
+
+### Housekeeping
+
+<!-- vale off -->
+- Internal(frontend): Upgraded Biome to v2. Now use Ultracite to configure Biome
+- Internal(frontend): Cleaned up unused files and functions
+<!-- vale on -->
