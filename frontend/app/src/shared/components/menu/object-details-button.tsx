@@ -1,5 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { Pressable } from "react-aria-components";
+
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { QSP } from "@/config/qsp";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
   CopyToClipboardMenuItem,
@@ -11,8 +15,6 @@ import {
   MenuTrigger,
 } from "@/shared/components/aria/menu";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
-import { Pressable } from "react-aria-components";
 
 export interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;

@@ -1,9 +1,10 @@
+import { Icon } from "@iconify-icon/react";
+import { useEffect, useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
 import { Card } from "@/shared/components/ui/card";
 import Kbd from "@/shared/components/ui/kbd";
-import { Icon } from "@iconify-icon/react";
-import { useEffect, useState } from "react";
 
 interface ErrorFallbackProps {
   error: Error;
@@ -39,8 +40,8 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
   };
 
   return (
-    <div className="bg-gray-100 flex flex-col items-center justify-center h-screen">
-      <Card className="flex flex-col items-center mb-4 p-4">
+    <div className="flex h-screen flex-col items-center justify-center bg-gray-100">
+      <Card className="mb-4 flex flex-col items-center p-4">
         <h1 className="font-semibold text-lg">Uh-oh, something went wrong :(</h1>
 
         <div>
@@ -48,7 +49,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
             You might have encounter a{" "}
             <Icon
               icon="mdi:bug"
-              className="relative text-custom-blue-600 transition-all text-xl cursor-pointer"
+              className="relative cursor-pointer text-custom-blue-600 text-xl transition-all"
               style={bugPosition}
               onMouseEnter={handleMoveOnBug}
               onClick={handleMoveOnBug}
@@ -67,14 +68,14 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
             </a>
           </div>
 
-          <p className="font-medium text-xs mb-1">
+          <p className="mb-1 font-medium text-xs">
             Press{" "}
             <Kbd keys={["enter"]} keyClassName="relative top-px mr-1">
               enter
             </Kbd>{" "}
             to try again
           </p>
-          <p className="font-medium text-xs mb-4">
+          <p className="mb-4 font-medium text-xs">
             Press{" "}
             <Kbd keys={["delete"]} keyClassName="mr-1">
               backspace
@@ -82,7 +83,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
             to go back to Homepage
           </p>
         </div>
-        <p className="text-xs text-gray-600">
+        <p className="text-gray-600 text-xs">
           If this was unexpected, please reach out to us on{" "}
           <a
             className="underline"
@@ -105,8 +106,8 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
       </Card>
 
       {error?.stack && (
-        <Accordion className="text-sm text-gray-600" title="View error stack">
-          <pre className="p-2 rounded-sm bg-red-50 text-red-800">{error.stack}</pre>
+        <Accordion className="text-gray-600 text-sm" title="View error stack">
+          <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.stack}</pre>
         </Accordion>
       )}
     </div>

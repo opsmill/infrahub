@@ -1,9 +1,5 @@
-import {
-  AVAILABLE_IP_FILTER_NAME,
-  IP_PREFIX_AVAILABLE_KIND,
-  IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import {
   addAttributesToRequest,
   addFiltersToRequest,
@@ -12,7 +8,13 @@ import {
 } from "@/shared/api/graphql/utils";
 import { PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import {
+  AVAILABLE_IP_FILTER_NAME,
+  IP_PREFIX_AVAILABLE_KIND,
+  IP_PREFIX_GENERIC,
+} from "@/entities/ipam/constants";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface BuildGetIpPrefixListQueryParams extends PaginationParams {
   filters?: Array<Filter>;

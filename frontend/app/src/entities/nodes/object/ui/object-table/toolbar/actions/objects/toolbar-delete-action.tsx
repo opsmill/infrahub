@@ -1,7 +1,9 @@
-import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
-import { NodeCore } from "@/entities/nodes/types";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import React from "react";
+
+import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
+import { NodeCore } from "@/entities/nodes/types";
+
 import { DeleteObjectsModal } from "./delete-objects-modal";
 
 export interface ToolbarDeleteActionProps {

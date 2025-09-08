@@ -1,3 +1,5 @@
+import { Filter } from "@/shared/hooks/useFilters";
+
 import {
   AttributeType,
   Node,
@@ -6,7 +8,6 @@ import {
   RelationshipType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ModelSchema } from "@/entities/schema/types";
-import { Filter } from "@/shared/hooks/useFilters";
 
 export const getObjectFromFilters = (
   schema: ModelSchema | null,

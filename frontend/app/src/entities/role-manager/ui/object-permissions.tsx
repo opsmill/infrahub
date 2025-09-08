@@ -1,7 +1,10 @@
+import { NetworkStatus } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { ReactNode, useState } from "react";
+
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -20,21 +23,22 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
-import { NetworkStatus } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { ReactNode, useState } from "react";
+
+import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 import { objectDecisionOptions } from "../constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/40">
+    <Pill className="flex h-6 w-6 items-center justify-center bg-green-500/40">
       <Icon icon={"mdi:lock-open-check-outline"} className="text-green-900" />
     </Pill>
   ),
   deny: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-red-500/40">
+    <Pill className="flex h-6 w-6 items-center justify-center bg-red-500/40">
       <Icon icon={"mdi:lock-remove-outline"} className="text-red-900" />
     </Pill>
   ),
@@ -180,7 +184,7 @@ function Permissions() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}

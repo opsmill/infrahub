@@ -1,9 +1,5 @@
 import { CONFIG } from "@/config/config";
-import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
-import { NodeEvents } from "@/entities/events/ui/node-details-events";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
-import { ModelSchema } from "@/entities/schema/types";
+
 import { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
@@ -11,6 +7,13 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
+
+import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
+import { NodeEvents } from "@/entities/events/ui/node-details-events";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
+import { ModelSchema } from "@/entities/schema/types";
+
 import ArtifactHeader from "./artifact-header";
 
 export interface ArtifactsDetailsProps {
@@ -39,8 +42,8 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
   const contentType = objectDetailsData.content_type?.value;
 
   return (
-    <div className="flex flex-wrap grow lg:flex-nowrap w-full gap-0.5 overflow-auto">
-      <Content.Card className="flex flex-col grow">
+    <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
+      <Content.Card className="flex grow flex-col">
         <Col className="gap-3 p-4 pb-2">
           <ArtifactHeader
             name={objectDetailsData?.display_label}
@@ -61,12 +64,12 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           </Row>
         </Col>
 
-        <div className="flex p-1 grow overflow-hidden">
+        <div className="flex grow overflow-hidden p-1">
           <ArtifactFile artifactId={artifactId} url={fileUrl} contentType={contentType} />
         </div>
       </Content.Card>
       <Card className="min-w-[350px] p-0">
-        <div className="font-semibold p-2 border-b  border-gray-200">Activities</div>
+        <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
         <NodeEvents objectId={artifactId} objectKind={artifactKind} />
       </Card>
     </div>

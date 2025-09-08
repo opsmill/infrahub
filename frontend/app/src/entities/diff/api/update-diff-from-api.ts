@@ -1,5 +1,6 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 export const DIFF_UPDATE = gql`
   mutation DIFF_UPDATE($branchName: String!, $waitUntilCompletion: Boolean) {

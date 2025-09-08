@@ -1,36 +1,41 @@
+import { gql, useQuery } from "@apollo/client";
+import { PencilIcon } from "@heroicons/react/24/outline";
+import { formatISO } from "date-fns";
+import { useAtom } from "jotai";
+import { useCallback, useEffect, useState } from "react";
+import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+
 import { CONFIG } from "@/config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import useQuery from "@/shared/api/graphql/useQuery";
+
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { gql } from "@apollo/client";
-import { PencilIcon } from "@heroicons/react/24/outline";
-import { formatISO } from "date-fns";
-import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
-import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+
 const fakeIndex = () => {
-  return sha(Math.random() * 100000).slice(0, 9);
+  return sha(Math.random() * 100_000).slice(0, 9);
 };
 
 const appendGitDiffHeaderIfNeeded = (diffText: string) => {
@@ -296,7 +301,7 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="bg-white p-4 border border-custom-blue-500 rounded-md m-2">
+          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-white p-4">
             {comment.message}
           </div>
         )),
@@ -329,10 +334,10 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+            className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 transform"
             onClick={handleClick}
           >
-            <PencilIcon className="w-3 h-3" />
+            <PencilIcon className="h-3 w-3" />
           </Button>
         )}
       </>

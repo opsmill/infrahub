@@ -1,13 +1,15 @@
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useParams } from "react-router";
+import { toast } from "react-toastify";
+
 import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { runCheck } from "@/entities/diff/api/runCheck";
-import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
@@ -15,11 +17,12 @@ import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { runCheck } from "@/entities/diff/api/runCheck";
+import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 type tChecksSummaryProps = {
   validators: any[];
@@ -80,9 +83,9 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   };
 
   return (
-    <div className="flex justify-center m-4" data-testid="checks-summary">
-      <div className="flex flex-col-reverse items-center relative">
-        <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
+    <div className="m-4 flex justify-center" data-testid="checks-summary">
+      <div className="relative flex flex-col-reverse items-center">
+        <div className="lg:-left-28 lg:-translate-y-1/2 flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:transform">
           <Button
             onClick={() => handleRetry("all")}
             disabled={!isAuthenticated}
@@ -99,10 +102,10 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
           {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
             <div key={kind} className="flex items-center justify-center gap-2 p-2">
-              <div className={"flex flex-col items-center group relative"}>
+              <div className={"group relative flex flex-col items-center"}>
                 <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
                   {canRetry(data) && (
-                    <div className="absolute invisible group-hover:visible cursor-pointer">
+                    <div className="invisible absolute cursor-pointer group-hover:visible">
                       <Retry
                         isLoading={isLoading || !!data.inProgress}
                         isDisabled={!canRetry(data)}

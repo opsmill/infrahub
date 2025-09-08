@@ -1,6 +1,7 @@
+import { gql } from "@apollo/client";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 export const GET_NUMBER_POOLS = gql`
   query GET_NUMBER_POOLS($objectKinds: [String]) {

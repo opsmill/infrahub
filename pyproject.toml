@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.4.3"
+version = "1.4.4"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -94,7 +94,7 @@ ruff = "0.11.9"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
-deepdiff = "^6.2"
+deepdiff = "8.6.1"
 polyfactory = "^2.16.2"
 towncrier = "^24.8"
 pytest-env = "^1.1.3"

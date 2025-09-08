@@ -1,15 +1,17 @@
-import {
-  UPDATE_DIFF_KEY,
-  useUpdateDiffMutation,
-} from "@/entities/diff/domain/update-diff.mutation";
+import { Icon } from "@iconify-icon/react";
+import { useMutationState } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useMutationState } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+
+import {
+  UPDATE_DIFF_KEY,
+  useUpdateDiffMutation,
+} from "@/entities/diff/domain/update-diff.mutation";
 
 export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onClick"> {
   branchName: string;

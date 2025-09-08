@@ -24,10 +24,10 @@ export const List = (props: tDetailsProps) => {
           }
 
           return (
-            <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={index}>
-              <dt className="font-medium text-gray-500 flex items-center">{column.label}</dt>
+            <div className="grid grid-cols-3 gap-4 p-2 text-xs" key={index}>
+              <dt className="flex items-center font-medium text-gray-500">{column.label}</dt>
 
-              <div className="flex col-span-2 items-center">
+              <div className="col-span-2 flex items-center">
                 <dd className={"mt-1 text-gray-900"}>{row.values[column.name]}</dd>
               </div>
             </div>

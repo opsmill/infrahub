@@ -1,7 +1,9 @@
-import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+
 import { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import { PaginationParams } from "@/shared/api/types";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+
+import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
 
 export const DIFF_TREE_PER_PAGE = 300;
 
@@ -38,7 +40,7 @@ export const getDiffTreeInfiniteQueryOptions = ({
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage === null || (lastPage?.nodes && lastPage.nodes.length < DIFF_TREE_PER_PAGE)) {
-        return undefined;
+        return;
       }
       return lastPageParam + DIFF_TREE_PER_PAGE;
     },

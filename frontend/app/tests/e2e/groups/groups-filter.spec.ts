@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 

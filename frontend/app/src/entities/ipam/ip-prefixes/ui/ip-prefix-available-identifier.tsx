@@ -1,6 +1,7 @@
-import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
-import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { useSetAtom } from "jotai/index";
+import { PlusIcon } from "lucide-react";
+import React from "react";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
@@ -8,9 +9,11 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ObjectForm from "@/shared/components/form/object-form";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { useSetAtom } from "jotai/index";
-import { PlusIcon } from "lucide-react";
-import React from "react";
+
+import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
+import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 
 export interface IpPrefixAvailableIdentifierProps extends ButtonProps {
   ipPrefixNode: IpPrefixNode;
@@ -41,19 +44,19 @@ export function IpPrefixAvailableIdentifier({
           size="sm"
           disabled={!isCreationAllowed}
           className={classNames(
-            "rounded-full px-2.5 pl-1.5 hover:underline hover:bg-gray-400/10 gap-3.75 disabled:opacity-100",
+            "gap-3.75 rounded-full px-2.5 pl-1.5 hover:bg-gray-400/10 hover:underline disabled:opacity-100",
             className
           )}
           onClick={() => setIsCreateFormOpen(true)}
           {...props}
         >
-          <div className="size-4 mr-px flex items-center justify-center">
+          <div className="mr-px flex size-4 items-center justify-center">
             <PlusIcon className="size-4 text-gray-300" />
           </div>
 
           <Row className="gap-2.5">
             {[...Array(ancestorsCount)].map((_, i) => (
-              <div className="bg-gray-300 size-1 rounded-full" key={i} />
+              <div className="size-1 rounded-full bg-gray-300" key={i} />
             ))}
             {ipPrefixNode.display_label}
           </Row>
@@ -75,9 +78,7 @@ export function IpPrefixAvailableIdentifier({
         <ObjectForm
           onSuccess={() => {
             setIsCreateFormOpen(false);
-            queryClient.invalidateQueries({
-              predicate: (query) => query.queryKey.includes("objects"),
-            });
+            queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
             if (location.pathname.startsWith("/ipam")) {
               reloadIpamTree(parentNode?.id);

@@ -1,21 +1,24 @@
+import { gql, useQuery } from "@apollo/client";
+import { formatISO } from "date-fns";
+import { useAtom } from "jotai";
+import { use } from "react";
+import { useParams } from "react-router";
+
 import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
+
+import { AddComment } from "@/shared/components/conversations/add-comment";
+import { Thread } from "@/shared/components/conversations/thread";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getThreadLabel } from "@/entities/diff/utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import useQuery from "@/shared/api/graphql/useQuery";
-import { AddComment } from "@/shared/components/conversations/add-comment";
-import { Thread } from "@/shared/components/conversations/thread";
-import { gql } from "@apollo/client";
-import { formatISO } from "date-fns";
-import { useAtom } from "jotai";
-import { use } from "react";
-import { useParams } from "react-router";
+
 import { DiffContext } from ".";
 
 type tDiffComments = {
@@ -149,7 +152,7 @@ export const DiffComments = (props: tDiffComments) => {
   }
 
   return (
-    <div className="flex-1 p-4 overflow-auto">
+    <div className="flex-1 overflow-auto p-4">
       {thread?.id && <Thread thread={thread} refetch={handleRefetch} />}
 
       {!thread?.id && <AddComment onSubmit={handleSubmit} />}

@@ -72,6 +72,16 @@ const config: Config = {
       }
     ],
   ],
+  plugins: [
+    [
+      '@docusaurus/theme-mermaid',
+      {
+        mermaid: {
+          theme: { light: 'neutral', dark: 'dark' },
+        },
+      },
+    ],
+  ],
   themeConfig: {
     // announcementBar: {
     //   content: 'Welcome to our brand new docs!',
@@ -113,6 +123,7 @@ const config: Config = {
 
   markdown: {
     format: "mdx",
+    mermaid: true,
     preprocessor: ({ filePath, fileContent }) => {
       console.log(`Processing ${filePath}`);
       const transformedContent = fileContent.replace(/\$\(\s*(\w+)\s*\)/g, (match, variableName) => {

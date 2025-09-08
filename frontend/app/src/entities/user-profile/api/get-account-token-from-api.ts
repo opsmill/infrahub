@@ -1,5 +1,6 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const query = gql`
   query InfrahubAccountToken {

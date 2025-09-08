@@ -1,13 +1,16 @@
+import { Command } from "cmdk";
+import { useEffect, useState } from "react";
+
 import { SearchAnywhereDialog } from "@/shared/components/search/search-anywhere-dialog";
 import { SearchAnywhereEmpty } from "@/shared/components/search/search-anywhere-empty";
 import { SearchAnywhereInput } from "@/shared/components/search/search-anywhere-input";
 import { SearchAnywhereTrigger } from "@/shared/components/search/search-anywhere-trigger";
-import { Command } from "cmdk";
-import { useEffect, useState } from "react";
+
 import { SearchActions } from "./search-actions";
 import { SearchAnywhereContext } from "./search-anywhere-context";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
+
 type SearchModalProps = {
   isCollapsed?: boolean;
 };

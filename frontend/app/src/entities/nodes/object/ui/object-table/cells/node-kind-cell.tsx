@@ -1,5 +1,6 @@
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { Badge } from "@/shared/components/ui/badge";
+
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function NodeKindCell({ kind }: { kind: string }) {
   const { schema } = useSchema(kind);

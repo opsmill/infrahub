@@ -1,19 +1,21 @@
-import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { NodeObject } from "@/entities/nodes/types";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export type GetObjectParams = ContextParams & {
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
+import { ContextParams } from "@/shared/api/types";
+
+import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
+import { NodeObject } from "@/entities/nodes/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+
+export interface GetObjectParams extends ContextParams {
   objectSchema: ModelSchema;
   objectId: string;
   getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
   getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
   relationshipFragment?: Record<string, string>;
-};
+}
 
 export type GetObject = (params: GetObjectParams) => Promise<NodeObject>;
 

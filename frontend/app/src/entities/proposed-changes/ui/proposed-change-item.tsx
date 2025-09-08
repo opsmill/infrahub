@@ -1,17 +1,20 @@
+import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router";
+
 import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { Badge } from "@/shared/components/ui/badge";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { classNames } from "@/shared/utils/common";
+
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { DateDisplay } from "@/shared/components/display/date-display";
-import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
 type ProposedChangesItemProps = {
   node: ProposedChangeItem;
@@ -21,8 +24,8 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
   const { permission } = useObjectTableContext();
 
   return (
-    <div className="p-2 border border-b-0 border-gray-200 flex items-center">
-      <div className="flex-grow grid grid-cols-2 items-center">
+    <div className="flex items-center border border-gray-200 border-b-0 p-2">
+      <div className="grid flex-grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
@@ -77,7 +80,7 @@ const ProposedChangesInfo = ({
         <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className={classNames("hover:text-gray-500 transition-all text-lg font-semibold")}
+            className={classNames("font-semibold text-lg transition-all hover:text-gray-500")}
           >
             <Icon
               icon={"mdi:file-replace-outline"}

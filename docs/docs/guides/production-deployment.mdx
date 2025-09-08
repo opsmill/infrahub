@@ -43,6 +43,12 @@ INFRAHUB_INITIAL_AGENT_TOKEN=<generate-uuid>  # Generate with: uuidgen
 # Database & message broker security
 INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
 INFRAHUB_DB_PASSWORD=<strong-database-password>
+
+# TLS & Certificates
+INFRAHUB_DB_TLS_ENABLED=true
+INFRAHUB_DB_TLS_CA_FILE=/opt/ssl/ca.pem
+INFRAHUB_BROKER_TLS_ENABLED=true
+INFRAHUB_CACHE_TLS_ENABLED=true
 ```
 
 :::warning
@@ -154,4 +160,3 @@ Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support
 - [Architecture Overview](../topics/architecture)
 - [Configuration Reference](../reference/configuration)
 - [API Server Reference](../reference/api-server)
-- [High Availability Deployment](../topics/architecture#infrahub-high-availability-deployment)

@@ -1,27 +1,30 @@
-import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
-import { Table, tRowValue } from "@/shared/components/table/table";
-import { Pagination } from "@/shared/components/ui/pagination";
+import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
+import { Table, tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
+import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
-import { NetworkStatus } from "@apollo/client";
+
+import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 
 function Roles() {
@@ -125,7 +128,7 @@ function Roles() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}

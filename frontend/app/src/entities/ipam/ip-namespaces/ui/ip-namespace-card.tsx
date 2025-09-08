@@ -1,12 +1,14 @@
-import { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Link } from "react-router";
+
 import { Row } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
-import { Link } from "react-router";
+
+import { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface IpNamespaceCardProps {
   ipNamespace: IpNamespace;

@@ -1,9 +1,11 @@
+import { describe, expect, it } from "vitest";
+
 import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { describe, expect, it } from "vitest";
+
 import {
   C_deviceAttributeListColumns,
   C_deviceObjectColumns,
