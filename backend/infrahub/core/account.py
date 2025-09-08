@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
-from infrahub.core.constants import InfrahubKind, PermissionDecision
+from infrahub.core.constants import NULL_VALUE, InfrahubKind, PermissionDecision
 from infrahub.core.query import Query, QueryType
 from infrahub.core.registry import registry
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -513,7 +514,6 @@ async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Bra
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
     type: QueryType = QueryType.READ
-    insert_return = False
 
     def __init__(self, token: str, **kwargs: Any):
         self.token = token
@@ -525,7 +525,12 @@ class AccountTokenValidateQuery(Query):
         )
         self.params.update(branch_params)
         self.params.update(
-            {"token_attr_name": "token", "token_relationship_name": "account__token", "token_value": self.token}
+            {
+                "token_attr_name": "token",
+                "token_relationship_name": "account__token",
+                "token_value": self.token,
+                "null_value": NULL_VALUE,
+            }
         )
 
         query = """
@@ -540,29 +545,47 @@ LIMIT 1
 WITH token_node
 WHERE r1.status = "active" AND r2.status = "active"
 // --------------
+// get the expiration time
+// --------------
+OPTIONAL MATCH (token_node)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "expiration"})
+    -[r2:HAS_VALUE]->(av)
+WHERE all(r in [r1, r2] WHERE (%(branch_filter)s))
+ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+LIMIT 1
+WITH token_node, CASE
+    WHEN r1.status = "active" AND r2.status = "active" AND av.value <> $null_value THEN av.value
+    ELSE NULL
+END AS expiration
+// --------------
 // get the linked account node from the token node
 // --------------
 MATCH (token_node)-[r1:IS_RELATED]-(:Relationship {name: $token_relationship_name})-[r2:IS_RELATED]-(account_node:%(account_node_kind)s)
 WHERE all(r in [r1, r2] WHERE (%(branch_filter)s))
 ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
 LIMIT 1
-WITH account_node
+WITH expiration, account_node
 WHERE r1.status = "active" AND r2.status = "active"
-RETURN account_node.uuid AS account_uuid
         """ % {
             "branch_filter": branch_filter,
             "token_node_kind": InfrahubKind.ACCOUNTTOKEN,
             "account_node_kind": InfrahubKind.GENERICACCOUNT,
         }
         self.add_to_query(query)
-        self.return_labels = ["account_uuid"]
+        self.return_labels = ["account_node.uuid AS account_uuid", "expiration"]
 
     def get_account_id(self) -> str | None:
         """Return the account id that matched the query or a None."""
-        if result := self.get_result():
-            return result.get_as_str(label="account_uuid")
-
-        return None
+        result = self.get_result()
+        if not result:
+            return None
+        account_uuid = result.get_as_str(label="account_uuid")
+        expiration_with_tz = result.get_as_str(label="expiration")
+        if expiration_with_tz is None:
+            return account_uuid
+        expiration = Timestamp(expiration_with_tz)
+        if expiration < Timestamp():
+            return None
+        return account_uuid
 
 
 async def validate_token(token: str, db: InfrahubDatabase, branch: Branch | str | None = None) -> str | None:
