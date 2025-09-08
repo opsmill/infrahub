@@ -15,7 +15,7 @@ from .mutations.branch import (
     BranchUpdate,
     BranchValidate,
 )
-from .mutations.computed_attribute import UpdateComputedAttribute
+from .mutations.computed_attribute import RecomputeComputedAttribute, UpdateComputedAttribute
 from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
@@ -113,6 +113,7 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
+    InfrahubRecomputeComputedAttribute = RecomputeComputedAttribute.Field()
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()
