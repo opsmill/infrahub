@@ -1,16 +1,99 @@
 from __future__ import annotations
 
-from infrahub_sdk.graphql import Mutation
+from typing import TYPE_CHECKING
+
+from infrahub_sdk.graphql import Mutation, Query
 from prefect import flow
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
+from infrahub.core.constants import InfrahubKind
+from infrahub.generators.models import (
+    GeneratorDefinitionModel,
+    RequestGeneratorRun,
+)
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
+from infrahub.workers.dependencies import get_workflow
+from infrahub.workflows.catalogue import REQUEST_GENERATOR_RUN
 from infrahub.workflows.utils import add_tags
 
 from .gather import gather_trigger_action_rules
 from .models import EventGroupMember  # noqa: TC001  needed for prefect flow
+
+if TYPE_CHECKING:
+    from infrahub_sdk.client import InfrahubClient
+
+GENERATOR_RUN_QUERY = Query(
+    name=InfrahubKind.GENERATORDEFINITION,
+    variables={"$definition_id": "ID", "$target_ids": "[ID]"},
+    query={
+        InfrahubKind.GENERATORDEFINITION: {
+            "@filters": {
+                "ids": ["$definition_id"],
+            },
+            "edges": {
+                "node": {
+                    "id": None,
+                    "name": {
+                        "value": None,
+                    },
+                    "class_name": {
+                        "value": None,
+                    },
+                    "file_path": {
+                        "value": None,
+                    },
+                    "query": {
+                        "node": {
+                            "name": {
+                                "value": None,
+                            },
+                        },
+                    },
+                    "convert_query_response": {
+                        "value": None,
+                    },
+                    "targets": {
+                        "@filters": {
+                            "ids": "$target_ids",
+                        },
+                        "node": {
+                            "id": None,
+                            "members": {
+                                "edges": {
+                                    "node": {
+                                        "id": None,
+                                        "display_label": None,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "repository": {
+                        "node": {
+                            "__typename": None,
+                            "id": None,
+                            "name": {
+                                "value": None,
+                            },
+                            f"... on {InfrahubKind.REPOSITORY}": {
+                                "commit": {
+                                    "value": None,
+                                },
+                            },
+                            f"... on {InfrahubKind.READONLYREPOSITORY}": {
+                                "commit": {
+                                    "value": None,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+)
 
 
 @flow(
@@ -65,12 +148,17 @@ async def run_generator(
     branch_name: str,
     node_ids: list[str],
     generator_definition_id: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
-    await _run_generator(
-        branch_name=branch_name, generator_definition_id=generator_definition_id, node_ids=node_ids, service=service
+
+    await _run_generators(
+        branch_name=branch_name,
+        node_ids=node_ids,
+        generator_definition_id=generator_definition_id,
+        client=service.client,
+        context=context,
     )
 
 
@@ -82,13 +170,18 @@ async def run_generator_group_event(
     branch_name: str,
     members: list[EventGroupMember],
     generator_definition_id: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     service: InfrahubServices,
 ) -> None:
     node_ids = [node.id for node in members]
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
-    await _run_generator(
-        branch_name=branch_name, generator_definition_id=generator_definition_id, node_ids=node_ids, service=service
+
+    await _run_generators(
+        branch_name=branch_name,
+        node_ids=node_ids,
+        generator_definition_id=generator_definition_id,
+        client=service.client,
+        context=context,
     )
 
 
@@ -104,16 +197,48 @@ async def configure_action_rules(
     )  # type: ignore[misc]
 
 
-async def _run_generator(
+async def _run_generators(
     branch_name: str,
     node_ids: list[str],
     generator_definition_id: str,
-    service: InfrahubServices,
+    client: InfrahubClient,
+    context: InfrahubContext,
 ) -> None:
-    mutation = Mutation(
-        mutation="CoreGeneratorDefinitionRun",
-        input_data={"data": {"id": generator_definition_id, "nodes": node_ids}},
-        query={"ok": None},
+    response = await client.execute_graphql(
+        query=GENERATOR_RUN_QUERY.render(),
+        variables={"definition_id": generator_definition_id, "target_ids": node_ids},
+        branch_name=branch_name,
     )
+    data = response[InfrahubKind.GENERATORDEFINITION]["edges"][0]["node"]
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    if not data["targets"]["node"]["members"]["edges"]:
+        raise ValueError(f"Target {node_ids[0]} is not part of the group {data['targets']['node']['id']}")
+
+    targets = data["targets"]["node"]["members"]["edges"]
+
+    workflow = get_workflow()
+
+    for target in targets:
+        request_generator_run_model = RequestGeneratorRun(
+            generator_definition=GeneratorDefinitionModel(
+                definition_id=generator_definition_id,
+                definition_name=data["name"]["value"],
+                class_name=data["class_name"]["value"],
+                file_path=data["file_path"]["value"],
+                query_name=data["query"]["node"]["name"]["value"],
+                convert_query_response=data["convert_query_response"]["value"],
+                group_id=data["targets"]["node"]["id"],
+            ),
+            commit=data["repository"]["node"]["commit"]["value"],
+            repository_id=data["repository"]["node"]["id"],
+            repository_name=data["repository"]["node"]["name"]["value"],
+            repository_kind=data["repository"]["node"]["__typename"],
+            branch_name=branch_name,
+            query=data["query"]["node"]["name"]["value"],
+            variables={},
+            target_id=target["id"],
+            target_name=target["display_label"],
+        )
+        await workflow.submit_workflow(
+            workflow=REQUEST_GENERATOR_RUN, context=context, parameters={"model": request_generator_run_model}
+        )
