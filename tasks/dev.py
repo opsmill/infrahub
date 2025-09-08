@@ -194,3 +194,63 @@ def stop(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 def upgrade(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Upgrade Infrahub to the latest version and apply the required migrations."""
     upgrade_infrahub(context=context, database=database, namespace=NAMESPACE)
+
+
+@task
+def test_add_dummy_data(context: Context, branch: str = "main") -> str:  # noqa: ARG001
+    """Load dummy data for testing"""
+    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk.uuidt import generate_uuid
+
+    client = InfrahubClientSync()
+
+    node_name = f"test_rebase_{generate_uuid()}"
+
+    # Create dummy data in main
+    test_data = client.create(kind="LocationContinent", data={"name": node_name}, branch=branch)
+    test_data.save()
+
+    print(node_name)
+
+    return node_name
+
+
+@task
+def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -> None:  # noqa: ARG001
+    """Rebase branch and check for schema and data."""
+    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk.exceptions import NodeNotFoundError
+    from infrahub_sdk.task.models import TaskFilter
+    from infrahub_sdk.uuidt import generate_uuid
+
+    client = InfrahubClientSync()
+
+    node_name = f"test_rebase_{generate_uuid()}"
+
+    # Create dummy data in main
+    test_data = client.create(kind="LocationContinent", data={"name": node_name}, branch="main")
+    test_data.save()
+
+    # Check that data is not present in branch
+    try:
+        client.get(kind="LocationContinent", hfid=node_name, branch=branch)
+    except NodeNotFoundError:
+        pass
+
+    client.branch.rebase(branch_name=branch)
+
+    tasks = client.task.filter(filter=TaskFilter(workflow=["branch-rebase"]))
+    for rebase_task in tasks:
+        client.task.wait_for_completion(id=rebase_task.id)
+
+    # Check schema
+    schema_to_check = "LocationGeneric"
+    full_schema = client.schema.all(branch=branch)
+    if schema_to_check not in full_schema:
+        raise Exception(f"Could not find {schema_to_check} in schema")
+
+    # Check data
+    client.get(kind="LocationContinent", hfid=node_name, branch=branch)
+
+    if data_to_check:
+        client.get(kind="LocationContinent", hfid=data_to_check, branch=branch)
