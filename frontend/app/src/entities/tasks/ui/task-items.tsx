@@ -1,23 +1,28 @@
-import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
-import useQuery from "@/shared/api/graphql/useQuery";
-import Content from "@/shared/components/layout/content";
-import { Table, tColumn } from "@/shared/components/table/table";
-import { Pagination } from "@/shared/components/ui/pagination";
+import { forwardRef, useImperativeHandle } from "react";
+import { useLocation, useParams } from "react-router";
 
+import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
-import { TaskFilters } from "@/entities/tasks/ui/task-filters";
+
+import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Table, tColumn } from "@/shared/components/table/table";
 import { Id } from "@/shared/components/ui/id";
+import { Link } from "@/shared/components/ui/link";
+import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { debounce } from "@/shared/utils/common";
-import { forwardRef, useImperativeHandle } from "react";
-import { useLocation, useParams } from "react-router";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
+import { TaskFilters } from "@/entities/tasks/ui/task-filters";
+
 import { getStateBadge } from "./task-item-details";
 
 interface TaskItemsProps {
@@ -67,7 +72,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       ...filters,
       {
         name: SEARCH_ANY_FILTER,
-        value: value,
+        value,
       },
     ];
 
@@ -151,7 +156,16 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
                 if (!item.id) return null;
 
-                return <Id key={item.id} id={item.id} kind={item.kind} preventCopy />;
+                return (
+                  <Link
+                    key={item.id}
+                    to={getObjectDetailsUrl(item.kind, item.id, [
+                      { name: QSP.BRANCH, value: edge.node.branch },
+                    ])}
+                  >
+                    <Id id={item.id} kind={item.kind} preventCopy />
+                  </Link>
+                );
               }}
             />
           ),
@@ -173,14 +187,14 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     <Content.Card>
       <Content.CardTitle title="Task Overview" badgeContent={count} />
 
-      <div className="bg-white flex-1 flex flex-col">
+      <div className="flex flex-1 flex-col bg-white">
         <div className="flex items-center gap-2 p-2">
           <SearchInput
             loading={loading}
             defaultValue={search}
             onChange={debouncedHandleSearch}
             placeholder="Search an object"
-            className="border-none focus-visible:ring-0 h-7"
+            className="h-7 border-none focus-visible:ring-0"
             data-testid="object-list-search-bar"
           />
 

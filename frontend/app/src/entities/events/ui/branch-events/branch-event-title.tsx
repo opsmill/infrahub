@@ -1,4 +1,5 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { ReactNode } from "react";
+
 import {
   BranchCreatedEvent,
   BranchDeletedEvent,
@@ -6,7 +7,8 @@ import {
   BranchRebasedEvent,
 } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
-import { ReactNode } from "react";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
   "infrahub.branch.created": (props: BranchCreatedEvent) => (
@@ -41,7 +43,7 @@ export const BranchEventTitle = (props: any) => {
   const { event, account_id, branch } = props;
 
   return (
-    <div className="flex items-center flex-wrap gap-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
 
       {BRANCH_EVENTS_MAPPING[event] && BRANCH_EVENTS_MAPPING[event](props)}

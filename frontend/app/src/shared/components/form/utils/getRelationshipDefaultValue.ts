@@ -1,10 +1,3 @@
-import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import {
   EmptyFieldValue,
@@ -15,6 +8,14 @@ import {
   TemplateSource,
 } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
+
+import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;

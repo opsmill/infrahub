@@ -1,15 +1,17 @@
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import { useCommandState } from "cmdk";
+import { useAtomValue } from "jotai";
+import { useId, useMemo } from "react";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Badge } from "@/shared/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
-import { useCommandState } from "cmdk";
-import { useAtomValue } from "jotai";
-import { useId, useMemo } from "react";
+
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 
 export const SearchActions = () => {
   const query = useCommandState((state) => state.search);
@@ -110,7 +112,7 @@ const ActionOnSchema = ({ model }: { model: ModelSchema }) => {
       <span className="font-medium">Schema</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold">
-        <Badge variant="blue" className="text-xxs mr-1 py-0">
+        <Badge variant="blue" className="mr-1 py-0 text-xxs">
           {model.namespace}
         </Badge>
         {label || name || kind}

@@ -1,3 +1,12 @@
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { ProfileData } from "@/shared/components/form/object-form";
+import {
+  GetFieldDefaultValue,
+  getFieldDefaultValue,
+} from "@/shared/components/form/utils/getFieldDefaultValue";
+import { store } from "@/shared/stores";
+
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
 import {
@@ -6,13 +15,7 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { ProfileData } from "@/shared/components/form/object-form";
-import {
-  GetFieldDefaultValue,
-  getFieldDefaultValue,
-} from "@/shared/components/form/utils/getFieldDefaultValue";
-import { store } from "@/shared/stores";
-import { beforeEach, describe, expect, it } from "vitest";
+
 import {
   generateAttributeSchema,
   generateGenericSchema,

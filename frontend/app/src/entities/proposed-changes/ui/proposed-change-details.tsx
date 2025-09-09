@@ -1,10 +1,10 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { HTMLAttributes } from "react";
+import { useNavigate, useParams } from "react-router";
+
 import { TASK_OBJECT } from "@/config/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
-import { Overview } from "@/entities/proposed-changes/ui/overview";
-import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
-import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
@@ -16,12 +16,16 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { HTMLAttributes } from "react";
-import { useNavigate, useParams } from "react-router";
-import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
-import { TaskDisplay } from "../../tasks/ui/task-display";
+
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
+import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
+import { Overview } from "@/entities/proposed-changes/ui/overview";
+import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
+import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -135,18 +139,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Updated",
       value: <DateDisplay date={proposedChangesDetails?._updated_at} />,
     },
-    {
-      name: "Actions",
-      value: (
-        <div className="flex flex-wrap gap-2">
-          <PcActionButton />
-        </div>
-      ),
-    },
   ];
 
   return (
-    <div className="bg-stone-50 p-2.5 flex flex-col grow gap-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
       {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
@@ -164,14 +160,14 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
             <CardWithBorder contentClassName="" data-testid="pc-description">
-              <CardWithBorder.Title className="flex gap-2 items-center">
+              <CardWithBorder.Title className="flex items-center gap-2">
                 <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
                 {proposedChangesDetails?.created_by?.node?.display_label}
 
                 <DateDisplay
                   date={proposedChangesDetails.description.updated_at}
-                  className="ml-auto text-xs font-normal text-gray-600"
+                  className="ml-auto font-normal text-gray-600 text-xs"
                 />
               </CardWithBorder.Title>
 
@@ -186,10 +182,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         </div>
 
         <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
-          <CardWithBorder.Title className="flex justify-between items-center">
+          <CardWithBorder.Title className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
             >
               Proposed change
             </div>
@@ -198,6 +194,11 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           </CardWithBorder.Title>
 
           <PropertyList properties={proposedChangeProperties} />
+
+          <div className="flex flex-grow gap-2 p-2">
+            <PcReviewButton />
+            <PcActionButton />
+          </div>
         </CardWithBorder>
       </div>
     </div>

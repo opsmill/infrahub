@@ -310,6 +310,15 @@ async def generate_request_artifact_definition(
 
     client = get_client()
 
+    # Needs to be fetched before fetching group members otherwise `object` relationship would override
+    # existing node in client store without the `name` attribute due to #521
+    existing_artifacts = await client.filters(
+        kind=CoreArtifact,
+        definition__ids=[model.artifact_definition_id],
+        include=["object"],
+        branch=model.branch,
+    )
+
     artifact_definition = await client.get(
         kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
     )
@@ -319,12 +328,6 @@ async def generate_request_artifact_definition(
     await group.members.fetch()
     current_members = [member.id for member in group.members.peers]
 
-    existing_artifacts = await client.filters(
-        kind=CoreArtifact,
-        definition__ids=[model.artifact_definition_id],
-        include=["object"],
-        branch=model.branch,
-    )
     artifacts_by_member = {}
     for artifact in existing_artifacts:
         if artifact.object.id in current_members:

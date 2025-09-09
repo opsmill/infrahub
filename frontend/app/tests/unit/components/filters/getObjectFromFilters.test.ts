@@ -1,7 +1,10 @@
-import { ModelSchema } from "@/entities/schema/types";
+import { describe, expect } from "vitest";
+
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { Filter } from "@/shared/hooks/useFilters";
-import { describe, expect } from "vitest";
+
+import { ModelSchema } from "@/entities/schema/types";
+
 import { generateRelationshipSchema } from "../../../fake/schema";
 
 describe("getObjectFromFilters - test", () => {

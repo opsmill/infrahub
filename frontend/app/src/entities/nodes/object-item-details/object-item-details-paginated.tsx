@@ -1,3 +1,9 @@
+import { LockClosedIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
+import { useAtom, useAtomValue } from "jotai";
+import { Navigate, useParams } from "react-router";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import {
   DEFAULT_BRANCH_NAME,
   GENERIC_REPOSITORY_KIND,
@@ -5,9 +11,21 @@ import {
   TASK_TARGET,
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { useTitle } from "@/shared/hooks/useTitle";
+
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
 import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
 import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
@@ -16,9 +34,6 @@ import {
   getObjectAttributes,
   getObjectRelationships,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
-import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
@@ -30,18 +45,6 @@ import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/sc
 import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
-import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
-import SlideOver from "@/shared/components/display/slide-over";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { useTitle } from "@/shared/hooks/useTitle";
-import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { Icon } from "@iconify-icon/react";
-import { useAtom, useAtomValue } from "jotai";
-import { Navigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 type ObjectDetailsProps = {
   schema: ModelSchema;
@@ -76,8 +79,8 @@ export default function ObjectItemDetails({
     return <Navigate to="/" />;
   }
 
-  const attributes = getObjectAttributes({ schema: schema });
-  const relationships = getObjectRelationships({ schema: schema });
+  const attributes = getObjectAttributes({ schema });
+  const relationships = getObjectRelationships({ schema });
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
@@ -93,9 +96,9 @@ export default function ObjectItemDetails({
   return (
     <>
       {!hideHeaders && (
-        <header className="flex items-center border-b border-gray-200 px-2">
+        <header className="flex items-center border-gray-200 border-b px-2">
           <ScrollArea scrollX scrollBarClassName="hidden" className="grow">
-            <div className="grow flex gap-8 px-4" data-testid="object-details-tabs">
+            <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
               <ObjectDetailsTab
                 isActive={!qspTab}
                 to={getObjectDetailsUrl(objectKind as string, objectid)}
@@ -125,9 +128,9 @@ export default function ObjectItemDetails({
       )}
 
       {!qspTab && (
-        <div className="flex flex-col xl:items-start xl:grid xl:grid-cols-3 gap-2 p-2">
-          <Card className="md:col-span-2 p-0 grow overflow-x-hidden">
-            <CardWithBorder.Title className="border-b border-gray-200">
+        <div className="flex flex-col gap-2 p-2 xl:grid xl:grid-cols-3 xl:items-start">
+          <Card className="grow overflow-x-hidden p-0 md:col-span-2">
+            <CardWithBorder.Title className="border-gray-200 border-b">
               Details
             </CardWithBorder.Title>
 
@@ -157,7 +160,7 @@ export default function ObjectItemDetails({
                             isProtected={objectDetailsData[attribute.name]?.is_protected}
                             header={
                               !attribute.read_only && (
-                                <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+                                <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                                   <div className="font-semibold">{attribute.label}</div>
                                   <ButtonWithTooltip
                                     disabled={!permission.update.isAllowed}
@@ -185,7 +188,7 @@ export default function ObjectItemDetails({
                         )}
 
                         {objectDetailsData[attribute.name]?.is_protected && (
-                          <LockClosedIcon className="w-4 h-4" />
+                          <LockClosedIcon className="h-4 w-4" />
                         )}
                       </>
                     }
@@ -216,8 +219,8 @@ export default function ObjectItemDetails({
             </div>
           </Card>
 
-          <Card className="p-0 overflow-x-hidden" data-testid="activities-panel">
-            <CardWithBorder.Title className="border-b border-gray-200">
+          <Card className="overflow-x-hidden p-0" data-testid="activities-panel">
+            <CardWithBorder.Title className="border-gray-200 border-b">
               Activities
             </CardWithBorder.Title>
             <NodeEvents objectId={objectid} objectKind={objectKind} />
@@ -232,8 +235,8 @@ export default function ObjectItemDetails({
       <SlideOver
         title={
           <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
+            <div className="flex w-full items-center">
+              <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Icon icon={"mdi:layers-triple"} />

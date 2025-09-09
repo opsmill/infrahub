@@ -1,6 +1,9 @@
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { SelectOption } from "@/shared/components/inputs/select-old";
 import { RegisterOptions } from "react-hook-form";
+
+import { SelectOption } from "@/shared/components/inputs/select-old";
+
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
 import { FormFieldError } from "./form";
 
 // Interface for every field in a create/edit form

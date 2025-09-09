@@ -1,5 +1,7 @@
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
-import { branchesState } from "@/entities/branches/stores";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { breadcrumbItemStyle } from "@/shared/components/layout/breadcrumb-navigation/style";
@@ -11,9 +13,9 @@ import {
 } from "@/shared/components/ui/combobox";
 import { CommandEmpty, CommandItem } from "@/shared/components/ui/command";
 import { classNames } from "@/shared/utils/common";
-import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+import { branchesState } from "@/entities/branches/stores";
 
 export default function BreadcrumbBranchSelector({
   value,

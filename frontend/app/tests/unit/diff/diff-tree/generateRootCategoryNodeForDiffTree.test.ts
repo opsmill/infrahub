@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { generateRootCategoryNodeForDiffTree } from "../../../../src/entities/diff/ui/diff-tree";
 import { TREE_ROOT_ID } from "../../../../src/entities/ipam/constants";
 import { TreeProps } from "../../../../src/shared/components/ui/tree";

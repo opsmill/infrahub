@@ -1,3 +1,8 @@
+import type { TagProps } from "react-aria-components";
+import { useParams } from "react-router";
+
+import useFilters from "@/shared/hooks/useFilters";
+
 import {
   AVAILABLE_IP_FILTER_NAME,
   HIDE_AVAILABLE_IP,
@@ -6,9 +11,6 @@ import {
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
-import useFilters from "@/shared/hooks/useFilters";
-import type { TagProps } from "react-aria-components";
-import { useParams } from "react-router";
 
 export function IpAddressAvailabilityFilterTag({ ...props }: TagProps) {
   const [filters] = useFilters();

@@ -1,13 +1,15 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import { ContextParams, QueryConfig } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   GetRelationshipCountParams,
   getRelationshipCount,
 } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
-import { ContextParams, QueryConfig } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export function getRelationshipCountQueryOptions(params: GetRelationshipCountParams) {
   return queryOptions({

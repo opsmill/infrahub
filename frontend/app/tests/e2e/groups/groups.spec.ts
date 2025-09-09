@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";

@@ -1,11 +1,12 @@
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { ObjectTable } from "@/entities/nodes/object/ui/object-table/object-table";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { ModelSchema } from "@/entities/schema/types";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 export interface ObjectsTableManagerProps {
   schema: ModelSchema;

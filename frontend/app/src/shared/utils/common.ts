@@ -23,11 +23,6 @@ export const parseJwt = (token: string | null) => {
   }
 };
 
-export const encodeJwt = (data: any): string => {
-  // Add "." to be decoded by parseJwt
-  return `.${btoa(JSON.stringify(data))}`;
-};
-
 const DEFAULT_DEBOUNCE = 300;
 
 export function debounce<T extends (...args: any[]) => any>(

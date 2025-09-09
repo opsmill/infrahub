@@ -1,9 +1,13 @@
-import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
+
+import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+
 import { ALERT_TYPES, Alert } from "../ui/alert";
 import ModalDelete from "./modal-delete";
 

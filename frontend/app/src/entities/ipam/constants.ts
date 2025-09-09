@@ -1,4 +1,5 @@
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
+
 import { Filter } from "@/shared/hooks/useFilters";
 
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";

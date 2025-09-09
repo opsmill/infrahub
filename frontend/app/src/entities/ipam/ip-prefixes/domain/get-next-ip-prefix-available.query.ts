@@ -1,9 +1,11 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/domain/get-next-ip-prefix-available";
-import { ContextParams, QueryConfig } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai/index";
+
+import { ContextParams, QueryConfig } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/domain/get-next-ip-prefix-available";
 
 export interface GetNextIpPrefixAvailableQueryOptionsParams extends ContextParams {
   parentPrefixId?: string;

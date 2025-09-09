@@ -1,3 +1,8 @@
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { Link } from "@/shared/components/ui/link";
+
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
@@ -5,10 +10,6 @@ import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/uti
 import { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ModelSchema } from "@/entities/schema/types";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
-import { Link } from "@/shared/components/ui/link";
 
 export interface IpAddressDetailsProps {
   ipAddressSchema: ModelSchema;

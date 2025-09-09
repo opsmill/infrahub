@@ -1,7 +1,9 @@
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { toast } from "react-toastify";
+
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { toast } from "react-toastify";
+
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
 export interface DeleteObjectModalProps {
   objectId: string;

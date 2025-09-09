@@ -1,5 +1,7 @@
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { describe, expect, it } from "vitest";
+
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+
 import { generateNodeSchema } from "../../../../tests/fake/schema";
 
 describe("getSchemaIcon", () => {

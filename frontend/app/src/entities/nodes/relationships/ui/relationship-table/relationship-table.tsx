@@ -1,3 +1,9 @@
+import React from "react";
+
+import { DataTable } from "@/shared/components/table/data-table";
+import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+import useFilters from "@/shared/hooks/useFilters";
+
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import {
@@ -9,10 +15,6 @@ import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relat
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { DataTable } from "@/shared/components/table/data-table";
-import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
-import React from "react";
 
 export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
 

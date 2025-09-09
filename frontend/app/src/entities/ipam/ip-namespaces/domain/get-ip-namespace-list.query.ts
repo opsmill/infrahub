@@ -1,3 +1,9 @@
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import {
@@ -6,10 +12,6 @@ import {
 } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export type GetIpNamespaceListInfiniteQueryOptionsParams = Omit<
   GetIpNamespaceListParams,
@@ -30,7 +32,7 @@ export function getIpNamespaceListInfiniteQueryOptions(
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECTS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + OBJECTS_PER_PAGE;
     },

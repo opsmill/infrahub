@@ -1,5 +1,3 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
@@ -10,6 +8,9 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { Card, CardProps } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 
 const RepositoryForm = ({
   onSuccess,
@@ -45,7 +46,7 @@ const RepositoryForm = ({
 
   return (
     <Form
-      className="p-2 bg-stone-100 h-full overflow-auto"
+      className="h-full overflow-auto bg-stone-100 p-2"
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 
@@ -113,7 +114,7 @@ const RepositoryForm = ({
 };
 
 const FormGroup = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("shadow-xs space-y-4", className)} {...props} />;
+  return <Card className={classNames("space-y-4 shadow-xs", className)} {...props} />;
 };
 
 export default RepositoryForm;

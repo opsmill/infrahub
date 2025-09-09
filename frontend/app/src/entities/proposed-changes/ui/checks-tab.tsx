@@ -1,8 +1,11 @@
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { getProposedChangesChecks } from "@/entities/proposed-changes/api/getProposedChangesChecks";
-import { Pill } from "@/shared/components/display/pill";
 import { gql, useQuery } from "@apollo/client";
 import { useParams } from "react-router";
+
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+
+import { Pill } from "@/shared/components/display/pill";
+
+import { getProposedChangesChecks } from "@/entities/proposed-changes/api/getProposedChangesChecks";
 
 export const ProposedChangesChecksTab = () => {
   const { proposedChangeId } = useParams();
@@ -23,7 +26,7 @@ export const ProposedChangesChecksTab = () => {
   const validationsCount = result?.validations?.count ?? 0;
 
   return (
-    <div className="flex ml-2" data-testid="checks-tab">
+    <div className="ml-2 flex" data-testid="checks-tab">
       <Pill isLoading={loading}>{validationsCount}</Pill>
     </div>
   );

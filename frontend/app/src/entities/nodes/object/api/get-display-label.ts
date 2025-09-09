@@ -1,15 +1,10 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-const getNodeLabelQuery = ({
-  objectid,
-  kind,
-}: {
-  objectid?: string;
-  kind: string;
-}) => {
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams } from "@/shared/api/types";
+
+const getNodeLabelQuery = ({ objectid, kind }: { objectid?: string; kind: string }) => {
   const request = {
     query: {
       __name: "GET_DISPLAY_LABEL",

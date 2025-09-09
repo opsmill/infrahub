@@ -1,8 +1,10 @@
-import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";
-import { useUpdateDiffMutation } from "@/entities/diff/domain/update-diff.mutation";
+import { toast } from "react-toastify";
+
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { toast } from "react-toastify";
+
+import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";
+import { useUpdateDiffMutation } from "@/entities/diff/domain/update-diff.mutation";
 
 export interface DiffRebaseButtonProps extends ButtonProps {
   branchName: string;

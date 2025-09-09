@@ -1,7 +1,8 @@
+import { gql } from "@apollo/client";
+
 import { Get_Infrahub_EventsQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { PaginationParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 export type GlobalEventsFilters = {
   ids?: Array<string>;
