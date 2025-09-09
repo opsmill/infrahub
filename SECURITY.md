@@ -2,6 +2,18 @@
 
 We are committed to maintaining the security of Infrahub and its users. We deeply appreciate any effort to discover and responsibly disclose security vulnerabilities. This policy outlines the process for reporting security issues to our team.
 
+## When Should I Report a Vulnerability?
+
+* You think you discovered a potential security vulnerability in Infrahub
+* You are unsure how a vulnerability affects Infrahub
+* You think you discovered a vulnerability in another project that Infrahub depends on
+
+## When Should I NOT Report a Vulnerability?
+
+* You need help configuring Infrahub security settings (such as external authentication)
+* You need help applying security related updates
+* Your issue is not security related
+
 ## Reporting a Vulnerability
 
 If you believe you have found a security vulnerability in Infrahub, please report it via our **private and secure channels**. Do not disclose the vulnerability publicly (e.g., on GitHub Issues, social media, or forums) until we have had a chance to address it.
