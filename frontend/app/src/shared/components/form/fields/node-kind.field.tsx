@@ -1,8 +1,11 @@
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
+
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
+
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { Badge } from "../../ui/badge";
 import {
   Combobox,
@@ -46,7 +49,7 @@ export function NodeKindField({
               <FormInput>
                 <ComboboxTrigger>
                   {currentNode && (
-                    <div className="w-full flex justify-between">
+                    <div className="flex w-full justify-between">
                       {currentNode?.label} <Badge>{currentNode?.namespace}</Badge>
                     </div>
                   )}
@@ -69,7 +72,7 @@ export function NodeKindField({
                           setOpen(false);
                         }}
                       >
-                        <div className="w-full flex justify-between">
+                        <div className="flex w-full justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
                       </ComboboxItem>

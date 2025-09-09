@@ -1,14 +1,16 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { pcStatesList } from "@/entities/proposed-changes/constants";
-import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
-import { StateComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-state-combobox-list";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { useFormContext } from "react-hook-form";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { pcStatesList } from "@/entities/proposed-changes/constants";
+import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
+import { StateComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-state-combobox-list";
 
 interface PcStateButtonProps {
   state?: string;
@@ -26,7 +28,7 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className={classNames("flex p-0 border-0")}>
+        <div className={classNames("flex border-0 p-0")}>
           {auth?.user?.id ? (
             <>
               <Button
@@ -43,7 +45,7 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
               </Button>
 
               <Button
-                className="rounded-l-none border-l-0 h-9"
+                className="h-9 rounded-l-none border-l-0"
                 variant={"primary"}
                 size={"sm"}
                 onClick={() => {

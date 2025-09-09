@@ -1,7 +1,11 @@
-import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect, it } from "vitest";
+
+import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
+
+import { Filter } from "@/shared/hooks/useFilters";
+
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+
 import { proposedChangesQueryKeys } from "./proposed-changes.query-keys";
 
 describe("proposedChangesQueryKeys", () => {

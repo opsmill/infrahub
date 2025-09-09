@@ -1,10 +1,11 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import {
   DissociateRelationshipModalProps,
   DissociateRelationshipsModal,
 } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
 
 export interface ToolBarRemoveFromGroupActionProps
   extends Omit<DissociateRelationshipModalProps, "open" | "setOpen"> {}

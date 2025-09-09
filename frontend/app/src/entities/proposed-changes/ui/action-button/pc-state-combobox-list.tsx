@@ -1,6 +1,8 @@
-import { pcStatesList } from "@/entities/proposed-changes/constants";
-import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { forwardRef } from "react";
+
+import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
+
+import { pcStatesList } from "@/entities/proposed-changes/constants";
 
 export interface StateComboboxListProps {
   onSelect: (value: string) => void;

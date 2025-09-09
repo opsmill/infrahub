@@ -1,5 +1,7 @@
-import { GenericSchema, NodeSchema, ProfileSchema, TemplateSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
+
+import { GenericSchema, NodeSchema, ProfileSchema, TemplateSchema } from "@/entities/schema/types";
+
 import {
   generateGenericSchema,
   generateNodeSchema,

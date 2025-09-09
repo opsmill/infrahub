@@ -1,7 +1,9 @@
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { useAtomValue } from "jotai";
+
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
-import { useAtomValue } from "jotai";
+
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 type SchemaConflictProps = {
   id: string;

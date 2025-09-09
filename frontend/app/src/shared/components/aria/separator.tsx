@@ -1,8 +1,9 @@
-import { classNames } from "@/shared/utils/common";
 import {
   Separator as AriaSeparator,
   SeparatorProps as AriaSeparatorProps,
 } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface SeparatorProps extends AriaSeparatorProps {}
 
@@ -11,7 +12,7 @@ export function Separator({ orientation = "horizontal", className, ...props }: S
     <AriaSeparator
       {...props}
       className={classNames(
-        "bg-gray-200 text-gray-200 shrink-0",
+        "shrink-0 bg-gray-200 text-gray-200",
         orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
         className
       )}

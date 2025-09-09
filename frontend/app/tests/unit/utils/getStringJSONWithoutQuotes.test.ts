@@ -1,5 +1,7 @@
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { describe, expect, it } from "vitest";
+
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
+
 import {
   C_JSON1,
   C_JSON1_OUTPUT,

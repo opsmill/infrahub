@@ -1,8 +1,11 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ContextParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
+
+import { ContextParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+
 import { getNodeLabelFromApi } from "./get-display-label";
 
 type NodeLabelProps = {

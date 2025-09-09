@@ -1,5 +1,6 @@
-import { QSP } from "@/config/qsp";
 import { StringParam, useQueryParam } from "use-query-params";
+
+import { QSP } from "@/config/qsp";
 
 type tPagination = {
   limit: number;

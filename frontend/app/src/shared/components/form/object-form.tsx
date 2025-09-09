@@ -1,3 +1,5 @@
+import { lazy, Suspense } from "react";
+
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
@@ -8,6 +10,13 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/config/constants";
+
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
+import { NodeForm, NodeFormProps } from "@/shared/components/form/node-form";
+import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
@@ -29,13 +38,6 @@ import {
 } from "@/entities/triggers/constants";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
-import NoDataFound from "@/shared/components/errors/no-data-found";
-import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
-import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
-import { NodeForm, NodeFormProps } from "@/shared/components/form/node-form";
-import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Suspense, lazy } from "react";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;

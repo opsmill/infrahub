@@ -1,7 +1,9 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
 import { NetworkStatus } from "@apollo/client";
 import { describe, expect, test } from "vitest";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
+
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { TaskStatus } from "./task-status";

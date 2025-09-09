@@ -1,7 +1,8 @@
-import { Spinner } from "@/shared/components/ui/spinner";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ReactNode } from "react";
+
+import { Spinner } from "@/shared/components/ui/spinner";
+import { classNames } from "@/shared/utils/common";
 
 type tPill = {
   type?: PILL_TYPES;

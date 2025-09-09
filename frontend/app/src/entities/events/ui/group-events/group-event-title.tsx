@@ -1,8 +1,10 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { ReactElement } from "react";
+
 import { GroupEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
-import { ReactElement } from "react";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactElement> = {
   "infrahub.group.member_added": (props) => {
@@ -18,11 +20,11 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
             );
           })}
           {props.related_nodes.slice(6).length > 0 && (
-            <span className="italic text-gray-500">(+{props.related_nodes.slice(6).length})</span>
+            <span className="text-gray-500 italic">(+{props.related_nodes.slice(6).length})</span>
           )}
         </div>{" "}
         in group{" "}
-        <span className="text-black font-semibold">
+        <span className="font-semibold text-black">
           <Link
             key={props.primary_node?.id}
             to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}
@@ -51,7 +53,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
             );
           })}
           {props.related_nodes.slice(6).length > 0 && (
-            <span className="italic text-gray-500">(+{props.related_nodes.slice(6).length})</span>
+            <span className="text-gray-500 italic">(+{props.related_nodes.slice(6).length})</span>
           )}
         </div>{" "}
         from group{" "}
@@ -77,7 +79,7 @@ export const GroupEventTitle = (props: GroupEvent) => {
   const { event, account_id } = props;
 
   return (
-    <div className="flex items-center flex-wrap gap-1 text-sm">
+    <div className="flex flex-wrap items-center gap-1 text-sm">
       {account_id ? <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} /> : "-"}
 
       <div className="text-gray-500">

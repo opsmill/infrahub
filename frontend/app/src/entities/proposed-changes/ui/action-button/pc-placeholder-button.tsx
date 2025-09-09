@@ -1,11 +1,12 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
 
 export const PcPlaceholderButton = () => {
   return (
     <>
       <Button
-        className="grow flex flex-wrap gap-2 h-full rounded-r-none border-r-white"
+        className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
         variant={"primary"}
         disabled
       >

@@ -1,7 +1,14 @@
-import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
-import ErrorScreen from "@/shared/components/errors/error-screen";
+import { useQuery } from "@apollo/client";
+import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
+
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { classNames } from "@/shared/utils/common";
+
 import { DIFF_STATUS } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import {
@@ -10,12 +17,7 @@ import {
   CloseBadgeRemoved,
   CloseBadgeUpdated,
 } from "@/entities/diff/ui/diff-badge";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
-import { useQuery } from "@apollo/client";
-import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
+import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
 
 export type DiffFilter = {
   namespace?: {
@@ -64,13 +66,13 @@ export const ProposedChangeDiffFilter = ({ branch, filters }: ProposedChangeDiff
       <ErrorScreen
         message={error?.message ?? "No diff summary available."}
         hideIcon
-        className="p-0 items-start"
+        className="items-start p-0"
       />
     );
   }
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
+    <div className="flex shrink-0 items-center gap-2">
       <FilterButton
         status={DIFF_STATUS.ADDED}
         count={data?.DiffTreeSummary?.num_added}
@@ -125,7 +127,7 @@ const FilterButton = ({ status, count, currentFilter, onFilter, ...props }: Filt
     <Button
       {...props}
       variant="ghost"
-      className={classNames("relative rounded-full p-0 h-auto", isMuted && "opacity-60")}
+      className={classNames("relative h-auto rounded-full p-0", isMuted && "opacity-60")}
       onClick={() => onFilter(status)}
       disabled={isDisabled}
       data-testid={`diff-filters-button-${status.toLowerCase()}`}

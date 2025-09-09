@@ -1,12 +1,15 @@
+import { useLocation } from "react-router";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { ObjectDetailsTab, TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { useLocation } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
+
+import { ObjectDetailsTab, TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
+import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 
 export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
   const { isPending, data: taskCount } = useGetTaskCount({ nodeId: objectId });
@@ -22,7 +25,7 @@ export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
     >
       Tasks
       {isPending && <Spinner />}
-      {!isPending && <Badge className="font-medium rounded-full text-gray-80">{taskCount}</Badge>}
+      {!isPending && <Badge className="rounded-full font-medium text-gray-80">{taskCount}</Badge>}
     </ObjectDetailsTab>
   );
 }

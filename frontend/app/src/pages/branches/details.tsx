@@ -1,27 +1,29 @@
-import { DIFF_TABS } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
-import { NodeDiff } from "@/entities/diff/node-diff";
-import { Tabs } from "@/shared/components/tabs";
-
-import { branchesState } from "@/entities/branches/stores";
-import { BranchDetails } from "@/entities/branches/ui/branch-details";
-import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
-import { constructPath } from "@/shared/api/rest/fetch";
-import Content from "@/shared/components/layout/content";
-import { Badge } from "@/shared/components/ui/badge";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { useTitle } from "@/shared/hooks/useTitle";
 import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
-export const BRANCH_TABS = {
+import { DIFF_TABS } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import Content from "@/shared/components/layout/content";
+import { Tabs } from "@/shared/components/tabs";
+import { Badge } from "@/shared/components/ui/badge";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { useTitle } from "@/shared/hooks/useTitle";
+
+import { branchesState } from "@/entities/branches/stores";
+import { BranchDetails } from "@/entities/branches/ui/branch-details";
+import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
+import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
+import { NodeDiff } from "@/entities/diff/node-diff";
+
+const BRANCH_TABS = {
   DETAILS: "details",
   DIFF: "diff",
 };
 
-export function BranchDetailsPage() {
+function BranchDetailsPage() {
   const { "*": branchName } = useParams();
   const branches = useAtomValue(branchesState);
   useTitle(`${branchName} details`);
@@ -32,7 +34,7 @@ export function BranchDetailsPage() {
 
   if (branches.length === 0) {
     return (
-      <Content.Card className="flex justify-center items-center p-5 min-h-[400px]">
+      <Content.Card className="flex min-h-[400px] items-center justify-center p-5">
         <Spinner />
       </Content.Card>
     );
@@ -46,7 +48,7 @@ export function BranchDetailsPage() {
 
   return (
     <Content.Card>
-      <header className="p-5 font-bold flex gap-2 items-center">
+      <header className="flex items-center gap-2 p-5 font-bold">
         <h1 className="text-xl">{branch.name}</h1>
         {branch.is_default && <Badge variant="blue-outline">default</Badge>}
       </header>

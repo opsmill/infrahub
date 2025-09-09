@@ -1,3 +1,8 @@
+import { TagGroup, TagGroupProps, TagList } from "react-aria-components";
+
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { formatFullDate } from "@/shared/utils/date";
+
 import {
   AVAILABLE_IP_FILTER_NAME,
   HIDE_AVAILABLE_IP,
@@ -21,14 +26,14 @@ import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/o
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { formatFullDate } from "@/shared/utils/date";
-import { TagGroup, TagGroupProps, TagList } from "react-aria-components";
 
 export function formatAttributeFilterValue({
   kind,
   value,
-}: { kind: AttributeKind; value: AttributeType["value"] }) {
+}: {
+  kind: AttributeKind;
+  value: AttributeType["value"];
+}) {
   switch (kind) {
     case ATTRIBUTE_KIND.BOOLEAN:
       return value.toString();

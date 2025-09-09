@@ -1,4 +1,8 @@
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Icon } from "@iconify-icon/react";
+import { FileBoxIcon } from "lucide-react";
+import { ControllerRenderProps } from "react-hook-form";
+import { Link } from "react-router";
+
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   FormAttributeValue,
@@ -15,13 +19,11 @@ import { FormLabel } from "@/shared/components/ui/form";
 import { LabelProps } from "@/shared/components/ui/label";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { FileBoxIcon } from "lucide-react";
-import { ControllerRenderProps } from "react-hook-form";
-import { Link } from "react-router";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
-  <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>
+  <span className={classNames("text-gray-600 text-xs italic leading-3", className)}>
     must be unique
   </span>
 );
@@ -45,11 +47,11 @@ export const LabelFormField = ({
   fieldData,
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("h-4 flex items-center gap-1", className)}>
+    <div className={classNames("flex h-4 items-center gap-1", className)}>
       <FormLabel variant={variant}>
         {label} {required && "*"}
       </FormLabel>
-      {unique && <InputUniqueTips className="self-end mb-px" />}
+      {unique && <InputUniqueTips className="mb-px self-end" />}
       {description && <QuestionMark message={description} className="ml-1" />}
 
       {fieldData?.source?.type === "profile" && <ProfileSourceBadge source={fieldData.source} />}
@@ -68,11 +70,11 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
           <p>This value is set by a profile:</p>
           <Link
             to={getObjectDetailsUrl(source.kind!, source.id)}
-            className="underline inline-flex items-center gap-1"
+            className="inline-flex items-center gap-1 underline"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />
           </Link>
-          <p className="text-xs mt-2">You can override it by typing another value in the input.</p>
+          <p className="mt-2 text-xs">You can override it by typing another value in the input.</p>
         </div>
       }
     >
@@ -94,11 +96,11 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
           <p>This value is allocated from the pool:</p>
           <Link
             to={getObjectDetailsUrl(source.kind!, source.id)}
-            className="underline inline-flex items-center gap-1"
+            className="inline-flex items-center gap-1 underline"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />
           </Link>
-          <p className="text-xs mt-2">You can override it by entering another value manually.</p>
+          <p className="mt-2 text-xs">You can override it by entering another value manually.</p>
         </div>
       }
     >
@@ -120,11 +122,11 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
           <p>This value is from the following template:</p>
           <Link
             to={getObjectDetailsUrl(source.kind!, source.id)}
-            className="underline inline-flex items-center gap-1"
+            className="inline-flex items-center gap-1 underline"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />
           </Link>
-          <p className="text-xs mt-2">You can override it by entering another value manually.</p>
+          <p className="mt-2 text-xs">You can override it by entering another value manually.</p>
         </div>
       }
     >
@@ -144,8 +146,8 @@ interface ResetActionProps {
 
 export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
   return (
-    <div className="text-xs text-gray-600 flex justify-end gap-2">
-      <label htmlFor={`reset_${field.name}`} className="flex items-center gap-2 cursor-pointer">
+    <div className="flex justify-end gap-2 text-gray-600 text-xs">
+      <label htmlFor={`reset_${field.name}`} className="flex cursor-pointer items-center gap-2">
         <Checkbox
           id={`reset_${field.name}`}
           value={field.value?.source?.type === "user" && field.value?.value === null}

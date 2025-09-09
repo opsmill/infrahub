@@ -1,7 +1,7 @@
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
 import {
   AnyAttribute,
   CheckboxAttribute,
@@ -23,7 +23,10 @@ import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {
@@ -234,7 +237,7 @@ export const ObjectAttributeValue = ({
       return <CodeViewer>{JSON.stringify(attributeValue.value ?? "", null, 2)}</CodeViewer>;
     default:
       return (
-        <div className="flex items-center min-w-7 min-h-7">{getTextValue(attributeValue)}</div>
+        <div className="flex min-h-7 min-w-7 items-center">{getTextValue(attributeValue)}</div>
       );
   }
 };

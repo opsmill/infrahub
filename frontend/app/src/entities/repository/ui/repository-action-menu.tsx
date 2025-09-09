@@ -1,10 +1,9 @@
+import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { Pressable } from "react-aria-components";
+import { toast } from "react-toastify";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import {
-  CHECK_REPOSITORY_CONNECTIVITY,
-  REIMPORT_LAST_COMMIT,
-} from "@/entities/repository/api/actions";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import {
@@ -16,10 +15,12 @@ import {
 } from "@/shared/components/aria/menu";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Dialog } from "@headlessui/react";
-import { useState } from "react";
-import { Pressable } from "react-aria-components";
-import { toast } from "react-toastify";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import {
+  CHECK_REPOSITORY_CONNECTIVITY,
+  REIMPORT_LAST_COMMIT,
+} from "@/entities/repository/api/actions";
 
 const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,7 +36,7 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
             size="square"
             className="p-4"
           >
-            <Icon icon="mdi:dots-vertical" className="text-custom-blue-900 text-lg p-4" />
+            <Icon icon="mdi:dots-vertical" className="p-4 text-custom-blue-900 text-lg" />
           </ButtonWithTooltip>
         </Pressable>
 
@@ -85,7 +86,7 @@ const CheckConnectivityModal = ({
     <>
       <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
         <div className="fixed inset-0 flex w-screen items-center justify-center bg-gray-600/25">
-          <Dialog.Panel className="bg-white p-4 border border-gray-200 rounded-lg max-w-lg space-y-4">
+          <Dialog.Panel className="max-w-lg space-y-4 rounded-lg border border-gray-200 bg-white p-4">
             <Dialog.Title className="font-semibold text-lg">
               Check{loading && "ing"} repository connectivity
             </Dialog.Title>
@@ -95,7 +96,7 @@ const CheckConnectivityModal = ({
               your connection and authentication status.
             </Dialog.Description>
 
-            <div className="text-right space-x-2">
+            <div className="space-x-2 text-right">
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
@@ -106,7 +107,7 @@ const CheckConnectivityModal = ({
 
             <Dialog open={called && !loading} onClose={handleClose}>
               <div className="fixed inset-0 flex w-screen items-center justify-center">
-                <Dialog.Panel className="bg-white p-4 border border-gray-200 rounded-lg max-w-lg space-y-4">
+                <Dialog.Panel className="max-w-lg space-y-4 rounded-lg border border-gray-200 bg-white p-4">
                   <Dialog.Title className="font-semibold text-lg">
                     Connection {isConnectivityOk ? "Successful" : "Failed"}
                   </Dialog.Title>
@@ -122,7 +123,7 @@ const CheckConnectivityModal = ({
                   )}
 
                   {!isConnectivityOk && (
-                    <div className="text-right space-x-2">
+                    <div className="space-x-2 text-right">
                       <Button variant="outline" onClick={handleClose}>
                         Cancel
                       </Button>

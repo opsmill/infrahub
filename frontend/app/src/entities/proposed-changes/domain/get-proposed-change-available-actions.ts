@@ -1,8 +1,9 @@
+import { ActionAvailability } from "@/shared/api/graphql/generated/graphql";
+
 import {
   GetProposedChangeActionFromApiParams,
   getProposedChangeAvailableActionFromApi,
 } from "@/entities/proposed-changes/api/get-proposed-changes-available-actions-from-api";
-import { ActionAvailability } from "@/shared/api/graphql/generated/graphql";
 
 export type GetProposedChangeAvailableActionsParams = GetProposedChangeActionFromApiParams;
 
