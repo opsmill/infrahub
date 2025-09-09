@@ -10,6 +10,9 @@ import { ObjectDetailsButton } from "@/shared/components/menu/object-details-but
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
+import { useAtomValue } from "jotai";
+import { useLocation } from "react-router";
+import { schemaKindLabelState } from "../schema/stores/schemaKindLabel.atom";
 
 type ObjectHeaderProps = {
   schema: ModelSchema;
@@ -17,11 +20,17 @@ type ObjectHeaderProps = {
 };
 
 const ObjectHeader = ({ schema, objectId }: ObjectHeaderProps) => {
-  return objectId ? (
-    <ObjectDetailsHeader schema={schema} objectId={objectId} />
-  ) : (
-    <ObjectItemsHeader schema={schema} />
-  );
+  const { pathname } = useLocation();
+
+  if (pathname.includes("/convert") && objectId) {
+    return <ObjectConvertHeader schema={schema} objectId={objectId} />;
+  }
+
+  if (objectId) {
+    return <ObjectDetailsHeader schema={schema} objectId={objectId} />;
+  }
+
+  return <ObjectItemsHeader schema={schema} />;
 };
 
 const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
@@ -92,6 +101,43 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       reload={async () => {
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       }}
+      end={
+        objectDetailsData?.hfid &&
+        objectId && (
+          <ObjectHelpButton
+            kind={schema.kind}
+            documentationUrl={schema.documentation}
+            className="ml-auto"
+          />
+        )
+      }
+      data-testid="object-header"
+    />
+  );
+};
+
+const ObjectConvertHeader = ({ schema, objectId }: ObjectHeaderProps & { objectId: string }) => {
+  const {
+    data: objectDetailsData,
+    isPending,
+    error,
+  } = useGetObject({ objectSchema: schema, objectId });
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
+
+  if (error) return null;
+
+  const title = isPending ? (
+    <Skeleton className="h-6 w-60" />
+  ) : (
+    <div className="flex items-center gap-3">
+      {objectDetailsData?.display_label ?? `${schema.label} not found`}
+    </div>
+  );
+
+  return (
+    <Content.CardTitle
+      title={title}
+      description={`Convert type ${objectDetailsData?.__typename && schemaKindLabel[objectDetailsData?.__typename]}`}
       end={
         objectDetailsData?.hfid &&
         objectId && (

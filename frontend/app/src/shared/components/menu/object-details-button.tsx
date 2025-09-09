@@ -13,6 +13,7 @@ import {
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
+import { useLocation } from "react-router";
 
 export interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;
@@ -25,6 +26,8 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
     name: "node__value",
     value: id,
   };
+
+  const { pathname } = useLocation();
 
   return (
     <MenuTrigger>
@@ -43,6 +46,11 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
             {hfid && hfid !== "null" && (
               <CopyToClipboardMenuItem textToCopy={hfid}>Copy HFID</CopyToClipboardMenuItem>
             )}
+
+            <MenuItem href={constructPath(`${pathname}/convert`)}>
+              <Icon icon={"mdi:swap-horizontal"} className="size-3" />
+              Convert object type
+            </MenuItem>
 
             {children}
           </MenuSection>

@@ -1,0 +1,59 @@
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { Permission } from "@/entities/permission/types";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { KindComboboxList } from "./filters/kind-combobox-list";
+
+export interface ObjectConvertProps {
+  objectId: string;
+  objectSchema: ModelSchema;
+  permission: Permission;
+}
+
+export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
+  const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
+  const [kind, setKind] = useState("");
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
+
+  if (isPending) {
+    return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
+  }
+
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
+
+  return (
+    <div className="flex gap-2 p-2">
+      <Card className="p-0 w-1/2">
+        <CardWithBorder.Title className="flex flex-col h-19">
+          <span className="font-normal">SOURCE</span> {objectDetailsData.display_label}
+        </CardWithBorder.Title>
+        Details
+      </Card>
+
+      <Card className="p-0 w-1/2">
+        <CardWithBorder.Title className="flex flex-col">
+          <span className="font-normal">DESTINATION</span>
+          <Combobox defaultOpen>
+            <ComboboxTrigger>{kind && schemaKindLabel[kind]}</ComboboxTrigger>
+            <ComboboxContent fitTriggerWidth={false}>
+              <KindComboboxList
+                onSelect={(kind) => {
+                  setKind(kind);
+                }}
+              />
+            </ComboboxContent>
+          </Combobox>
+        </CardWithBorder.Title>
+        Form
+      </Card>
+    </div>
+  );
+}
