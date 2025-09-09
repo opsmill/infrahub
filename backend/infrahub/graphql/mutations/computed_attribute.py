@@ -177,7 +177,8 @@ class RecomputeComputedAttribute(Mutation):
                 message=f"The indicated node does not use a computed attribute for the specified attribute '{data.attribute}'"
             )
 
-        workflow = COMPUTED_ATTRIBUTE_PROCESS_JINJA2 if data.node_ids else TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES
+        recalculate_single_workflow = COMPUTED_ATTRIBUTE_PROCESS_JINJA2
+        recalculate_all_workflow = TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES
         if attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
             if not await NodeManager.query(
                 db=graphql_context.db,
@@ -188,9 +189,9 @@ class RecomputeComputedAttribute(Mutation):
                 raise ProcessingError(
                     message=f"The transform for the indicated node computed attribute for the specified attribute '{data.attribute}' does not exist"
                 )
-            workflow = (
-                COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM if data.node_ids else TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
-            )
+
+            recalculate_single_workflow = COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
+            recalculate_all_workflow = TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
 
         if data.node_ids:
             nodes = await NodeManager.get_many(
@@ -198,7 +199,7 @@ class RecomputeComputedAttribute(Mutation):
             )
             for node in nodes.values():
                 await get_workflow().submit_workflow(
-                    workflow=workflow,
+                    workflow=recalculate_single_workflow,
                     context=graphql_context.get_context(),
                     parameters={
                         "branch_name": graphql_context.branch.name,
@@ -211,7 +212,7 @@ class RecomputeComputedAttribute(Mutation):
                 )
         else:
             await get_workflow().submit_workflow(
-                workflow=workflow,
+                workflow=recalculate_all_workflow,
                 context=graphql_context.get_context(),
                 parameters={
                     "branch_name": graphql_context.branch.name,
