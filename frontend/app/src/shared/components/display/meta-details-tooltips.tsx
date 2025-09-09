@@ -1,4 +1,6 @@
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+
 import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PropertyList } from "@/shared/components/table/property-list";
@@ -6,8 +8,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;

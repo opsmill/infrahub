@@ -1,6 +1,8 @@
-import { CONFIG } from "@/config/config";
-import { fetchUrl } from "@/shared/api/rest/fetch";
 import { queryOptions } from "@tanstack/react-query";
+
+import { CONFIG } from "@/config/config";
+
+import { fetchUrl } from "@/shared/api/rest/fetch";
 
 export type DocResult = {
   title: string;

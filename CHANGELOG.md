@@ -11,6 +11,25 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.5) - 2025-09-08
+
+### Security
+
+- Fixes bug in authentication logic that allowed expired and/or deleted API tokens to authenticate successfully.
+
+### Fixed
+
+- Fixed an issue where switching between relationships to the same schema didn’t refresh the table correctly. ([#6418](https://github.com/opsmill/infrahub/issues/6418))
+- Add initialization instructions for Infrahub repository to docs. ([#7137](https://github.com/opsmill/infrahub/issues/7137))
+- Relationship properties now show a clearer loading indicator.
+- Standardize internal cache-key generation using factories to make request handling easier and more consistent.
+- Fixed a bug in the object table where the kind selector was not filtering its options correctly.
+
+### Housekeeping
+
+- Internal(frontend): Upgraded Biome to v2. Now use Ultracite to configure Biome
+- Internal(frontend): Cleaned up unused files and functions
+
 ## [Infrahub - v1.4.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.4) - 2025-09-03
 
 ### Fixed

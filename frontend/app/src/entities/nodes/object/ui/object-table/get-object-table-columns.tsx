@@ -1,3 +1,12 @@
+import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import * as R from "remeda";
+
+import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
+import { TableCell } from "@/shared/components/table/table-cell";
+import { classNames } from "@/shared/utils/common";
+
 import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
@@ -11,13 +20,6 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
-import { TableCell } from "@/shared/components/table/table-cell";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import * as R from "remeda";
 
 const columnHelper = createColumnHelper<NodeObject>();
 

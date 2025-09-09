@@ -1,11 +1,13 @@
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+
+import { PaginationParams } from "@/shared/api/types";
+
 import {
   OBJECTS_PER_PAGE,
   ProposedChangesFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
 import { getProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
-import { PaginationParams } from "@/shared/api/types";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
 type GetProposedChangesInfiniteQueryOptionsParams = Omit<
   ProposedChangesFromApiParams,
@@ -26,7 +28,7 @@ export function getProposedChangesInfiniteQueryOptions(
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECTS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + OBJECTS_PER_PAGE;
     },

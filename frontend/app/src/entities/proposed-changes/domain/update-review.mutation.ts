@@ -1,8 +1,9 @@
+import { useMutation } from "@tanstack/react-query";
+
 import {
   UpdateProposedChangeReviewParams,
   updateProposedChangeReview,
 } from "@/entities/proposed-changes/domain/update-proposed-change-review";
-import { useMutation } from "@tanstack/react-query";
 
 interface UpdateReviewProps {
   onSuccess?: () => void;

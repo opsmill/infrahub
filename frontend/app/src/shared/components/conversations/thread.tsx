@@ -1,14 +1,14 @@
+import { gql, useQuery } from "@apollo/client";
+import { formatISO, isBefore, parseISO } from "date-fns";
+import { useAtomValue } from "jotai/index";
+import * as R from "ramda";
+import { useState } from "react";
+import { toast } from "react-toastify";
+
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { getThreadTitle } from "@/entities/diff/utils";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { getPermission } from "@/entities/permission/utils";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
-
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import ModalConfirm from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -17,12 +17,15 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql, useQuery } from "@apollo/client";
-import { formatISO, isBefore, parseISO } from "date-fns";
-import { useAtomValue } from "jotai/index";
-import * as R from "ramda";
-import { useState } from "react";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { getThreadTitle } from "@/entities/diff/utils";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import { getPermission } from "@/entities/permission/utils";
+
 import { Button } from "../buttons/button-primitive";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
@@ -191,7 +194,7 @@ export const Thread = (props: tThread) => {
   return (
     <Card
       className={classNames(
-        "flex flex-col relative p-2 gap-2 rounded-md",
+        "relative flex flex-col gap-2 rounded-md p-2",
         isResolved && "bg-gray-200"
       )}
       data-testid="thread"

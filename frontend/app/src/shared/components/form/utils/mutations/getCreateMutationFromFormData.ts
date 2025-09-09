@@ -1,10 +1,11 @@
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import {
   DynamicFieldProps,
   FormFieldValue,
   isFormFieldValueFromPool,
   isFormFieldValueFromTemplate,
 } from "@/shared/components/form/type";
+
+import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,

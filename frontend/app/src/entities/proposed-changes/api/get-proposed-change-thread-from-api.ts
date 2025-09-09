@@ -1,5 +1,6 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_THREAD = gql`
 query GetCoreThread($ids: [ID]) {

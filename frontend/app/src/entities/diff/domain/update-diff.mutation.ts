@@ -1,5 +1,6 @@
-import { updateDiff } from "@/entities/diff/domain/update-diff";
 import { useMutation } from "@tanstack/react-query";
+
+import { updateDiff } from "@/entities/diff/domain/update-diff";
 
 export const UPDATE_DIFF_KEY = "update-diff";
 

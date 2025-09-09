@@ -1,7 +1,9 @@
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
+import { toast } from "react-toastify";
+
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { toast } from "react-toastify";
+
+import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 
 export interface DissociateRelationshipModalProps {
   objectId: string;

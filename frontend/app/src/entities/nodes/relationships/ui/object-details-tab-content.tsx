@@ -1,17 +1,20 @@
+import { Icon } from "@iconify-icon/react";
+import { useRef } from "react";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Link } from "@/shared/components/ui/link";
+
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { NodeObject } from "@/entities/nodes/types";
-import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constant";
+import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-objects-manager";
 import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Link } from "@/shared/components/ui/link";
-import { Icon } from "@iconify-icon/react";
-import { useRef } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
 export interface ObjectDetailsTabContentProps {
   objectSchema: ModelSchema;
@@ -48,7 +51,7 @@ export function ObjectDetailsTabContent({
               { name: QSP.TAB, value: TASK_TAB },
               { name: QSP.TASK_ID, exclude: true },
             ])}
-            className="flex items-center p-2 "
+            className="flex items-center p-2"
           >
             <Icon icon={"mdi:chevron-left"} />
             All tasks

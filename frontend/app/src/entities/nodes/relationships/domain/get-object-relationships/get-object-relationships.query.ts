@@ -1,14 +1,16 @@
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   GetObjectRelationshipsParams,
-  OBJECT_RELATIONSHIPS_PER_PAGE,
   getObjectRelationships,
+  OBJECT_RELATIONSHIPS_PER_PAGE,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export type GetObjectRelationshipsQueryOptionsParams = Omit<
   GetObjectRelationshipsParams,
@@ -31,7 +33,7 @@ export function getObjectRelationshipsQueryOptions(params: GetObjectRelationship
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECT_RELATIONSHIPS_PER_PAGE) {
-        return undefined;
+        return;
       }
       return lastPageParam + OBJECT_RELATIONSHIPS_PER_PAGE;
     },

@@ -1,8 +1,11 @@
+import { describe, expect, test, vi } from "vitest";
+
+import { store } from "@/shared/stores";
+
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { store } from "@/shared/stores";
-import { describe, expect, test, vi } from "vitest";
+
 import { render } from "../../../../../../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../../../../../../tests/fake/schema";
 import { BulkMutateGroups } from "./bulk-mutate-groups";

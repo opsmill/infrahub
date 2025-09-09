@@ -1,3 +1,16 @@
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
+import { Link, useNavigate } from "react-router";
+
+import { useLazyQuery } from "@/shared/api/graphql/useQuery";
+import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
+import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { isElementInViewport } from "@/shared/utils/element";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { EMPTY_TREE, updateTreeData } from "@/entities/ipam/ipam-tree/utils";
@@ -10,17 +23,6 @@ import { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
-import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { isElementInViewport } from "@/shared/utils/element";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
-import { Link, useNavigate } from "react-router";
 
 export const HIDE_AUTO_GENERATED_FILTER: Filter = { name: "group_type__value", value: "default" };
 

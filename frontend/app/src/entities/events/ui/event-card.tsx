@@ -1,11 +1,12 @@
+import { Icon } from "@iconify-icon/react";
+
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
 import { EventType } from "@/entities/events/types";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
-
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
-import { TimelineBorder } from "@/shared/components/ui/timeline-border";
-import { Icon } from "@iconify-icon/react";
+
 import { ArtifactEventTitle } from "./artifact-events/artifact-event-title";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
@@ -49,7 +50,7 @@ const getEventComponent = (props: EventType) => {
     return <ArtifactEventTitle {...props} />;
   }
 
-  return <span className="text-sm text-gray-600">{props.event}</span>;
+  return <span className="text-gray-600 text-sm">{props.event}</span>;
 };
 
 export const EventCard = (props: EventType) => {
@@ -57,8 +58,8 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex grow gap-3 p-2 rounded-md shadow-xs border border-gray-200 bg-white">
-        <div className="flex flex-col gap-2 grow">
+      <div className="flex grow gap-3 rounded-md border border-gray-200 bg-white p-2 shadow-xs">
+        <div className="flex grow flex-col gap-2">
           {getEventComponent(props)}
 
           <div className="flex justify-between text-gray-500">
@@ -66,7 +67,7 @@ export const EventCard = (props: EventType) => {
 
             <div className="flex items-center gap-4">
               {!PROPOSED_CHANGE_EVENTS.includes(props.event) && props.branch && (
-                <div className="text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-500 text-xs">
                   <Icon icon={"mdi:source-branch"} />
 
                   {props.branch}

@@ -1,7 +1,10 @@
+import { describe, expect, it } from "vitest";
+
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
+
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { describe, expect, it } from "vitest";
+
 import { generateNodeSchema } from "../../../../tests/fake/schema";
 
 const nodeSchema = generateNodeSchema();

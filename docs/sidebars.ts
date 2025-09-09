@@ -17,6 +17,29 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Academy',
+      collapsed: false,
+      collapsible: false,
+      link: {
+        type: 'doc',
+        id: 'academy/academy'
+      },
+      items: [
+        {
+          type: 'category',
+          label: 'Getting Started',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'academy/getting-started/infrahub-introduction',
+            'academy/getting-started/deploy-first-configuration',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Guides',
       collapsed: false,
       collapsible: false,
@@ -391,6 +414,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_4_5',
             'release-notes/infrahub/release-1_4_4',
             'release-notes/infrahub/release-1_4_3',
             'release-notes/infrahub/release-1_4_2',

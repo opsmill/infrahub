@@ -1,13 +1,14 @@
-import {
-  UseGetRelationshipPropertiesParams,
-  useGetRelationshipProperties,
-} from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 import { formatFullDate } from "@/shared/utils/date";
+
+import {
+  UseGetRelationshipPropertiesParams,
+  useGetRelationshipProperties,
+} from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties.query";
 
 export interface RelationshipPropertiesProps extends UseGetRelationshipPropertiesParams {}
 

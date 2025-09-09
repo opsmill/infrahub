@@ -1,9 +1,10 @@
+import { useMutation } from "@tanstack/react-query";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   AllocateResourceParams,
   allocateResource,
 } from "@/entities/resource-manager/domain/allocate-resource";
-import { useMutation } from "@tanstack/react-query";
 
 export function useAllocateResourceMutation() {
   const { currentBranch } = useCurrentBranch();

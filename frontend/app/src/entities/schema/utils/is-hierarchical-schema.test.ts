@@ -1,10 +1,13 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { store } from "@/shared/stores";
+
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,
 } from "@/entities/schema/utils/is-hierarchical-schema";
-import { store } from "@/shared/stores";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { generateNodeSchema } from "../../../../tests/fake/schema";
 
 describe("isHierarchicalSchema", () => {

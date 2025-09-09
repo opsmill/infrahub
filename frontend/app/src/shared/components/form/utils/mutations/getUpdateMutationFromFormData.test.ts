@@ -1,3 +1,5 @@
+import { describe, expect } from "vitest";
+
 import {
   DynamicFieldProps,
   FormAttributeValue,
@@ -5,7 +7,7 @@ import {
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
-import { describe, expect } from "vitest";
+
 import { buildFormField } from "../../../../../../tests/fake/form";
 
 describe("getUpdateMutationFromFormData - test", () => {

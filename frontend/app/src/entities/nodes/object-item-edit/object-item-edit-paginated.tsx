@@ -1,8 +1,7 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
-import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -14,9 +13,12 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { toast } from "react-toastify";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface Props {
   objectname: string;

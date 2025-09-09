@@ -1,7 +1,9 @@
-import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
+import { ArrowRightIcon, PlusIcon } from "lucide-react";
+
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { classNames } from "@/shared/utils/common";
-import { ArrowRightIcon, PlusIcon } from "lucide-react";
+
+import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 
 export interface IPAddressAvailableIdentifierProps extends ButtonProps {
   ipAddressAvailableNode: IpAddressAvailableNode;
@@ -20,22 +22,22 @@ export function IpAddressAvailableIdentifier({
       variant="ghost"
       size="sm"
       className={classNames(
-        "rounded-full hover:underline hover:bg-gray-400/10 gap-3.75 pl-1.5 pr-2.5",
+        "gap-3.75 rounded-full pr-2.5 pl-1.5 hover:bg-gray-400/10 hover:underline",
         className
       )}
       {...props}
     >
-      <PlusIcon className="size-4 mr-px" />
+      <PlusIcon className="mr-px size-4" />
       <span>{firstAddressAvailable}</span>
     </Button>
   ) : (
     <Button
       variant="ghost"
       size="sm"
-      className={classNames("rounded-full hover:underline hover:bg-gray-400/10 gap-1", className)}
+      className={classNames("gap-1 rounded-full hover:bg-gray-400/10 hover:underline", className)}
       {...props}
     >
-      <PlusIcon className="size-4 mr-3" />
+      <PlusIcon className="mr-3 size-4" />
       <span>{firstAddressAvailable}</span>
       <ArrowRightIcon className="size-3.5" />
       <span>{lastAddressAvailable}</span>

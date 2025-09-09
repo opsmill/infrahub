@@ -1,5 +1,6 @@
-import { getRepositoryGroupFromApi } from "@/entities/repository/api/get-repository-group-from-api";
 import { BranchContextParams } from "@/shared/api/types";
+
+import { getRepositoryGroupFromApi } from "@/entities/repository/api/get-repository-group-from-api";
 
 export interface GetRepositoryGroupParams extends BranchContextParams {
   nodeId: string;

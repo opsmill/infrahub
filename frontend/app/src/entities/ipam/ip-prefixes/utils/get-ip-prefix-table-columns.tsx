@@ -1,3 +1,13 @@
+import { Icon } from "@iconify-icon/react";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+
+import { Row } from "@/shared/components/container";
+import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
+import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
+import { TableCell } from "@/shared/components/table/table-cell";
+import { classNames } from "@/shared/utils/common";
+import { pluralize } from "@/shared/utils/string";
+
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
@@ -11,14 +21,6 @@ import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { Row } from "@/shared/components/container";
-import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
-import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
-import { TableCell } from "@/shared/components/table/table-cell";
-import { classNames } from "@/shared/utils/common";
-import { pluralize } from "@/shared/utils/string";
-import { Icon } from "@iconify-icon/react";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();
 
@@ -46,7 +48,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
+              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
                 {schema.label} available
               </TableCell>
             </>
@@ -62,7 +64,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
             label={
               <Row className="gap-2.5">
                 {[...Array(ipPrefixNode.ancestors.count)].map((_, i) => (
-                  <div className="bg-custom-blue-600/40 size-1 rounded-full" key={i} />
+                  <div className="size-1 rounded-full bg-custom-blue-600/40" key={i} />
                 ))}
                 {value}
               </Row>
@@ -87,7 +89,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 : row.original.ip_addresses.count;
 
             return (
-              <TableCell className="whitespace-nowrap gap-4">
+              <TableCell className="gap-4 whitespace-nowrap">
                 <TableAttributeCell attributeSchema={attribute} attributeData={attributeData} />
                 <div className="ml-auto text-xs">
                   <span className="text-gray-400">{pluralize(memberCount, "member")}</span>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { validateTextAttribute } from "./validate-text-attribute";
 
 describe("validateTextAttribute", () => {

@@ -1,3 +1,14 @@
+import React from "react";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { Col } from "@/shared/components/container";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
+import Content from "@/shared/components/layout/content";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+import useFilters from "@/shared/hooks/useFilters";
+
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
@@ -8,15 +19,6 @@ import { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { queryClient } from "@/shared/api/rest/client";
-import { Col } from "@/shared/components/container";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
-import Content from "@/shared/components/layout/content";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
-import React from "react";
 
 interface IpNamespaceListPageProps {
   namespaceSchema: ModelSchema;
@@ -36,8 +38,8 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <Content.Card className="flex flex-col overflow-hidden h-full gap-0">
-      <div className="flex items-center h-14 shrink-0 border-b px-2 border-gray-200">
+    <Content.Card className="flex h-full flex-col gap-0 overflow-hidden">
+      <div className="flex h-14 shrink-0 items-center border-gray-200 border-b px-2">
         <FilterSearchInput schema={namespaceSchema} />
 
         <ObjectCreateFormTrigger
@@ -59,7 +61,7 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
           })}
 
           {isLoading && (
-            <div className="flex justify-center grow">
+            <div className="flex grow justify-center">
               <Spinner />
             </div>
           )}

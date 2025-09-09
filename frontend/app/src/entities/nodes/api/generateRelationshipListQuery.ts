@@ -1,5 +1,6 @@
-import { PaginationParams } from "@/shared/api/types";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { PaginationParams } from "@/shared/api/types";
 
 export type GenerateRelationshipListQueryParams = PaginationParams & {
   peer: string;

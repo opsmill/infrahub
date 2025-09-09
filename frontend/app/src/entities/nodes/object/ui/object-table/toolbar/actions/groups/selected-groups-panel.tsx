@@ -1,3 +1,7 @@
+import { ListBox } from "react-aria-components";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
+
 import {
   GroupPanelBody,
   GroupPanelFooter,
@@ -5,8 +9,6 @@ import {
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-panel";
 import { SelectedGroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-group-item";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { ListBox } from "react-aria-components";
 
 export interface SelectedGroupsPanelProps {
   selectedGroups: RelationshipNode[];
@@ -21,7 +23,7 @@ export function SelectedGroupsPanel({
 }: SelectedGroupsPanelProps) {
   return (
     <div
-      className="border-l border-gray-200 min-w-[15rem] max-w-sm max-h-[12rem] flex flex-col"
+      className="flex max-h-[12rem] min-w-[15rem] max-w-sm flex-col border-gray-200 border-l"
       data-testid="selected-groups-panel"
     >
       <GroupPanelHeader>Selected groups</GroupPanelHeader>

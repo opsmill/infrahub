@@ -1,6 +1,7 @@
+import { gql } from "@apollo/client";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { BranchContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 const REPOSITORY_GROUP = gql`
 query REPOSITORY_GROUP($nodeIds: [ID]){

@@ -1,6 +1,7 @@
-import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
-import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { gql } from "@apollo/client";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React, { useEffect, useState } from "react";
+
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
@@ -16,9 +17,11 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useEffect, useState } from "react";
+
+import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
+import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+
 import { Badge } from "../ui/badge";
 import { inputStyle } from "../ui/style";
 
@@ -145,20 +148,20 @@ export const RelationshipInput = React.forwardRef<
                     setOpen(false);
                   }}
                 >
-                  <span className="truncate grow">{option.display_label}</span>
+                  <span className="grow truncate">{option.display_label}</span>
 
                   {option.badge && <Badge className="mr-2">{option.badge}</Badge>}
                 </ComboboxItem>
               );
             })}
 
-          {isRelationshipListLoading && <Spinner className="flex justify-center m-2" />}
+          {isRelationshipListLoading && <Spinner className="m-2 flex justify-center" />}
 
           {results?.length < count && (
             <div className="pt-2">
               <Button
                 variant={"ghost"}
-                className="w-full border-custom-blue-500/10 text-custom-blue-700 enabled:hover:bg-custom-blue-500/10 font-normal"
+                className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 enabled:hover:bg-custom-blue-500/10"
                 onClick={() => {
                   setOffset(offset + PAGINATION);
                   setShouldAggregate(true);
