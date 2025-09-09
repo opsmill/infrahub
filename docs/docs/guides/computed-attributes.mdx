@@ -268,3 +268,30 @@ You need to commit these files to a Git repository and link the repository to In
 The circuit's description is now automatically computed (this process may take a few seconds). Any changes to related attributes (i.e., endpoint name) will trigger a reevaluation and update the value accordingly.
 
 :::
+
+## How to Test Jinja2 Computed Attributes Locally
+
+When developing Jinja2 computed attributes, it can be difficult to get the filter syntax right, especially if you need to push the schema every time to test a change. Instead, you can test your Jinja2 computed attribute logic locally using Pytest and the `Jinja2Template` class from the Infrahub Python SDK.
+
+Example:
+
+```python
+import pytest
+from infrahub_sdk.template import Jinja2Template
+
+INTF_INDEX_JINJA2 = "{{ \"%03d\"| format(name__value | split_interface | last | int) }}"
+
+@pytest.mark.parametrize(
+    "intf_name,expected",
+    [
+        ("Ethernet12", "012"),
+        ("Ethernet4", "004"),
+    ]
+)
+async def test_intf_index(intf_name, expected):
+    tpl = Jinja2Template(template=INTF_INDEX_JINJA2)
+    rendered = await tpl.render(variables={"name__value": intf_name})
+    assert rendered == expected
+```
+
+This approach allows you to quickly iterate and validate your computed attribute logic without needing to push changes to the schema. Adjust the template and test cases as needed to cover different scenarios.
