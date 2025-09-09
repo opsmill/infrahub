@@ -137,7 +137,11 @@ const ObjectConvertHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
   return (
     <Content.CardTitle
       title={title}
-      description={`Convert type ${objectDetailsData?.__typename && schemaKindLabel[objectDetailsData?.__typename]}`}
+      description={
+        isPending
+          ? "Convert type"
+          : `Convert type ${objectDetailsData?.__typename && schemaKindLabel[objectDetailsData?.__typename]}`
+      }
       end={
         objectDetailsData?.hfid &&
         objectId && (
