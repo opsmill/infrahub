@@ -13,8 +13,10 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { List } from "@/shared/components/table/list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
+import { Link } from "@/shared/components/ui/link";
 import { SearchInput } from "@/shared/components/ui/search-input";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 
 import { Logs, tLog } from "./logs";
@@ -98,7 +100,16 @@ export const TaskItemDetails = forwardRef((_, ref) => {
 
             if (!item.id) return null;
 
-            return <Id key={item.id} id={item.id} kind={item.kind} preventCopy />;
+            return (
+              <Link
+                key={item.id}
+                to={getObjectDetailsUrl(item.kind, item.id, [
+                  { name: QSP.BRANCH, value: object.branch },
+                ])}
+              >
+                <Id id={item.id} kind={item.kind} preventCopy />
+              </Link>
+            );
           }}
         />
       ),
