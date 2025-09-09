@@ -1,6 +1,7 @@
+import { ButtonHTMLAttributes, forwardRef } from "react";
+
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
-import { ButtonHTMLAttributes, forwardRef } from "react";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   type?: "button" | "reset" | "submit";

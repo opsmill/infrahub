@@ -1,9 +1,10 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
 import {
   GetProposedChangeDetailsParams,
   getProposedChangeDetails,
 } from "@/entities/proposed-changes/domain/get-proposed-change-details";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 
 type GetProposedChangeDetailsQueryOptionsParams = GetProposedChangeDetailsParams;
 

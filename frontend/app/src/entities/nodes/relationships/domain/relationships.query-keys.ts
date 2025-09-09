@@ -1,8 +1,9 @@
+import { Filter } from "@/shared/hooks/useFilters";
+
 import {
   ObjectDetailKeysParams,
   objectQueryKeys,
 } from "@/entities/nodes/object/domain/object.query-keys";
-import { Filter } from "@/shared/hooks/useFilters";
 
 export interface RelationshipKeysBaseParams extends ObjectDetailKeysParams {
   relationshipName: string;

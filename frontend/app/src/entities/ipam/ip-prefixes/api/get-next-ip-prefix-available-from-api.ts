@@ -1,6 +1,7 @@
+import { gql } from "@apollo/client";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 export const NEXT_IP_PREFIX_QUERY = gql`
   query getNextIPPrefixAvailable($parentPrefixId: String!) {

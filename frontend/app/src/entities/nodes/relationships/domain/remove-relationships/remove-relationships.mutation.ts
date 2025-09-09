@@ -1,11 +1,13 @@
+import { useMutation } from "@tanstack/react-query";
+
+import { queryClient } from "@/shared/api/rest/client";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
   RemoveRelationshipsParams,
   removeRelationships,
 } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
-import { queryClient } from "@/shared/api/rest/client";
-import { useMutation } from "@tanstack/react-query";
 
 export function useRemoveRelationships() {
   const { currentBranch } = useCurrentBranch();

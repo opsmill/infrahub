@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { validateNumberAttribute } from "./validate-number-attribute";
 
 describe("validateNumberAttribute", () => {
@@ -170,7 +171,7 @@ describe("validateNumberAttribute", () => {
   it("should ignore max when it is null", () => {
     // GIVEN
     const params = { max: null };
-    const value = 999999;
+    const value = 999_999;
 
     // WHEN
     const result = validateNumberAttribute(params, value);
@@ -178,7 +179,7 @@ describe("validateNumberAttribute", () => {
     // THEN
     expect(result).toEqual({
       success: true,
-      data: 999999,
+      data: 999_999,
     });
   });
 

@@ -1,13 +1,15 @@
-import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useConfig } from "@/entities/config/ui/config-provider";
+import { useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import InputField from "@/shared/components/form/fields/input.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
-import { useState } from "react";
+
+import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useConfig } from "@/entities/config/ui/config-provider";
 
 export const Login = () => {
   const config = useConfig();
@@ -16,22 +18,22 @@ export const Login = () => {
   if (config && config.sso.enabled && config.sso.providers && config.sso.providers.length > 0) {
     return displaySSO ? (
       <>
-        <LoginWithSSOButtons providers={config.sso.providers} className="animate-in fade-in" />
+        <LoginWithSSOButtons providers={config.sso.providers} className="fade-in animate-in" />
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-sm text-cyan-900 hover:underline hover:bg-transparent"
+          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
         >
           Log in with your credentials
         </Button>
       </>
     ) : (
       <>
-        <LoginForm className="animate-in fade-in" />
+        <LoginForm className="fade-in animate-in" />
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-sm text-cyan-900 hover:underline hover:bg-transparent"
+          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
         >
           Log in with SSO
         </Button>
@@ -64,7 +66,7 @@ export const LoginForm = ({ className }: { className?: string }) => {
         rules={{ validate: { required: isRequired } }}
       />
 
-      <FormSubmit className="w-full h-10">Log in</FormSubmit>
+      <FormSubmit className="h-10 w-full">Log in</FormSubmit>
     </Form>
   );
 };

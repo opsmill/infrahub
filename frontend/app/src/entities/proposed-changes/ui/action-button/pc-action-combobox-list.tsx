@@ -1,9 +1,11 @@
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
-import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
+
+import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 type ActionItem = { value: string; name: string; isDisabled?: boolean; message: string | null };
 
@@ -53,7 +55,7 @@ export const ActionComboboxList = forwardRef<HTMLDivElement, ActionComboboxListP
                 className="whitespace-pre"
                 key={action.value}
               >
-                <span className="flex items-center gap-2 cursor-default select-none rounded-md px-2 py-1.5 ml-5 text-sm outline-hidden truncate opacity-50">
+                <span className="ml-5 flex cursor-default select-none items-center gap-2 truncate rounded-md px-2 py-1.5 text-sm opacity-50 outline-hidden">
                   {action.name}
                 </span>
               </Tooltip>

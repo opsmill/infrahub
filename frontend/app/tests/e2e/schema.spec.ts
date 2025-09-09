@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { saveScreenshotForDocs } from "../utils";
 
 test.describe("/schema - Schema visualizer", () => {

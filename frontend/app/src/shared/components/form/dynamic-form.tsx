@@ -1,6 +1,5 @@
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
+import { forwardRef } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
@@ -13,16 +12,19 @@ import ListField from "@/shared/components/form/fields/list.field";
 import { NodeKindField } from "@/shared/components/form/fields/node-kind.field";
 import NumberField from "@/shared/components/form/fields/number.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
+import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import RelationshipHierarchicalField from "@/shared/components/form/fields/relationships/relationship-hierarchical.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import RelationshipParentConstraintField from "@/shared/components/form/fields/relationships/relationship-parent-constraint.field";
-import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
-import { forwardRef } from "react";
+
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   isBulkUpdate?: boolean;

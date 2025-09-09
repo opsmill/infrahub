@@ -1,6 +1,8 @@
 import { NODE_OBJECT } from "@/config/constants";
+
 import { Skeleton } from "@/shared/components/skeleton";
 import { classNames } from "@/shared/utils/common";
+
 import { useNodeLabel } from "../api/get-display-label.query";
 
 type NodeLabelProps = {

@@ -1,9 +1,10 @@
+import { useMutation } from "@tanstack/react-query";
+
 import {
   GenerateArtifactParams,
   generateArtifact,
 } from "@/entities/artifacts/domain/generate-artifact";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { useMutation } from "@tanstack/react-query";
 
 export const useGenerateArtifactMutation = () => {
   const { currentBranch } = useCurrentBranch();

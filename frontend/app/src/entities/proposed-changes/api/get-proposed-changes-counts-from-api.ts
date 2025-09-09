@@ -1,12 +1,14 @@
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { addFiltersToRequest } from "@/shared/api/graphql/utils";
+import { Filter } from "@/shared/hooks/useFilters";
+
 import {
   PROPOSED_CHANGE_OBJECT,
   PROPOSED_CHANGE_STATES,
 } from "@/entities/proposed-changes/constants";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addFiltersToRequest } from "@/shared/api/graphql/utils";
-import { Filter } from "@/shared/hooks/useFilters";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 export interface ProposedChangesCountsFromApiParams {
   filters?: Array<Filter>;

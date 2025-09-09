@@ -14,7 +14,7 @@ export default function NoDataFound(props: tNoData) {
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
       {icon ?? <Icon icon="mdi:table-off" className="mb-2 text-3xl" />}
-      <div className="text-lg font-medium">No data</div>
+      <div className="font-medium text-lg">No data</div>
       <div className="text-sm">{message ?? DEFAULT_MESSAGE}</div>
     </div>
   );

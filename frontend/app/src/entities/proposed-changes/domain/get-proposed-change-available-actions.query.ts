@@ -1,9 +1,10 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
 import {
   GetProposedChangeAvailableActionsParams,
   getProposedChangeAvailableActions,
 } from "@/entities/proposed-changes/domain/get-proposed-change-available-actions";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export type GetProposedChangeAvailableActionsQueryOptionsParams =
   GetProposedChangeAvailableActionsParams;

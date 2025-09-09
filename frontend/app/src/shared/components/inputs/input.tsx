@@ -1,8 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { forwardRef, useState } from "react";
+
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { forwardRef, useState } from "react";
 
 // type InputProps = {
 //   value?: string;
@@ -44,7 +45,7 @@ export const Input = forwardRef((props: any, ref: any) => {
   );
 
   return (
-    <div className="relative flex items-center w-full">
+    <div className="relative flex w-full items-center">
       <input
         onChange={handleInputChange}
         className={classNames(
@@ -71,7 +72,7 @@ export const Input = forwardRef((props: any, ref: any) => {
 
       {error?.message && (
         <div
-          className="absolute text-sm text-red-500 bg-white -bottom-2 ml-2 px-2"
+          className="-bottom-2 absolute ml-2 bg-white px-2 text-red-500 text-sm"
           data-cy="field-error-message"
         >
           {error?.message}
@@ -79,7 +80,7 @@ export const Input = forwardRef((props: any, ref: any) => {
       )}
 
       {type === "password" && (
-        <div className="absolute right-6 top-0 bottom-0 flex items-center">{displayButton}</div>
+        <div className="absolute top-0 right-6 bottom-0 flex items-center">{displayButton}</div>
       )}
     </div>
   );

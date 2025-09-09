@@ -375,6 +375,10 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         MATCH (ip_namespace:%(namespace_kind)s {uuid: $namespace_id})-[r:IS_PART_OF]->(root:Root)
         WHERE %(branch_filter)s
+        ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+        LIMIT 1
+        WITH ip_namespace
+        WHERE r.status = "active"
         """ % {"branch_filter": branch_filter, "namespace_kind": self.params["namespace_kind"]}
         self.add_to_query(namespace_query)
 
@@ -384,8 +388,13 @@ class IPPrefixReconcileQuery(Query):
             // ------------------
             // Get IP Prefix node by UUID
             // ------------------
-            MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})
+            OPTIONAL MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+            WITH ip_namespace, ip_node
             """ % {
+                "branch_filter": branch_filter,
                 "ip_kind": InfrahubKind.IPADDRESS
                 if isinstance(self.ip_value, IPAddressType)
                 else InfrahubKind.IPPREFIX,
@@ -395,17 +404,35 @@ class IPPrefixReconcileQuery(Query):
         else:
             get_node_by_prefix_query = """
             // ------------------
-            // Get IP Prefix node by prefix value
+            // Get IP node with the correct value on this branch
             // ------------------
-            OPTIONAL MATCH ip_node_path = (:Root)<-[:IS_PART_OF]-(ip_node:%(ip_kind)s)
-            -[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn:%(ip_attribute_kind)s),
-            (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)
-            -[:IS_RELATED]-(ip_node)
-            WHERE nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
-            AND aipn.binary_address = $prefix_binary_full
+            OPTIONAL MATCH (:Root)<-[r1:IS_PART_OF]-(ip_node:%(ip_kind)s)
+                -[r2:HAS_ATTRIBUTE]->(a:Attribute)-[r3:HAS_VALUE]->(aipn:%(ip_attribute_kind)s)
+            WHERE aipn.binary_address = $prefix_binary_full
             AND aipn.prefixlen = $prefixlen
             AND aipn.version = $ip_version
-            AND all(r IN relationships(ip_node_path) WHERE (%(branch_filter)s) and r.status = "active")
+            AND all(r IN [r1, r2, r3] WHERE (%(branch_filter)s))
+            ORDER BY r3.branch_level DESC, r3.from DESC, r3.status ASC,
+                r2.branch_level DESC, r2.from DESC, r2.status ASC,
+                r1.branch_level DESC, r1.from DESC, r1.status ASC
+            LIMIT 1
+            WITH ip_namespace, CASE
+                WHEN ip_node IS NOT NULL AND r1.status = "active" AND r2.status = "active" AND r3.status = "active" THEN ip_node
+                ELSE NULL
+            END AS ip_node
+            // ------------------
+            // Filter to only those that are in the correct namespace
+            // ------------------
+            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]-(nsr:Relationship)-[r2:IS_RELATED]-(ip_node)
+            WHERE nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC,
+                r2.branch_level DESC, r2.from DESC, r2.status ASC
+            LIMIT 1
+            WITH ip_namespace, CASE
+                WHEN ip_node IS NOT NULL AND r1.status = "active" AND r2.status = "active" THEN ip_node
+                ELSE NULL
+            END as ip_node
             """ % {
                 "branch_filter": branch_filter,
                 "ip_kind": InfrahubKind.IPADDRESS
@@ -425,7 +452,7 @@ class IPPrefixReconcileQuery(Query):
             OPTIONAL MATCH parent_prefix_path = (ip_node)-[r1:IS_RELATED]->(:Relationship {name: "parent__child"})-[r2:IS_RELATED]->(current_parent:%(ip_prefix_kind)s)
             WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s))
             RETURN current_parent, (r1.status = "active" AND r2.status = "active") AS parent_is_active
-            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
+            ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
             LIMIT 1
         }
         WITH ip_namespace, ip_node, CASE WHEN parent_is_active THEN current_parent ELSE NULL END as current_parent
@@ -474,28 +501,66 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct parent, if any, for the prefix node
         // ------------------
         CALL (ip_namespace) {
-            OPTIONAL MATCH parent_path = (ip_namespace)-[pr1:IS_RELATED {status: "active"}]-(ns_rel:Relationship {name: "ip_namespace__ip_prefix"})
-            -[pr2:IS_RELATED {status: "active"}]-(maybe_new_parent:%(ip_prefix_kind)s)
-            -[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
-            -[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
-            USING INDEX av:%(ip_prefix_attribute_kind)s(binary_address)
-            WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
-            AND av.version = $ip_version
+            // ------------------
+            // start with just the AttributeValue vertices b/c we have an index on them
+            // ------------------
+            OPTIONAL MATCH (av:%(ip_prefix_attribute_kind)s)
+            WHERE av.version = $ip_version
             AND av.binary_address IN $possible_prefix_list
             AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
-            WITH
-                maybe_new_parent,
-                har,
-                hvr,
-                av.prefixlen as prefixlen,
-                (har.status = "active" AND hvr.status = "active") AS is_active,
-                har.branch_level + hvr.branch_level AS branch_level
-            ORDER BY branch_level DESC, har.from DESC, hvr.from DESC
-            WITH maybe_new_parent, prefixlen, is_active
-            RETURN maybe_new_parent, head(collect(prefixlen)) AS mnp_prefixlen, head(collect(is_active)) AS mnp_is_active
+            // ------------------
+            // now get all the possible IPPrefix nodes for these AttributeValues
+            // ------------------
+            OPTIONAL MATCH parent_path = (ip_namespace)-[:IS_RELATED]-(:Relationship {name: "ip_namespace__ip_prefix"})
+            -[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
+            -[:HAS_VALUE]->(av:AttributeValue)
+            WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
+            RETURN DISTINCT maybe_new_parent
         }
-        WITH ip_namespace, ip_node, current_parent, current_children, mnp_prefixlen,
-            CASE WHEN mnp_is_active THEN maybe_new_parent ELSE NULL END AS maybe_new_parent
+        CALL (ip_namespace, maybe_new_parent) {
+            // ------------------
+            // filter to only active maybe_new_parent Nodes in the correct namespace
+            // ------------------
+            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]-(:Relationship {name: "ip_namespace__ip_prefix"})-[r2:IS_RELATED]-(maybe_new_parent)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH maybe_new_parent, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
+            ORDER BY elementId(maybe_new_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+            WITH maybe_new_parent, head(collect(is_active)) AS is_active
+            RETURN is_active = TRUE AS parent_in_namespace
+        }
+        CALL (maybe_new_parent) {
+            // ------------------
+            // filter to only active maybe_new_parent Nodes currently linked to one of the allowed AttributeValues
+            // ------------------
+            OPTIONAL MATCH (maybe_new_parent)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[r2:HAS_VALUE]->(av:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH maybe_new_parent, av, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
+            ORDER BY elementId(maybe_new_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+            // ------------------
+            // get the latest active attribute value for the maybe_new_parent
+            // ------------------
+            WITH maybe_new_parent, head(collect([av, is_active])) AS av_is_active
+            WITH
+                av_is_active[0] AS av,
+                av_is_active[1] AS is_active
+            // ------------------
+            // return NULL if the value is not allowed or if it is not active
+            // ------------------
+            WITH av, is_active, (
+                av.version = $ip_version
+                AND av.binary_address IN $possible_prefix_list
+                AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
+            ) AS is_allowed_value
+            RETURN CASE WHEN is_active = TRUE AND is_allowed_value = TRUE THEN av ELSE NULL END AS allowed_av
+        }
+        // ------------------
+        // set inactive maybe_new_parents to NULL
+        // ------------------
+        WITH ip_namespace, ip_node, current_parent, current_children, allowed_av.prefixlen AS mnp_prefixlen,
+            CASE WHEN parent_in_namespace = TRUE AND allowed_av IS NOT NULL
+                THEN maybe_new_parent ELSE NULL
+            END AS maybe_new_parent
         WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_prefixlen
         ORDER BY ip_node.uuid, mnp_prefixlen DESC
         WITH ip_namespace, ip_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent
@@ -511,19 +576,18 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct children, if any, for the prefix node
         // ------------------
         CALL (ip_namespace, ip_node) {
+            // ------------------
             // Get ALL possible children for the prefix node
-            OPTIONAL MATCH child_path = (
-                 (ip_namespace)-[r1:IS_RELATED]
-                 -(ns_rel:Relationship)-[r2:IS_RELATED]
-                 -(maybe_new_child:%(ip_prefix_kind)s|%(ip_address_kind)s)-[har:HAS_ATTRIBUTE]
-                 ->(a:Attribute)-[hvr:HAS_VALUE]
-                 ->(av:%(ip_prefix_attribute_kind)s|%(ip_address_attribute_kind)s)
+            // ------------------
+            OPTIONAL MATCH (
+                 (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]
+                 -(maybe_new_child:%(ip_prefix_kind)s|%(ip_address_kind)s)-[:HAS_ATTRIBUTE]
+                 ->(a:Attribute)-[:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s|%(ip_address_attribute_kind)s)
             )
             USING INDEX av:%(ip_prefix_attribute_kind)s(binary_address)
             USING INDEX av:%(ip_address_attribute_kind)s(binary_address)
             WHERE $is_prefix  // only prefix nodes can have children
             AND ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
-            AND any(child_kind IN [$ip_prefix_kind, $ip_address_kind] WHERE child_kind IN labels(maybe_new_child))
             AND a.name in ["prefix", "address"]
             AND (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
             AND (
@@ -532,22 +596,58 @@ class IPPrefixReconcileQuery(Query):
             )
             AND av.version = $ip_version
             AND av.binary_address STARTS WITH $prefix_binary_host
-            AND all(r IN relationships(child_path) WHERE (%(branch_filter)s))
-            WITH
-                maybe_new_child,
-                av AS mnc_attribute,
-                r1,
-                r2,
-                har,
-                hvr,
-                all(r in relationships(child_path) WHERE r.status = "active") AS is_active,
-                reduce(br_lvl = 0, r in relationships(child_path) | br_lvl + r.branch_level) AS branch_level
-            ORDER BY maybe_new_child.uuid, branch_level DESC, hvr.from DESC, har.from DESC, r2.from DESC, r1.from DESC
-            WITH maybe_new_child, head(collect([mnc_attribute, is_active])) AS latest_mnc_details
-            RETURN maybe_new_child, latest_mnc_details[0] AS latest_mnc_attribute, latest_mnc_details[1] AS mnc_is_active
+            RETURN DISTINCT maybe_new_child
         }
-        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, latest_mnc_attribute,
-            CASE WHEN mnc_is_active IN [TRUE, NULL] THEN maybe_new_child ELSE NULL END AS maybe_new_child
+        CALL (ip_namespace, maybe_new_child) {
+            // ------------------
+            // filter to only active maybe_new_child Nodes in the correct namespace
+            // ------------------
+            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]-(ns_rel:Relationship)-[r2:IS_RELATED]-(maybe_new_child)
+            WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH maybe_new_child, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
+            ORDER BY elementId(maybe_new_child), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+            WITH maybe_new_child, head(collect(is_active)) AS is_active
+            RETURN is_active = TRUE AS child_in_namespace
+        }
+        CALL (maybe_new_child) {
+            // ------------------
+            // filter to only active maybe_new_child Nodes currently linked to a possible child AttributeValue
+            // ------------------
+            OPTIONAL MATCH (maybe_new_child:%(ip_prefix_kind)s|%(ip_address_kind)s)-[r1:HAS_ATTRIBUTE]->(a:Attribute)-[r2:HAS_VALUE]->(av:AttributeValue)
+            WHERE a.name in ["prefix", "address"]
+            AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH maybe_new_child, av, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
+            ORDER BY elementId(maybe_new_child), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+            // ------------------
+            // get the latest active attribute value for the maybe_new_child
+            // ------------------
+            WITH maybe_new_child, head(collect([av, is_active])) AS av_is_active
+            WITH
+                av_is_active[0] AS av,
+                av_is_active[1] AS is_active
+            // ------------------
+            // return NULL if the value is not allowed or if it is not active
+            // ------------------
+            WITH av, is_active, (
+                (
+                    ($ip_prefix_kind IN labels(maybe_new_child) AND av.prefixlen > $prefixlen)
+                    OR ($ip_address_kind IN labels(maybe_new_child) AND av.prefixlen >= $prefixlen)
+                )
+                AND av.version = $ip_version
+                AND av.binary_address STARTS WITH $prefix_binary_host
+            ) AS is_allowed_value
+            RETURN CASE WHEN is_active = TRUE AND is_allowed_value = TRUE THEN av ELSE NULL END AS latest_mnc_attribute
+        }
+        // ------------------
+        // set inactive/illegal value/wrong namespace maybe_new_children to NULL
+        // ------------------
+        WITH ip_namespace, ip_node, current_parent, current_children, new_parent,
+            CASE
+                WHEN child_in_namespace = TRUE AND latest_mnc_attribute IS NOT NULL THEN maybe_new_child
+                ELSE NULL
+            END AS maybe_new_child,
+            CASE WHEN child_in_namespace = TRUE THEN latest_mnc_attribute ELSE NULL END AS latest_mnc_attribute
         WITH ip_namespace, ip_node, current_parent, current_children, new_parent, collect([maybe_new_child, latest_mnc_attribute]) AS maybe_children_ips
         WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_children_ips, range(0, size(maybe_children_ips) - 1) AS child_indices
         UNWIND child_indices as ind
@@ -581,9 +681,9 @@ class IPPrefixReconcileQuery(Query):
             new_parent,
             collect(new_child) as new_children
         """ % {
-            "branch_filter": branch_filter,
             "ip_prefix_kind": InfrahubKind.IPPREFIX,
             "ip_address_kind": InfrahubKind.IPADDRESS,
+            "branch_filter": branch_filter,
             "ip_prefix_attribute_kind": PREFIX_ATTRIBUTE_LABEL,
             "ip_address_attribute_kind": ADDRESS_ATTRIBUTE_LABEL,
         }

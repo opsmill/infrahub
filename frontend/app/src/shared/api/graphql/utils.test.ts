@@ -1,6 +1,9 @@
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect, it } from "vitest";
+
+import { Filter } from "@/shared/hooks/useFilters";
+
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
 import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
 import { addAttributesToRequest, addFiltersToRequest, addRelationshipsToRequest } from "./utils";
 

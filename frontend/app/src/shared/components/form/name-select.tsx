@@ -1,7 +1,9 @@
-import { namespacesAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
+
+import { namespacesAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { DEFAULT_FORM_FIELD_VALUE } from "./constants";
 import DropdownField from "./fields/dropdown.field";
 import { FormAttributeValue } from "./type";

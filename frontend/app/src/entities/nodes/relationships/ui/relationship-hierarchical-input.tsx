@@ -1,11 +1,6 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import {
-  RelationshipComboboxList,
-  RelationshipComboboxListProps,
-} from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
+import { Icon } from "@iconify-icon/react";
+import { forwardRef, useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -23,8 +18,15 @@ import {
 } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { forwardRef, useState } from "react";
+
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import {
+  RelationshipComboboxList,
+  RelationshipComboboxListProps,
+} from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 
 export interface RelationshipHierarchicalContentProps extends RelationshipComboboxListProps {}
 
@@ -104,12 +106,12 @@ export const RelationshipHierarchicalManyInput = forwardRef<
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25 has-[>:last-child:focus]:border-custom-blue-600",
+            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
             "cursor-pointer",
             className
           )}
         >
-          <div className="grow flex flex-wrap gap-2">
+          <div className="flex grow flex-wrap gap-2">
             {value?.map(({ id, display_label }) => (
               <Badge key={id} className="flex items-center gap-1 pr-0.5">
                 {display_label}
@@ -121,7 +123,7 @@ export const RelationshipHierarchicalManyInput = forwardRef<
                     e.stopPropagation();
                     onChange(value?.filter((item) => item.id !== id));
                   }}
-                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                  className="h-4 w-4 text-gray-500 hover:text-gray-800"
                   aria-label={`Remove ${display_label}`}
                   data-testid="remove-option"
                 >
@@ -134,7 +136,7 @@ export const RelationshipHierarchicalManyInput = forwardRef<
           <PopoverTrigger ref={ref} asChild {...props}>
             <button
               type="button"
-              className="text-gray-600 outline-hidden w-3.5 h-3.5"
+              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
               aria-label={`Open ${peer}`}
             >
               <Icon icon="mdi:unfold-more-horizontal" />

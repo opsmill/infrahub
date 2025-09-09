@@ -1,12 +1,14 @@
-import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relationship-mutations";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { BranchContextParams } from "@/shared/api/types";
 import {
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relationship-mutations";
 
 export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;

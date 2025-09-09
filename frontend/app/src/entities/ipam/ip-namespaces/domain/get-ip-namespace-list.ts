@@ -1,11 +1,14 @@
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
-import { NodeCore } from "@/entities/nodes/types";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
+import { NodeCore } from "@/entities/nodes/types";
+
 import { IP_NAMESPACE_GENERIC } from "../../constants";
 
 export interface GetIpNamespaceListParams extends ContextParams, PaginationParams {

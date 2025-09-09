@@ -1,9 +1,10 @@
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { FieldValues, useForm } from "react-hook-form";
+import { toast } from "react-toastify";
+
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import InputField from "@/shared/components/form/fields/input.field";
@@ -18,10 +19,12 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { FieldValues, useForm } from "react-hook-form";
-import { toast } from "react-toastify";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AccountFormProps {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -107,7 +110,7 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
   }
 
   return (
-    <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
+    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <InputField
           name="name"

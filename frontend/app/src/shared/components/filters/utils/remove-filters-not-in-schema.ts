@@ -1,5 +1,6 @@
-import { ModelSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
+
+import { ModelSchema } from "@/entities/schema/types";
 
 export const removeFiltersNotInSchema = (filters: Filter[], schema: ModelSchema | null) => {
   if (!schema) {

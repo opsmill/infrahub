@@ -1,13 +1,15 @@
-import { DiffNode } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { TREE_ROOT_ID } from "@/entities/ipam/constants";
-import { EMPTY_TREE, addItemsToTree } from "@/entities/ipam/ipam-tree/utils";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
+
+import { DiffNode } from "@/entities/diff/node-diff/types";
+import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { TREE_ROOT_ID } from "@/entities/ipam/constants";
+import { addItemsToTree, EMPTY_TREE } from "@/entities/ipam/ipam-tree/utils";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface DiffTreeProps extends Omit<TreeProps, "data"> {
   nodes: Array<DiffNode>;
@@ -64,7 +66,7 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
     <a
       href={"#" + diffNode?.uuid}
       tabIndex={-1}
-      className="flex items-center gap-2 text-gray-800 overflow-hidden"
+      className="flex items-center gap-2 overflow-hidden text-gray-800"
       data-testid="hierarchical-tree-item"
     >
       <DiffBadge
@@ -75,7 +77,7 @@ const DiffTreeItem = ({ element }: TreeItemProps) => {
       />
 
       <Tooltip enabled content={element.name}>
-        <span className="whitespace-nowrap truncate">{element.name}</span>
+        <span className="truncate whitespace-nowrap">{element.name}</span>
       </Tooltip>
     </a>
   );

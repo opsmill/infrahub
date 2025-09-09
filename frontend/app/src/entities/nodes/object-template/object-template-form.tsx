@@ -1,13 +1,15 @@
+import { FileBoxIcon, PlusIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Button, ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
+
+import { Popover } from "@/shared/components/aria/popover";
+import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
+import { classNames } from "@/shared/utils/common";
+
 import { ObjectTemplateAutocomplete } from "@/entities/nodes/object-template/object-template-autocomplete";
 import { NodeObject } from "@/entities/nodes/types";
 import { TemplateSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { Popover } from "@/shared/components/aria/popover";
-import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
-import { classNames } from "@/shared/utils/common";
-import { FileBoxIcon, PlusIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Button, ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
 
 interface StartButtonProps extends ButtonProps {
   icon: React.ReactNode;
@@ -20,16 +22,16 @@ interface StartButtonProps extends ButtonProps {
 const StartButton = ({ icon, title, description, className, ...props }: StartButtonProps) => (
   <Button
     className={classNames(
-      "flex items-center gap-2 border border-dashed border-gray-400 p-4 rounded-lg hover:bg-gray-50",
+      "flex items-center gap-2 rounded-lg border border-gray-400 border-dashed p-4 hover:bg-gray-50",
       className
     )}
     {...props}
   >
-    <div className="bg-indigo-100 rounded-lg p-3">{icon}</div>
+    <div className="rounded-lg bg-indigo-100 p-3">{icon}</div>
 
     <div className="flex flex-col items-start gap-1">
-      <p className="text-sm font-medium">{title}</p>
-      <p className="text-xs text-gray-600">{description}</p>
+      <p className="font-medium text-sm">{title}</p>
+      <p className="text-gray-600 text-xs">{description}</p>
     </div>
   </Button>
 );

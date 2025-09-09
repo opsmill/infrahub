@@ -1,3 +1,9 @@
+import React from "react";
+import { ListBox } from "react-aria-components";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { pluralize } from "@/shared/utils/string";
+
 import {
   GroupPanelBody,
   GroupPanelFooter,
@@ -8,10 +14,6 @@ import {
   ProcessingGroupItemProps,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-group-item";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { pluralize } from "@/shared/utils/string";
-import React from "react";
-import { ListBox } from "react-aria-components";
 
 export interface ProcessingGroupsPanelProps extends Omit<ProcessingGroupItemProps, "group"> {
   selectedGroups: RelationshipNode[];
@@ -26,7 +28,7 @@ export function ProcessingGroupsPanel({
 
   return (
     <div
-      className="min-w-[15rem] max-w-sm max-h-[12rem] flex flex-col"
+      className="flex max-h-[12rem] min-w-[15rem] max-w-sm flex-col"
       data-testid="processing-groups-panel"
     >
       <GroupPanelHeader>

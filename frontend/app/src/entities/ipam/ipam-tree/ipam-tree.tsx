@@ -1,25 +1,27 @@
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
-import { Tree, TreeItemProps } from "@/shared/components/ui/tree";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router";
 
+import { useLazyQuery } from "@/shared/api/graphql/useQuery";
+import { Badge } from "@/shared/components/ui/badge";
+import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
+import { Tree, TreeItemProps } from "@/shared/components/ui/tree";
+import { debounce } from "@/shared/utils/common";
+
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { GET_PREFIXES_ONLY } from "@/entities/ipam/ipam-tree/api/prefixes";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { Badge } from "@/shared/components/ui/badge";
-import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
-import { debounce } from "@/shared/utils/common";
+
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 import {
   EMPTY_TREE,
-  PrefixData,
   formatIPPrefixResponseForTreeView,
   getTreeItemAncestors,
+  PrefixData,
   updateTreeData,
 } from "./utils";
 
@@ -130,7 +132,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
     <Link
       to={url}
       tabIndex={-1}
-      className="flex items-center gap-2 w-full"
+      className="flex w-full items-center gap-2"
       data-testid="ipam-tree-item"
     >
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}

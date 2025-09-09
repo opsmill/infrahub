@@ -1,9 +1,5 @@
-import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeAttribute, NodeCore, NodeObject } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import * as R from "ramda";
+
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { ProfileData } from "@/shared/components/form/object-form";
@@ -14,7 +10,13 @@ import {
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/shared/components/form/type";
-import * as R from "ramda";
+
+import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeAttribute, NodeCore, NodeObject } from "@/entities/nodes/types";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;

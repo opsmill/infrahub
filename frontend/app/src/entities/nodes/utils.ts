@@ -1,3 +1,5 @@
+import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
+
 import {
   IP_ADDRESS_GENERIC,
   IP_NAMESPACE_GENERIC,
@@ -8,7 +10,6 @@ import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
 
 export const getObjectDetailsUrl = (
   objectKind: string,

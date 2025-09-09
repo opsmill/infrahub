@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
+
 import { CONFIG } from "@/config/config";
+
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import { Skeleton } from "@/shared/components/skeleton";
-import { useEffect, useState } from "react";
 
 export const AppVersion = () => {
   const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);
@@ -12,7 +14,7 @@ export const AppVersion = () => {
   }, []);
 
   return (
-    <div className="text-xs text-gray-400 inline-flex items-center w-full justify-end">
+    <div className="inline-flex w-full items-center justify-end text-gray-400 text-xs">
       Infrahub - v{info ? info.version : <Skeleton className="h-4 w-14" />}
     </div>
   );

@@ -1,17 +1,20 @@
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { findSelectedBranch } from "@/entities/branches/utils";
-import { Branch } from "@/shared/api/graphql/generated/graphql";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAtom } from "jotai";
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+
+import { Branch } from "@/shared/api/graphql/generated/graphql";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
+import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { findSelectedBranch } from "@/entities/branches/utils";
 
 type BranchContext = {
   currentBranch: Branch;

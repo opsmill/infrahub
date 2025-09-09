@@ -1,7 +1,8 @@
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef } from "react";
+
+import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { classNames } from "@/shared/utils/common";
 
 export interface CollapsedButton extends ButtonProps {
   tooltipContent: string;
@@ -17,7 +18,7 @@ export const CollapsedButton = forwardRef<HTMLButtonElement, CollapsedButton>(
         size="square"
         side="right"
         tooltipEnabled
-        className={classNames("w-10 h-10 p-2", className)}
+        className={classNames("h-10 w-10 p-2", className)}
         {...props}
       >
         <Icon icon={icon} className="text-base" />
