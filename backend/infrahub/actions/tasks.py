@@ -24,67 +24,69 @@ from .models import EventGroupMember  # noqa: TC001  needed for prefect flow
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
-GENERATOR_RUN_QUERY = Query(
-    name=InfrahubKind.GENERATORDEFINITION,
-    variables={"$definition_id": "ID", "$target_ids": "[ID]"},
-    query={
-        InfrahubKind.GENERATORDEFINITION: {
-            "@filters": {
-                "ids": ["$definition_id"],
-            },
-            "edges": {
-                "node": {
-                    "id": None,
-                    "name": {
-                        "value": None,
-                    },
-                    "class_name": {
-                        "value": None,
-                    },
-                    "file_path": {
-                        "value": None,
-                    },
-                    "query": {
-                        "node": {
-                            "name": {
-                                "value": None,
+
+def get_generator_run_query(definition_id: str, target_ids: list[str]) -> Query:
+    return Query(
+        name=InfrahubKind.GENERATORDEFINITION,
+        query={
+            InfrahubKind.GENERATORDEFINITION: {
+                "@filters": {
+                    "ids": [definition_id],
+                },
+                "edges": {
+                    "node": {
+                        "id": None,
+                        "name": {
+                            "value": None,
+                        },
+                        "class_name": {
+                            "value": None,
+                        },
+                        "file_path": {
+                            "value": None,
+                        },
+                        "query": {
+                            "node": {
+                                "name": {
+                                    "value": None,
+                                },
                             },
                         },
-                    },
-                    "convert_query_response": {
-                        "value": None,
-                    },
-                    "targets": {
-                        "@filters": {
-                            "ids": "$target_ids",
+                        "convert_query_response": {
+                            "value": None,
                         },
-                        "node": {
-                            "id": None,
-                            "members": {
-                                "edges": {
-                                    "node": {
-                                        "id": None,
-                                        "display_label": None,
+                        "targets": {
+                            "node": {
+                                "id": None,
+                                "members": {
+                                    "@filters": {
+                                        "ids": target_ids,
+                                    },
+                                    "edges": {
+                                        "node": {
+                                            "id": None,
+                                            "display_label": None,
+                                        },
                                     },
                                 },
                             },
                         },
-                    },
-                    "repository": {
-                        "node": {
-                            "__typename": None,
-                            "id": None,
-                            "name": {
-                                "value": None,
-                            },
-                            f"... on {InfrahubKind.REPOSITORY}": {
-                                "commit": {
+                        "repository": {
+                            "node": {
+                                "__typename": None,
+                                "id": None,
+                                "name": {
                                     "value": None,
                                 },
-                            },
-                            f"... on {InfrahubKind.READONLYREPOSITORY}": {
-                                "commit": {
-                                    "value": None,
+                                f"... on {InfrahubKind.REPOSITORY}": {
+                                    "commit": {
+                                        "value": None,
+                                    },
+                                },
+                                f"... on {InfrahubKind.READONLYREPOSITORY}": {
+                                    "commit": {
+                                        "value": None,
+                                    },
                                 },
                             },
                         },
@@ -92,8 +94,7 @@ GENERATOR_RUN_QUERY = Query(
                 },
             },
         },
-    },
-)
+    )
 
 
 @flow(
@@ -205,8 +206,7 @@ async def _run_generators(
     context: InfrahubContext,
 ) -> None:
     response = await client.execute_graphql(
-        query=GENERATOR_RUN_QUERY.render(),
-        variables={"definition_id": generator_definition_id, "target_ids": node_ids},
+        query=get_generator_run_query(definition_id=generator_definition_id, target_ids=node_ids).render(),
         branch_name=branch_name,
     )
     data = response[InfrahubKind.GENERATORDEFINITION]["edges"][0]["node"]
@@ -236,8 +236,8 @@ async def _run_generators(
             branch_name=branch_name,
             query=data["query"]["node"]["name"]["value"],
             variables={},
-            target_id=target["id"],
-            target_name=target["display_label"],
+            target_id=target["node"]["id"],
+            target_name=target["node"]["display_label"],
         )
         await workflow.submit_workflow(
             workflow=REQUEST_GENERATOR_RUN, context=context, parameters={"model": request_generator_run_model}

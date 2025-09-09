@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from fast_depends import dependency_provider
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.protocols import CoreGeneratorDefinition
 from tests.constants import TestKind
@@ -10,8 +11,10 @@ from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+from infrahub.actions.tasks import _run_generators
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.workers.dependencies import build_client
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -78,6 +81,9 @@ class TestMutationGenerator(TestInfrahubApp):
         response = await client.execute_graphql(query=mutation.render(), branch_name="branch1")
         assert response["CoreGeneratorDefinitionRun"]["ok"]
 
+        tags = await client.all(kind="BuiltinTag", branch="branch1")
+        assert "john-jesko" in [tag.name.value for tag in tags]
+
     async def test_execute_generator_background(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
     ) -> None:
@@ -90,3 +96,24 @@ class TestMutationGenerator(TestInfrahubApp):
         response = await client.execute_graphql(query=mutation.render(), branch_name="branch1")
         assert response["CoreGeneratorDefinitionRun"]["ok"]
         assert response["CoreGeneratorDefinitionRun"]["task"]["id"]
+
+    @pytest.mark.skip(reason="Skipping because group update is failing due to a 502 exception")
+    async def test_execute_generator_action(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+    ) -> None:
+        generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags")
+        person_john = await client.get(kind=TestKind.PERSON, name__value="John")
+        person_john.name.value = "Bill"
+        await person_john.save(allow_upsert=True)
+
+        with dependency_provider.scope(build_client, lambda: client):
+            await _run_generators(
+                branch_name="branch1",
+                node_ids=[person_john.id],
+                generator_definition_id=generator.id,
+                client=client,
+                context=None,
+            )
+
+        tags = await client.all(kind="BuiltinTag", branch="branch1")
+        assert "bill-jesko" in [tag.name.value for tag in tags]
