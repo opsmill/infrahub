@@ -8,7 +8,7 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { KindComboboxList } from "./filters/kind-combobox-list";
+import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
 
 export interface ObjectConvertProps {
   objectId: string;
