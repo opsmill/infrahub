@@ -125,8 +125,30 @@ async def test_gather_trigger_gather_trigger_action_rules_node_attribute(
         ],
     )
 
+    attribute_match.value_match.value = "any"
+    await attribute_match.save(db=db)
+
+    triggers = await gather_trigger_action_rules(db=db)
+    assert len(triggers) == 1
+    automation = triggers[0]
+
+    assert automation.trigger == EventTrigger(
+        events={"infrahub.node.updated"},
+        match={"infrahub.node.kind": "BuiltinTag", "infrahub.branch.name": "main"},
+        match_related=[
+            {
+                "prefect.resource.role": "infrahub.node.attribute_update",
+                "infrahub.field.name": "description",
+                "infrahub.attribute.action": ["added", "updated", "removed"],
+            }
+        ],
+    )
+
     main_node_trigger_rule.branch_scope.value = "other_branches"
     await main_node_trigger_rule.save(db=db)
+
+    attribute_match.value_match.value = "value_full"
+    await attribute_match.save(db=db)
 
     triggers = await gather_trigger_action_rules(db=db)
     assert len(triggers) == 1
