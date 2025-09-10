@@ -1,14 +1,16 @@
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { Permission } from "@/entities/permission/types";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
+import { Permission } from "@/entities/permission/types";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { ModelSchema } from "@/entities/schema/types";
 
 export interface ObjectConvertProps {
   objectId: string;
@@ -31,14 +33,14 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
 
   return (
     <div className="flex gap-2 p-2">
-      <Card className="p-0 w-1/2">
-        <CardWithBorder.Title className="flex flex-col h-19">
+      <Card className="w-1/2 p-0">
+        <CardWithBorder.Title className="flex h-19 flex-col">
           <span className="font-normal">SOURCE</span> {objectDetailsData.display_label}
         </CardWithBorder.Title>
         Details
       </Card>
 
-      <Card className="p-0 w-1/2">
+      <Card className="w-1/2 p-0">
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
           <Combobox defaultOpen>
