@@ -116,6 +116,7 @@ class GraphQLSchemaManager:
     def clear_cache(cls) -> None:
         cls._branch_details_by_hash = {}
         cls._branch_name_by_hash = {}
+        cls._branch_hash_activation_by_branch_name = {}
 
     @classmethod
     def purge_inactive(cls, active_branches: list[str]) -> set[str]:
