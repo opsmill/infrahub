@@ -14,6 +14,7 @@ generic_menu_item = GenericSchema(
     label="Menu",
     hierarchical=True,
     human_friendly_id=["namespace__value", "name__value"],
+    display_label="label__value",
     display_labels=["label__value"],
     generate_profile=False,
     attributes=[
