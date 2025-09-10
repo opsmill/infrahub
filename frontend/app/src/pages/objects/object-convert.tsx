@@ -1,9 +1,11 @@
+import { Navigate, useParams } from "react-router";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+
 import { ObjectConvert } from "@/entities/nodes/object/ui/object-convert";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { constructPath } from "@/shared/api/rest/fetch";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { Navigate, useParams } from "react-router";
 
 export function ObjectConvertPage() {
   const { objectKind, objectid } = useParams<{ objectKind: string; objectid: string }>();
