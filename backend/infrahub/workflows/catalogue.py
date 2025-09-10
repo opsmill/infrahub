@@ -17,14 +17,14 @@ ACTION_ADD_NODE_TO_GROUP = WorkflowDefinition(
 
 ACTION_RUN_GENERATOR = WorkflowDefinition(
     name="action-run-generator",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.actions.tasks",
     function="run_generator",
 )
 
 ACTION_RUN_GENERATOR_GROUP_EVENT = WorkflowDefinition(
     name="action-run-generator-group-event",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.actions.tasks",
     function="run_generator_group_event",
 )
@@ -83,7 +83,7 @@ TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
 
 TRIGGER_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="generator-definition-run",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.generators.tasks",
     function="run_generator_definition",
     tags=[WorkflowTag.DATABASE_CHANGE],
