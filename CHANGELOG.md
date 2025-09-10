@@ -17,6 +17,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 - Make related nodes clickable in task views ([#6420](https://github.com/opsmill/infrahub/issues/6420))
 - Add an option to match trigger actions on any attribute value
+
 ### Fixed
 
 - Fix bug in IP reconciliation that could cause prefixes or addresses updated on a branch to have incorrect parents or children. ([#6934](https://github.com/opsmill/infrahub/issues/6934))
