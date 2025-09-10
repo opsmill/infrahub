@@ -203,7 +203,7 @@ async def _run_generators(
     node_ids: list[str],
     generator_definition_id: str,
     client: InfrahubClient,
-    context: InfrahubContext,
+    context: InfrahubContext | None = None,
 ) -> None:
     response = await client.execute_graphql(
         query=get_generator_run_query(definition_id=generator_definition_id, target_ids=node_ids).render(),
