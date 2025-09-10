@@ -1,1 +1,0 @@
-Add an option to match trigger action any attribute value
