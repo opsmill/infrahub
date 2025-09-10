@@ -6,7 +6,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Navigate, useParams } from "react-router";
 
 export function ObjectConvertPage() {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectid } = useParams<{ objectKind: string; objectid: string }>();
   const { schema } = useSchema(objectKind);
 
   if (!schema) {
@@ -14,7 +14,7 @@ export function ObjectConvertPage() {
   }
 
   if (!objectid) {
-    return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
+    return <Navigate to={constructPath(`/objects/${objectKind}`)} replace />;
   }
 
   return (
