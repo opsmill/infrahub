@@ -21,6 +21,7 @@ core_resource_pool = GenericSchema(
     include_in_menu=False,
     default_filter="name__value",
     order_by=["name__value"],
+    display_label="name__value",
     display_labels=["name__value"],
     human_friendly_id=["name__value"],
     icon="mdi:view-grid-outline",

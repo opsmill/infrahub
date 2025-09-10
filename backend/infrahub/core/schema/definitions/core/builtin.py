@@ -12,6 +12,7 @@ builtin_tag = NodeSchema(
     label="Tag",
     default_filter="name__value",
     order_by=["name__value"],
+    display_label="name__value",
     display_labels=["name__value"],
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
