@@ -1280,16 +1280,23 @@ async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniquene
         schema.validate_uniqueness_constraints()
 
 
-@pytest.mark.parametrize(
-    "display_labels",
-    [
-        ["my_generic_name__value", "mybool__value"],
-        ["my_generic_name__value"],
-    ],
-)
+@pytest.mark.parametrize("display_labels", [["my_generic_name__value", "mybool__value"], ["my_generic_name__value"]])
 async def test_validate_display_labels_success(schema_all_in_one, display_labels):
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_labels"] = display_labels
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_label", ["{{ my_generic_name__value }} {{ mybool__value }}", "my_generic_name__value"]
+)
+async def test_validate_display_label_success(schema_all_in_one, display_label: str):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = display_label
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
@@ -1330,6 +1337,46 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
 
     with pytest.raises(ValueError, match=expected_error):
         schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_label,expected_error",
+    [
+        (
+            "{{ mybool__value }} {{ notanattribute__value }}",
+            "InfraGenericInterface: display_label the 'notanattribute__value' variable is not found within the schema path",
+        ),
+        (
+            "my_generic_name__something",
+            "InfraGenericInterface.display_label: something is not a valid property of my_generic_name",
+        ),
+        (
+            "status__value",
+            "InfraGenericInterface.display_label: value is not a valid attribute of BuiltinStatus",
+        ),
+        (
+            "badges__name__value",
+            re.escape(
+                "InfraGenericInterface.display_label: cannot use badges relationship, relationship must be of cardinality one (`badges__name__value`)"
+            ),
+        ),
+        (
+            "badges",
+            re.escape(
+                "InfraGenericInterface.display_label: cannot use badges relationship, relationship must be of cardinality one (`badges`)"
+            ),
+        ),
+    ],
+)
+async def test_validate_display_label_error(schema_all_in_one, display_label: str, expected_error: str):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = display_label
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_display_label()
 
 
 @pytest.mark.parametrize(
