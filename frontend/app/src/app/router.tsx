@@ -228,7 +228,7 @@ export const router = createBrowserRouter([
                                   to: constructPath(
                                     `/objects/${match.params.objectKind}/${match.params.objectid}/convert`
                                   ),
-                                }) as BreadcrumbItem,
+                                }) satisfies BreadcrumbItem,
                             },
                           },
                         ],

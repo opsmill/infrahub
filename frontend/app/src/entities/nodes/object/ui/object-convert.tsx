@@ -34,8 +34,9 @@ export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
   return (
     <div className="flex gap-2 p-2">
       <Card className="w-1/2 p-0">
-        <CardWithBorder.Title className="flex h-19 flex-col">
-          <span className="font-normal">SOURCE</span> {objectDetailsData.display_label}
+        <CardWithBorder.Title className="flex min-h-19 flex-col">
+          <span className="font-normal">SOURCE</span>{" "}
+          {objectDetailsData.display_label ?? objectDetailsData.hfid}
         </CardWithBorder.Title>
         Details
       </Card>
@@ -47,8 +48,8 @@ export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
             <ComboboxTrigger>{kind && schemaKindLabel[kind]}</ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
-                onSelect={(kind) => {
-                  setKind(kind);
+                onSelect={(newKind) => {
+                  setKind(newKind);
                 }}
               />
             </ComboboxContent>
