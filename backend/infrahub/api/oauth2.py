@@ -12,6 +12,7 @@ from opentelemetry import trace
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
 from infrahub.auth import signin_sso_account
+from infrahub.config import SecurityOAuth2Google
 from infrahub.exceptions import GatewayError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -110,6 +111,17 @@ async def token(
     _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
     sso_groups = user_info.get("groups", [])
+    if not sso_groups and isinstance(provider, SecurityOAuth2Google):
+        # Poor man's workaround to fetch user groups from Google
+        if provider.fetch_groups:
+            groups_response = await service.http.get(
+                f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
+                headers=headers,
+            )
+            group_memberships = groups_response.json()
+            if "memberships" in group_memberships:
+                sso_groups = [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
+
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
         sso_groups = [config.SETTINGS.security.sso_user_default_group]
 
