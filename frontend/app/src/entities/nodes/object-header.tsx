@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useLocation } from "react-router";
+import { useMatches } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
@@ -23,9 +23,9 @@ type ObjectHeaderProps = {
 };
 
 const ObjectHeader = ({ schema, objectId }: ObjectHeaderProps) => {
-  const { pathname } = useLocation();
+  const isConvert = useMatches().some((m) => m.pathname?.endsWith("/convert"));
 
-  if (pathname.includes("/convert") && objectId) {
+  if (isConvert && objectId) {
     return <ObjectConvertHeader schema={schema} objectId={objectId} />;
   }
 
