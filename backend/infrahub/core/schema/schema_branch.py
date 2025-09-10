@@ -55,6 +55,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.utils import is_jinja2_template
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -531,6 +532,7 @@ class SchemaBranch:
         self.validate_identifiers()
         self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
+        self.validate_display_label()
         self.validate_display_labels()
         self.validate_order_by()
         self.validate_default_filters()
@@ -753,6 +755,23 @@ class SchemaBranch:
                         | SchemaElementPathType.REL_ONE_MANDATORY_NO_ATTR,
                         element_name=element_name,
                     )
+
+    def validate_display_label(self) -> None:
+        for name in self.all_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if node_schema.display_label:
+                self._validate_display_label(node=node_schema)
+            elif isinstance(node_schema, NodeSchema):
+                generic_display_labels = []
+                for generic in node_schema.inherit_from:
+                    generic_schema = self.get(name=generic, duplicate=False)
+                    if generic_schema.display_label:
+                        generic_display_labels.append(generic_schema.display_label)
+
+                if len(generic_display_labels) == 1:
+                    # Only assign node display labels if a single generic has them defined
+                    node_schema.display_label = generic_display_labels[0]
 
     def validate_display_labels(self) -> None:
         for name in self.all_names:
@@ -1138,6 +1157,47 @@ class SchemaBranch:
                         self.computed_attributes.validate_generic_inheritance(
                             node=node_schema, attribute=attribute, generic=generic_schema
                         )
+
+    def _validate_display_label(self, node: MainSchemaTypes) -> None:
+        if not node.display_label:
+            return
+
+        allowed_path_types = (
+            SchemaElementPathType.ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
+        )
+
+        if not is_jinja2_template(node.display_label):
+            self.validate_schema_path(
+                node_schema=node,
+                path=node.display_label,
+                allowed_path_types=allowed_path_types,
+                element_name="display_label",
+            )
+            return
+
+        jinja_template = Jinja2Template(template=node.display_label)
+        try:
+            variables = jinja_template.get_variables()
+            jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+        except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
+            raise ValueError(
+                f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
+            ) from exc
+
+        for variable in variables:
+            try:
+                schema_path = self.validate_schema_path(
+                    node_schema=node, path=variable, allowed_path_types=allowed_path_types
+                )
+            except ValueError as exc:
+                raise ValueError(
+                    f"{node.kind}: display_label the '{variable}' variable is not found within the schema path"
+                ) from exc
+
+            if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
+                raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
@@ -2013,6 +2073,7 @@ class SchemaBranch:
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
+            display_label="profile_name__value",
             display_labels=["profile_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             human_friendly_id=["profile_name__value"],
@@ -2189,6 +2250,7 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
+                display_label="template_name__value",
                 display_labels=["template_name__value"],
                 human_friendly_id=["template_name__value"],
                 attributes=[template_name_attr],
@@ -2205,6 +2267,7 @@ class SchemaBranch:
                 description=f"Object template for {node.kind}",
                 branch=node.branch,
                 include_in_menu=False,
+                display_label="template_name__value",
                 display_labels=["template_name__value"],
                 human_friendly_id=["template_name__value"],
                 uniqueness_constraints=[["template_name__value"]],
