@@ -5,6 +5,7 @@ import {
   Navigate,
   type NavigateOptions,
   Outlet,
+  type To,
   UIMatch,
   useHref,
   useNavigate,
@@ -27,13 +28,17 @@ import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
 declare module "react-aria-components" {
   interface RouterConfig {
+    href: To;
     routerOptions: NavigateOptions;
   }
 }
 
-function useAbsoluteHref(path: string) {
+function useAbsoluteHref(path: To) {
   const relative = useHref(path);
-  if (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:")) {
+  if (
+    typeof path === "string" &&
+    (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:"))
+  ) {
     return path;
   }
   return relative;
