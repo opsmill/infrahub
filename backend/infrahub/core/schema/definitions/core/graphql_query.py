@@ -20,6 +20,7 @@ core_graphql_query = NodeSchema(
     label="GraphQL Query",
     default_filter="name__value",
     order_by=["name__value"],
+    display_label="name__value",
     display_labels=["name__value"],
     generate_profile=False,
     branch=BranchSupportType.AWARE,
