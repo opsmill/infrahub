@@ -1784,7 +1784,7 @@ async def all_attribute_default_types_schema(
 
 
 @pytest.fixture
-async def criticality_schema_root() -> SchemaRoot:
+async def criticality_schema_root(register_core_models_schema: None) -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1829,7 +1829,11 @@ async def criticality_schema_root() -> SchemaRoot:
 
 @pytest.fixture
 async def criticality_schema(
-    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema, criticality_schema_root: SchemaRoot
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    group_schema,
+    data_schema,
+    criticality_schema_root: SchemaRoot,
 ) -> NodeSchema:
     registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
@@ -1884,7 +1888,9 @@ async def criticality_high(db: InfrahubDatabase, default_branch: Branch, critica
 
 
 @pytest.fixture
-async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GenericSchema:
+async def generic_vehicule_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> GenericSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Vehicule",
         "namespace": "Test",
