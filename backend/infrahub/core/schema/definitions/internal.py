@@ -293,10 +293,17 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
+            name="display_label",
+            kind="Text",
+            description="Attribute or Jinja2 template to use to generate the display label",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="display_labels",
             kind="List",
             internal_kind=str,
-            description="List of attributes to use to generate the display label",
+            description="List of attributes to use to generate the display label (deprecated)",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
