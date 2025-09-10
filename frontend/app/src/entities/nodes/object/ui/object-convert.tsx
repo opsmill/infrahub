@@ -18,7 +18,7 @@ export interface ObjectConvertProps {
   permission: Permission;
 }
 
-export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
+export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
   const [kind, setKind] = useState("");
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
