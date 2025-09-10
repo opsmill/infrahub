@@ -97,12 +97,12 @@ class TestMutationGenerator(TestInfrahubApp):
         assert response["CoreGeneratorDefinitionRun"]["ok"]
         assert response["CoreGeneratorDefinitionRun"]["task"]["id"]
 
-    @pytest.mark.skip(reason="Skipping because group update is failing due to a 502 exception")
     async def test_execute_generator_action(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
     ) -> None:
         generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags")
-        person_john = await client.get(kind=TestKind.PERSON, name__value="John")
+
+        person_john = await client.get(kind=TestKind.PERSON, branch="branch1", name__value="John")
         person_john.name.value = "Bill"
         await person_john.save(allow_upsert=True)
 

@@ -53,6 +53,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         name=model.generator_definition.definition_name,
         class_name=model.generator_definition.class_name,
         file_path=model.generator_definition.file_path,
+        parameters=model.generator_definition.parameters,
         query=model.generator_definition.query_name,
         targets=model.generator_definition.group_id,
         convert_query_response=model.generator_definition.convert_query_response,

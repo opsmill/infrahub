@@ -42,6 +42,7 @@ class GeneratorDefinitionModel(BaseModel):
     class_name: str = Field(..., description="The name of the generator class to run.")
     file_path: str = Field(..., description="The file path of the generator in the repository.")
     group_id: str = Field(..., description="The group to target when running this generator")
+    parameters: dict = Field(..., description="The input parameters required to run this check")
 
     @classmethod
     def from_pc_generator_definition(cls, model: ProposedChangeGeneratorDefinition) -> GeneratorDefinitionModel:
@@ -53,10 +54,10 @@ class GeneratorDefinitionModel(BaseModel):
             class_name=model.class_name,
             file_path=model.file_path,
             group_id=model.group_id,
+            parameters=model.parameters,
         )
 
 
 class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
     query_models: list[str] = Field(..., description="The models to use when collecting data.")
     repository_id: str = Field(..., description="The id of the repository.")
-    parameters: dict = Field(..., description="The input parameters required to run this check")

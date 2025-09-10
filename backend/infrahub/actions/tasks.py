@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections import defaultdict
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.graphql import Mutation, Query
+from infrahub_sdk.types import Order
 from prefect import flow
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
@@ -23,6 +25,7 @@ from .models import EventGroupMember  # noqa: TC001  needed for prefect flow
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
+    from infrahub_sdk.node import InfrahubNode
 
 
 def get_generator_run_query(definition_id: str, target_ids: list[str]) -> Query:
@@ -55,6 +58,9 @@ def get_generator_run_query(definition_id: str, target_ids: list[str]) -> Query:
                         "convert_query_response": {
                             "value": None,
                         },
+                        "parameters": {
+                            "value": None,
+                        },
                         "targets": {
                             "node": {
                                 "id": None,
@@ -64,6 +70,7 @@ def get_generator_run_query(definition_id: str, target_ids: list[str]) -> Query:
                                     },
                                     "edges": {
                                         "node": {
+                                            "__typename": None,
                                             "id": None,
                                             "display_label": None,
                                         },
@@ -198,6 +205,32 @@ async def configure_action_rules(
     )  # type: ignore[misc]
 
 
+async def _get_targets(
+    branch_name: str,
+    targets: list[dict[str, Any]],
+    client: InfrahubClient,
+) -> dict[str, dict[str, InfrahubNode]]:
+    """Get the targets per kind in order to extract the variables.
+
+    NOTE: Currently this will only work for attributes because we are not fetching the relationships out of the box.
+    To avoid performance issues, we need to analyse the generator and fetch the right relationships
+    """
+
+    targets_per_kind: dict[str, dict[str, InfrahubNode]] = defaultdict(dict)
+
+    for target in targets:
+        targets_per_kind[target["node"]["__typename"]][target["node"]["id"]] = None
+
+    for kind, values in targets_per_kind.items():
+        nodes = await client.filters(
+            kind=kind, branch=branch_name, ids=list(values.keys()), populate_store=False, order=Order(disable=True)
+        )
+        for node in nodes:
+            targets_per_kind[kind][node.id] = node
+
+    return targets_per_kind
+
+
 async def _run_generators(
     branch_name: str,
     node_ids: list[str],
@@ -216,9 +249,15 @@ async def _run_generators(
 
     targets = data["targets"]["node"]["members"]["edges"]
 
+    targets_per_kind = await _get_targets(branch_name=branch_name, targets=targets, client=client)
+
     workflow = get_workflow()
 
     for target in targets:
+        node: InfrahubNode | None = None
+        if data["parameters"]["value"]:
+            node = targets_per_kind[target["node"]["__typename"]][target["node"]["id"]]
+
         request_generator_run_model = RequestGeneratorRun(
             generator_definition=GeneratorDefinitionModel(
                 definition_id=generator_definition_id,
@@ -228,6 +267,7 @@ async def _run_generators(
                 query_name=data["query"]["node"]["name"]["value"],
                 convert_query_response=data["convert_query_response"]["value"],
                 group_id=data["targets"]["node"]["id"],
+                parameters=data["parameters"]["value"],
             ),
             commit=data["repository"]["node"]["commit"]["value"],
             repository_id=data["repository"]["node"]["id"],
@@ -235,7 +275,7 @@ async def _run_generators(
             repository_kind=data["repository"]["node"]["__typename"],
             branch_name=branch_name,
             query=data["query"]["node"]["name"]["value"],
-            variables={},
+            variables=await node.extract(params=data["parameters"]["value"]) if node else {},
             target_id=target["node"]["id"],
             target_name=target["node"]["display_label"],
         )
