@@ -9,4 +9,4 @@ class RequestGraphQLQueryGroupUpdate(BaseModel):
     query_id: str = Field(..., description="The ID of the GraphQLQuery that should be associated with the group")
     related_node_ids: list[str] = Field(..., description="List of nodes related to the GraphQLQuery")
     subscribers: list[str] = Field(..., description="List of subscribers to add to the group")
-    params: dict[str, str] = Field(..., description="Params sent with the query")
+    params: dict[str, any] = Field(..., description="Params sent with the query")
