@@ -1,4 +1,3 @@
-import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router";
@@ -13,8 +12,6 @@ import {
 import { QSP } from "@/config/qsp";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
@@ -22,18 +19,12 @@ import { useTitle } from "@/shared/hooks/useTitle";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
-import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
-import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
-import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-} from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
@@ -79,8 +70,6 @@ export default function ObjectItemDetails({
     return <Navigate to="/" />;
   }
 
-  const attributes = getObjectAttributes({ schema });
-  const relationships = getObjectRelationships({ schema });
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
@@ -134,89 +123,24 @@ export default function ObjectItemDetails({
               Details
             </CardWithBorder.Title>
 
-            <div className="divide-y divide-gray-200">
-              {attributes.map((attribute) => {
-                if (!objectDetailsData[attribute.name]) {
-                  return null;
+            <ObjectDetailsContent
+              schema={schema}
+              objectDetailsData={objectDetailsData}
+              permission={permission}
+              onClickMetadata={(attribute) => {
+                if (!attribute) {
+                  return;
                 }
 
-                return (
-                  <ObjectAttributeRow
-                    key={attribute.name}
-                    name={attribute.label as string}
-                    value={
-                      <>
-                        <ObjectAttributeValue
-                          attributeSchema={attribute}
-                          attributeValue={objectDetailsData[attribute.name]}
-                        />
+                setMetaEditFieldDetails({
+                  type: "attribute",
+                  attributeOrRelationshipName: attribute.name,
+                  label: attribute.label || attribute.name,
+                });
 
-                        {objectDetailsData[attribute.name] && (
-                          <MetaDetailsTooltip
-                            updatedAt={objectDetailsData[attribute.name]?.updated_at}
-                            source={objectDetailsData[attribute.name]?.source}
-                            owner={objectDetailsData[attribute.name]?.owner}
-                            isFromProfile={objectDetailsData[attribute.name]?.is_from_profile}
-                            isProtected={objectDetailsData[attribute.name]?.is_protected}
-                            header={
-                              !attribute.read_only && (
-                                <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                                  <div className="font-semibold">{attribute.label}</div>
-                                  <ButtonWithTooltip
-                                    disabled={!permission.update.isAllowed}
-                                    tooltipEnabled={!permission.update.isAllowed}
-                                    tooltipContent={permission.update.message}
-                                    onClick={() => {
-                                      setMetaEditFieldDetails({
-                                        type: "attribute",
-                                        attributeOrRelationshipName: attribute.name,
-                                        label: attribute.label || attribute.name,
-                                      });
-                                      setShowMetaEditModal(true);
-                                    }}
-                                    variant="ghost"
-                                    size="icon"
-                                    data-testid="edit-metadata-button"
-                                    data-cy="metadata-edit-button"
-                                  >
-                                    <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                                  </ButtonWithTooltip>
-                                </div>
-                              )
-                            }
-                          />
-                        )}
-
-                        {objectDetailsData[attribute.name]?.is_protected && (
-                          <LockClosedIcon className="h-4 w-4" />
-                        )}
-                      </>
-                    }
-                  />
-                );
-              })}
-
-              {relationships?.map((relationship: any) => {
-                const relationshipSchema = schema?.relationships?.find(
-                  (relation) => relation?.name === relationship?.name
-                );
-
-                const relationshipData = relationship?.paginated
-                  ? objectDetailsData[relationship.name]?.edges
-                  : objectDetailsData[relationship.name];
-
-                return (
-                  <RelationshipDetails
-                    parentNode={objectDetailsData}
-                    mode="DESCRIPTION-LIST"
-                    parentSchema={schema}
-                    key={relationship.name}
-                    relationshipsData={relationshipData}
-                    relationshipSchema={relationshipSchema}
-                  />
-                );
-              })}
-            </div>
+                setShowMetaEditModal(true);
+              }}
+            />
           </Card>
 
           <Card className="overflow-x-hidden p-0" data-testid="activities-panel">

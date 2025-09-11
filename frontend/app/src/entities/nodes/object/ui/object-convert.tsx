@@ -12,13 +12,15 @@ import { Permission } from "@/entities/permission/types";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { ModelSchema } from "@/entities/schema/types";
 
+import { ObjectDetailsContent } from "./object-details-content";
+
 export interface ObjectConvertProps {
   objectId: string;
   objectSchema: ModelSchema;
   permission: Permission;
 }
 
-export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
+export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
   const [kind, setKind] = useState("");
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
@@ -38,7 +40,12 @@ export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
           <span className="font-normal">SOURCE</span>{" "}
           {objectDetailsData.display_label ?? objectDetailsData.hfid}
         </CardWithBorder.Title>
-        Details
+
+        <ObjectDetailsContent
+          schema={objectSchema}
+          objectDetailsData={objectDetailsData}
+          permission={permission}
+        />
       </Card>
 
       <Card className="w-1/2 p-0">
