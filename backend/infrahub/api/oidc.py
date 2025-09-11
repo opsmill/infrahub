@@ -13,8 +13,7 @@ from pydantic import BaseModel, HttpUrl
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
-from infrahub.auth import signin_sso_account
-from infrahub.config import SecurityOIDCGoogle
+from infrahub.auth import get_groups_from_provider, signin_sso_account
 from infrahub.exceptions import GatewayError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -150,19 +149,13 @@ async def token(
 
     _validate_response(response=userinfo_response)
     user_info: dict[str, Any] = userinfo_response.json()
-    sso_groups = user_info.get("groups") or await _get_id_token_groups(
-        oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
+    sso_groups = (
+        user_info.get("groups")
+        or await _get_id_token_groups(
+            oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
+        )
+        or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
     )
-    if not sso_groups and isinstance(provider, SecurityOIDCGoogle):
-        # Poor man's workaround to fetch user groups from Google
-        if provider.fetch_groups:
-            groups_response = await service.http.get(
-                f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
-                headers=headers,
-            )
-            group_memberships = groups_response.json()
-            if "memberships" in group_memberships:
-                sso_groups = [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
 
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
         sso_groups = [config.SETTINGS.security.sso_user_default_group]
