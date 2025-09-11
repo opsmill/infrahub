@@ -15,20 +15,26 @@ interface DiffTreeProps extends Omit<AriaTreeProps<DiffTreeItem>, "items" | "chi
 export default function DiffTree({ nodes, ...props }: DiffTreeProps) {
   const location = useLocation();
   const diffTreeItems = buildDiffTreeItems(nodes);
+  const selectedDiffNodeId = location.hash?.slice(1) || null;
 
   return (
     <Tree
       aria-label="diff tree"
       items={diffTreeItems}
-      defaultExpandedKeys={diffTreeItems.map((n) => n.kind)}
+      defaultExpandedKeys={diffTreeItems.map((n) => n.id)}
       {...props}
     >
       {function renderTreeItem(item) {
         return (
           <TreeItem
             textValue={item.label}
-            href={item.isNode ? { ...location, hash: `#${item.id}` } : undefined}
-            routerOptions={{ replace: true }}
+            {...(item.isNode
+              ? {
+                  href: { ...location, hash: `#${item.id}` },
+                  routerOptions: { replace: true },
+                  className: selectedDiffNodeId === item.id ? "bg-gray-100" : undefined,
+                }
+              : {})}
           >
             <TreeItemContent>
               {item.isNode ? (

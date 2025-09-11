@@ -4,12 +4,25 @@ import { DiffNode, DiffStatus } from "@/entities/diff/node-diff/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
-export type DiffTreeItem = {
+export interface BaseTreeItem {
   id: string;
   label: string;
   children: DiffTreeItem[];
   kind: string;
-} & ({ isNode: true; hasConflicts: boolean; status: DiffStatus } | { isNode: false; icon: string });
+}
+
+export interface NodeTreeItem extends BaseTreeItem {
+  isNode: true;
+  hasConflicts: boolean;
+  status: DiffStatus;
+}
+
+export interface GroupTreeItem extends BaseTreeItem {
+  isNode: false;
+  icon: string;
+}
+
+export type DiffTreeItem = NodeTreeItem | GroupTreeItem;
 
 export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> {
   if (!nodes.length) return [];
@@ -20,33 +33,31 @@ export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> 
     const { kind } = node;
     const topLevelKindTreeItem = acc.find((treeItem) => treeItem.kind === kind);
 
-    const newDiffTreeItem = diffNodeToTreeItem(true, node);
+    const newDiffTreeItem = createNodeTreeItemFromDiffNode(node);
 
     if (!topLevelKindTreeItem) {
-      const newKindTreeItem = diffNodeToTreeItem(false, node);
+      const newKindTreeItem = createGroupTreeItemFromDiffNode(node);
       newKindTreeItem.children.push(newDiffTreeItem);
       return [...acc, newKindTreeItem];
     }
 
-    // Add to existing kind group
     topLevelKindTreeItem.children.push(newDiffTreeItem);
     return acc;
   }, []);
 
-  // Then add nodes with parents
   return nodesWithParent.reduce<DiffTreeItem[]>((acc, node) => {
     const parentTreeItem = findTreeItemById(baseTreeItems, node.parent!.uuid);
     if (!parentTreeItem) return acc;
 
-    const newDiffTreeItem = diffNodeToTreeItem(true, node);
+    const newDiffTreeItem = createNodeTreeItemFromDiffNode(node);
     const relationshipName = node.parent!.relationship_name as string;
     const relationshipTreeItem = parentTreeItem.children.find(
-      (rel) => rel.label === relationshipName
+      (rel) => !rel.isNode && rel.label === relationshipName
     );
 
     if (!relationshipTreeItem) {
       // Create new relationship group if it doesn't exist
-      const newRelationshipTreeItem = diffNodeToTreeItem(false, node);
+      const newRelationshipTreeItem = createGroupTreeItemFromDiffNode(node);
       newRelationshipTreeItem.id = `${node.parent!.uuid}-${relationshipName}`;
       newRelationshipTreeItem.label = relationshipName;
       newRelationshipTreeItem.children.push(newDiffTreeItem);
@@ -73,19 +84,19 @@ function findTreeItemById(treeItems: DiffTreeItem[], id: string): DiffTreeItem |
   }
 }
 
-function diffNodeToTreeItem(isNode: boolean, node: DiffNode): DiffTreeItem {
-  if (isNode) {
-    return {
-      isNode: true,
-      id: node.uuid,
-      kind: node.kind,
-      label: node.label,
-      hasConflicts: node.contains_conflict,
-      status: node.status,
-      children: [],
-    };
-  }
+function createNodeTreeItemFromDiffNode(node: DiffNode): NodeTreeItem {
+  return {
+    isNode: true,
+    id: node.uuid,
+    kind: node.kind,
+    label: node.label,
+    hasConflicts: node.contains_conflict,
+    status: node.status,
+    children: [],
+  };
+}
 
+function createGroupTreeItemFromDiffNode(node: DiffNode): GroupTreeItem {
   const { schema } = getSchema(node.kind);
   return {
     isNode: false,

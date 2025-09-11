@@ -20,7 +20,7 @@ export const TreeItem = ({ className, ...props }: AriaTreeItemProps) => {
     <AriaTreeItem
       className={classNames(
         focusVisibleStyle,
-        "rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
+        "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
         className
       )}
       {...props}
@@ -39,7 +39,7 @@ export const TreeItemContent = ({ children, ...props }: AriaTreeItemContentProps
               <Button
                 slot="chevron"
                 className={classNames(
-                  "inline-flex size-8 shrink-0 items-center justify-center transition-rotate duration-200",
+                  "inline-flex size-8 shrink-0 items-center justify-center duration-200",
                   isExpanded && "rotate-90"
                 )}
               >
@@ -61,6 +61,8 @@ export const TreeItemContent = ({ children, ...props }: AriaTreeItemContentProps
 
 const DotIcon = (props: React.HTMLAttributes<SVGSVGElement>) => (
   <svg
+    aria-hidden="true"
+    focusable="false"
     width="26"
     height="6"
     viewBox="0 0 6 6"
