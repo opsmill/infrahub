@@ -77,6 +77,11 @@ For a complete list of available global and object permissions, see the [Permiss
       - Decision `Allow in all branches`
    - Create the following permission
       - Namespace `Core`
+      - Name `Proposed Change`
+      - Action `Create`
+      - Decision `Allow in all branches`
+   - Create the following permission
+      - Namespace `Core`
       - Name `Change Comment`
       - Action `*`
       - Decision `Allow in all branches`
@@ -99,6 +104,7 @@ For a complete list of available global and object permissions, see the [Permiss
       - Add permission: `object:Core:ChangeComment:any:allow_all`
       - Add permission: `object:Core:ChangeThread:any:allow_all`
       - Add permission: `object:Core:ThreadComment:any:allow_all`
+      - Add permission: `object:Core:ProposedChange:create:allow_all`
    - Role name: `Network Change Reviewer` (this role allows full review, approve and merge changes)
       - Add group `Network team`
       - Add permission: `global:review_proposed_change:allow_all`
