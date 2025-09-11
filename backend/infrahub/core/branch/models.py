@@ -484,6 +484,7 @@ class Branch(StandardNode):
         # FIXME, we must ensure that there is no conflict before rebasing a branch
         #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
+        self.status = BranchStatus.OPEN
         await self.save(db=db)
 
         # Update the branch in the registry after the rebase

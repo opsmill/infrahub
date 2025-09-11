@@ -7,6 +7,7 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.graphql import Mutation
 
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -66,8 +67,10 @@ class TestNeedsRebaseStatus(TestInfrahubApp):
         assert result["BranchRebase"]["object"]["id"] == branch.id
         assert result["BranchRebase"]["task"]["id"]
 
-        branch_after = await client.branch.get(branch_name=branch.name)
-        assert branch.branched_from != branch_after.branched_from
+        # Check branch status is now OPEN
+        branch_after = await Branch.get_by_name(name=branch_name, db=db)
+        assert branch_after.branched_from is not None and branch.branched_from != branch_after.branched_from
+        assert branch_after.status == BranchStatus.OPEN
 
         # We should still be able to delete the branch
         query = Mutation(

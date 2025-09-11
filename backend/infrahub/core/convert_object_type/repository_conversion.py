@@ -13,6 +13,8 @@ from infrahub.core.repositories.create_repository import RepositoryFinalizer
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages import RefreshRegistryBranches
+from infrahub.workers.dependencies import get_message_bus
 
 
 async def convert_repository_type(
@@ -63,6 +65,10 @@ async def convert_repository_type(
                 db=dbt,
                 timestamp_before_conversion=timestamp_before_conversion,
             )
+
+        # Refresh outside the transaction otherwise other workers would pull outdated branch objects.
+        message_bus = await get_message_bus()
+        await message_bus.send(RefreshRegistryBranches())
 
         # We can't apply post creation steps within `convert_object_type` transaction as a sdk call tries to fetch the node
         # created within the transaction from a different process, therefore that would not run within this transaction

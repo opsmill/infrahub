@@ -76,7 +76,7 @@ async def generate_artifact(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> None:
-    if branch_params.branch.status == BranchStatus.NEED_REBASE.value:
+    if branch_params.branch.status == BranchStatus.NEED_REBASE:
         raise_needs_rebase_error(branch_name=branch_params.branch.name)
 
     permission_decision = (

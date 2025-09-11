@@ -289,7 +289,7 @@ async def load_schema(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
-    if branch.status == BranchStatus.NEED_REBASE.value:
+    if branch.status == BranchStatus.NEED_REBASE:
         raise_needs_rebase_error(branch_name=branch.name)
 
     permission_manager.raise_for_permission(

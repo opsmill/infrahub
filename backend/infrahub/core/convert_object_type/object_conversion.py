@@ -15,6 +15,9 @@ from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages import RefreshRegistryBranches
+from infrahub.tasks.registry import update_branch_registry
+from infrahub.workers.dependencies import get_message_bus
 
 
 class InputDataForDestField(BaseModel):  # Only one of these fields can be not None
@@ -146,6 +149,10 @@ async def convert_and_validate_object_type(
             deleted_node=node, branch=branch, db=dbt, timestamp_before_conversion=timestamp_before_conversion
         )
 
+    # Refresh outside the transaction otherwise other workers would pull outdated branch objects.
+    message_bus = await get_message_bus()
+    await message_bus.send(RefreshRegistryBranches())
+
     return new_node
 
 
@@ -185,6 +192,8 @@ async def convert_object_type(
         for br in other_branches:
             br.status = BranchStatus.NEED_REBASE
             await br.save(db=db)
+            # Registry of other API workers are updated outside the transaction
+            await update_branch_registry(db=db, branch=br)
 
     node_created = await create_node(
         data=data_new_node,
