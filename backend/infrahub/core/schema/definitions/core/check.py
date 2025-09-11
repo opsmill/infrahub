@@ -19,7 +19,6 @@ core_check_definition = NodeSchema(
     label="Check Definition",
     default_filter="name__value",
     order_by=["name__value"],
-    display_label="name__value",
     display_labels=["name__value"],
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
