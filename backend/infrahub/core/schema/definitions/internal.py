@@ -224,7 +224,6 @@ base_node_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter="name__value",
-    display_label="label__value",
     display_labels=["label__value"],
     attributes=[
         SchemaAttribute(
@@ -394,7 +393,6 @@ node_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter="name__value",
-    display_label="label__value",
     display_labels=["label__value"],
     attributes=base_node_schema.attributes
     + [
@@ -475,7 +473,6 @@ attribute_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_label="name__value",
     display_labels=["name__value"],
     attributes=[
         SchemaAttribute(
@@ -680,7 +677,6 @@ relationship_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_label="name__value",
     display_labels=["name__value"],
     attributes=[
         SchemaAttribute(
@@ -899,7 +895,6 @@ generic_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter="name__value",
-    display_label="name__value",
     display_labels=["label__value"],
     attributes=base_node_schema.attributes
     + [
