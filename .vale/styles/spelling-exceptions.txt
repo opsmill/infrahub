@@ -51,6 +51,7 @@ deserialized
 dev
 devcontainer
 direnv
+display_label
 display_labels
 docker
 dockerfile
