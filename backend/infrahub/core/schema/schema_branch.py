@@ -760,6 +760,9 @@ class SchemaBranch:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
+            if node_schema.display_label and node_schema.display_labels and config.SETTINGS.main.schema_strict_mode:
+                raise ValidationError(f"{node_schema.kind}: cannot defined both `display_label` and `display_labels`")
+
             if node_schema.display_label:
                 self._validate_display_label(node=node_schema)
             elif isinstance(node_schema, NodeSchema):
@@ -2073,7 +2076,6 @@ class SchemaBranch:
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
-            display_label="profile_name__value",
             display_labels=["profile_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             human_friendly_id=["profile_name__value"],
@@ -2250,7 +2252,6 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
-                display_label="template_name__value",
                 display_labels=["template_name__value"],
                 human_friendly_id=["template_name__value"],
                 attributes=[template_name_attr],
@@ -2267,7 +2268,6 @@ class SchemaBranch:
                 description=f"Object template for {node.kind}",
                 branch=node.branch,
                 include_in_menu=False,
-                display_label="template_name__value",
                 display_labels=["template_name__value"],
                 human_friendly_id=["template_name__value"],
                 uniqueness_constraints=[["template_name__value"]],
