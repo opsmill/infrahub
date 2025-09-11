@@ -98,6 +98,7 @@ async def graphql_query(
 ) -> ExecutionResult:
     branch = branch or await Branch.get_by_name(name="main", db=db)
     variables = variables or {}
+
     gql_params = await prepare_graphql_params(
         db=db,
         include_subscription=False,
