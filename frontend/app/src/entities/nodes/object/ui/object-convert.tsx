@@ -36,9 +36,11 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
   return (
     <div className="flex gap-2 p-2">
       <Card className="w-1/2 p-0">
-        <CardWithBorder.Title className="flex min-h-19 flex-col">
+        <CardWithBorder.Title className="flex h-19 flex-col">
           <span className="font-normal">SOURCE</span>{" "}
-          {objectDetailsData.display_label ?? objectDetailsData.hfid}
+          <div className="flex h-full items-center">
+            {objectDetailsData.display_label ?? objectDetailsData.hfid}
+          </div>
         </CardWithBorder.Title>
 
         <ObjectDetailsContent
