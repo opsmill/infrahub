@@ -1011,6 +1011,7 @@ jobs:
         uses: CodSpeedHQ/action@v4
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
+          mode: instrumentation
           run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
 
       - name: Run non-intensive benchmarks
@@ -1019,6 +1020,7 @@ jobs:
         uses: CodSpeedHQ/action@v4
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
+          mode: instrumentation
           run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
