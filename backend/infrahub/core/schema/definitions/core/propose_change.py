@@ -21,7 +21,6 @@ core_proposed_change = NodeSchema(
     icon="mdi:file-replace-outline",
     label="Proposed Change",
     default_filter="name__value",
-    display_label="name__value",
     display_labels=["name__value"],
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
