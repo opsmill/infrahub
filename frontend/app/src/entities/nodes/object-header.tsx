@@ -13,9 +13,8 @@ import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { NodeAttribute } from "@/entities/nodes/types";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { ModelSchema } from "@/entities/schema/types";
-
-import { schemaKindLabelState } from "../schema/stores/schemaKindLabel.atom";
 
 type ObjectHeaderProps = {
   schema: ModelSchema;
@@ -89,7 +88,7 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
 
       <ObjectDetailsButton
         id={objectId}
-        data-testid="object-details-action-button"
+        data-testid="object-details-button"
         hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
       />
     </div>
