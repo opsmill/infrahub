@@ -83,7 +83,11 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           </div>
         )}
 
-        {kind && <ConvertForm kind={kind} />}
+        {kind && (
+          <div className="p-2">
+            <ConvertForm kind={kind} />
+          </div>
+        )}
       </Card>
     </div>
   );
