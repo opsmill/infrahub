@@ -34,6 +34,7 @@ from infrahub.git.integrator import (
     CheckDefinitionInformation,
 )
 from infrahub.git.worktree import Worktree
+from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
