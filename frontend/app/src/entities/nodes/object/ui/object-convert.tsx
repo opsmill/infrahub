@@ -33,6 +33,10 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
     return <ErrorScreen message={error.message} />;
   }
 
+  if (!objectDetailsData) {
+    return <ErrorScreen message="Object not found." />;
+  }
+
   return (
     <div className="flex gap-2 p-2">
       <Card className="w-1/2 p-0">
@@ -54,7 +58,9 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
           <Combobox defaultOpen>
-            <ComboboxTrigger>{kind && schemaKindLabel[kind]}</ComboboxTrigger>
+            <ComboboxTrigger>
+              {kind ? schemaKindLabel[kind] : "Select destination kind"}
+            </ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
                 onSelect={(newKind) => {

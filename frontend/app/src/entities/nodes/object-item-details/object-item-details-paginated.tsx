@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
+import { useCallback } from "react";
 import { Navigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -33,7 +34,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
 
@@ -60,6 +61,23 @@ export default function ObjectItemDetails({
   const [genericList] = useAtom(genericSchemasAtom);
   const isTaskTarget = isOfKind(TASK_TARGET, schema);
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, schema);
+
+  const handleMetadataClick = useCallback(
+    (attribute: AttributeSchema) => {
+      if (!attribute) {
+        return;
+      }
+
+      setMetaEditFieldDetails({
+        type: "attribute",
+        attributeOrRelationshipName: attribute.name,
+        label: attribute.label || attribute.name,
+      });
+
+      setShowMetaEditModal(true);
+    },
+    [setMetaEditFieldDetails, setShowMetaEditModal]
+  );
 
   if ((schemaList?.length || genericList?.length) && !schema) {
     // If there is no schema nor generics, go to home page
@@ -127,19 +145,7 @@ export default function ObjectItemDetails({
               schema={schema}
               objectDetailsData={objectDetailsData}
               permission={permission}
-              onClickMetadata={(attribute) => {
-                if (!attribute) {
-                  return;
-                }
-
-                setMetaEditFieldDetails({
-                  type: "attribute",
-                  attributeOrRelationshipName: attribute.name,
-                  label: attribute.label || attribute.name,
-                });
-
-                setShowMetaEditModal(true);
-              }}
+              onClickMetadata={handleMetadataClick}
             />
           </Card>
 
