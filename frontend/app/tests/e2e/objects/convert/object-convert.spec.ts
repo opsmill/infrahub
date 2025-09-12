@@ -7,7 +7,7 @@ test.describe.fixme("Object details - convert", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("should access the convert page", async ({ page }) => {
-    await page.goto("http://localhost:8080/objects/InfraInterface");
+    await page.goto("/objects/InfraInterface");
     await page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true }).click();
     await page.getByTestId("object-details-action-button").click();
     await page.getByRole("menuitem", { name: "Convert object type" }).click();
