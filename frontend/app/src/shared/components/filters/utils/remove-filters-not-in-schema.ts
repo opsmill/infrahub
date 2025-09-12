@@ -13,13 +13,10 @@ export const removeFiltersNotInSchema = (filters: Filter[], schema: ModelSchema 
     return [];
   }
 
+  const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
+
   return filters.filter((filter) => {
-    if (
-      (isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema)) &&
-      filter.name === AVAILABLE_IP_FILTER_NAME
-    ) {
-      return true;
-    }
+    if (isIpamSchema && filter.name === AVAILABLE_IP_FILTER_NAME) return true;
 
     const [fieldName] = filter.name.split("__");
     return (
